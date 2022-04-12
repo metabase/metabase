@@ -86,11 +86,11 @@
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
-        :present #{:description :icon :collection_id :archived}
+        :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
-    (hydrate (Timeline id) :creator)))
+    (hydrate (Timeline id) :creator [:collection :can_write])))
 
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."

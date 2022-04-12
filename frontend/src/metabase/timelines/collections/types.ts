@@ -9,7 +9,3 @@ export interface ModalParams {
   timelineId?: string;
   timelineEventId?: string;
 }
-
-export interface ModalProps {
-  params: ModalParams;
-}

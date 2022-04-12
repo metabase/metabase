@@ -2,13 +2,14 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { parseTimestamp } from "metabase/lib/time";
+import { getTimelineName } from "metabase/lib/timelines";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import * as Urls from "metabase/lib/urls";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import Icon from "metabase/components/Icon";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import SearchEmptyState from "../SearchEmptyState";
 import EventList from "../EventList";
 import TimelineEmptyState from "../TimelineEmptyState";
@@ -23,18 +24,16 @@ import { MenuItem } from "../../types";
 
 export interface TimelineDetailsModalProps {
   timeline: Timeline;
-  collection: Collection;
   isArchive?: boolean;
   isOnlyTimeline?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
   onClose?: () => void;
-  onGoBack?: (timeline: Timeline, collection: Collection) => void;
+  onGoBack?: (timeline: Timeline) => void;
 }
 
 const TimelineDetailsModal = ({
   timeline,
-  collection,
   isArchive = false,
   isOnlyTimeline = false,
   onArchive,
@@ -42,7 +41,7 @@ const TimelineDetailsModal = ({
   onClose,
   onGoBack,
 }: TimelineDetailsModalProps): JSX.Element => {
-  const title = isArchive ? t`Archived events` : timeline.name;
+  const title = isArchive ? t`Archived events` : getTimelineName(timeline);
   const [inputText, setInputText] = useState("");
 
   const searchText = useDebouncedValue(
@@ -55,12 +54,12 @@ const TimelineDetailsModal = ({
   }, [timeline, searchText, isArchive]);
 
   const menuItems = useMemo(() => {
-    return getMenuItems(timeline, collection, isArchive, isOnlyTimeline);
-  }, [timeline, collection, isArchive, isOnlyTimeline]);
+    return getMenuItems(timeline, isArchive, isOnlyTimeline);
+  }, [timeline, isArchive, isOnlyTimeline]);
 
   const handleGoBack = useCallback(() => {
-    onGoBack?.(timeline, collection);
-  }, [timeline, collection, onGoBack]);
+    onGoBack?.(timeline);
+  }, [timeline, onGoBack]);
 
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
@@ -89,7 +88,7 @@ const TimelineDetailsModal = ({
           {canWrite && !isArchive && (
             <ModalToolbarLink
               className="Button"
-              to={Urls.newEventInCollection(timeline, collection)}
+              to={Urls.newEventInCollection(timeline)}
             >{t`Add an event`}</ModalToolbarLink>
           )}
         </ModalToolbar>
@@ -99,14 +98,13 @@ const TimelineDetailsModal = ({
           <EventList
             events={events}
             timeline={timeline}
-            collection={collection}
             onArchive={onArchive}
             onUnarchive={onUnarchive}
           />
         ) : isArchive || isSearching ? (
           <SearchEmptyState />
         ) : (
-          <TimelineEmptyState timeline={timeline} collection={collection} />
+          <TimelineEmptyState timeline={timeline} />
         )}
       </ModalBody>
     </ModalRoot>
@@ -138,7 +136,6 @@ const isEventMatch = (event: TimelineEvent, searchText: string) => {
 
 const getMenuItems = (
   timeline: Timeline,
-  collection: Collection,
   isArchive: boolean,
   isOnlyTimeline: boolean,
 ) => {
@@ -148,11 +145,15 @@ const getMenuItems = (
     items.push(
       {
         title: t`New timeline`,
-        link: Urls.newTimelineInCollection(collection),
+        link: Urls.newTimelineInCollection(timeline.collection),
       },
       {
         title: t`Edit timeline details`,
-        link: Urls.editTimelineInCollection(timeline, collection),
+        link: Urls.editTimelineInCollection(timeline),
+      },
+      {
+        title: t`Move timeline`,
+        link: Urls.moveTimelineInCollection(timeline),
       },
     );
   }
@@ -160,14 +161,14 @@ const getMenuItems = (
   if (!isArchive) {
     items.push({
       title: t`View archived events`,
-      link: Urls.timelineArchiveInCollection(timeline, collection),
+      link: Urls.timelineArchiveInCollection(timeline),
     });
   }
 
   if (isOnlyTimeline) {
     items.push({
       title: t`View archived timelines`,
-      link: Urls.timelinesArchiveInCollection(collection),
+      link: Urls.timelinesArchiveInCollection(timeline.collection),
     });
   }
 

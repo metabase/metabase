@@ -7,6 +7,7 @@ import {
   navigationSidebar,
   closeNavigationSidebar,
   openNavigationSidebar,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -415,8 +416,7 @@ describe("scenarios > collection_defaults", () => {
         cy.findByText("Orders");
       });
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       popover().within(() => {
         cy.findByText("Saved Questions").click();
         // Note: collection name's first letter is capitalized

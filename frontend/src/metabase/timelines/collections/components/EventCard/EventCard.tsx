@@ -6,7 +6,7 @@ import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import Link from "metabase/core/components/Link";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
   CardBody,
@@ -24,7 +24,6 @@ import {
 export interface EventCardProps {
   event: TimelineEvent;
   timeline: Timeline;
-  collection: Collection;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
 }
@@ -32,21 +31,14 @@ export interface EventCardProps {
 const EventCard = ({
   event,
   timeline,
-  collection,
   onArchive,
   onUnarchive,
 }: EventCardProps): JSX.Element => {
-  const menuItems = getMenuItems(
-    event,
-    timeline,
-    collection,
-    onArchive,
-    onUnarchive,
-  );
+  const menuItems = getMenuItems(event, timeline, onArchive, onUnarchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
   const canEdit = timeline.collection?.can_write && !event.archived;
-  const editLink = Urls.editEventInCollection(event, timeline, collection);
+  const editLink = Urls.editEventInCollection(event, timeline);
 
   return (
     <CardRoot>
@@ -82,7 +74,6 @@ const EventCard = ({
 const getMenuItems = (
   event: TimelineEvent,
   timeline: Timeline,
-  collection: Collection,
   onArchive?: (event: TimelineEvent) => void,
   onUnarchive?: (event: TimelineEvent) => void,
 ) => {
@@ -94,7 +85,11 @@ const getMenuItems = (
     return [
       {
         title: t`Edit event`,
-        link: Urls.editEventInCollection(event, timeline, collection),
+        link: Urls.editEventInCollection(event, timeline),
+      },
+      {
+        title: t`Move event`,
+        link: Urls.moveEventInCollection(event, timeline),
       },
       {
         title: t`Archive event`,
@@ -109,7 +104,7 @@ const getMenuItems = (
       },
       {
         title: t`Delete event`,
-        link: Urls.deleteEventInCollection(event, timeline, collection),
+        link: Urls.deleteEventInCollection(event, timeline),
       },
     ];
   }

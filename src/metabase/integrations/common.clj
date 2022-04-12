@@ -4,7 +4,7 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.models.permissions-group :as group]
-            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.permissions-group-membership :as pgm :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
@@ -28,7 +28,16 @@
     ;; remove membership from any groups as needed
     (when (seq to-remove)
       (log/debugf "Removing user %s from group(s) %s" user-id to-remove)
-      (db/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id))
+      (try
+       (db/delete! PermissionsGroupMembership :group_id [:in to-remove], :user_id user-id)
+       (catch clojure.lang.ExceptionInfo e
+         ;; in case sync attempts to delete the last admin, the pre-delete hooks of
+         ;; [[metabase.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
+         ;; but we don't want to block user from logging-in, so catch this exception and log a warning
+         (if (= (ex-message e) (str pgm/fail-to-remove-last-admin-msg))
+           (log/warn "Attempted to remove the last admin during group sync!"
+                     "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
+           (throw e)))))
     ;; add new memberships for any groups as needed
     (doseq [id    to-add
             :when (not (excluded-group-ids id))]
@@ -36,6 +45,6 @@
       ;; if adding membership fails for one reason or another (i.e. if the group doesn't exist) log the error add the
       ;; user to the other groups rather than failing entirely
       (try
-        (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
-        (catch Throwable e
-          (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))
+       (db/insert! PermissionsGroupMembership :group_id id, :user_id user-id)
+       (catch Throwable e
+         (log/error e (trs "Error adding User {0} to Group {1}" user-id id)))))))

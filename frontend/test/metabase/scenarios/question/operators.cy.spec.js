@@ -1,4 +1,4 @@
-import { restore, popover, openNotebookEditor } from "__support__/e2e/cypress";
+import { restore, popover, startNewQuestion } from "__support__/e2e/cypress";
 
 describe("operators in questions", () => {
   beforeEach(() => {
@@ -60,7 +60,7 @@ describe("operators in questions", () => {
 
   describe("fields have proper operators", () => {
     it("text operators", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -77,7 +77,7 @@ describe("operators in questions", () => {
     });
 
     it("number operators", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -94,7 +94,7 @@ describe("operators in questions", () => {
     });
 
     it("date operators", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -111,7 +111,7 @@ describe("operators in questions", () => {
     });
 
     it("id operators", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Products").click();
       cy.findByText("Add filters to narrow your answer").click();
@@ -128,7 +128,7 @@ describe("operators in questions", () => {
     });
 
     it("geo operators", () => {
-      openNotebookEditor();
+      startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("People").click();
       cy.findByText("Add filters to narrow your answer").click();

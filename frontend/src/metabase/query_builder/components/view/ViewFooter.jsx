@@ -58,8 +58,8 @@ const ViewFooter = ({
   isPreviewing,
   isResultDirty,
   isVisualized,
+  isTimeseries,
   queryBuilderMode,
-
   isShowingFilterSidebar,
   onAddFilter,
   onCloseFilter,
@@ -199,7 +199,7 @@ const ViewFooter = ({
               }
             />
           ),
-          QuestionTimelineWidget.shouldRender({ question }) && (
+          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
               className="mx1 hide sm-show"

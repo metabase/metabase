@@ -21,7 +21,6 @@ const PopularItems = createEntity({
   nameOne: "popularItem",
   path: "/api/activity/popular_items",
   schema: PopularItemSchema,
-
   wrapEntity(item, dispatch = null) {
     const entity = getEntity(item);
     return entity.wrapEntity(item, dispatch);

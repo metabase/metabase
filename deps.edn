@@ -119,6 +119,7 @@
   org.liquibase/liquibase-core              {:mvn/version "4.8.0"               ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
+  org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.3.2"}             ; Postgres driver
   org.quartz-scheduler/quartz               {:mvn/version "2.3.2"}              ; Quartz job scheduler, provided by quartzite but this is a newer version.
   org.slf4j/slf4j-api                       {:mvn/version "1.7.35"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time

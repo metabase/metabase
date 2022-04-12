@@ -299,49 +299,58 @@
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
-    (testing "flattened-row"
-      (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
-            flattened {[:mob :bob :dobbs] 123
-                       [:mob :bob :cobbs] "boop"}]
-        (is (= flattened (#'postgres/flattened-row :mob row)))))
-    (testing "row->types"
-      (let [row   {:bob {:dobbs {:robbs 123} :cobbs [1 2 3]}}
-            types {[:bob :cobbs] clojure.lang.PersistentVector
-                   [:bob :dobbs :robbs] java.lang.Long}]
-        (is (= types (#'postgres/row->types row)))))
     (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
-        (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
-                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2}');"
-                                  "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": \"blurgle\"}');")])
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
+                                    "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 1, \"b\": 2}', '{\"a\": 1, \"b\": 2, \"c\": 3, \"d\": 44}');"
+                                    "INSERT INTO describe_json_table (coherent_json_val, incoherent_json_val) VALUES ('{\"a\": 2, \"b\": 3}', '{\"a\": [1, 2], \"b\": \"blurgle\", \"c\": 3.22}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= :type/SerializedJSON
                  (->> (sql-jdbc.sync/describe-table :postgres database {:name "describe_json_table"})
-                     (:fields)
-                     (:take 1)
-                     (first)
-                     (:semantic-type))))
+                      (:fields)
+                      (:take 1)
+                      (first)
+                      (:semantic-type))))
           (is (= '#{{:name              "incoherent_json_val → b",
-                     :database-type     nil,
+                     :database-type     :type/Text,
                      :base-type         :type/Text,
                      :database-position 0,
-                     :nfc-path          [:incoherent_json_val "b"]}
+                     :nfc-path          [:incoherent_json_val "b"]
+                     :visibility-type   :normal}
                     {:name              "coherent_json_val → a",
-                     :database-type     nil,
+                     :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
-                     :nfc-path          [:coherent_json_val "a"]}
+                     :nfc-path          [:coherent_json_val "a"]
+                     :visibility-type   :normal}
                     {:name              "coherent_json_val → b",
-                     :database-type     nil,
+                     :database-type     :type/Integer,
                      :base-type         :type/Integer,
                      :database-position 0,
-                     :nfc-path          [:coherent_json_val "b"]}}
+                     :nfc-path          [:coherent_json_val "b"]
+                     :visibility-type   :normal}
+                    {:name              "incoherent_json_val → c",
+                     :database-type     :type/Number,
+                     :base-type         :type/Number,
+                     :database-position 0,
+                     :visibility-type   :normal,
+                     :nfc-path          [:incoherent_json_val "c"]}
+                    {:name              "incoherent_json_val → d",
+                     :database-type     :type/Integer,
+                     :base-type         :type/Integer,
+                     :database-position 0,
+                     :visibility-type   :normal,
+                     :nfc-path          [:incoherent_json_val "d"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
-                  :postgres
-                  database
-                  {:name "describe_json_table"}))))))
+                   :postgres
+                   database
+                   {:name "describe_json_table"}))))))))
+
+(deftest describe-big-nested-field-columns-test
+  (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
       (drop-if-exists-and-create-db! "big-json-test")
       (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
@@ -350,7 +359,8 @@
             big-json (json/generate-string big-map)
             sql      (str "CREATE TABLE big_json_table (big_json JSON NOT NULL);"
                           (format "INSERT INTO big_json_table (big_json) VALUES ('%s');" big-json))]
-        (jdbc/execute! spec [sql])
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [sql]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= #{}
                  (sql-jdbc.sync/describe-nested-field-columns

@@ -2,35 +2,32 @@ import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
-import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { Collection, Timeline } from "metabase-types/api";
+import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
+import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import EditTimelineModal from "../../components/EditTimelineModal";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
-import { ModalProps } from "../../types";
+import { ModalParams } from "../../types";
+
+interface EditTimelineModalProps {
+  params: ModalParams;
+}
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: EditTimelineModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
   LoadingAndErrorWrapper,
 };
 
-const collectionProps = {
-  id: (state: State, props: ModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
-  LoadingAndErrorWrapper,
-};
-
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (timeline: Timeline, collection: Collection) => {
+  onSubmit: async (timeline: Timeline) => {
     await dispatch(Timelines.actions.update(timeline));
-    dispatch(push(Urls.timelineInCollection(timeline, collection)));
+    dispatch(push(Urls.timelineInCollection(timeline)));
   },
-  onArchive: async (timeline: Timeline, collection: Collection) => {
+  onArchive: async (timeline: Timeline) => {
     await dispatch(Timelines.actions.setArchived(timeline, true));
-    dispatch(push(Urls.timelinesInCollection(collection)));
+    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
   },
   onCancel: () => {
     dispatch(goBack());
@@ -39,6 +36,5 @@ const mapDispatchToProps = (dispatch: any) => ({
 
 export default _.compose(
   Timelines.load(timelineProps),
-  Collections.load(collectionProps),
   connect(null, mapDispatchToProps),
 )(EditTimelineModal);

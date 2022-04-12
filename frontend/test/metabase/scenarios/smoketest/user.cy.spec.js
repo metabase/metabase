@@ -3,7 +3,7 @@ import {
   sidebar,
   popover,
   visualize,
-  openNotebookEditor,
+  startNewQuestion,
   summarize,
 } from "__support__/e2e/cypress";
 
@@ -13,7 +13,7 @@ describe("smoketest > user", () => {
   beforeEach(cy.signInAsNormalUser);
 
   it("should be able to ask a custom question", () => {
-    openNotebookEditor();
+    startNewQuestion();
     cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Products").click();
     cy.findByText("Add filters to narrow your answer").click();

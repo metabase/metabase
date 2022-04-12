@@ -15,7 +15,7 @@ describe("timelines", () => {
   it("should display empty state", () => {
     cy.visit("/collection/root/timelines");
 
-    cy.findByText("Our analytics events");
+    cy.findByText("Our analytics events").should("be.visible");
     cy.percySnapshot();
   });
 
@@ -23,7 +23,7 @@ describe("timelines", () => {
     cy.createTimelineWithEvents({ events: EVENTS }).then(({ timeline }) => {
       cy.visit(`/collection/root/timelines/${timeline.id}`);
 
-      cy.findByText("Timeline");
+      cy.findByText("Timeline").should("be.visible");
       cy.percySnapshot();
     });
   });
