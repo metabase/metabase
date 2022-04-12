@@ -48,6 +48,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
     this.input = React.createRef();
+    this.suggestionTarget = React.createRef();
   }
 
   static propTypes = {
@@ -410,7 +411,11 @@ export default class ExpressionEditorTextfield extends React.Component {
 
     return (
       <React.Fragment>
-        <EditorContainer isFocused={isFocused} hasError={Boolean(errorMessage)}>
+        <EditorContainer
+          isFocused={isFocused}
+          hasError={Boolean(errorMessage)}
+          ref={this.suggestionTarget}
+        >
           <EditorEqualsSign>=</EditorEqualsSign>
           <AceEditor
             commands={this.commands}
@@ -440,6 +445,7 @@ export default class ExpressionEditorTextfield extends React.Component {
             width="100%"
           />
           <ExpressionEditorSuggestions
+            target={this.suggestionTarget.current}
             suggestions={suggestions}
             onSuggestionMouseDown={this.onSuggestionSelected}
             highlightedIndex={this.state.highlightedSuggestionIndex}
