@@ -5,12 +5,14 @@
             [metabase.api.ldap-test :as ldap-test]
             [metabase.email :as email]
             [metabase.integrations.slack :as slack]
+            [metabase.models :refer [Card Dashboard]]
             [metabase.models.permissions :as perms]
             [metabase.models.setting-test :refer [test-setting-1 test-setting-2]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.test.integrations.ldap :as ldap.test]))
+            [metabase.test.integrations.ldap :as ldap.test])
+  (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -238,3 +240,95 @@
               (perms/grant-general-permissions! group :setting)
               (get-permission-groups user 200)
               (get-permission-groups :crowberto 200))))))))
+
+(deftest dashboard-api-test
+  (testing "/api/dashboard"
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding      true]
+      (mt/with-user-in-groups
+        [group {:name "New Group"}
+         user  [group]]
+        (letfn [(get-public-dashboards [user status]
+                  (testing (format "get public dashboards with %s user" (user->name user))
+                    (mt/user-http-request user :get status "dashboard/public")))
+
+                (get-embeddable-dashboards [user status]
+                  (testing (format "get embeddable dashboards with %s user" (user->name user))
+                    (mt/with-temp Dashboard [_ {:enable_embedding true}]
+                      (mt/user-http-request user :get status "dashboard/embeddable"))))
+
+                (delete-public-dashboard [user status]
+                  (testing (format "delete public dashboard with %s user" (user->name user))
+                    (mt/with-temp Dashboard [{dashboard-id :id} {:public_uuid       (str (UUID/randomUUID))
+                                                                 :made_public_by_id (mt/user->id :crowberto)}]
+                      (mt/user-http-request user :delete status (format "dashboard/%d/public_link" dashboard-id)))))]
+
+          (testing "if `advanced-permissions` is disabled, require admins,"
+            (premium-features-test/with-premium-features #{}
+              (get-public-dashboards user 403)
+              (get-embeddable-dashboards user 403)
+              (delete-public-dashboard user 403)
+              (get-embeddable-dashboards :crowberto 200)
+              (delete-public-dashboard :crowberto 204)))
+
+          (testing "if `advanced-permissions` is enabled,"
+            (premium-features-test/with-premium-features #{:advanced-permissions}
+              (testing "still fail if user's group doesn't have `setting` permission"
+                (get-public-dashboards user 403)
+                (get-embeddable-dashboards user 403)
+                (delete-public-dashboard user 403)
+                (get-public-dashboards :crowberto 200)
+                (delete-public-dashboard :crowberto 204))
+
+              (testing "succeed if user's group has `setting` permission,"
+                (perms/grant-general-permissions! group :setting)
+                (get-public-dashboards user 200)
+                (get-embeddable-dashboards user 200)
+                (delete-public-dashboard user 204)))))))))
+
+(deftest card-api-test
+  (testing "/api/card"
+    (mt/with-temporary-setting-values [enable-public-sharing true
+                                       enable-embedding      true]
+      (mt/with-user-in-groups
+        [group {:name "New Group"}
+         user  [group]]
+        (letfn [(get-public-cards [user status]
+                  (testing (format "get public cards with %s user" (user->name user))
+                    (mt/user-http-request user :get status "card/public")))
+
+                (get-embeddable-cards [user status]
+                  (testing (format "get embeddable dashboards with %s user" (user->name user))
+                    (mt/with-temp Card[_ {:enable_embedding true}]
+                      (mt/user-http-request user :get status "card/embeddable"))))
+
+                (delete-public-card [user status]
+                  (testing (format "delete public card with %s user" (user->name user))
+                    (mt/with-temp Card [{card-id :id} {:public_uuid       (str (UUID/randomUUID))
+                                                       :made_public_by_id (mt/user->id :crowberto)}]
+                      (mt/user-http-request user :delete status (format "card/%d/public_link" card-id)))))]
+
+          (testing "if `advanced-permissions` is disabled, require admins,"
+            (premium-features-test/with-premium-features #{}
+              (get-public-cards user 403)
+              (get-embeddable-cards user 403)
+              (delete-public-card user 403)
+              (get-public-cards :crowberto 200)
+              (get-embeddable-cards :crowberto 200)
+              (delete-public-card :crowberto 204)))
+
+          (testing "if `advanced-permissions` is enabled"
+            (premium-features-test/with-premium-features #{:advanced-permissions}
+              (testing "still fail if user's group doesn't have `setting` permission,"
+                (get-public-cards user 403)
+                (get-embeddable-cards user 403)
+                (delete-public-card user 403)
+                (get-public-cards :crowberto 200)
+                (get-embeddable-cards :crowberto 200)
+                (delete-public-card :crowberto 204))
+
+              (testing "succeed if user's group has `setting` permission,"
+                (perms/grant-general-permissions! group :setting)
+                (get-public-cards user 200)
+                (get-embeddable-cards user 200)
+                (delete-public-card user 204)))))))))
