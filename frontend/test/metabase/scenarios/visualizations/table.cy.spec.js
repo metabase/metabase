@@ -152,7 +152,7 @@ describe("scenarios > visualizations > table", () => {
     summarize();
 
     cy.findAllByTestId("dimension-list-item-name")
-      .first()
+      .contains("CustomColumn")
       .click();
 
     cy.icon("table2").click();
