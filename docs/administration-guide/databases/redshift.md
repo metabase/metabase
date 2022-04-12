@@ -8,7 +8,7 @@ To connect to a Redshift database, you'll need:
 - Port (e.g., 5439)
 - Database name (e.g., birds_of_the_world)
 
-You'll also need to enter a display name (the display name shows up in the browse data section and other menus in Metabase).
+You'll also need to enter a display name (the display name shows up in the **Browse data** section and other menus in Metabase).
 
 ## Schemas
 
