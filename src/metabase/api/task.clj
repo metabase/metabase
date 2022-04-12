@@ -21,7 +21,8 @@
 (api/defendpoint GET "/:id"
   "Get `TaskHistory` entry with ID."
   [id]
-  (api/read-check TaskHistory id))
+  (validation/check-has-general-permission :monitoring)
+  (TaskHistory id))
 
 (api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
