@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, describeEE, describeOSS } from "__support__/e2e/cypress";
 
 describe("scenarios > admin > databases > list", () => {
   beforeEach(() => {
@@ -6,21 +6,57 @@ describe("scenarios > admin > databases > list", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
-    const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+  describeOSS("OSS", () => {
+    it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+      const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
-    cy.intercept("GET", "/api/database", req => {
-      req.reply({
-        statusCode: 500,
-        body: { message: errorMessage },
-      });
-    }).as("failedGet");
+      cy.intercept(
+        {
+          method: "GET",
+          pathname: "/api/database",
+        },
+        req => {
+          req.reply({
+            statusCode: 500,
+            body: { message: errorMessage },
+          });
+        },
+      ).as("failedGet");
 
-    cy.visit("/admin/databases");
+      cy.visit("/admin/databases");
 
-    cy.wait("@failedGet");
-    // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
-    cy.findByText(errorMessage).should("not.exist");
+      cy.wait("@failedGet");
+      // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
+      cy.findByText(errorMessage).should("not.be.visible");
+    });
+  });
+
+  describeEE("EE", () => {
+    it.skip("should not display error messages upon a failed `GET` (metabase#20471)", () => {
+      const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
+
+      cy.intercept(
+        {
+          method: "GET",
+          pathname: "/api/database",
+          query: {
+            exclude_uneditable_details: "true",
+          },
+        },
+        req => {
+          req.reply({
+            statusCode: 500,
+            body: { message: errorMessage },
+          });
+        },
+      ).as("failedGet");
+
+      cy.visit("/admin/databases");
+
+      cy.wait("@failedGet");
+      // Not sure how exactly is this going the be fixed, but we should't show the full error message on the page in any case
+      cy.findByText(errorMessage).should("not.be.visible");
+    });
   });
 
   it("should let you see databases in list view", () => {
