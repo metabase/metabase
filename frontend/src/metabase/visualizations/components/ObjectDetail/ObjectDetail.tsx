@@ -338,6 +338,9 @@ export const ObjectDetailProperties = {
   noun: t`object`,
   hidden: true,
   settings: {
+    // adding a "hidden" argument to this settings function breaks pivot table settings
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     ...columnSettings({ hidden: true }),
   },
 };
