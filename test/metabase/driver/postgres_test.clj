@@ -309,31 +309,31 @@
                       (first)
                       (:semantic-type))))
           (is (= '#{{:name              "incoherent_json_val → b",
-                     :database-type     :type/Text,
+                     :database-type     "json",
                      :base-type         :type/Text,
                      :database-position 0,
                      :nfc-path          [:incoherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → a",
-                     :database-type     :type/Integer,
+                     :database-type     "json",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "a"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → b",
-                     :database-type     :type/Integer,
+                     :database-type     "json",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name              "incoherent_json_val → c",
-                     :database-type     :type/Number,
+                     :database-type     "json",
                      :base-type         :type/Number,
                      :database-position 0,
                      :visibility-type   :normal,
                      :nfc-path          [:incoherent_json_val "c"]}
                     {:name              "incoherent_json_val → d",
-                     :database-type     :type/Integer,
+                     :database-type     "json",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :visibility-type   :normal,
