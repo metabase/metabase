@@ -13,20 +13,10 @@ import {
   EmptyStateContainer,
   FilterInput,
 } from "./ListField.styled";
+import { ListFieldProps, Option } from "./types";
 
 const Checkbox = _Checkbox as any;
 const EmptyState = _EmptyState as any;
-
-type Option = any[];
-
-interface ListFieldProps {
-  onChange: (value: string[]) => void;
-  value: string[];
-  options: Option;
-  optionRenderer: (option: any) => JSX.Element;
-  placeholder: string;
-  isDashboardFilter?: boolean;
-}
 
 function createOptionsFromValuesWithoutOptions(
   values: string[],
@@ -36,7 +26,7 @@ function createOptionsFromValuesWithoutOptions(
   return values.filter(value => !optionsMap[value]).map(value => [value]);
 }
 
-export const ListField = ({
+const ListField = ({
   onChange,
   value,
   options,
@@ -71,15 +61,16 @@ export const ListField = ({
 
   const filteredOptions = useMemo(() => {
     const trimmedFilter = debouncedFilter.trim().toLowerCase();
-
     if (trimmedFilter.length === 0) {
       return sortedOptions;
     }
 
-    return augmentedOptions.filter(option =>
-      String(option[0])
-        .toLowerCase()
-        .includes(trimmedFilter),
+    return augmentedOptions.filter(
+      ([id, name]) =>
+        String(id)
+          .toLowerCase()
+          .includes(trimmedFilter) ||
+        name.toLowerCase().indexOf(trimmedFilter) > -1,
     );
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
@@ -141,3 +132,5 @@ export const ListField = ({
     </>
   );
 };
+
+export default ListField;
