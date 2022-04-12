@@ -131,7 +131,6 @@ jobs:
       run: |
         yarn run test-cypress-no-build \
           --folder ${{ matrix.folder }} \
-          --group ${{ matrix.folder }}-${{ matrix.edition }} \
           --env burn=10
       env:
         TERM: xterm
