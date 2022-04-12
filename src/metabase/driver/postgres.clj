@@ -295,7 +295,7 @@
         (pretty [_] (format "%s#>%s" (pr-str parent-identifier) names))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [member id-or-name _opts :as clause]]
+  [driver [_ id-or-name _opts :as clause]]
   (let [stored-field (when (integer? id-or-name)
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
