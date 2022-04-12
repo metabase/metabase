@@ -16,7 +16,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should allow to display any column as link with extrapolated url and text", () => {
-    openPeopleTable();
+    openPeopleTable({ limit: 2 });
 
     cy.findByText("City").click();
 
@@ -170,7 +170,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
-    openOrdersTable();
+    openOrdersTable({ limit: 2 });
 
     cy.findByText("Product ID").trigger("mouseenter");
 
@@ -194,7 +194,7 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
-    openPeopleTable();
+    openPeopleTable({ limit: 2 });
 
     cy.findByText("City").click();
     popover().within(() => {
