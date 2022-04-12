@@ -12,6 +12,7 @@ You can set permissions on:
 - [Tables and schemas in those databases][table-permissions]
 - [Rows and columns of a table][data-sandboxing] (only on some plans)
 - [Collections of questions, dashboards, and models][collections]
+- [General settings](general-permissions.md) (only on some plans)
 
 For plans that include [SQL Snippet Folders][sql-snippet-folders], you can also set permissions on those folders.
 

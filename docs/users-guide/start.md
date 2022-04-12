@@ -20,6 +20,7 @@
 
 - [Sharing and organizing your saved questions](06-sharing-answers.md)
 - [Collections](collections.md)
+- [Events and timelines](events-and-timelines.md)
 
 ## Dashboards
 

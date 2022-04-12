@@ -129,7 +129,7 @@ jobs:
 
     - name: Run Cypress tests on ${{ matrix.folder }}
       run: |
-        yarn run test-cypress-no-build \
+        yarn run test-cypress-run \
           --folder ${{ matrix.folder }} \
           --record --key ${{ secrets.CURRENTS_KEY }} \
           --group ${{ matrix.folder }}-${{ matrix.edition }} \

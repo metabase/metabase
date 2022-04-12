@@ -59,10 +59,8 @@ describe.skip("scenarios > public", () => {
   });
 
   let questionPublicLink;
-  let questionEmbedUrl;
   let dashboardId;
   let dashboardPublicLink;
-  let dashboardEmbedUrl;
 
   describe("questions", () => {
     // Note: Test suite is sequential, so individual test cases can't be run individually
@@ -140,29 +138,6 @@ describe.skip("scenarios > public", () => {
         });
     });
 
-    it("should allow users to create embedded questions", () => {
-      cy.request("PUT", "/api/setting/enable-embedding", { value: true });
-      cy.request("PUT", "/api/setting/site-url", {
-        value: "http://localhost:4000/", // Cypress.config().baseUrl
-      });
-
-      visitQuestion(questionId);
-
-      cy.icon("share").click();
-
-      cy.contains(".cursor-pointer", "Embed this question")
-        .should("not.be.disabled")
-        .click();
-      cy.contains("Disabled").click();
-      cy.contains("Editable").click();
-
-      cy.contains("Publish").click();
-
-      cy.get("iframe").then($iframe => {
-        questionEmbedUrl = $iframe[0].src;
-      });
-    });
-
     it("should allow users to create public dashboards", () => {
       cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
 
@@ -184,29 +159,6 @@ describe.skip("scenarios > public", () => {
         });
     });
 
-    it("should allow users to create embedded dashboards", () => {
-      cy.request("PUT", "/api/setting/enable-embedding", { value: true });
-      cy.request("PUT", "/api/setting/site-url", {
-        value: "http://localhost:4000/", // Cypress.config().baseUrl
-      });
-
-      visitDashboard(dashboardId);
-
-      cy.icon("share").click();
-
-      cy.contains(".cursor-pointer", "Embed this dashboard")
-        .should("not.be.disabled")
-        .click();
-      cy.contains("Disabled").click();
-      cy.contains("Editable").click();
-
-      cy.contains("Publish").click();
-
-      cy.get("iframe").then($iframe => {
-        dashboardEmbedUrl = $iframe[0].src;
-      });
-    });
-
     Object.entries(USERS).map(([userType, setUser]) =>
       describe(`${userType}`, () => {
         beforeEach(setUser);
@@ -222,31 +174,8 @@ describe.skip("scenarios > public", () => {
           cy.contains(COUNT_DOOHICKEY);
         });
 
-        // [quarantine]: failing almost consistently in CI
-        it(`should be able to view embedded questions`, () => {
-          cy.visit(questionEmbedUrl);
-          cy.contains(COUNT_ALL);
-
-          cy.contains("Category").click();
-          cy.contains("Doohickey").click();
-          cy.contains("Add filter").click();
-
-          cy.contains(COUNT_DOOHICKEY);
-        });
-
         it(`should be able to view public dashboards`, () => {
           cy.visit(dashboardPublicLink);
-          cy.contains(COUNT_ALL);
-
-          cy.contains("Category").click();
-          cy.contains("Doohickey").click();
-          cy.contains("Add filter").click();
-
-          cy.contains(COUNT_DOOHICKEY);
-        });
-
-        it(`should be able to view embedded dashboards`, () => {
-          cy.visit(dashboardEmbedUrl);
           cy.contains(COUNT_ALL);
 
           cy.contains("Category").click();

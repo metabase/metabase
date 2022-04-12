@@ -30,8 +30,8 @@
    (check-has-general-permission perm-type true))
 
   ([perm-type require-superuser?]
-   (if (and (premium-features/enable-advanced-permissions?)
-            (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
-     (api/check-403 ((resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?) perm-type))
+   (if-let [f (and (premium-features/enable-advanced-permissions?)
+                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))]
+     (api/check-403 (f perm-type))
      (when require-superuser?
        (api/check-superuser)))))

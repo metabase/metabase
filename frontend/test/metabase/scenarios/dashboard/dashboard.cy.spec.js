@@ -27,13 +27,13 @@ describe("scenarios > dashboard", () => {
     cy.signInAsAdmin();
   });
 
-  it("should create new dashboard and navigate to it from the nav bar", () => {
+  it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
     // Create dashboard
     cy.visit("/");
     cy.icon("add").click();
     cy.findByText("Dashboard").click();
 
-    createDashboardUsingUI("Test Dash", "Desc");
+    createDashboardUsingUI("Dash A", "Desc A");
 
     cy.findByText("This dashboard is looking empty.");
     cy.findByText("You're editing this dashboard.");
@@ -41,14 +41,15 @@ describe("scenarios > dashboard", () => {
     // See it as a listed dashboard
     cy.visit("/collection/root?type=dashboard");
     cy.findByText("This dashboard is looking empty.").should("not.exist");
-    cy.findByText("Test Dash");
-  });
+    cy.findByText("Dash A");
 
-  it.skip("should create new dashboard and navigate to it from the root collection (metabase#20638)", () => {
-    cy.visit("/collection/root");
+    cy.log(
+      "should create new dashboard and navigate to it from the root collection (metabase#20638)",
+    );
+
     openNewCollectionItemFlowFor("dashboard");
 
-    createDashboardUsingUI("Test Dash", "Desc");
+    createDashboardUsingUI("Dash B", "Desc B");
 
     cy.findByText("This dashboard is looking empty.");
     cy.findByText("You're editing this dashboard.");

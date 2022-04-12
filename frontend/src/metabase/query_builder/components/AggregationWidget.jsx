@@ -3,10 +3,9 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Popover from "metabase/components/Popover";
-
 import Clearable from "./Clearable";
 import AggregationPopover from "./AggregationPopover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 
 // NOTE: lots of duplication between AggregationWidget and BreakoutWidget
 
@@ -49,16 +48,6 @@ export default class AggregationWidget extends React.Component {
       className,
     } = this.props;
 
-    const popover = this.state.isOpen && (
-      <Popover onClose={this.handleClose}>
-        <AggregationPopover
-          query={query}
-          aggregation={aggregation}
-          onChangeAggregation={this.handleChangeAggregation}
-          showMetrics={this.props.showMetrics}
-        />
-      </Popover>
-    );
     const trigger = aggregation ? (
       <Clearable
         onClear={
@@ -74,14 +63,26 @@ export default class AggregationWidget extends React.Component {
     ) : (
       children
     );
+    const popover = (
+      <TippyPopover
+        placement="bottom-start"
+        visible={this.state.isOpen}
+        onClose={this.handleClose}
+        content={
+          <AggregationPopover
+            query={query}
+            aggregation={aggregation}
+            onChangeAggregation={this.handleChangeAggregation}
+            showMetrics={this.props.showMetrics}
+          />
+        }
+      >
+        <div>{trigger}</div>
+      </TippyPopover>
+    );
 
     if (trigger) {
-      return (
-        <div onClick={this.handleOpen}>
-          {trigger}
-          {popover}
-        </div>
-      );
+      return <div onClick={this.handleOpen}>{popover}</div>;
     } else {
       return null;
     }
