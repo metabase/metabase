@@ -98,15 +98,15 @@
 
 ;; TODO -- currently these are all the same between date/time/datetime
 
-(def ^:private ^{:arglists '([s])} can-parse-date?
+(def ^{:arglists '([s])} can-parse-date?
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-datetime?
+(def ^{:arglists '([s])} can-parse-datetime?
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE_TIME)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-time?
+(def ^{:arglists '([s])} can-parse-time?
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_TIME)
      :cljs can-parse-iso-8601?))
 
