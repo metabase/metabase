@@ -16,13 +16,13 @@ Collections can have timelines, and timelines can contain events. In practice wh
 
 ## Event and timeline permissions
 
-Anyone with [view  access](../administration-guide/06-collections.md) to a collection can view the collection's events and timelines.
+Anyone with [view access](../administration-guide/06-collections.md) to a collection can view the collection's events and timelines.
 
 Anyone with curate access to a collection can add events and timelines to that collection.
 
 ### Adding events when viewing a collection
 
-When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the calendar icon in the upper right.
+When viewing a [collection](collections.md), you can view, add, or edit events by clicking on the **calendar** icon in the upper right.
 
 ![In a collection, view or add events by clicking on the calendar icon](./images/events-and-timelines/event-calendar.png)
 
@@ -64,5 +64,3 @@ To permanently delete an event or timeline, you must first archive the event or 
 ## Disabling events for a question
 
 If a collection includes timelines, those events will show up for any time series in that collection (provided the timeline and the question's date range overlap). If you want to disable the visibility of events by default for a particular question, you'll need to move that question to a collection that doesn't have any timelines or events.
-
-
