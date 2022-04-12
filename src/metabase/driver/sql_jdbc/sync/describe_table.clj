@@ -264,7 +264,7 @@
                          nil
                          (let [curr-type (get field-type-map field-type :type/*)]
                            {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                            :database-type     curr-type
+                            :database-type     "json"
                             :base-type         curr-type
                             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
                             :database-position 0

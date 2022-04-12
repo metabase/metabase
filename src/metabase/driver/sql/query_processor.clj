@@ -610,12 +610,15 @@
 
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
+  (let [res
   (as-> honeysql-form new-hsql
     (apply h/merge-select new-hsql (->> breakout-fields
                                         (remove (set fields-fields))
                                         (mapv (fn [field-clause]
                                                 (as driver field-clause)))))
-    (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
+    (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields)))]
+    (clojure.pprint/pprint res)
+    res))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]

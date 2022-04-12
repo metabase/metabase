@@ -296,14 +296,15 @@
                                  (isa? field-type :type/Boolean)
                                  :type/Boolean
                                  :else
-                                 :type/Text)]
+                                 :type/Text)
+          names                (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))]
       (hx/cast cast-type
                (apply hsql/call [:json_extract_path_text
                                  (hx/cast :json parent-identifier)
-                                 (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))))
+                                 names])))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name _opts :as clause]]
+  [driver [member id-or-name _opts :as clause]]
   (let [stored-field (when (integer? id-or-name)
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
