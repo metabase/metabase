@@ -698,7 +698,7 @@
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [card-id]
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
@@ -710,7 +710,7 @@
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
@@ -721,7 +721,7 @@
 (api/defendpoint GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -729,7 +729,7 @@
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 
