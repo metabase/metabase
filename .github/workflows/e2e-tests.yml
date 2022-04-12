@@ -116,7 +116,7 @@ jobs:
         mv version.properties resources/
 
     - name: Run Cypress tests on ${{ matrix.folder }}
-      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+      run: yarn run test-cypress-run --folder ${{ matrix.folder }}
       env:
         TERM: xterm
 
