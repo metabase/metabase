@@ -65,13 +65,22 @@ const ListField = ({
       return sortedOptions;
     }
 
-    return augmentedOptions.filter(
-      ([id, name]) =>
-        String(id)
+    return augmentedOptions.filter(option => {
+      // option is: [id, name]
+      if (
+        option.length > 1 &&
+        String(option[1])
           .toLowerCase()
-          .includes(trimmedFilter) ||
-        name.toLowerCase().indexOf(trimmedFilter) > -1,
-    );
+          .indexOf(trimmedFilter) > -1
+      ) {
+        return true;
+      }
+
+      // option is: [id]
+      return String(option[0])
+        .toLowerCase()
+        .includes(trimmedFilter);
+    });
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
   const shouldShowEmptyState =
