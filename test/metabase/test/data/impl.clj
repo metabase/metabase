@@ -78,7 +78,7 @@
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (u/minutes->ms 30)) ; Redshift is slow
+  (u/minutes->ms 500)) ; Redshift is slow
 
 (def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
