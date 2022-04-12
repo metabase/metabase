@@ -309,37 +309,37 @@
                       (first)
                       (:semantic-type))))
           (is (= '#{{:name              "incoherent_json_val → b",
-                     :database-type     "json",
+                     :database-type     "text",
                      :base-type         :type/Text,
                      :database-position 0,
                      :nfc-path          [:incoherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → a",
-                     :database-type     "json",
+                     :database-type     "integer",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "a"]
                      :visibility-type   :normal}
                     {:name              "coherent_json_val → b",
-                     :database-type     "json",
+                     :database-type     "integer",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :nfc-path          [:coherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name "coherent_json_val → c",
-                     :database-type "json",
-                     :base-type :type/DateTime,
+                     :database-type     "timestamp without time zone",
+                     :base-type         :type/DateTime,
                      :database-position 0,
-                     :visibility-type :normal,
-                     :nfc-path [:coherent_json_val "c"]}
+                     :visibility-type   :normal,
+                     :nfc-path          [:coherent_json_val "c"]}
                     {:name              "incoherent_json_val → c",
-                     :database-type     "json",
+                     :database-type     "double precision",
                      :base-type         :type/Number,
                      :database-position 0,
                      :visibility-type   :normal,
                      :nfc-path          [:incoherent_json_val "c"]}
                     {:name              "incoherent_json_val → d",
-                     :database-type     "json",
+                     :database-type     "integer",
                      :base-type         :type/Integer,
                      :database-position 0,
                      :visibility-type   :normal,
