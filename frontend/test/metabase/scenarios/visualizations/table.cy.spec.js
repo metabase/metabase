@@ -155,7 +155,7 @@ describe("scenarios > visualizations > table", () => {
       .contains("CustomColumn")
       .click();
 
-    cy.icon("table2").click();
+    cy.wait("@dataset");
 
     cy.get(".cellData")
       .contains("Count")
