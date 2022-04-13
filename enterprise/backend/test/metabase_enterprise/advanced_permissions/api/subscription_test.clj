@@ -10,7 +10,8 @@
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.pulse-test :as pulse-test]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (defmacro ^:private with-subscription-disabled-for-all-users
   "Temporarily remove `subscription` permission for group `All Users`, execute `body` then re-grant it.
@@ -79,7 +80,7 @@
         [group {:name "New Group"}
          user  [group]]
         (mt/with-temp* [Card [{card-id :id}]]
-          (letfn [(add-pulse-recipient [user status]
+          (letfn [(add-pulse-recipient [req-user status]
                     (pulse-test/with-pulse-for-card
                       [the-pulse
                        {:card    card-id
@@ -89,18 +90,24 @@
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
                             new-pulse   (assoc the-pulse :channels [new-channel])]
                         (testing "- add pulse's recipients"
-                          (mt/user-http-request user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
+                          (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
-                  (remove-pulse-recipient [user status]
+                  (remove-pulse-recipient [req-user status]
                     (pulse-test/with-pulse-for-card
                       [the-pulse
                        {:card    card-id
                         :channel :email}]
-                      (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
-                            channel     (api-alert/email-channel the-pulse)
-                            new-pulse   (assoc channel :recipients [])]
-                        (testing "- remove pulse's recipients"
-                          (mt/user-http-request user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))]
+                      ;; manually add another user as recipient
+                      (mt/with-temp PulseChannelRecipient [_ {:user_id (:id user)
+                                                              :pulse_channel_id
+                                                              (db/select-one-id
+                                                               PulseChannel :channel_type "email" :pulse_id (:id the-pulse))}]
+                        (let [the-pulse   (pulse/retrieve-pulse (:id the-pulse))
+                              channel     (api-alert/email-channel the-pulse)
+                              new-channel (update channel :recipients rest)
+                              new-pulse   (assoc the-pulse :channels [new-channel])]
+                          (testing "- remove pulse's recipients"
+                            (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse))))))]
             (testing "anyone could add/remove pulse's recipients if advanced-permissions is disabled"
               (premium-features-test/with-premium-features #{}
                 (add-pulse-recipient user 200)
@@ -183,34 +190,34 @@
         [group {:name "New Group"}
          user  [group]]
         (mt/with-temp* [Card [{card-id :id}]]
-          (letfn [(add-alert-recipient [user status]
+          (letfn [(add-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
                                     Card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]]
                       (testing "- add alert's recipient"
-                        (mt/user-http-request user :put status (format "alert/%d" (:id alert))
+                        (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (alert-test/default-alert-req card pc)))))
 
-                  (archive-alert-recipient [user status]
+                  (archive-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
                                     Card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]]
                       (testing " - archive alert"
-                        (mt/user-http-request user :put status (format "alert/%d" (:id alert))
+                        (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (-> (alert-test/default-alert-req card pc)
                                                   (assoc :archive true)
                                                   (assoc-in [:channels 0 :recipients] []))))))
 
-                  (remove-alert-recipient [user status]
+                  (remove-alert-recipient [req-user status]
                     (mt/with-temp* [Pulse                 [alert (alert-test/basic-alert)]
                                     Card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]
                                     PulseChannelRecipient [_     (alert-test/recipient pc :rasta)]]
                       (testing "- remove alert's recipient"
-                        (mt/user-http-request user :put status (format "alert/%d" (:id alert))
+                        (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (assoc-in (alert-test/default-alert-req card pc) [:channels 0 :recipients] [])))))]
             (testing "only admin add/remove recipients and archive"
               (premium-features-test/with-premium-features #{}

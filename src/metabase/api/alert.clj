@@ -203,8 +203,8 @@
                            "are not allowed to modify the channels for an alert")]))
 
     ;; only admin or users with subscription permissions can add recipients
-    (let [[_ to-add-recipients] (data/diff (map :id (:recipients (email-channel alert-before-update)))
-                                           (map :id (:recipients (email-channel alert-updates))))]
+    (let [[_ to-add-recipients] (data/diff (set (map :id (:recipients (email-channel alert-before-update))))
+                                           (set (map :id (:recipients (email-channel alert-updates)))))]
       (api/check (or api/*is-superuser?*
                      has-subscription-perms?
                      (empty? to-add-recipients))

@@ -112,15 +112,15 @@
    (catch clojure.lang.ExceptionInfo _e
      (validation/check-has-general-permission :subscription false)))
 
-  (let [pulse-before-update (api/write-check Pulse id)]
+  (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
 
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [[_ to-add-recipients] (data/diff (map :id (:recipients (api-alert/email-channel pulse-before-update)))
-                                             (map :id (:recipients (api-alert/email-channel pulse-updates))))
+      (let [[_ to-add-recipients] (data/diff (set (map :id (:recipients (api-alert/email-channel pulse-before-update))))
+                                             (set (map :id (:recipients (api-alert/email-channel pulse-updates)))))
             current-user-has-general-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
