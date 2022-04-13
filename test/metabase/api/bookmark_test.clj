@@ -1,12 +1,15 @@
 (ns metabase.api.bookmark-test
   "Tests for /api/bookmark endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.models.bookmark :refer [CardBookmark CollectionBookmark DashboardBookmark]]
+            [metabase.models.bookmark :refer [BookmarkOrdering CardBookmark
+                                              CollectionBookmark
+                                              DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (deftest bookmarks-test
   (testing "POST /api/bookmark/:model/:model-id"
@@ -50,19 +53,61 @@
                     (map :type)
                     set)))))))
 
+(defn bookmark-models [user-id & models]
+  (doseq [model models]
+    (cond
+      (instance? (class Collection) model)
+      (db/insert! CollectionBookmark
+                  {:user_id user-id
+                   :collection_id (u/the-id model)})
+
+      (instance? (class Card) model)
+      (db/insert! CardBookmark
+                  {:user_id user-id
+                   :card_id (u/the-id model)})
+
+      (instance? (class Dashboard) model)
+      (db/insert! DashboardBookmark
+                  {:user_id user-id
+                   :dashboard_id (u/the-id model)})
+
+      :else
+      (throw (ex-info "Unknown type" {:user-id user-id :model model})))))
+
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
     (mt/with-temp* [Collection [archived-collection {:name "Test Collection" :archived true}]
                     Card       [archived-card {:name "Test Card" :archived true}]
-                    Dashboard  [archived-dashboard {:name "Test Dashboard" :archived true}]
-                    CardBookmark [card-bookmark {:user_id (mt/user->id :rasta)
-                                                 :card_id (u/the-id archived-card)}]
-                    CollectionBookmark [collection-bookmark {:user_id       (mt/user->id :rasta)
-                                                             :collection_id (u/the-id archived-collection)}]
-                    DashboardBookmark [dashboard-bookmark {:user_id      (mt/user->id :rasta)
-                                                           :dashboard_id (u/the-id archived-dashboard)}]]
+                    Dashboard  [archived-dashboard {:name "Test Dashboard" :archived true}]]
+      (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)
       (testing "check that we don't receive bookmarks of archived items"
         (is (= #{}
                (->> (mt/user-http-request :rasta :get 200 "bookmark")
                     (map :type)
                     set)))))))
+
+(deftest bookmarks-ordering-test
+  (testing "PUT /api/bookmark/ordering"
+    (mt/with-temp* [Collection [collection {:name "Test Collection"}]
+                    Card       [card {:name "Test Card"}]
+                    Dashboard  [dashboard {:name "Test Dashboard"}]]
+      (mt/with-model-cleanup [BookmarkOrdering]
+        (bookmark-models (mt/user->id :rasta) collection card dashboard)
+        (testing "Check that ordering works"
+          (is (= nil
+                 (mt/user-http-request :rasta :put 204 "bookmark/ordering"
+                                       {:orderings [{:type "dashboard" :item_id (u/the-id dashboard)}
+                                                    {:type "card" :item_id (u/the-id card)}
+                                                    {:type "collection" :item_id (u/the-id collection)}]})))
+          (is (= ["dashboard" "card" "collection"]
+                 (map :type
+                      (mt/user-http-request :rasta :get 200 "bookmark")))))
+        (testing "Check that re-ordering works"
+          (is (= nil
+                 (mt/user-http-request :rasta :put 204 "bookmark/ordering"
+                                       {:orderings [{:type "card" :item_id (u/the-id card)}
+                                                    {:type "collection" :item_id (u/the-id collection)}
+                                                    {:type "dashboard" :item_id (u/the-id dashboard)}]})))
+          (is (= ["card" "collection" "dashboard"]
+                 (map :type
+                      (mt/user-http-request :rasta :get 200 "bookmark")))))))))
