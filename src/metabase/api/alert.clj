@@ -1,6 +1,7 @@
 (ns metabase.api.alert
   "/api/alert endpoints"
   (:require [clojure.data :as data]
+            [clojure.set :refer [difference]]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
             [metabase.api.common :as api]
@@ -192,23 +193,21 @@
                   has-monitoring-permissions?
                   has-subscription-perms?)
       (api/check (= (-> alert-before-update :creator :id) api/*current-user-id*)
-                 [403 (str "Non-admin users without monitoring or subscription permissions"
-                           "are only allowed to update alerts that they created")])
+                 [403 (tru "Non-admin users without monitoring or subscription permissions are only allowed to update alerts that they created")])
       (api/check (or (not (contains? alert-updates :channels))
                      (and (= 1 (count channels))
                           ;; Non-admin alerts can only include the creator as a recipient
                           (= [api/*current-user-id*]
                              (map :id (:recipients (email-channel alert-updates))))))
-                 [403 (str "Non-admin users without monitoring or subscription permissions"
-                           "are not allowed to modify the channels for an alert")]))
+                 [403 (tru "Non-admin users without monitoring or subscription permissions are not allowed to modify the channels for an alert")]))
 
     ;; only admin or users with subscription permissions can add recipients
-    (let [[_ to-add-recipients] (data/diff (set (map :id (:recipients (email-channel alert-before-update))))
-                                           (set (map :id (:recipients (email-channel alert-updates)))))]
+    (let [to-add-recipients (difference (set (map :id (:recipients (email-channel alert-updates))))
+                                        (set (map :id (:recipients (email-channel alert-before-update)))))]
       (api/check (or api/*is-superuser?*
                      has-subscription-perms?
                      (empty? to-add-recipients))
-                 [403 "Non-admin users without subscription permissions are not allowed to add recipients"]))
+                 [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")]))
 
     ;; now update the Alert
     (let [updated-alert (pulse/update-alert!

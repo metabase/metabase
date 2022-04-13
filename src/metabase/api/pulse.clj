@@ -1,6 +1,6 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [clojure.data :as data]
+  (:require [clojure.set :refer [difference]]
             [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
             [metabase.api.alert :as api-alert]
@@ -22,6 +22,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -119,8 +120,8 @@
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [[_ to-add-recipients] (data/diff (set (map :id (:recipients (api-alert/email-channel pulse-before-update))))
-                                             (set (map :id (:recipients (api-alert/email-channel pulse-updates)))))
+      (let [to-add-recipients (difference (set (map :id (:recipients (api-alert/email-channel pulse-updates))))
+                                          (set (map :id (:recipients (api-alert/email-channel pulse-before-update)))))
             current-user-has-general-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
@@ -130,7 +131,7 @@
         (api/check (or api/*is-superuser?*
                        has-subscription-perms?
                        (empty? to-add-recipients))
-                   [403 "Non-admin users without subscription permissions are not allowed to add recipients"])))
+                   [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
 
     (db/transaction
      ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
