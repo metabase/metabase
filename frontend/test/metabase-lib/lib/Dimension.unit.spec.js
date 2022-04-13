@@ -693,18 +693,36 @@ describe("Dimension", () => {
         });
 
         describe("when an expression dimension has a query that relies on a nested card", () => {
-          const question = new Question(nestedQuestionCard, metadata);
-          const dimension = Dimension.parseMBQL(
-            ["expression", "Foo"],
-            metadata,
-            question.query(),
-          );
-
           it("should return a field inferred from the expression", () => {
+            const question = new Question(nestedQuestionCard, null);
+            const query = question.query();
+            const dimension = Dimension.parseMBQL(
+              ["expression", "Foobar"], // "Foobar" does not exist in the metadata
+              null,
+              query,
+            );
+            const field = dimension.field();
+
+            expect(field).toBeInstanceOf(Field);
+            expect(field.name).toEqual("Foobar");
+            expect(field.query).toEqual(query);
+            expect(field.metadata).toEqual(undefined);
+          });
+
+          it("should return a field inferred from the expression (from metadata)", () => {
+            const question = new Question(nestedQuestionCard, metadata);
+            const query = question.query();
+            const dimension = Dimension.parseMBQL(
+              ["expression", "Foo"],
+              metadata,
+              query,
+            );
             const field = dimension.field();
 
             expect(field).toBeInstanceOf(Field);
             expect(field.name).toEqual("Foo");
+            expect(field.query).toEqual(query);
+            expect(field.metadata).toEqual(metadata);
           });
         });
       });
