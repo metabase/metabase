@@ -51,7 +51,7 @@
                            [as-null :dashboard_id]
                            [as-null :collection_id]
                            [:card_id :item_id]
-                           [(hx/->varchar "card") :type]
+                           [(hx/literal "card") :type]
                            :created_at]
                   :from   [CardBookmark]
                   :where  [:= :user_id user-id]}
@@ -59,7 +59,7 @@
                            :dashboard_id
                            [as-null :collection_id]
                            [:dashboard_id :item_id]
-                           [(hx/->varchar "dashboard") :type]
+                           [(hx/literal "dashboard") :type]
                            :created_at]
                   :from   [DashboardBookmark]
                   :where  [:= :user_id user-id]}
@@ -67,7 +67,7 @@
                            [as-null :dashboard_id]
                            :collection_id
                            [:collection_id :item_id]
-                           [(hx/->varchar "collection") :type]
+                           [(hx/literal "collection") :type]
                            :created_at]
                   :from   [CollectionBookmark]
                   :where  [:= :user_id user-id]}]}))
