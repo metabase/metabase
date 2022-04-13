@@ -3,6 +3,7 @@ import {
   popover,
   visualize,
   restore,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 const CC_NAME = "C-States";
@@ -13,8 +14,7 @@ describe("issue 13751", () => {
     restore("postgres-12");
     cy.signInAsAdmin();
 
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByText(PG_DB_NAME)
       .should("be.visible")
       .click();

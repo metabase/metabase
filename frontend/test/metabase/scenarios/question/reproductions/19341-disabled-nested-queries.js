@@ -1,4 +1,9 @@
-import { restore, mockSessionProperty, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  mockSessionProperty,
+  popover,
+  startNewQuestion,
+} from "__support__/e2e/cypress";
 
 export function issue19341() {
   describe("issue 19341", () => {
@@ -19,8 +24,7 @@ export function issue19341() {
 
     it("should correctly disable nested queries (metabase#19341)", () => {
       // Test "Saved Questions" table is hidden in QB data selector
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       popover().within(() => {
         // Wait until picker init
         // When working as expected, the test environment only has "Sample Database" DB

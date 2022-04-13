@@ -92,7 +92,10 @@
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
   is manager of."
   []
-  (validation/check-group-manager)
+  (try
+   (validation/check-group-manager)
+   (catch clojure.lang.ExceptionInfo _e
+     (validation/check-has-general-permission :setting)))
   (let [query (when (and (not api/*is-superuser?*)
                          (premium-features/enable-advanced-permissions?)
                          api/*is-group-manager?*)

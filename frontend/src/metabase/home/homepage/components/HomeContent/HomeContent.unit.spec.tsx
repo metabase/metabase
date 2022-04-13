@@ -2,6 +2,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import {
   createMockDatabase,
+  createMockPopularItem,
   createMockRecentItem,
   createMockUser,
 } from "metabase-types/api/mocks";
@@ -35,6 +36,7 @@ describe("HomeContent", () => {
       }),
       databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
+      popularItems: [createMockPopularItem()],
     });
 
     render(<HomeContent {...props} />);
@@ -51,6 +53,7 @@ describe("HomeContent", () => {
       }),
       databases: [createMockDatabase()],
       recentItems: [],
+      popularItems: [createMockPopularItem()],
     });
 
     render(<HomeContent {...props} />);
@@ -111,5 +114,6 @@ const getProps = (opts?: Partial<HomeContentProps>): HomeContentProps => ({
   user: createMockUser(),
   databases: [],
   recentItems: [],
+  popularItems: [],
   ...opts,
 });

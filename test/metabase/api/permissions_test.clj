@@ -38,7 +38,7 @@
                 (is (schema= {:id           (s/eq (:id (group/admin)))
                               :name         (s/eq "Administrators")
                               :member_count su/IntGreaterThanZero}
-                       (get id->group (:id (group/admin)))))))]
+                             (get id->group (:id (group/admin)))))))]
       (let [id->group (u/key-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
 

@@ -46,18 +46,13 @@ export const getDashboardActions = (
     dashboard.ordered_cards.some(dashCard => dashCard.card.display !== "text");
 
   const canShareDashboard = hasCards;
+  const canCreateSubscription = hasDataCards && canManageSubscriptions;
 
   if (!isEditing && !isEmpty && !isPublic) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
-    if (hasDataCards) {
+    if (canCreateSubscription) {
       buttons.push(
-        <Tooltip
-          tooltip={
-            canManageSubscriptions
-              ? t`Subscriptions`
-              : t`You don't have permission to create a subscription for this dashboard`
-          }
-        >
+        <Tooltip tooltip={t`Subscriptions`}>
           <span>
             <DashboardHeaderButton
               disabled={!canManageSubscriptions}

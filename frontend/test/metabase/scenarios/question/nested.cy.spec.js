@@ -8,6 +8,7 @@ import {
   getDimensionByName,
   summarize,
   visitDashboard,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -47,6 +48,10 @@ describe("scenarios > question > nested (metabase#12568)", () => {
       { loadMetadata: true, interceptAlias: "secondCardQuery" },
     );
 
+    startNewQuestion();
+
+    cy.contains("Saved Questions").click();
+
     // [quarantine] The whole CI was timing out
     // Create a complex native question
     // cy.createNativeQuestion({
@@ -83,10 +88,8 @@ describe("scenarios > question > nested (metabase#12568)", () => {
   });
 
   it("should allow Distribution on a Saved Simple Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
     cy.contains("GH_12568: Simple").click();
+    visualize();
     cy.contains("Count").click();
     cy.contains("Distribution").click();
     cy.contains("Count by Count: Auto binned");
@@ -94,10 +97,8 @@ describe("scenarios > question > nested (metabase#12568)", () => {
   });
 
   it("should allow Sum over time on a Saved Simple Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
     cy.contains("GH_12568: Simple").click();
+    visualize();
     cy.contains("Count").click();
     cy.contains("Sum over time").click();
     cy.contains("Sum of Count");
@@ -105,10 +106,8 @@ describe("scenarios > question > nested (metabase#12568)", () => {
   });
 
   it("should allow Distribution on a Saved SQL Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
     cy.contains("GH_12568: SQL").click();
+    visualize();
     cy.contains("COUNT").click();
     cy.contains("Distribution").click();
     cy.contains("Count by COUNT: Auto binned");
@@ -117,10 +116,8 @@ describe("scenarios > question > nested (metabase#12568)", () => {
 
   // [quarantine] The whole CI was timing out
   it.skip("should allow Sum over time on a Saved SQL Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
     cy.contains("GH_12568: SQL").click();
+    visualize();
     cy.contains("COUNT").click();
     cy.contains("Sum over time").click();
     cy.contains("Sum of COUNT");
@@ -129,10 +126,8 @@ describe("scenarios > question > nested (metabase#12568)", () => {
 
   // [quarantine] The whole CI was timing out
   it.skip("should allow Distribution on a Saved complex SQL Question", () => {
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Saved Questions").click();
     cy.contains("GH_12568: Complex SQL").click();
+    visualize();
     cy.contains("Items Sold").click();
     cy.contains("Distribution").click();
     cy.contains("Count by Items Sold: Auto binned");
@@ -292,8 +287,7 @@ describe("scenarios > question > nested", () => {
       "Related issue [#14629](https://github.com/metabase/metabase/issues/14629)",
     );
 
-    cy.server();
-    cy.route("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     cy.log("Remap Product ID's display value to `title`");
     remapDisplayValueToFK({
@@ -308,14 +302,14 @@ describe("scenarios > question > nested", () => {
     });
 
     // Try to use saved question as a base for a new / nested question
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("Orders (remapped)").click();
 
-    cy.wait("@dataset").then(xhr => {
-      expect(xhr.response.body.error).not.to.exist;
+    visualize(response => {
+      expect(response.body.error).not.to.exist;
     });
+
     cy.findAllByText("Awesome Concrete Shoes");
   });
 
@@ -342,14 +336,14 @@ describe("scenarios > question > nested", () => {
         ordersJoinProducts(QUESTION_NAME);
 
         // Start new question from a saved one
-        cy.visit("/question/new");
-        cy.findByText("Simple question").click();
+        startNewQuestion();
         cy.findByText("Saved Questions").click();
         cy.findByText(QUESTION_NAME).click();
 
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        visualize(response => {
+          expect(response.body.error).not.to.exist;
         });
+
         cy.contains("37.65");
       });
 
@@ -365,32 +359,30 @@ describe("scenarios > question > nested", () => {
         );
 
         // Start new question from already saved nested question
-        cy.visit("/question/new");
-        cy.findByText("Simple question").click();
+        startNewQuestion();
         cy.findByText("Saved Questions").click();
         cy.findByText(SECOND_QUESTION_NAME).click();
 
-        cy.wait("@dataset").then(xhr => {
-          expect(xhr.response.body.error).not.to.exist;
+        visualize(response => {
+          expect(response.body.error).not.to.exist;
         });
+
         cy.contains("37.65");
       });
     });
   });
 
   it("'distribution' should work on a joined table from a saved question (metabase#14787)", () => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     // Set the display really wide and really tall to avoid any scrolling
     cy.viewport(1600, 1200);
 
     ordersJoinProducts("14787");
     // This repro depends on these exact steps - it has to be opened from the saved questions
-    cy.visit("/question/new");
-    cy.findByText("Simple question").click();
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
     cy.findByText("14787").click();
-    cy.wait("@dataset");
+
+    visualize();
 
     // The column title
     cy.findByText("Products → Category").click();
@@ -398,6 +390,7 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset");
 
     summarize();
+
     cy.findByText("Group by")
       .parent()
       .within(() => {
@@ -431,8 +424,6 @@ describe("scenarios > question > nested", () => {
 
   ["count", "average"].forEach(test => {
     it(`${test.toUpperCase()}:\n should be able to use aggregation functions on saved native question (metabase#15397)`, () => {
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       cy.createNativeQuestion(
         {
           name: "15397",
@@ -444,12 +435,11 @@ describe("scenarios > question > nested", () => {
         { loadMetadata: true },
       );
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("15397").click();
 
-      cy.wait("@dataset");
+      visualize();
       summarize();
 
       if (test === "average") {
@@ -528,10 +518,10 @@ describe("scenarios > question > nested", () => {
       cy.get(".ScalarValue").findByText(value);
 
       // Start new question based on the saved one
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText(name).click();
+      visualize();
       cy.get(".ScalarValue").findByText(value);
     }
   });
@@ -545,12 +535,15 @@ describe("scenarios > question > nested", () => {
       });
       // Window object gets recreated for every `cy.visit`
       // See: https://stackoverflow.com/a/65218352/8815185
-      cy.visit("/question/new", {
+      cy.visit("/", {
         onBeforeLoad(win) {
           cy.spy(win.console, "warn").as("consoleWarn");
         },
       });
-      cy.findByText("Custom question").click();
+      cy.findByText("New").click();
+      cy.findByText("Question")
+        .should("be.visible")
+        .click();
       cy.findByText("Saved Questions").click();
       cy.findByText("15725").click();
       cy.findByText("Pick the metric you want to see").click();

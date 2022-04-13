@@ -12,6 +12,7 @@ import {
   getTableEntityId,
   getSchemaEntityId,
   getDatabaseEntityId,
+  getPermissionSubject,
 } from "../../utils/data-entity-id";
 
 import { buildFieldsPermissions } from "./fields";
@@ -145,11 +146,15 @@ export const getDatabasesPermissionEditor = createSelector(
       databaseId != null &&
       metadata.database(databaseId)?.getSchemas().length === 1;
 
+    const permissionSubject = getPermissionSubject(
+      { databaseId, schemaName },
+      hasSingleSchema,
+    );
     const columns = [
       { name: getEditorEntityName(params, hasSingleSchema) },
       { name: t`Data access` },
       { name: t`Native query editing` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataColumns,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
     let entities: any = [];
@@ -262,11 +267,12 @@ export const getGroupsDataPermissionEditor = createSelector(
       throw new Error("No default group found");
     }
 
+    const permissionSubject = getPermissionSubject(params);
     const columns = [
       { name: t`Group name` },
       { name: t`Data access` },
       { name: t`Native query editing` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataColumns,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
     const entities = sortedGroups.map(group => {

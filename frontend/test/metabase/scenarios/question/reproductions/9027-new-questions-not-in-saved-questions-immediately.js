@@ -2,7 +2,7 @@ import {
   restore,
   popover,
   openNativeEditor,
-  openNotebookEditor,
+  startNewQuestion,
   openNavigationSidebar,
   navigationSidebar,
 } from "__support__/e2e/cypress";
@@ -15,8 +15,7 @@ export function issue9027() {
       restore();
       cy.signInAsAdmin();
 
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
 
       // Wait for the existing questions to load
@@ -45,7 +44,7 @@ export function issue9027() {
     questionName,
     exists = true,
   ) {
-    openNotebookEditor({ fromCurrentPage: true });
+    startNewQuestion();
     cy.findByText("Saved Questions").click();
 
     cy.findByText(questionName).should(exists ? "exist" : "not.exist");

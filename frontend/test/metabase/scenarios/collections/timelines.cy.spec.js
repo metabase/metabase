@@ -10,6 +10,13 @@ import {
 describe("scenarios > collections > timelines", () => {
   beforeEach(() => {
     restore();
+    cy.intercept("PUT", "/api/collection/*").as("updateCollection");
+    cy.intercept("POST", "/api/timeline").as("createTimeline");
+    cy.intercept("PUT", "/api/timeline/*").as("updateTimeline");
+    cy.intercept("DELETE", "/api/timeline/*").as("deleteTimeline");
+    cy.intercept("POST", "/api/timeline-event").as("createEvent");
+    cy.intercept("PUT", "/api/timeline-event/*").as("updateEvent");
+    cy.intercept("DELETE", "/api/timeline-event/*").as("deleteEvent");
   });
 
   describe("as admin", () => {
@@ -25,6 +32,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2020");
       cy.button("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("RC1").should("be.visible");
       cy.findByText("October 20, 2020").should("be.visible");
@@ -36,6 +44,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Star").click();
       cy.findByText("Balloons").click();
       cy.button("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("RC2").should("be.visible");
       cy.findByText("May 12, 2021").should("be.visible");
@@ -51,6 +60,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByLabelText("Event name").type("RC1");
       cy.findByLabelText("Date").type("10/20/2020");
       cy.button("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("RC1").should("be.visible");
     });
@@ -85,6 +95,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("15").click();
       cy.findByText("Done").click();
       cy.findByText("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC1").should("be.visible");
@@ -102,6 +113,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Markdown supported").should("be.visible");
       cy.findByLabelText("Description").type("*1.0-rc1* release");
       cy.findByText("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC1").should("be.visible");
@@ -126,6 +138,7 @@ describe("scenarios > collections > timelines", () => {
         .type("20");
       cy.findByText("Done").click();
       cy.findByText("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC1").should("be.visible");
@@ -144,6 +157,7 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("Add time").click();
       cy.findByText("Done").click();
       cy.findByText("Create").click();
+      cy.wait("@createEvent");
 
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("RC1").should("be.visible");
@@ -160,6 +174,7 @@ describe("scenarios > collections > timelines", () => {
         .clear()
         .type("RC2");
       cy.button("Update").click();
+      cy.wait("@updateEvent");
 
       cy.findByText("RC2").should("be.visible");
     });
@@ -175,6 +190,7 @@ describe("scenarios > collections > timelines", () => {
       openMenu("RC1");
       cy.findByText("Edit event").click();
       cy.findByText("Archive event").click();
+      cy.wait("@updateEvent");
 
       cy.findByText("Releases").should("be.visible");
       cy.findByText("RC1").should("not.exist");
@@ -190,9 +206,11 @@ describe("scenarios > collections > timelines", () => {
 
       openMenu("RC1");
       cy.findByText("Archive event").click();
+      cy.wait("@updateEvent");
       cy.findByText("RC1").should("not.exist");
 
       cy.findByText("Undo").click();
+      cy.wait("@updateEvent");
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -210,9 +228,11 @@ describe("scenarios > collections > timelines", () => {
       openMenu("RC1");
 
       cy.findByText("Unarchive event").click();
+      cy.wait("@updateEvent");
       cy.findByText("No events found").should("be.visible");
 
       cy.findByText("Undo").click();
+      cy.wait("@updateEvent");
       cy.findByText("RC1").should("be.visible");
     });
 
@@ -230,6 +250,7 @@ describe("scenarios > collections > timelines", () => {
       openMenu("RC1");
       cy.findByText("Delete event").click();
       cy.findByText("Delete").click();
+      cy.wait("@deleteEvent");
       cy.findByText("No events found").should("be.visible");
     });
 
@@ -262,8 +283,9 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
       cy.findByText("New timeline").click();
-      cy.findByLabelText("Timeline name").type("Launches");
+      cy.findByLabelText("Name").type("Launches");
       cy.findByText("Create").click();
+      cy.wait("@createTimeline");
 
       cy.findByText("Launches").should("be.visible");
       cy.findByText("Add an event").should("be.visible");
@@ -278,10 +300,11 @@ describe("scenarios > collections > timelines", () => {
       cy.visit("/collection/root/timelines");
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
-      cy.findByLabelText("Timeline name")
+      cy.findByLabelText("Name")
         .clear()
         .type("Launches");
       cy.findByText("Update").click();
+      cy.wait("@updateTimeline");
 
       cy.findByText("Launches").should("be.visible");
     });
@@ -296,10 +319,12 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
       cy.findByText("Archive timeline and all events").click();
+      cy.wait("@updateTimeline");
       cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("Add an event").should("be.visible");
 
       cy.findByText("Undo").click();
+      cy.wait("@updateTimeline");
       cy.findByText("Releases").should("be.visible");
       cy.findByText("RC1").should("be.visible");
       cy.findByText("RC2").should("be.visible");
@@ -348,16 +373,16 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
       cy.findByText("Archive timeline and all events").click();
+      cy.wait("@updateTimeline");
 
       openMenu("Our analytics events");
       cy.findByText("View archived timelines").click();
 
       openMenu("Releases");
       cy.findByText("Unarchive timeline").click();
+      cy.wait("@updateTimeline");
       cy.findByText("No timelines found");
-      cy.get(".Modal").within(() => {
-        cy.icon("chevronleft").click();
-      });
+      getModal().within(() => cy.icon("chevronleft").click());
       cy.findByText("Releases");
     });
 
@@ -371,6 +396,7 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("Edit timeline details").click();
       cy.findByText("Archive timeline and all events").click();
+      cy.wait("@updateTimeline");
 
       openMenu("Our analytics events");
       cy.findByText("View archived timelines").click();
@@ -378,11 +404,42 @@ describe("scenarios > collections > timelines", () => {
       openMenu("Releases");
       cy.findByText("Delete timeline").click();
       cy.findByText("Delete").click();
+      cy.wait("@deleteTimeline");
       cy.findByText("No timelines found");
-      cy.get(".Modal").within(() => {
-        cy.icon("chevronleft").click();
-      });
+      getModal().within(() => cy.icon("chevronleft").click());
       cy.findByText("Our analytics events");
+    });
+
+    it("should preserve collection names for default timelines", () => {
+      cy.visit("/");
+      cy.findByText("First collection").click();
+
+      cy.icon("calendar").click();
+      cy.findByText("Add an event").click();
+      cy.findByLabelText("Event name").type("RC1");
+      cy.findByLabelText("Date").type("10/20/2020");
+      cy.button("Create").click();
+      cy.findByText("First collection events");
+      cy.wait("@createTimeline");
+      cy.icon("close").click();
+
+      cy.icon("pencil").click();
+      cy.findByText("Edit this collection").click();
+      cy.findByLabelText("Name")
+        .clear()
+        .type("1st collection");
+      cy.button("Update").click();
+      cy.wait("@updateCollection");
+
+      cy.icon("calendar").click();
+      openMenu("1st collection events");
+      cy.findByText("Edit timeline details").click();
+      cy.findByLabelText("Name")
+        .clear()
+        .type("Releases");
+      cy.button("Update").click();
+      cy.wait("@updateTimeline");
+      cy.findByText("Releases");
     });
   });
 
@@ -444,6 +501,10 @@ describeWithSnowplow("scenarios > collections > timelines", () => {
     expectGoodSnowplowEvents(5);
   });
 });
+
+const getModal = () => {
+  return cy.get(".Modal");
+};
 
 const openMenu = name => {
   return cy

@@ -8,6 +8,10 @@ on:
       - "**.md"
       - ".circleci/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   build:
@@ -56,6 +60,8 @@ jobs:
         edition: [oss, ee]
         folder:
           - "downloads"
+          - "moderation"
+          - "permissions"
     services:
       maildev:
         image: maildev/maildev:1.1.0

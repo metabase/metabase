@@ -4,6 +4,8 @@ import {
   visitQuestionAdhoc,
   popover,
   summarize,
+  visualize,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
@@ -82,10 +84,10 @@ describe("scenarios > x-rays", () => {
         native: { query: "select * from people" },
       });
 
-      cy.visit("/question/new");
-      cy.findByText("Simple question").click();
+      startNewQuestion();
       cy.findByText("Saved Questions").click();
       cy.findByText("15655").click();
+      visualize();
       summarize();
       getDimensionByName({ name: "SOURCE" }).click();
       cy.button("Done").click();

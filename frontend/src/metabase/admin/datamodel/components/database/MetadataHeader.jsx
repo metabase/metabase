@@ -10,9 +10,14 @@ import { DatabaseDataSelector } from "metabase/query_builder/components/DataSele
 import SaveStatus from "metabase/components/SaveStatus";
 import Toggle from "metabase/core/components/Toggle";
 import Icon from "metabase/components/Icon";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 @withRouter
-@Databases.loadList()
+@Databases.loadList({
+  query: () => ({
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps,
+  }),
+})
 export default class MetadataHeader extends Component {
   static propTypes = {
     databaseId: PropTypes.number,
@@ -63,6 +68,7 @@ export default class MetadataHeader extends Component {
         />
         <div className="MetadataEditor-headerSection h2">
           <DatabaseDataSelector
+            databases={this.props.databases ?? []}
             selectedDatabaseId={this.props.databaseId}
             setDatabaseFn={id => this.props.selectDatabase({ id })}
             style={{ padding: 0, paddingLeft: 8 }}
