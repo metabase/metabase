@@ -883,6 +883,50 @@ export default class TableInteractive extends Component {
                 width={width}
                 height={height}
               />
+              {!!gutterColumn && (
+                <>
+                  <div
+                    className="TableInteractive-header TableInteractive--noHover"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: SIDEBAR_WIDTH,
+                      height: headerHeight,
+                      zIndex: 2,
+                    }}
+                  />
+                  <Grid
+                    ref={ref => (this.sidebar = ref)}
+                    className="scroll-hide-all TableInteractive-header"
+                    style={{
+                      position: "absolute",
+                      top: headerHeight,
+                      left: 0,
+                      zIndex: 2,
+                    }}
+                    width={SIDEBAR_WIDTH}
+                    height={height - headerHeight - getScrollBarSize()}
+                    columnCount={1}
+                    columnWidth={SIDEBAR_WIDTH}
+                    rowCount={rows.length}
+                    rowHeight={ROW_HEIGHT}
+                    cellRenderer={({ rowIndex, key, style }) => (
+                      <DetailShortcut
+                        onClick={this.pkClick(rowIndex)}
+                        onMouseEnter={() => this.handleHoverRow(rowIndex)}
+                        onMouseLeave={() => this.handleLeaveRow(rowIndex)}
+                        rowIndex={rowIndex}
+                        key={key}
+                        style={style}
+                      />
+                    )}
+                    scrollTop={scrollTop}
+                    onScroll={({ scrollTop }) => onScroll({ scrollTop })}
+                    overscanRowCount={20}
+                  />
+                </>
+              )}
               <Grid
                 ref={ref => (this.header = ref)}
                 style={{
@@ -946,48 +990,6 @@ export default class TableInteractive extends Component {
                 tabIndex={null}
                 overscanRowCount={20}
               />
-              {!!this.state.IDColumn && (
-                <>
-                  <div
-                    className="TableInteractive-header TableInteractive--noHover"
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: SIDEBAR_WIDTH,
-                      height: headerHeight,
-                    }}
-                  />
-                  <Grid
-                    ref={ref => (this.sidebar = ref)}
-                    className="scroll-hide-all TableInteractive-header"
-                    style={{
-                      position: "absolute",
-                      top: headerHeight,
-                      left: 0,
-                    }}
-                    width={SIDEBAR_WIDTH}
-                    height={height - headerHeight - getScrollBarSize()}
-                    columnCount={1}
-                    columnWidth={SIDEBAR_WIDTH}
-                    rowCount={rows.length}
-                    rowHeight={ROW_HEIGHT}
-                    cellRenderer={({ rowIndex, key, style }) => (
-                      <DetailShortcut
-                        onClick={this.pkClick(rowIndex)}
-                        onMouseEnter={() => this.handleHoverRow(rowIndex)}
-                        onMouseLeave={() => this.handleLeaveRow(rowIndex)}
-                        rowIndex={rowIndex}
-                        key={key}
-                        style={style}
-                      />
-                    )}
-                    scrollTop={scrollTop}
-                    onScroll={({ scrollTop }) => onScroll({ scrollTop })}
-                    overscanRowCount={20}
-                  />
-                </>
-              )}
             </div>
           );
         }}
