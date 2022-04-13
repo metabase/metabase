@@ -57,16 +57,20 @@ const EXCLUDE: Group[] = [
     test: testTemporalUnit("day-of-week"),
     init: filter => ["!=", getDateTimeField(filter[1], "day-of-week")],
     getOptions: () => {
-      const now = moment();
+      const now = moment()
+        .utc()
+        .hours(0)
+        .minutes(0)
+        .seconds(0);
       return [
         _.range(0, 7).map(day => {
-          // We increment day here because 0 = Sunday in Memento
           const date = now.day(day + 1);
           const displayName = date.format("dddd");
+          const value = date.format("YYYY-MM-DD");
           return {
             displayName,
-            value: date.toISOString(),
-            test: value => moment(value).format("dddd") === displayName,
+            value,
+            test: val => value === val,
           };
         }),
       ];
@@ -77,13 +81,18 @@ const EXCLUDE: Group[] = [
     test: testTemporalUnit("month-of-year"),
     init: filter => ["!=", getDateTimeField(filter[1], "month-of-year")],
     getOptions: () => {
-      const now = moment();
+      const now = moment()
+        .utc()
+        .hours(0)
+        .minutes(0)
+        .seconds(0);
       const func = (month: number) => {
         const date = now.month(month);
         const displayName = date.format("MMMM");
+        const value = date.format("YYYY-MM-DD");
         return {
           displayName,
-          value: date.toISOString(),
+          value,
           test: (value: string) => moment(value).format("MMMM") === displayName,
         };
       };
@@ -96,17 +105,21 @@ const EXCLUDE: Group[] = [
     test: testTemporalUnit("quarter-of-year"),
     init: filter => ["!=", getDateTimeField(filter[1], "quarter-of-year")],
     getOptions: () => {
-      const now = moment();
+      const now = moment()
+        .utc()
+        .hours(0)
+        .minutes(0)
+        .seconds(0);
       const suffix = " " + t`quarter`;
       return [
         _.range(1, 5).map(quarter => {
           const date = now.quarter(quarter);
-
-          const displayName = date.format("Qo") + suffix;
+          const displayName = date.format("Qo");
+          const value = date.format("YYYY-MM-DD");
           return {
-            displayName,
-            value: date.toISOString(),
-            test: value => moment(value).format("Qo") + suffix === displayName,
+            displayName: displayName + suffix,
+            value,
+            test: (value: string) => moment(value).format("Qo") === displayName,
           };
         }),
       ];
@@ -117,7 +130,10 @@ const EXCLUDE: Group[] = [
     test: testTemporalUnit("hour-of-day"),
     init: filter => ["!=", getDateTimeField(filter[1], "hour-of-day")],
     getOptions: () => {
-      const now = moment().utc();
+      const now = moment()
+        .utc()
+        .minutes(0)
+        .seconds(0);
       const func = (hour: number) => {
         const date = now.hour(hour);
         const displayName = date.format("h A");
