@@ -99,17 +99,17 @@
 ;; TODO -- currently these are all the same between date/time/datetime
 
 (def ^{:arglists '([s])} can-parse-date?
-  "Can parse an ISO 8601 date (only) or not."
+  "Returns whether a string can be parsed to an ISO 8601 date or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE)
      :cljs can-parse-iso-8601?))
 
 (def ^{:arglists '([s])} can-parse-datetime?
-  "Can parse an ISO 8601 datetime or not."
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE_TIME)
      :cljs can-parse-iso-8601?))
 
 (def ^{:arglists '([s])} can-parse-time?
-  "Can parse an ISO 8601 time (only) or not."
+  "Returns whether a string can be parsed to an ISO 8601 time or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_TIME)
      :cljs can-parse-iso-8601?))
 

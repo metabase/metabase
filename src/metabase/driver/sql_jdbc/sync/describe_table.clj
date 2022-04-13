@@ -12,7 +12,7 @@
             [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.schema :as mbql-schema]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
@@ -210,16 +210,13 @@
                             (flatten-row xs path))))))]
     (into {} (flatten-row row [field-name]))))
 
-(defn- type-finder
+(defn- type-but-maybe-datetime
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
   [member]
   (let [member-type (type member)]
-    (cond
-      (= member-type java.lang.String)
-      (if (mbql-schema/can-parse-datetime? member)
-        java.time.LocalDateTime
-        member-type)
-      :else
+    (if (and (instance? String member-type)
+             (mbql.s/can-parse-datetime? member))
+      java.time.LocalDateTime
       member-type)))
 
 (defn- row->types [row]
@@ -259,8 +256,10 @@
              :else
              [json-column nil])))))
 
-(def ^:const field-type-map
-  "We deserialize the JSON in order to determine types,
+(def field-type-map
+  "Map from Java types for deserialized JSON (so small subset of Java types) to MBQL types.
+
+  We actually do deserialize the JSON in order to determine types,
   so the java / clojure types we get have to be matched to MBQL types"
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
@@ -273,8 +272,10 @@
    clojure.lang.PersistentVector   :type/Array
    clojure.lang.PersistentArrayMap :type/Structured})
 
-(def ^:const db-type-map
-  "This is the lowest common denominator of types, hopefully,
+(def db-type-map
+  "Map from MBQL types to database types.
+
+  This is the lowest common denominator of types, hopefully,
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
    :type/Integer    "integer"
