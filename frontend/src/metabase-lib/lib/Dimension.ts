@@ -1276,7 +1276,6 @@ export class ExpressionDimension extends Dimension {
       const fieldMetadata = _.findWhere(resultMetadata, {
         name: this.name(),
       });
-
       if (fieldMetadata) {
         return this._createField(fieldMetadata);
       }
