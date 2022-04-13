@@ -6,9 +6,8 @@ import { findDOMNode } from "react-dom";
 import _ from "underscore";
 import cx from "classnames";
 
-import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Icon from "metabase/components/Icon";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { TokenFieldAddon, TokenFieldItem } from "./TokenField.styled";
 
 import {
@@ -59,6 +58,8 @@ export default class TokenField extends Component {
     validateValue: () => true,
 
     color: "brand",
+
+    canAddItems: true,
 
     style: {},
     valueStyle: {},
@@ -455,6 +456,8 @@ export default class TokenField extends Component {
       optionsStyle,
       optionsClassName,
       prefix,
+
+      canAddItems,
     } = this.props;
     let {
       inputValue,
@@ -533,23 +536,25 @@ export default class TokenField extends Component {
             )}
           </TokenFieldItem>
         ))}
-        <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
-          <input
-            ref={this.inputRef}
-            style={{ ...defaultStyleValue, ...valueStyle }}
-            className={cx("full no-focus borderless px1")}
-            // set size to be small enough that it fits in a parameter.
-            size={10}
-            placeholder={placeholder}
-            value={isControlledInput ? inputValue : undefined}
-            defaultValue={isControlledInput ? undefined : inputValue}
-            onKeyDown={this.onInputKeyDown}
-            onChange={isControlledInput ? this.onInputChange : undefined}
-            onFocus={this.onInputFocus}
-            onBlur={this.onInputBlur}
-            onPaste={this.onInputPaste}
-          />
-        </li>
+        {canAddItems && (
+          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
+            <input
+              ref={this.inputRef}
+              style={{ ...defaultStyleValue, ...valueStyle }}
+              className={cx("full no-focus borderless px1")}
+              // set size to be small enough that it fits in a parameter.
+              size={10}
+              placeholder={placeholder}
+              value={isControlledInput ? inputValue : undefined}
+              defaultValue={isControlledInput ? undefined : inputValue}
+              onKeyDown={this.onInputKeyDown}
+              onChange={isControlledInput ? this.onInputChange : undefined}
+              onFocus={this.onInputFocus}
+              onBlur={this.onInputBlur}
+              onPaste={this.onInputPaste}
+            />
+          </li>
+        )}
       </ul>
     );
 
@@ -610,22 +615,15 @@ const DefaultTokenFieldLayout = ({
   isFocused,
   onClose,
 }) => (
-  <OnClickOutsideWrapper handleDismissal={onClose}>
-    <div>
-      {valuesList}
-      <Popover
-        isOpen={isFocused && !!optionsList}
-        hasArrow={false}
-        tetherOptions={{
-          attachment: "top left",
-          targetAttachment: "bottom left",
-          targetOffset: "10 0",
-        }}
-      >
-        {optionsList}
-      </Popover>
-    </div>
-  </OnClickOutsideWrapper>
+  <div>
+    <TippyPopover
+      visible={isFocused && !!optionsList}
+      content={<div>{optionsList}</div>}
+      placement="bottom-start"
+    >
+      <div>{valuesList}</div>
+    </TippyPopover>
+  </div>
 );
 
 DefaultTokenFieldLayout.propTypes = {

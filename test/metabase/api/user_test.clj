@@ -2,7 +2,8 @@
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
             [metabase.http-client :as http]
-            [metabase.models :refer [Collection PermissionsGroup PermissionsGroupMembership User]]
+            [metabase.models :refer [Card Collection Dashboard LoginHistory
+                                     PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions-group :as group]
             [metabase.models.user-test :as user-test]
@@ -245,20 +246,44 @@
 (deftest get-current-user-test
   (testing "GET /api/user/current"
     (testing "check that fetching current user will return extra fields like `is_active`"
-      (is (= (-> (merge
-                  @user-defaults
-                  {:email                   "rasta@metabase.com"
-                   :first_name              "Rasta"
-                   :last_name               "Toucan"
-                   :common_name             "Rasta Toucan"
-                   :group_ids               [(u/the-id (group/all-users))]
-                   :personal_collection_id  true
-                   :is_installer (= 1 (mt/user->id :rasta))
-                   :has_invited_second_user (= 1 (mt/user->id :rasta))})
-                 (dissoc :is_qbnewb :last_login :has_question_and_dashboard))
-             (-> (mt/user-http-request :rasta :get 200 "user/current")
-                 mt/boolean-ids-and-timestamps
-                 (dissoc :is_qbnewb :first_login :last_login :has_question_and_dashboard)))))))
+      (mt/with-temp* [LoginHistory [_ {:user_id   (mt/user->id :rasta)
+                                       :device_id (str (java.util.UUID/randomUUID))
+                                       :timestamp #t "2021-03-18T19:52:41.808482Z"}]
+                      Card [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+        (is (= (-> (merge
+                    @user-defaults
+                    {:email                      "rasta@metabase.com"
+                     :first_name                 "Rasta"
+                     :last_name                  "Toucan"
+                     :common_name                "Rasta Toucan"
+                     :first_login                "2021-03-18T19:52:41.808482Z"
+                     :group_ids                  [(u/the-id (group/all-users))]
+                     :personal_collection_id     true
+                     :has_question_and_dashboard false
+                     :is_installer               (= 1 (mt/user->id :rasta))
+                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
+                   (dissoc :is_qbnewb :last_login))
+               (-> (mt/user-http-request :rasta :get 200 "user/current")
+                   mt/boolean-ids-and-timestamps
+                   (dissoc :is_qbnewb :last_login))))))
+    (testing "check that `has_question_and_dashboard` is `true`."
+      (mt/with-temp* [Dashboard [dash1 {:name "dash1" :creator_id (mt/user->id :rasta)}]
+                      Card      [card1 {:name "card1" :display "table" :creator_id (mt/user->id :rasta)}]]
+        (is (= (-> (merge
+                    @user-defaults
+                    {:email                      "rasta@metabase.com"
+                     :first_name                 "Rasta"
+                     :last_name                  "Toucan"
+                     :common_name                "Rasta Toucan"
+                     :group_ids                  [(u/the-id (group/all-users))]
+                     :personal_collection_id     true
+                     :has_question_and_dashboard true
+                     :is_installer               (= 1 (mt/user->id :rasta))
+                     :has_invited_second_user    (= 1 (mt/user->id :rasta))})
+                   (dissoc :is_qbnewb :last_login))
+               (-> (mt/user-http-request :rasta :get 200 "user/current")
+                   mt/boolean-ids-and-timestamps
+                   (dissoc :is_qbnewb :first_login :last_login))))))))
 
 (deftest get-user-test
   (testing "GET /api/user/:id"

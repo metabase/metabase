@@ -14,7 +14,7 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { getIsBookmarked } from "metabase/dashboard/selectors";
 
@@ -213,28 +213,33 @@ export default class DashboardHeader extends Component {
       // Parameters
       buttons.push(
         <span key="add-a-filter">
-          <Tooltip tooltip={t`Add a filter`}>
-            <a
-              key="parameters"
-              className={cx("text-brand-hover", {
-                "text-brand": isAddParameterPopoverOpen,
-              })}
-              onClick={showAddParameterPopover}
-            >
-              <DashboardHeaderButton>
-                <Icon name="filter" />
-              </DashboardHeaderButton>
-            </a>
-          </Tooltip>
-
-          {isAddParameterPopoverOpen && (
-            <Popover onClose={hideAddParameterPopover}>
+          <TippyPopover
+            placement="bottom-start"
+            onClose={hideAddParameterPopover}
+            visible={isAddParameterPopoverOpen}
+            content={
               <ParametersPopover
                 onAddParameter={addParameter}
                 onClose={hideAddParameterPopover}
               />
-            </Popover>
-          )}
+            }
+          >
+            <div>
+              <Tooltip tooltip={t`Add a filter`}>
+                <a
+                  key="parameters"
+                  className={cx("text-brand-hover", {
+                    "text-brand": isAddParameterPopoverOpen,
+                  })}
+                  onClick={showAddParameterPopover}
+                >
+                  <DashboardHeaderButton>
+                    <Icon name="filter" />
+                  </DashboardHeaderButton>
+                </a>
+              </Tooltip>
+            </div>
+          </TippyPopover>
         </span>,
       );
 

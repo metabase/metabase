@@ -15,9 +15,10 @@ const propTypes = {
   validateValue: PropTypes.func,
   users: PropTypes.array.isRequired,
   onChange: PropTypes.func,
+  canAddItems: PropTypes.bool,
 };
 
-const UserPicker = ({ value, validateValue, users, onChange }) => {
+const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
   const placeholder = !value.length
     ? t`Enter user names or email addresses`
     : null;
@@ -71,6 +72,7 @@ const UserPicker = ({ value, validateValue, users, onChange }) => {
         multi
         updateOnInputBlur
         onChange={onChange}
+        canAddItems={canAddItems}
       />
     </UserPickerRoot>
   );

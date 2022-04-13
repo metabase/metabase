@@ -39,12 +39,12 @@ const isPopularSection = ({
     !user.is_installer &&
     user.has_question_and_dashboard &&
     popularItems.length > 0 &&
-    (isWithinWeek(user.first_login) || !recentItems.length)
+    (isWithinWeek(user.date_joined) || !recentItems.length)
   );
 };
 
-const isRecentSection = ({ recentItems }: HomeContentProps): boolean => {
-  return recentItems.length > 0;
+const isRecentSection = ({ user, recentItems }: HomeContentProps): boolean => {
+  return user.has_question_and_dashboard && recentItems.length > 0;
 };
 
 const isXraySection = ({ databases }: HomeContentProps): boolean => {

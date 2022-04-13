@@ -4,10 +4,14 @@ import {
   describeEE,
   modifyPermission,
 } from "__support__/e2e/cypress";
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const SETTINGS_INDEX = 0;
 const MONITORING_INDEX = 1;
 const SUBSCRIPTIONS_INDEX = 2;
+
+const NORMAL_USER_ID = 2;
 
 describeEE("scenarios > admin > permissions > general", () => {
   beforeEach(() => {
@@ -30,17 +34,22 @@ describeEE("scenarios > admin > permissions > general", () => {
           cy.button("Yes").click();
         });
 
+        createSubscription(NORMAL_USER_ID);
+
         cy.signInAsNormalUser();
       });
 
-      it("revokes ability to create dashboard subscriptions", () => {
+      it("revokes ability to create subscriptions and alerts and manage them", () => {
         cy.visit("/dashboard/1");
         cy.icon("subscription").should("not.exist");
-      });
 
-      it("revokes ability to create question alerts", () => {
         cy.visit("/question/1");
         cy.icon("bell").should("not.exist");
+
+        cy.visit("/account/notifications");
+        cy.findByTestId("notifications-list").within(() => {
+          cy.icon("close").should("not.exist");
+        });
       });
     });
 
@@ -175,3 +184,38 @@ describeEE("scenarios > admin > permissions > general", () => {
     });
   });
 });
+
+function createSubscription(user_id) {
+  cy.createQuestionAndDashboard({
+    questionDetails: {
+      name: "Test Question",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    },
+  }).then(({ body: { card_id, dashboard_id } }) => {
+    cy.createPulse({
+      name: "Subscription",
+      dashboard_id,
+      cards: [
+        {
+          id: card_id,
+          include_csv: false,
+          include_xls: false,
+        },
+      ],
+      channels: [
+        {
+          enabled: true,
+          channel_type: "email",
+          schedule_type: "hourly",
+          recipients: [
+            {
+              id: user_id,
+            },
+          ],
+        },
+      ],
+    });
+  });
+}

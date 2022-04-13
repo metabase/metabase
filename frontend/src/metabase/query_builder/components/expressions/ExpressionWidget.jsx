@@ -30,6 +30,8 @@ export default class ExpressionWidget extends Component {
     name: "",
   };
 
+  helpTextTarget = React.createRef();
+
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
@@ -61,8 +63,9 @@ export default class ExpressionWidget extends Component {
       <div style={{ maxWidth: "600px" }}>
         <div className="p2">
           <div className="h5 text-uppercase text-medium text-bold">{t`Field formula`}</div>
-          <div>
+          <div ref={this.helpTextTarget}>
             <ExpressionEditorTextfield
+              helpTextTarget={this.helpTextTarget.current}
               expression={expression}
               query={query}
               onChange={parsedExpression =>

@@ -58,6 +58,10 @@ You can also archive _collections_ if you have curate permissions for the collec
 
 If you have second thoughts and want to bring an archived item back, you can see all your archived questions from the archive; click the menu icon in the top-right of any collection page to get to the archive. To unarchive a question, hover over it and click the unarchive icon that appears on the far right.
 
+## Events and timelines
+
+You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
+
 ## Next: creating dashboards
 
 Next, we'll learn about [creating dashboards and adding questions to them][dashboards].

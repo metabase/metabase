@@ -7,19 +7,26 @@ import Timelines from "metabase/entities/timelines";
 import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import TimelineListModal from "../../components/TimelineListModal";
-import { ModalProps } from "../../types";
+import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { ModalParams } from "../../types";
+
+interface TimelineListArchiveModalProps {
+  params: ModalParams;
+}
 
 const timelineProps = {
-  query: (state: State, props: ModalProps) => ({
+  query: (state: State, props: TimelineListArchiveModalProps) => ({
     collectionId: Urls.extractCollectionId(props.params.slug),
     archived: true,
     include: "events",
   }),
+  LoadingAndErrorWrapper,
 };
 
 const collectionProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: TimelineListArchiveModalProps) =>
     Urls.extractCollectionId(props.params.slug),
+  LoadingAndErrorWrapper,
 };
 
 const mapStateToProps = () => ({

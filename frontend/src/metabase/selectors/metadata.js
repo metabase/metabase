@@ -7,6 +7,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import _ from "underscore";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
@@ -93,7 +94,20 @@ export const getMetadata = createSelector(
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
 
     // database
-    hydrateList(meta.databases, "tables", meta.tables);
+    hydrate(meta.databases, "tables", database => {
+      if (database.tables?.length > 0) {
+        return database.tables
+          .map(tableId => meta.table(tableId))
+          .filter(table => table != null);
+      }
+
+      return Object.values(meta.tables).filter(
+        table =>
+          !isVirtualCardId(table.id) &&
+          table.schema &&
+          table.db_id === database.id,
+      );
+    });
     // schema
     hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
@@ -149,7 +163,10 @@ export const getMetadata = createSelector(
 
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
-
+    console.log(">>>>>>>>>>>");
+    console.log(">>>databases", meta.databases);
+    console.log(">>>schemas", meta.schemas);
+    console.log(">>>tables", meta.tables);
     return meta;
   },
 );

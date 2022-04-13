@@ -138,23 +138,23 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog :user_id :model :model_id
+  (let [dashboard-and-table-views (db/select [ViewLog :%min.view_log.user_id :model :model_id
                                               [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                                    {:group-by  [(db/qualify ViewLog :user_id) :model :model_id]
+                                    {:group-by  [:model :model_id]
                                      :where     [:and
                                                  (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
                                                  [:in :model #{"dashboard" "table"}]
                                                  [:= :bm.id nil]]
-                                     :order-by  [[:max_ts :desc]]
+                                     :order-by  [[:model :desc] [:max_ts :desc]]
                                      :limit     views-limit
                                      :left-join [[DashboardBookmark :bm]
                                                  [:and
-                                                  [:not [:= :model "table"]]
+                                                  [:= :model "dashboard"]
                                                   [:= :bm.user_id *current-user-id*]
                                                   [:= :model_id :bm.dashboard_id]]]})
-        card-runs                 (->> (db/select [QueryExecution [:executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
+        card-runs                 (->> (db/select [QueryExecution [:%min.executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt] [:%max.started_at :max_ts]]
-                                         {:group-by [:executor_id (db/qualify QueryExecution :card_id) :context]
+                                         {:group-by [(db/qualify QueryExecution :card_id) :context]
                                           :where    [:and
                                                      (when-not all-users? [:= :executor_id *current-user-id*])
                                                      [:= :context (hx/literal :question)]
@@ -232,6 +232,14 @@
                       (* (/ cnt max-count) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
 
+(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
+
+(defn- order-items
+  [items]
+  (when (seq items)
+      (let [groups (group-by :model items)]
+        (mapcat #(get groups %) model-precedence))))
+
 (defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
@@ -256,6 +264,7 @@
     (->> scored-views
          (sort-by :score)
          reverse
+         order-items
          (take 5)
          (map #(dissoc % :score)))))
 

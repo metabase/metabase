@@ -3,27 +3,25 @@ import { goBack, push } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
-import Collections from "metabase/entities/collections";
-import { Collection, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import DeleteTimelineModal from "../../components/DeleteTimelineModal";
-import { ModalProps } from "../../types";
+import DeleteTimelineModal from "metabase/timelines/common/components/DeleteTimelineModal";
+import { ModalParams } from "../../types";
+
+interface DeleteTimelineModalProps {
+  params: ModalParams;
+}
 
 const timelineProps = {
-  id: (state: State, props: ModalProps) =>
+  id: (state: State, props: DeleteTimelineModalProps) =>
     Urls.extractEntityId(props.params.timelineId),
   query: { include: "events" },
 };
 
-const collectionProps = {
-  id: (state: State, props: ModalProps) =>
-    Urls.extractCollectionId(props.params.slug),
-};
-
 const mapDispatchToProps = (dispatch: any) => ({
-  onSubmit: async (timeline: Timeline, collection: Collection) => {
+  onSubmit: async (timeline: Timeline) => {
     await dispatch(Timelines.actions.delete(timeline));
-    dispatch(push(Urls.timelinesArchiveInCollection(collection)));
+    dispatch(push(Urls.timelinesArchiveInCollection(timeline.collection)));
   },
   onCancel: () => {
     dispatch(goBack());
@@ -32,6 +30,5 @@ const mapDispatchToProps = (dispatch: any) => ({
 
 export default _.compose(
   Timelines.load(timelineProps),
-  Collections.load(collectionProps),
   connect(null, mapDispatchToProps),
 )(DeleteTimelineModal);

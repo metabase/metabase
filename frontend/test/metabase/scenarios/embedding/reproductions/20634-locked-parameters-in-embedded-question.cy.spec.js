@@ -1,4 +1,4 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitIframe } from "__support__/e2e/cypress";
 
 describe("locked parameters in embedded question (metabase#20634)", () => {
   beforeEach(() => {
@@ -49,10 +49,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     });
 
     // directly navigate to the embedded question
-    cy.document().then(doc => {
-      const iframe = doc.querySelector("iframe");
-      cy.visit(iframe.src);
-    });
+    visitIframe();
 
     // verify that the Text parameter doesn't show up but that its value is reflected in the dashcard
     cy.findByText("Text").should("not.exist");

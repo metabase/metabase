@@ -179,6 +179,55 @@ describe("scenarios > collections > timelines", () => {
       cy.findByText("RC2").should("be.visible");
     });
 
+    it("should move an event", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }],
+      });
+      cy.createTimelineWithEvents({
+        timeline: { name: "Metrics" },
+        events: [{ name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Metrics").click();
+      openMenu("RC2");
+      cy.findByText("Move event").click();
+      cy.findByText("Releases").click();
+      getModal().within(() => cy.button("Move").click());
+      cy.wait("@updateEvent");
+      cy.findByText("RC2").should("not.exist");
+
+      cy.icon("chevronleft").click();
+      cy.findByText("Releases").click();
+      cy.findByText("RC1");
+      cy.findByText("RC2");
+    });
+
+    it("should move an event and undo", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Releases" },
+        events: [{ name: "RC1" }],
+      });
+      cy.createTimelineWithEvents({
+        timeline: { name: "Metrics" },
+        events: [{ name: "RC2" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      cy.findByText("Metrics").click();
+      openMenu("RC2");
+      cy.findByText("Move event").click();
+      cy.findByText("Releases").click();
+      getModal().within(() => cy.button("Move").click());
+      cy.wait("@updateEvent");
+      cy.findByText("RC2").should("not.exist");
+
+      cy.findByText("Undo").click();
+      cy.wait("@updateEvent");
+      cy.findByText("RC2").should("be.visible");
+    });
+
     it("should archive an event when editing this event", () => {
       cy.createTimelineWithEvents({
         timeline: { name: "Releases" },
@@ -307,6 +356,25 @@ describe("scenarios > collections > timelines", () => {
       cy.wait("@updateTimeline");
 
       cy.findByText("Launches").should("be.visible");
+    });
+
+    it("should move a timeline", () => {
+      cy.createTimelineWithEvents({
+        timeline: { name: "Our analytics events", default: true },
+        events: [{ name: "RC1" }],
+      });
+
+      cy.visit("/collection/root/timelines");
+      openMenu("Our analytics events");
+      cy.findByText("Move timeline").click();
+
+      getModal().within(() => {
+        cy.findByText("First collection").click();
+        cy.button("Move").click();
+        cy.wait("@updateTimeline");
+      });
+
+      cy.findByText("First collection events").should("be.visible");
     });
 
     it("should archive a timeline and undo", () => {

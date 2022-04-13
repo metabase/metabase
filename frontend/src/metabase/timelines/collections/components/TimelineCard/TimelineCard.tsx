@@ -1,32 +1,30 @@
 import React, { memo } from "react";
-import { t, msgid, ngettext } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 import * as Urls from "metabase/lib/urls";
-import { getTimelineName } from "metabase/lib/timelines";
+import { getEventCount, getTimelineName } from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
-import { Collection, Timeline } from "metabase-types/api";
+import { Timeline } from "metabase-types/api";
 import {
-  CardCount,
   CardBody,
+  CardCount,
   CardDescription,
   CardIcon,
+  CardMenu,
   CardRoot,
   CardTitle,
-  CardMenu,
 } from "./TimelineCard.styled";
 
 export interface TimelineCardProps {
   timeline: Timeline;
-  collection: Collection;
   onUnarchive?: (timeline: Timeline) => void;
 }
 
 const TimelineCard = ({
   timeline,
-  collection,
   onUnarchive,
 }: TimelineCardProps): JSX.Element => {
-  const timelineUrl = Urls.timelineInCollection(timeline, collection);
-  const menuItems = getMenuItems(timeline, collection, onUnarchive);
+  const timelineUrl = Urls.timelineInCollection(timeline);
+  const menuItems = getMenuItems(timeline, onUnarchive);
   const eventCount = getEventCount(timeline);
   const hasDescription = Boolean(timeline.description);
   const hasMenuItems = menuItems.length > 0;
@@ -59,13 +57,8 @@ const TimelineCard = ({
   );
 };
 
-const getEventCount = (timeline: Timeline) => {
-  return timeline.events ? timeline.events.filter(e => !e.archived).length : 0;
-};
-
 const getMenuItems = (
   timeline: Timeline,
-  collection: Collection,
   onUnarchive?: (timeline: Timeline) => void,
 ) => {
   if (!timeline.archived || !timeline.collection?.can_write) {
@@ -79,7 +72,7 @@ const getMenuItems = (
     },
     {
       title: t`Delete timeline`,
-      link: Urls.deleteTimelineInCollection(timeline, collection),
+      link: Urls.deleteTimelineInCollection(timeline),
     },
   ];
 };
