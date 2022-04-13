@@ -81,3 +81,14 @@
       (is (= "Run daily at 12 AM UTC"
              (@#'messages/alert-schedule-text {:schedule_type :daily
                                                :schedule_hour 0}))))))
+
+(deftest render-pulse-email-test
+  (testing "Email with few rows and columns can be rendered when tracing (#21166)"
+    (tu/with-log-level [metabase.email :trace]
+      (let [result {:card {:name "card-name"}
+                    :result {:data {:cols [{:name "x"} {:name "y"}]
+                                    :rows [[0 0]
+                                           [1 1]]}}}
+            emails (messages/render-pulse-email "America/Pacific" {} {} [result])]
+        (is (vector? emails))
+        (is (map? (first emails)))))))
