@@ -97,7 +97,7 @@ export const DASHBOARD_TEXT_FILTERS = {
   },
   Contains: {
     value: "oo",
-    representativeResult: "148.23",
+    representativeResult: "122.29",
   },
   "Does not contain": {
     value: "oo",

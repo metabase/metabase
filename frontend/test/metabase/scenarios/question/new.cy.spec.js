@@ -253,7 +253,7 @@ describe("scenarios > question > new", () => {
       cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
         .eq(1) // first table body cell
         .should("contain", 1)
-        .click();
+        .click({ force: true });
 
       cy.get(".ObjectDetail");
     });
