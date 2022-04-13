@@ -1251,8 +1251,6 @@ export class ExpressionDimension extends Dimension {
 
     let base_type = type;
     if (!type.startsWith("type/")) {
-      base_type = "type/Float"; // fallback
-
       switch (type) {
         case MONOTYPE.String:
           base_type = "type/Text";
@@ -1262,7 +1260,9 @@ export class ExpressionDimension extends Dimension {
           base_type = "type/Boolean";
           break;
 
+        // fallback
         default:
+          base_type = "type/Float";
           break;
       }
       semantic_type = base_type;
