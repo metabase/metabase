@@ -30,8 +30,8 @@ const Bookmarks = createEntity({
         item_id,
       }));
       BookmarkApi.reorder(
-        { bookmarks: bookmarksForOrdering },
-        { bodyParamName: "bookmarks" },
+        { orderings: { orderings: bookmarksForOrdering } },
+        { bodyParamName: "orderings" },
       );
     },
   },
