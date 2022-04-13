@@ -184,14 +184,25 @@
     (cond-> dbs
       (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
+(defn- filter-databases-by-data-model-perms
+  [dbs]
+  (if-let [f (u/ignore-exceptions
+              (classloader/require 'metabase-enterprise.advanced-permissions.common)
+              (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+    (f dbs)
+    dbs))
+
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
-                           include-saved-questions-tables?]}]
-  (when-let [dbs (seq (filter mi/can-read? (db/select Database
-                                                      {:order-by [:%lower.name :%lower.engine]})))]
+                           include-saved-questions-tables?
+                           exclude-uneditable-data-model?
+                           exclude-uneditable-details?]}]
+  (let [dbs (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]}))
+        dbs (if exclude-uneditable-details? (filter mi/can-write? dbs) dbs)]
     (cond-> (add-native-perms-info dbs)
-      include-tables?             add-tables
-      include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-tables?                add-tables
+      exclude-uneditable-data-model? filter-databases-by-data-model-perms
+      include-saved-questions-db?    (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
   "Schema for matching the include parameter of the GET / endpoint"
@@ -211,12 +222,21 @@
 
   * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
     use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
-    questions virtual DB). Prefer using `include` and `saved` instead. "
-  [include_tables include_cards include saved]
-  {include_tables (s/maybe su/BooleanString)
-   include_cards  (s/maybe su/BooleanString)
-   include        FetchAllIncludeValues
-   saved          (s/maybe su/BooleanString)}
+    questions virtual DB). Prefer using `include` and `saved` instead.
+
+  * `exclude_uneditable_data_model` will only include DBs for which the current user has data model editing
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
+    Enterprise Edition code is available the advanced-permissions feature is enabled.
+
+  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
+    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
+  [include_tables include_cards include saved exclude_uneditable_data_model exclude_uneditable_details]
+  {include_tables                (s/maybe su/BooleanString)
+   include_cards                 (s/maybe su/BooleanString)
+   include                       FetchAllIncludeValues
+   saved                         (s/maybe su/BooleanString)
+   exclude_uneditable_data_model (s/maybe su/BooleanString)
+   exclude_uneditable_details    (s/maybe su/BooleanString)}
   (when (and config/is-dev?
              (or include_tables include_cards))
     ;; don't need to i18n since this is dev-facing only
@@ -232,9 +252,11 @@
                                           (if (seq include_cards)
                                             true
                                             include-tables?))
-        db-list-res                     (or (dbs-list :include-tables?                  include-tables?
-                                                      :include-saved-questions-db?      include-saved-questions-db?
-                                                      :include-saved-questions-tables?  include-saved-questions-tables?)
+        db-list-res                     (or (dbs-list :include-tables?                 include-tables?
+                                                      :include-saved-questions-db?     include-saved-questions-db?
+                                                      :include-saved-questions-tables? include-saved-questions-tables?
+                                                      :exclude-uneditable-data-model?  (Boolean/parseBoolean exclude_uneditable_data_model)
+                                                      :exclude-uneditable-details?     (Boolean/parseBoolean exclude_uneditable_details))
                                             [])]
     {:data  db-list-res
      :total (count db-list-res)}))
@@ -298,7 +320,7 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- filter-by-data-model-perms
+(defn- filter-tables-by-data-model-perms
   [tables]
   (if-let [f (u/ignore-exceptions
               (classloader/require 'metabase-enterprise.advanced-permissions.common)
@@ -323,7 +345,7 @@
                               (update :metrics  (partial filter mi/can-read?))))))
       (update :tables (fn [tables]
                         (if exclude-uneditable?
-                          (filter-by-data-model-perms tables)
+                          (filter-tables-by-data-model-perms tables)
                           tables)))))
 
 (api/defendpoint GET "/:id/metadata"
@@ -594,9 +616,8 @@
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)}
-  (api/check-superuser)
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (api/let-404 [existing-database (Database id)]
+  (let [existing-database (api/write-check (Database id))]
     (let [details    (driver.u/db-details-client->server engine details)
           details    (upsert-sensitive-fields existing-database details)
           conn-error (when (some? details)
@@ -654,7 +675,7 @@
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (api/write-check db)
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
@@ -681,9 +702,8 @@
 (api/defendpoint POST "/:id/sync_schema"
   "Trigger a manual update of the schema metadata for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this in a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-metadata/sync-db-metadata! db)
       (analyze/analyze-db! db)))
@@ -695,9 +715,8 @@
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
-  (api/check-superuser)
   ;; just wrap this is a future so it happens async
-  (api/let-404 [db (Database id)]
+  (let [db (api/write-check (Database id))]
     (future
       (sync-field-values/update-field-values! db)))
   {:status :ok})
@@ -721,8 +740,7 @@
 (api/defendpoint POST "/:id/discard_values"
   "Discards all saved field values for this `Database`."
   [id]
-  (api/check-superuser)
-  (delete-all-field-values-for-database! id)
+  (delete-all-field-values-for-database! (api/write-check (Database id)))
   {:status :ok})
 
 

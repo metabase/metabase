@@ -198,6 +198,7 @@
    Timeline
    (fn [_]
      {:name       "Timeline of bird squawks"
+      :default    false
       :creator_id (rasta-id)})
 
    TimelineEvent
@@ -242,6 +243,7 @@
                    #'Segment
                    #'Table
                    #'TaskHistory
+                   #'Timeline
                    #'User]]
   (remove-watch model-var ::reload)
   (add-watch
@@ -377,7 +379,9 @@
                            (throw e))))]
     (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
       (do-with-temp-env-var-value setting env-var-value thunk)
-      (let [original-value (db/select-one-field :value Setting :key setting-k)]
+      (let [original-value (if raw-setting?
+                             (db/select-one-field :value Setting :key setting-k)
+                             (#'setting/get setting-k))]
         (try
          (if raw-setting?
            (upsert-raw-setting! original-value setting-k value)

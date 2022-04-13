@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 
-import { color } from "metabase/lib/colors";
+import { color, lighten } from "metabase/lib/colors";
 import {
   breakpointMaxSmall,
   breakpointMinSmall,
@@ -21,6 +21,7 @@ export const NavRoot = styled.nav<{ isOpen: boolean }>`
 
   overflow-x: hidden;
   overflow-y: auto;
+  padding-bottom: 4rem;
 
   opacity: ${props => (props.isOpen ? 1 : 0)};
   transition: opacity 0.2s;
@@ -92,12 +93,44 @@ export const LoadingTitle = styled.h2`
   margin-top: ${space(1)};
 `;
 
-export const ProfileLinkContainer = styled.div`
-  margin-left: auto;
+export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: ${space(0)};
+  width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
+  border-top: 1px solid ${color("border")};
+  background-color: ${color("white")};
+  display: flex;
+  align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};
 `;
 
 export const BrowseLink = styled(SidebarLink)`
   padding-left: 14px;
+`;
+
+export const AddYourOwnDataLink = styled(SidebarLink)`
+  background: ${color("brand")};
+  border-radius: 8px;
+  color: ${color("white")};
+  float: left;
+  margin: ${space(1)};
+  padding: 2px 6px;
+  transition: background-color 0.3s linear;
+  width: auto;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  &:hover {
+    background: ${lighten("brand", 0.12)};
+    color: ${color("white")};
+
+    svg {
+      color: ${color("brand-light")} !important;
+    }
+  }
 `;

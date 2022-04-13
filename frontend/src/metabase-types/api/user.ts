@@ -1,5 +1,7 @@
+export type UserId = number;
+
 export interface User {
-  id: number;
+  id: UserId;
   first_name: string;
   last_name: string;
   common_name: string;

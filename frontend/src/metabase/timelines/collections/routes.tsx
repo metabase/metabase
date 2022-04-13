@@ -4,6 +4,8 @@ import DeleteEventModal from "./containers/DeleteEventModal";
 import DeleteTimelineModal from "./containers/DeleteTimelineModal";
 import EditEventModal from "./containers/EditEventModal";
 import EditTimelineModal from "./containers/EditTimelineModal";
+import MoveEventModal from "./containers/MoveEventModal";
+import MoveTimelineModal from "./containers/MoveTimelineModal";
 import NewEventModal from "./containers/NewEventModal";
 import NewEventWithTimelineModal from "./containers/NewEventWithTimelineModal";
 import NewTimelineModal from "./containers/NewTimelineModal";
@@ -52,6 +54,13 @@ const getRoutes = () => {
       />
       <ModalRoute
         {...{
+          path: "timelines/:timelineId/move",
+          modal: MoveTimelineModal,
+          modalProps: { enableTransition: false },
+        }}
+      />
+      <ModalRoute
+        {...{
           path: "timelines/:timelineId/archive",
           modal: TimelineArchiveModal,
           modalProps: { enableTransition: false },
@@ -82,6 +91,13 @@ const getRoutes = () => {
         {...{
           path: "timelines/:timelineId/events/:timelineEventId/edit",
           modal: EditEventModal,
+          modalProps: { enableTransition: false },
+        }}
+      />
+      <ModalRoute
+        {...{
+          path: "timelines/:timelineId/events/:timelineEventId/move",
+          modal: MoveEventModal,
           modalProps: { enableTransition: false },
         }}
       />

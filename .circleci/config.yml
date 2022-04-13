@@ -948,7 +948,7 @@ jobs:
                   - steps: << parameters.before-steps >>
                   # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
                 command: |
-                  run test-cypress-no-build \
+                  run test-cypress-run \
                   <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
                   <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:

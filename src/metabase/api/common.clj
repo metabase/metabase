@@ -33,6 +33,10 @@
   "Is the current user a superuser?"
   false)
 
+(def ^:dynamic ^Boolean *is-group-manager?*
+  "Is the current user a group manager of at least one group?"
+  false)
+
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
   more information about the Metabase permissions system."

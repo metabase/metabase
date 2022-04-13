@@ -14,10 +14,6 @@ function getAxis(chart) {
   return chart.svg().select(".axis.x");
 }
 
-function getBrush(chart) {
-  return chart.svg().select(".brush");
-}
-
 function getScale(chart) {
   return chart.x();
 }
@@ -101,6 +97,21 @@ function hasEventText(events, eventIndex, eventPoints) {
   }
 }
 
+function renderEventBrush({ chart }) {
+  const g = chart.g();
+  const margins = chart.margins();
+  const brush = g.selectAll(".event-brush").data([0]);
+  brush.exit().remove();
+
+  brush
+    .enter()
+    .insert("g", ":first-child")
+    .attr("class", "event-brush")
+    .attr("transform", `translate(${margins.left}, ${margins.top})`);
+
+  return brush;
+}
+
 function renderEventLines({
   chart,
   brush,
@@ -134,7 +145,7 @@ function renderEventTicks({
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
 }) {
-  const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
+  const eventAxis = axis.selectAll(".event-axis").data([0]);
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
   eventAxis.exit().remove();
 
@@ -209,6 +220,7 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
+    isTimeseries,
     onHoverChange,
     onOpenTimelines,
     onSelectTimelineEvents,
@@ -216,35 +228,37 @@ export function renderEvents(
   },
 ) {
   const axis = getAxis(chart);
-  const brush = getBrush(chart);
+
+  if (!axis || !isTimeseries) {
+    return;
+  }
+
   const scale = getScale(chart);
   const eventMapping = getEventMapping(events, scale);
   const eventPoints = getEventPoints(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
 
-  if (brush) {
-    renderEventLines({
-      chart,
-      brush,
-      eventPoints,
-      eventGroups,
-      selectedEventIds,
-    });
-  }
+  const brush = renderEventBrush({ chart, eventGroups });
 
-  if (axis) {
-    renderEventTicks({
-      axis,
-      brush,
-      eventPoints,
-      eventGroups,
-      selectedEventIds,
-      onHoverChange,
-      onOpenTimelines,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
-    });
-  }
+  renderEventLines({
+    chart,
+    brush,
+    eventPoints,
+    eventGroups,
+    selectedEventIds,
+  });
+
+  renderEventTicks({
+    axis,
+    brush,
+    eventPoints,
+    eventGroups,
+    selectedEventIds,
+    onHoverChange,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  });
 }
 
 export function hasEventAxis({ timelineEvents = [], isTimeseries }) {

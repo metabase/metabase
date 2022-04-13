@@ -564,12 +564,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save").click();
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Sandboxed", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Edit"],
+      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
     ]);
 
     modifyPermission(
@@ -590,12 +590,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save changes").click();
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Sandboxed", "No", "1 million rows"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Edit"],
+      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
     ]);
   });
 

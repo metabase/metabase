@@ -1,13 +1,21 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import _ from "underscore";
+
+import { t } from "ttag";
 
 import title from "metabase/hoc/Title";
 import favicon from "metabase/hoc/Favicon";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard/Dashboard";
+import Toaster from "metabase/components/Toaster";
+
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
@@ -31,6 +39,7 @@ import {
   getShowAddQuestionSidebar,
   getFavicon,
   getDocumentTitle,
+  getIsRunning,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -71,6 +80,7 @@ const mapStateToProps = (state, props) => {
     showAddQuestionSidebar: getShowAddQuestionSidebar(state),
     pageFavicon: getFavicon(state),
     documentTitle: getDocumentTitle(state),
+    isRunning: getIsRunning(state),
   };
 };
 
@@ -82,47 +92,84 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@favicon(({ pageFavicon }) => pageFavicon)
-@title(({ dashboard, documentTitle }) => ({
-  title: documentTitle || dashboard?.name,
-  titleIndex: 1,
-}))
-@titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
-export default class DashboardApp extends Component {
-  state = {
-    addCardOnLoad: null,
-  };
+const DashboardApp = props => {
+  const options = parseHashOptions(window.location.hash);
 
-  UNSAFE_componentWillMount() {
-    const options = parseHashOptions(window.location.hash);
+  const { isRunning, dashboard } = props;
 
-    if (options) {
-      this.setState({
-        editingOnLoad: options.edit,
-        addCardOnLoad: options.add && parseInt(options.add),
-      });
+  const [editingOnLoad] = useState(options.edit);
+  const [addCardOnLoad] = useState(options.add && parseInt(options.add));
+
+  const [shouldSendNotification, setShouldSendNotification] = useState(false);
+  const [isShowingToaster, setIsShowingToaster] = useState(false);
+
+  const onTimeout = useCallback(() => {
+    setIsShowingToaster(true);
+  }, []);
+
+  useLoadingTimer(isRunning, {
+    timer: 15000,
+    onTimeout,
+  });
+
+  const [requestPermission, showNotification] = useWebNotification();
+
+  useOnUnmount(props.reset);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setIsShowingToaster(false);
     }
-  }
+    if (!isRunning && shouldSendNotification) {
+      if (document.hidden) {
+        showNotification(
+          t`All Set! ${dashboard.name} is ready.`,
+          t`All questions loaded`,
+        );
+      }
+      setShouldSendNotification(false);
+    }
+  }, [isRunning, shouldSendNotification, showNotification, dashboard?.name]);
 
-  componentWillUnmount() {
-    this.props.reset();
-  }
+  const onConfirmToast = useCallback(async () => {
+    const result = await requestPermission();
+    if (result === "granted") {
+      setIsShowingToaster(false);
+      setShouldSendNotification(true);
+    }
+  }, [requestPermission]);
 
-  render() {
-    const { editingOnLoad, addCardOnLoad } = this.state;
+  const onDismissToast = useCallback(() => {
+    setIsShowingToaster(false);
+  }, []);
 
-    return (
-      <div className="shrink-below-content-size full-height">
-        <Dashboard
-          editingOnLoad={editingOnLoad}
-          addCardOnLoad={addCardOnLoad}
-          {...this.props}
-        />
-        {/* For rendering modal urls */}
-        {this.props.children}
-      </div>
-    );
-  }
-}
+  return (
+    <div className="shrink-below-content-size full-height">
+      <Dashboard
+        editingOnLoad={editingOnLoad}
+        addCardOnLoad={addCardOnLoad}
+        {...props}
+      />
+      {/* For rendering modal urls */}
+      {props.children}
+      <Toaster
+        message={t`Would you like to be notified when this dashboard is done loading?`}
+        isShown={isShowingToaster}
+        onDismiss={onDismissToast}
+        onConfirm={onConfirmToast}
+        fixed
+      />
+    </div>
+  );
+};
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  favicon(({ pageFavicon }) => pageFavicon),
+  title(({ dashboard, documentTitle }) => ({
+    title: documentTitle || dashboard?.name,
+    titleIndex: 1,
+  })),
+  titleWithLoadingTime("loadingStartTime"),
+)(DashboardApp);

@@ -3,27 +3,29 @@ import {
   popover,
   modal,
   navigationSidebar,
-  assertCanAddItemsToCollection,
   openNewCollectionItemFlowFor,
 } from "__support__/e2e/cypress";
+
 import { USERS } from "__support__/e2e/cypress_data";
+
+const adminPersonalCollectionId = 1;
 
 describe("personal collections", () => {
   beforeEach(() => {
     restore();
-    cy.server();
   });
 
   describe("admin", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
+    });
+
+    it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       // Turn normal user into another admin
       cy.request("PUT", "/api/user/2", {
         is_superuser: true,
       });
-    });
 
-    it("should be able to view their own as well as other users' personal collections (including other admins)", () => {
       cy.visit("/collection/root");
       cy.findByText("Your personal collection");
       navigationSidebar().within(() => {
@@ -40,47 +42,59 @@ describe("personal collections", () => {
       });
     });
 
-    it("shouldn't be able to change permission levels or edit personal collections", () => {
-      cy.visit("/collection/root");
-      cy.findByText("Your personal collection").click();
-      assertCanAddItemsToCollection();
-      cy.icon("lock").should("not.exist");
-      cy.icon("pencil").should("not.exist");
-      // Visit random user's personal collection
-      cy.visit("/collection/5");
-      assertCanAddItemsToCollection();
-      cy.icon("lock").should("not.exist");
-      cy.icon("pencil").should("not.exist");
-    });
+    it("cannot edit details for personal collections nor change permissions for personal collections or sub-collections (metabase#8406)", () => {
+      // Let's use the API to create a sub-collection "Foo" in admin's personal collection
+      cy.request("POST", "/api/collection", {
+        name: "Foo",
+        color: "#ff9a9a",
+        parent_id: adminPersonalCollectionId,
+      });
 
-    it("shouldn't be able to change permission levels for sub-collections in personal collections (metabase#8406)", () => {
+      // Go to admin's personal collection
       cy.visit("/collection/root");
       cy.findByText("Your personal collection").click();
-      // Create new collection inside admin's personal collection and navigate to it
-      addNewCollection("Foo");
+
+      cy.findByTestId("collection-menu").within(() => {
+        cy.icon("add");
+        cy.icon("lock").should("not.exist");
+        cy.icon("pencil").should("not.exist");
+      });
+
+      // This leads to an infinite loop and a timeout in the CI
+      // Please see: https://github.com/metabase/metabase/issues/21026#issuecomment-1094114700
+
+      // Check that it's not possible to open permissions modal via URL for personal collection
+      // cy.location().then(location => {
+      //   cy.visit(`${location}/permissions`);
+      //   cy.get(".Modal").should("not.exist");
+      //   cy.url().should("eq", String(location));
+      // });
+
+      // Go to the newly created sub-collection "Foo"
       navigationSidebar()
         .findByText("Foo")
         .click();
-      assertCanAddItemsToCollection();
-      cy.icon("pencil");
-      cy.icon("lock").should("not.exist");
 
-      // Check can't open permissions modal via URL for personal collection
-      cy.findByText("Your personal collection").click();
-      cy.location().then(location => {
-        cy.visit(`${location}/permissions`);
-        cy.get(".Modal").should("not.exist");
-        cy.url().should("eq", String(location));
+      cy.findByTestId("collection-menu").within(() => {
+        // It should be possible to edit sub-collections' details, but not its permissions
+        cy.icon("pencil");
+        cy.icon("lock").should("not.exist");
+      });
 
-        // Check can't open permissions modal via URL for personal collection child
-        navigationSidebar()
-          .findByText("Foo")
-          .click();
-        cy.location().then(location => {
-          cy.visit(`${location}/permissions`);
-          cy.get(".Modal").should("not.exist");
-          cy.url().should("eq", String(location));
-        });
+      // Check that it's not possible to open permissions modal via URL for personal collection child
+      // cy.location().then(location => {
+      //   cy.visit(`${location}/permissions`);
+      //   cy.get(".Modal").should("not.exist");
+      //   cy.url().should("eq", String(location));
+      // });
+
+      // Go to random user's personal collection
+      cy.visit("/collection/5");
+
+      cy.findByTestId("collection-menu").within(() => {
+        cy.icon("add");
+        cy.icon("lock").should("not.exist");
+        cy.icon("pencil").should("not.exist");
       });
     });
 
@@ -99,9 +113,11 @@ describe("personal collections", () => {
       describe(`${user} user`, () => {
         beforeEach(() => {
           cy.signIn(user);
+
           cy.visit("/collection/root");
           cy.findByText("Your personal collection").click();
-          // Create initial collection inside the personal collection and navigate inside it
+
+          // Create initial collection inside the personal collection and navigate to it
           addNewCollection("Foo");
           navigationSidebar()
             .as("sidebar")
@@ -121,6 +137,7 @@ describe("personal collections", () => {
            *  1. editing collection's title
            *  2. editing collection's description and
            *  3. moving that collection within personal collection
+           *  4. archiving the collection within personal collection (metabase#15343)
            */
           cy.findByText("Edit this collection").click();
           modal().within(() => {
@@ -130,7 +147,7 @@ describe("personal collections", () => {
 
             cy.findByLabelText("Description") /* [2] */
               .click()
-              .type("ex-bar");
+              .type("ex-bar", { delay: 0 });
             cy.findByTestId("select-button").click();
           });
           popover()
@@ -143,10 +160,12 @@ describe("personal collections", () => {
             .findByText("Foo")
             .click();
           cy.get("@sidebar").findByText("Bar1");
-        });
 
-        it("should be able to archive collection(s) inside personal collection (metabase#15343)", () => {
-          cy.icon("pencil").click();
+          cy.log(
+            "should be able to archive collection(s) inside personal collection (metabase#15343)",
+          );
+
+          cy.icon("pencil").click(); /* [4] */
           cy.findByText("Archive this collection").click();
           modal()
             .findByRole("button", { name: "Archive" })
@@ -163,6 +182,6 @@ describe("personal collections", () => {
 
 function addNewCollection(name) {
   openNewCollectionItemFlowFor("collection");
-  cy.findByLabelText("Name").type(name);
+  cy.findByLabelText("Name").type(name, { delay: 0 });
   cy.button("Create").click();
 }

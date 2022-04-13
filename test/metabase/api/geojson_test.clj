@@ -10,7 +10,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(def ^:private ^String test-geojson-url
+(def ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."
   "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson")
 

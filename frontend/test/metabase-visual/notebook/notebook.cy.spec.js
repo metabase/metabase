@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { restore, popover, openNotebookEditor } from "__support__/e2e/cypress";
+import { restore, popover, startNewQuestion } from "__support__/e2e/cypress";
 
 describe("visual tests > notebook > major UI elements", () => {
   const VIEWPORT_WIDTH = 2500;
@@ -12,8 +12,7 @@ describe("visual tests > notebook > major UI elements", () => {
   });
 
   it("renders correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Orders").click();
 
@@ -67,8 +66,7 @@ describe("visual tests > notebook > Run buttons", () => {
 
   // This tests that the run buttons are the correct size on the Custom question page
   it("in Custom Question render correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Custom question").click();
+    startNewQuestion();
     cy.findByTextEnsureVisible("Sample Database").click();
     cy.findByTextEnsureVisible("Orders").click();
     // Waiting for notebook icon to load
@@ -89,8 +87,9 @@ describe("visual tests > notebook > Run buttons", () => {
 
   // This tests that the run buttons are the correct size on the Native query page
   it("in Native Query render correctly", () => {
-    cy.visit("/question/new");
-    cy.findByText("Native query").click();
+    cy.visit("/");
+    cy.findByText("New").click();
+    cy.findByText("SQL query").click();
 
     // Check that we're on the blank question page
     cy.findByText("Here's where your results will appear");
@@ -120,7 +119,7 @@ describe("visual tests > notebook", () => {
   });
 
   it("data picker", () => {
-    openNotebookEditor();
+    startNewQuestion();
     cy.findByText("Sample Database");
     cy.percySnapshot();
   });

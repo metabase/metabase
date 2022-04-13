@@ -18,8 +18,9 @@
 
 (api/defendpoint POST "/"
   "Create a new [[Timeline]]."
-  [:as {{:keys [name description icon collection_id archived], :as body} :body}]
+  [:as {{:keys [name default description icon collection_id archived], :as body} :body}]
   {name          su/NonBlankString
+   default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
@@ -73,8 +74,9 @@
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline."
-  [id :as {{:keys [name description icon collection_id archived] :as timeline-updates} :body}]
+  [id :as {{:keys [name default description icon collection_id archived] :as timeline-updates} :body}]
   {name          (s/maybe su/NonBlankString)
+   default       (s/maybe s/Bool)
    description   (s/maybe s/Str)
    icon          (s/maybe timeline/Icons)
    collection_id (s/maybe su/IntGreaterThanZero)
@@ -84,11 +86,11 @@
     (collection/check-allowed-to-change-collection existing timeline-updates)
     (db/update! Timeline id
       (u/select-keys-when timeline-updates
-        :present #{:description :icon :collection_id :archived}
+        :present #{:description :icon :collection_id :default :archived}
         :non-nil #{:name}))
     (when (and (some? archived) (not= current-archived archived))
       (db/update-where! TimelineEvent {:timeline_id id} :archived archived))
-    (hydrate (Timeline id) :creator)))
+    (hydrate (Timeline id) :creator [:collection :can_write])))
 
 (api/defendpoint DELETE "/:id"
   "Delete a [[Timeline]]. Will cascade delete its events as well."

@@ -7,6 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import _ from "underscore";
+import { getTimelineName } from "metabase/lib/timelines";
 import Ellipsified from "metabase/components/Ellipsified";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import EventCard from "../EventCard";
@@ -25,6 +26,7 @@ export interface TimelineCardProps {
   isVisible?: boolean;
   selectedEventIds?: number[];
   onEditEvent?: (event: TimelineEvent) => void;
+  onMoveEvent?: (event: TimelineEvent) => void;
   onArchiveEvent?: (event: TimelineEvent) => void;
   onToggleEvent?: (event: TimelineEvent, isSelected: boolean) => void;
   onToggleTimeline?: (timeline: Timeline, isVisible: boolean) => void;
@@ -36,6 +38,7 @@ const TimelineCard = ({
   isVisible,
   selectedEventIds = [],
   onEditEvent,
+  onMoveEvent,
   onArchiveEvent,
   onToggleEvent,
   onToggleTimeline,
@@ -52,11 +55,22 @@ const TimelineCard = ({
     event.stopPropagation();
   }, []);
 
-  const handleCheckboxChange = useCallback(
+  const handleToggleTimeline = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onToggleTimeline?.(timeline, event.target.checked);
     },
     [timeline, onToggleTimeline],
+  );
+
+  const handleToggleEvent = useCallback(
+    (event: TimelineEvent, isSelected: boolean) => {
+      onToggleEvent?.(event, isSelected);
+
+      if (isSelected && !isVisible) {
+        onToggleTimeline?.(timeline, true);
+      }
+    },
+    [timeline, isVisible, onToggleTimeline, onToggleEvent],
   );
 
   useEffect(() => {
@@ -71,10 +85,12 @@ const TimelineCard = ({
         <CardCheckbox
           checked={isVisible}
           onClick={handleCheckboxClick}
-          onChange={handleCheckboxChange}
+          onChange={handleToggleTimeline}
         />
         <CardLabel>
-          <Ellipsified tooltipMaxWidth="100%">{timeline.name}</Ellipsified>
+          <Ellipsified tooltipMaxWidth="100%">
+            {getTimelineName(timeline)}
+          </Ellipsified>
         </CardLabel>
         <CardIcon name={isExpanded ? "chevronup" : "chevrondown"} />
       </CardHeader>
@@ -87,8 +103,9 @@ const TimelineCard = ({
               timeline={timeline}
               isSelected={selectedEventIds.includes(event.id)}
               onEdit={onEditEvent}
+              onMove={onMoveEvent}
               onArchive={onArchiveEvent}
-              onToggle={onToggleEvent}
+              onToggle={handleToggleEvent}
             />
           ))}
         </CardContent>

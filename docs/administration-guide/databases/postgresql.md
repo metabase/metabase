@@ -2,6 +2,30 @@
 
 In addition to specifying the host, port, database name and user credentials for the database connection, you have the option of securing that connection.
 
+
+## Schemas
+
+Here you can specify which schemas you want to sync and scan. Options are:
+
+- All
+- Only these...
+- All except...
+
+For the **Only these** and **All except** options, you can input a comma-separated list of values to tell Metabase which schemas you want to include (or exclude). For example:
+
+```
+foo,bar,baz
+```
+
+You can use the `*` wildcard to match multiple schemas.
+
+Let's say you have three schemas: foo, bar, and baz.
+
+- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
+- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+
+Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
+
 ## Use a secure connection (SSL)
 
 ### SSL Mode

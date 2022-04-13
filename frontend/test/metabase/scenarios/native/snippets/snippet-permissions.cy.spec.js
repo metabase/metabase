@@ -9,117 +9,49 @@ import {
 describeEE("scenarios > question > snippets", () => {
   beforeEach(() => {
     restore();
-    cy.signInAsAdmin();
   });
 
-  it("can create a snippet", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.icon("snippet").click();
-    cy.contains("Create a snippet").click();
-    modal().within(() => {
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "SELECT 'a snippet darkly'",
-      );
-      cy.findByLabelText("Give your snippet a name").type("night snippet");
-      cy.contains("Save").click();
-    });
-    cy.icon("play")
-      .first()
-      .click();
-    cy.get(".ScalarValue").contains("a snippet darkly");
-  });
+  // Please uncomment "normal" user when #21581 gets fixed
+  ["admin" /*"normal"*/].forEach(user => {
+    it(`${user} user can create a snippet (metabase#21581)`, () => {
+      cy.intercept("POST", "/api/native-query-snippet").as("snippetCreated");
 
-  it("can not create a snippet as a user by default", () => {
-    // Note that this is expected behavior, but a little weird because
-    // users have to be granted explicit access.
-    // See metabase-enterprise#543 for more details
+      cy.signIn(user);
 
-    cy.signInAsNormalUser();
+      openNativeEditor();
+      cy.icon("snippet").click();
+      cy.contains("Create a snippet").click();
 
-    cy.request({
-      method: "POST",
-      url: "/api/native-query-snippet",
-      body: {
-        content: "SELECT 'a snippet in light'",
-        name: "light snippet",
-        collection_id: null,
-      },
-      failOnStatusCode: false,
-    }).then(resp => {
-      expect(resp.status).to.equal(403);
-    });
-  });
+      modal().within(() => {
+        cy.findByLabelText(
+          "Enter some SQL here so you can reuse it later",
+        ).type("SELECT 1", { delay: 0 });
+        cy.findByLabelText("Give your snippet a name").type("one", {
+          delay: 0,
+        });
+        cy.button("Save").click();
+      });
 
-  // [quarantine] because the popover click action is very flaky.
-  it.skip("can create a snippet once the admin has granted access", () => {
-    // See metabase-enterprise#543 for more details
-    // This is kind of a UX issue where the admin has to:
-    // - First create a snippet
-    // - Then grant All Users access to snippets
+      cy.wait("@snippetCreated");
+      cy.findByText("{{snippet: one}}");
 
-    // create snippet via API
-    cy.request("POST", "/api/native-query-snippet", {
-      content: "SELECT 'a snippet darkly'",
-      name: "543 - admin snippet",
-      collection_id: null,
-    });
-
-    // Grant access
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-    cy.icon("snippet").click();
-
-    cy.findByTestId("sidebar-right")
-      .find(".Icon-ellipsis")
-      .click({ force: true });
-    popover().within(() => cy.findByText("Change permissions").click());
-    modal().within(() => {
-      cy.findByText("Permissions for Top folder");
-      cy.contains("All Users");
-      cy.get(".ReactVirtualized__Grid .Icon-close")
+      cy.icon("play")
         .first()
         .click();
+      cy.get(".ScalarValue").contains(1);
     });
-    // The click action is very flaky, sometimes it doesn't click the right thing
-    popover()
-      .contains("Grant Edit access")
-      .click();
-    modal()
-      .contains("Save")
-      .click();
-    // Now the user should be able to create a snippet
-    cy.signInAsNormalUser();
-
-    cy.request({
-      method: "POST",
-      url: "/api/native-query-snippet",
-      body: {
-        content: "SELECT 'a snippet in light'",
-        name: "543 - user snippet",
-        collection_id: null,
-      },
-      failOnStatusCode: false,
-    }).then(resp => {
-      expect(resp.status).to.equal(200);
-    });
-
-    cy.reload();
-    cy.icon("snippet").click();
-    cy.contains("543 - admin snippet");
-    cy.contains("543 - user snippet");
   });
 
   it("should let you create a snippet folder and move a snippet into it", () => {
-    cy.visit("/question/new");
-    cy.contains("Native query").click();
-
+    cy.signInAsAdmin();
     // create snippet via API
     cy.request("POST", "/api/native-query-snippet", {
       content: "snippet 1",
       name: "snippet 1",
       collection_id: null,
     });
+
+    openNativeEditor();
 
     // create folder
     cy.icon("snippet").click();
@@ -162,6 +94,8 @@ describeEE("scenarios > question > snippets", () => {
   describe("existing snippet folder", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/collection/root").as("collections");
+
+      cy.signInAsAdmin();
 
       cy.request("POST", "/api/collection", {
         name: "Snippet Folder",

@@ -5,7 +5,7 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const url = `/admin/permissions/data/group/${ALL_USERS_GROUP}`;
 
-describe.skip("issue 20436", () => {
+describe("issue 20436", () => {
   beforeEach(() => {
     cy.intercept("PUT", "/api/permissions/graph").as("updatePermissions");
 

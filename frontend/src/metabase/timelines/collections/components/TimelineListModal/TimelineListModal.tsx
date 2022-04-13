@@ -1,7 +1,10 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import {
+  getDefaultTimelineName,
+  getSortedTimelines,
+} from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
@@ -29,9 +32,12 @@ const TimelineListModal = ({
 }: TimelineListModalProps): JSX.Element => {
   const title = getTitle(timelines, collection, isArchive);
   const menuItems = getMenuItems(timelines, collection, isArchive);
-  const sortedTimelines = getSortedTimelines(timelines);
   const hasTimelines = timelines.length > 0;
   const hasMenuItems = menuItems.length > 0;
+
+  const sortedTimelines = useMemo(() => {
+    return getSortedTimelines(timelines, collection);
+  }, [timelines, collection]);
 
   const handleGoBack = useCallback(() => {
     onGoBack?.(collection);
@@ -50,11 +56,7 @@ const TimelineListModal = ({
       </ModalHeader>
       <ModalBody isTopAligned={hasTimelines}>
         {hasTimelines ? (
-          <TimelineList
-            timelines={sortedTimelines}
-            collection={collection}
-            onUnarchive={onUnarchive}
-          />
+          <TimelineList timelines={sortedTimelines} onUnarchive={onUnarchive} />
         ) : isArchive ? (
           <SearchEmptyState isTimeline={isArchive} />
         ) : (
@@ -75,7 +77,7 @@ const getTitle = (
   } else if (timelines.length) {
     return t`Events`;
   } else {
-    return t`${collection.name} events`;
+    return getDefaultTimelineName(collection);
   }
 };
 
@@ -98,13 +100,6 @@ const getMenuItems = (
       link: Urls.timelinesArchiveInCollection(collection),
     },
   ];
-};
-
-const getSortedTimelines = (timelines: Timeline[]) => {
-  return _.chain(timelines)
-    .sortBy(timeline => timeline.name)
-    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
-    .value();
 };
 
 export default TimelineListModal;

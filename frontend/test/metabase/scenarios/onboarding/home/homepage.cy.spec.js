@@ -58,8 +58,8 @@ describe("scenarios > home > homepage", () => {
 
   it("should display recent items", () => {
     restore("default");
-    cy.signInAsAdmin();
 
+    cy.signInAsAdmin();
     visitDashboard(1);
     cy.findByText("Orders in a dashboard");
 
@@ -72,14 +72,18 @@ describe("scenarios > home > homepage", () => {
     cy.findByText("Orders");
   });
 
-  it.skip("should display popular items for a new user", () => {
+  it("should display popular items for a new user", () => {
     restore("default");
-    cy.signInAsNormalUser();
 
+    cy.signInAsAdmin();
+    visitDashboard(1);
+    cy.findByText("Orders in a dashboard");
+    cy.signOut();
+
+    cy.signInAsNormalUser();
     cy.visit("/");
     cy.wait("@getPopularItems");
-    cy.findByText("Here are some popular items");
-
+    cy.findByText("Here are some popular dashboards");
     cy.findByText("Orders in a dashboard").click();
     cy.wait("@getDashboard");
     cy.findByText("Orders");
