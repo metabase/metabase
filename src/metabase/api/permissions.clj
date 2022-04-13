@@ -14,6 +14,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
+            [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -174,7 +175,7 @@
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
   {group_id         su/IntGreaterThanZero
    user_id          su/IntGreaterThanZero
-   is_group_manager su/BooleanString}
+   is_group_manager (s/maybe su/BooleanString)}
   (validation/check-group-manager group_id)
   (let [is_group_manager (Boolean/parseBoolean is_group_manager)]
     (when is_group_manager

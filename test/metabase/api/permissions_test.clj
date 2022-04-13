@@ -193,8 +193,7 @@
       (testing "Add membership successfully"
         (mt/user-http-request :crowberto :post 200 "permissions/membership"
                               {:group_id         (:id group)
-                               :user_id          (:id user)
-                               :is_group_manager "false"})))))
+                               :user_id          (:id user)})))))
 
 (deftest update-group-membership-test
   (testing "PUT /api/permissions/membership/:id"
