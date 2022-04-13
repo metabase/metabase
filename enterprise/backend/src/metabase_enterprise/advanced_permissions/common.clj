@@ -32,7 +32,7 @@
   (or api/*is-superuser?*
       (perms/set-has-general-permission-of-type? @api/*current-user-permissions-set* perm-type)))
 
-(defn current-user-is-manager?
+(defn current-user-is-group-manager?
   "Return true if current-user is a manager of `group-id`.
   If `group-id` is `nil`, return true if current-user is manager of at least one group"
   [group-id]

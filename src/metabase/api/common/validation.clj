@@ -34,10 +34,11 @@
        (api/check-superuser)))))
 
 (defn check-group-manager
-   "If `advanced-permissions` is enabled, check `*current-user*` is group manager.
+   "If `advanced-permissions` is enabled, check is `*current-user*` a group manager.
+   Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled.
+
    By default it's check if current user is manager at least one group,
-   if `group-id` is provided, it'll check whether current user is manager of that specific group.
-   Set `require-superuser?` to `true` to perform a superuser check when `advanced-permissions` is disabled."
+   if `group-id` is not `nil`, it'll check whether current user is manager of that specific group."
    ;; check is group manager of at least one group
    ([]
     (check-group-manager nil true))
@@ -50,7 +51,7 @@
     (u/ignore-exceptions
      (classloader/require 'metabase-enterprise.advanced-permissions.common))
     (if-let [f (and (premium-features/enable-advanced-permissions?)
-                    (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager?))]
+                    (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-group-manager?))]
       (api/check-403 (or api/*is-superuser?* (f group-id)))
       (when require-superuser?
         (api/check-superuser)))))
