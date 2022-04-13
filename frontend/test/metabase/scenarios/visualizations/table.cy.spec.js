@@ -73,6 +73,9 @@ describe("scenarios > visualizations > table", () => {
       cy.findByText("Latitude").click();
     });
 
+    // Click anywhere else to close the popover which is blocking the Visualize button
+    cy.get(".QueryBuilder").click(0, 0);
+
     visualize();
 
     [
