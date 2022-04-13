@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
 
 import _ from "underscore";
@@ -40,118 +40,34 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-@connect(null, {
-  deleteMembership,
-  createMembership,
-})
-export default class GroupDetail extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      addUserVisible: false,
-      text: "",
-      selectedUsers: [],
-      alertMessage: null,
-    };
+const GroupDetail = props => {
+  const [addUserVisible, setAddUserVisible] = useState(false);
+  const [text, setText] = useState("");
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [alertMessage, setAlertMessage] = useState(false);
+
+  const {
+    currentUser,
+    group,
+    users,
+    deleteMembership,
+    createMembership,
+  } = props;
+  const { members } = group;
+
+  const usedUsers = {};
+  for (const user of members) {
+    usedUsers[user.user_id] = true;
   }
-
-  alert(alertMessage) {
-    this.setState({ alertMessage });
+  for (const user of selectedUsers) {
+    usedUsers[user.id] = true;
   }
+  const filteredUsers = Object.values(users).filter(
+    user => !usedUsers[user.id],
+  );
 
-  onAddUsersClicked() {
-    this.setState({
-      addUserVisible: true,
-    });
-  }
-
-  onAddUserCanceled() {
-    this.setState({
-      addUserVisible: false,
-      text: "",
-      selectedUsers: [],
-    });
-  }
-
-  async onAddUserDone() {
-    this.setState({
-      addUserVisible: false,
-      text: "",
-      selectedUsers: [],
-    });
-    try {
-      await Promise.all(
-        this.state.selectedUsers.map(async user => {
-          await this.props.createMembership({
-            groupId: this.props.group.id,
-            userId: user.id,
-          });
-        }),
-      );
-    } catch (error) {
-      this.alert(error && typeof error.data ? error.data : error);
-    }
-  }
-
-  onAddUserTextChange(newText) {
-    this.setState({
-      text: newText,
-    });
-  }
-
-  onUserSuggestionAccepted(user) {
-    this.setState({
-      selectedUsers: this.state.selectedUsers.concat(user),
-      text: "",
-    });
-  }
-
-  onRemoveUserFromSelection(user) {
-    this.setState({
-      selectedUsers: this.state.selectedUsers.filter(u => u.id !== user.id),
-    });
-  }
-
-  async onRemoveUserClicked(user) {
-    try {
-      const membership = this.props.group.members.find(
-        m => m.user_id === user.id,
-      );
-
-      await this.props.deleteMembership({
-        membershipId: membership.membership_id,
-        groupId: this.props.group.id,
-      });
-      const newMembers = _.reject(
-        this.getMembers(),
-        m => m.user_id === membership.user_id,
-      );
-      this.setState({ members: newMembers });
-    } catch (error) {
-      console.error("Error deleting PermissionsMembership:", error);
-      this.alert(error && typeof error.data ? error.data : error);
-    }
-  }
-
-  render() {
-    // users = array of all users for purposes of adding new users to group
-    // [group.]members = array of users currently in the group
-    const { currentUser, group, users } = this.props;
-    const { text, selectedUsers, addUserVisible, alertMessage } = this.state;
-    const { members } = group;
-
-    const usedUsers = {};
-    for (const user of members) {
-      usedUsers[user.user_id] = true;
-    }
-    for (const user of selectedUsers) {
-      usedUsers[user.id] = true;
-    }
-    const filteredUsers = Object.values(users).filter(
-      user => !usedUsers[user.id],
-    );
-
-    const title = (
+  const title = useMemo(
+    () => (
       <React.Fragment>
         {getGroupNameLocalized(group)}
         <span className="text-light ml1">
@@ -162,38 +78,98 @@ export default class GroupDetail extends Component {
           )}
         </span>
       </React.Fragment>
-    );
+    ),
+    [group, members],
+  );
 
-    return (
-      <AdminPaneLayout
-        title={title}
-        buttonText={t`Add members`}
-        buttonAction={
-          canEditMembership(group) ? this.onAddUsersClicked.bind(this) : null
-        }
-        buttonDisabled={addUserVisible}
-      >
-        <GroupDescription group={group} />
-        <GroupMembersTable
-          currentUser={currentUser}
-          group={group}
-          members={members}
-          users={filteredUsers}
-          showAddUser={addUserVisible}
-          text={text || ""}
-          selectedUsers={selectedUsers}
-          onAddUserCancel={this.onAddUserCanceled.bind(this)}
-          onAddUserDone={this.onAddUserDone.bind(this)}
-          onAddUserTextChange={this.onAddUserTextChange.bind(this)}
-          onUserSuggestionAccepted={this.onUserSuggestionAccepted.bind(this)}
-          onRemoveUserFromSelection={this.onRemoveUserFromSelection.bind(this)}
-          onRemoveUserClicked={this.onRemoveUserClicked.bind(this)}
-        />
-        <Alert
-          message={alertMessage}
-          onClose={() => this.setState({ alertMessage: null })}
-        />
-      </AdminPaneLayout>
-    );
-  }
-}
+  const onRemoveUserClicked = useCallback(
+    async user => {
+      try {
+        const membership = members.find(m => m.user_id === user.id);
+        await deleteMembership({
+          membershipId: membership.membership_id,
+          groupId: group.id,
+        });
+      } catch (error) {
+        console.error("Error deleting PermissionsMembership:", error);
+        setAlertMessage(error && typeof error.data ? error.data : error);
+      }
+    },
+    [members, deleteMembership, group.id],
+  );
+
+  const onAddUserDone = useCallback(async () => {
+    try {
+      await Promise.all(
+        selectedUsers.map(async user => {
+          await createMembership({
+            groupId: group.id,
+            userId: user.id,
+          });
+        }),
+      );
+      setAddUserVisible(false);
+      setText("");
+      setSelectedUsers([]);
+    } catch (error) {
+      setAlertMessage(error && typeof error.data ? error.data : error);
+    }
+  }, [selectedUsers, createMembership, group.id]);
+
+  const onAddUserCanceled = useCallback(() => {
+    setAddUserVisible(false);
+    setText("");
+    setSelectedUsers([]);
+  }, []);
+
+  const onUserSuggestionAccepted = useCallback(user => {
+    setSelectedUsers(u => [...u, user]);
+    setText("");
+  }, []);
+
+  const onRemoveUserFromSelection = useCallback(user => {
+    setSelectedUsers(users => users.filter(u => u.id !== user.id));
+  }, []);
+
+  const dismissAlert = useCallback(() => {
+    setAlertMessage(null);
+  }, []);
+
+  const canEdit = useMemo(() => {
+    return canEditMembership(group) ? () => setAddUserVisible(true) : null;
+  }, [group]);
+
+  return (
+    <AdminPaneLayout
+      title={title}
+      buttonText={t`Add members`}
+      buttonAction={canEdit}
+      buttonDisabled={addUserVisible}
+    >
+      <GroupDescription group={group} />
+      <GroupMembersTable
+        currentUser={currentUser}
+        group={group}
+        members={members}
+        users={filteredUsers}
+        showAddUser={addUserVisible}
+        text={text || ""}
+        selectedUsers={selectedUsers}
+        onAddUserCancel={onAddUserCanceled}
+        onAddUserDone={onAddUserDone}
+        onAddUserTextChange={setText}
+        onUserSuggestionAccepted={onUserSuggestionAccepted}
+        onRemoveUserFromSelection={onRemoveUserFromSelection}
+        onRemoveUserClicked={onRemoveUserClicked}
+      />
+      <Alert message={alertMessage} onClose={dismissAlert} />
+    </AdminPaneLayout>
+  );
+};
+
+export default _.compose(
+  connect(null, {
+    deleteMembership,
+    createMembership,
+  }),
+)(GroupDetail);
