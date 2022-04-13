@@ -18,7 +18,6 @@ import {
   navigationSidebar,
   modal,
   openNativeEditor,
-  visitQuestion,
   visitDashboard,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -532,171 +531,6 @@ describe("collection permissions", () => {
     });
   });
 
-  describe("revision history", () => {
-    beforeEach(() => {
-      cy.route("POST", "/api/revision/revert").as("revert");
-    });
-
-    describe("reproductions", () => {
-      beforeEach(() => {
-        cy.signInAsAdmin();
-      });
-
-      it("shouldn't render revision history steps when there was no diff (metabase#1926)", () => {
-        cy.signInAsAdmin();
-        cy.createDashboard().then(({ body }) => {
-          visitAndEditDashboard(body.id);
-        });
-
-        // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
-        saveDashboard();
-        cy.icon("pencil").click();
-        saveDashboard();
-
-        openRevisionHistory();
-
-        cy.findByText("created this");
-
-        cy.findAllByText("Revert").should("not.exist");
-      });
-
-      it.skip("dashboard should update properly on revert (metabase#6884)", () => {
-        cy.signInAsAdmin();
-        visitAndEditDashboard(1);
-        // Add another question without changing its size or moving it afterwards
-        cy.icon("add")
-          .last()
-          .click();
-        cy.findByText("Orders, Count").click();
-        saveDashboard();
-        // Revert the card to the state when the second card was added
-        cy.icon("ellipsis").click();
-        cy.findByText("Revision history").click();
-        clickRevert("added a card.", 0); // the top-most string or the latest card addition
-        cy.wait("@revert");
-        cy.request("GET", "/api/dashboard/1").then(xhr => {
-          const SECOND_CARD = xhr.body.ordered_cards[1];
-          const { col, sizeX, sizeY } = SECOND_CARD;
-          // The second card shrunk its size and changed the position completely to the left covering the first one
-          expect(col).not.to.eq(0);
-          expect(sizeX).to.eq(4);
-          expect(sizeY).to.eq(4);
-        });
-      });
-    });
-
-    Object.entries(PERMISSIONS).forEach(([permission, userGroup]) => {
-      context(`${permission} access`, () => {
-        userGroup.forEach(user => {
-          // This function `onlyOn` will not generate tests for any other condition.
-          // It helps to make both our tests and Cypress runner sidebar clean
-          onlyOn(permission === "curate", () => {
-            describe(`${user} user`, () => {
-              beforeEach(() => {
-                cy.signInAsAdmin();
-                // Generate some history for the question
-                cy.request("PUT", "/api/card/1", {
-                  name: "Orders renamed",
-                });
-                cy.signIn(user);
-              });
-
-              it("should be able to get to the dashboard revision modal directly via url", () => {
-                cy.visit("/dashboard/1/history");
-                cy.findByText("created this");
-                cy.findAllByRole("button", { name: "Revert" });
-              });
-
-              it("should be able to revert a dashboard (metabase#15237)", () => {
-                visitDashboard(1);
-                openRevisionHistory();
-                clickRevert("created this");
-                cy.wait("@revert").then(xhr => {
-                  expect(xhr.status).to.eq(200);
-                  expect(xhr.cause).not.to.exist;
-                });
-                cy.findAllByText(/Revert/).should("not.exist");
-                // We reverted the dashboard to the state prior to adding any cards to it
-                cy.findByText("This dashboard is looking empty.");
-
-                // Should be able to revert back again
-                cy.findByText("Revision history").click();
-                clickRevert("rearranged the cards");
-                cy.wait("@revert").then(xhr => {
-                  expect(xhr.status).to.eq(200);
-                  expect(xhr.cause).not.to.exist;
-                });
-                cy.findByText("117.03");
-              });
-
-              it("should be able to access the question's revision history via the revision history button in the header of the query builder", () => {
-                cy.intercept("POST", "/api/card/1/query").as("cardQuery");
-
-                cy.skipOn(user === "nodata");
-
-                visitQuestion(1);
-                cy.wait("@cardQuery");
-
-                cy.findByTestId("revision-history-button").click();
-                cy.findByText("Revert").click();
-
-                cy.wait("@revert").then(xhr => {
-                  expect(xhr.status).to.eq(200);
-                  expect(xhr.cause).not.to.exist;
-                });
-
-                cy.contains(/^Orders$/);
-              });
-
-              it("should be able to revert the question via the action button found in the saved question timeline", () => {
-                cy.intercept("POST", "/api/card/1/query").as("cardQuery");
-
-                cy.skipOn(user === "nodata");
-
-                visitQuestion(1);
-                cy.wait("@cardQuery");
-
-                cy.findByTestId("saved-question-header-button").click();
-                cy.findByText("History").click();
-                cy.findByText("Revert").click();
-
-                cy.wait("@revert").then(xhr => {
-                  expect(xhr.status).to.eq(200);
-                  expect(xhr.cause).not.to.exist;
-                });
-
-                cy.contains(/^Orders$/);
-              });
-            });
-          });
-
-          onlyOn(permission === "view", () => {
-            describe(`${user} user`, () => {
-              it("should not see dashboard revert buttons (metabase#13229)", () => {
-                cy.signIn(user);
-                visitDashboard(1);
-                openRevisionHistory();
-                cy.findAllByRole("button", { name: "Revert" }).should(
-                  "not.exist",
-                );
-              });
-
-              it("should not see question revert buttons (metabase#13229)", () => {
-                cy.signIn(user);
-                visitQuestion(1);
-                cy.findByRole("button", { name: /Edited .*/ }).click();
-
-                cy.findAllByRole("button", { name: "Revert" }).should(
-                  "not.exist",
-                );
-              });
-            });
-          });
-        });
-      });
-    });
-  });
-
   it("should offer to save items to 'Our analytics' if user has a 'curate' access to it", () => {
     cy.signIn("normal");
 
@@ -706,14 +540,6 @@ describe("collection permissions", () => {
     cy.findByTestId("select-button").findByText("Our analytics");
   });
 });
-
-function clickRevert(event_name, index = 0) {
-  cy.findAllByText(event_name)
-    .eq(index)
-    .closest("tr")
-    .findByText(/Revert/i)
-    .click();
-}
 
 function openEllipsisMenuFor(item, index = 0) {
   return cy
@@ -754,21 +580,4 @@ function assertOnRequest(xhr_alias) {
     "not.exist",
   );
   cy.get(".Modal").should("not.exist");
-}
-
-function visitAndEditDashboard(id) {
-  visitDashboard(id);
-  cy.icon("pencil").click();
-}
-
-function saveDashboard() {
-  clickButton("Save");
-  cy.findByText("You're editing this dashboard.").should("not.exist");
-}
-
-function openRevisionHistory() {
-  cy.get("main header").within(() => {
-    cy.icon("ellipsis").click();
-  });
-  cy.findByText("Revision history").click();
 }
