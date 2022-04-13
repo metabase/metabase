@@ -2,7 +2,7 @@ import { ngettext, msgid, t } from "ttag";
 
 import { OPERATOR as OP } from "metabase/lib/expressions/tokenizer";
 import { ResolverError } from "metabase/lib/expressions/pratt/types";
-import { MBQL_CLAUSES } from "metabase/lib/expressions";
+import { getMBQLName, MBQL_CLAUSES } from "metabase/lib/expressions";
 
 const FIELD_MARKERS = ["dimension", "segment", "metric"];
 const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
@@ -58,7 +58,20 @@ export function resolve(expression, type = "expression", fn = undefined) {
     if (FIELD_MARKERS.includes(op)) {
       const kind = MAP_TYPE[type] || "dimension";
       const [name] = operands;
-      return fn ? fn(kind, name, expression.node) : [kind, name];
+      if (fn) {
+        try {
+          return fn(kind, name, expression.node);
+        } catch (err) {
+          // A second chance when field is not found:
+          // maybe it is a function with zero argument (e.g. Count, CumulativeCount)
+          const func = getMBQLName(name.trim().toLowerCase());
+          if (func && MBQL_CLAUSES[func].args.length === 0) {
+            return [func];
+          }
+          throw err;
+        }
+      }
+      return [kind, name];
     }
 
     let operandType = null;
