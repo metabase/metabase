@@ -66,6 +66,7 @@
 - [Basic exploration](./users-guide/03-basic-exploration.md)
 - [Sharing and organizing your saved questions](./users-guide/06-sharing-answers.md)
 - [Collections](./users-guide/collections.md)
+- [Events and timelines](./users-guide/events-and-timelines.md)
 
 ## People and groups
 

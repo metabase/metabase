@@ -59,7 +59,7 @@ jobs:
       - name: Run maildev
         run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
       - name: Percy Test
-        run: yarn run test-visual-no-build
+        run: yarn run test-visual-run
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
         if: env.PERCY_TOKEN != null

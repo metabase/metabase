@@ -18,7 +18,6 @@ import {
   useShorthands,
   adjustCase,
   adjustOptions,
-  transformNoArgFunction,
 } from "metabase/lib/expressions/recursive-parser";
 import { tokenize, TOKEN, OPERATOR } from "metabase/lib/expressions/tokenizer";
 
@@ -125,7 +124,6 @@ function prattCompiler(source, startRule, query) {
       passes: [
         adjustOptions,
         useShorthands,
-        transformNoArgFunction,
         adjustCase,
         expr => resolve(expr, startRule, resolveMBQLField),
       ],
