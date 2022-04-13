@@ -554,17 +554,17 @@
                                                                                        ::add/desired-alias "QUANTITY"
                                                                                        ::add/position      8}]
                                                   pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
-                                                                                                   ::add/position      10}]
+                                                                                                   ::add/position      9}]
                                                   products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                                 ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                                 ::add/source-alias  "CATEGORY"
                                                                                                 ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__CATEGORY"
-                                                                                                ::add/position      11}]
+                                                                                                ::add/position      10}]
                                                   products-id       [:field %products.id {:join-alias         "PRODUCTS__via__PRODUCT_ID"
                                                                                           ::add/source-table  "PRODUCTS__via__PRODUCT_ID"
                                                                                           ::add/source-alias  "ID"
                                                                                           ::add/desired-alias "PRODUCTS__via__PRODUCT_ID__ID"
-                                                                                          ::add/position      12}]]
+                                                                                          ::add/position      11}]]
                                               {:source-table $$orders
                                                :joins        [{:source-table $$products
                                                                :alias        "PRODUCTS__via__PRODUCT_ID"
