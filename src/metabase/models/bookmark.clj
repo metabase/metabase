@@ -107,7 +107,10 @@
          :order-by [[:bookmark_ordering.ordering :asc-nulls-last] [:created_at :desc]]})
        (map normalize-bookmark-result)))
 
-(defn save-ordering [user-id orderings]
+(defn save-ordering
+  "Saves a bookmark ordering of shape `[{:type, :item_id}]`
+   Deletes all existing orderings for user so should be given a total ordering."
+  [user-id orderings]
   (db/delete! BookmarkOrdering :user_id user-id)
   (db/insert-many! BookmarkOrdering (->> orderings
                                          (map #(select-keys % [:type :item_id]))
