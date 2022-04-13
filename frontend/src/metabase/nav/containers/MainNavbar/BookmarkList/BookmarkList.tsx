@@ -141,7 +141,7 @@ const BookmarkList = ({
       headerClass="mb1"
       onToggle={onToggleBookmarks}
     >
-      <SortableListOfBookmark
+      <SortableListOfBookmarks
         onSortStart={handleSortStart}
         onSortEnd={handleSortEnd}
         lockAxis="y"
@@ -159,7 +159,7 @@ const BookmarkList = ({
             onDeleteBookmark={onDeleteBookmark}
           />
         ))}
-      </SortableListOfBookmark>
+      </SortableListOfBookmarks>
     </CollapseSection>
   );
 };
@@ -167,6 +167,6 @@ const BookmarkList = ({
 const List = ({ children }: { children: JSX.Element[] }) => <ul>{children}</ul>;
 const Item = ({ children }: { children: JSX.Element }) => <>{children}</>;
 const SortableBookmarkItem = SortableElement(Item);
-const SortableListOfBookmark = SortableContainer(List);
+const SortableListOfBookmarks = SortableContainer(List);
 
 export default connect(null, mapDispatchToProps)(BookmarkList);
