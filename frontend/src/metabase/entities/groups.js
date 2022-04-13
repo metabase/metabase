@@ -27,7 +27,6 @@ const Groups = createEntity({
 
     if (type === DELETE_MEMBERSHIP) {
       const { membershipId, groupId } = payload;
-      console.log(payload);
       const members = state[groupId]?.members;
       if (members) {
         return assocIn(

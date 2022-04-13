@@ -10,16 +10,10 @@ import GroupDetail from "../components/GroupDetail";
 
 @User.loadList()
 @Group.load({ id: (state, props) => props.params.groupId, reload: true })
-@connect(
-  (state, props) => ({
-    currentUser: getUser(state),
-    users: getUsersWithMemberships(state, props),
-  }),
-  {
-    invalidateGroups: Group.actions.invalidateLists,
-    fetchGroups: Group.actions.fetch,
-  },
-)
+@connect((state, props) => ({
+  currentUser: getUser(state),
+  users: getUsersWithMemberships(state, props),
+}))
 export default class GroupDetailApp extends Component {
   render() {
     return <GroupDetail {...this.props} />;
