@@ -146,7 +146,7 @@
 
 (deftest create-timeline-test
   (testing "POST /api/timeline"
-    (mt/with-model-cleanup [Timeline]
+    (mt/with-model-cleanup [Timeline Collection]
       (mt/with-temp Collection [collection {:name "Important Data"}]
         (let [id (u/the-id collection)]
           (testing "Create a new timeline"
@@ -157,11 +157,9 @@
                                    :creator_id    (u/the-id (mt/fetch-user :rasta))
                                    :collection_id id})
             (testing "check the collection to see if the timeline is there"
-              (is (= "Rasta's TL"
-                     (-> (db/select-one Timeline :collection_id id) :name))))
+              (is (= "Rasta's TL" (db/select-one-field :name Timeline :collection_id id))))
             (testing "Check that the icon is 'star' by default"
-              (is (= "star"
-                     (-> (db/select-one-field :icon Timeline :collection_id id)))))))))))
+              (is (= "star" (db/select-one-field :icon Timeline :collection_id id))))))))))
 
 (deftest update-timeline-test
   (testing "PUT /api/timeline/:id"
@@ -234,3 +232,22 @@
             (testing "Returns all events when archived is true"
               (is (= #{"event-e" "event-f"}
                      (event-names (include-events-request timeline true)))))))))))
+
+(deftest timeline-default-icon-test
+  (testing "Properly provide default icon even if Timeline is added via API with `:icon` `nil`."
+    (mt/with-model-cleanup [Timeline Collection]
+      (mt/with-temp* [Collection [collection {:name "Important Data"}]
+                      Timeline   [tl1 {:name          "Rasta's TL 1"
+                                       :default       false
+                                       :icon          nil
+                                       :creator_id    (u/the-id (mt/fetch-user :rasta))
+                                       :collection_id (u/the-id collection)}
+                                  tl2 {:name          "Rasta's TL 2"
+                                       :default       false
+                                       :icon          nil
+                                       :creator_id    (u/the-id (mt/fetch-user :rasta))
+                                       :collection_id (u/the-id collection)}]]
+        (testing "Check that the icon is 'star' by default when fetching a timeline by `:id`"
+          (is (= "star" (:icon (mt/user-http-request :rasta :get 200 (str "timeline/" (u/the-id tl1)))))))
+        (testing "Check that the icon is 'star' by default when fetching timelines `:id`"
+          (is (= #{"star"} (set (map :icon (mt/user-http-request :rasta :get 200 "timeline"))))))))))
