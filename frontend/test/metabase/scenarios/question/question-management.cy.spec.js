@@ -1,6 +1,8 @@
-import { restore, visitQuestion } from "__support__/e2e/cypress";
+import { restore, visitQuestion, saveDashboard } from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
+
+import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -91,6 +93,59 @@ describe("managing question from the question's details sidebar", () => {
               // By default, the dashboard contains one question
               // After we add a new one, we check there are two questions now
               cy.get(".DashCard").should("have.length", 2);
+            });
+          });
+        });
+
+        onlyOn(permission === "view", () => {
+          describe(`${user} user`, () => {
+            beforeEach(() => {
+              cy.signIn(user);
+              visitQuestion(1);
+
+              cy.findByTestId("saved-question-header-button").click();
+            });
+
+            it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              cy.get(".Modal").within(() => {
+                cy.findByText("Orders in a dashboard").should("not.exist");
+                cy.icon("search").click();
+                cy.findByPlaceholderText(
+                  "Search",
+                ).type("Orders in a dashboard{Enter}", { delay: 0 });
+                cy.findByText("Orders in a dashboard").should("not.exist");
+              });
+            });
+
+            it("should offer personal collection as a save destination for a new dashboard", () => {
+              const { first_name, last_name } = USERS[user];
+              const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
+              cy.findByTestId("add-to-dashboard-button").click();
+
+              cy.get(".Modal").within(() => {
+                cy.findByText("Create a new dashboard").click();
+                cy.findByTestId("select-button").findByText(personalCollection);
+                cy.findByLabelText("Name").type("Foo", { delay: 0 });
+                cy.button("Create").click();
+              });
+              cy.url().should("match", /\/dashboard\/\d+-foo$/);
+              saveDashboard();
+              cy.get(".QueryBuilder-section").findByText(personalCollection);
+            });
+
+            it("should not offer a user the ability to update or clone the question", () => {
+              cy.findByTestId("edit-details-button").should("not.exist");
+              cy.findByRole("button", { name: "Add a description" }).should(
+                "not.exist",
+              );
+
+              cy.findByTestId("move-button").should("not.exist");
+              cy.findByTestId("clone-button").should("not.exist");
+              cy.findByTestId("archive-button").should("not.exist");
+
+              cy.findByText("Revert").should("not.exist");
             });
           });
         });

@@ -480,61 +480,6 @@ describe("collection permissions", () => {
               });
             });
 
-            describe("managing question from the question's details sidebar", () => {
-              beforeEach(() => {
-                visitQuestion(1);
-              });
-
-              it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
-                cy.findByTestId("saved-question-header-button").click();
-                cy.findByTestId("add-to-dashboard-button").click();
-
-                cy.get(".Modal").within(() => {
-                  cy.findByText("Orders in a dashboard").should("not.exist");
-                  cy.icon("search").click();
-                  cy.findByPlaceholderText("Search").type(
-                    "Orders in a dashboard{Enter}",
-                  );
-                  cy.findByText("Orders in a dashboard").should("not.exist");
-                });
-              });
-
-              it("should offer personal collection as a save destination for a new dashboard", () => {
-                const { first_name, last_name } = USERS[user];
-                const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
-                cy.findByTestId("saved-question-header-button").click();
-                cy.findByTestId("add-to-dashboard-button").click();
-
-                cy.get(".Modal").within(() => {
-                  cy.findByText("Create a new dashboard").click();
-                  cy.findByTestId("select-button").findByText(
-                    personalCollection,
-                  );
-                  cy.findByLabelText("Name").type("Foo");
-                  cy.button("Create").click();
-                });
-                cy.url().should("match", /\/dashboard\/\d+-foo$/);
-                saveDashboard();
-                cy.get(".QueryBuilder-section").findByText(personalCollection);
-              });
-
-              it("should not offer a user the ability to update or clone the question", () => {
-                visitQuestion(1);
-                cy.findByTestId("saved-question-header-button").click();
-
-                cy.findByTestId("edit-details-button").should("not.exist");
-                cy.findByRole("button", { name: "Add a description" }).should(
-                  "not.exist",
-                );
-
-                cy.findByTestId("move-button").should("not.exist");
-                cy.findByTestId("clone-button").should("not.exist");
-                cy.findByTestId("archive-button").should("not.exist");
-
-                cy.findByText("Revert").should("not.exist");
-              });
-            });
-
             describe("managing dashboard from the dashboard's edit menu", () => {
               it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
                 cy.intercept("GET", "/api/collection/root").as("collections");
