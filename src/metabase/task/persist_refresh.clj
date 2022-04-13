@@ -13,6 +13,7 @@
             [metabase.task :as task]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
+            [potemkin.types :as p]
             [toucan.db :as db])
   (:import [org.quartz ObjectAlreadyExistsException Trigger]))
 
@@ -26,10 +27,50 @@
   "States of `persisted_info` records which can be refreshed."
   #{"persisted" "error"})
 
+(p/defprotocol+ Refresher
+  "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
+  multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
+  allow for easy to control custom behavior in tests."
+  (unpersist! [this database persisted-info])
+  (refresh! [this database persisted-info]))
+
+(def dispatching-refresher
+  "Refresher implementation that dispatches to the multimethods in [[metabase.driver.ddl.interface]]."
+  (reify Refresher
+    (refresh! [_ database persisted-info]
+      (ddl.i/refresh! (:engine database) database persisted-info))
+    (unpersist! [_ database persisted-info]
+     (ddl.i/unpersist! (:engine database) database persisted-info))))
+
+(defn- prune-deleteable-persists!
+  [refresher]
+  (let [deleteable (db/select PersistedInfo :state "deleteable")]
+    (when (seq deleteable)
+      (let [db-id->db  (u/key-by :id (db/select Database :id
+                                                [:in (map :database_id deleteable)]))
+            start-time (t/zoned-date-time)
+            reap-stats (reduce (fn [stats d]
+                                 (let [database (-> d :database_id db-id->db)]
+                                   (log/info (trs "Unpersisting model with card-id {0}" (:card_id d)))
+                                   (try
+                                     (unpersist! refresher database d)
+                                     (update stats :success inc)
+                                     (catch Exception e
+                                       (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id d)))
+                                       (update stats :error inc)))))
+                               {:success 0, :error 0}
+                               deleteable)
+            end-time   (t/zoned-date-time)]
+        (db/insert! TaskHistory {:task         "unpersist-tables"
+                                 :started_at   start-time
+                                 :ended_at     end-time
+                                 :duration     (.toMillis (t/duration start-time end-time))
+                                 :task_details reap-stats})))))
+
 (defn- refresh-tables!'
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
-  [database-id]
+  [database-id refresher]
   (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
   (let [database      (Database database-id)
         ;; todo: what states are acceptable here? certainly "error". What about "refreshing"?
@@ -38,7 +79,7 @@
         start-time    (t/zoned-date-time)
         refresh-stats (reduce (fn [stats p]
                                 (try
-                                  (ddl.i/refresh! (:engine database) database p)
+                                  (refresh! refresher database p)
                                   (update stats :success inc)
                                   (catch Exception e
                                     (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id p)))
@@ -54,36 +95,13 @@
                              :duration     (.toMillis (t/duration start-time end-time))
                              :task_details refresh-stats})
     ;; look for any stragglers that we can try to delete
-    (let [deleteable (db/select PersistedInfo :state "deleteable")
-          db-id->db  (when (seq deleteable)
-                       (into {} (map (juxt :id identity))
-                             (db/select Database :id [:in (into #{} (map :database_id) deleteable)])))]
-      (when (seq deleteable)
-        (let [start-time (t/zoned-date-time)
-              reap-stats (reduce (fn [stats d]
-                                   (let [database (-> d :database_id db-id->db)]
-                                     (log/info (trs "Unpersisting model with card-id {0}" (:card_id d)))
-                                     (try
-                                       (ddl.i/unpersist! (:engine database) database d)
-                                       (db/delete! PersistedInfo :id (u/the-id d))
-                                       (update stats :success inc)
-                                       (catch Exception e
-                                         (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id d)))
-                                         (update stats :error inc)))))
-                                 {:success 0, :error 0}
-                                 deleteable)
-              end-time   (t/zoned-date-time)]
-          (db/insert! TaskHistory {:task         "unpersist-tables"
-                                   :started_at   start-time
-                                   :ended_at     end-time
-                                   :duration     (.toMillis (t/duration start-time end-time))
-                                   :task_details reap-stats}))))))
+    (prune-deleteable-persists! refresher)))
 
 (defn- refresh-tables!
   "Refresh tables. Gets the database id from the job context and calls `refresh-tables!'`."
   [job-context]
   (when-let [database-id (job-context->database-id job-context)]
-    (refresh-tables!' database-id)))
+    (refresh-tables!' database-id dispatching-refresher)))
 
 (jobs/defjob PersistenceRefresh [job-context]
   (refresh-tables! job-context))
