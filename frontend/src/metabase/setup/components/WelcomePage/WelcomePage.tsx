@@ -12,17 +12,23 @@ import {
 } from "./WelcomePage.styled";
 
 export interface WelcomePageProps {
+  isLocaleLoaded: boolean;
   onStepShow: () => void;
   onStepSubmit: () => void;
 }
 
 const WelcomePage = ({
+  isLocaleLoaded,
   onStepShow,
   onStepSubmit,
-}: WelcomePageProps): JSX.Element => {
+}: WelcomePageProps): JSX.Element | null => {
   useEffect(() => {
     onStepShow();
   }, [onStepShow]);
+
+  if (!isLocaleLoaded) {
+    return null;
+  }
 
   return (
     <PageRoot>

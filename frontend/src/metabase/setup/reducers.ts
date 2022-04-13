@@ -50,7 +50,7 @@ export const isLocaleLoaded = handleActions(
     [SET_LOCALE]: { next: () => false },
     [SET_LOCALE_LOADED]: { next: () => true },
   },
-  null,
+  false,
 );
 
 export const isTrackingAllowed = handleActions(
