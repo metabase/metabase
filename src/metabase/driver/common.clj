@@ -441,8 +441,7 @@
   `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
   []
-  (when-let [v (setting/get-value-of-type :keyword :start-of-week)]
-    (.indexOf days-of-week v)))
+  (.indexOf days-of-week (setting/get-value-of-type :keyword :start-of-week)))
 
 (s/defn start-of-week-offset :- s/Int
   "Return the offset for start of week to have the week start on [[metabase.public-settings/start-of-week]] given
