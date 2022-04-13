@@ -1,10 +1,9 @@
 (ns metabase.api.bookmark-test
   "Tests for /api/bookmark endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.models.bookmark :refer [CardBookmark
+            [metabase.models.bookmark :refer [BookmarkOrdering CardBookmark
                                               CollectionBookmark
-                                              DashboardBookmark
-                                              BookmarkOrdering]]
+                                              DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
