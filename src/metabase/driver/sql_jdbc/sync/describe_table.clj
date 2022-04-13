@@ -12,6 +12,7 @@
             [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
@@ -209,10 +210,19 @@
                             (flatten-row xs path))))))]
     (into {} (flatten-row row [field-name]))))
 
+(defn- type-by-parsing-string
+  "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
+  [member]
+  (let [member-type (type member)]
+    (if (and (instance? String member)
+             (mbql.s/can-parse-datetime? member))
+      java.time.LocalDateTime
+      member-type)))
+
 (defn- row->types [row]
   (into {} (for [[field-name field-val] row]
              (let [flat-row (flattened-row field-name field-val)]
-               (into {} (map (fn [[k v]] [k (type v)]) flat-row))))))
+               (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
   ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
@@ -220,33 +230,46 @@
          (map row->types)) member))
 
 (defn- describe-json-rf
+  "Reducing function that takes a bunch of maps from row->types,
+  and gets them to conform to the type hierarchy,
+  going through and taking the lowest common denominator type at each pass,
+  ignoring the nils."
   ([] nil)
-  ([fst] fst)
-  ([fst snd]
+  ([acc-field-type-map] acc-field-type-map)
+  ([acc-field-type-map second-field-type-map]
    (into {}
-         (for [json-column (set/union (keys snd) (keys fst))]
+         (for [json-column (set/union (keys second-field-type-map)
+                                      (keys acc-field-type-map))]
            (cond
-             (or (nil? fst)
-                 (nil? (fst json-column))
-                 (= (hash (fst json-column)) (hash (snd json-column))))
-             [json-column (snd json-column)]
+             (or (nil? acc-field-type-map)
+                 (nil? (acc-field-type-map json-column))
+                 (= (hash (acc-field-type-map json-column))
+                    (hash (second-field-type-map json-column))))
+             [json-column (second-field-type-map json-column)]
 
-             (or (nil? snd)
-                 (nil? (snd json-column)))
-             [json-column (fst json-column)]
+             (or (nil? second-field-type-map)
+                 (nil? (second-field-type-map json-column)))
+             [json-column (acc-field-type-map json-column)]
 
-             (every? #(isa? % Number) [(fst json-column) (snd json-column)])
+             (every? #(isa? % Number) [(acc-field-type-map json-column)
+                                       (second-field-type-map json-column)])
              [json-column java.lang.Number]
 
-             (every? #{java.lang.String java.lang.Long java.lang.Integer java.lang.Double java.lang.Boolean}
-                     [(fst json-column) (snd json-column)])
+             (every?
+               (fn [column-type]
+                 (some (fn [allowed-type]
+                         (isa? column-type allowed-type))
+                       [String Number Boolean java.time.LocalDateTime]))
+               [(acc-field-type-map json-column) (second-field-type-map json-column)])
              [json-column java.lang.String]
 
              :else
              [json-column nil])))))
 
-(def ^:const field-type-map
-  "We deserialize the JSON in order to determine types,
+(def field-type-map
+  "Map from Java types for deserialized JSON (so small subset of Java types) to MBQL types.
+
+  We actually do deserialize the JSON in order to determine types,
   so the java / clojure types we get have to be matched to MBQL types"
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
@@ -255,8 +278,23 @@
    java.lang.Double                :type/Float
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
+   java.time.LocalDateTime         :type/DateTime
    clojure.lang.PersistentVector   :type/Array
    clojure.lang.PersistentArrayMap :type/Structured})
+
+(def db-type-map
+  "Map from MBQL types to database types.
+
+  This is the lowest common denominator of types, hopefully,
+  although as of writing this is just geared towards Postgres types"
+  {:type/Text       "text"
+   :type/Integer    "integer"
+   :type/Float      "double precision"
+   :type/Number     "double precision"
+   :type/Boolean    "boolean"
+   :type/DateTime   "timestamp"
+   :type/Array      "text"
+   :type/Structured "text"})
 
 (defn- field-types->fields [field-types]
   (let [valid-fields (for [[field-path field-type] (seq field-types)]
@@ -264,7 +302,7 @@
                          nil
                          (let [curr-type (get field-type-map field-type :type/*)]
                            {:name              (str/join " \u2192 " (map name field-path)) ;; right arrow
-                            :database-type     curr-type
+                            :database-type     (db-type-map curr-type)
                             :base-type         curr-type
                             ;; Postgres JSONB field, which gets most usage, doesn't maintain JSON object ordering...
                             :database-position 0

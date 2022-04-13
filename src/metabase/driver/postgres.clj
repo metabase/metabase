@@ -283,24 +283,16 @@
 
 (defn- json-query [identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (let [field-type           (:effective_type nfc-field)
+    (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          ;; Array and sub-JSON coerced to text
-          cast-type            (cond
-                                 (isa? field-type :type/Integer)
-                                 :type/Integer
-                                 (isa? field-type :type/Float)
-                                 :type/Float
-                                 (isa? field-type :type/Boolean)
-                                 :type/Boolean
-                                 :else
-                                 :type/Text)]
-      (hx/cast cast-type
-               (apply hsql/call [:json_extract_path_text
-                                 (hx/cast :json parent-identifier)
-                                 (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))))
+          names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
+      (reify
+        hformat/ToSql
+        (to-sql [_]
+          (hformat/to-params-default names "nfc_path")
+          (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
