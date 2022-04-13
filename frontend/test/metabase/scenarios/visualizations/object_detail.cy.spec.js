@@ -5,9 +5,9 @@ import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > object details", () => {
-  const FIRST_ORDER_ID = 9676;
-  const SECOND_ORDER_ID = 10874;
-  const THIRD_ORDER_ID = 11246;
+  const FIRST_ORDER_ID = 11246;
+  const SECOND_ORDER_ID = 9676;
+  const THIRD_ORDER_ID = 10874;
 
   const TEST_QUESTION = {
     query: {

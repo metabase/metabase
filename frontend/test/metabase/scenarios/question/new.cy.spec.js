@@ -289,7 +289,7 @@ describe("scenarios > question > new", () => {
 
       cy.findByTestId("question-table-badges").trigger("mouseenter");
 
-      cy.findByText("9 columns");
+      cy.findByText("10 columns");
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {

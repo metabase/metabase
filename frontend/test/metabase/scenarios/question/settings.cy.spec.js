@@ -102,7 +102,7 @@ describe("scenarios > question > settings", () => {
       cy.findByText("Settings").click();
 
       getSidebarColumns()
-        .eq("12")
+        .eq("13")
         .as("prod-category")
         .contains(/Products? → Category/);
 
@@ -115,7 +115,7 @@ describe("scenarios > question > settings", () => {
 
       reloadResults();
 
-      findColumnAtIndex("Products → Category", 5);
+      findColumnAtIndex("Products → Category", 6);
 
       // Remove "Total"
       getSidebarColumns()

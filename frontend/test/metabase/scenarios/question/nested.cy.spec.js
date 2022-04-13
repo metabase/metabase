@@ -385,7 +385,7 @@ describe("scenarios > question > nested", () => {
     visualize();
 
     // The column title
-    cy.findByText("Products → Category").click();
+    cy.findByText("Products → Category").click({ force: true });
     cy.findByText("Distribution").click();
     cy.wait("@dataset");
 
@@ -403,7 +403,7 @@ describe("scenarios > question > nested", () => {
     cy.icon("notebook").click();
     cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
-      .click();
+      .click({ force: true });
     popover().within(() => {
       isSelected("Products → Category"); /* [2] */
     });
