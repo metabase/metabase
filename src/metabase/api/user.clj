@@ -176,12 +176,11 @@
                                                  (db/exists? 'Dashboard (perms-query user))))))
 
 (defn- add-first-login
-  "Adds `first_login` key to the `User` with a timestamp value."
-  [{:keys [user_id] :as user}]
+  "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
+  [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id user_id
-                                       {:limit    1
-                                        :order-by [[:timestamp :desc]]}))
+            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id id
+                                       {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
