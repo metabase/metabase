@@ -38,5 +38,6 @@ export interface SetupState {
   user?: UserInfo;
   database?: DatabaseInfo;
   invite?: InviteInfo;
+  isLocaleLoaded: boolean;
   isTrackingAllowed: boolean;
 }

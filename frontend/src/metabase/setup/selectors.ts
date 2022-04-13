@@ -33,6 +33,10 @@ export const getInvite = (state: State): InviteInfo | undefined => {
   return state.setup.invite;
 };
 
+export const isLocaleLoaded = (state: State): boolean => {
+  return state.setup.isLocaleLoaded;
+};
+
 export const isTrackingAllowed = (state: State): boolean => {
   return state.setup.isTrackingAllowed;
 };

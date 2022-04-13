@@ -1,8 +1,9 @@
 import { createAction } from "redux-actions";
 import { SetupApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
+import { loadLocalization } from "metabase/lib/i18n";
 import Settings from "metabase/lib/settings";
-import { UserInfo, DatabaseInfo } from "metabase-types/store";
+import { UserInfo, DatabaseInfo, Locale } from "metabase-types/store";
 import { getUserToken, getDefaultLocale, getLocales } from "./utils";
 
 export const SET_STEP = "metabase/setup/SET_STEP";
@@ -35,6 +36,14 @@ export const loadUserDefaults = createThunkAction(
   },
 );
 
+export const LOAD_LOCALE = "metabase/setup/LOAD_LOCALE";
+export const loadLocale = createThunkAction(
+  LOAD_LOCALE,
+  (locale: Locale) => async () => {
+    await loadLocalization(locale.code);
+  },
+);
+
 export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createThunkAction(
   LOAD_LOCALE_DEFAULTS,
@@ -43,8 +52,8 @@ export const loadLocaleDefaults = createThunkAction(
     const locale = getDefaultLocale(getLocales(data));
 
     if (locale) {
-      dispatch(setLocale(locale));
-      Settings.set("user-locale", locale.code);
+      await dispatch(setLocale(locale));
+      await dispatch(loadLocale(locale));
     }
   },
 );

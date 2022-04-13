@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
 import SetupHelp from "../SetupHelp";
 import {
   PageRoot,

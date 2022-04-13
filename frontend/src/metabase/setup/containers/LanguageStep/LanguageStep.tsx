@@ -2,7 +2,7 @@ import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
 import { State, Locale } from "metabase-types/store";
 import LanguageStep from "../../components/LanguageStep";
-import { setLocale, setStep } from "../../actions";
+import { loadLocale, setLocale, setStep } from "../../actions";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
 import {
   getLocale,
@@ -22,7 +22,7 @@ const mapStateToProps = (state: State) => ({
 const mapDispatchToProps = (dispatch: any) => ({
   onLocaleChange: (locale: Locale) => {
     dispatch(setLocale(locale));
-    Settings.set("user-locale", locale.code);
+    dispatch(loadLocale(locale));
   },
   onStepSelect: () => {
     dispatch(setStep(LANGUAGE_STEP));
