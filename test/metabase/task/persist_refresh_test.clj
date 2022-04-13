@@ -28,19 +28,19 @@
       (#'pr/job-init)
       (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 4]
         (pr/reschedule-refresh)
-        (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1)}
+        (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-1))}
-                (u/the-id db-2) {:data {"db-id" (u/the-id db-2)}
+                (u/the-id db-2) {:data {"db-id" (u/the-id db-2) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2))))
       (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 8]
         (pr/reschedule-refresh)
-        (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1)}
+        (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-1))}
-                (u/the-id db-2) {:data {"db-id" (u/the-id db-2)}
+                (u/the-id db-2) {:data {"db-id" (u/the-id db-2) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2)))))))
@@ -123,3 +123,7 @@
                           (db/select-one TaskHistory
                                          :task "unpersist-tables"
                                          {:order-by [[:id :desc]]})))))))))
+
+(comment
+  (run-tests)
+  )
