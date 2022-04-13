@@ -145,32 +145,15 @@
                              (update :results conj [step {:error (ex-message e)}])))))))
                  steps))))
 
-(defmethod ddl.i/persist! :postgres
+(defmethod ddl.i/persist!* :postgres
   [_driver database persisted-info card]
   ;; don't set persisted-info information because it was created in a "creating" state
-  (let [{:keys [state] :as results} (execute-steps database persisted-info card [:create-table :populate-table])]
-    (if (= state :success)
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :active true, :refresh_end :%now :state "persisted")
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :refresh_end :%now :state "error", :error (:error results)))
-    ;; todo: some new table to store refresh/create runs
-    results))
+  (execute-steps database persisted-info card [:create-table :populate-table]))
 
-(defmethod ddl.i/refresh! :postgres [_driver database persisted-info]
+(defmethod ddl.i/refresh!* :postgres [_driver database persisted-info]
   (let [card (Card (:card_id persisted-info))]
-    (db/update! PersistedInfo (u/the-id persisted-info)
-      :active false, :refresh_begin :%now :state "refreshing")
-    (let [{:keys [state] :as results} (execute-steps database persisted-info card [:drop-table :create-table :populate-table])]
-      (if (= state :success)
-        (db/update! PersistedInfo (u/the-id persisted-info)
-          :active true, :refresh_end :%now, :state "persisted"
-          :columns (->> results :args :definition :field-definitions (map :field-name))
-          :error nil)
-        (db/update! PersistedInfo (u/the-id persisted-info)
-          :refresh_end :%now :state "error", :error (:error results)))
-      ;; todo: some new table to store refresh/create runs
-      results)))
+    (execute-steps database persisted-info card
+                   [:drop-table :create-table :populate-table])))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]

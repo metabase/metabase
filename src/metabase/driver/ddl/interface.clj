@@ -1,7 +1,10 @@
 (ns metabase.driver.ddl.interface
   (:require [clojure.string :as str]
             [metabase.driver :as driver]
-            [metabase.util.i18n :refer [tru]]))
+            [metabase.models.persisted-info :refer [PersistedInfo]]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
+            [toucan.db :as db]))
 
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
@@ -44,7 +47,7 @@
     :persist.check/delete-table (tru "Lack permission to delete table in schema {0}" schema)))
 
 ;; db_id, table def, table metadata, table_id
-(defmulti persist!
+(defmulti persist!*
   "Persist a model in a datastore. A table is created and populated in the source datastore, not the application
   database. Assumes that the destination schema is populated and permissions are correct. This should all be true
   if `(driver/database-supports engine :persisted-models database)` returns true."
@@ -52,13 +55,39 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti refresh!
+(defn persist!
+  "Public API for persistence. Handles state transition of the persisted-info"
+  [driver database persisted-info card]
+  (let [{:keys [state] :as results} (persist!* driver database persisted-info card)]
+    (if (= state :success)
+      (db/update! PersistedInfo (u/the-id persisted-info)
+        :active true, :refresh_end :%now :state "persisted")
+      (db/update! PersistedInfo (u/the-id persisted-info)
+        :refresh_end :%now :state "error", :error (:error results)))
+    ;; todo: some new table to store refresh/create runs
+    results))
+
+(defmulti refresh!*
   "Refresh a model in a datastore. A table is created and populated in the source datastore, not the application
   database. Assumes that the destination schema is populated and permissions are correct. This should all be true
   if `(driver/database-supports engine :persisted-models database)` returns true."
   {:arglists '([driver database persisted-info])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
+
+(defn refresh!
+  "Public API to refresh a persisted model. Handles state transitions of the persisted-info record. Returns ???"
+  [driver database persisted-info]
+  (db/update! PersistedInfo (u/the-id persisted-info)
+    :active false, :refresh_begin :%now, :refresh_end nil, :state "refreshing")
+  (let [{:keys [state] :as results} (refresh!* driver database persisted-info)]
+    (if (= state :success)
+      (db/update! PersistedInfo (u/the-id persisted-info)
+        :active true, :refresh_end :%now, :state "persisted"
+        :columns (->> results :args :definition :field-definitions (map :field-name))
+        :error nil)
+      (db/update! PersistedInfo (u/the-id persisted-info)
+        :refresh_end :%now :state "error", :error (:error results)))))
 
 (defmulti unpersist!
   "Unpersist a persisted model. Will delete the persisted info after removing the persisted table."

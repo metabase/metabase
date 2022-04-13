@@ -97,7 +97,7 @@
     (log/info (tru "Disabling model persistence"))
     (doseq [db enabled-dbs]
       (db/update! Database (u/the-id db)
-                  :options (not-empty (dissoc (:options db) :persist-models-enabled))))
+        :options (not-empty (dissoc (:options db) :persist-models-enabled))))
     (db/update-where! PersistedInfo {}
                       :active false, :state "deleteable")
     (task.persist-refresh/unschedule-all-triggers)

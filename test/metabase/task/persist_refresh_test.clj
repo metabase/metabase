@@ -78,7 +78,7 @@
                                      "Called on a persisted-info not related to the database")
                                  (swap! call-count inc))
                                (unpersist! [_ _database _persisted]))]
-          (#'pr/refresh-tables!' (u/the-id db) test-refresher)
+          (#'pr/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 2 :error 0}}
@@ -98,7 +98,7 @@
                                  (when (= @call-count 1)
                                    (throw (ex-info "DBs are risky" {:ka :boom}))))
                                (unpersist! [_ _database _persisted]))]
-          (#'pr/refresh-tables!' (u/the-id db) test-refresher)
+          (#'pr/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
                          :task_details {:success 1 :error 1}}
@@ -115,7 +115,7 @@
                                  (refresh! [_ _ _])
                                  (unpersist! [_ _database persisted]
                                    (swap! called-on conj (u/the-id persisted))))]
-            (#'pr/refresh-tables!' (u/the-id db) test-refresher)
+            (#'pr/refresh-tables! (u/the-id db) test-refresher)
             ;; don't assert equality if there are any deleteable in the app db
             (is (contains? @called-on (u/the-id deleteable)))
             (is (partial= {:task "unpersist-tables"

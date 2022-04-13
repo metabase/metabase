@@ -38,6 +38,7 @@
             [metabase.query-processor.util :as qputil]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
@@ -806,10 +807,8 @@
   {card-id su/IntGreaterThanZero}
   (api/check-superuser)
   (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
-    (let [database (Database (:database_id persisted-info))]
-      (ddl.concurrent/submit-task
-       #(ddl.i/refresh! (:engine database) database persisted-info))
-      api/generic-204-no-content)))
+    (task.persist-refresh/schedule-refresh-for-individual persisted-info)
+    api/generic-204-no-content))
 
 (api/defendpoint POST "/:card-id/unpersist"
   "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
