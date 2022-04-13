@@ -564,9 +564,7 @@ export const getRawSeries = createSelector(
     let display = question && question.display();
     let settings = question && question.settings();
 
-    if (isObjectDetail) {
-      display = "object";
-    } else if (isShowingRawTable) {
+    if (isShowingRawTable) {
       display = "table";
       settings = { "table.pivot": false };
     }

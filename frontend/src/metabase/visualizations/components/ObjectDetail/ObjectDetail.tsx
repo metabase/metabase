@@ -9,6 +9,7 @@ import { ForeignKey } from "metabase-types/api/foreignKey";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { OnVisualizationClickType } from "./types";
 
+import Modal from "metabase/components/Modal";
 import DirectionalButton from "metabase/components/DirectionalButton";
 import Icon from "metabase/components/Icon";
 import { NotFound } from "metabase/containers/ErrorPages";
@@ -25,6 +26,7 @@ import {
   followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 } from "metabase/query_builder/actions";
 import {
   getQuestion,
@@ -57,6 +59,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   followForeignKey: (fk: ForeignKey) => dispatch(followForeignKey(fk)),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
+  closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
 export interface ObjectDetailProps {
@@ -79,6 +82,7 @@ export interface ObjectDetailProps {
   followForeignKey: (fk: ForeignKey) => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
+  closeObjectDetail: () => void;
 }
 
 export function ObjectDetailFn({
@@ -99,6 +103,7 @@ export function ObjectDetailFn({
   followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevData = usePrevious(data);
@@ -168,27 +173,29 @@ export function ObjectDetailFn({
   const objectName = getObjectName({ table, question });
 
   return (
-    <ObjectDetailWrapper>
-      <ObjectDetailHeader
-        canZoom={canZoom}
-        objectName={objectName}
-        objectId={getIdValue({ data, zoomedRowID })}
-        canZoomPreviousRow={canZoomPreviousRow}
-        canZoomNextRow={canZoomNextRow}
-        viewPreviousObjectDetail={viewPreviousObjectDetail}
-        viewNextObjectDetail={viewNextObjectDetail}
-      />
-      <ObjectDetailBody
-        data={data}
-        zoomedRow={zoomedRow}
-        settings={settings}
-        onVisualizationClick={onVisualizationClick}
-        visualizationIsClickable={visualizationIsClickable}
-        tableForeignKeys={tableForeignKeys}
-        tableForeignKeyReferences={tableForeignKeyReferences}
-        followForeignKey={followForeignKey}
-      />
-    </ObjectDetailWrapper>
+    <Modal isOpen isFull={false} onClose={closeObjectDetail}>
+      <ObjectDetailWrapper>
+        <ObjectDetailHeader
+          canZoom={canZoom}
+          objectName={objectName}
+          objectId={getIdValue({ data, zoomedRowID })}
+          canZoomPreviousRow={canZoomPreviousRow}
+          canZoomNextRow={canZoomNextRow}
+          viewPreviousObjectDetail={viewPreviousObjectDetail}
+          viewNextObjectDetail={viewNextObjectDetail}
+        />
+        <ObjectDetailBody
+          data={data}
+          zoomedRow={zoomedRow}
+          settings={settings}
+          onVisualizationClick={onVisualizationClick}
+          visualizationIsClickable={visualizationIsClickable}
+          tableForeignKeys={tableForeignKeys}
+          tableForeignKeyReferences={tableForeignKeyReferences}
+          followForeignKey={followForeignKey}
+        />
+      </ObjectDetailWrapper>
+    </Modal>
   );
 }
 
@@ -197,7 +204,7 @@ export const ObjectDetailWrapper = ({
 }: {
   children: JSX.Element | JSX.Element[];
 }) => (
-  <div className="scroll-y pt2 px4">
+  <div className="scroll-y">
     <div className="ObjectDetail bordered rounded">{children}</div>
   </div>
 );

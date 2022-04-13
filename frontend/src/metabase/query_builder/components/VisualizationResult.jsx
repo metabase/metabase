@@ -93,30 +93,65 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
+
+      // FIXME dev hack
+      const transformedRawSeries = rawSeries.map(rs => ({
+        ...rs,
+        card: { ...rs.card, display: "object" },
+      }));
+
       return (
-        <Visualization
-          className={className}
-          rawSeries={rawSeries}
-          onChangeCardAndRun={navigateToNewCardInsideQB}
-          isEditing={true}
-          isQueryBuilder={true}
-          queryBuilderMode={queryBuilderMode}
-          showTitle={false}
-          metadata={question.metadata()}
-          timelineEvents={timelineEvents}
-          selectedTimelineEventIds={selectedTimelineEventIds}
-          handleVisualizationClick={this.props.handleVisualizationClick}
-          onOpenTimelines={this.props.onOpenTimelines}
-          onSelectTimelineEvents={this.props.selectTimelineEvents}
-          onDeselectTimelineEvents={this.props.deselectTimelineEvents}
-          onOpenChartSettings={this.props.onOpenChartSettings}
-          onUpdateWarnings={this.props.onUpdateWarnings}
-          onUpdateVisualizationSettings={
-            this.props.onUpdateVisualizationSettings
-          }
-          query={this.props.query}
-          {...vizSpecificProps}
-        />
+        <>
+          <Visualization
+            className={className}
+            rawSeries={rawSeries}
+            onChangeCardAndRun={navigateToNewCardInsideQB}
+            isEditing={true}
+            isObjectDetail={false}
+            isQueryBuilder={true}
+            queryBuilderMode={queryBuilderMode}
+            showTitle={false}
+            metadata={question.metadata()}
+            timelineEvents={timelineEvents}
+            selectedTimelineEventIds={selectedTimelineEventIds}
+            handleVisualizationClick={this.props.handleVisualizationClick}
+            onOpenTimelines={this.props.onOpenTimelines}
+            onSelectTimelineEvents={this.props.selectTimelineEvents}
+            onDeselectTimelineEvents={this.props.deselectTimelineEvents}
+            onOpenChartSettings={this.props.onOpenChartSettings}
+            onUpdateWarnings={this.props.onUpdateWarnings}
+            onUpdateVisualizationSettings={
+              this.props.onUpdateVisualizationSettings
+            }
+            query={this.props.query}
+            {...vizSpecificProps}
+          />
+          {this.props.isObjectDetail && (
+            <Visualization
+              className={className}
+              rawSeries={transformedRawSeries}
+              onChangeCardAndRun={navigateToNewCardInsideQB}
+              isEditing={true}
+              isQueryBuilder={true}
+              queryBuilderMode={queryBuilderMode}
+              showTitle={false}
+              metadata={question.metadata()}
+              timelineEvents={timelineEvents}
+              selectedTimelineEventIds={selectedTimelineEventIds}
+              handleVisualizationClick={this.props.handleVisualizationClick}
+              onOpenTimelines={this.props.onOpenTimelines}
+              onSelectTimelineEvents={this.props.selectTimelineEvents}
+              onDeselectTimelineEvents={this.props.deselectTimelineEvents}
+              onOpenChartSettings={this.props.onOpenChartSettings}
+              onUpdateWarnings={this.props.onUpdateWarnings}
+              onUpdateVisualizationSettings={
+                this.props.onUpdateVisualizationSettings
+              }
+              query={this.props.query}
+              {...vizSpecificProps}
+            />
+          )}
+        </>
       );
     }
   }
