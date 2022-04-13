@@ -11,13 +11,12 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
-import { PermissionsApi } from "metabase/services";
 import { t, ngettext, msgid } from "ttag";
 import Alert from "metabase/components/Alert";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 
 import GroupMembersTable from "./group-members/GroupMembersTable";
-import { deleteMembership } from "../people";
+import { deleteMembership, createMembership } from "../people";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
@@ -43,6 +42,7 @@ const GroupDescription = ({ group }) =>
 
 @connect(null, {
   deleteMembership,
+  createMembership,
 })
 export default class GroupDetail extends Component {
   constructor(props, context) {
@@ -51,7 +51,6 @@ export default class GroupDetail extends Component {
       addUserVisible: false,
       text: "",
       selectedUsers: [],
-      members: null,
       alertMessage: null,
     };
   }
@@ -83,11 +82,10 @@ export default class GroupDetail extends Component {
     try {
       await Promise.all(
         this.state.selectedUsers.map(async user => {
-          const members = await PermissionsApi.createMembership({
-            group_id: this.props.group.id,
-            user_id: user.id,
+          await this.props.createMembership({
+            groupId: this.props.group.id,
+            userId: user.id,
           });
-          this.setState({ members });
         }),
       );
     } catch (error) {
@@ -119,8 +117,10 @@ export default class GroupDetail extends Component {
       const membership = this.props.group.members.find(
         m => m.user_id === user.id,
       );
+
       await this.props.deleteMembership({
         membershipId: membership.membership_id,
+        groupId: this.props.group.id,
       });
       const newMembers = _.reject(
         this.getMembers(),
@@ -133,23 +133,12 @@ export default class GroupDetail extends Component {
     }
   }
 
-  // TODO - bad!
-  // TODO - this totally breaks if you edit members and then switch groups !
-  getMembers() {
-    return (
-      this.state.members || (this.props.group && this.props.group.members) || []
-    );
-  }
-
   render() {
     // users = array of all users for purposes of adding new users to group
     // [group.]members = array of users currently in the group
-    let { currentUser, group, users } = this.props;
+    const { currentUser, group, users } = this.props;
     const { text, selectedUsers, addUserVisible, alertMessage } = this.state;
-    const members = this.getMembers();
-
-    group = group || {};
-    users = users || {};
+    const { members } = group;
 
     const usedUsers = {};
     for (const user of members) {
