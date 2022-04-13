@@ -121,10 +121,12 @@
     (when (premium-features/enable-advanced-permissions?)
       (let [[_ to-add-recipients] (data/diff (map :id (:recipients (api-alert/email-channel pulse-before-update)))
                                              (map :id (:recipients (api-alert/email-channel pulse-updates))))
-            current-user-has-general-permissions? (and (premium-features/enable-advanced-permissions?)
-                                                       (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
-            has-subscription-perms?               (and current-user-has-general-permissions?
-                                                       (current-user-has-general-permissions? :subscription))]
+            current-user-has-general-permissions?
+            (and (premium-features/enable-advanced-permissions?)
+                 (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
+            has-subscription-perms?
+            (and current-user-has-general-permissions?
+                 (current-user-has-general-permissions? :subscription))]
         (api/check (or api/*is-superuser?*
                        has-subscription-perms?
                        (empty? to-add-recipients))
