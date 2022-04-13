@@ -7,7 +7,9 @@
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Session User]]
+            [metabase.models :refer [PermissionsGroupMembership Session User]]
+            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]
@@ -209,7 +211,7 @@
     ;; the way we'd expect :/
     (try
       (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :lucky)}]
-        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :user-locale nil}
+        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
@@ -217,10 +219,34 @@
   (testing "superusers should come back as `:is-superuser?`"
     (try
       (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :crowberto)}]
-        (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :user-locale nil}
+        (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
                (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
+
+  (testing "If user is a group manager of at least one group, `:is-group-manager?` "
+    (try
+     (mt/with-user-in-groups
+       [group-1 {:name "New Group 1"}
+        group-2 {:name "New Group 2"}
+        user    [group-1 group-2]]
+       (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
+                         :is_group_manager true)
+       (mt/with-temp Session [_session {:id      (str test-uuid)
+                                        :user_id (:id user)}]
+         (testing "is `false` if advanced-permisison is disabled"
+           (premium-features-test/with-premium-features #{}
+           (is (= false
+                  (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
+
+         (testing "is `true` if advanced-permisison is enabled"
+           ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
+           ;; `enable-advanced-permissions?` will still return false
+           (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
+             (is (= true
+                    (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))))
+         (finally
+          (db/delete! Session :id (str test-uuid)))))
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
@@ -237,7 +263,7 @@
         (mt/with-temp Session [session {:id              (str test-uuid)
                                         :user_id         (mt/user->id :lucky)
                                         :anti_csrf_token test-anti-csrf-token}]
-          (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :user-locale nil}
+          (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
                  (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
         (finally
           (db/delete! Session :id (str test-uuid))))
