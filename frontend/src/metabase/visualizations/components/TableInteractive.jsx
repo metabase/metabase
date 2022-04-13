@@ -108,7 +108,7 @@ export default class TableInteractive extends Component {
     document.body.appendChild(this._div);
 
     this._measure();
-    this._findIDColumn(this.props.data);
+    this._findIDColumn(this.props.data, this.props.isPivoted);
   }
 
   componentWillUnmount() {
@@ -139,21 +139,21 @@ export default class TableInteractive extends Component {
       this.remeasureColumnWidths();
     }
 
-    if (!newProps.isPivoted && isDataChange) {
-      this._findIDColumn(nextData);
+    if (isDataChange) {
+      this._findIDColumn(nextData, newProps.isPivoted);
     }
   }
 
-  _findIDColumn(data) {
-    const pkIndex = data.cols.findIndex(col => isPK(col));
+  _findIDColumn = (data, isPivoted = false) => {
+    const pkIndex = isPivoted ? -1 : data.cols.findIndex(col => isPK(col));
     this.setState({
       IDColumnIndex: pkIndex === -1 ? null : pkIndex,
-      IDColumn: data.cols[pkIndex],
+      IDColumn: pkIndex === -1 ? null : data.cols[pkIndex],
     });
     if (pkIndex !== -1) {
       document.addEventListener("keydown", this.onKeyDown);
     }
-  }
+  };
 
   _getColumnSettings(props) {
     return props.data && props.data.cols.map(col => props.settings.column(col));
@@ -553,8 +553,8 @@ export default class TableInteractive extends Component {
     return dragColNewIndex;
   }
 
-  getColumnPositions() {
-    let left = 0;
+  getColumnPositions = () => {
+    let left = this.state.IDColumn ? SIDEBAR_WIDTH : 0;
     return this.props.data.cols.map((col, index) => {
       const width = this.getColumnWidth({ index });
       const pos = {
@@ -566,14 +566,14 @@ export default class TableInteractive extends Component {
       left += width;
       return pos;
     });
-  }
+  };
 
-  getNewColumnLefts(dragColNewIndex) {
+  getNewColumnLefts = dragColNewIndex => {
     const { dragColIndex, columnPositions } = this.state;
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
-    let left = 0;
+    let left = this.state.IDColumn ? SIDEBAR_WIDTH : 0;
     const lefts = indexes.map(index => {
       const thisLeft = left;
       left += columnPositions[index].width;
@@ -581,7 +581,7 @@ export default class TableInteractive extends Component {
     });
     lefts.sort((a, b) => a.index - b.index);
     return lefts.map(p => p.left);
-  }
+  };
 
   getColumnLeft(style, index) {
     const { dragColNewIndex, dragColNewLefts } = this.state;
@@ -795,20 +795,22 @@ export default class TableInteractive extends Component {
     );
   };
 
-  getColumnWidth = ({ index }) => {
-    const { settings } = this.props;
-    const { columnWidths } = this.state;
-    const columnWidthsSetting = settings["table.column_widths"] || [];
-
-    if (this.state.IDColumn && index === 0) {
+  getDisplayColumnWidth = ({ index: displayIndex }) => {
+    if (this.state.IDColumn && displayIndex === 0) {
       return SIDEBAR_WIDTH;
     }
 
     // if we have an ID column, we've added a column of empty cells and need to shift
-    // these indexes accordingly
-    if (this.state.IDColumn) {
-      index -= 1;
-    }
+    // the display index to get the data index
+    const dataIndex = this.state.IDColumn ? displayIndex - 1 : displayIndex;
+
+    return this.getColumnWidth({ index: dataIndex });
+  };
+
+  getColumnWidth = ({ index }) => {
+    const { settings } = this.props;
+    const { columnWidths } = this.state;
+    const columnWidthsSetting = settings["table.column_widths"] || [];
 
     return (
       columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH
@@ -944,10 +946,10 @@ export default class TableInteractive extends Component {
                 rowCount={1}
                 rowHeight={headerHeight}
                 columnCount={cols.length + gutterColumn}
-                columnWidth={this.getColumnWidth}
+                columnWidth={this.getDisplayColumnWidth}
                 cellRenderer={props =>
                   gutterColumn && props.columnIndex === 0
-                    ? () => undefined // we need a phantom cell to properly offset columns
+                    ? () => null // we need a phantom cell to properly offset columns
                     : this.tableHeaderRenderer({
                         ...props,
                         columnIndex: props.columnIndex - gutterColumn,
@@ -970,7 +972,7 @@ export default class TableInteractive extends Component {
                 width={width}
                 height={height - headerHeight}
                 columnCount={cols.length + gutterColumn}
-                columnWidth={this.getColumnWidth}
+                columnWidth={this.getDisplayColumnWidth}
                 rowCount={rows.length}
                 rowHeight={ROW_HEIGHT}
                 cellRenderer={props =>
