@@ -1,26 +1,15 @@
-/**
- * FYI, this test suite contains permission tests for different pages
- *
- * - Collections (/collection/root)
- * - Dashboard (/dashboard/:id)
- * - Question (/question/:id)
- *
- * It's a WIP and most likely it will be split later,
- * when we're sure about our testing strategy for permissions
- * See discussion: https://github.com/metabase/metabase/pull/15573
- */
-
 import { onlyOn } from "@cypress/skip-test";
+
 import {
   restore,
   popover,
   appBar,
   navigationSidebar,
-  modal,
   openNativeEditor,
-  visitDashboard,
 } from "__support__/e2e/cypress";
+
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
+
 import { USERS } from "__support__/e2e/cypress_data";
 
 const PERMISSIONS = {
@@ -344,89 +333,6 @@ describe("collection permissions", () => {
                   cy.findByText(item);
                 }
               });
-
-              describe("managing dashboard from the dashboard's edit menu", () => {
-                beforeEach(() => {
-                  cy.route("PUT", "/api/dashboard/1").as("updateDashboard");
-                  visitDashboard(1);
-                  cy.get("main header").within(() => {
-                    cy.icon("ellipsis").click();
-                  });
-                });
-
-                it("should be able to change title and description", () => {
-                  cy.findByText("Edit dashboard details").click();
-                  cy.location("pathname").should("eq", "/dashboard/1/details");
-                  cy.findByLabelText("Name")
-                    .click()
-                    .type("1");
-                  cy.findByLabelText("Description")
-                    .click()
-                    .type("Foo");
-                  clickButton("Update");
-                  assertOnRequest("updateDashboard");
-                  cy.findByText("Orders in a dashboard1");
-                  cy.icon("info").click();
-                  cy.findByText("Foo");
-                });
-
-                it("should be able to duplicate a dashboard", () => {
-                  cy.route("POST", "/api/dashboard/1/copy").as("copyDashboard");
-                  cy.findByText("Duplicate").click();
-                  cy.location("pathname").should("eq", "/dashboard/1/copy");
-                  cy.get(".Modal").within(() => {
-                    clickButton("Duplicate");
-                    cy.findByText("Failed").should("not.exist");
-                  });
-                  assertOnRequest("copyDashboard");
-                  cy.location("pathname").should(
-                    "eq",
-                    "/dashboard/2-orders-in-a-dashboard-duplicate",
-                  );
-                  cy.findByText(`Orders in a dashboard - Duplicate`);
-                });
-
-                describe("move", () => {
-                  beforeEach(() => {
-                    popover().within(() => {
-                      cy.findByText("Move").click();
-                    });
-                    cy.location("pathname").should("eq", "/dashboard/1/move");
-                    modal().within(() => {
-                      cy.findByText("First collection").click();
-                      clickButton("Move");
-                    });
-                  });
-
-                  it("should be able to move/undo move a dashboard", () => {
-                    assertOnRequest("updateDashboard");
-                    // Why do we use "Dashboard moved to" here (without its location, btw) vs. "Moved dashboard" for the same action?
-                    cy.findByText("Dashboard moved to");
-                    cy.findByText("Undo").click();
-                    assertOnRequest("updateDashboard");
-                  });
-
-                  it.skip("should update dashboard's collection after the move without page reload (metabase#13059)", () => {
-                    cy.contains("37.65");
-                    cy.get(".DashboardHeader a").contains("First collection");
-                  });
-                });
-
-                it("should be able to archive/unarchive a dashboard", () => {
-                  popover().within(() => {
-                    cy.findByText("Archive").click();
-                  });
-                  cy.location("pathname").should("eq", "/dashboard/1/archive");
-                  cy.findByText("Archive this dashboard?"); //Without this, there is some race condition and the button click fails
-                  clickButton("Archive");
-                  assertOnRequest("updateDashboard");
-                  cy.location("pathname").should("eq", "/collection/root");
-                  cy.findByText("Orders in a dashboard").should("not.exist");
-                  cy.findByText("Archived dashboard");
-                  cy.findByText("Undo").click();
-                  assertOnRequest("updateDashboard");
-                });
-              });
             });
           });
 
@@ -478,53 +384,6 @@ describe("collection permissions", () => {
                 });
               });
             });
-
-            describe("managing dashboard from the dashboard's edit menu", () => {
-              it("should not be offered to edit dashboard details for dashboard in collections they have `read` access to (metabase#15280)", () => {
-                cy.intercept("GET", "/api/collection/root").as("collections");
-                visitDashboard(1);
-                cy.get("main header").within(() => {
-                  cy.icon("ellipsis")
-                    .should("be.visible")
-                    .click();
-                });
-
-                popover()
-                  .findByText("Edit dashboard details")
-                  .should("not.exist");
-              });
-
-              it("should not be offered to archive dashboard in collections they have `read` access to (metabase#15280)", () => {
-                cy.intercept("GET", "/api/collection/root").as("collections");
-                visitDashboard(1);
-                cy.get("main header").within(() => {
-                  cy.icon("ellipsis")
-                    .should("be.visible")
-                    .click();
-                });
-                popover()
-                  .findByText("Archive")
-                  .should("not.exist");
-              });
-
-              it("should be offered to duplicate dashboard in collections they have `read` access to", () => {
-                cy.intercept("GET", "/api/collection/root").as("collections");
-                const { first_name, last_name } = USERS[user];
-                visitDashboard(1);
-                cy.wait("@collections");
-                cy.get("main header").within(() => {
-                  cy.icon("ellipsis")
-                    .should("be.visible")
-                    .click();
-                });
-                popover()
-                  .findByText("Duplicate")
-                  .click();
-                cy.findByTestId("select-button").findByText(
-                  `${first_name} ${last_name}'s Personal Collection`,
-                );
-              });
-            });
           });
         });
       });
@@ -570,14 +429,4 @@ function exposeChildrenFor(collectionName) {
     .find(".Icon-chevronright")
     .eq(0) // there may be more nested icons, but we need the top level one
     .click();
-}
-
-function assertOnRequest(xhr_alias) {
-  cy.wait("@" + xhr_alias).then(xhr => {
-    expect(xhr.status).not.to.eq(403);
-  });
-  cy.findByText("Sorry, you don’t have permission to see that.").should(
-    "not.exist",
-  );
-  cy.get(".Modal").should("not.exist");
 }
