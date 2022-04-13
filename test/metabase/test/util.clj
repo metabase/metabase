@@ -12,8 +12,8 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet PersistedInfo Permissions PermissionsGroup
-                                     PermissionsGroupMembership Pulse PulseCard PulseChannel Revision Segment Setting
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
+                                     PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
                                      Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
