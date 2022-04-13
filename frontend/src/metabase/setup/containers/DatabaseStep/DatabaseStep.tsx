@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
-import { State } from "metabase-types/store";
+import { State, DatabaseInfo, InviteInfo } from "metabase-types/store";
 import DatabaseStep from "../../components/DatabaseStep";
 import { setDatabase, setInvite, setStep, submitDatabase } from "../../actions";
 import {
@@ -18,7 +18,6 @@ import {
   getInvite,
   getUser,
 } from "../../selectors";
-import { DatabaseInfo, InviteInfo } from "../../types";
 
 const mapStateToProps = (state: State) => ({
   user: getUser(state),

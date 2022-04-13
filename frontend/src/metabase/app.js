@@ -92,10 +92,8 @@ function _init(reducers, getRoutes, callback) {
 
   MetabaseSettings.on("user-locale", async locale => {
     // reload locale definition and site settings with the new locale
-    await Promise.all([
-      loadLocalization(locale),
-      store.dispatch(refreshSiteSettings({ locale })),
-    ]);
+    await loadLocalization(locale);
+    await store.dispatch(refreshSiteSettings({ locale }));
     // force re-render of React application
     root.forceUpdate();
   });

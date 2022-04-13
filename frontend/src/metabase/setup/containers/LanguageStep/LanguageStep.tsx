@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
-import { State } from "metabase-types/store";
+import { State, Locale } from "metabase-types/store";
 import LanguageStep from "../../components/LanguageStep";
 import { setLocale, setStep } from "../../actions";
 import { LANGUAGE_STEP, USER_STEP } from "../../constants";
@@ -10,7 +10,6 @@ import {
   isStepCompleted,
   isSetupCompleted,
 } from "../../selectors";
-import { Locale } from "../../types";
 
 const mapStateToProps = (state: State) => ({
   locale: getLocale(state),
