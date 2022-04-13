@@ -28,7 +28,7 @@ Metabase supports many different databases and data sources, with different leve
 
 ### Officially supported databases
 
-The following database have official drivers maintained by the Metabase team.
+The following database have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -39,7 +39,7 @@ The following database have official drivers maintained by the Metabase team.
 - [Oracle](databases/oracle.md)
 - [PostgreSQL](databases/postgresql.md)
 - Presto
-- Redshift (Amazon Web Services)
+- [Redshift (Amazon Web Services)](databases/redshift.md)
 - [Snowflake](databases/snowflake.md)
 - SparkSQL
 - SQL Server
@@ -48,11 +48,7 @@ The following database have official drivers maintained by the Metabase team.
 
 ### Partner drivers
 
-Partner drivers are drivers developed and supported by partners.
-
-- [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
-
-Why partner drivers? We want to make Metabase useful for as many people as possible, but we want to make sure that the drivers we support.
+Partner drivers are drivers developed and supported by partners. Metabase doesn't provide support for partner drivers, but these partner drivers are held to a higher standard than our community drivers.
 
 To qualify as a partner driver, the driver must:
 
@@ -62,7 +58,11 @@ To qualify as a partner driver, the driver must:
 - Survive a code review by the Metabase developers
 - Have a sponsor (usually the database's vendor) who has committed to maintaining the driver for future releases.
 
-If all goes well, and we see people using the driver, we'll consider making it official, but in no way does this imply that partner drivers will eventually become officially supported drivers.
+If all goes well, and we see people using the driver, we'll consider supporting it as an official driver. But to be clear: partner drivers will not always eventually become officially supported drivers.
+
+Current partner drivers:
+
+- [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
 
 ### Community drivers 
 
