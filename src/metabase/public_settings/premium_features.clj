@@ -309,6 +309,15 @@
          (apply ~ee-fn ~args)
          ~@body))))
 
+(defmacro defenterprise-ee
+  "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
+  [{:keys [fn-name docstr args body options]}]
+  `(defn ~fn-name ~docstr ~args
+     (if (has-feature? ~(:feature options))
+       (do
+         ~@body))))
+  ;     ~@body)))
+
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE) and Enterprise
   Edition (EE).
@@ -335,17 +344,17 @@
   causes the CE implementation of the function to be called. (Default: `:error`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [defenterprise-args (parse-defenterprise-args defenterprise-args)]
-    (if (not (in-ee?))
-      `(defenterprise-oss ~(assoc defenterprise-args
-                                  :fn-name fn-name))
-      nil)))
+  (let [defenterprise-args (-> (parse-defenterprise-args defenterprise-args)
+                               (assoc :fn-name fn-name))]
+    (if (in-ee?)
+      `(defenterprise-ee ~defenterprise-args)
+      `(defenterprise-oss ~defenterprise-args))))
 
 (comment
-  (defenterprise my-sum
+  (defenterprise my-sum3
     "This is my docstring"
     metabase-enterprise.core
     [x y]
     (+ x y))
 
-  (my-sum 3 2))
+  (my-sum3 3 2))
