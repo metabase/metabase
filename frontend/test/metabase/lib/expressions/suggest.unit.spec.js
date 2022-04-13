@@ -145,7 +145,7 @@ describe("metabase/lib/expression/suggest", () => {
           }),
         ).toEqual(
           [
-            { text: "True ", type: "literal" },
+            { text: "True", type: "literal" },
             { text: "[Total] ", type: "fields" },
             { text: "trim(", type: "functions" },
           ].sort(suggestionSort),
