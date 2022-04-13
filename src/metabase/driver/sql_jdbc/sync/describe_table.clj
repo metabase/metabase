@@ -210,11 +210,11 @@
                             (flatten-row xs path))))))]
     (into {} (flatten-row row [field-name]))))
 
-(defn- type-but-maybe-datetime
+(defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
   [member]
   (let [member-type (type member)]
-    (if (and (instance? String member-type)
+    (if (and (instance? String member)
              (mbql.s/can-parse-datetime? member))
       java.time.LocalDateTime
       member-type)))
@@ -222,7 +222,7 @@
 (defn- row->types [row]
   (into {} (for [[field-name field-val] row]
              (let [flat-row (flattened-row field-name field-val)]
-               (into {} (map (fn [[k v]] [k (type-finder v)]) flat-row))))))
+               (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
   ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
