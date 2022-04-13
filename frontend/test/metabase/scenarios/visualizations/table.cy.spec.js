@@ -159,9 +159,11 @@ describe("scenarios > visualizations > table", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".cellData")
-      .contains("Count")
-      .trigger("mouseenter");
+    cy.get(".Visualization").within(() => {
+      // Make sure new table results loaded with Custom column and Count columns
+      cy.contains(ccName);
+      cy.contains("Count").trigger("mouseenter");
+    });
 
     popover().within(() => {
       cy.contains("No special type");
