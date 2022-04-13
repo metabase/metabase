@@ -11399,7 +11399,7 @@ databaseChangeLog:
                     deleteCascade: true
               - column:
                   name: type
-                  type: ${text.type}
+                  type: varchar(255)
                   remarks: 'type of the Bookmark'
                   constraints:
                     nullable: false
