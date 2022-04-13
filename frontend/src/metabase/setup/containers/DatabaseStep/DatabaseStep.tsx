@@ -17,6 +17,7 @@ import {
   getDatabaseEngine,
   getInvite,
   getUser,
+  isLocaleLoaded,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -28,6 +29,7 @@ const mapStateToProps = (state: State) => ({
   isStepActive: isStepActive(state, DATABASE_STEP),
   isStepCompleted: isStepCompleted(state, DATABASE_STEP),
   isSetupCompleted: isSetupCompleted(state),
+  isLocaleLoaded: isLocaleLoaded(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

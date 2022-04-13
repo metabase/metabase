@@ -10,7 +10,14 @@ export const SET_STEP = "metabase/setup/SET_STEP";
 export const setStep = createAction(SET_STEP);
 
 export const SET_LOCALE = "metabase/setup/SET_LOCALE";
-export const setLocale = createAction(SET_LOCALE);
+export const SET_LOCALE_LOADED = "metabase/setup/SET_LOCALE_LOADED";
+export const setLocale = createThunkAction(
+  SET_LOCALE_LOADED,
+  (locale: Locale) => async (dispatch: any) => {
+    dispatch.action(SET_LOCALE, locale);
+    await loadLocalization(locale.code);
+  },
+);
 
 export const SET_USER = "metabase/setup/SET_USER";
 export const setUser = createAction(SET_USER);
@@ -36,25 +43,13 @@ export const loadUserDefaults = createThunkAction(
   },
 );
 
-export const LOAD_LOCALE = "metabase/setup/LOAD_LOCALE";
-export const loadLocale = createThunkAction(
-  LOAD_LOCALE,
-  (locale: Locale) => async () => {
-    await loadLocalization(locale.code);
-  },
-);
-
 export const LOAD_LOCALE_DEFAULTS = "metabase/setup/LOAD_LOCALE_DEFAULTS";
 export const loadLocaleDefaults = createThunkAction(
   LOAD_LOCALE_DEFAULTS,
   () => async (dispatch: any) => {
     const data = Settings.get("available-locales");
     const locale = getDefaultLocale(getLocales(data));
-
-    if (locale) {
-      await dispatch(setLocale(locale));
-      await dispatch(loadLocale(locale));
-    }
+    await dispatch(setLocale(locale));
   },
 );
 

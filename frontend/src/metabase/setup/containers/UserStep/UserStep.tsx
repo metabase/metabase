@@ -10,6 +10,7 @@ import {
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
+  isLocaleLoaded,
 } from "../../selectors";
 
 const mapStateToProps = (state: State) => ({
@@ -18,6 +19,7 @@ const mapStateToProps = (state: State) => ({
   isStepActive: isStepActive(state, USER_STEP),
   isStepCompleted: isStepCompleted(state, USER_STEP),
   isSetupCompleted: isSetupCompleted(state),
+  isLocaleLoaded: isLocaleLoaded(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
