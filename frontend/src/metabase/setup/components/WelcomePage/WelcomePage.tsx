@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
-import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { LOCALE_TIMEOUT } from "../../constants";
 import SetupHelp from "../SetupHelp";
 import {
   PageRoot,
@@ -22,11 +22,13 @@ const WelcomePage = ({
   onStepShow,
   onStepSubmit,
 }: WelcomePageProps): JSX.Element | null => {
+  const isElapsed = useIsElapsed(LOCALE_TIMEOUT);
+
   useEffect(() => {
     onStepShow();
   }, [onStepShow]);
 
-  if (!isLocaleLoaded) {
+  if (!isElapsed && !isLocaleLoaded) {
     return null;
   }
 
@@ -48,6 +50,17 @@ const WelcomePage = ({
       <SetupHelp />
     </PageRoot>
   );
+};
+
+const useIsElapsed = (delay: number) => {
+  const [isElapsed, setIsElapsed] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setIsElapsed(true), delay);
+    return () => clearTimeout(timeout);
+  }, [delay]);
+
+  return isElapsed;
 };
 
 export default WelcomePage;
