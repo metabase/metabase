@@ -163,6 +163,6 @@ describe("scenarios > question > saved", () => {
   it("should show table name in header with a table info popover on hover", () => {
     visitQuestion(1);
     cy.findByTestId("question-table-badges").trigger("mouseenter");
-    cy.findByText("9 columns");
+    cy.findByText("10 columns");
   });
 });
