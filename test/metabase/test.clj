@@ -98,7 +98,6 @@
   when-testing-driver]
 
  [driver
-  *driver*
   with-driver]
 
  [et
