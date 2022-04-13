@@ -230,6 +230,10 @@
          (map row->types)) member))
 
 (defn- describe-json-rf
+  "Reducing function that takes a bunch of maps from row->types,
+  and gets them to conform to the type hierarchy,
+  going through and taking the lowest common denominator type at each pass,
+  ignoring the nils."
   ([] nil)
   ([acc-field-type-map] acc-field-type-map)
   ([acc-field-type-map second-field-type-map]
