@@ -775,7 +775,7 @@ export class FieldDimension extends Dimension {
     return typeof this._fieldIdOrName === "string";
   }
 
-  _createField(fieldInfo, { hydrate = false } = {}) {
+  _createField(fieldInfo, { hydrate = false } = {}): Field {
     const field = new Field({
       ...fieldInfo,
       metadata: this._metadata,
@@ -806,7 +806,7 @@ export class FieldDimension extends Dimension {
     return field;
   }
 
-  field(): any {
+  field(): Field {
     const question = this.query()?.question();
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
     const fieldMetadata = question
@@ -1213,6 +1213,14 @@ export class ExpressionDimension extends Dimension {
     return this._expressionName;
   }
 
+  _createField(fieldInfo): Field {
+    return new Field({
+      ...fieldInfo,
+      metadata: this._metadata,
+      query: this._query,
+    });
+  }
+
   field() {
     const query = this._query;
     const table = query ? query.table() : null;
@@ -1265,16 +1273,11 @@ export class ExpressionDimension extends Dimension {
     // so that we don't have to try to infer field metadata from the expression
     const resultMetadata = query?.question()?.getResultMetadata?.();
     if (resultMetadata) {
-      const field = _.findWhere(resultMetadata, {
+      const fieldMetadata = _.findWhere(resultMetadata, {
         name: this.name(),
       });
-
-      if (field) {
-        return new Field({
-          ...field,
-          metadata: this._metadata,
-          query: this._query,
-        });
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
       }
     }
 
