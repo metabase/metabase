@@ -820,9 +820,9 @@
               (mt/with-temp Card [{card-id :id} {:dataset_query   (mt/mbql-query orders)
                                                  :result_metadata result-metadata}]
                 ;; now try using this Card as a saved question,  should work
-                (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 false "Awesome Concrete Shoes"]
-                                  [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 false "Mediocre Wooden Bench"]]
-                        :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "CANCELED" "TITLE"]}
+                (is (= {:rows    [[1 1  14  37.65 2.07  39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]
+                                  [2 1 123 110.93  6.1 117.03 nil "2018-05-15T08:04:04.58Z"  3 "Mediocre Wooden Bench"]]
+                        :columns ["ID" "USER_ID" "PRODUCT_ID" "SUBTOTAL" "TAX" "TOTAL" "DISCOUNT" "CREATED_AT" "QUANTITY" "TITLE"]}
                        (mt/rows+column-names
                          (mt/run-mbql-query orders
                            {:source-table (str "card__" card-id), :limit 2, :order-by [[:asc $id]]}))))))))))))
@@ -934,7 +934,6 @@
                          "ORDERS.DISCOUNT"
                          "ORDERS.CREATED_AT"
                          "ORDERS.QUANTITY"
-                         "ORDERS.CANCELED"
                          "PRODUCTS.TITLE"
                          "PRODUCTS.ID"
                          "PRODUCTS.EAN"
@@ -945,7 +944,7 @@
                          "PRODUCTS.RATING"
                          "PRODUCTS.CREATED_AT"]
                         (mapv (comp field-id->name :id) (get-in result [:data :cols]))))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false "Awesome Concrete Shoes" ; <- extra remapped col
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- extra remapped col
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman"
                         25.1 4.0 "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))))))))
@@ -1021,7 +1020,6 @@
                     $discount
                     !default.created_at
                     $quantity
-                    $canceled
                     &ℙ.products.id
                     &ℙ.products.ean
                     &ℙ.products.title

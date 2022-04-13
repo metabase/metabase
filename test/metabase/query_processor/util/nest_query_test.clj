@@ -553,10 +553,6 @@
                                                                                        ::add/source-alias  "QUANTITY"
                                                                                        ::add/desired-alias "QUANTITY"
                                                                                        ::add/position      8}]
-                                                  canceled          [:field %canceled {::add/source-table  $$orders
-                                                                                       ::add/source-alias  "CANCELED"
-                                                                                       ::add/desired-alias "CANCELED"
-                                                                                       ::add/position      9}]
                                                   pivot-grouping    [:expression "pivot-grouping" {::add/desired-alias "pivot-grouping"
                                                                                                    ::add/position      10}]
                                                   products-category [:field %products.category {:join-alias         "PRODUCTS__via__PRODUCT_ID"
@@ -585,7 +581,6 @@
                                                               discount
                                                               created-at
                                                               quantity
-                                                              canceled
                                                               pivot-grouping
                                                               products-category
                                                               products-id]})}
