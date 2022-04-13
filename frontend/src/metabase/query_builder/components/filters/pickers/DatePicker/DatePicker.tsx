@@ -57,10 +57,12 @@ const hasTime = (value: unknown) =>
  * @deprecated -- just use FieldDimension to do this stuff.
  */
 function getDateTimeField(filter: any, bucketing?: string | null) {
-  const field = filter[1];
-  const dimension = FieldDimension.parseMBQLOrWarn(
-    field?.[0] !== "field" ? getRelativeDatetimeField(filter) : field,
-  );
+  let dimension = filter?.dimension?.();
+  if (!dimension) {
+    dimension = FieldDimension.parseMBQLOrWarn(
+      getRelativeDatetimeField(filter),
+    );
+  }
   if (dimension) {
     if (bucketing) {
       return dimension.withTemporalUnit(bucketing).mbql();
@@ -130,11 +132,11 @@ export const DATE_OPERATORS: DateOperator[] = [
       ],
     test: filter => {
       const [op, _field, left] = filter;
-      if (op === "time-interval" && left < 0) {
+      if (op === "time-interval" && typeof left === "number" && left <= 0) {
         return true;
       }
       const [value] = getRelativeDatetimeInterval(filter);
-      return typeof value === "number" && value < 0;
+      return typeof value === "number" && value <= 0;
     },
     group: "relative",
     widget: PastPicker,
@@ -143,7 +145,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "current",
     displayName: t`Current`,
-    init: filter => ["time-interval", getDateTimeField(filter[1]), "current"],
+    init: filter => ["time-interval", getDateTimeField(filter), "current"],
     test: ([op, field, value]) =>
       op === "time-interval" && (value === "current" || value === null),
     group: "relative",
@@ -265,7 +267,9 @@ const DatePicker: React.SFC<Props> = props => {
     hideExcludeOperators,
   } = props;
 
-  const [showShortcuts, setShowShortcuts] = React.useState(filter?.isValid?.());
+  const [showShortcuts, setShowShortcuts] = React.useState(
+    !filter?.isValid?.(),
+  );
   const operators = React.useMemo(() => {
     let ops = props.operators || DATE_OPERATORS;
     if (props.hideExcludeOperators) {

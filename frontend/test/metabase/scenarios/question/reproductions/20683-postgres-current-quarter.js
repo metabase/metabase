@@ -25,10 +25,7 @@ export function issue20683() {
       cy.findByText("Past").click({ force: true });
       cy.findByText("Current").click({ force: true });
 
-      cy.findByText("Day").click();
       cy.findByText("Quarter").click();
-
-      cy.button("Add filter").click();
 
       visualize();
 

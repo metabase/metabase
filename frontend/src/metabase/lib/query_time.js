@@ -7,7 +7,6 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
-import { isValidField } from "metabase/lib/query/field_ref";
 
 export const DATETIME_UNITS = [
   // "default",
@@ -324,8 +323,8 @@ export function isStartingFrom(mbql) {
     Array.isArray(expr) &&
     ((op === "between" && isRelativeDatetime(right)) || op === "=")
   ) {
-    const [innerOp, innerField, interval] = expr;
-    if (innerOp === "+" && isValidField(innerField) && isInterval(interval)) {
+    const [innerOp, _field, interval] = expr;
+    if (innerOp === "+" && isInterval(interval)) {
       return true;
     }
   }
@@ -366,11 +365,7 @@ export function formatStartingFrom(bucketing, n) {
 }
 
 export function getTimeInterval(mbql) {
-  if (
-    Array.isArray(mbql) &&
-    mbql[0] === "time-interval" &&
-    isValidField(mbql[1])
-  ) {
+  if (Array.isArray(mbql) && mbql[0] === "time-interval") {
     return [mbql[1], mbql[2], mbql[3] || "day"];
   }
   return null;
@@ -386,7 +381,7 @@ export function setStartingFrom(mbql, num, unit) {
     const newExpr = [
       exprOp,
       field,
-      [intervalOp, num ?? getDefaultStartingFrom(newUnit), newUnit],
+      [intervalOp, num ?? getDefaultDatetimeValue(newUnit), newUnit],
     ];
     return [op, newExpr, left, right];
   }
@@ -398,7 +393,7 @@ export function setStartingFrom(mbql, num, unit) {
     const expr = [
       "+",
       field,
-      ["interval", num ?? getDefaultStartingFrom(newUnit), newUnit],
+      ["interval", num ?? getDefaultDatetimeValue(newUnit), newUnit],
     ];
     const newInterval = ["relative-datetime", intervalNum, intervalUnit];
     if (intervalNum === -1 || intervalNum === 1) {
@@ -414,14 +409,14 @@ export function setStartingFrom(mbql, num, unit) {
   return mbql;
 }
 
-function getDefaultStartingFrom(unit) {
+function getDefaultDatetimeValue(unit, isDefault = false) {
   switch (unit) {
     case "minute":
       return 60;
     case "hour":
       return 24;
     case "day":
-      return 7;
+      return isDefault ? 30 : 7;
     case "week":
       return 4;
     case "month":
@@ -479,12 +474,13 @@ export function updateRelativeDatetimeFilter(filter, positive) {
   }
 
   if (filter[0] === "time-interval") {
-    const [op, field, value, unit, options] = filter;
-    if (typeof value !== "number") {
-      return null;
-    }
-    const newValue = positive ? Math.abs(value) : -Math.abs(value);
-    return [op, field, newValue, unit, options];
+    const [op, field, value, unit = "day", options] = filter;
+    const numValue =
+      typeof value === "number" ? value : getDefaultDatetimeValue(unit, true);
+    const newValue = positive ? Math.abs(numValue) : -Math.abs(numValue);
+    return options
+      ? [op, field, newValue, unit, options]
+      : [op, field, newValue, unit];
   } else if (isStartingFrom(filter)) {
     const [
       _op,

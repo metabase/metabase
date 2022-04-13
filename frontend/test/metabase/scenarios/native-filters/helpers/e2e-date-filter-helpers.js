@@ -59,7 +59,12 @@ export function setAdHocFilter({
       .click();
   }
 
-  includeCurrent && cy.findByText(/^Include/).click();
+  if (includeCurrent) {
+    popover().within(() => {
+      cy.icon("ellipsis").click();
+    });
+    cy.findByText(/^Include/).click();
+  }
 
   cy.button("Update filter").click();
 }

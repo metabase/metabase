@@ -528,10 +528,14 @@ describe("scenarios > question > filter", () => {
     // Via the GUI, create a filter with "include-current" option
     filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
-    cy.contains("Relative dates...").click();
-    cy.contains("Past").click();
-    cy.icon("ellipsis").click();
-    cy.contains("Include today").click();
+    popover().within(() => {
+      cy.contains("Relative dates...").click();
+      cy.contains("Past").click();
+      cy.icon("ellipsis").click();
+    });
+    popover()
+      .last()
+      .within(() => cy.findByText(/^Include/).click());
     cy.button("Add filter").click();
 
     // Switch to custom expression
@@ -539,15 +543,22 @@ describe("scenarios > question > filter", () => {
 
     popover().within(() => {
       cy.icon("chevronleft").click();
+      cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
     cy.button("Done").click();
 
     // Back to GUI and "Include today" should be still checked
     cy.findByText("Created At Previous 30 Days").click();
-    cy.icon("ellipsis").click();
-    cy.findByText("Include today").should("exist");
-    cy.icon("check").should("exist");
+    popover().within(() => {
+      cy.icon("ellipsis").click();
+    });
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText(/^Include/).should("exist");
+        cy.icon("check").should("exist");
+      });
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
