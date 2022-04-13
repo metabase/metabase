@@ -259,7 +259,7 @@ const DatePicker: React.SFC<Props> = props => {
     filter,
     onFilterChange,
     isSidebar,
-    minWidth,
+    disableOperatorSelection,
     primaryColor,
     onCommit,
     children,
@@ -268,7 +268,7 @@ const DatePicker: React.SFC<Props> = props => {
   } = props;
 
   const [showShortcuts, setShowShortcuts] = React.useState(
-    !filter?.isValid?.(),
+    !filter?.isValid?.() && !disableOperatorSelection,
   );
   const operators = React.useMemo(() => {
     let ops = props.operators || DATE_OPERATORS;
@@ -306,7 +306,7 @@ const DatePicker: React.SFC<Props> = props => {
         />
       ) : (
         <>
-          {operator ? (
+          {operator && !disableOperatorSelection ? (
             <DatePickerHeader
               filter={filter}
               onBack={onBack}
