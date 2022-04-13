@@ -845,14 +845,14 @@
                   (f results)))]
         (do-test
          (fn [results]
-           (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false
+           (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                    14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
                    4.0 "2017-12-31T14:41:56.87Z"]
                   (first (mt/rows results))))))
         (mt/with-column-remappings [orders.product_id products.title]
           (do-test
            (fn [results]
-             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false "Awesome Concrete Shoes" ; <- Extra remapped col
+             (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes" ; <- Extra remapped col
                      14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1
                      4.0 "2017-12-31T14:41:56.87Z"]
                     (first (mt/rows results)))))))))))
@@ -915,7 +915,7 @@
                               :row_count (s/eq 2)
                               s/Keyword  s/Any}
                              result))
-                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 false
+                (is (= [1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2
                         14 "8833419218504" "Awesome Concrete Shoes" "Widget" "McClure-Lockman" 25.1 4.0
                         "2017-12-31T14:41:56.87Z"]
                        (mt/first-row result)))))

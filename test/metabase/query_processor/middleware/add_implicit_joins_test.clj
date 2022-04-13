@@ -245,7 +245,6 @@
                                               $discount
                                               !default.created_at
                                               $quantity
-                                              $canceled
                                               [:field %products.category {:source-field %product_id
                                                                           :join-alias   "PRODUCTS__via__PRODUCT_ID"}]]
                                :filter       [:and
