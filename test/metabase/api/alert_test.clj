@@ -537,7 +537,7 @@
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
-      (is (= (str "Non-admin users without monitoring or subscription permissions"
+      (is (= (str "Non-admin users without monitoring or subscription permissions "
                   "are not allowed to modify the channels for an alert")
              (with-alerts-in-writeable-collection [alert]
                (tu/with-model-cleanup [Pulse]
