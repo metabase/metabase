@@ -128,6 +128,8 @@ const BookmarkList = ({
     bookmarksToBeReordered.splice(newIndex, 0, element);
 
     setOrderedBookmarks(bookmarksToBeReordered);
+
+    Bookmarks.objectActions.reorder(bookmarksToBeReordered);
   };
 
   return (
