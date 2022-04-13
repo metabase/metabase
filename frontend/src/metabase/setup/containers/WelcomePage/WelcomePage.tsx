@@ -11,9 +11,9 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onStepShow: async () => {
-    await dispatch(loadUserDefaults());
-    await dispatch(loadLocaleDefaults());
+  onStepShow: () => {
+    dispatch(loadUserDefaults());
+    dispatch(loadLocaleDefaults());
     trackStepSeen(WELCOME_STEP);
   },
   onStepSubmit: () => {
