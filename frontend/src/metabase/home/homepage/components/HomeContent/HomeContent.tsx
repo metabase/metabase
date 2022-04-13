@@ -43,7 +43,7 @@ const isLoading = ({
 }: HomeContentProps): boolean => {
   if (!user.has_question_and_dashboard) {
     return databases == null;
-  } else if (user.is_installer || !isWithinWeek(user.date_joined)) {
+  } else if (user.is_installer || !isWithinWeek(user.first_login)) {
     return databases == null || recentItems == null;
   } else {
     return databases == null || recentItems == null || popularItems == null;
@@ -59,7 +59,7 @@ const isPopularSection = ({
     !user.is_installer &&
     user.has_question_and_dashboard &&
     popularItems.length > 0 &&
-    (isWithinWeek(user.date_joined) || !recentItems.length)
+    (isWithinWeek(user.first_login) || !recentItems.length)
   );
 };
 

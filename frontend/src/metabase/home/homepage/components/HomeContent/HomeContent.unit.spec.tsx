@@ -32,7 +32,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        date_joined: "2020-01-05T00:00:00Z",
+        first_login: "2020-01-05T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
@@ -49,7 +49,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        date_joined: "2020-01-05T00:00:00Z",
+        first_login: "2020-01-05T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [],
@@ -66,7 +66,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: false,
         has_question_and_dashboard: true,
-        date_joined: "2020-01-01T00:00:00Z",
+        first_login: "2020-01-01T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
@@ -82,7 +82,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
-        date_joined: "2020-01-10T00:00:00Z",
+        first_login: "2020-01-10T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [],
@@ -98,7 +98,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
-        date_joined: "2020-01-10T00:00:00Z",
+        first_login: "2020-01-10T00:00:00Z",
       }),
       databases: [createMockDatabase()],
       recentItems: [createMockRecentItem()],
@@ -114,7 +114,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
-        date_joined: "2020-01-10T00:00:00Z",
+        first_login: "2020-01-10T00:00:00Z",
       }),
       databases: [],
       recentItems: [],
@@ -130,7 +130,7 @@ describe("HomeContent", () => {
       user: createMockUser({
         is_installer: true,
         has_question_and_dashboard: false,
-        date_joined: "2020-01-10T00:00:00Z",
+        first_login: "2020-01-10T00:00:00Z",
       }),
       databases: undefined,
     });
