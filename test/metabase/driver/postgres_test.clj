@@ -327,7 +327,7 @@
                      :nfc-path          [:coherent_json_val "b"]
                      :visibility-type   :normal}
                     {:name "coherent_json_val → c",
-                     :database-type     "timestamp without time zone",
+                     :database-type     "timestamp",
                      :base-type         :type/DateTime,
                      :database-position 0,
                      :visibility-type   :normal,

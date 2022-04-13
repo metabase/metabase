@@ -231,26 +231,32 @@
 
 (defn- describe-json-rf
   ([] nil)
-  ([fst] fst)
-  ([fst snd]
+  ([acc-field-type-map] acc-field-type-map)
+  ([acc-field-type-map second-field-type-map]
    (into {}
-         (for [json-column (set/union (keys snd) (keys fst))]
+         (for [json-column (set/union (keys second-field-type-map)
+                                      (keys acc-field-type-map))]
            (cond
-             (or (nil? fst)
-                 (nil? (fst json-column))
-                 (= (hash (fst json-column)) (hash (snd json-column))))
-             [json-column (snd json-column)]
+             (or (nil? acc-field-type-map)
+                 (nil? (acc-field-type-map json-column))
+                 (= (hash (acc-field-type-map json-column))
+                    (hash (second-field-type-map json-column))))
+             [json-column (second-field-type-map json-column)]
 
-             (or (nil? snd)
-                 (nil? (snd json-column)))
-             [json-column (fst json-column)]
+             (or (nil? second-field-type-map)
+                 (nil? (second-field-type-map json-column)))
+             [json-column (acc-field-type-map json-column)]
 
-             (every? #(isa? % Number) [(fst json-column) (snd json-column)])
+             (every? #(isa? % Number) [(acc-field-type-map json-column)
+                                       (second-field-type-map json-column)])
              [json-column java.lang.Number]
 
-             (every? #{java.lang.String java.lang.Long java.lang.Integer
-                       java.lang.Double java.lang.Boolean java.time.LocalDateTime}
-                     [(fst json-column) (snd json-column)])
+             (every?
+               (fn [column-type]
+                 (some (fn [allowed-type]
+                         (isa? column-type allowed-type))
+                       [String Number Boolean java.time.LocalDateTime]))
+               [(acc-field-type-map json-column) (second-field-type-map json-column)])
              [json-column java.lang.String]
 
              :else
