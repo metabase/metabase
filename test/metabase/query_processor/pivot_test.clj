@@ -1,6 +1,7 @@
 (ns metabase.query-processor.pivot-test
   "Tests for pivot table actions for the query processor"
-  (:require [clojure.set :as set]
+  (:require [clj-time.core :as time]
+            [clojure.set :as set]
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.api.pivots :as pivot.test-utils]
@@ -95,7 +96,7 @@
                       :filter       [:and
                                      [:= $user_id->people.source "Facebook" "Google"]
                                      [:= $product_id->products.category "Doohickey" "Gizmo"]
-                                     [:time-interval $created_at -2 :year {}]]}
+                                     [:time-interval $created_at (- 2019 (.getYear (time/now))) :year {}]]}
        :pivot-rows [0 1 2]
        :pivot-cols []})))
 
