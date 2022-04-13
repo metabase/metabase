@@ -115,7 +115,7 @@
                     [2 1 123 110.93 6.1 117.03 nil "2018-05-15T08:04:04.58Z" 3 false
                      "Gizmo"
                      123 "3621077291879" "Mediocre Wooden Bench" "Gizmo" "Flatley-Kunde" 73.95 2.0 "2017-11-16T13:53:14.232Z"]]
-                   (mt/formatted-rows [int int int 2.0 2.0 2.0 int str int
+                   (mt/formatted-rows [int int int 2.0 2.0 2.0 int str int boolean
                                        str
                                        int str str str str 2.0 2.0 str]
                      (qp/process-query query))))))))))
