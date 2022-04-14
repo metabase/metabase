@@ -10,6 +10,44 @@
             [toucan.db :as db])
   (:import [org.quartz CronScheduleBuilder CronTrigger]))
 
+(p/defprotocol+ GetSchedule
+  (schedule-string [_]))
+
+(extend-protocol GetSchedule
+  CronScheduleBuilder
+  (schedule-string [x] (schedule-string (.build x)))
+  CronTrigger
+  (schedule-string [x] (.getCronExpression x)))
+
+(deftest cron-schedule-test
+  (testing "creates schedule per hour when less than 24 hours"
+    (is (= "0 0 0/8 * * ? *"
+           (schedule-string (#'pr/cron-schedule 8)))))
+  (testing "creates schedule string per day when 24 hours"
+    (is (= "0 0 0 * * ? *"
+           (schedule-string (#'pr/cron-schedule 24))))))
+
+(deftest trigger-job-info-test
+  (testing "Database refresh trigger"
+    (let [tggr (#'pr/trigger {:id 1} 5)]
+      (is (= {"db-id" 1 "type" "database"}
+             (qc/from-job-data (.getJobDataMap tggr))))
+      (is (= "0 0 0/5 * * ? *"
+             (schedule-string tggr)))
+      (is (= "metabase.task.PersistenceRefresh.trigger.1"
+             (.. tggr getKey getName))))
+    (let [tggr (#'pr/trigger {:id 1} 24)]
+      (is (= {"db-id" 1 "type" "database"}
+             (qc/from-job-data (.getJobDataMap tggr))))
+      (is (= "0 0 0 * * ? *"
+             (schedule-string tggr)))))
+  (testing "Individual refresh trigger"
+    (let [tggr (#'pr/individual-trigger {:card_id 5 :id 1})]
+      (is (= {"persisted-id" 1 "type" "individual"}
+             (qc/from-job-data (.getJobDataMap tggr))))
+      (is (= "metabase.task.PersistenceRefresh.individual.trigger.1"
+             (.. tggr getKey getName))))))
+
 (defn- job-info
   [& dbs]
   (let [ids  (into #{} (map u/the-id dbs))]
@@ -45,22 +83,6 @@
                                  :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2)))))))
 
-(p/defprotocol+ GetSchedule
-  (schedule-string [_]))
-
-(extend-protocol GetSchedule
-  CronScheduleBuilder
-  (schedule-string [x] (schedule-string (.build x)))
-  CronTrigger
-  (schedule-string [x] (.getCronExpression x)))
-
-(deftest cron-schedule-test
-  (testing "creates schedule per hour when less than 24 hours"
-    (is (= "0 0 0/8 * * ? *"
-           (schedule-string (#'pr/cron-schedule 8)))))
-  (testing "creates schedule string per day when 24 hours"
-    (is (= "0 0 0 * * ? *"
-           (schedule-string (#'pr/cron-schedule 24))))))
 
 (deftest refresh-tables!'-test
   (mt/with-model-cleanup [TaskHistory]
