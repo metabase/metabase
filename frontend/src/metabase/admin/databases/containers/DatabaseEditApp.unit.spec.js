@@ -60,10 +60,18 @@ function mockSettings({ cachingEnabled = false }) {
 
 async function setup({ cachingEnabled = false } = {}) {
   mockSettings({ cachingEnabled });
+
+  const settingsReducer = () => ({
+    values: {
+      "enabled-persisted-models": false,
+    },
+  });
+
   renderWithProviders(<DatabaseEditApp />, {
     withRouter: true,
-    reducers: { admin },
+    reducers: { admin, settings: settingsReducer },
   });
+
   await waitForElementToBeRemoved(() => screen.queryByText("Loading..."));
 }
 
