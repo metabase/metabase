@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import { openNavbar } from "metabase/redux/app";
-import HomePage from "../../components/Homepage";
+import HomePage from "../../components/HomePage1";
 
 const mapDispatchToProps = {
   onOpenNavbar: openNavbar,

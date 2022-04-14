@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import * as dom from "metabase/lib/dom";
-import HomePage from "./Homepage";
+import HomePage from "./HomePage1";
 
 jest.mock("metabase/lib/dom");
 
