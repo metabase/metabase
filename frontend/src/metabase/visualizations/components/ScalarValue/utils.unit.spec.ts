@@ -1,21 +1,75 @@
 import {
+  computeFontSize,
   computeFontSizeAdjustment,
   WIDTH_ADJUSTMENT_FACTOR,
   HEIGHT_ADJUSTMENT_FACTOR,
   MAX_HEIGHT_GRID_SIZE,
-} from "./ScalarValue.styled";
+  MIN_SIZE_REM,
+  MAX_SIZE_REM,
+} from "./utils";
 
-describe("ScalarValue.styled", () => {
+describe("ScalarValue utils", () => {
+  const baseProps = {
+    isDashboard: true,
+    gridSize: { height: 5, width: 5 },
+    minGridSize: { height: 3, width: 3 },
+    width: 100,
+    height: 100,
+    totalNumGridCols: 15,
+  };
+
+  describe("computeFontSize", () => {
+    it("should return a rem font size value", () => {
+      const fontSize = computeFontSize({
+        ...baseProps,
+        gridSize: { height: 10, width: 10 },
+        minGridSize: { height: 2, width: 2 },
+        totalNumGridCols: 10,
+      });
+      expect(fontSize).toEqual(
+        `${MIN_SIZE_REM +
+          HEIGHT_ADJUSTMENT_FACTOR +
+          WIDTH_ADJUSTMENT_FACTOR}rem`,
+      );
+    });
+
+    it("1. should handle incorrect inputs", () => {
+      const fontSize = computeFontSize({
+        ...baseProps,
+        // results in font size < MIN_SIZE_REM
+        gridSize: { height: -10, width: -10 },
+        minGridSize: { height: 2, width: 2 },
+        totalNumGridCols: 10,
+      });
+      expect(fontSize).toEqual(`${MIN_SIZE_REM}rem`);
+    });
+
+    it("2. should handle incorrect inputs", () => {
+      const fontSize = computeFontSize({
+        ...baseProps,
+        gridSize: { height: 999, width: 999 },
+        minGridSize: { height: -1, width: -1 },
+        // causes a NaN
+        totalNumGridCols: -1,
+      });
+      expect(fontSize).toEqual(`${MIN_SIZE_REM}rem`);
+    });
+
+    it("3. should handle incorrect inputs", () => {
+      const fontSize = computeFontSize({
+        ...baseProps,
+        // results in font size > MAX_SIZE_REM
+        width: -100,
+        height: -100,
+        gridSize: { height: 123, width: 123 },
+        minGridSize: { height: 1, width: 1 },
+        totalNumGridCols: 123,
+      });
+      expect(fontSize).toEqual(`${MAX_SIZE_REM}rem`);
+    });
+  });
+
   describe("computeFontSizeAdjustment", () => {
-    const baseProps = {
-      isDashboard: true,
-      gridSize: { height: 5, width: 5 },
-      minGridSize: { height: 3, width: 3 },
-      width: 100,
-      height: 100,
-      totalNumGridCols: 15,
-    };
-
     it("should return 0 if any of the props are missing", () => {
       const keys = Object.keys(baseProps);
       for (const key of keys) {
