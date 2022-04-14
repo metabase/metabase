@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
   (:require [clojure.test :refer :all]
-            [metabase.sync.analyze.fingerprint.insights :as i :refer :all]))
+            [metabase.sync.analyze.fingerprint.insights :as i :refer :all]
+            [metabase.util :as u]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
@@ -89,16 +90,6 @@
                    ["2018-12-02",179,3311]
                    ["2018-12-03",144,2525]])
 
-(defn- round
-  "Returns a function that rounds a double to the specified number of significant figures."
-  [precision]
-  (let [mc (java.math.MathContext. precision java.math.RoundingMode/HALF_EVEN)]
-    (fn [n]
-      (-> n
-          bigdec
-          (.round mc)
-          double))))
-
 (deftest timeseries-insight-test
   (is (= [{:last-value     144,
            :previous-value 179,
@@ -122,7 +113,7 @@
                                    {:base_type :type/Number}])
                         ts)
              ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
-             (update-in [0 :best-fit 1] (round 6)))))
+             (update-in [0 :best-fit 1] #(u/round-to-precision 6 %)))))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= [{:last-value     20.0
              :previous-value 10.0
