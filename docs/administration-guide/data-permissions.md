@@ -4,7 +4,19 @@ This page covers permissions for databases and tables. If you haven't already, c
 
 ## Permissions view
 
-Now that you have some groups, you’ll want to control their data access by going to the **Permissions** section of the Admin Panel. You’ll see an interactive table that displays all of your databases and all of your groups, and the level of access your groups have for each database.
+Now that you have some groups, you’ll want to control their data access by going to **Admin settings** > **Permissions**. You’ll see an interactive table that displays all of your databases and all of your groups, and the level of access your groups have for each database.
+
+## Setting permissions on a database
+
+You can set various levels of permissions on a data source, from querying access to managing the database connection.
+
+- [Data access](#data-access)
+- [Native querying](#native-querying)
+- [Download results](#download-results)\*
+- [Manage data model](#manage-data-model)\*
+- [Manage database](#manage-database)\*
+
+\* Available on paid plans.
 
 ## Data access
 
@@ -35,17 +47,18 @@ Keep in mind people can be in multiple groups. If a person belongs to _another_ 
 
 ## Native query editing
 
-Members of a group with native query editing set to Yes can write new SQL/native queries using the native query editor. This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
-Members in groups without native query editing access can't view, write, or edit SQL/native queries. People who are not in groups with native query editing permissions will still be able to view the results of questions created from SQL/native queries, but not the code itself. They also won't see the "View the SQL" button when composing custom questions in the notebook editor.
+Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
+
+People who aren't in groups with Native query editing permissions will still be able to view the results of questions created from SQL/native queries, but not the code itself. They also won't see the **View the SQL** button in the query builder.
 
 ## Download results
 
 {% include plans-blockquote.html feature="Download permissions" %}
 
-You can set permissions on whether people in a group can download results (and how many rows) for a data source. Options are:
+You can set permissions on whether people in a group can download results (and how many rows) from a data source. Options are:
 
 - No (they can't download results)
-- Granular (set access for individual tables)
+- Granular (you want to set access for individual tables)
 - 10 thousand rows
 - 1 million rows
 
@@ -78,15 +91,16 @@ Groups with no self-service access to a table can’t access the table at all. T
 
 ### Sandboxed access to the table
 
-Only available in paid plans, Sandboxed access to a table can restrict access to columns and rows of a table. Check out [data sandboxing][data-sandboxing].
+{% include plans-blockquote.html feature="Data sandboxing" %}
+
+Sandboxed access to a table can restrict access to columns and rows of a table. Check out [data sandboxing][data-sandboxing].
 
 ## Further reading
 
-- [Guide to data permissions](https://www.metabase.com/learn/organization/organization/data-permissions.html)
+- [Permissions overview](05-setting-permissions.md)
+- [Learn permissions](/learn/permissions)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
-
----
 
 ## Next: Collection permissions
 
