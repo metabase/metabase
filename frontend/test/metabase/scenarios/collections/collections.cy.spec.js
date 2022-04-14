@@ -28,30 +28,54 @@ describe("scenarios > collection defaults", () => {
         cy.signInAsAdmin();
       });
 
-      it("should allow a user to expand a collection without navigating to it", () => {
-        cy.visit("/collection/root");
-        // 1. click on the chevron to expand the sub collection
-        displaySidebarChildOf("First collection");
-        // 2. I should see the nested collection name
-        cy.findByText("First collection");
-        cy.findByText("Second collection");
-        // 3. The url should still be /collection/root to test that we haven't navigated away
-        cy.location("pathname").should("eq", "/collection/root");
-        //
-      });
-
-      it.skip("should expand/collapse collection tree by clicking on parent collection name (metabse#17339)", () => {
-        cy.visit("/collection/root");
+      it("should navigate effortlessly through collections tree", () => {
+        visitRootCollection();
 
         navigationSidebar().within(() => {
-          cy.findByText("First collection").click();
+          cy.log(
+            "should allow a user to expand a collection without navigating to it",
+          );
+
+          // 1. click on the chevron to expand the sub collection
+          displaySidebarChildOf("First collection");
+          // 2. I should see the nested collection name
           cy.findByText("Second collection");
+          cy.findByText("Third collection").should("not.exist");
+          // 3. The url should still be /collection/root to test that we haven't navigated away
+          cy.location("pathname").should("eq", "/collection/root");
+
+          cy.log(
+            "should expand/collapse collection tree by clicking on parent collection name (metabase#17339)",
+          );
+
+          // 1. Clicking on the collection name for the first time should navigate to that collection and expand its children
+          cy.findByText("Second collection").click();
           cy.findByText("Third collection");
 
-          // Warning: There have been some race conditions with the re-rendering in the collection sidebar observed previously.
-          //          Double check that this test works as expected when the underlying issue is fixed. Update as needed.
+          // 2. Click on that same collection for the second time should collapse its children
+          cy.findByText("Second collection").click();
+          cy.findByText("Third collection").should("not.exist");
+
+          // 3. However, clicking on previously opened collection will not close it immediately
+          cy.findByText("First collection").click();
+          cy.findByText("Second collection");
+          // 4. We need to click on it again to close it
           cy.findByText("First collection").click();
           cy.findByText("Second collection").should("not.exist");
+          cy.findByText("Third collection").should("not.exist");
+        });
+
+        cy.log(
+          "navigating directly to a collection should expand it and show its children",
+        );
+
+        getCollectionIdFromSlug("second_collection", id => {
+          cy.visit(`/collection/${id}`);
+        });
+
+        navigationSidebar().within(() => {
+          cy.findByText("Second collection");
+          cy.findByText("Third collection");
         });
       });
 
@@ -464,4 +488,23 @@ function getSidebarCollectionChildrenFor(item) {
     .parentsUntil("[data-testid=sidebar-collection-link-root]")
     .parent()
     .next("ul");
+}
+
+function visitRootCollection() {
+  cy.intercept("GET", "/api/collection/root/items?**").as(
+    "fetchRootCollectionItems",
+  );
+
+  cy.visit("/collection/root");
+
+  cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
+}
+
+function getCollectionIdFromSlug(slug, callback) {
+  cy.request("GET", "/api/collection").then(({ body }) => {
+    // We need its ID to continue nesting below it
+    const { id } = body.find(collection => collection.slug === slug);
+
+    callback && callback(id);
+  });
 }
