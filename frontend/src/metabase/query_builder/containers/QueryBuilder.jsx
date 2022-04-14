@@ -365,13 +365,14 @@ function QueryBuilder(props) {
     }
   });
 
-  const { isRunning } = uiControls;
+  const { isRunning, isQueryComplete } = uiControls;
 
-  const [shouldSendNotification, setShouldSendNotification] = useState(false);
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
   const onTimeout = useCallback(() => {
-    setIsShowingToaster(true);
+    if (Notification.permission === "default") {
+      setIsShowingToaster(true);
+    }
   }, []);
 
   useLoadingTimer(isRunning, {
@@ -385,23 +386,22 @@ function QueryBuilder(props) {
     if (!isRunning) {
       setIsShowingToaster(false);
     }
-    if (!isRunning && shouldSendNotification) {
-      if (document.hidden) {
-        showNotification(
-          t`All Set! Your question is ready.`,
-          t`${card.name} is loaded.`,
-        );
-      }
-      setShouldSendNotification(false);
+    if (
+      !isRunning &&
+      isQueryComplete &&
+      Notification.permission === "granted" &&
+      document.hidden
+    ) {
+      showNotification(
+        t`All Set! Your question is ready.`,
+        t`${card.name} is loaded.`,
+      );
     }
-  }, [isRunning, shouldSendNotification, showNotification, card?.name]);
+  }, [isRunning, isQueryComplete, showNotification, card?.name]);
 
   const onConfirmToast = useCallback(async () => {
-    const result = await requestPermission();
-    if (result === "granted") {
-      setIsShowingToaster(false);
-      setShouldSendNotification(true);
-    }
+    await requestPermission();
+    setIsShowingToaster(false);
   }, [requestPermission]);
 
   const onDismissToast = useCallback(() => {

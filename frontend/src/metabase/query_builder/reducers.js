@@ -72,6 +72,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingNewbModal: false,
   isEditing: false,
   isRunning: false,
+  isQueryComplete: false,
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
@@ -196,12 +197,20 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isEditing: false }),
     },
 
-    [RUN_QUERY]: state => ({ ...state, isRunning: true }),
+    [RUN_QUERY]: state => ({
+      ...state,
+      isRunning: true,
+      isQueryComplete: false,
+    }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
     },
     [QUERY_COMPLETED]: {
-      next: (state, { payload }) => ({ ...state, isRunning: false }),
+      next: (state, { payload }) => ({
+        ...state,
+        isRunning: false,
+        isQueryComplete: true,
+      }),
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
