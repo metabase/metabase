@@ -31,8 +31,6 @@ const [admin, collection, sub_collection] = [
   },
 ];
 
-const dashboard_name = "Test Dashboard";
-
 describe("scenarios > collection_defaults", () => {
   describe("for admins", () => {
     beforeEach(() => {
@@ -177,33 +175,6 @@ describe("scenarios > collection_defaults", () => {
           // 2. Ensure we can see the entire "Fifth level with a long name" collection text
           cy.findByText("Fifth collection with a very long name");
         });
-      });
-    });
-
-    describe("a new dashboard", () => {
-      it("should be in the root collection", () => {
-        // Make new dashboard and check collection name
-        cy.createDashboard({ name: dashboard_name });
-
-        cy.visit("/collection/root");
-        cy.findByText(dashboard_name);
-      });
-    });
-  });
-
-  describe("for users", () => {
-    beforeEach(() => {
-      restore();
-      cy.signInAsNormalUser();
-    });
-
-    describe("a new dashboard", () => {
-      it("should be in the root collection", () => {
-        // Make new dashboard and check collection name
-        cy.createDashboard({ name: dashboard_name });
-
-        cy.visit("/collection/root");
-        cy.findByText(dashboard_name);
       });
     });
   });
