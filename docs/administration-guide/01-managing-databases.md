@@ -1,14 +1,16 @@
 # Adding and managing databases
 
-  - [Adding a database connection](#adding-a-database-connection)
-    - [Officially supported databases](#officially-supported-databases)
-    - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-    - [Errors when connecting to your database](#errors-when-connecting-to-your-database)
-  - [Database connection options](#database-connection-options)
-  - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
-  - [Deleting databases](#deleting-databases)
-  - [Troubleshooting](#troubleshooting)
-  - [Further reading](#further-reading)
+- [Adding a database connection](#adding-a-database-connection)
+- [Databases](#databases)
+  - [Officially supported databases](#officially-supported-databases)
+  - [Partner drivers](#partner-drivers)
+  - [Community drivers](#community-drivers)
+- [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
+- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
+- [Database connection options](#database-connection-options)
+- [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
+- [Deleting databases](#deleting-databases)
+- [Troubleshooting](#troubleshooting)
 
 ## Adding a database connection
 
@@ -20,7 +22,7 @@ Although connection details differ database to database, in general you'll need 
 
 ## Databases
 
-Metabase supports many different databases and data sources, with different levels of support. 
+Metabase supports many different databases and data sources, with different levels of support.
 
 - [Official](#officially-supported-databases)
 - [Partner](#partner)
@@ -28,7 +30,7 @@ Metabase supports many different databases and data sources, with different leve
 
 ### Officially supported databases
 
-The following database have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support.
+The following database have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support. 
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -39,7 +41,7 @@ The following database have official drivers maintained by the Metabase team. Cu
 - [Oracle](databases/oracle.md)
 - [PostgreSQL](databases/postgresql.md)
 - Presto
-- [Redshift (Amazon Web Services)](databases/redshift.md)
+- Redshift (Amazon Web Services)
 - [Snowflake](databases/snowflake.md)
 - SparkSQL
 - SQL Server
@@ -48,25 +50,13 @@ The following database have official drivers maintained by the Metabase team. Cu
 
 ### Partner drivers
 
-Partner drivers are drivers developed and supported by partners. Metabase doesn't provide support for partner drivers, but these partner drivers are held to a higher standard than our community drivers.
+Partner drivers are drivers developed and supported by Metabase partners. Metabase doesn't provide support for partner drivers, but these partner drivers are held to a higher standard than our community drivers. The partners that maintain the driver have also committed to providing support for the driver.
 
-To qualify as a partner driver, the driver must:
+See [Partner and community drivers](../developers-guide-drivers.md).
 
-- Be available for use with Metabase Cloud
-- Have a permissive license
-- Pass the Metabase test suite 
-- Survive a code review by the Metabase developers
-- Have a sponsor (usually the database's vendor) who has committed to maintaining the driver for future releases.
+### Community drivers
 
-If all goes well, and we see people using the driver, we'll consider supporting it as an official driver. But to be clear: partner drivers will not always eventually become officially supported drivers.
-
-Current partner drivers:
-
-- [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
-
-### Community drivers 
-
-Our [Community Drivers](../developers-guide-drivers.md) page lists drivers that are built by people who want to contribute to the Metabase ecosystem.To see if someone's built the driver you're looking for, or learn how to get started building your own. Note that our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/), doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported databases](#officially-supported-databases) listed above.
+Our [Community Drivers](../developers-guide-drivers.md) page lists drivers that are built by people who want to contribute to the Metabase ecosystem.
 
 ## Connecting to databases hosted by a cloud provider
 
