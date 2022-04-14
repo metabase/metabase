@@ -1,4 +1,5 @@
 import { createMockDatabase } from "metabase-types/api/mocks/database";
+import { createMockSchemaInstance } from "../mocks";
 
 import Database from "./Database";
 import Schema from "./Schema";
@@ -38,7 +39,7 @@ describe("Database", () => {
 
   describe("displayName", () => {
     it("should return the name prop", () => {
-      expect(new Database(database).displayName()).toBe("foo");
+      expect(new Database(database).displayName()).toBe("Database");
     });
   });
 
@@ -54,7 +55,7 @@ describe("Database", () => {
       schemaInstance = new Schema({
         id: "1:foo",
         name: "foo",
-        database: databaseInstance,
+        database: databaseInstance.id,
       });
       schemaInstance.metadata = metadata;
 
@@ -79,12 +80,12 @@ describe("Database", () => {
         new Schema({
           id: "1:foo",
           name: "foo",
-          database: databaseInstance,
+          database: databaseInstance.id,
         }),
         new Schema({
           id: "1:bar",
           name: "bar",
-          database: databaseInstance,
+          database: databaseInstance.id,
         }),
       ];
 

@@ -8,7 +8,7 @@ export const getDatabaseEntityId = (databaseEntity: Database) => ({
 });
 
 export const getSchemaEntityId = (schemaEntity: Schema) => ({
-  databaseId: schemaEntity.database.id,
+  databaseId: schemaEntity.getDatabaseId(),
   schemaName: schemaEntity.name,
 });
 

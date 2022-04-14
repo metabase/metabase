@@ -67,12 +67,7 @@ export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
 export const instantiateDatabase = obj => new Database(obj);
-export const instantiateSchema = (obj, meta) => {
-  return new Schema({
-    ...obj,
-    database: meta.database(obj.database),
-  });
-};
+export const instantiateSchema = obj => new Schema(obj);
 export const instantiateTable = obj => new Table(obj);
 export const instantiateField = obj => new Field(obj);
 export const instantiateSegment = obj => new Segment(obj);
@@ -92,9 +87,6 @@ export const getMetadata = createSelector(
   (databases, schemas, tables, fields, segments, metrics) => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, instantiateDatabase);
-    // Instantiation of Schemas must happen after instantiation of Databases
-    // because it depends on the existence of the Databases in the Metadata instance.
-    // see the `instantiateSchema` function
     meta.schemas = copyObjects(meta, schemas, instantiateSchema);
     meta.tables = copyObjects(meta, tables, instantiateTable);
     meta.fields = copyObjects(meta, fields, instantiateField);
@@ -116,6 +108,8 @@ export const getMetadata = createSelector(
           table.db_id === database.id,
       );
     });
+    // schema
+    hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
     hydrateList(meta.tables, "fields", meta.fields);
     hydrateList(meta.tables, "segments", meta.segments);
@@ -124,7 +118,7 @@ export const getMetadata = createSelector(
     hydrate(meta.tables, "schema", t => meta.schema(t.schema));
 
     hydrate(meta.databases, "schemas", database =>
-      database.schemas?.length
+      database.schemas
         ? // use the database schemas if they exist
           database.schemas.map(s => meta.schema(s))
         : database.tables.length > 0
@@ -137,7 +131,7 @@ export const getMetadata = createSelector(
     );
     // hydrateList(meta.schemas, "tables", meta.tables);
     hydrate(meta.schemas, "tables", schema =>
-      schema.tables?.length
+      schema.tables
         ? // use the schema tables if they exist
           schema.tables.map(t => meta.table(t))
         : schema.database && schema.database.tables.length > 0
@@ -199,7 +193,7 @@ export function copyObjects(metadata, objects, instantiate) {
   const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
-      copies[object.id] = instantiate(object, metadata);
+      copies[object.id] = instantiate(object);
       copies[object.id].metadata = metadata;
     } else {
       console.warn("Missing id:", object);

@@ -19,26 +19,20 @@ export default class Schema {
   id: string;
   name: string;
 
-  database: Database;
+  database: Database | number | null;
   tables: Table[] | null;
   metadata: Metadata;
 
   _plainObject: ISchema;
 
-  constructor(
-    schema: Omit<ISchema, "database"> &
-      Pick<HydratedSchemaProperties, "database">,
-  ) {
+  constructor(schema: ISchema) {
     this.id = schema.id;
     this.name = schema.name;
-
-    // we replace the original database property with an instance of Database
-    // in metabase/selectors/metadata before instantiating Schemas
-    this.database = schema.database;
 
     // these properties are hydrated after instantiation in metabase/selectors/metadata
     this.metadata = EMPTY_METADATA_INSTANCE;
     this.tables = null;
+    this.database = null;
 
     // Assign all properties to the instance from the `schema` object in case
     // there is old, un-typed code that relies on properties missing from ISchema
@@ -46,7 +40,6 @@ export default class Schema {
 
     this._plainObject = {
       ...schema,
-      database: schema.database.id,
     };
   }
 
@@ -56,5 +49,22 @@ export default class Schema {
 
   getTables(): Table[] {
     return this.tables ?? [];
+  }
+
+  getDatabase(): Database {
+    if (this.database instanceof Database) {
+      return this.database;
+    }
+
+    const dbFromMetadata = this.metadata.database(this.database);
+    if (dbFromMetadata) {
+      return dbFromMetadata;
+    }
+
+    throw new Error("Database not found");
+  }
+
+  getDatabaseId(): number {
+    return this._plainObject.database;
   }
 }

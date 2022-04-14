@@ -10,7 +10,7 @@ const databaseInstance = new Database(database);
 const schema = {
   id: "1:foo",
   name: "foo",
-  database: databaseInstance,
+  database: databaseInstance.id,
 };
 
 const schemaInstance = new Schema(schema);

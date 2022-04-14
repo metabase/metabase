@@ -108,7 +108,7 @@ export default class Database {
   // TABLES
   @memoize
   tablesLookup(): Record<Table["id"], Table> {
-    return createLookupByProperty(this.tables, "id");
+    return createLookupByProperty(this.getTables(), "id");
   }
 
   // @deprecated: use tablesLookup
