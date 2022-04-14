@@ -213,11 +213,12 @@ export default class Form extends React.Component {
       const normalized = formObject.normalize(values);
       return (this._state.result = await this.props.onSubmit(normalized));
     } catch (error) {
-      console.error("Form submission error", error);
+      console.error("Form submission error:", error);
       this._state.failed = true;
       this._state.result = error;
       // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
       if (error && error.data && error.data.errors) {
+        console.log("1.");
         try {
           // HACK: blur the current element to ensure we show the error
           document.activeElement.blur();
@@ -232,7 +233,7 @@ export default class Form extends React.Component {
         };
       } else if (error) {
         throw {
-          _error: error.data.message || error.data,
+          _error: error.data?.message || error.message || t`An error occurred`,
         };
       }
     } finally {
