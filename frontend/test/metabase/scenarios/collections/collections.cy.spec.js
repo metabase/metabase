@@ -64,7 +64,7 @@ describe("scenarios > collection defaults", () => {
       );
 
       getCollectionIdFromSlug("second_collection", id => {
-        cy.visit(`/collection/${id}`);
+        visitCollection(id);
       });
 
       navigationSidebar().within(() => {
@@ -491,6 +491,16 @@ function visitRootCollection() {
   cy.visit("/collection/root");
 
   cy.wait(["@fetchRootCollectionItems", "@fetchRootCollectionItems"]);
+}
+
+function visitCollection(id) {
+  const alias = `getCollection${id}Items`;
+
+  cy.intercept("GET", `/api/collection/${id}/items?**`).as(alias);
+
+  cy.visit(`/collection/${id}`);
+
+  cy.wait([`@${alias}`, `@${alias}`]);
 }
 
 function getCollectionIdFromSlug(slug, callback) {
