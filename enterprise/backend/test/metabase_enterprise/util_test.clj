@@ -1,5 +1,6 @@
 (ns metabase-enterprise.util-test
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
+  (:require [metabase.public-settings.premium-features :refer [defenterprise]]
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro                                                  |
@@ -11,6 +12,12 @@
 (defenterprise greeting
   "Returns an special greeting for an enterprise user."
   [username]
+  (str "Hi " (name username) ", you're running the Enterprise Edition of Metabase!"))
+
+(defenterprise greeting-with-schema
+  "Returns an special greeting for an enterprise user."
+  [username]
+  {username s/Keyword}
   (str "Hi " (name username) ", you're running the Enterprise Edition of Metabase!"))
 
 (defenterprise greeting-with-valid-token

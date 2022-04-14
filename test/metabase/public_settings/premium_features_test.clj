@@ -8,6 +8,7 @@
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
+            [schema.core :as s]
             [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
@@ -86,6 +87,13 @@
   [username]
   (str "Hi " (name username) ", you're an OSS customer!"))
 
+(defenterprise greeting-with-schema
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username]
+  {username s/Keyword}
+  (str "Hi " (name username) ", you're an OSS customer!"))
+
 (defenterprise greeting-with-valid-token
   "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
   metabase-enterprise.util-test
@@ -117,7 +125,12 @@
   (when-not config/ee-available?
     (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
       (is (= "Hi rasta, you're an OSS customer!"
-             (greeting :rasta)))))
+             (greeting :rasta))))
+
+    (testing "If a schema map for args is present, schemas are validated"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Value does not match schema"
+                            (greeting-with-schema "rasta")))))
 
   (when config/ee-available?
     (testing "When EE code is available"

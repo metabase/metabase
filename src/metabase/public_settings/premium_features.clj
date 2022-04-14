@@ -270,12 +270,20 @@
   [defenterprise-args]
   (let [[docstr more]           (u/optional string? defenterprise-args)
         [ee-ns more]            (u/optional symbol? more)
-        [options [args & body]] (parse-defenterprise-options more)]
-    {:ee-ns   ee-ns
-     :docstr  docstr
-     :options options
-     :args    args
-     :body    body}))
+        [options [args & more]] (parse-defenterprise-options more)
+        [arg->schema body]      (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
+    {:ee-ns       ee-ns
+     :docstr      docstr
+     :options     options
+     :args        args
+     :arg->schema arg->schema
+     :body        body}))
+
+(defn validate-args
+  "Generate a series of s/validate calls for the arg and schema pairs in `arg->schema`."
+  [arg->schema]
+  (for [[arg schema] arg->schema]
+    `(s/validate ~schema ~arg)))
 
 (defonce ^{:doc "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as
                 their OSS equivalents. These fns are called when the EE function must fallback to the OSS behavior due
@@ -296,12 +304,12 @@
   (register-mapping! fn-name ee-ns args body)
   (let [ee-fn (u/ignore-exceptions (classloader/require ee-ns)
                                    (ns-resolve ee-ns fn-name))]
-    `(defn ~fn-name ~docstr ~args
-       (if ~ee-fn
-         (apply ~ee-fn ~args)
-         ~@body))))
+    `(if ~ee-fn
+       (apply ~ee-fn ~args)
+       ~@body)))
 
 (defn missing-premium-token-exception
+  "The default exception to throw when an EE function is called, but a required premium feature is not present."
   [fn-name feature]
   (let [message (if (= feature :any)
                   (trs "The {0} function requires a valid premium token"
@@ -314,27 +322,26 @@
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr args body options]}]
-  `(defn ~fn-name ~docstr ~args
-     ~(let [feature (:feature options)]
-        `(if (or (not ~feature)
-                 (if (= ~feature :any)
-                   (has-any-features?)
-                   (has-feature? ~feature)))
-           (do ~@body)
-           ~(let [fallback (:fallback options)
-                  ee-ns    (ns-name *ns*)]
-              (cond
-                (= fallback :error)
-                `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
+  (let [feature (:feature options)]
+    `(if (or (not ~feature)
+             (if (= ~feature :any)
+               (has-any-features?)
+               (has-feature? ~feature)))
+       (do ~@body)
+       ~(let [fallback (:fallback options)
+              ee-ns    (ns-name *ns*)]
+          (cond
+            (= fallback :error)
+            `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
 
-                (or (symbol? fallback) (seq? fallback))
-                `(apply ~fallback ~args)
+            (or (symbol? fallback) (seq? fallback))
+            `(apply ~fallback ~args)
 
-                ;; :oss and default case
-                :else
-                `(apply (get @ee-registry [(symbol ~(str ee-ns))
-                                           (symbol ~(str fn-name))])
-                        ~args)))))))
+            ;; :oss and default case
+            :else
+            `(apply (get @ee-registry [(symbol ~(str ee-ns))
+                                       (symbol ~(str fn-name))])
+                    ~args))))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -364,11 +371,13 @@
   causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [defenterprise-args (-> (parse-defenterprise-args defenterprise-args)
-                               (assoc :fn-name fn-name))]
+  (let [{:keys [docstr args arg->schema] :as defenterprise-args} (-> (parse-defenterprise-args defenterprise-args)
+                                                                     (assoc :fn-name fn-name))]
     (when-not (:docstr defenterprise-args)
       (log/warn (u/format-color 'red "Warning: enterprise function %s/%s does not have a docstring. Go add one."
                   (ns-name *ns*) fn-name)))
-    (if (in-ee?)
-      `(defenterprise-ee ~defenterprise-args)
-      `(defenterprise-oss ~defenterprise-args))))
+    `(defn ~fn-name ~docstr ~args
+       ~@(validate-args (:arg->schema defenterprise-args))
+       ~(if (in-ee?)
+          `(defenterprise-ee ~defenterprise-args)
+          `(defenterprise-oss ~defenterprise-args)))))
