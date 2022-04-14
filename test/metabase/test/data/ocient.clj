@@ -11,11 +11,18 @@
             [honeysql.format :as hformat]
             [honeysql.helpers :as h]
             [medley.core :as m]
+            [metabase.config :as config]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.field :refer [Field]]
+            [metabase.models.table :refer [Table]]
+            [metabase.sync.field-values :as sync-field-values]
+            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.impl :as tx.impl]
             [metabase.test.data.sql :as sql.tx]
@@ -26,22 +33,23 @@
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx])
+            [metabase.util.honeysql-extensions :as hx]
+            [schema.core :as s])
   (:import java.sql.SQLException))
 
 (sql-jdbc.tx/add-test-extensions! :ocient)
 
-;;Use the public schema for all tables
+;; Use the public schema for all tables
 (defonce session-schema (str "public"))
 
-;;Additional columns required by the Ocient database 
+;; Additional columns required by the Ocient database 
 (defonce id-column-key (str "id"))
 (defonce timestamp-column-key (str "created"))
 
-;;Define the primary key type
+;; Define the primary key type
 (defmethod sql.tx/pk-sql-type :ocient [_] "INT NOT NULL")
 
-;;Lowercase and replace hyphens/spaces with underscores
+;; Lowercase and replace hyphens/spaces with underscores
 (defmethod tx/format-name :ocient
   [_ s]
   (str/replace (str/lower-case s) #"-| " "_"))
@@ -68,31 +76,6 @@
          (when (= context :db)
            {:db (tx/format-name driver database-name)})))
 
-;; (defmethod tx-make-create-table-stmt :ocient 
-;;   [table-name {:keys [field-name, base-type], :as tabledef}]
-
-;; )
-
-(def ocient-type->base-type
-  "Function that returns a `base-type` for the given `ocient-type` (can be a keyword or string)."
-  (sql-jdbc.sync/pattern-based-database-type->base-type
-   [[#"(?i)bool"                       :type/Boolean]
-    [#"(?i)tinyint"                    :type/Integer]
-    [#"(?i)smallint"                   :type/Integer]
-    [#"(?i)integer"                    :type/Integer]
-    [#"(?i)bigint"                     :type/BigInteger]
-    [#"(?i)real"                       :type/Float]
-    [#"(?i)float"                      :type/Float]
-    [#"(?i)double"                     :type/Float]
-    [#"(?i)decimal.*"                  :type/Decimal]
-    [#"(?i)varchar.*"                  :type/Text]
-    [#"(?i)char.*"                     :type/Text]
-    [#"(?i)varbinary.*"                :type/*]
-    [#"(?i)date"                       :type/Date]
-    [#"(?i)^timestamp$"                :type/DateTimeWithTZ]
-    [#"(?i)^time$"                     :type/Time]
-    [#".*"                             :type/*]]))
-
 (doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
                              :type/Boolean        "BOOL"
                              :type/Date           "DATE"
@@ -115,7 +98,7 @@
   [_ _ _ _]
   nil)
 
-;; The Ocient JDBC driver barfs when trailing semicolons are tacked onto the statment
+;; The Ocient JDBC driver barfs when trailing semicolons are tacked onto SQL statments
 (defn- execute-sql-spec!
   [spec sql & {:keys [execute!]
                :or   {execute! jdbc/execute!}}]
@@ -141,7 +124,7 @@
 (defmethod execute/execute-sql! :ocient [driver context defdef sql]
   (execute-sql! driver context defdef sql))
 
-;; Ocient being a time series database requires both a timestamp column and a clustering index key
+;; Ocient requires a timestamp column and a clustering index key. These fields are prepended to the field definitions
 (defmethod sql.tx/create-table-sql :ocient
   [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
   (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))]
@@ -204,7 +187,7 @@
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]
-    "Convert a value to an appropriate Google type when inserting a new row."))
+    "Convert a value to an appropriate Ocient type when inserting a new row."))
 
 (extend-protocol Insertable
   nil
@@ -220,7 +203,7 @@
   java.time.temporal.Temporal
   (->insertable [t] (u.date/format-sql t))
 
-  ;; normalize to UTC. BigQuery normalizes it anyway and tends to complain when inserting values that have an offset
+  ;; normalize to UTC. Ocient complains when inserting values that have an offset
   java.time.OffsetDateTime
   (->insertable [t]
     (->insertable (t/local-date-time (t/with-offset-same-instant t (t/zone-offset 0)))))
@@ -241,33 +224,19 @@
     (assert (= (name fn-name) "timestamp"))
     (->insertable (u.date/parse (str/replace s #"'" "")))))
 
-
-(defn- insert-row-honeysql-form-impl
-  [driver row]
-  ;; (println row)
-  ;; (println (keys row))
-  ;; (println (map (fn [x] (->insertable x)) (vals row)))
-  ;; (println (->insertable (get row :created_at)))
-  ;; (println (type (get row :created_at)))
-  (let [rows    (u/one-or-many row)
-        columns (keys (first rows))
-        values  (for [row rows]
-                  (for [value (map row columns)]
-                    (sql.qp/->honeysql driver (->insertable value))))]
-    (first values)))
-
+;; Inserts one or more elements in front of the target elements
 (defn- add-first-vec
   [target addition]
   (apply conj (if (vector? addition) addition [addition]) target))
 
-;; Ocient has weirdifferent syntax for inserting multiple rows, it looks like
+;; Ocient has different syntax for inserting multiple rows, it looks like:
 ;;
-;; INSERT INTO table
-;;     SELECT val1,val2 UNION ALL
-;;     SELECT val1,val2 UNION ALL;
-;;     SELECT val1,val2 UNION ALL;
+;;    INSERT INTO table
+;;        SELECT val1,val2 UNION ALL
+;;        SELECT val1,val2 UNION ALL;
+;;        SELECT val1,val2 UNION ALL;
 ;;
-;; So this custom HoneySQL type below generates the correct DDL statement
+;; This custom HoneySQL type below generates the correct DDL statement
 (defmethod ddl/insert-rows-honeysql-form :ocient
   [driver table-identifier row-or-rows]
   (reify hformat/ToSql
@@ -278,33 +247,13 @@
        ((comp last :components) (into {} table-identifier))
        (let [rows    (u/one-or-many row-or-rows)
              columns (keys (first rows))
-             values  (for [[i row] (m/indexed rows)]
+             values  (for [row rows]
                        (for [value (map row columns)]
                          (hformat/to-sql
                           (sql.qp/->honeysql driver (->insertable value)))))]
          (str/join
           " UNION ALL SELECT "
-          (map (fn [row] (str/join ", " (add-first-vec row [(tc/to-long (time/now)) 0]))) values)))))))
-
-
-      ;;  (for [row  (u/one-or-many row-or-rows)
-      ;;        :let [columns (keys row)]]
-
-      ;;    ((println (pr-str (type row)))
-      ;;     (println (pr-str row))
-      ;;     (println (str/join "," (apply pr-str (insert-row-honeysql-form-impl driver row))))
-      ;;     (println (insert-row-honeysql-form-impl driver row))
-      ;;     (str/join "," (insert-row-honeysql-form-impl driver row))))))))
-
-
-;; Maybe we want to override this only for tests???????
-;;
-;; (defmethod ddl/insert-rows-ddl-statements :ocient
-;;   [driver table-identifier row-or-rows]
-;;   [(binding [hformat/*subquery?* false]
-;;      (hsql/format (insert-rows-honeysql-form driver table-identifier row-or-rows)
-;;                   :quoting             (sql.qp/quote-style driver)
-;;                   :allow-dashed-names? true))])
+          (map-indexed (fn [i row] (str/join ", " (add-first-vec row [(tc/to-long (time/now)) i]))) values)))))))
 
 
 (defmethod load-data/do-insert! :ocient
@@ -321,32 +270,17 @@
       (catch SQLException e
         (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
         (jdbc/print-sql-exception-chain e)
-        (throw e)))))
+        (throw e))
 
-;; "Add ID and TIMESTAMP columns to each row in `rows`. These columns are required by Ocient. 
-;; This isn't meant for composition with `load-data-get-rows`; "
-(defn- add-ids-and-timestamps
-  [rows]
-  (for [[i row] (m/indexed rows)]
-    row))
-    ;; (assoc (assoc row (keyword id-column-key) (inc i)) (keyword timestamp-column-key) (tc/to-long (time/now)))))
-    ;; (into {(keyword timestamp-column-key) (tc/to-long (time/now))} (into {(keyword id-column-key) (inc i)} row))))
-
+;; Middleware function intended for use with `make-load-data-fn `. Insert rows in chunks, which default to 200 rows each.
 (defn- load-data-chunked
-  "Middleware function intended for use with `make-load-data-fn`. Insert rows in chunks, which default to 200 rows
-  each."
   ([insert!]                   (load-data-chunked map insert!))
-  ([map-fn insert!]            (load-data-chunked map-fn 65 insert!))
+  ([map-fn insert!]            (load-data-chunked map-fn 40 insert!))
   ([map-fn chunk-size insert!] (fn [rows]
                                  (dorun (map-fn insert! (partition-all chunk-size rows))))))
 
-(defn- load-data-add-ids-and-timestamps-impl
-  [insert!]
-  (fn [rows]
-    (insert! (vec (add-ids-and-timestamps rows)))))
-
 (def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-timestamps!
-  (load-data/make-load-data-fn load-data-add-ids-and-timestamps-impl load-data-chunked))
+  (load-data/make-load-data-fn load-data-chunked))
 
 ;; Ocient requires an id and a timestamp for each row
 (defmethod load-data/load-data! :ocient [driver dbdef tabledef]
