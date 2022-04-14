@@ -321,25 +321,14 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
-      cy.request("GET", "/api/collection").then(({ body }) => {
-        // Get "Second collection's" id dynamically instead of hard-coding it
-        const SECOND_COLLECTION = body.filter(collection => {
-          return collection.slug === "second_collection";
-        });
-        const [{ id }] = SECOND_COLLECTION;
-
-        // Move first question in a DB snapshot ("Orders") inside "Second collection"
+      getCollectionIdFromSlug("second_collection", id => {
+        // Move first question in a DB snapshot ("Orders") to a "Second collection"
         cy.request("PUT", "/api/card/1", {
           collection_id: id,
         });
       });
 
-      cy.visit("/");
-      closeNavigationSidebar();
-      cy.findByText("New").click();
-      cy.findByText("Question")
-        .should("be.visible")
-        .click();
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Saved Questions").click();
