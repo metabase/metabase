@@ -86,6 +86,7 @@ MetricSchema.define({
 });
 
 TimelineSchema.define({
+  collection: CollectionSchema,
   events: [TimelineEventSchema],
 });
 
@@ -110,7 +111,11 @@ CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
 
-export const RecentsSchema = new schema.Entity("recents", undefined, {
+export const RecentItemSchema = new schema.Entity("recentItems", undefined, {
+  idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
+});
+
+export const PopularItemSchema = new schema.Entity("popularItems", undefined, {
   idAttribute: ({ model, model_id }) => `${model}:${model_id}`,
 });
 

@@ -11261,6 +11261,190 @@ databaseChangeLog:
         - sql:
             sql: DELETE FROM permissions_group WHERE name = 'MetaBot'
 
+  - changeSet:
+      id: v43.00-046
+      author: qnkhuat
+      comment: Added 0.43.0 - create General Permission Revision table
+      changes:
+        - createTable:
+            tableName: general_permissions_revision
+            remarks: 'Used to keep track of changes made to general permissions.'
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: before
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the permission graph before the changes.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: after
+                  type: ${text.type}
+                  remarks: 'Serialized JSON of the changes in permission graph.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The ID of the admin who made this set of changes.'
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_general_permissions_revision_user_id
+              - column:
+                  name: created_at
+                  type: datetime
+                  remarks: 'The timestamp of when these changes were made.'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: remark
+                  type: ${text.type}
+                  remarks: 'Optional remarks explaining why these changes were made.'
+
+  - changeSet:
+      id: v43.00-047
+      author: qnkhuat
+      comment: Added 0.43.0. Grant the 'All Users' Group permissions to create/edit subscriptions and alerts
+      changes:
+        - sql:
+            sql: >-
+              INSERT INTO permissions (group_id, object)
+              SELECT
+                all_users_group.id AS group_id,
+                '/general/subscription/' AS object
+              FROM (
+                SELECT id
+                FROM permissions_group
+                WHERE name = 'All Users'
+              ) all_users_group
+              LEFT JOIN permissions p
+                ON all_users_group.id = p.group_id
+                AND p.object = '/general/subscription/'
+              WHERE p.object IS NULL;
+
+  - changeSet:
+      id: v43.00-049
+      author: dpsutton
+      comment: Added 0.43.0 - Unify datatype with query_execution.started_at so comparable (see 168).
+      changes:
+        - modifyDataType:
+            tableName: view_log
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+        id: v43.00-050
+        author: qnkhuat
+        comment: Added 0.43.0. Add permissions_group_membership.is_group_manager
+        changes:
+          - addColumn:
+              columns:
+              - column:
+                  remarks: Boolean flag to indicate whether user is a group's manager.
+                  name: is_group_manager
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              tableName: permissions_group_membership
+
+  - changeSet:
+      id: v43.00-051
+      author: adam-james
+      comment: Added 0.43.0 - default boolean on timelines to indicate default timeline for a collection
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Boolean value indicating if the timeline is the default one for the containing Collection
+                name: default
+                type: boolean
+                defaultValue: false
+                constraints:
+                  nullable: false
+            tableName: timeline
+
+  - changeSet:
+      id: v43.00-052
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - createTable:
+            tableName: bookmark_ordering
+            remarks: Table holding ordering information for various bookmark tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who ordered bookmarks'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_bookmark_ordering_user_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(255)
+                  remarks: 'type of the Bookmark'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: item_id
+                  type: int
+                  remarks: 'id of the item being bookmarked (Card, Collection, Dashboard, ...) no FK, so may no longer exist'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ordering
+                  type: int
+                  remarks: 'order of bookmark for user'
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-053
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - addUniqueConstraint:
+            tableName: bookmark_ordering
+            columnNames: user_id, type, item_id
+            constraintName: unique_bookmark_user_id_type_item_id
+  - changeSet:
+      id: v43.00-054
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - addUniqueConstraint:
+            tableName: bookmark_ordering
+            columnNames: user_id, ordering
+            constraintName: unique_bookmark_user_id_ordering
+  - changeSet:
+      id: v43.00-055
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - createIndex:
+            tableName: bookmark_ordering
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_bookmark_ordering_user_id
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -1,9 +1,12 @@
-import { restore, sidebar } from "__support__/e2e/cypress";
-import { USERS } from "__support__/e2e/cypress_data";
+import { restore, popover, navigationSidebar } from "__support__/e2e/cypress";
+import { USERS, SAMPLE_DB_TABLES } from "__support__/e2e/cypress_data";
+
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";
 
 const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
 const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
+
+const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
 describe("Bookmarks in a collection page", () => {
   beforeEach(() => {
@@ -20,7 +23,7 @@ describe("Bookmarks in a collection page", () => {
 
     cy.wait("@fetchRootCollectionItems");
 
-    cy.findByText("View archive");
+    getSectionTitle("Collections");
     cy.icon("bookmark").should("not.exist");
   });
 
@@ -30,7 +33,7 @@ describe("Bookmarks in a collection page", () => {
     // Add bookmark
     cy.icon("bookmark").click();
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/);
       cy.findByText(adminPersonalCollectionName);
 
@@ -44,14 +47,10 @@ describe("Bookmarks in a collection page", () => {
       cy.icon("bookmark").click();
     });
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.findByText(adminPersonalCollectionName).should("not.exist");
 
       getSectionTitle(/Bookmarks/).should("not.exist");
-
-      // Once there is no list of bookmarks,
-      // we remove the heading for the list of collections
-      getSectionTitle("Collections").should("not.exist");
     });
   });
 
@@ -63,13 +62,31 @@ describe("Bookmarks in a collection page", () => {
     addThenRemoveBookmarkTo("Orders in a dashboard");
   });
 
+  it("adds and removes bookmarks from Model in collection", () => {
+    cy.createQuestion({
+      name: "Orders Model",
+      query: { "source-table": STATIC_ORDERS_ID, aggregation: [["count"]] },
+      dataset: true,
+    });
+
+    addThenRemoveBookmarkTo("Orders Model");
+  });
+
+  it("removes items from bookmarks list when they are archived", () => {
+    // A question
+    bookmarkThenArchive("Orders");
+
+    // A dashboard
+    bookmarkThenArchive("Orders in a dashboard");
+  });
+
   it("can remove bookmark from item in sidebar", () => {
     cy.visit("/collection/1");
 
     // Add bookmark
     cy.icon("bookmark").click();
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       cy.icon("bookmark").click({ force: true });
     });
 
@@ -82,7 +99,7 @@ describe("Bookmarks in a collection page", () => {
     // Add bookmark
     cy.icon("bookmark").click();
 
-    sidebar().within(() => {
+    navigationSidebar().within(() => {
       getSectionTitle(/Bookmarks/).click();
 
       cy.findByText(adminPersonalCollectionName).should("not.exist");
@@ -94,31 +111,50 @@ describe("Bookmarks in a collection page", () => {
   });
 });
 
-function addThenRemoveBookmarkTo(itemName) {
+function addThenRemoveBookmarkTo(name) {
+  addBookmarkTo(name);
+  removeBookmarkFrom(name);
+}
+
+function addBookmarkTo(name) {
   cy.visit("/collection/root");
 
-  openEllipsisMenuFor(itemName);
+  openEllipsisMenuFor(name);
   cy.findByText("Bookmark").click();
 
-  sidebar().within(() => {
+  navigationSidebar().within(() => {
     getSectionTitle(/Bookmarks/);
-    cy.findByText(itemName);
-  });
-
-  openEllipsisMenuFor(itemName);
-
-  cy.findByText("Remove bookmark").click();
-
-  sidebar().within(() => {
-    getSectionTitle(/Bookmarks/).should("not.exist");
-    cy.findByText(itemName).should("not.exist");
+    cy.findByText(name);
   });
 }
 
-function openEllipsisMenuFor(item) {
+function removeBookmarkFrom(name) {
+  openEllipsisMenuFor(name);
+
+  cy.findByText("Remove bookmark").click();
+
+  navigationSidebar().within(() => {
+    getSectionTitle(/Bookmarks/).should("not.exist");
+    cy.findByText(name).should("not.exist");
+  });
+}
+
+function openEllipsisMenuFor(name) {
   cy.get("td")
-    .contains(item)
+    .contains(name)
     .closest("tr")
     .find(".Icon-ellipsis")
     .click({ force: true });
+}
+
+function bookmarkThenArchive(name) {
+  addBookmarkTo(name);
+  archive(name);
+}
+
+function archive(name) {
+  openEllipsisMenuFor(name);
+  popover().within(() => {
+    cy.findByText("Archive").click();
+  });
 }

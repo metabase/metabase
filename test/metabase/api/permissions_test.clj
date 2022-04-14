@@ -36,7 +36,7 @@
                 (is (schema= {:id           (s/eq (:id (group/admin)))
                               :name         (s/eq "Administrators")
                               :member_count su/IntGreaterThanZero}
-                       (get id->group (:id (group/admin)))))))]
+                             (get id->group (:id (group/admin)))))))]
       (let [id->group (u/key-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
 
@@ -48,7 +48,11 @@
               (is (schema= {:id           su/IntGreaterThanZero
                             :name         su/NonBlankString
                             :member_count (s/eq 0)}
-                           (get id->group (:id group)))))))))))
+                           (get id->group (:id group))))))))
+
+      (testing "require superusers"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "permissions/group")))))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
@@ -87,6 +91,18 @@
       (testing "Should *not* include inactive users"
         (is (= nil
                (get id->member :trashbird)))))))
+
+(deftest fetch-perms-graph-test
+  (testing "GET /api/permissions/graph"
+    (testing "make sure we can fetch the perms graph from the API"
+      (mt/with-temp Database [{db-id :id}]
+        (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
+          (is (partial= {:groups {(u/the-id (group/admin))
+                                  {db-id {:data {:native "write" :schemas "all"}}}}}
+                        graph)))))
+
+    (testing "make sure a non-admin cannot fetch the perms graph from the API"
+      (mt/user-http-request :rasta :get 403 "permissions/graph"))))
 
 (deftest update-perms-graph-test
   (testing "PUT /api/permissions/graph"

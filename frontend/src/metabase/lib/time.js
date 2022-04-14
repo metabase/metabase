@@ -103,16 +103,15 @@ export function parseTime(value) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string") {
-    return moment.parseZone(value, [
-      "HH:mm:SS.sssZZ",
-      "HH:mm:SS.sss",
+    return moment(value, [
+      "HH:mm:ss.sss[Z]",
       "HH:mm:SS.sss",
       "HH:mm:SS",
       "HH:mm",
     ]);
-  } else {
-    return moment.utc(value);
   }
+
+  return moment.utc(value);
 }
 
 // @deprecated - use formatTimeWithUnit(hour, "hour-of-day")

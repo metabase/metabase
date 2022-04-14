@@ -4,15 +4,18 @@
             [clojure.string :as str]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
+            [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.email.messages :as email]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
+            [metabase.models.login-history :refer [LoginHistory]]
             [metabase.models.permissions-group :as group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.middleware.offset-paging :as offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
@@ -21,7 +24,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
+                                          'metabase-enterprise.advanced-permissions.common))
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -151,11 +155,44 @@
      :offset offset-paging/*offset*}))
 
 
+(defn- maybe-add-advanced-permissions
+  "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  [user]
+  (if-let [with-advanced-permissions
+           (and (premium-features/enable-advanced-permissions?)
+                (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
+    (with-advanced-permissions user)
+    user))
+
+(defn- add-has-question-and-dashboard
+  "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
+  [user]
+  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
+                          :collection_id
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+        perms-query {:where [:and
+                             [:= :archived false]
+                             coll-ids-filter]}]
+    (assoc user :has_question_and_dashboard (and (db/exists? 'Card (perms-query user))
+                                                 (db/exists? 'Dashboard (perms-query user))))))
+
+(defn- add-first-login
+  "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
+  [{:keys [id] :as user}]
+  (let [ts (or
+            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id id
+                                       {:order-by [[:timestamp :asc]]}))
+            (t/offset-date-time))]
+    (assoc user :first_login ts)))
+
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
   []
   (-> (api/check-404 @api/*current-user*)
-      (hydrate :personal_collection_id :group_ids :has_invited_second_user)))
+      (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
+      add-has-question-and-dashboard
+      add-first-login
+      maybe-add-advanced-permissions))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."

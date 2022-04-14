@@ -338,6 +338,11 @@ export function createEntity(def) {
       };
     }),
 
+    invalidateLists: compose(
+      withAction(INVALIDATE_LISTS_ACTION),
+      withEntityActionDecorators("invalidateLists"),
+    )(() => null),
+
     // user defined actions should override defaults
     ...entity.objectActions,
     ...(def.actions || {}),

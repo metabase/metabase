@@ -82,6 +82,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models.setting.cache :as cache]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
@@ -122,7 +123,13 @@
   these names to avoid unintended side-effects if an application database still stores values for these settings."
   #{"-site-url"
     "enable-advanced-humanization"
-    "metabot-enabled"})
+    "metabot-enabled"
+    "ldap-sync-admin-group"})
+
+(def ^:dynamic *allow-retired-setting-names*
+  "A dynamic val that controls whether it's allowed to use retired settings.
+  Primarily used in test to disable retired setting check."
+  false)
 
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
@@ -235,12 +242,18 @@
   clojure.lang.Keyword
   (resolve-setting [k]
     (or (@registered-settings k)
-        (throw (Exception.
-                (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))
+        (throw (ex-info (tru "Unknown setting: {0}" k)
+                        {:registered-settings
+                         (sort (keys @registered-settings))})))))
 
-(defn- call-on-change
-  "Cache watcher that applies `:on-change` callback for all settings that have changed."
-  [_key _ref old new]
+;; The actual watch that triggers this happens in [[metabase.models.setting.cache/cache*]] because the cache might be
+;; swapped out depending on which app DB we have in play
+;;
+;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
+;; [[metabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
+;; references for now
+(defmethod cache/call-on-change :default
+  [old new]
   (let [rs      @registered-settings
         [d1 d2] (data/diff old new)]
     (doseq [changed-setting (into (set (keys d1))
@@ -248,7 +261,6 @@
       (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
         (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
 
-(add-watch @#'cache/cache* :call-on-change call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -306,6 +318,39 @@
                                 (assoc old-settings setting-name value)
                                 (dissoc old-settings setting-name))))
     (db/update! 'User api/*current-user-id* {:settings (json/generate-string @@*user-local-values*)})))
+
+(def ^:dynamic *enforce-setting-access-checks*
+  "A dynamic var that controls whether we should enforce checks on setting access. Defaults to false; should be
+  set to true when settings are being written directly via /api/setting endpoints."
+  false)
+
+(defn- has-advanced-setting-access?
+  "If `advanced-permissions` is enabled, check if current user has permissions to edit `setting`.
+  Return `false` when `advanced-permissions` is disabled."
+  []
+  (u/ignore-exceptions
+   (classloader/require 'metabase-enterprise.advanced-permissions.common
+                        'metabase.public-settings.premium-features))
+  (if-let [current-user-has-general-permisisons?
+           (and ((resolve 'metabase.public-settings.premium-features/enable-advanced-permissions?))
+                (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))]
+    (current-user-has-general-permisisons? :setting)
+    false))
+
+(defn- current-user-can-access-setting?
+  "This checks whether the current user should have the ability to read or write the provided setting.
+
+  By default this function always returns `true`, but setting access control can be turned on the dynamic var
+  `*enforce-setting-access-checks*`. This is because this enforcement is only necessary when settings are being
+  accessed directly via the API, but not in most other places on the backend."
+  [setting]
+  (or (not *enforce-setting-access-checks*)
+      (nil? api/*current-user-id*)
+      api/*is-superuser?*
+      (has-advanced-setting-access?)
+      (and
+       (allows-user-local-values? setting)
+       (not= (:visibility setting) :admin))))
 
 (defn- munge-setting-name
   "Munge names so that they are legal for bash. Only allows for alphanumeric characters,  underscores, and hyphens."
@@ -652,6 +697,8 @@
   [setting-definition-or-name new-value]
   (let [{:keys [setter cache?], :as setting} (resolve-setting setting-definition-or-name)
         name                                 (setting-name setting)]
+    (when-not (current-user-can-access-setting? setting)
+      (throw (ex-info (tru "You do not have access to the setting {0}" name) setting)))
     (when (= setter :none)
       (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
@@ -700,7 +747,7 @@
                                setting-name (:name same-munge))
                           {:existing-setting (dissoc same-munge :on-change :getter :setter)
                            :new-setting      (dissoc <> :on-change :getter :setter)}))))
-      (when (retired-setting-names (name setting-name))
+      (when (and (retired-setting-names (name setting-name)) (not *allow-retired-setting-names*))
         (throw (ex-info (tru "Setting name ''{0}'' is retired; use a different name instead" (name setting-name))
                         {:retired-setting-name (name setting-name)
                          :new-setting          (dissoc <> :on-change :getter :setter)})))
@@ -932,6 +979,9 @@
         value-is-default?                                             (= parsed-value default)
         value-is-from-env-var?                                        (some-> (env-var-value setting) (= unparsed-value))]
     (cond
+      (not (current-user-can-access-setting? setting))
+      (throw (ex-info (tru "You do not have access to the setting {0}" k) setting))
+
       ;; TODO - Settings set via an env var aren't returned for security purposes. It is an open question whether we
       ;; should obfuscate them and still show the last two characters like we do for sensitive values that are set via
       ;; the UI.
@@ -972,7 +1022,7 @@
   page) so all admin-visible Settings should be included. We *do not* want to return env var values, since admins
   are not allowed to modify them."
   [& {:as options}]
-  ;; ignore User-local and Database-local values
+  ;; ignore Database-local values, but not User-local values
   (binding [*database-local-values* nil]
     (into
      []
@@ -991,6 +1041,7 @@
 
   This is used in [[metabase-enterprise.serialization.dump/dump-settings]] to serialize site-wide Settings."
   [& {:as options}]
+  ;; ignore User-local and Database-local values
   (binding [*user-local-values* (delay (atom nil))
             *database-local-values* nil]
     (into

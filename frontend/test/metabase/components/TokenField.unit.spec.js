@@ -108,6 +108,16 @@ describe("TokenField", () => {
     expect(screen.queryByText("bar")).toBeNull();
   });
 
+  it("should render input prefix with prefix prop", () => {
+    render(<TokenFieldWithStateAndDefaults prefix="$$$" />);
+    expect(screen.getByTestId("input-prefix")).toHaveTextContent("$$$");
+  });
+
+  it("should not render input prefix without prefix prop", () => {
+    render(<TokenFieldWithStateAndDefaults />);
+    expect(screen.queryByTestId("input-prefix")).toBeNull();
+  });
+
   it("should render with 1 options and 1 values", () => {
     render(
       <TokenFieldWithStateAndDefaults value={["foo"]} options={["bar"]} />,
@@ -146,6 +156,17 @@ describe("TokenField", () => {
     expect(options()).toBeFalsy();
     type("bar");
     findWithinOptions(["bar"]);
+  });
+
+  it("should not allow adding new items when canAddItems is false", () => {
+    render(
+      <TokenFieldWithStateAndDefaults
+        value={["foo"]}
+        options={["bar", "baz"]}
+        canAddItems={false}
+      />,
+    );
+    expect(screen.queryByRole("textbox")).toBeNull();
   });
 
   it("should add freeform value if parseFreeformValue is provided", () => {

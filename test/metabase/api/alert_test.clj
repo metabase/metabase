@@ -199,7 +199,7 @@
 ;;; |                                                POST /api/alert                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest put-alert-test
+(deftest post-alert-test
   (is (= {:errors {:alert_condition "value must be one of: `goal`, `rows`."}}
          (mt/user-http-request
           :rasta :post 400 "alert" {:alert_condition "not rows"
@@ -432,7 +432,7 @@
                                      :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                      :channels         ["abc"]}))))
 
-(defn- default-alert-req
+(defn default-alert-req
   ([card pulse-card-or-id]
    (default-alert-req card pulse-card-or-id {} []))
   ([card pulse-card-or-id alert-map users]
@@ -445,23 +445,23 @@
            :skip_if_empty    false}
           alert-map)))
 
-(defn- basic-alert []
+(defn basic-alert []
   {:alert_condition  "rows"
    :alert_first_only false
    :creator_id       (mt/user->id :rasta)
    :name             nil})
 
-(defn- recipient [pulse-channel-or-id username-keyword]
+(defn recipient [pulse-channel-or-id username-keyword]
   (let [user (mt/fetch-user username-keyword)]
     {:user_id          (u/the-id user)
      :pulse_channel_id (u/the-id pulse-channel-or-id)}))
 
-(defn- pulse-card [alert-or-id card-or-id]
+(defn pulse-card [alert-or-id card-or-id]
   {:pulse_id (u/the-id alert-or-id)
    :card_id  (u/the-id card-or-id)
    :position 0})
 
-(defn- pulse-channel [alert-or-id]
+(defn pulse-channel [alert-or-id]
   {:pulse_id (u/the-id alert-or-id)})
 
 (defn- alert-url [alert-or-id]
@@ -537,10 +537,11 @@
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
-      (is (= "Non-admin users are not allowed to modify the channels for an alert"
+      (is (= (str "Non-admin users without monitoring or subscription permissions "
+                  "are not allowed to modify the channels for an alert")
              (with-alerts-in-writeable-collection [alert]
                (tu/with-model-cleanup [Pulse]
-                 ((alert-client :rasta) :put 400 (alert-url alert)
+                 ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc {} [(fetch-user :crowberto)])))))))))
 
 (deftest admin-users-remove-recipient-test

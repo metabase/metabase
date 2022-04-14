@@ -2,6 +2,7 @@ import {
   browse,
   restore,
   openOrdersTable,
+  openNavigationSidebar,
   visitQuestionAdhoc,
   popover,
   sidebar,
@@ -71,7 +72,7 @@ describe("scenarios > question > settings", () => {
         .should("not.exist");
     });
 
-    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
+    it("should preserve correct order of columns after column removal or addition via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
@@ -91,6 +92,7 @@ describe("scenarios > question > settings", () => {
                 alias: "Products",
               },
             ],
+            limit: 5,
           },
           database: SAMPLE_DB_ID,
         },
@@ -98,12 +100,8 @@ describe("scenarios > question > settings", () => {
       });
 
       cy.findByText("Settings").click();
-      cy.findByTextEnsureVisible("Click and drag to change their order")
-        .parent()
-        .find(".cursor-grab")
-        .as("sidebarColumns"); // Store all columns in an array
 
-      cy.get("@sidebarColumns")
+      getSidebarColumns()
         .eq("12")
         .as("prod-category")
         .contains(/Products? → Category/);
@@ -116,31 +114,73 @@ describe("scenarios > question > settings", () => {
         .trigger("mouseup", 0, -300, { force: true });
 
       reloadResults();
+
       findColumnAtIndex("Products → Category", 5);
+
       // Remove "Total"
-      cy.get("@sidebarColumns")
+      getSidebarColumns()
         .contains("Total")
         .closest(".cursor-grab")
         .find(".Icon-close")
         .click();
+
       reloadResults();
+
       cy.findByText("117.03").should("not.exist");
+
       // This click doesn't do anything, but simply allows the array to be updated (test gives false positive without this step)
       cy.findByText("Visible columns").click();
+
       findColumnAtIndex("Products → Category", 5);
+
+      // We need to do some additional checks. Please see:
+      // https://github.com/metabase/metabase/pull/21338#pullrequestreview-928807257
+
+      // Add "Address"
+      cy.findByText("Address")
+        .siblings(".Icon-add")
+        .click();
+
+      // The result automatically load when adding new fields but two requests are fired.
+      // Please see: https://github.com/metabase/metabase/pull/21338#discussion_r842816687
+      cy.wait(["@dataset", "@dataset"]);
+
+      findColumnAtIndex("User → Address", -1).as("user-address");
+
+      // Move it one place up
+      cy.get("@user-address")
+        .trigger("mousedown", 0, 0, { force: true })
+        .trigger("mousemove", 5, 5, { force: true })
+        .trigger("mousemove", 0, -50, { force: true })
+        .trigger("mouseup", 0, -50, { force: true });
+
+      findColumnAtIndex("User → Address", -2);
 
       /**
        * Helper functions related to THIS test only
        */
 
+      function getSidebarColumns() {
+        return cy
+          .findByText("Click and drag to change their order")
+          .scrollIntoView()
+          .should("be.visible")
+          .parent()
+          .find(".cursor-grab");
+      }
+
       function reloadResults() {
         cy.icon("play")
           .last()
           .click();
+
+        // Prevent performing actions while the query is being executed.
+        // Which caused some race condition and failed the test.
+        cy.wait("@dataset");
       }
 
       function findColumnAtIndex(column_name, index) {
-        cy.get("@sidebarColumns")
+        return getSidebarColumns()
           .eq(index)
           .contains(column_name);
       }
@@ -212,8 +252,10 @@ describe("scenarios > question > settings", () => {
         .click();
       cy.contains("Yes please!").click();
       cy.contains("Orders in a dashboard").click();
+      cy.findByText("Cancel").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
+      openNavigationSidebar();
       browse().click();
       cy.contains("Sample Database").click();
       cy.contains("Orders").click();

@@ -61,6 +61,9 @@ import {
   HIDE_TIMELINES,
   SELECT_TIMELINE_EVENTS,
   DESELECT_TIMELINE_EVENTS,
+  SET_DOCUMENT_TITLE,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
@@ -84,6 +87,12 @@ const DEFAULT_UI_CONTROLS = {
   datasetEditorTab: "query", // "query" / "metadata"
 };
 
+const DEFAULT_LOADING_CONTROLS = {
+  showLoadCompleteFavicon: false,
+  documentTitle: "",
+  timeoutId: "",
+};
+
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
@@ -99,6 +108,7 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingTimelineSidebar: false,
 };
 
 // various ui state options
@@ -281,6 +291,7 @@ export const uiControls = handleActions(
     [onOpenTimelines]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+      ...CLOSED_NATIVE_EDITOR_SIDEBARS,
       isShowingTimelineSidebar: true,
     }),
     [onCloseTimelines]: state => ({
@@ -293,6 +304,24 @@ export const uiControls = handleActions(
     }),
   },
   DEFAULT_UI_CONTROLS,
+);
+
+export const loadingControls = handleActions(
+  {
+    [SET_DOCUMENT_TITLE]: (state, { payload }) => ({
+      ...state,
+      documentTitle: payload,
+    }),
+    [SET_SHOW_LOADING_COMPLETE_FAVICON]: (state, { payload }) => ({
+      ...state,
+      showLoadCompleteFavicon: payload,
+    }),
+    [SET_DOCUMENT_TITLE_TIMEOUT_ID]: (state, { payload }) => ({
+      ...state,
+      timeoutId: payload,
+    }),
+  },
+  DEFAULT_LOADING_CONTROLS,
 );
 
 export const zoomedRowObjectId = handleActions(
@@ -528,8 +557,7 @@ export const selectedTimelineEventIds = handleActions(
       next: (state, { payload: events = [] }) => events.map(e => e.id),
     },
     [DESELECT_TIMELINE_EVENTS]: {
-      next: (state, { payload: events = [] }) =>
-        _.without(state, ...events.map(e => e.id)),
+      next: () => [],
     },
     [HIDE_TIMELINES]: {
       next: (state, { payload: timelines }) =>

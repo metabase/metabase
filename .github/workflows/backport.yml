@@ -11,7 +11,19 @@ jobs:
     if: contains(github.event.comment.body, '@metabase-bot backport')
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/github-script@v6
+      - id: is_organization_member
+        uses: JamesSingleton/is-organization-member@1.0.0
+        with:
+          organization: metabase
+          username: ${{ github.event.issue.user.login }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          result=${{ steps.is_organization_member.outputs.result }}
+          if [ $result == false ]; then
+              echo User ${{ github.event.comment.user.login }} is not a member of Metabase organization
+              exit 1
+          fi
+      - uses: actions/github-script@v4
         id: branch_info
         with:
           script: |
@@ -116,16 +128,8 @@ jobs:
     needs: create_pull_request
     if: ${{ failure() }}
     steps:
-      - uses: actions/github-script@v6
+      - uses: actions/checkout@v2
+      - uses: ./.github/actions/notify-pull-request
         with:
-          script: |
-            const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID} = process.env;
-            const runUrl = `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`
-            const author = context.payload.comment.user.login;
-
-            github.issues.createComment({
-              issue_number: context.payload.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `@${author} could not automatically a backport PR 😩 [[Logs]](${runUrl})`
-            })
+          include-log: true
+          message: something went wrong while creating a backport

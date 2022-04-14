@@ -1,9 +1,10 @@
-import React, { memo } from "react";
+import React, { memo, SyntheticEvent, useCallback } from "react";
 import { t } from "ttag";
 import Settings from "metabase/lib/settings";
 import { parseTimestamp } from "metabase/lib/time";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import EntityMenu from "metabase/components/EntityMenu";
+import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import {
   CardAside,
@@ -22,7 +23,9 @@ export interface EventCardProps {
   timeline: Timeline;
   isSelected?: boolean;
   onEdit?: (event: TimelineEvent) => void;
+  onMove?: (event: TimelineEvent) => void;
   onArchive?: (event: TimelineEvent) => void;
+  onToggle?: (event: TimelineEvent, isSelected: boolean) => void;
 }
 
 const EventCard = ({
@@ -30,14 +33,29 @@ const EventCard = ({
   timeline,
   isSelected,
   onEdit,
+  onMove,
   onArchive,
+  onToggle,
 }: EventCardProps): JSX.Element => {
-  const menuItems = getMenuItems(event, timeline, onEdit, onArchive);
+  const selectedRef = useScrollOnMount();
+  const menuItems = getMenuItems(event, timeline, onEdit, onMove, onArchive);
   const dateMessage = getDateMessage(event);
   const creatorMessage = getCreatorMessage(event);
 
+  const handleEventClick = useCallback(() => {
+    onToggle?.(event, !isSelected);
+  }, [event, isSelected, onToggle]);
+
+  const handleAsideClick = useCallback((event: SyntheticEvent) => {
+    event.stopPropagation();
+  }, []);
+
   return (
-    <CardRoot isSelected={isSelected}>
+    <CardRoot
+      ref={isSelected ? selectedRef : null}
+      isSelected={isSelected}
+      onClick={handleEventClick}
+    >
       <CardIconContainer>
         <CardIcon name={event.icon} />
       </CardIconContainer>
@@ -50,7 +68,7 @@ const EventCard = ({
         <CardCreatorInfo>{creatorMessage}</CardCreatorInfo>
       </CardBody>
       {menuItems.length > 0 && (
-        <CardAside>
+        <CardAside onClick={handleAsideClick}>
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         </CardAside>
       )}
@@ -62,6 +80,7 @@ const getMenuItems = (
   event: TimelineEvent,
   timeline: Timeline,
   onEdit?: (event: TimelineEvent) => void,
+  onMove?: (event: TimelineEvent) => void,
   onArchive?: (event: TimelineEvent) => void,
 ) => {
   if (!timeline.collection?.can_write) {
@@ -72,6 +91,10 @@ const getMenuItems = (
     {
       title: t`Edit event`,
       action: () => onEdit?.(event),
+    },
+    {
+      title: t`Move event`,
+      action: () => onMove?.(event),
     },
     {
       title: t`Archive event`,

@@ -1,4 +1,3 @@
-//Replaces HomepageApp.e2e.spec.js
 import {
   restore,
   openProductsTable,

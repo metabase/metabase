@@ -26,8 +26,19 @@ export default class QuestionAlertWidget extends React.Component {
   };
 
   render() {
-    const { question, questionAlerts, onCreateAlert, className } = this.props;
+    const {
+      question,
+      questionAlerts,
+      onCreateAlert,
+      className,
+      canManageSubscriptions,
+    } = this.props;
     const { isOpen, isFrozen } = this.state;
+
+    if (!canManageSubscriptions) {
+      return null;
+    }
+
     if (question.isSaved() && Object.values(questionAlerts).length > 0) {
       return (
         <span onClick={this.open}>

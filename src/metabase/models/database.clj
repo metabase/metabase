@@ -86,9 +86,7 @@
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
   (db/execute! {:delete-from (db/resolve-model 'Permissions)
-                :where       [:or
-                              [:like :object (str (perms/data-perms-path id) "%")]
-                              [:= :object (perms/database-block-perms-path id)]]})
+                :where       [:like :object (str "%" (perms/data-perms-path id) "%")]})
   (delete-orphaned-secrets! database)
   (try
     (driver/notify-database-updated driver database)
@@ -185,8 +183,10 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database _]
-  #{(perms/data-perms-path (u/the-id database))})
+(defn- perms-objects-set [database read-or-write]
+  #{(case read-or-write
+      :read (perms/data-perms-path (u/the-id database))
+      :write (perms/db-details-write-perms-path (u/the-id database)))})
 
 (u/strict-extend (class Database)
   models/IModel
@@ -209,7 +209,7 @@
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        i/superuser?}))
+          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

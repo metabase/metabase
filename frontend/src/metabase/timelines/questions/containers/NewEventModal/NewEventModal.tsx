@@ -5,27 +5,31 @@ import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 import TimelineEvents from "metabase/entities/timeline-events";
 import { addUndo } from "metabase/redux/undo";
+import NewEventModal from "metabase/timelines/common/components/NewEventModal";
 import { Collection, TimelineEvent } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import NewEventModal from "../../components/NewEventModal";
 
-interface TimelinePanelProps {
+interface NewEventModalProps {
   cardId?: number;
   collectionId?: number;
+  onClose?: () => void;
 }
 
 const timelineProps = {
-  query: (state: State, props: TimelinePanelProps) => ({
-    cardId: props.cardId,
-    include: "events",
-  }),
+  query: { include: "events" },
 };
 
 const collectionProps = {
-  id: (state: State, props: TimelinePanelProps) => {
+  id: (state: State, props: NewEventModalProps) => {
     return props.collectionId ?? ROOT_COLLECTION.id;
   },
 };
+
+const mapStateToProps = (state: State, { onClose }: NewEventModalProps) => ({
+  source: "question",
+  onSubmitSuccess: onClose,
+  onCancel: onClose,
+});
 
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (values: Partial<TimelineEvent>, collection: Collection) => {
@@ -42,5 +46,5 @@ const mapDispatchToProps = (dispatch: any) => ({
 export default _.compose(
   Timelines.loadList(timelineProps),
   Collections.load(collectionProps),
-  connect(null, mapDispatchToProps),
+  connect(mapStateToProps, mapDispatchToProps),
 )(NewEventModal);

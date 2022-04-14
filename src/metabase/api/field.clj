@@ -95,7 +95,7 @@
 (api/defendpoint PUT "/:id"
   "Update `Field` with ID."
   [id :as {{:keys [caveats description display_name fk_target_field_id points_of_interest semantic_type
-                   coercion_strategy visibility_type has_field_values settings]
+                   coercion_strategy visibility_type has_field_values settings nfc_path]
             :as   body} :body}]
   {caveats            (s/maybe su/NonBlankString)
    description        (s/maybe su/NonBlankString)
@@ -106,7 +106,8 @@
    coercion_strategy  (s/maybe su/CoercionStrategyKeywordOrString)
    visibility_type    (s/maybe FieldVisibilityType)
    has_field_values   (s/maybe (apply s/enum (map name field/has-field-values-options)))
-   settings           (s/maybe su/Map)}
+   settings           (s/maybe su/Map)
+   nfc_path           (s/maybe [su/NonBlankString])}
   (let [field              (hydrate (api/write-check Field id) :dimensions)
         new-semantic-type  (keyword (get body :semantic_type (:semantic_type field)))
         [effective-type coercion-strategy]
@@ -137,8 +138,8 @@
                                      :fk_target_field_id (when-not removed-fk? fk-target-field-id)
                                      :effective_type effective-type
                                      :coercion_strategy coercion-strategy)
-            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type :coercion_strategy :effective_type
-                       :has_field_values}
+            :present #{:caveats :description :fk_target_field_id :points_of_interest :semantic_type :visibility_type
+                       :coercion_strategy :effective_type :has_field_values :nfc_path}
             :non-nil #{:display_name :settings})))))
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
@@ -275,21 +276,18 @@
       (create-field-values! field value-pairs)))
   {:status :success})
 
-
 (api/defendpoint POST "/:id/rescan_values"
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (api/check-superuser)
-  (field-values/create-or-update-field-values! (api/check-404 (Field id)))
+  (field-values/create-or-update-field-values! (api/write-check (Field id)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (api/check-superuser)
-  (field-values/clear-field-values! (api/check-404 (Field id)))
+  (field-values/clear-field-values! (api/write-check (Field id)))
   {:status :success})
 
 

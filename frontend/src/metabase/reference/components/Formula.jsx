@@ -37,6 +37,7 @@ export default class Formula extends Component {
           <span className={S.formulaTitle}>{t`View the ${type} formula`}</span>
         </div>
         <CSSTransitionGroup
+          component="div"
           transitionName="formulaDefinition"
           transitionEnterTimeout={300}
           transitionLeaveTimeout={300}

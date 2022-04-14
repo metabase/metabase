@@ -44,7 +44,7 @@
 
   ### Enterprise-only permissions and \"anti-permissions\"
 
-  In addition to data permissions and Collection permissions, a User can also be granted three additional types of
+  In addition to data permissions and Collection permissions, a User can also be granted four additional types of
   permissions.
 
   * _root permissions_ -- permissions for `/`, i.e. full access for everything. Automatically granted to
@@ -89,6 +89,9 @@
     User would otherwise have. See the `Determining query permissions` section below for more details. As with
     segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
 
+  * _General permisisons_ -- are per-Group permissions that give non-admin users access to features like:
+    change instance's Settings; access Audit, Tools, Troubleshooting ...
+
   ### Determining CRUD permissions in the REST API
 
   REST API permissions checks are generally done in various `metabase.api.*` namespaces. Methods for determine whether
@@ -130,13 +133,13 @@
   | Data perms? | Coll perms? | Block? | Segmented? | Can run? |
   | ----------- | ----------- | ------ | ---------- | -------- |
   |          no |          no |     no |         no |       ⛔ |
-  |          no |          no |     no |        yes |       ⚠ |
+  |          no |          no |     no |        yes |       ⚠️ |
   |          no |          no |    yes |         no |       ⛔ |
-  |          no |          no |    yes |        yes |       ⚠ |
+  |          no |          no |    yes |        yes |       ⚠️ |
   |          no |         yes |     no |         no |       ✅ |
-  |          no |         yes |     no |        yes |       ⚠ |
+  |          no |         yes |     no |        yes |       ⚠️ |
   |          no |         yes |    yes |         no |       ⛔ |
-  |          no |         yes |    yes |        yes |       ⚠ |
+  |          no |         yes |    yes |        yes |       ⚠️ |
   |         yes |          no |     no |         no |       ✅ |
   |         yes |          no |     no |        yes |       ✅ |
   |         yes |          no |    yes |         no |       ✅ |
@@ -146,7 +149,7 @@
   |         yes |         yes |    yes |         no |       ✅ |
   |         yes |         yes |    yes |        yes |       ✅ |
 
-  (`⚠` = runs in sandboxed mode)
+  (`⚠️` = runs in sandboxed mode)
 
   ### Known Permissions Paths
 
@@ -255,6 +258,17 @@
                                (and "schema/"
                                     (opt (and path-char "*/"
                                               (opt #"table/\d+/"))))))))
+               ;; any path starting with /data-model/ is a DATA MODEL permissions path
+               ;; /download/db/:id/ -> permissions to access the data model for the DB
+               (and "data-model/"
+                    (and #"db/\d+/"
+                         (opt (and
+                               "schema/"
+                               (opt (and path-char "*/"
+                                         (opt #"table/\d+/")))))))
+               ;; any path starting with /details/ is a DATABASE CONNECTION DETAILS permissions path
+               ;; /details/db/:id/ -> permissions to edit the connection details and settings for the DB
+               (and "details/" #"db/\d+/")
                ;; any path starting with /collection/ is a COLLECTION permissions path
                (and "collection/"
                     (or
@@ -272,6 +286,15 @@
                           ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
                           ;; non-default namespace
                           (opt "read/"))))
+               ;; any path starting with /general is a permissions that is not scoped by database or collection
+               ;; /general/setting/      -> permissions to access /admin/settings page
+               ;; /general/monitoring/   -> permissions to access tools, audit and troubleshooting
+               ;; /general/subscription/ -> permisisons to create/edit subscriptions and alerts
+               (and "general/"
+                    (or
+                     "setting/"
+                     "monitoring/"
+                     "subscription/"))
                ;; any path starting with /block/ is for BLOCK anti-permissions.
                ;; currently only supported at the DB level, e.g. /block/db/1/ => block collection-based access to
                ;; Database 1
@@ -302,9 +325,19 @@
                       (seq path))
              (re-matches path-regex path))))
 
+(defn valid-path-format?
+  "Is `path` a string with a valid permissions path format? This is a less strict version of [[valid-path?]] which
+  just checks that the path components contain alphanumeric characters or dashes, separated by slashes
+  This should be used for schema validation in most places, to preserve downgradability when new permissions paths are
+  added."
+  ^Boolean [^String path]
+  (boolean (when (and (string? path)
+                      (seq path))
+             (re-matches (re-pattern (str "^/(" path-char "*/)*$")) path))))
+
 (def Path
-  "Schema for a valid permissions path."
-  (s/pred valid-path? "Valid permissions path"))
+  "Schema for a permissions path with a valid format."
+  (s/pred valid-path-format? "Valid permissions path"))
 
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
@@ -428,7 +461,13 @@
     (str "/download" base-path)
 
     [:download :limited]
-    (str "/download/limited" base-path)))
+    (str "/download/limited" base-path)
+
+    [:data-model :all]
+    (str "/data-model" base-path)
+
+    [:details :yes]
+    (str "/details" base-path)))
 
 (s/defn feature-perms-path :- Path
   "Returns the permissions path to use for a given feature-level permission type (e.g. download) and value (e.g. full
@@ -439,9 +478,45 @@
 (s/defn native-feature-perms-path :- Path
   "Returns the native permissions path to use for a given feature-level permission type (e.g. download) and value
   (e.g. full or limited)."
-  [perm-type perm-value db-id]
-  (base->feature-perms-path perm-type perm-value (adhoc-native-query-path db-id)))
+  [perm-type perm-value database-or-id]
+  (base->feature-perms-path perm-type perm-value (adhoc-native-query-path database-or-id)))
 
+(s/defn data-model-write-perms-path :- Path
+  "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
+  If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
+  permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
+  [db-id schema table-id]
+  (let [f (u/ignore-exceptions
+           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
+    (if (and f (premium-features/enable-advanced-permissions?))
+      (f db-id schema table-id)
+      "/")))
+
+(s/defn db-details-write-perms-path :- Path
+  "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
+  If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the DB details
+  permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
+  [db-id]
+  (let [f (u/ignore-exceptions
+           (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+           (resolve 'metabase-enterprise.advanced-permissions.models.permissions/db-details-write-perms-path))]
+    (if (and f (premium-features/enable-advanced-permissions?))
+      (f db-id)
+      "/")))
+
+(s/defn general-perms-path :- Path
+  "Returns the permissions path for *full* access a general permission."
+  [perm-type]
+  (case perm-type
+    :setting
+    "/general/setting/"
+
+    :monitoring
+    "/general/monitoring/"
+
+    :subscription
+    "/general/subscription/"))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -488,7 +563,12 @@
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
-(s/defn perms-objects-set-for-parent-collection
+(s/defn set-has-general-permission-of-type? :- s/Bool
+  "Does `permissions-set` grant *full* access to a general permission of type `perm-type`?"
+  [permissions-set perm-type]
+  (set-has-full-permissions? permissions-set (general-perms-path perm-type)))
+
+(s/defn perms-objects-set-for-parent-collection :- #{Path}
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
   This simply returns the `perms-objects-set` of the parent Collection (based on `collection_id`) or for the Root
   Collection if `collection_id` is `nil`."
@@ -632,12 +712,39 @@
   (s/named
    {(s/optional-key :native)  DownloadNativePermissionsGraph
     (s/optional-key :schemas) (s/cond-pre (s/enum :full :limited :none)
-                                      {s/Str DownloadSchemaPermissionsGraph})}
+                                          {s/Str DownloadSchemaPermissionsGraph})}
    "Valid download perms graph for a database"))
+
+(def ^:private DataModelTablePermissionsGraph
+  (s/named
+   (s/enum :all :none)
+   "Valid data model perms graph for a table"))
+
+(def ^:private DataModelSchemaPermissionsGraph
+  (s/named
+    (s/cond-pre (s/enum :all :none)
+                {su/IntGreaterThanZero DataModelTablePermissionsGraph})
+   "Valid data model perms graph for a schema"))
+
+(def DataModelPermissionsGraph
+  "Schema for a data model permissions graph, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
+  (s/named
+   {:schemas
+    (s/cond-pre (s/enum :all :none)
+                {s/Str DataModelSchemaPermissionsGraph})}
+   "Valid data model perms graph for a database"))
+
+(def DetailsPermissions
+  "Schema for a database details permissions, used in [[metabase-enterprise.advanced-permissions.models.permissions]]."
+  (s/named
+   (s/enum :yes :no)
+   "Valid details perms graph for a database"))
 
 (def ^:private StrictDBPermissionsGraph
   {su/IntGreaterThanZero {(s/optional-key :data) StrictDataPermissionsGraph
-                          (s/optional-key :download) DownloadPermissionsGraph}})
+                          (s/optional-key :download) DownloadPermissionsGraph
+                          (s/optional-key :data-model) DataModelPermissionsGraph
+                          (s/optional-key :details) DetailsPermissions}})
 
 (def ^:private StrictPermissionsGraph
   {:revision s/Int
@@ -652,12 +759,12 @@
   "Handle '/' permission"
   [db-ids]
   (reduce (fn [g db-id]
-            (assoc g db-id {:data
-                            {:native  :write
-                             :schemas :all}
-                            :download
-                            {:native  :full
-                             :schemas :full}}))
+            (assoc g db-id {:data       {:native  :write
+                                         :schemas :all}
+                            :download   {:native  :full
+                                         :schemas :full}
+                            :data-model {:schemas :all}
+                            :details    :yes}))
           {}
           db-ids))
 
@@ -668,9 +775,7 @@
   (let [permissions     (db/select [Permissions [:group_id :group-id] [:object :path]]
                                    {:where [:or
                                             [:= :object (hx/literal "/")]
-                                            [:like :object (hx/literal "/db/%")]
-                                            [:like :object (hx/literal "/download/%")]
-                                            [:like :object (hx/literal "/block/db/%")]]})
+                                            [:like :object (hx/literal "%/db/%")]]})
         db-ids          (delay (db/select-ids 'Database))
         group-id->paths (reduce
                          (fn [m {:keys [group-id path]}]
@@ -776,6 +881,11 @@
   (delete-related-permissions! group-or-id (data-perms-path database-or-id)
     [:not= :object (adhoc-native-query-path database-or-id)]))
 
+(defn revoke-general-permissions!
+  "Remove all permissions entries for a Group to access a General feature."
+  [group-or-id perm-type]
+  (delete-related-permissions! group-or-id (general-perms-path perm-type)))
+
 (defn grant-permissions-for-all-schemas!
   "Grant full permissions for all schemas belonging to this database.
    This does *not* grant native permissions; use `grant-native-readwrite-permissions!` to do that."
@@ -791,6 +901,11 @@
   "Grant full download permissions to the database."
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (feature-perms-path :download :full database-or-id)))
+
+(defn grant-general-permissions!
+  "Grant full permissions for a group to access a General feature."
+  [group-or-id perm-type]
+  (grant-permissions! group-or-id (general-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   (classloader/require 'metabase.models.collection)
@@ -830,8 +945,16 @@
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
 
-
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
+
+(defn ee-permissions-exception
+  "Exception to throw when a permissions operation fails due to missing Enterprise Edition code, or missing a valid
+   token with the advanced-permissions feature."
+  [perm-type]
+  (ex-info
+    (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+         (str/replace (name perm-type) "-" " "))
+    {:status-code 402}))
 
 (defn- download-permissions-set
   [group-id]
@@ -872,7 +995,7 @@
   [group-id :- su/IntGreaterThanZero db-id :- su/IntGreaterThanZero]
   (let [permissions-set (download-permissions-set group-id)
         table-ids-and-schemas (db/select-id->field :schema 'Table :db_id db-id :active [:= true])
-        native-perm-level (reduce (fn [highest-seen-perm-level [table-id table-schema]]
+        native-perm-level (reduce (fn [lowest-seen-perm-level [table-id table-schema]]
                                     (let [table-perm-level (download-permissions-level permissions-set
                                                                                        db-id
                                                                                        table-schema
@@ -881,7 +1004,7 @@
                                         (= table-perm-level :none)
                                         (reduced :none)
 
-                                        (or (= highest-seen-perm-level :limited)
+                                        (or (= lowest-seen-perm-level :limited)
                                             (= table-perm-level :limited))
                                         :limited
 
@@ -890,7 +1013,10 @@
                                   :full
                                   (seq table-ids-and-schemas))]
     (doseq [perm-value [:full :limited]]
-      (delete-related-permissions! group-id (native-feature-perms-path :download perm-value db-id)))
+      ;; We don't want to call `delete-related-permissions!` here because that would also delete prefixes of the native
+      ;; downloads path, including `/download/db/:id/`, thus removing download permissions for the entire DB. Instead
+      ;; we just delete the native downloads path directly, so that we can replace it with a new value.
+      (db/delete! Permissions :group_id group-id, :object (native-feature-perms-path :download perm-value db-id)))
     (when (not= native-perm-level :none)
       (grant-permissions! group-id (native-feature-perms-path :download native-perm-level db-id)))))
 
@@ -984,16 +1110,21 @@
         ;; TODO -- should this code be enterprise only?
         :block (do
                  (when-not (premium-features/has-feature? :advanced-permissions)
-                   (throw
-                    (ex-info
-                     (tru "Can''t use block permissions without having the advanced-permissions premium feature")
-                     {:status-code 402})))
+                   (throw (ee-permissions-exception :block)))
                  (revoke-data-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)
           (doseq [schema (keys schemas)]
             (update-schema-data-access-permissions! group-id db-id schema (get-in new-db-perms [:schemas schema]))))))))
+
+(defn- update-feature-level-permission!
+  [group-id db-id new-perms perm-type]
+  (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
+  (if-let [update-fn (resolve (symbol "metabase-enterprise.advanced-permissions.models.permissions"
+                                      (str "update-db-" (name perm-type) "-permissions!")))]
+    (update-fn group-id db-id new-perms)
+    (throw (ee-permissions-exception perm-type))))
 
 (s/defn ^:private update-group-permissions!
   [group-id :- su/IntGreaterThanZero new-group-perms :- StrictDBPermissionsGraph]
@@ -1004,10 +1135,13 @@
         (update-db-data-access-permissions! group-id db-id new-perms)
 
         :download
-        (do
-          (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
-          ((resolve 'metabase-enterprise.advanced-permissions.models.permissions/update-db-download-permissions!)
-           group-id db-id new-perms))))))
+        (update-feature-level-permission! group-id db-id new-perms :download)
+
+        :data-model
+        (update-feature-level-permission! group-id db-id new-perms :data-model)
+
+        :details
+        (update-feature-level-permission! group-id db-id new-perms :details)))))
 
 (defn check-revision-numbers
   "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
@@ -1020,17 +1154,21 @@
                          (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
-(defn- save-perms-revision!
-  "Save changes made to the permissions graph for logging/auditing purposes.
-   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage)."
-  [current-revision old new]
+(defn save-perms-revision!
+  "Save changes made to permission graph for logging/auditing purposes.
+  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
+  *  `model`   -- revision model, should be one of
+                  [PermissionsRevision, CollectionPermissionGraphRevision, GeneralPermissionsRevision]
+  *  `before`  -- the graph before the changes
+  *  `changes` -- set of changes applied in this revision."
+  [model current-revision before changes]
   (when *current-user-id*
-    (db/insert! PermissionsRevision
+    (db/insert! model
       ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
       ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-      :id     (inc current-revision)
-      :before  old
-      :after   new
+      :id      (inc current-revision)
+      :before  before
+      :after   changes
       :user_id *current-user-id*)))
 
 (defn log-permissions-changes
@@ -1059,7 +1197,7 @@
        (db/transaction
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
-         (save-perms-revision! (:revision old-graph) old new)
+         (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
          (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage

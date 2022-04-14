@@ -59,6 +59,7 @@ export default class ItemPicker extends React.Component {
     value: PropTypes.number,
     types: PropTypes.array,
     showSearch: PropTypes.bool,
+    showScroll: PropTypes.bool,
   };
 
   // returns a list of "crumbs" starting with the "root" collection
@@ -116,6 +117,7 @@ export default class ItemPicker extends React.Component {
       style,
       className,
       showSearch = true,
+      showScroll = true,
     } = this.props;
     const { parentId, searchMode, searchString } = this.state;
 
@@ -156,7 +158,10 @@ export default class ItemPicker extends React.Component {
       (models.size === 1 || item.model === value.model);
 
     return (
-      <LoadingAndErrorWrapper loading={!collectionsById} className="scroll-y">
+      <LoadingAndErrorWrapper
+        loading={!collectionsById}
+        className={cx({ "scroll-y": showScroll })}
+      >
         <div style={style} className={cx(className, "scroll-y")}>
           {searchMode ? (
             <ItemPickerHeader

@@ -4,6 +4,7 @@
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.permission-graph :as pg]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
@@ -86,7 +87,7 @@
 (api/defendpoint GET "/group"
   "Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group."
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (-> (ordered-groups offset-paging/*limit* offset-paging/*offset*)
       (hydrate :member_count)))
 
@@ -146,7 +147,7 @@
     :group_id group_id
     :user_id  user_id)
   ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
-  ;; let the frontend add it ass appropriate
+  ;; let the frontend add it as appropriate
   (group/members {:id group_id}))
 
 (api/defendpoint DELETE "/membership/:id"

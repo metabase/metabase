@@ -24,6 +24,7 @@ function getVisualizationRaw(...args) {
 import {
   formatColumn,
   numberFormatterForOptions,
+  getCurrencySymbol,
 } from "metabase/lib/formatting";
 import {
   getDateFormatFromStyle,
@@ -302,7 +303,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     widget: "radio",
     getProps: (column, settings) => {
       const c = settings["currency"] || "USD";
-      const symbol = getCurrency(c, "symbol");
+      const symbol = getCurrencySymbol(c);
       const code = getCurrency(c, "code");
       const name = getCurrency(c, "name");
       return {
@@ -328,7 +329,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     getDefault: (column, settings) => {
       const c = settings["currency"] || "USD";
-      return getCurrency(c, "symbol") !== getCurrency(c, "code")
+      return getCurrencySymbol(c) !== getCurrency(c, "code")
         ? "symbol"
         : "code";
     },
@@ -401,6 +402,9 @@ export const NUMBER_COLUMN_SETTINGS = {
         settings["number_style"] === "currency" &&
         settings["currency_in_header"]
       ) {
+        if (settings["currency_style"] === "symbol") {
+          return getCurrencySymbol(settings["currency"]);
+        }
         return getCurrency(settings["currency"], settings["currency_style"]);
       }
       return null;

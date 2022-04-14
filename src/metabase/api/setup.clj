@@ -3,6 +3,7 @@
             [compojure.core :refer [GET POST]]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.api.database :as database-api :refer [DBEngineString]]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -300,7 +301,7 @@
 (api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
-  (api/check-superuser)
+  (validation/check-has-general-permission :setting)
   (admin-checklist))
 
 ;; User defaults endpoint

@@ -76,6 +76,11 @@
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
 
+(defrecord SparkSQLDataSource [url properties]
+  javax.sql.DataSource
+  (getConnection [_this]
+    (fixed-hive-connection/fixed-hive-connection url properties)))
+
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
   [_driver {:keys [host port db jdbc-flags dbname]
             :or   {host "localhost", port 10000, db "", jdbc-flags ""}
@@ -85,9 +90,7 @@
         db          (or dbname db)
         url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
         properties  (pool/map->properties (dissoc opts :host :port :jdbc-flags))
-        data-source (reify javax.sql.DataSource
-                      (getConnection [_this]
-                        (fixed-hive-connection/fixed-hive-connection url properties)))]
+        data-source (->SparkSQLDataSource url properties)]
     {:datasource data-source}))
 
 (defn- dash-to-underscore [s]

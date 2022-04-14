@@ -1,48 +1,64 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
+import {
+  getDefaultTimelineName,
+  getSortedTimelines,
+} from "metabase/lib/timelines";
 import EntityMenu from "metabase/components/EntityMenu";
 import { Collection, Timeline } from "metabase-types/api";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import TimelineCard from "../TimelineCard";
+import SearchEmptyState from "../SearchEmptyState";
+import TimelineList from "../TimelineList";
 import TimelineEmptyState from "../TimelineEmptyState";
-import { ListRoot, ModalBody, ModalRoot } from "./TimelineListModal.styled";
+import { ModalBody, ModalRoot } from "./TimelineListModal.styled";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
   collection: Collection;
+  isArchive?: boolean;
+  onUnarchive?: (timeline: Timeline) => void;
   onClose?: () => void;
+  onGoBack?: (collection: Collection) => void;
 }
 
 const TimelineListModal = ({
   timelines,
   collection,
+  isArchive = false,
+  onUnarchive,
   onClose,
+  onGoBack,
 }: TimelineListModalProps): JSX.Element => {
+  const title = getTitle(timelines, collection, isArchive);
+  const menuItems = getMenuItems(timelines, collection, isArchive);
   const hasTimelines = timelines.length > 0;
-  const title = hasTimelines ? t`Events` : t`${collection.name} events`;
-  const menuItems = getMenuItems(timelines, collection);
-  const sortedTimelines = getSortedTimelines(timelines);
+  const hasMenuItems = menuItems.length > 0;
+
+  const sortedTimelines = useMemo(() => {
+    return getSortedTimelines(timelines, collection);
+  }, [timelines, collection]);
+
+  const handleGoBack = useCallback(() => {
+    onGoBack?.(collection);
+  }, [collection, onGoBack]);
 
   return (
     <ModalRoot>
-      <ModalHeader title={title} onClose={onClose}>
-        {menuItems.length > 0 && (
+      <ModalHeader
+        title={title}
+        onClose={onClose}
+        onGoBack={isArchive ? handleGoBack : undefined}
+      >
+        {hasMenuItems && (
           <EntityMenu items={menuItems} triggerIcon="ellipsis" />
         )}
       </ModalHeader>
-      <ModalBody>
+      <ModalBody isTopAligned={hasTimelines}>
         {hasTimelines ? (
-          <ListRoot>
-            {sortedTimelines.map(timeline => (
-              <TimelineCard
-                key={timeline.id}
-                timeline={timeline}
-                collection={collection}
-              />
-            ))}
-          </ListRoot>
+          <TimelineList timelines={sortedTimelines} onUnarchive={onUnarchive} />
+        ) : isArchive ? (
+          <SearchEmptyState isTimeline={isArchive} />
         ) : (
           <TimelineEmptyState collection={collection} />
         )}
@@ -51,8 +67,26 @@ const TimelineListModal = ({
   );
 };
 
-const getMenuItems = (timelines: Timeline[], collection: Collection) => {
-  if (!collection.can_write || !timelines.length) {
+const getTitle = (
+  timelines: Timeline[],
+  collection: Collection,
+  isArchive: boolean,
+) => {
+  if (isArchive) {
+    return t`Archived timelines`;
+  } else if (timelines.length) {
+    return t`Events`;
+  } else {
+    return getDefaultTimelineName(collection);
+  }
+};
+
+const getMenuItems = (
+  timelines: Timeline[],
+  collection: Collection,
+  isArchive: boolean,
+) => {
+  if (!collection.can_write || isArchive) {
     return [];
   }
 
@@ -61,14 +95,11 @@ const getMenuItems = (timelines: Timeline[], collection: Collection) => {
       title: t`New timeline`,
       link: Urls.newTimelineInCollection(collection),
     },
+    {
+      title: t`View archived timelines`,
+      link: Urls.timelinesArchiveInCollection(collection),
+    },
   ];
-};
-
-const getSortedTimelines = (timelines: Timeline[]) => {
-  return _.chain(timelines)
-    .sortBy(timeline => timeline.name)
-    .sortBy(timeline => timeline.collection?.personal_owner_id != null) // personal collections last
-    .value();
 };
 
 export default TimelineListModal;

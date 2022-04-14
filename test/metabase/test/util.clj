@@ -12,8 +12,8 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
-                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup Pulse PulseCard
-                                     PulseChannel Revision Segment Table TaskHistory Timeline TimelineEvent User]]
+                                     LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
+                                     Pulse PulseCard PulseChannel Revision Segment Setting Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
@@ -198,6 +198,7 @@
    Timeline
    (fn [_]
      {:name       "Timeline of bird squawks"
+      :default    false
       :creator_id (rasta-id)})
 
    TimelineEvent
@@ -242,6 +243,7 @@
                    #'Segment
                    #'Table
                    #'TaskHistory
+                   #'Timeline
                    #'User]]
   (remove-watch model-var ::reload)
   (add-watch
@@ -342,41 +344,67 @@
       (list `with-temp-env-var-value '[a])
       (list `with-temp-env-var-value '[a b c]))))
 
+(defn- upsert-raw-setting!
+  [original-value setting-k value]
+  (if original-value
+    (db/update! Setting setting-k :value value)
+    (db/insert! Setting :key setting-k :value value))
+  (setting.cache/restore-cache!))
+
+(defn- restore-raw-setting!
+  [original-value setting-k]
+  (if original-value
+    (db/update! Setting setting-k :value original-value)
+    (db/delete! Setting :key setting-k))
+  (setting.cache/restore-cache!))
+
 (defn do-with-temporary-setting-value
   "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
   the original value. This works much the same way as [[binding]].
 
   If an env var value is set for the setting, this acts as a wrapper around [[do-with-temp-env-var-value]].
 
-  Prefer the macro [[with-temporary-setting-values]] over using this function directly."
-  [setting-k value thunk]
-  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-values")
+  If `raw-setting?` is `true`, this works like [[with-temp*]] against the `Setting` table, but it ensures no exception
+  is thrown if the `setting-k` already exists.
+
+  Prefer the macro [[with-temporary-setting-values]] or [[with-temporary-raw-setting-values]] over using this function directly."
+  [setting-k value thunk & {:keys [raw-setting?]}]
   ;; plugins have to be initialized because changing `report-timezone` will call driver methods
   (initialize/initialize-if-needed! :db :plugins)
-  (let [setting       (#'setting/resolve-setting setting-k)
-        env-var-value (#'setting/env-var-value setting)]
-    (if env-var-value
+  (let [setting-k     (name setting-k)
+        setting       (try
+                       (#'setting/resolve-setting setting-k)
+                       (catch Exception e
+                         (when-not raw-setting?
+                           (throw e))))]
+    (if-let [env-var-value (and (not raw-setting?) (#'setting/env-var-value setting-k))]
       (do-with-temp-env-var-value setting env-var-value thunk)
-      (let [original-value (setting/get setting-k)]
+      (let [original-value (if raw-setting?
+                             (db/select-one-field :value Setting :key setting-k)
+                             (#'setting/get setting-k))]
         (try
-          (setting/set! setting-k value)
-          (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
-            (thunk))
-          (catch Throwable e
-            (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
-                            {:setting  setting-k
-                             :location (symbol (name (:namespace setting)) (name setting-k))
-                             :value    value}
-                            e)))
-          (finally
-            (try
-              (setting/set! setting-k original-value)
-              (catch Throwable e
-                (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
-                                {:setting        setting-k
-                                 :location       (symbol (name (:namespace setting)) (name setting-k))
-                                 :original-value original-value}
-                                e))))))))))
+         (if raw-setting?
+           (upsert-raw-setting! original-value setting-k value)
+           (setting/set! setting-k value))
+         (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
+           (thunk))
+         (catch Throwable e
+           (throw (ex-info (str "Error in with-temporary-setting-values: " (ex-message e))
+                           {:setting  setting-k
+                            :location (symbol (name (:namespace setting)) (name setting-k))
+                            :value    value}
+                           e)))
+         (finally
+          (try
+           (if raw-setting?
+             (restore-raw-setting! original-value setting-k)
+             (setting/set! setting-k original-value))
+           (catch Throwable e
+             (throw (ex-info (str "Error restoring original Setting value: " (ex-message e))
+                             {:setting        setting-k
+                              :location       (symbol (name (:namespace setting)) setting-k)
+                              :original-value original-value}
+                             e))))))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the site-wide values of one or more `Settings`, execute body, and re-establish the original values.
@@ -389,12 +417,26 @@
   To temporarily override the value of *read-only* env vars, use [[with-temp-env-var-value]]."
   [[setting-k value & more :as bindings] & body]
   (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-setting-vales")
   (if (empty? bindings)
     `(do ~@body)
     `(do-with-temporary-setting-value ~(keyword setting-k) ~value
        (fn []
          (with-temporary-setting-values ~more
            ~@body)))))
+
+(defmacro with-temporary-raw-setting-values
+  "Like `with-temporary-setting-values` but works with raw value and it allows settings that are not defined using `defsetting`."
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (test-runner.parallel/assert-test-is-not-parallel "with-temporary-raw-setting-values")
+  (if (empty? bindings)
+    `(do ~@body)
+    `(do-with-temporary-setting-value ~(keyword setting-k) ~value
+       (fn []
+         (with-temporary-raw-setting-values ~more
+           ~@body))
+       :raw-setting? true)))
 
 (defn do-with-discarded-setting-changes [settings thunk]
   (initialize/initialize-if-needed! :db :plugins)
@@ -1030,6 +1072,36 @@
                  (macroexpand form))
       `(with-temp-file [])
       `(with-temp-file (+ 1 2)))))
+
+(defn do-with-user-in-groups
+  ([f groups-or-ids]
+   (tt/with-temp User [user]
+     (do-with-user-in-groups f user groups-or-ids)))
+  ([f user [group-or-id & more]]
+   (if group-or-id
+     (tt/with-temp PermissionsGroupMembership [_ {:group_id (u/the-id group-or-id), :user_id (u/the-id user)}]
+       (do-with-user-in-groups f user more))
+     (f user))))
+
+(defmacro with-user-in-groups
+  "Create a User (and optionally PermissionsGroups), add user to a set of groups, and execute `body`.
+
+    ;; create a new User, add to existing group `some-group`, execute body`
+    (with-user-in-groups [user [some-group]]
+      ...)
+
+    ;; create a Group, then create a new User and add to new Group, then execute body
+    (with-user-in-groups [new-group {:name \"My New Group\"}
+                          user      [new-group]]
+      ...)"
+  {:arglists '([[group-binding-and-definition-pairs* user-binding groups-to-put-user-in?] & body]), :style/indent 1}
+  [[& bindings] & body]
+  (if (> (count bindings) 2)
+    (let [[group-binding group-definition & more] bindings]
+      `(tt/with-temp PermissionsGroup [~group-binding ~group-definition]
+         (with-user-in-groups ~more ~@body)))
+    (let [[user-binding groups-or-ids-to-put-user-in] bindings]
+      `(do-with-user-in-groups (fn [~user-binding] ~@body) ~groups-or-ids-to-put-user-in))))
 
 (defn secret-value-equals?
   "Checks whether a secret's `value` matches an `expected` value. If `expected` is a string, then the value's bytes are

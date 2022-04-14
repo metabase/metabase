@@ -4,7 +4,7 @@ Are you in charge of managing Metabase for your organization? Then you're in the
 
 ## Admin overview
 
-Here's an [Admin overview](/learn/administration/guide.html) that gives you a map of the territory. The article is part of a larger [course on Administration](/learn/administration)).
+Here's an [Admin overview](/learn/administration/guide.html) that gives you a map of the territory. The article is part of a larger [course on Administration](/learn/administration).
 
 ## Installing Metabase
 
@@ -35,8 +35,10 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 
 ## Setting permissions and access
 
-- [Setting data permissions](05-setting-permissions.md)
+- [Permissions overview](05-setting-permissions.md)
+- [Setting data permissions](data-permissions.md)
 - [Creating and managing collections](06-collections.md)
+- [General permissions](general-permissions.md)
 
 ## Embedding and sharing with public links
 

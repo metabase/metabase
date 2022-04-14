@@ -54,11 +54,12 @@ const ViewFooter = ({
   questionAlerts,
   visualizationSettings,
   isAdmin,
+  canManageSubscriptions,
   isPreviewing,
   isResultDirty,
   isVisualized,
+  isTimeseries,
   queryBuilderMode,
-
   isShowingFilterSidebar,
   onAddFilter,
   onCloseFilter,
@@ -178,6 +179,7 @@ const ViewFooter = ({
             <QuestionAlertWidget
               key="alerts"
               className="mx1 hide sm-show"
+              canManageSubscriptions={canManageSubscriptions}
               question={question}
               questionAlerts={questionAlerts}
               onCreateAlert={() =>
@@ -197,7 +199,7 @@ const ViewFooter = ({
               }
             />
           ),
-          QuestionTimelineWidget.shouldRender({ question }) && (
+          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
               className="mx1 hide sm-show"

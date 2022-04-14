@@ -96,7 +96,7 @@ describe("scenarios > question > object details", () => {
       .contains("8");
   });
 
-  it.skip("should not offer drill-through on the object detail records (metabase#20560)", () => {
+  it("should not offer drill-through on the object detail records (metabase#20560)", () => {
     openPeopleTable({ limit: 2 });
 
     cy.get(".Table-ID")

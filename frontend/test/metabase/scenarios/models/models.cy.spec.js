@@ -12,8 +12,11 @@ import {
   filter,
   visitQuestion,
   visitDashboard,
+  startNewQuestion,
 } from "__support__/e2e/cypress";
+
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
 import {
   turnIntoModel,
   assertIsModel,
@@ -63,7 +66,8 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
+    cy.findByTestId("qb-header")
+      .findAllByText("Our analytics")
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
@@ -111,7 +115,8 @@ describe("scenarios > models", () => {
       table: "Orders",
     });
 
-    cy.findAllByText("Our analytics")
+    cy.findByTestId("qb-header")
+      .findAllByText("Our analytics")
       .first()
       .click();
     getCollectionItemRow("Orders Model").within(() => {
@@ -187,8 +192,7 @@ describe("scenarios > models", () => {
     });
 
     it("transforms the data picker", () => {
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         testDataPickerSearch({
@@ -236,8 +240,7 @@ describe("scenarios > models", () => {
 
     it("allows to create a question based on a model", () => {
       cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
 
       popover().within(() => {
         cy.findByText("Models").click();
@@ -246,6 +249,7 @@ describe("scenarios > models", () => {
 
       cy.icon("join_left_outer").click();
       cy.wait("@schema");
+      cy.findAllByRole("option").should("have.length", 4);
       selectFromDropdown("Products");
 
       cy.findByText("Add filters to narrow your answer").click();
@@ -275,8 +279,7 @@ describe("scenarios > models", () => {
 
     it("should not display models if nested queries are disabled", () => {
       mockSessionProperty("enable-nested-queries", false);
-      cy.visit("/question/new");
-      cy.findByText("Custom question").click();
+      startNewQuestion();
       popover().within(() => {
         cy.findByText("Models").should("not.exist");
         cy.findByText("Saved Questions").should("not.exist");

@@ -56,6 +56,16 @@ export function assertPermissionTable(rows) {
   });
 }
 
+export function assertPermissionForItem(
+  item,
+  permissionColumnIndex,
+  permissionValue,
+) {
+  getPermissionRowPermissions(item)
+    .eq(permissionColumnIndex)
+    .should("have.text", permissionValue);
+}
+
 /**
  * @param {string} index
  * @param {string} permission

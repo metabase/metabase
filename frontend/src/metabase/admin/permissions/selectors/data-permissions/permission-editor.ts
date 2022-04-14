@@ -12,6 +12,7 @@ import {
   getTableEntityId,
   getSchemaEntityId,
   getDatabaseEntityId,
+  getPermissionSubject,
 } from "../../utils/data-entity-id";
 
 import { buildFieldsPermissions } from "./fields";
@@ -26,6 +27,7 @@ import Schema from "metabase-lib/lib/metadata/Schema";
 import { DataRouteParams, RawGroupRouteParams } from "../../types";
 import { State } from "metabase-types/store";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { getOrderedGroups } from "./groups";
 
 export const getIsLoadingDatabaseTables = (
   state: State,
@@ -144,11 +146,15 @@ export const getDatabasesPermissionEditor = createSelector(
       databaseId != null &&
       metadata.database(databaseId)?.getSchemas().length === 1;
 
+    const permissionSubject = getPermissionSubject(
+      { databaseId, schemaName },
+      hasSingleSchema,
+    );
     const columns = [
       { name: getEditorEntityName(params, hasSingleSchema) },
       { name: t`Data access` },
       { name: t`Native query editing` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataColumns,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
     let entities: any = [];
@@ -245,28 +251,31 @@ export const getGroupsDataPermissionEditor = createSelector(
   getMetadataWithHiddenTables,
   getRouteParams,
   getDataPermissions,
-  Groups.selectors.getList,
-  (metadata, params, permissions, groups: Group[]) => {
+  getOrderedGroups,
+  (metadata, params, permissions, groups: Group[][]) => {
     const { databaseId, schemaName, tableId } = params;
 
     if (!permissions || databaseId == null) {
       return null;
     }
 
-    const defaultGroup = _.find(groups, isDefaultGroup);
+    const sortedGroups = groups.flat();
+
+    const defaultGroup = _.find(sortedGroups, isDefaultGroup);
 
     if (!defaultGroup) {
       throw new Error("No default group found");
     }
 
+    const permissionSubject = getPermissionSubject(params);
     const columns = [
       { name: t`Group name` },
       { name: t`Data access` },
       { name: t`Native query editing` },
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataColumns,
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDataColumns(permissionSubject),
     ];
 
-    const entities = groups.map(group => {
+    const entities = sortedGroups.map(group => {
       const isAdmin = isAdminGroup(group);
       let groupPermissions;
 

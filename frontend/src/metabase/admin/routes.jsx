@@ -1,8 +1,8 @@
 import React from "react";
-import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 
+import { Route } from "metabase/hoc/Title";
 import {
   PLUGIN_ADMIN_ROUTES,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -10,6 +10,10 @@ import {
 
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
+import {
+  createAdminRouteGuard,
+  createAdminRedirect,
+} from "metabase/admin/utils";
 
 import RedirectToAllowedSettings from "./settings/containers/RedirectToAllowedSettings";
 import AdminApp from "metabase/admin/app/components/AdminApp";
@@ -55,13 +59,7 @@ import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 // Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
-const getRoutes = (
-  store,
-  CanAccessSettings,
-  IsAdmin,
-  CanAccessDataModel,
-  CanAccessDatabaseManagement,
-) => (
+const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
     path="/admin"
     component={withBackground("bg-white")(CanAccessSettings)}
@@ -72,14 +70,14 @@ const getRoutes = (
       <Route
         path="databases"
         title={t`Databases`}
-        component={CanAccessDatabaseManagement}
+        component={createAdminRouteGuard("databases")}
       >
         <IndexRoute component={DatabaseListApp} />
         <Route path="create" component={DatabaseEditApp} />
         <Route path=":databaseId" component={DatabaseEditApp} />
       </Route>
 
-      <Route path="datamodel" component={CanAccessDataModel}>
+      <Route path="datamodel" component={createAdminRouteGuard("data-model")}>
         <Route title={t`Data Model`} component={DataModelApp}>
           <IndexRedirect to="database" />
           <Route path="database" component={MetadataEditorApp} />
@@ -137,7 +135,10 @@ const getRoutes = (
       </Route>
 
       {/* Troubleshooting */}
-      <Route path="troubleshooting" component={IsAdmin}>
+      <Route
+        path="troubleshooting"
+        component={createAdminRouteGuard("troubleshooting")}
+      >
         <Route title={t`Troubleshooting`} component={TroubleshootingApp}>
           <IndexRedirect to="help" />
           <Route path="help" component={Help} />
@@ -156,9 +157,9 @@ const getRoutes = (
       </Route>
 
       {/* SETTINGS */}
-      <Route path="settings" component={IsAdmin}>
+      <Route path="settings" component={createAdminRouteGuard("settings")}>
+        <IndexRoute component={createAdminRedirect("setup", "general")} />
         <Route title={t`Settings`}>
-          <IndexRedirect to="setup" />
           <Route
             path="premium-embedding-license"
             component={PremiumEmbeddingLicensePage}

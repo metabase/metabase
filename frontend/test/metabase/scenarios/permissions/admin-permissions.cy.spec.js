@@ -85,7 +85,7 @@ describeOSS("scenarios > admin > permissions", () => {
 
       // Switching to data permissions page
       cy.get("label")
-        .contains("Data permissions")
+        .contains("Data")
         .click();
 
       modal().within(() => {
@@ -101,7 +101,7 @@ describeOSS("scenarios > admin > permissions", () => {
 
       // Switching to data permissions page again
       cy.get("label")
-        .contains("Data permissions")
+        .contains("Data")
         .click();
 
       modal().within(() => {
@@ -169,7 +169,6 @@ describeOSS("scenarios > admin > permissions", () => {
         false,
       );
 
-      selectSidebarItem("First collection"); // Expand children
       selectSidebarItem("Second collection");
 
       assertPermissionTable([
@@ -226,7 +225,7 @@ describeOSS("scenarios > admin > permissions", () => {
 
       // Switching to collection permissions page
       cy.get("label")
-        .contains("Collection permissions")
+        .contains("Collection")
         .click();
 
       modal().within(() => {
@@ -242,7 +241,7 @@ describeOSS("scenarios > admin > permissions", () => {
 
       // Switching to collection permissions page again
       cy.get("label")
-        .contains("Collection permissions")
+        .contains("Collection")
         .click();
 
       modal().within(() => {
@@ -565,12 +564,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save").click();
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Sandboxed", "No", "No"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Edit"],
+      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
     ]);
 
     modifyPermission(
@@ -591,12 +590,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.button("Save changes").click();
 
     assertPermissionTable([
-      ["Administrators", "Unrestricted", "Yes", "1 million rows"],
-      ["All Users", "Sandboxed", "No", "No"],
-      ["collection", "No self-service", "No", "No"],
-      ["data", "Unrestricted", "Yes", "No"],
-      ["nosql", "Unrestricted", "No", "No"],
-      ["readonly", "No self-service", "No", "No"],
+      ["Administrators", "Unrestricted", "Yes", "1 million rows", "Edit"],
+      ["All Users", "Sandboxed", "No", "1 million rows", "No"],
+      ["collection", "No self-service", "No", "No", "No"],
+      ["data", "Unrestricted", "Yes", "No", "No"],
+      ["nosql", "Unrestricted", "No", "No", "No"],
+      ["readonly", "No self-service", "No", "No", "No"],
     ]);
   });
 

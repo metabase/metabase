@@ -16,4 +16,10 @@ export const MODAL_TYPES = {
   CAN_NOT_CREATE_MODEL: "can-not-create-model",
   NEW_EVENT: "new-event",
   EDIT_EVENT: "edit-event",
+  MOVE_EVENT: "move-event",
+};
+
+export const SIDEBAR_SIZES = {
+  NORMAL: 355,
+  TIMELINE: 300,
 };

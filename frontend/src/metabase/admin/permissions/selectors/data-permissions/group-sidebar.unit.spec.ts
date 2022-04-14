@@ -31,13 +31,13 @@ describe("getGroupsDataPermissionEditor", () => {
 
     expect(entities).toHaveLength(3);
     expect(entities?.map(entity => entity.name)).toEqual([
+      "All Users",
       "Group starting with full access",
       "Group starting with no access at all",
-      "All Users",
     ]);
 
     const [accessPermission, nativeQueryPermission] =
-      entities?.[0].permissions ?? [];
+      entities?.[1].permissions ?? [];
     expect(accessPermission.value).toEqual("all");
     expect(accessPermission.options).toEqual([
       {

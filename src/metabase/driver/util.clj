@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
@@ -18,6 +19,8 @@
            java.util.Base64
            javax.net.SocketFactory
            [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+
+(comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
 ;; This is normally set via the env var `MB_DB_CONNECTION_TIMEOUT_MS`
 (defsetting db-connection-timeout-ms
@@ -49,7 +52,6 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (log/error e (trs "Database connection error"))
         (throw (Exception. (str (driver/humanize-connection-error-message driver (.getMessage e))) e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
@@ -71,19 +73,24 @@
 ;;; |                                               Driver Resolution                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- database->driver* [database-or-id]
-  (or
-   (when-let [engine (:engine database-or-id)]
-     ;; ensure we get the engine as a keyword (sometimes it's a String)
-     (keyword engine))
-   (db/select-one-field :engine 'Database, :id (u/the-id database-or-id))))
+(def ^:private ^{:arglists '([db-id])} database->driver*
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[db-id]]
+                         [(mdb.connection/unique-identifier) db-id])}
+   (fn [db-id]
+     (db/select-one-field :engine 'Database, :id db-id))
+   :ttl/threshold 1000))
 
-(def ^{:arglists '([database-or-id])} database->driver
+(defn database->driver
   "Look up the driver that should be used for a Database. Lightly cached.
 
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
-  (memoize/ttl database->driver* :ttl/threshold 1000))
+  [database-or-id]
+  (if-let [driver (:engine database-or-id)]
+    ;; ensure we get the driver as a keyword (sometimes it's a String)
+    (keyword driver)
+    (database->driver* (u/the-id database-or-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -317,6 +324,22 @@
                  db-details
                  secret-names->props))))
 
+(def official-drivers
+  "The set of all official drivers"
+  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver"})
+
+(def partner-drivers
+  "The set of other drivers in the partnership program"
+  #{"firebolt"})
+
+(defn driver-source
+  "Return the source type of the driver: official, partner, or community"
+  [driver-name]
+  (cond
+    (contains? official-drivers driver-name) "official"
+    (contains? partner-drivers driver-name) "partner"
+    :else "community"))
+
 (defn available-drivers-info
   "Return info about all currently available drivers, including their connection properties fields and supported
   features. The output of `driver/connection-properties` is passed through `connection-props-server->client` before
@@ -330,7 +353,9 @@
                                    (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
                  :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields props
+             [driver {:source {:type (driver-source (name driver))
+                               :contact (driver/contact-info driver)}
+                      :details-fields props
                       :driver-name    (driver/display-name driver)
                       :superseded-by  (driver/superseded-by driver)}])))
 

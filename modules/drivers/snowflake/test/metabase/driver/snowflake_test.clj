@@ -124,9 +124,9 @@
       (is (= true
              (can-connect? (:details (mt/db))))
           "can-connect? should return true for normal Snowflake DB details")
-      (is (thrown? net.snowflake.client.jdbc.SnowflakeSQLException
-                   (mt/suppress-output
-                    (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
+      (is (thrown?
+           net.snowflake.client.jdbc.SnowflakeSQLException
+           (can-connect? (assoc (:details (mt/db)) :db (mt/random-name))))
           "can-connect? should throw for Snowflake databases that don't exist (#9511)"))))
 
 (deftest report-timezone-test
@@ -180,40 +180,42 @@
 (deftest week-start-test
   (mt/test-driver :snowflake
     (testing "The WEEK_START session setting is correctly incorporated"
-      (letfn [(invalidate-pool! []
-                (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))
-              (run-dayofweek-query [date-str]
+      (letfn [(run-dayofweek-query [date-str]
                 (-> (mt/rows
-                      (qp/process-query {:database   (mt/id)
-                                         :type       :native
-                                         :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
-                                                      :template-tags {:filter_date {:name         "filter_date"
-                                                                                    :display_name "Just A Date"
-                                                                                    :type         "date"}}}
-                                         :parameters [{:type   "date/single"
-                                                       :target ["variable" ["template-tag" "filter_date"]]
-                                                       :value  date-str}]}))
+                     (qp/process-query {:database   (mt/id)
+                                        :type       :native
+                                        :native     {:query         (str "SELECT DAYOFWEEK({{filter_date}})")
+                                                     :template-tags {:filter_date {:name         "filter_date"
+                                                                                   :display_name "Just A Date"
+                                                                                   :type         "date"}}}
+                                        :parameters [{:type   "date/single"
+                                                      :target ["variable" ["template-tag" "filter_date"]]
+                                                      :value  date-str}]}))
                     ffirst))]
-        (try
-          (testing " under the default value of 7 (Sunday)"
-            (is (= 1 (run-dayofweek-query "2021-01-10"))) ; Sunday (first day of the week)
-            (is (= 2 (run-dayofweek-query "2021-01-11")))) ; Monday (second day of the week)
-          (testing " when we control it via the Metabase setting value"
-            (mt/with-temporary-setting-values [start-of-week :monday]
-              (invalidate-pool!) ; have to invalidate pool to force new connection creation to pick up changed setting
-              (is (= 7 (run-dayofweek-query "2021-01-10"))) ; Sunday (last day of week now)
-              (is (= 1 (run-dayofweek-query "2021-01-11"))) ; Monday (first day of week now)
-              (testing " when we put it in the additional-options (connection string)"
-                (mt/with-temp Database [db (-> (select-keys (mt/db) [:details :engine])
-                                               (assoc :name "Test WEEK_START Connection String")
-                                               ;; set WEEK_START as 3 (Wednesday) in connection string
-                                               ;; this should take precedence over the start-of-week setting in effect
-                                               (update :details assoc :additional-options "WEEK_START=3"))]
-                  (mt/with-db db
-                    (is (= 7 (run-dayofweek-query "2021-01-12"))) ; Tuesday (last day of week now)
-                    (is (= 1 (run-dayofweek-query "2021-01-13")))))))) ; Wednesday (first day of week now)
-          ;; invalidate pool again after the test to ensure the connection cache forgets the temp setting version
-          (finally (invalidate-pool!)))))))
+        (testing "under the default value of 7 (Sunday)"
+          (mt/with-temporary-setting-values [start-of-week :sunday]
+            (is (= 1 (run-dayofweek-query "2021-01-10")) "Sunday (first day of the week)")
+            (is (= 2 (run-dayofweek-query "2021-01-11")) "Monday (second day of the week)")))
+        (testing "when we control it via the Metabase setting value"
+          (mt/with-temporary-setting-values [start-of-week :monday]
+            (is (= 7 (run-dayofweek-query "2021-01-10")) "Sunday (last day of week now)")
+            (is (= 1 (run-dayofweek-query "2021-01-11")) "Monday (first day of week now)")))))))
+
+(deftest first-day-of-week-test
+  (mt/test-driver :snowflake
+    (testing "Day-of-week should work correctly regardless of what the `start-of-week` Setting is set to (#20999)"
+      (mt/dataset sample-dataset
+        (doseq [[start-of-week friday-int] [[:friday 1]
+                                            [:monday 5]
+                                            [:sunday 6]]]
+          (mt/with-temporary-setting-values [start-of-week start-of-week]
+            (let [query (mt/mbql-query people
+                          {:breakout    [!day-of-week.birth_date]
+                           :aggregation [[:count]]
+                           :filter      [:= $birth_date "1986-12-12"]})]
+              (mt/with-native-query-testing-context query
+                (is (= [[friday-int 1]]
+                       (mt/rows (qp/process-query query))))))))))))
 
 (deftest normalize-test
   (mt/test-driver :snowflake

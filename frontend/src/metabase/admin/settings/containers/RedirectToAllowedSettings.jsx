@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 import { getUser } from "metabase/selectors/user";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { getAllowedMenuItems } from "metabase/nav/utils";
 
 const mapStateToProps = (state, props) => ({
   user: getUser(state),
@@ -10,19 +10,16 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   push,
+  replace,
 };
 
-const RedirectToAllowedSettings = ({ user, push }) => {
-  if (user.is_superuser) {
-    push("/admin/settings");
-  } else if (PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(user)) {
-    push("/admin/datamodel");
-  } else if (
-    PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDatabaseManagement(user)
-  ) {
-    push("/admin/databases");
-  } else if (user != null) {
-    push("/unauthorized");
+const RedirectToAllowedSettings = ({ user, replace }) => {
+  const allowedNavItems = getAllowedMenuItems(user);
+
+  if (allowedNavItems.length === 0) {
+    replace("/unauthorized");
+  } else {
+    replace(allowedNavItems[0].path);
   }
 
   return null;

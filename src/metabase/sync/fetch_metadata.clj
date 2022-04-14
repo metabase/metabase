@@ -29,5 +29,5 @@
   "Get information about the nested field column fields within `table`."
   [database :- i/DatabaseInstance, table :- i/TableInstance]
   (let [driver (driver.u/database->driver database)]
-    (when (driver/supports? driver :nested-field-columns)
+    (when (driver/database-supports? driver :nested-field-columns database)
       (sql-jdbc.sync/describe-nested-field-columns driver database table))))

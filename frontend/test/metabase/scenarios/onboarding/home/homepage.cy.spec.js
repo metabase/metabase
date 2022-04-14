@@ -1,166 +1,104 @@
-import { restore } from "__support__/e2e/cypress";
+import { restore, visitDashboard } from "__support__/e2e/cypress";
 
 describe("scenarios > home > homepage", () => {
   beforeEach(() => {
-    restore();
+    cy.intercept("GET", `/api/dashboard/**`).as("getDashboard");
+    cy.intercept("GET", "/api/automagic-*/table/**").as("getXrayDashboard");
+    cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
+    cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
+    cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
   });
 
-  describe("as admin", () => {
-    beforeEach(() => {
-      cy.signInAsAdmin();
-    });
+  it("should display x-rays for the sample database", () => {
+    restore("setup");
+    cy.signInAsAdmin();
 
-    it.skip("should handle server errors on load (metabase#20469)", () => {
-      cy.intercept("GET", "/api/database", req => {
-        req.reply({
-          statusCode: 500,
-        });
-      });
+    cy.visit("/");
+    cy.wait("@getXrayCandidates");
+    cy.findByText("Try out these sample x-rays to see what Metabase can do.");
+    cy.findByText("Orders").click();
 
-      cy.visit("/");
-      // Even if we don't receive a list of our databases, we should still be able to load all items in the root collection
-      cy.findByText("Browse all items");
-    });
-
-    it("should allow basic navigation", () => {
-      cy.visit("/");
-      cy.findByText("Add my data").click();
-      cy.findByText("Need help connecting?");
-
-      cy.visit("/");
-      cy.findByText("invite another teammate").click();
-      cy.findByText("New user");
-
-      cy.visit("/");
-      cy.findByText("Products table").click();
-      cy.findByText("Here's a quick look at your Products table");
-
-      cy.visit("/");
-      cy.findByText("Browse all items").click();
-      cy.findByText("Your personal collection");
-      cy.findByText("Other users' personal collections");
-
-      cy.visit("/");
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByText("Learn about our data");
-
-      cy.visit("/");
-      cy.findByText("Add a database").click();
-      cy.findByText("Need help connecting?");
-    });
-
-    it("should show pinned dashboards", () => {
-      cy.createDashboard({
-        name: "Pinned dashboard",
-        collection_position: 1,
-      });
-
-      cy.visit("/");
-      cy.findByText("Pinned dashboard").click();
-      cy.findByText("This dashboard is looking empty.");
-    });
-
-    it("should allow hiding the data section", () => {
-      cy.visit("/");
-
-      clickOnCloseIconInSection("Our data");
-      cy.findByText("Remove").click();
-      cy.findByText("Our data").should("not.exist");
-    });
-
-    it("should allow hiding the x-ray section", () => {
-      cy.visit("/");
-
-      clickOnCloseIconInSection("Try these x-rays based on your data");
-      cy.findByText("Remove").click();
-      cy.findByText("Try these x-rays based on your data").should("not.exist");
-    });
-
-    it("should show a modal when there is a newly created syncing database", () => {
-      mockSyncingDatabase();
-      cy.visit("/");
-
-      cy.findByText("Start here");
-      cy.findByText("Explore sample data").click();
-      cy.findByText("Orders table over time");
-
-      cy.visit("/");
-      cy.findByText("Start here");
-      cy.findByText("Explore sample data").should("not.exist");
-    });
+    cy.wait("@getXrayDashboard");
+    cy.findByText("More X-rays");
   });
 
-  describe("as normal user", () => {
-    beforeEach(() => {
-      cy.signInAsNormalUser();
-    });
+  it("should display x-rays for a user database", () => {
+    restore("setup");
+    cy.signInAsAdmin();
+    cy.addH2SampleDatabase({ name: "H2" });
 
-    it("should allow basic navigation", () => {
-      cy.visit("/");
-      cy.findByRole("link", { name: "Our analytics" }).click();
-      cy.findByText("Your personal collection");
+    cy.visit("/");
+    cy.wait("@getXrayCandidates");
+    cy.findByText("Here are some explorations of");
+    cy.findByText("H2");
+    cy.findByText("Orders").click();
 
-      cy.visit("/");
-      cy.findByText("Products table").click();
-      cy.findByText("Here's a quick look at your Products table");
+    cy.wait("@getXrayDashboard");
+    cy.findByText("More X-rays");
+  });
 
-      cy.visit("/");
-      cy.findByText("Browse all items").click();
-      cy.findByText("Your personal collection");
+  it("should allow switching between multiple schemas for x-rays", () => {
+    restore("setup");
+    cy.signInAsAdmin();
+    cy.addH2SampleDatabase({ name: "H2" });
+    cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
 
-      cy.visit("/");
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByText("Learn about our data");
-    });
+    cy.visit("/");
+    cy.findByText(/Here are some explorations of the/);
+    cy.findByText("public");
+    cy.findByText("H2");
+    cy.findByText("Orders");
+    cy.findByText("People").should("not.exist");
 
-    it("should hide admin controls", () => {
-      cy.visit("/");
+    cy.findByText("public").click();
+    cy.findByText("private").click();
+    cy.findByText("People");
+    cy.findByText("Orders").should("not.exist");
+  });
 
-      cy.findByText("Start here");
-      cy.findByText("Add my data").should("not.exist");
+  it("should display recent items", () => {
+    restore("default");
 
-      cy.findByText("Our data");
-      cy.findByText("Add a database").should("not.exist");
-    });
+    cy.signInAsAdmin();
+    visitDashboard(1);
+    cy.findByText("Orders in a dashboard");
 
-    it("should show pinned dashboards", () => {
-      cy.createDashboard({
-        name: "Pinned dashboard",
-        collection_position: 1,
-      });
+    cy.visit("/");
+    cy.wait("@getRecentItems");
+    cy.findByText("Pick up where you left off");
 
-      cy.visit("/");
-      cy.findByText("Pinned dashboard").click();
-      cy.findByText("This dashboard is looking empty.");
-    });
+    cy.findByText("Orders in a dashboard").click();
+    cy.wait("@getDashboard");
+    cy.findByText("Orders");
+  });
+
+  it("should display popular items for a new user", () => {
+    restore("default");
+
+    cy.signInAsAdmin();
+    visitDashboard(1);
+    cy.findByText("Orders in a dashboard");
+    cy.signOut();
+
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.wait("@getPopularItems");
+    cy.findByText("Here are some popular dashboards");
+    cy.findByText("Orders in a dashboard").click();
+    cy.wait("@getDashboard");
+    cy.findByText("Orders");
   });
 });
 
-const clickOnCloseIconInSection = name => {
-  cy.findByText(name)
-    .parent()
-    .realHover()
-    .within(() => cy.findByLabelText("close icon").click());
-};
-
-const mockSyncingDatabase = () => {
-  cy.request("GET", "/api/user/current").then(({ body: user }) => {
-    cy.intercept("GET", /api\/database$/, req => {
-      req.reply(({ body }) => {
-        const [sampleDatabase] = body.data;
-
-        const userDatabase = {
-          ...sampleDatabase,
-          id: sampleDatabase.id + 1,
-          name: "H2",
-          creator_id: user.id,
-          created_at: "2015-01-01T20:10:30.200",
-          is_sample: false,
-          initial_sync_status: "incomplete",
-        };
-
-        body.data = [sampleDatabase, userDatabase];
-      });
-    });
-  });
-};
+const getXrayCandidates = () => [
+  {
+    id: "1/public",
+    schema: "public",
+    tables: [{ title: "Orders", url: "/auto/dashboard/table/1" }],
+  },
+  {
+    id: "1/private",
+    schema: "private",
+    tables: [{ title: "People", url: "/auto/dashboard/table/2" }],
+  },
+];

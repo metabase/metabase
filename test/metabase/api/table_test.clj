@@ -2,7 +2,6 @@
   "Tests for /api/table endpoints."
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
@@ -127,7 +126,7 @@
 (defn- default-dimension-options []
   (as-> @#'table-api/dimension-options-for-response options
        (m/map-vals #(update % :name str) options)
-       (walk/keywordize-keys options)
+       (m/map-keys #(Long/parseLong %) options)
        ;; since we're comparing API responses, need to de-keywordize the `:field` clauses
        (mbql.u/replace options :field (mt/obj->json->obj &match))))
 
@@ -283,7 +282,11 @@
                :display_name    "Userz"
                :pk_field        (table/pk-field-id table)})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
-                     :updated_at))))))
+                     :updated_at))))
+
+    (testing "A table can only be updated by a superuser"
+      (mt/with-temp Table [table]
+        (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
 
 ;; see how many times sync-table! gets called when we call the PUT endpoint. It should happen when you switch from
 ;; hidden -> not hidden at the spots marked below, twice total
@@ -643,7 +646,7 @@
   [response field-name]
   (set
    (for [dim-index (dimension-options-for-field response field-name)
-         :let [{clause :mbql} (get-in response [:dimension_options (keyword dim-index)])]]
+         :let [{clause :mbql} (get-in response [:dimension_options (Long/parseLong dim-index)])]]
      clause)))
 
 (deftest numeric-binning-options-test

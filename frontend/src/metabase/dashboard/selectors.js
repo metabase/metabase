@@ -1,8 +1,8 @@
 import _ from "underscore";
 
 import { createSelector } from "reselect";
-
 import { getMetadata } from "metabase/selectors/metadata";
+import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 import {
   getMappingsByParameter as _getMappingsByParameter,
@@ -28,6 +28,14 @@ export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getFavicon = state =>
+  state.dashboard.loadingControls?.showLoadCompleteFavicon
+    ? LOAD_COMPLETE_FAVICON
+    : null;
+
+export const getIsRunning = state =>
+  state.dashboard.loadingDashCards.loadingIds > 0;
+
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>
@@ -49,6 +57,8 @@ export const getDashboard = createSelector(
   (dashboardId, dashboards) => dashboards[dashboardId],
 );
 
+export const getLoadingDashCards = state => state.dashboard.loadingDashCards;
+
 export const getDashboardComplete = createSelector(
   [getDashboard, getDashcards],
   (dashboard, dashcards) =>
@@ -59,6 +69,9 @@ export const getDashboardComplete = createSelector(
         .filter(dc => !dc.isRemoved),
     },
 );
+
+export const getDocumentTitle = state =>
+  state.dashboard.loadingControls.documentTitle;
 
 export const getIsBookmarked = (state, props) =>
   props.bookmarks.some(

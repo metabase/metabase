@@ -13,7 +13,12 @@ import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import {
   getFilterArgumentFormatOptions,
   isFuzzyOperator,
+  isCurrency,
 } from "metabase/lib/schema_metadata";
+
+import { getCurrencySymbol } from "metabase/lib/formatting";
+
+import { keyForColumn } from "metabase/lib/dataset";
 
 import {
   BetweenLayoutContainer,
@@ -61,13 +66,31 @@ export default function DefaultPicker({
   const isBetweenLayout =
     operator.name === "between" && operatorFields.length === 2;
 
+  const visualizationSettings = filter
+    ?.query()
+    ?.question()
+    ?.settings();
+
+  const key = keyForColumn(dimension.column());
+  const columnSettings = visualizationSettings?.column_settings?.[key];
+
+  const fieldMetadata = field?.metadata?.fields[field?.id];
+  const fieldSettings = {
+    ...(fieldMetadata?.settings ?? {}),
+    ...(columnSettings ?? {}),
+  };
+
+  const currencyPrefix =
+    isCurrency(field) || fieldSettings?.currency
+      ? getCurrencySymbol(fieldSettings?.currency)
+      : null;
+
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
-      let values, onValuesChange;
-
       const placeholder =
         (operator.placeholders && operator.placeholders[index]) || undefined;
 
+      let values, onValuesChange;
       if (operator.multi) {
         values = filter.arguments();
         onValuesChange = values => setValues(values);
@@ -105,6 +128,7 @@ export default function DefaultPicker({
             multi={operator.multi}
             placeholder={placeholder}
             fields={underlyingField ? [underlyingField] : []}
+            prefix={currencyPrefix}
             disablePKRemappingForSearch={true}
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
@@ -134,6 +158,7 @@ export default function DefaultPicker({
             values={values}
             onValuesChange={onValuesChange}
             placeholder={placeholder}
+            prefix={currencyPrefix}
             multi={operator.multi}
             onCommit={onCommit}
           />

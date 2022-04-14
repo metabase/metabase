@@ -7,12 +7,12 @@
             [metabase.models.dashboard :as dashboard]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-card-series :as dashboard-card-series]
-            [metabase.models.dashboard-favorite :as dashboard-favorite]
             [metabase.models.database :as database]
             [metabase.models.dependency :as dependency]
             [metabase.models.dimension :as dimension]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
+            [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.login-history :as login-history]
             [metabase.models.metric :as metric]
             [metabase.models.metric-important-field :as metric-important-field]
@@ -50,12 +50,12 @@
          dashboard/keep-me
          dashboard-card/keep-me
          dashboard-card-series/keep-me
-         dashboard-favorite/keep-me
          database/keep-me
          dependency/keep-me
          dimension/keep-me
          field/keep-me
          field-values/keep-me
+         g-perm-revision/keep-me
          login-history/keep-me
          metric/keep-me
          moderation-review/keep-me
@@ -88,6 +88,7 @@
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
+ [bookmark BookmarkOrdering]
  [card Card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
@@ -108,6 +109,7 @@
  [permissions-group PermissionsGroup]
  [permissions-group-membership PermissionsGroupMembership]
  [permissions-revision PermissionsRevision]
+ [g-perm-revision GeneralPermissionsRevision]
  [pulse Pulse]
  [pulse-card PulseCard]
  [pulse-channel PulseChannel]
