@@ -69,29 +69,34 @@
       (sql-jdbc.common/handle-additional-options details-map, :seperator-style :semicolon)))
 
 
+;; We'll do regex pattern matching here for determining Field types because Ocient types can have optional lengths,
+;; e.g. VARCHAR(255) or NUMERIDECIMAL(16,4)
+(def ^:private database-type->base-type
+  (sql-jdbc.sync/pattern-based-database-type->base-type
+   [[#"BIGINT"    :type/BigInteger]
+    [#"BIGINT"    :type/BigInteger]
+    [#"INT"       :type/Integer]
+    [#"SHORT"     :type/Integer]
+    [#"SMALLINT"  :type/Integer]
+    [#"CHAR"      :type/Text]
+    [#"VARCHAR"   :type/Text]
+    [#"TEXT"      :type/Text]
+    [#"BLOB"      :type/*]
+    [#"BINARY"    :type/*]
+    [#"REAL"      :type/Float]
+    [#"DOUBLE"      :type/Double]
+    [#"FLOAT"     :type/Float]
+    [#"LONG"      :type/BigInteger]
+    [#"DECIMAL"   :type/Decimal]
+    [#"BOOLEAN"   :type/Boolean]
+    [#"TIMESTAMP" :type/DateTime]
+    [#"DATETIME"  :type/DateTime]
+    [#"DATE"      :type/Date]
+    [#"TIME"      :type/Time]]))
 
-(defmethod sql-jdbc.sync/database-type->base-type :ocient [_ database-type]
-  ;;(println "OCIENT sync DB type: " database-type)
-  ({:BIGINT       :type/BigInteger
-    :BINARY       :type/*
-    :BOOLEAN      :type/Boolean
-    :BYTE         :type/*
-    :CHAR         :type/Text
-    :DATE         :type/Date
-    :DECIMAL      :type/Decimal
-    :DOUBLE       :type/Float
-    :FLOAT        :type/Float
-    :HASH12       :type/*
-    :HASH20       :type/*
-    :INT          :type/Integer
-    :IPV4         :type/*
-    :INTEGER      :type/Integer
-    :LONG         :type/BigInteger
-    :SHORT        :type/Integer
-    :SMALLINT     :type/Integer
-    :TIME         :type/Time
-    :TIMESTAMP    :type/DateTime
-    :VARCHAR      :type/Text} database-type))
+(defmethod sql-jdbc.sync/database-type->base-type :ocient
+  [_ database-type]
+  (database-type->base-type database-type))
 
 ;; try FK support to see if manual support works ok
 (defmethod driver/database-supports? [:ocient :foreign-keys] [_ _ db] true)
