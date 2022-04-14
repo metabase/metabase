@@ -129,7 +129,7 @@ const BookmarkList = ({
 
     setOrderedBookmarks(bookmarksToBeReordered);
 
-    Bookmarks.objectActions.reorder(bookmarksToBeReordered);
+    Bookmarks.actions.reorder(bookmarksToBeReordered);
   };
 
   return (

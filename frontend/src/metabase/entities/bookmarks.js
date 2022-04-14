@@ -23,7 +23,7 @@ const Bookmarks = createEntity({
   objectSelectors: {
     getIcon,
   },
-  objectActions: {
+  actions: {
     reorder: bookmarks => {
       const bookmarksForOrdering = bookmarks.map(({ type, item_id }) => ({
         type,
