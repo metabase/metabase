@@ -28,12 +28,8 @@ export function Relationships({
   tableForeignKeyReferences,
   foreignKeyClicked,
 }: RelationshipsProps): JSX.Element | null {
-  if (!tableForeignKeys?.length) {
+  if (!tableForeignKeys || !tableForeignKeys?.length) {
     return null;
-  }
-
-  if (tableForeignKeys.length < 1) {
-    return <p className="my4 text-centered">{t`No relationships found.`}</p>;
   }
 
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);

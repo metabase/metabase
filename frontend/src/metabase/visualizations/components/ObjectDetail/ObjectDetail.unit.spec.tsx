@@ -19,10 +19,11 @@ describe("Object Detail", () => {
         canZoomPreviousRow={false}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
       />,
     );
     screen.getAllByText(/Large Sandstone Socks/i);
-    screen.getByText("778");
+    screen.getByText(/778/i);
   });
 
   it("renders an object detail header with enable next object button and disabled previous object button", () => {
@@ -35,24 +36,26 @@ describe("Object Detail", () => {
         canZoomPreviousRow={false}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
       />,
     );
-    const nextIsDisabled = screen
-      .getByTestId("view-next-object-detail")
-      .getAttribute("aria-disabled");
+    const nextIsDisabled = container
+      ?.querySelector(".Icon-chevrondown")
+      ?.closest("button")?.disabled;
 
-    const prevIsDisabled = screen
-      .getByTestId("view-previous-object-detail")
-      .getAttribute("aria-disabled");
+    const prevIsDisabled = container
+      ?.querySelector(".Icon-chevronup")
+      ?.closest("button")?.disabled;
 
-    expect(nextIsDisabled).toBe("false");
-    expect(prevIsDisabled).toBe("true");
+    expect(prevIsDisabled).toBeTruthy();
+    expect(nextIsDisabled).toBeFalsy();
   });
 
   it("renders an object detail body", () => {
     render(
       <ObjectDetailBody
         data={testDataset as any}
+        objectName="Large Sandstone Socks"
         zoomedRow={testDataset.rows[2]}
         settings={{
           column: () => null,
@@ -67,7 +70,6 @@ describe("Object Detail", () => {
 
     screen.getByText("Synergistic Granite Chair");
     screen.getByText("Doohickey");
-    screen.getByText(/No relationships found/i);
   });
 
   it("renders an object detail component", () => {
@@ -100,10 +102,11 @@ describe("Object Detail", () => {
         loadObjectDetailFKReferences={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
       />,
     );
 
-    screen.getAllByText("Product");
+    screen.getAllByText(/Product/i);
     screen.getByText(testDataset.rows[0][2].toString());
     screen.getByText(testDataset.rows[0][3].toString());
     screen.getByText(testDataset.rows[0][4].toString());

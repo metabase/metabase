@@ -186,7 +186,7 @@ export function ObjectDetailFn({
         {hasNotFoundError ? (
           <NotFound />
         ) : (
-          <div className="ObjectDetail" data-testId="object-detail">
+          <div className="ObjectDetail" data-testid="object-detail">
             <ObjectDetailHeader
               canZoom={canZoom}
               objectName={objectName}
