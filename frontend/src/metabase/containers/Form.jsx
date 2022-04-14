@@ -232,7 +232,11 @@ export default class Form extends React.Component {
         };
       } else if (error) {
         throw {
-          _error: error.data?.message || error.message || t`An error occurred`,
+          _error:
+            error.data?.message ||
+            error.message ||
+            error.data ||
+            t`An error occurred`,
         };
       }
     } finally {
