@@ -1,7 +1,9 @@
 (ns metabase.api.pulse
   "/api/pulse endpoints."
-  (:require [compojure.core :refer [GET POST PUT]]
+  (:require [clojure.set :refer [difference]]
+            [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
+            [metabase.api.alert :as api-alert]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.email :as email]
@@ -14,11 +16,13 @@
             [metabase.models.pulse-channel :as pulse-channel :refer [channel-types PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.pulse :as p]
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [metabase.util.urls :as urls]
             [schema.core :as s]
@@ -26,7 +30,8 @@
             [toucan.hydrate :refer [hydrate]])
   (:import java.io.ByteArrayInputStream))
 
-(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util))
+(u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
+                                          'metabase-enterprise.advanced-permissions.common))
 
 (api/defendpoint GET "/"
   "Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
@@ -103,19 +108,40 @@
    archived      (s/maybe s/Bool)
    parameters    [su/Map]}
   ;; do various perms checks
-  (validation/check-has-general-permission :subscription false)
-  (let [pulse-before-update (api/write-check Pulse id)]
+  (try
+   (validation/check-has-general-permission :monitoring)
+   (catch clojure.lang.ExceptionInfo _e
+     (validation/check-has-general-permission :subscription false)))
+
+  (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
     (collection/check-allowed-to-change-collection pulse-before-update pulse-updates)
+
+    ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
+    ;; update pulse's recipients
+    (when (premium-features/enable-advanced-permissions?)
+      (let [to-add-recipients (difference (set (map :id (:recipients (api-alert/email-channel pulse-updates))))
+                                          (set (map :id (:recipients (api-alert/email-channel pulse-before-update)))))
+            current-user-has-general-permissions?
+            (and (premium-features/enable-advanced-permissions?)
+                 (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
+            has-subscription-perms?
+            (and current-user-has-general-permissions?
+                 (current-user-has-general-permissions? :subscription))]
+        (api/check (or api/*is-superuser?*
+                       has-subscription-perms?
+                       (empty? to-add-recipients))
+                   [403 (tru "Non-admin users without subscription permissions are not allowed to add recipients")])))
+
     (db/transaction
-      ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
-      ;; depending on what changed.
-      (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
-      ;; ok, now update the Pulse
-      (pulse/update-pulse!
-       (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
-                                          :archived :parameters])
-              :id id))))
+     ;; If the collection or position changed with this update, we might need to fixup the old and/or new collection,
+     ;; depending on what changed.
+     (api/maybe-reconcile-collection-position! pulse-before-update pulse-updates)
+     ;; ok, now update the Pulse
+     (pulse/update-pulse!
+      (assoc (select-keys pulse-updates [:name :cards :channels :skip_if_empty :collection_id :collection_position
+                                         :archived :parameters])
+             :id id))))
   ;; return updated Pulse
   (pulse/retrieve-pulse id))
 
