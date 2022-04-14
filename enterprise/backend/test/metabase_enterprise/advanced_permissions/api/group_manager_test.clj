@@ -130,8 +130,8 @@
 
       (testing "edge case tests - "
         (mt/with-user-in-groups
-          [group  {:name "New Group"}
-           user   [group]]
+          [group {:name "New Group"}
+           user  [group]]
 
           (testing "if `advanced-permissions` is disabled"
             (premium-features-test/with-premium-features #{}
