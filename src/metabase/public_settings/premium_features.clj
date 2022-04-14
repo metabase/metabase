@@ -151,7 +151,7 @@
       (log/debug e (trs "Error validating token"))
       #{})))
 
-(defn- has-any-features?
+(defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
   (boolean (seq (token-features))))
@@ -301,30 +301,40 @@
          (apply ~ee-fn ~args)
          ~@body))))
 
+(defn missing-premium-token-exception
+  [fn-name feature]
+  (let [message (if (= feature :any)
+                  (trs "The {0} function requires a valid premium token"
+                       fn-name)
+                  (trs "The {0} function requires a valid premium token with the {1} feature"
+                       fn-name
+                       (name feature)))]
+    (ex-info message {:status-code 402})))
+
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr args body options]}]
   `(defn ~fn-name ~docstr ~args
-     (if (or (not ~(:feature options))
-             (has-feature? ~(:feature options)))
-       (do ~@body)
-       ~(let [{:keys [fallback feature]} options
-              ee-ns                      (ns-name *ns*)]
-          (cond
-            (= fallback :error)
-            `(throw (ex-info (trs "The {0} function requires a premium token with a valid {1} token"
-                                  ~(name fn-name)
-                                  ~(name (:feature options)))
-                             {:status-code 402}))
+     ~(let [feature (:feature options)]
+        `(if (or (not ~feature)
+                 (if (= ~feature :any)
+                   (has-any-features?)
+                   (has-feature? ~feature)))
+           (do ~@body)
+           ~(let [fallback (:fallback options)
+                  ee-ns    (ns-name *ns*)]
+              (cond
+                (= fallback :error)
+                `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
 
-            (or (symbol? fallback) (seq? fallback))
-            `(apply ~fallback ~args)
+                (or (symbol? fallback) (seq? fallback))
+                `(apply ~fallback ~args)
 
-            ;; :oss and default case
-            :else
-            `(apply (get @ee-registry [(symbol ~(str ee-ns))
-                                       (symbol ~(str fn-name))])
-                    ~args))))))
+                ;; :oss and default case
+                :else
+                `(apply (get @ee-registry [(symbol ~(str ee-ns))
+                                           (symbol ~(str fn-name))])
+                        ~args)))))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -343,7 +353,8 @@
 
   ###### `:feature`
 
-  A keyword representing a premium feature which must be present for the EE implementation to be used.
+  A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
+  require a valid premium token, but no specific features. Omit to always run the EE implementation when available.
 
   ###### `:fallback`
 

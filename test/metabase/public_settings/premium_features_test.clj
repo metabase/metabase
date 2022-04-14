@@ -2,13 +2,13 @@
   (:require [cheshire.core :as json]
             [clj-http.fake :as http-fake]
             [clojure.test :refer :all]
+            [metabase.config :as config]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [toucan.util.test :as tt]
-            [metabase.config :as config]))
+            [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -86,6 +86,12 @@
   [username]
   (str "Hi " (name username) ", you're an OSS customer!"))
 
+(defenterprise greeting-with-valid-token
+  "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
+  metabase-enterprise.util-test
+  [username]
+  (str "Hi " (name username) ", you're not extra special :("))
+
 (defenterprise special-greeting
   "Returns a non-special greeting for OSS users, and EE users who don't have the :special-greeting feature token."
   metabase-enterprise.util-test
@@ -105,7 +111,7 @@
   (str "Hi " (name username) ", you're not extra special :("))
 
 (def ^:private missing-feature-error-msg
-  #"The special-greeting-or-error function requires a premium token with a valid special-greeting token")
+  #"The special-greeting-or-error function requires a valid premium token with the special-greeting feature")
 
 (deftest defenterprise-oss-test
   (when-not config/ee-available?
@@ -116,10 +122,19 @@
   (when config/ee-available?
     (testing "When EE code is available"
       (testing "a call to a defenterprise function calls the EE version"
-        (is (= "Hi rasta, you're an EE customer!"
+        (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
 
-      (testing "if a token is required, it will check for it, and fall back to the OSS version by default"
+      (testing "if :feature = :any, it will check if any feature exists, and fall back to the OSS version by default"
+        (with-premium-features #{:some-feature}
+          (is (= "Hi rasta, you're an EE customer with a valid token!"
+                 (greeting-with-valid-token :rasta))))
+
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're not extra special :("
+                 (greeting-with-valid-token :rasta)))))
+
+      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
         (with-premium-features #{:special-greeting}
           (is (= "Hi rasta, you're an extra special EE customer!"
                  (special-greeting :rasta))))
