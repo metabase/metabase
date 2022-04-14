@@ -59,6 +59,7 @@
                       (if (string? port)
                         (Integer/parseInt port)
                         port)))
+      ;; (assoc :pooling "OFF")
       ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
       (dissoc :ssl)
       (merge {:sslmode "disable"})
