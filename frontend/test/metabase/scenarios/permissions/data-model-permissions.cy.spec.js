@@ -27,7 +27,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Change permission
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
-    modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Save permission graph
     cy.button("Save changes").click();
@@ -38,7 +38,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     // Assert the permission has changed
-    assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Check limited access as a non-admin user
     cy.signInAsNormalUser();
@@ -75,7 +75,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.visit("/admin/permissions/data/database/1");
 
     // Change data model permission
-    modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Save permission graph
     cy.button("Save changes").click();
@@ -86,7 +86,7 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     // Assert the permission has changed
-    assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Check limited access as a non-admin user
     cy.signInAsNormalUser();

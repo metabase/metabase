@@ -24,10 +24,10 @@ export const DATA_MODEL_PERMISSION_OPTIONS = {
     iconColor: "danger",
   },
   edit: {
-    label: t`Edit`,
+    label: t`Yes`,
     value: "all",
-    icon: "pencil",
-    iconColor: "accent7",
+    icon: "check",
+    iconColor: "success",
   },
   controlled: {
     label: t`Granular`,
