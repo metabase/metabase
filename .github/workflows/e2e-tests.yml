@@ -59,6 +59,7 @@ jobs:
         java-version: [11]
         edition: [ee]
         folder:
+          - "binning"
           - "downloads"
           - "moderation"
     services:
