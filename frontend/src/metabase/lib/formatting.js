@@ -418,10 +418,6 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   return m.format(format.join(", "));
 }
 
-function formatDateTime(value, options) {
-  return formatDateTimeWithUnit(value, "minute", options);
-}
-
 export function formatDateTimeWithUnit(value, unit, options = {}) {
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
@@ -775,7 +771,7 @@ export function formatValueRaw(value, options = {}) {
     moment.isMoment(value) ||
     moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
-    return formatDateTime(value, options);
+    return formatDateTimeWithUnit(value, "minute", options);
   } else if (typeof value === "string") {
     if (column && column.semantic_type != null) {
       return value;

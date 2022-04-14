@@ -155,13 +155,14 @@
      :offset offset-paging/*offset*}))
 
 
-(defn- maybe-add-general-permissions
+(defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
   [user]
-  (if-not (and (premium-features/enable-advanced-permissions?)
-               (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))
-    user
-    ((resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions) user)))
+  (if-let [with-advanced-permissions
+           (and (premium-features/enable-advanced-permissions?)
+                (resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
+    (with-advanced-permissions user)
+    user))
 
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
@@ -176,12 +177,11 @@
                                                  (db/exists? 'Dashboard (perms-query user))))))
 
 (defn- add-first-login
-  "Adds `first_login` key to the `User` with a timestamp value."
-  [{:keys [user_id] :as user}]
+  "Adds `first_login` key to the `User` with the oldest timestamp from that user's login history. Otherwise give the current time, as it's the user's first login."
+  [{:keys [id] :as user}]
   (let [ts (or
-            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id user_id
-                                       {:limit    1
-                                        :order-by [[:timestamp :desc]]}))
+            (:timestamp (db/select-one [LoginHistory :timestamp] :user_id id
+                                       {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
 
@@ -192,7 +192,7 @@
       (hydrate :personal_collection_id :group_ids :is_installer :has_invited_second_user)
       add-has-question-and-dashboard
       add-first-login
-      maybe-add-general-permissions))
+      maybe-add-advanced-permissions))
 
 (api/defendpoint GET "/:id"
   "Fetch a `User`. You must be fetching yourself *or* be a superuser."

@@ -3,6 +3,8 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.models.interface :as i]
+            [metabase.models.permissions :as perms]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
@@ -26,14 +28,24 @@
                                                                            :order-by [[:ended_at :desc]]})]
     (db/simple-delete! TaskHistory :ended_at [:<= clean-before-date])))
 
+(defn- perms-objects-set
+  "Permissions to read or write Task.
+  If `advanced-permissions` is enabled it requires superusers or non-admins with monitoring permissions,
+  Otherwise it requires superusers."
+  [_task _read-or-write]
+  #{(if (premium-features/enable-advanced-permissions?)
+      (perms/general-perms-path :monitoring)
+      "/")})
+
 (u/strict-extend (class TaskHistory)
   models/IModel
   (merge models/IModelDefaults
          {:types (constantly {:task_details :json})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?  i/superuser?
-          :can-write? i/superuser?}))
+         {:can-read?         (partial i/current-user-has-full-permissions? :read)
+          :can-write?        (partial i/current-user-has-full-permissions? :write)
+          :perms-objects-set perms-objects-set}))
 
 (s/defn all
   "Return all TaskHistory entries, applying `limit` and `offset` if not nil"

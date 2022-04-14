@@ -1,6 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.api.monitoring-test
   "Permisisons tests for API that needs to be enforced by General Permissions of type `:monitoring`."
   (:require [clojure.test :refer :all]
+            [metabase.models :refer [TaskHistory]]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]))
@@ -13,29 +14,36 @@
   (testing "/api/task/*"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
-      (letfn [(get-task [user status]
-                (testing (format "get task with %s user" (user->name user))
-                  (mt/user-http-request user :get status "task")))
-              (get-task-info [user status]
-                (testing (format "get task info with %s user" (user->name user))
-                  (mt/user-http-request user :get status "task/info")))]
-        (testing "if `advanced-permissions` is disabled, require admins"
-          (premium-features-test/with-premium-features #{}
-            (get-task user 403)
-            (get-task-info user 403)
-            (get-task :crowberto 200)
-            (get-task-info :crowberto 200)))
+      (mt/with-temp TaskHistory [task]
+        (letfn [(get-tasks [user status]
+                  (testing (format "get task with %s user" (user->name user))
+                    (mt/user-http-request user :get status "task")))
+                (get-single-task [user status]
+                  (mt/user-http-request user :get status (format "task/%d" (:id task))))
+                (get-task-info [user status]
+                  (testing (format "get task info with %s user" (user->name user))
+                    (mt/user-http-request user :get status "task/info")))]
+          (testing "if `advanced-permissions` is disabled, require admins"
+            (premium-features-test/with-premium-features #{}
+              (get-tasks user 403)
+              (get-single-task user 403)
+              (get-task-info user 403)
+              (get-tasks :crowberto 200)
+              (get-single-task :crowberto 200)
+              (get-task-info :crowberto 200)))
 
-        (testing "if `advanced-permissions` is enabled"
-          (premium-features-test/with-premium-features #{:advanced-permissions}
-            (testing "still fail if user's group doesn't have `monitoring` permission"
-              (get-task user 403)
-              (get-task-info user 403))
+          (testing "if `advanced-permissions` is enabled"
+            (premium-features-test/with-premium-features #{:advanced-permissions}
+              (testing "still fail if user's group doesn't have `monitoring` permission"
+                (get-tasks user 403)
+                (get-single-task user 403)
+                (get-task-info user 403))
 
-            (testing "allowed if user's group has `monitoring` permission"
-              (perms/grant-general-permissions! group :monitoring)
-              (get-task user 200)
-              (get-task-info user 200))))))))
+              (testing "allowed if user's group has `monitoring` permission"
+                (perms/grant-general-permissions! group :monitoring)
+                (get-tasks user 200)
+                (get-single-task user 200)
+                (get-task-info user 200)))))))))
 
 (deftest util-tset
   (testing "/api/util/"

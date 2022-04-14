@@ -14,7 +14,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import Grabber from "metabase/components/Grabber";
 
-import ColumnItem from "./ColumnItem";
+import ColumnItem from "../ColumnItem";
+import { SortButtonContainer } from "./ColumnsList.styled";
 
 export default class ColumnsList extends Component {
   constructor(props) {
@@ -98,19 +99,21 @@ export default class ColumnsList extends Component {
     const { fieldOrder } = this.state;
     return (
       <div id="ColumnsList" className="my3">
-        <div className="flex">
-          <div className="flex-align-right">
-            <ColumnOrderDropdown table={table} />
-          </div>
-        </div>
         <div className="text-uppercase text-medium py1">
-          <div
-            style={{ minWidth: 420 }}
-            className="float-left px1"
-          >{t`Column`}</div>
-          <div className="flex clearfix" style={{ paddingRight: 47 }}>
-            <div className="flex-half pl2">{t`Visibility`}</div>
-            <div className="flex-half">{t`Type`}</div>
+          <div className="relative">
+            <div
+              style={{ minWidth: 420 }}
+              className="float-left px1"
+            >{t`Column`}</div>
+            <div className="flex">
+              <div className="flex-half pl3">{t`Visibility`}</div>
+              <div className="flex-half">
+                <span>{t`Type`}</span>
+              </div>
+            </div>
+            <SortButtonContainer>
+              <ColumnOrderDropdown table={table} />
+            </SortButtonContainer>
           </div>
         </div>
         <SortableColumns
@@ -174,11 +177,10 @@ class ColumnOrderDropdown extends Component {
             className="text-brand text-bold"
             style={{ textTransform: "none", letterSpacing: 0 }}
           >
-            {t`Column order: ${COLUMN_ORDERS[table.field_order]}`}
             <Icon
               className="ml1"
-              name="chevrondown"
-              size={12}
+              name="sort_arrows"
+              size={14}
               style={{ transform: "translateY(2px)" }}
             />
           </span>

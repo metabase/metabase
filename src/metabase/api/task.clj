@@ -21,7 +21,7 @@
 (api/defendpoint GET "/:id"
   "Get `TaskHistory` entry with ID."
   [id]
-  (api/read-check TaskHistory id))
+  (api/check-404 (api/read-check TaskHistory id)))
 
 (api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
