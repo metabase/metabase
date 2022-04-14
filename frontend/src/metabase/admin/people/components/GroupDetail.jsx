@@ -40,31 +40,28 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
-const GroupDetail = props => {
+const GroupDetail = ({
+  currentUser,
+  group,
+  users,
+  deleteMembership,
+  createMembership,
+}) => {
   const [addUserVisible, setAddUserVisible] = useState(false);
   const [text, setText] = useState("");
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [alertMessage, setAlertMessage] = useState(false);
 
-  const {
-    currentUser,
-    group,
-    users,
-    deleteMembership,
-    createMembership,
-  } = props;
   const { members } = group;
 
-  const usedUsers = {};
-  for (const user of members) {
-    usedUsers[user.user_id] = true;
-  }
-  for (const user of selectedUsers) {
-    usedUsers[user.id] = true;
-  }
-  const filteredUsers = Object.values(users).filter(
-    user => !usedUsers[user.id],
-  );
+  const filteredUsers = useMemo(() => {
+    const usedUsers = new Set([
+      ...members.map(u => u.user_id),
+      ...selectedUsers.map(u => u.id),
+    ]);
+
+    return Object.values(users).filter(user => !usedUsers.has(user.id));
+  }, [members, selectedUsers, users]);
 
   const title = useMemo(
     () => (
@@ -82,7 +79,7 @@ const GroupDetail = props => {
     [group, members],
   );
 
-  const onRemoveUserClicked = useCallback(
+  const handleRemoveUserClicked = useCallback(
     async user => {
       try {
         const membership = members.find(m => m.user_id === user.id);
@@ -98,7 +95,7 @@ const GroupDetail = props => {
     [members, deleteMembership, group.id],
   );
 
-  const onAddUserDone = useCallback(async () => {
+  const handleAddUserDone = useCallback(async () => {
     try {
       await Promise.all(
         selectedUsers.map(async user => {
@@ -116,18 +113,18 @@ const GroupDetail = props => {
     }
   }, [selectedUsers, createMembership, group.id]);
 
-  const onAddUserCanceled = useCallback(() => {
+  const handleAddUserCanceled = useCallback(() => {
     setAddUserVisible(false);
     setText("");
     setSelectedUsers([]);
   }, []);
 
-  const onUserSuggestionAccepted = useCallback(user => {
+  const handleUserSuggestionAccepted = useCallback(user => {
     setSelectedUsers(u => [...u, user]);
     setText("");
   }, []);
 
-  const onRemoveUserFromSelection = useCallback(user => {
+  const handleRemoveUserFromSelection = useCallback(user => {
     setSelectedUsers(users => users.filter(u => u.id !== user.id));
   }, []);
 
@@ -135,7 +132,7 @@ const GroupDetail = props => {
     setAlertMessage(null);
   }, []);
 
-  const canEdit = useMemo(() => {
+  const userCanEditMemberships = useMemo(() => {
     return canEditMembership(group) ? () => setAddUserVisible(true) : null;
   }, [group]);
 
@@ -143,7 +140,7 @@ const GroupDetail = props => {
     <AdminPaneLayout
       title={title}
       buttonText={t`Add members`}
-      buttonAction={canEdit}
+      buttonAction={userCanEditMemberships}
       buttonDisabled={addUserVisible}
     >
       <GroupDescription group={group} />
@@ -155,12 +152,12 @@ const GroupDetail = props => {
         showAddUser={addUserVisible}
         text={text || ""}
         selectedUsers={selectedUsers}
-        onAddUserCancel={onAddUserCanceled}
-        onAddUserDone={onAddUserDone}
+        onAddUserCancel={handleAddUserCanceled}
+        onAddUserDone={handleAddUserDone}
         onAddUserTextChange={setText}
-        onUserSuggestionAccepted={onUserSuggestionAccepted}
-        onRemoveUserFromSelection={onRemoveUserFromSelection}
-        onRemoveUserClicked={onRemoveUserClicked}
+        onUserSuggestionAccepted={handleUserSuggestionAccepted}
+        onRemoveUserFromSelection={handleRemoveUserFromSelection}
+        onRemoveUserClicked={handleRemoveUserClicked}
       />
       <Alert message={alertMessage} onClose={dismissAlert} />
     </AdminPaneLayout>
