@@ -264,36 +264,38 @@ describe("scenarios > collection defaults", () => {
     });
 
     it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
-      cy.visit("/collection/root");
-      cy.log("Move 'Second collection' to the root");
-      displaySidebarChildOf("First collection");
-      cy.findByText("Second collection").click();
+      getCollectionIdFromSlug("second_collection", id => {
+        visitCollection(id);
+      });
+
       cy.icon("pencil").click();
-      cy.findByText("Edit this collection").click();
+      cy.findByText("Edit this collection")
+        .should("be.visible")
+        .click();
       modal().within(() => {
         // Open the select dropdown menu
         cy.findByText("First collection").click();
       });
+
       popover().within(() => {
         cy.findAllByText("Our analytics")
           .last()
           .click();
       });
+
       // Make sure the correct value is selected
       cy.findAllByTestId("select-button-content").contains("Our analytics");
-      cy.findByText("Update")
-        .closest(".Button")
-        .should("not.be.disabled")
-        .click();
-      // Make sure modal closed
-      cy.findByText("Update").should("not.exist");
 
-      cy.findByRole("tree")
-        .as("sidebar")
-        .within(() => {
-          cy.findAllByText("Second collection").should("have.length", 1);
-          cy.findAllByText("Third collection").should("have.length", 1);
-        });
+      cy.button("Update").click();
+      // Make sure modal closed
+      cy.button("Update").should("not.exist");
+
+      navigationSidebar().within(() => {
+        cy.findAllByText("Second collection").should("have.length", 1);
+        cy.findAllByText("Third collection").should("have.length", 1);
+      });
+
+      ensureCollectionHasNoChildren("First collection");
     });
 
     it("should suggest questions saved in collections with colon in their name (metabase#14287)", () => {
