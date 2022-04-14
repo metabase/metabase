@@ -185,9 +185,9 @@
        (db/exists? User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
     (db/insert! PermissionsGroupMembership
-                :group_id         #p group_id
-                :user_id          #p user_id
-                :is_group_manager #p is_group_manager)
+                :group_id         group_id
+                :user_id          user_id
+                :is_group_manager is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (group/members {:id group_id})))
