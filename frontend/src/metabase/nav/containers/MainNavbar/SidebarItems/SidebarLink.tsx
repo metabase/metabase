@@ -55,6 +55,13 @@ function SidebarLink({
       depth={0}
       isSelected={isSelected}
       hasDefaultIconStyle={hasDefaultIconStyle}
+      onMouseDown={e => {
+        // https://www.redips.net/firefox/disable-image-dragging/
+
+        // Also seems to prevent other hickups when dragging items
+        // right after having dragged other items
+        e.preventDefault();
+      }}
       {...props}
     >
       {React.isValidElement(left) && left}
