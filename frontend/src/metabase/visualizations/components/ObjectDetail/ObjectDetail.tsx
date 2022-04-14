@@ -21,6 +21,7 @@ import {
   followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 } from "metabase/query_builder/actions";
 import {
   getQuestion,
@@ -57,6 +58,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   followForeignKey: (fk: ForeignKey) => dispatch(followForeignKey(fk)),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
+  closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
 export interface ObjectDetailProps {
@@ -79,6 +81,7 @@ export interface ObjectDetailProps {
   followForeignKey: (fk: ForeignKey) => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
+  closeObjectDetail: () => void;
 }
 
 export function ObjectDetailFn({
@@ -99,6 +102,7 @@ export function ObjectDetailFn({
   followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevData = usePrevious(data);
@@ -153,6 +157,9 @@ export function ObjectDetailFn({
     }
     if (event.key === "ArrowRight") {
       viewNextObjectDetail();
+    }
+    if (event.key === "Escape") {
+      closeObjectDetail();
     }
   };
 
