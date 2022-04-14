@@ -218,7 +218,6 @@ export default class Form extends React.Component {
       this._state.result = error;
       // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
       if (error && error.data && error.data.errors) {
-        console.log("1.");
         try {
           // HACK: blur the current element to ensure we show the error
           document.activeElement.blur();
