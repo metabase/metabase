@@ -16,98 +16,91 @@ const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
 describe("scenarios > collection defaults", () => {
-  describe("for admins", () => {
+  describe("sidebar behavior", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
     });
 
-    describe("sidebar behavior", () => {
-      beforeEach(() => {
-        restore();
-        cy.signInAsAdmin();
-      });
+    it("should navigate effortlessly through collections tree", () => {
+      visitRootCollection();
 
-      it("should navigate effortlessly through collections tree", () => {
-        visitRootCollection();
-
-        navigationSidebar().within(() => {
-          cy.log(
-            "should allow a user to expand a collection without navigating to it",
-          );
-
-          // 1. click on the chevron to expand the sub collection
-          displaySidebarChildOf("First collection");
-          // 2. I should see the nested collection name
-          cy.findByText("Second collection");
-          cy.findByText("Third collection").should("not.exist");
-          // 3. The url should still be /collection/root to test that we haven't navigated away
-          cy.location("pathname").should("eq", "/collection/root");
-
-          cy.log(
-            "should expand/collapse collection tree by clicking on parent collection name (metabase#17339)",
-          );
-
-          // 1. Clicking on the collection name for the first time should navigate to that collection and expand its children
-          cy.findByText("Second collection").click();
-          cy.findByText("Third collection");
-
-          // 2. Click on that same collection for the second time should collapse its children
-          cy.findByText("Second collection").click();
-          cy.findByText("Third collection").should("not.exist");
-
-          // 3. However, clicking on previously opened collection will not close it immediately
-          cy.findByText("First collection").click();
-          cy.findByText("Second collection");
-          // 4. We need to click on it again to close it
-          cy.findByText("First collection").click();
-          cy.findByText("Second collection").should("not.exist");
-          cy.findByText("Third collection").should("not.exist");
-        });
-
+      navigationSidebar().within(() => {
         cy.log(
-          "navigating directly to a collection should expand it and show its children",
+          "should allow a user to expand a collection without navigating to it",
         );
 
-        getCollectionIdFromSlug("second_collection", id => {
-          cy.visit(`/collection/${id}`);
-        });
+        // 1. click on the chevron to expand the sub collection
+        displaySidebarChildOf("First collection");
+        // 2. I should see the nested collection name
+        cy.findByText("Second collection");
+        cy.findByText("Third collection").should("not.exist");
+        // 3. The url should still be /collection/root to test that we haven't navigated away
+        cy.location("pathname").should("eq", "/collection/root");
 
-        navigationSidebar().within(() => {
-          cy.findByText("Second collection");
-          cy.findByText("Third collection");
-        });
+        cy.log(
+          "should expand/collapse collection tree by clicking on parent collection name (metabase#17339)",
+        );
+
+        // 1. Clicking on the collection name for the first time should navigate to that collection and expand its children
+        cy.findByText("Second collection").click();
+        cy.findByText("Third collection");
+
+        // 2. Click on that same collection for the second time should collapse its children
+        cy.findByText("Second collection").click();
+        cy.findByText("Third collection").should("not.exist");
+
+        // 3. However, clicking on previously opened collection will not close it immediately
+        cy.findByText("First collection").click();
+        cy.findByText("Second collection");
+        // 4. We need to click on it again to close it
+        cy.findByText("First collection").click();
+        cy.findByText("Second collection").should("not.exist");
+        cy.findByText("Third collection").should("not.exist");
       });
 
-      describe("deeply nested collection navigation", () => {
-        it("should correctly display deep nested collections", () => {
-          cy.request("GET", "/api/collection").then(xhr => {
-            // We need its ID to continue nesting below it
-            const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-              collection => collection.slug === "third_collection",
-            );
+      cy.log(
+        "navigating directly to a collection should expand it and show its children",
+      );
 
-            cy.log("Create two more nested collections");
-            [
-              "Fourth collection",
-              "Fifth collection with a very long name",
-            ].forEach((collection, index) => {
-              cy.request("POST", "/api/collection", {
-                name: collection,
-                parent_id: THIRD_COLLECTION_ID + index,
-                color: "#509ee3",
-              });
+      getCollectionIdFromSlug("second_collection", id => {
+        cy.visit(`/collection/${id}`);
+      });
+
+      navigationSidebar().within(() => {
+        cy.findByText("Second collection");
+        cy.findByText("Third collection");
+      });
+    });
+
+    describe("deeply nested collection navigation", () => {
+      it("should correctly display deep nested collections", () => {
+        cy.request("GET", "/api/collection").then(xhr => {
+          // We need its ID to continue nesting below it
+          const { id: THIRD_COLLECTION_ID } = xhr.body.find(
+            collection => collection.slug === "third_collection",
+          );
+
+          cy.log("Create two more nested collections");
+          [
+            "Fourth collection",
+            "Fifth collection with a very long name",
+          ].forEach((collection, index) => {
+            cy.request("POST", "/api/collection", {
+              name: collection,
+              parent_id: THIRD_COLLECTION_ID + index,
+              color: "#509ee3",
             });
           });
-          cy.visit("/collection/root");
-          // 1. Expand out via the chevrons so that all collections are showing
-          displaySidebarChildOf("First collection");
-          displaySidebarChildOf("Second collection");
-          displaySidebarChildOf("Third collection");
-          displaySidebarChildOf("Fourth collection");
-          // 2. Ensure we can see the entire "Fifth level with a long name" collection text
-          cy.findByText("Fifth collection with a very long name");
         });
+        cy.visit("/collection/root");
+        // 1. Expand out via the chevrons so that all collections are showing
+        displaySidebarChildOf("First collection");
+        displaySidebarChildOf("Second collection");
+        displaySidebarChildOf("Third collection");
+        displaySidebarChildOf("Fourth collection");
+        // 2. Ensure we can see the entire "Fifth level with a long name" collection text
+        cy.findByText("Fifth collection with a very long name");
       });
     });
   });
