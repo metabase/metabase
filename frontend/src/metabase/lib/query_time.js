@@ -127,7 +127,7 @@ export function generateTimeFilterValuesDescriptions(filter) {
     }
     const [n, bucketing] = startingFrom;
     const suffix = formatStartingFrom(bucketing, -n);
-    return [t`${prefix} starting ${n} ${suffix}`];
+    return [t`${prefix}, starting ${n} ${suffix}`];
   } else {
     return values.map(value => generateTimeValueDescription(value, bucketing));
   }
