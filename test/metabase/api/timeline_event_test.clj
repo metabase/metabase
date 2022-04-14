@@ -21,6 +21,7 @@
   (testing "GET /api/timeline-event/:id"
     (mt/with-temp* [Collection    [collection {:name "Important Data"}]
                     Timeline      [timeline {:name          "Important Events"
+                                             :icon          "balloon"
                                              :collection_id (u/the-id collection)}]
                     TimelineEvent [event {:name         "Very Important Event"
                                           :timestamp    (java.time.OffsetDateTime/now)
@@ -29,7 +30,11 @@
       (testing "check that we get the timeline-event with `id`"
         (is (= "Very Important Event"
                (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
-                    :name)))))))
+                    :name))))
+      (testing "check that we get the timeline's icon."
+        (is (= "balloon"
+               (->> (mt/user-http-request :rasta :get 200 (str "timeline-event/" (u/the-id event)))
+                    :icon)))))))
 
 (deftest create-timeline-event-test
   (testing "POST /api/timeline-event"

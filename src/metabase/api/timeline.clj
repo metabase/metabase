@@ -40,19 +40,16 @@
   {include  (s/maybe Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)
-        timelines (->> (db/query
-                        {:select   [[(hsql/call :coalesce :icon timeline/DefaultIcon) :icon] :*]
-                         :from     [Timeline]
-                         :where    [:and
-                                    [:= :archived archived?]
-                                    (collection/visible-collection-ids->honeysql-filter-clause
-                                     (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                         :order-by [[:%lower.name :asc]]})
-                       (map #(dissoc % :icon_2))
+        timelines (->> (db/select Timeline
+                         {:where    [:and
+                                     [:= :archived archived?]
+                                     (collection/visible-collection-ids->honeysql-filter-clause
+                                      (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                          :order-by [[:%lower.name :asc]]})
                        (map timeline/hydrate-root-collection))]
     (cond-> (hydrate timelines :creator [:collection :can_write])
       (= include "events")
-      (timeline-event/include-events {:events/all? archived?}))))
+      (timeline/include-events {:events/all? archived?}))))
 
 (api/defendpoint GET "/:id"
   "Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
@@ -70,14 +67,10 @@
       (nil? (:collection_id timeline))
       timeline/hydrate-root-collection
 
-      ;; if a timeline was added with the API, it's possible that `:icon` is `nil`
-      (nil? (:icon timeline))
-      (assoc :icon timeline/DefaultIcon)
-
       (= include "events")
-      (timeline-event/include-events-singular {:events/all?  archived?
-                                               :events/start (when start (u.date/parse start))
-                                               :events/end   (when end (u.date/parse end))}))))
+      (timeline/include-events-singular {:events/all?  archived?
+                                         :events/start (when start (u.date/parse start))
+                                         :events/end   (when end (u.date/parse end))}))))
 
 (api/defendpoint PUT "/:id"
   "Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the

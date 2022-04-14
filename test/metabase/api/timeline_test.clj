@@ -200,15 +200,16 @@
 (deftest timeline-hydration-test
   (testing "GET /api/timeline/:id?include=events"
     (mt/with-temp Collection [collection {:name "Important Data"}]
-      (mt/with-temp* [Timeline      [empty-tl {:name "Empty TL"
+      (mt/with-temp* [Timeline      [empty-tl {:name          "Empty TL"
                                                :collection_id (u/the-id collection)}]
-                      Timeline      [unarchived-tl {:name "Un-archived Events TL"
+                      Timeline      [unarchived-tl {:name          "Un-archived Events TL"
                                                     :collection_id (u/the-id collection)}]
-                      Timeline      [archived-tl {:name "Archived Events TL"
+                      Timeline      [archived-tl {:name          "Archived Events TL"
                                                   :collection_id (u/the-id collection)}]
-                      Timeline      [timeline {:name "All Events TL"
+                      Timeline      [timeline {:name          "All Events TL"
                                                :collection_id (u/the-id collection)}]]
         (mt/with-temp* [TimelineEvent [event-a {:name        "event-a"
+                                                :icon        "balloon"
                                                 :timeline_id (u/the-id unarchived-tl)}]
                         TimelineEvent [event-b {:name        "event-b"
                                                 :timeline_id (u/the-id unarchived-tl)}]
@@ -225,6 +226,8 @@
                                                 :archived    true}]]
           (testing "a timeline with no events returns an empty list"
             (is (= '() (:events (include-events-request empty-tl false)))))
+          (testing "the events on a timeline have appropriate icons."
+            (is (= #{"star" "balloon"} (set (map :icon (:events (include-events-request unarchived-tl true)))))))
           (testing "a timeline with both (un-)archived events"
             (testing "Returns only unarchived events when archived is false"
               (is (= #{"event-e"}
