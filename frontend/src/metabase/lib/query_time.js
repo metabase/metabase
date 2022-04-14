@@ -129,7 +129,9 @@ export function generateTimeFilterValuesDescriptions(filter) {
     const suffix = formatStartingFrom(bucketing, -n);
     return [t`${prefix}, starting ${n} ${suffix}`];
   } else {
-    return values.map(value => generateTimeValueDescription(value, bucketing));
+    return values.map(value =>
+      generateTimeValueDescription(value, bucketing, operator === "!="),
+    );
   }
 }
 
@@ -173,11 +175,11 @@ export function generateTimeIntervalDescription(n, unit) {
   }
 }
 
-export function generateTimeValueDescription(value, bucketing) {
+export function generateTimeValueDescription(value, bucketing, isExclude) {
   if (typeof value === "string") {
     const m = parseTimestamp(value, bucketing);
     if (bucketing) {
-      return formatDateTimeWithUnit(value, bucketing);
+      return formatDateTimeWithUnit(value, bucketing, { isExclude });
     } else if (m.hours() || m.minutes()) {
       return m.format("MMMM D, YYYY hh:mm a");
     } else {
