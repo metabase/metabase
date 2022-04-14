@@ -99,6 +99,7 @@ export class WindowModal extends Component {
         enableMouseEvents={enableMouseEvents}
       >
         <CSSTransitionGroup
+          component="div"
           transitionName="Modal"
           transitionAppear={enableTransition}
           transitionAppearTimeout={250}

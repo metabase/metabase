@@ -133,6 +133,7 @@ export default class SaveQuestionModal extends Component {
                 originalCard={originalCard}
               />
               <CSSTransitionGroup
+                component="div"
                 transitionName="saveQuestionModalFields"
                 transitionEnterTimeout={500}
                 transitionLeaveTimeout={500}

@@ -3,8 +3,8 @@ import _ from "underscore";
 import { t } from "ttag";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import _Checkbox from "metabase/core/components/CheckBox";
-import _EmptyState from "metabase/components/EmptyState";
+import Checkbox from "metabase/core/components/CheckBox";
+import EmptyState from "metabase/components/EmptyState";
 
 import {
   OptionContainer,
@@ -13,20 +13,8 @@ import {
   EmptyStateContainer,
   FilterInput,
 } from "./ListField.styled";
-
-const Checkbox = _Checkbox as any;
-const EmptyState = _EmptyState as any;
-
-type Option = any[];
-
-interface ListFieldProps {
-  onChange: (value: string[]) => void;
-  value: string[];
-  options: Option;
-  optionRenderer: (option: any) => JSX.Element;
-  placeholder: string;
-  isDashboardFilter?: boolean;
-}
+import { ListFieldProps, Option } from "./types";
+import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(
   values: string[],
@@ -36,7 +24,7 @@ function createOptionsFromValuesWithoutOptions(
   return values.filter(value => !optionsMap[value]).map(value => [value]);
 }
 
-export const ListField = ({
+const ListField = ({
   onChange,
   value,
   options,
@@ -70,17 +58,28 @@ export const ListField = ({
   const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
 
   const filteredOptions = useMemo(() => {
-    const trimmedFilter = debouncedFilter.trim().toLowerCase();
-
-    if (trimmedFilter.length === 0) {
+    const formattedFilter = debouncedFilter.trim().toLowerCase();
+    if (formattedFilter.length === 0) {
       return sortedOptions;
     }
 
-    return augmentedOptions.filter(option =>
-      String(option[0])
-        .toLowerCase()
-        .includes(trimmedFilter),
-    );
+    return augmentedOptions.filter(option => {
+      if (!option || option.length === 0) {
+        return false;
+      }
+
+      // option as: [id, name]
+      if (
+        option.length > 1 &&
+        option[1] &&
+        isValidOptionItem(option[1], formattedFilter)
+      ) {
+        return true;
+      }
+
+      // option as: [id]
+      return isValidOptionItem(option[0], formattedFilter);
+    });
   }, [augmentedOptions, debouncedFilter, sortedOptions]);
 
   const shouldShowEmptyState =
@@ -141,3 +140,5 @@ export const ListField = ({
     </>
   );
 };
+
+export default ListField;

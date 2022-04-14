@@ -88,6 +88,7 @@
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
+ [bookmark BookmarkOrdering]
  [card Card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]

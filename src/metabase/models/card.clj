@@ -179,11 +179,41 @@
   (cond-> card
     (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
+(defn- check-field-filter-fields-are-from-correct-database
+  "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
+  against. This is done when saving a Card. The goal here is to prevent people from saving Cards with invalid queries
+  -- it's better to error now then to error down the road in Query Processor land.
+
+  The usual way a user gets into the situation of having a mismatch between the Database and Field Filters is by
+  creating a native query in the Query Builder UI, adding parameters, and *then* changing the Database that the query
+  targets. See https://github.com/metabase/metabase/issues/14145 for more details."
+  [{{query-db-id :database, :as query} :dataset_query, :as card}]
+  ;; for updates if `query` isn't being updated we don't need to validate anything.
+  (when query
+    (when-let [field-ids (not-empty (params/card->template-tag-field-ids card))]
+      (doseq [{:keys [field-id field-name table-name field-db-id]} (db/query {:select    [[:field.id :field-id]
+                                                                                          [:field.name :field-name]
+                                                                                          [:table.name :table-name]
+                                                                                          [:table.db_id :field-db-id]]
+                                                                              :from      [[(db/resolve-model 'Field) :field]]
+                                                                              :left-join [[(db/resolve-model 'Table) :table]
+                                                                                          [:= :field.table_id :table.id]]
+                                                                              :where     [:in :field.id (set field-ids)]})]
+        (when-not (= field-db-id query-db-id)
+          (throw (ex-info (letfn [(describe-database [db-id]
+                                    (format "%d %s" db-id (pr-str (db/select-one-field :name 'Database :id db-id))))]
+                            (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
+                                 (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
+                                 (describe-database field-db-id)
+                                 (describe-database query-db-id)))
+                          {:status-code 400})))))))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (u/prog1 card
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)
+    (check-field-filter-fields-are-from-correct-database card)
     (collection/check-collection-namespace Card (:collection_id card))))
 
 (defn- post-insert [card]
@@ -227,6 +257,9 @@
     ;; make sure this Card doesn't have circular source query references if we're updating the query
     (when (:dataset_query changes)
       (check-for-circular-source-query-references changes))
+    ;; Make sure any native query template tags match the DB in the query.
+    (check-field-filter-fields-are-from-correct-database changes)
+    ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
     (collection/check-collection-namespace Card (:collection_id changes))
     ;; additional checks (Enterprise Edition only)
     (@pre-update-check-sandbox-constraints changes)))

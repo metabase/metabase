@@ -327,9 +327,9 @@ export default class StructuredQuery extends AtomicQuery {
         segments: [],
         metrics: [],
       });
-    } else {
-      return this.metadata().table(this.sourceTableId());
     }
+
+    return this.metadata().table(this.sourceTableId());
   }
 
   /**
