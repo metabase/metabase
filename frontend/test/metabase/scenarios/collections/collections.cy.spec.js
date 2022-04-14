@@ -16,11 +16,7 @@ const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
 // Z because the api lists them alphabetically by name, so it makes it easier to check
-const [admin, collection, sub_collection] = [
-  {
-    name: "Robert Tableton's Personal Collection",
-    id: 1,
-  },
+const [collection, sub_collection] = [
   {
     name: "Z Collection",
     id: null, // TBD from a response body
@@ -49,26 +45,12 @@ describe("scenarios > collection_defaults", () => {
         });
       });
 
-      it("should be the parent collection", () => {
-        const LENGTH = collection.id + 1;
-        cy.request("GET", "/api/collection").then(response => {
-          expect(response.body).to.have.length(LENGTH);
-          expect(response.body[collection.id].name).to.equal(collection.name);
-          // Check that it has no parent
-          expect(response.body[collection.id].location).to.equal("/");
-        });
-      });
-
-      it("should be visible within a root collection in a sidebar", () => {
-        cy.visit("/collection/root");
-        cy.findByText(collection.name);
-      });
-
       describe("a new sub-collection", () => {
         beforeEach(() => {
           cy.log(
             "Create a sub collection within previously created collection",
           );
+
           cy.request("POST", "/api/collection", {
             name: sub_collection.name,
             color: "#ff9a9a",
@@ -77,37 +59,12 @@ describe("scenarios > collection_defaults", () => {
             sub_collection.id = body.id;
           });
         });
-        it("should be a sub collection", () => {
-          const LENGTH = sub_collection.id + 1;
-          cy.request("GET", "/api/collection").then(response => {
-            expect(response.body).to.have.length(LENGTH);
-            expect(response.body[sub_collection.id].name).to.equal(
-              sub_collection.name,
-            );
-            // Check that it has a parent (and that it is a "Z collection")
-            expect(response.body[sub_collection.id].location).to.equal(
-              `/${collection.id}/`,
-            );
-          });
-        });
 
         it("should be nested under parent on a parent's URL in a sidebar", () => {
           cy.visit("/collection/root");
           cy.findByText(sub_collection.name).should("not.exist");
 
           cy.visit(`/collection/${collection.id}`);
-          cy.findByText(sub_collection.name);
-        });
-
-        it("should be moved under admin's personal collection", () => {
-          cy.request("PUT", `/api/collection/${sub_collection.id}`, {
-            parent_id: admin.id,
-          });
-
-          cy.visit(`/collection/${admin.id}`);
-          // this changed in 0.38
-          // It used to be "Robert Tableton's personal collection"
-          // but since we're logged in as admin, it's showing "Your personal collection"
           cy.findByText(sub_collection.name);
         });
       });
