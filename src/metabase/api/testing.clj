@@ -39,15 +39,6 @@
 
 ;;;; RESTORE
 
-(defn- shut-down-app-db!
-  "Shut down the application DB at the H2 level by executing the `SHUTDOWN` statement."
-  [^ApplicationDB app-db]
-  (assert-h2 app-db)
-  (log/info "Sending H2 application database the SHUTDOWN command")
-  (with-open [conn (.getConnection app-db)
-              stmt (.createStatement conn)]
-    (.execute stmt "SHUTDOWN;")))
-
 (defn- kill-app-db-connection-pool!
   "Immediately destroy all open connections in the app DB connection pool."
   [{:keys [data-source]}]
@@ -96,7 +87,6 @@
       (log/info "Temporarily setting *application-db* to no-op dummy app DB")
       ;; set the app DB to `nil` so nobody else can access it.
       (alter-var-root #'mdb.connection/*application-db* (constantly (dummy-app-db)))
-      (shut-down-app-db! app-db)
       (kill-app-db-connection-pool! app-db)
       (restore-app-db-from-snapshot! app-db path)
       (finally
