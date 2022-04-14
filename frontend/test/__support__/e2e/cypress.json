@@ -9,6 +9,14 @@
   "projectId": "KetpiS",
   "viewportHeight": 800,
   "viewportWidth": 1280,
+  "reporter": "mochawesome",
+  "reporterOptions": {
+      "reportDir": "cypress/mochawesome-report",
+      "overwrite": false,
+      "html": false,
+      "json": true,
+      "charts": true
+  },
   "retries": {
     "runMode": 2,
     "openMode": 0
