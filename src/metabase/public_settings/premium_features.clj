@@ -277,10 +277,10 @@
      :args    args
      :body    body}))
 
-(def ee-registry
-  "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as their OSS
-  equivalents. These fns are called when the EE function must fallback to the OSS behavior due to absence of a feature
-  flag."
+(defonce ^{:doc "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as
+                their OSS equivalents. These fns are called when the EE function must fallback to the OSS behavior due
+                to absence of a feature flag."}
+  ee-registry
   (atom {}))
 
 (defn- register-mapping!
