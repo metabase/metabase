@@ -45,7 +45,7 @@ Members of the group can access data from all tables (within all namespaces/sche
 
 Keep in mind people can be in multiple groups. If a person belongs to _another_ group that _does_ have access to that database, that more privileged access will take precedence (overruling the block), and they'll be able to view that question.
 
-## Native query editing
+## Native querying
 
 Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
 
