@@ -106,7 +106,6 @@
     (when (and persisted-info database)
       (let [start-time (t/zoned-date-time)
             success?   (try (refresh! refresher database persisted-info)
-                            (Thread/sleep 5000)
                             true
                             (catch Exception e
                               (log/info e (trs "Error refreshing persisting model with card-id {0}"
