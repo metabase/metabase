@@ -412,18 +412,13 @@ const SECTIONS = updateSectionsWithPlugins({
           >{t`Learn more`}</ExternalLink>
         )}.`,
         type: "boolean",
-        onChanged: async (
-          wasEnabled,
-          isEnabled,
-          settingsValues,
-          onChangeSetting,
-        ) => {
+        disableDefaultUpdate: true,
+        onChanged: async (wasEnabled, isEnabled) => {
           if (isEnabled) {
             await PersistedModelsApi.enablePersistence();
           } else {
             await PersistedModelsApi.disablePersistence();
           }
-          onChangeSetting("enabled-persisted-models", isEnabled);
         },
       },
       {
@@ -439,17 +434,11 @@ const SECTIONS = updateSectionsWithPlugins({
           12: t`12 hours`,
           24: t`24 hours`,
         },
+        disableDefaultUpdate: true,
         widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["enabled-persisted-models"],
-        onChanged: async (
-          oldValue,
-          newValue,
-          settingsValues,
-          onChangeSetting,
-        ) => {
-          await PersistedModelsApi.setRefreshInterval({ hours: newValue });
-          onChangeSetting("persisted-model-refresh-interval-hours", newValue);
-        },
+        onChanged: async (oldValue, newValue) =>
+          PersistedModelsApi.setRefreshInterval({ hours: newValue }),
       },
     ],
   },
