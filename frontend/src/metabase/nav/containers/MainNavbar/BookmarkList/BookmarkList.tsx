@@ -142,10 +142,10 @@ const BookmarkList = ({
       onToggle={onToggleBookmarks}
     >
       <SortableListOfBookmarks
+        distance={9}
         onSortStart={handleSortStart}
         onSortEnd={handleSortEnd}
         lockAxis="y"
-        pressDelay={200}
         helperClass="sorting"
       >
         {orderedBookmarks.map((bookmark, index) => (
