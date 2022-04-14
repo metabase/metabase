@@ -294,9 +294,8 @@
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
   [{:keys [fn-name ee-ns docstr args body]}]
   (register-mapping! fn-name ee-ns args body)
-  (let [ee-fn (do
-               (u/ignore-exceptions (classloader/require ee-ns))
-               (ns-resolve ee-ns fn-name))]
+  (let [ee-fn (u/ignore-exceptions (classloader/require ee-ns)
+                                   (ns-resolve ee-ns fn-name))]
     `(defn ~fn-name ~docstr ~args
        (if ~ee-fn
          (apply ~ee-fn ~args)
@@ -325,16 +324,16 @@
                     ~args))))))
 
 (defmacro defenterprise
-  "Defines a function that has separate implementations between the Metabase Community Edition (CE) and Enterprise
-  Edition (EE).
+  "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
+  Enterprise Edition (EE).
 
   When used in a CE namespace, defines a function that should have a corresponding implementation in an EE namespace
   (using the same macro). The EE implementation will be used preferentially to the CE implementation if it is available.
   The first argument after the function name should be a symbol of the namespace containing the EE implementation. The
   corresponding EE function must have the same name as the CE function.
 
-  When used in an EE namespace, the namespace of the corresponding OSS implementation does not need to be included --
-  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an OSS namespace.
+  When used in an EE namespace, the namespace of the corresponding CE implementation does not need to be included --
+  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an CE namespace.
 
   Two additional options can be defined, when using this macro in an EE namespace. These options should be defined
   immediately before the args list of the function:
@@ -356,9 +355,3 @@
     (if (in-ee?)
       `(defenterprise-ee ~defenterprise-args)
       `(defenterprise-oss ~defenterprise-args))))
-
-(defenterprise my-sum3
-  "This is my docstring"
-  metabase-enterprise.core
-  [x y]
-  "Hi from OSS")
