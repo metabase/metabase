@@ -102,16 +102,15 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
-  updateFieldValues(props) {
+  updateFieldValues({ dashboard, parameter, fetchField, fetchFieldValues }) {
     // in a dashboard? the field values will be fetched via
     // DashboardApi.parameterValues instead and thus, no need to
     // manually update field values
-    const { dashboard } = props;
     const useChainFilter = dashboard && dashboard.id;
     if (!useChainFilter) {
-      for (const id of getFieldIds(props.parameter)) {
-        props.fetchField(id);
-        props.fetchFieldValues(id);
+      for (const id of getFieldIds(parameter)) {
+        fetchField(id);
+        fetchFieldValues(id);
       }
     }
   }
@@ -256,7 +255,8 @@ function getFields(metadata, parameter) {
 
 function getFieldIds(parameter) {
   const { field_ids = [], field_id } = parameter;
-  return field_id ? [field_id] : field_ids;
+  const fieldIds = field_id ? [field_id] : field_ids;
+  return fieldIds.filter(id => typeof id === "number");
 }
 
 function Widget({

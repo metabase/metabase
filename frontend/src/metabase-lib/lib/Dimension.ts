@@ -775,7 +775,7 @@ export class FieldDimension extends Dimension {
     return typeof this._fieldIdOrName === "string";
   }
 
-  _createField(fieldInfo, { hydrate = false } = {}) {
+  _createField(fieldInfo, { hydrate = false } = {}): Field {
     const field = new Field({
       ...fieldInfo,
       metadata: this._metadata,
@@ -806,7 +806,7 @@ export class FieldDimension extends Dimension {
     return field;
   }
 
-  field(): any {
+  field(): Field {
     const question = this.query()?.question();
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
     const fieldMetadata = question
@@ -1213,6 +1213,14 @@ export class ExpressionDimension extends Dimension {
     return this._expressionName;
   }
 
+  _createField(fieldInfo): Field {
+    return new Field({
+      ...fieldInfo,
+      metadata: this._metadata,
+      query: this._query,
+    });
+  }
+
   field() {
     const query = this._query;
     const table = query ? query.table() : null;
@@ -1243,8 +1251,6 @@ export class ExpressionDimension extends Dimension {
 
     let base_type = type;
     if (!type.startsWith("type/")) {
-      base_type = "type/Float"; // fallback
-
       switch (type) {
         case MONOTYPE.String:
           base_type = "type/Text";
@@ -1254,10 +1260,25 @@ export class ExpressionDimension extends Dimension {
           base_type = "type/Boolean";
           break;
 
+        // fallback
         default:
+          base_type = "type/Float";
           break;
       }
       semantic_type = base_type;
+    }
+
+    // if a dimension has access to a question with result metadata,
+    // we try to find the field using the metadata directly,
+    // so that we don't have to try to infer field metadata from the expression
+    const resultMetadata = query?.question()?.getResultMetadata?.();
+    if (resultMetadata) {
+      const fieldMetadata = _.findWhere(resultMetadata, {
+        name: this.name(),
+      });
+      if (fieldMetadata) {
+        return this._createField(fieldMetadata);
+      }
     }
 
     const subsOptions = getOptions(semantic_type ? semantic_type : base_type);

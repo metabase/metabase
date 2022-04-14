@@ -149,7 +149,7 @@
                                      :limit     views-limit
                                      :left-join [[DashboardBookmark :bm]
                                                  [:and
-                                                  [:not [:= :model "table"]]
+                                                  [:= :model "dashboard"]
                                                   [:= :bm.user_id *current-user-id*]
                                                   [:= :model_id :bm.dashboard_id]]]})
         card-runs                 (->> (db/select [QueryExecution [:%min.executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
