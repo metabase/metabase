@@ -70,6 +70,10 @@ describe("scenarios > collection defaults", () => {
       navigationSidebar().within(() => {
         cy.findByText("Second collection");
         cy.findByText("Third collection");
+
+        // Collections without sub-collections shouldn't have chevron icon (metabase#14753)
+        ensureCollectionHasNoChildren("Third collection");
+        ensureCollectionHasNoChildren("Your personal collection");
       });
     });
 
@@ -316,35 +320,6 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("collections without sub-collections shouldn't have chevron icon (metabase#14753)", () => {
-      cy.visit("/collection/root");
-
-      navigationSidebar()
-        .findByText("Your personal collection")
-        .parentsUntil("[data-testid=sidebar-collection-link-root]")
-        .within(() => {
-          cy.icon("chevronright").should("not.be.visible");
-        });
-
-      // Ensure if sub-collection is archived, the chevron is not displayed
-      displaySidebarChildOf("First collection");
-      navigationSidebar()
-        .findByText("Second collection")
-        .click();
-      cy.icon("pencil").click();
-      popover()
-        .findByText("Archive this collection")
-        .click();
-      cy.get(".Modal")
-        .findByRole("button", { name: "Archive" })
-        .click();
-      navigationSidebar()
-        .findByText("First collection")
-        .parent()
-        .find(".Icon-chevrondown")
-        .should("not.exist");
-    });
-
     it("'Saved Questions' prompt should respect nested collections structure (metabase#14178)", () => {
       cy.request("GET", "/api/collection").then(({ body }) => {
         // Get "Second collection's" id dynamically instead of hard-coding it
@@ -504,4 +479,14 @@ function getCollectionIdFromSlug(slug, callback) {
 
     callback && callback(id);
   });
+}
+
+function ensureCollectionHasNoChildren(collection) {
+  cy.findByText(collection)
+    .closest("li")
+    .within(() => {
+      // We used should.not.exist previously, but
+      // this icon is now only hidden. It still exists in the DOM.
+      cy.icon("chevronright").should("be.hidden");
+    });
 }
