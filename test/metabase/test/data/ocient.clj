@@ -270,7 +270,7 @@
       (catch SQLException e
         (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
         (jdbc/print-sql-exception-chain e)
-        (throw e))
+        (throw e)))))
 
 ;; Middleware function intended for use with `make-load-data-fn `. Insert rows in chunks, which default to 200 rows each.
 (defn- load-data-chunked
