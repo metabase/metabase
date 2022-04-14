@@ -305,9 +305,11 @@
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr args body options]}]
   `(defn ~fn-name ~docstr ~args
-     (if (has-feature? ~(:feature options))
+     (if (or (not ~(:feature options))
+             (has-feature? ~(:feature options)))
        (do ~@body)
-       ~(let [{:keys [fallback feature]} options]
+       ~(let [{:keys [fallback feature]} options
+              ee-ns                      (ns-name *ns*)]
           (cond
             (= fallback :error)
             `(throw (ex-info (trs "The {0} function requires a premium token with a valid {1} token"
@@ -315,12 +317,13 @@
                                   ~(name (:feature options)))
                              {:status-code 402}))
 
-            (seq? fallback)
+            (or (symbol? fallback) (seq? fallback))
             `(apply ~fallback ~args)
 
-            ;; Default and :oss
-            :default
-            `(apply (get @ee-registry [(ns-name *ns*) (symbol ~(str fn-name))])
+            ;; :oss and default case
+            :else
+            `(apply (get @ee-registry [(symbol ~(str ee-ns))
+                                       (symbol ~(str fn-name))])
                     ~args))))))
 
 (defmacro defenterprise
@@ -352,6 +355,9 @@
   {:pre [(symbol? fn-name)]}
   (let [defenterprise-args (-> (parse-defenterprise-args defenterprise-args)
                                (assoc :fn-name fn-name))]
+    (when-not (:docstr defenterprise-args)
+      (log/warn (u/format-color 'red "Warning: enterprise function %s/%s does not have a docstring. Go add one."
+                  (ns-name *ns*) fn-name)))
     (if (in-ee?)
       `(defenterprise-ee ~defenterprise-args)
       `(defenterprise-oss ~defenterprise-args))))

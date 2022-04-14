@@ -4,10 +4,11 @@
             [clojure.test :refer :all]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.config :as config]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -73,3 +74,75 @@
     ;; for bug reports to come in
     (is (partial= {:valid false, :status "Token does not exist."}
                   (#'premium-features/fetch-token-status* random-fake-token)))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                          Defenterprise Macro Tests                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defenterprise greeting
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username]
+  (str "Hi " (name username) ", you're an OSS customer!"))
+
+(defenterprise special-greeting
+  "Returns a non-special greeting for OSS users, and EE users who don't have the :special-greeting feature token."
+  metabase-enterprise.util-test
+  [username]
+  (str "Hi " (name username) ", you're not extra special :("))
+
+(defenterprise special-greeting-or-error
+  "Returns a non-special greeting for OSS users."
+  metabase-enterprise.util-test
+  [username]
+  (str "Hi " (name username) ", you're not extra special :("))
+
+(defenterprise special-greeting-or-custom
+  "Returns a non-special greeting for OSS users."
+  metabase-enterprise.util-test
+  [username]
+  (str "Hi " (name username) ", you're not extra special :("))
+
+(def ^:private missing-feature-error-msg
+  #"The special-greeting-or-error function requires a premium token with a valid special-greeting token")
+
+(deftest defenterprise-oss-test
+  (when-not config/ee-available?
+    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
+      (is (= "Hi rasta, you're an OSS customer!"
+             (greeting :rasta)))))
+
+  (when config/ee-available?
+    (testing "When EE code is available"
+      (testing "a call to a defenterprise function calls the EE version"
+        (is (= "Hi rasta, you're an EE customer!"
+               (greeting :rasta))))
+
+      (testing "if a token is required, it will check for it, and fall back to the OSS version by default"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting :rasta))))
+
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're not extra special :("
+                 (special-greeting :rasta)))))
+
+      (testing "when :fallback = :error, a generic exception is thrown when the required token is not present"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting-or-error :rasta))))
+
+        (with-premium-features #{}
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                missing-feature-error-msg
+                                (special-greeting-or-error :rasta)))))
+
+      (testing "when :fallback is a function, it is run when the required token is not present"
+        (with-premium-features #{:special-greeting}
+          (is (= "Hi rasta, you're an extra special EE customer!"
+                 (special-greeting-or-custom :rasta))))
+
+        (with-premium-features #{}
+          (is (= "Hi rasta, you're an EE customer but not extra special."
+                 (special-greeting-or-custom :rasta))))))))
