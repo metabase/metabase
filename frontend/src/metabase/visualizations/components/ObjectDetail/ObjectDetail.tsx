@@ -15,10 +15,6 @@ import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
 
-import { getObjectName, getIdValue } from "./utils";
-import { DetailsTable } from "./ObjectDetailsTable";
-import { Relationships } from "./ObjectRelationships";
-
 import Tables from "metabase/entities/tables";
 import {
   loadObjectDetailFKReferences,
@@ -37,6 +33,10 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+
+import { getObjectName, getIdValue } from "./utils";
+import { DetailsTable } from "./ObjectDetailsTable";
+import { Relationships } from "./ObjectRelationships";
 
 const mapStateToProps = (state: unknown) => ({
   question: getQuestion(state),
