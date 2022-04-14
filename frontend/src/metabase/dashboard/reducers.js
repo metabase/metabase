@@ -341,16 +341,14 @@ const loadingDashCards = handleActions(
         return {
           ...state,
           loadingIds,
-          ...(loadingIds.length === 0
-            ? { startTime: null, isLoadingComplete: true }
-            : {}),
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
         };
       },
     },
     [RESET]: {
       next: state => ({
         ...state,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       }),
     },
   },
@@ -358,7 +356,7 @@ const loadingDashCards = handleActions(
     dashcardIds: [],
     loadingIds: [],
     startTime: null,
-    isLoadingComplete: false,
+    loadingStatus: "idle",
   },
 );
 
