@@ -101,10 +101,10 @@
                          (premium-features/enable-advanced-permissions?)
                          api/*is-group-manager?*)
                 [:in :id {:select [:group_id]
-                          :from [:permissions_group_membership]
-                          :where [:and
-                                  [:= :user_id api/*current-user-id*]
-                                  [:= :is_group_manager true]]}])]
+                          :from   [:permissions_group_membership]
+                          :where  [:and
+                                   [:= :user_id api/*current-user-id*]
+                                   [:= :is_group_manager true]]}])]
     (-> (ordered-groups offset-paging/*limit* offset-paging/*offset* query)
         (hydrate :member_count))))
 
@@ -168,7 +168,7 @@
 (defn- check-advanced-permissions-enabled
   []
   (api/check (premium-features/enable-advanced-permissions?)
-             [402 "Group Manager is only enabled if you have a premium token with the advanced permissions feature."]))
+             [402 (tru "Group Manager is only enabled if you have a premium token with the advanced permissions feature.")]))
 
 (api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
@@ -183,7 +183,7 @@
       (check-advanced-permissions-enabled)
       (api/check
        (db/exists? User :id user_id :is_superuser false)
-       [400 "Admin can't be a group manager."]))
+       [400 (tru "Admin can't be a group manager.")]))
     (db/insert! PermissionsGroupMembership
                 :group_id         group_id
                 :user_id          user_id
@@ -207,7 +207,7 @@
     (validation/check-group-manager (:group_id old))
     (api/check
        (db/exists? User :id (:user_id old) :is_superuser false)
-       [400 "Admin can't be a group manager."])
+       [400 (tru "Admin can't be a group manager.")])
     (db/update! PermissionsGroupMembership (:id old)
                 :is_group_manager is_group_manager)
     (db/select-one PermissionsGroupMembership :id (:id old))))
