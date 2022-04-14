@@ -2,13 +2,26 @@
 
 {% include plans-blockquote.html feature="General permissions" %}
 
+These settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
+
 - [General settings access](#general-settings-access)
 - [Monitoring access](#monitoring-access)
 - [Subscriptions and alerts](#subscriptions-and-alerts)
 
 ## General settings access
 
-General settings access defines which groups can set permissions on all of the settings under General settings.
+General settings access defines which groups can set permissions on all of the settings under General settings. These settings include:
+
+- [General settings](08-configuration-settings.md)
+- [Email](02-setting-up-email.md)
+- [Slack](09-setting-up-slack.md)
+- [Authentication](10-single-sign-on.md)
+- [Maps](20-custom-maps.md)
+- [Localization](localization.md)
+- [Public sharing](12-public-links.md)
+- [Embedding in other applications](13-embedding.md)
+- [Caching](14-caching.md)
+- [Whitelabel](15-whitelabeling.md)
 
 ## Monitoring access
 
@@ -24,3 +37,5 @@ This setting determines who can set up:
 
 - [Dashboard subscriptions](../users-guide/dashboard-subscriptions.md)
 - [Alerts](../users-guide/15-alerts.md)
+
+People will need to be in groups with either view or edit access to the collection that contains the dashboard or question in order to set up alerts. See [Collection permissions](06-collections.md).
