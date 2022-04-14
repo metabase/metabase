@@ -12,6 +12,7 @@ import Dimension from "../../Dimension";
 import {
   generateTimeFilterValuesDescriptions,
   getRelativeDatetimeField,
+  isStartingFrom,
 } from "metabase/lib/query_time";
 import {
   isStandard,
@@ -62,7 +63,8 @@ export default class Filter extends MBQLClause {
       const dimension = this.dimension();
       const operator = this.operator();
       const dimensionName = dimension && dimension.displayName();
-      const operatorName = operator && operator.moreVerboseName;
+      const operatorName =
+        operator && !isStartingFrom(this) && operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {

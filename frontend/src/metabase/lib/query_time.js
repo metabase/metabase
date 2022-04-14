@@ -118,6 +118,16 @@ export function generateTimeFilterValuesDescriptions(filter) {
   if (operator === "time-interval") {
     const [n, unit] = values;
     return generateTimeIntervalDescription(n, unit);
+  } else if (isStartingFrom(filter)) {
+    const [interval, unit] = getRelativeDatetimeInterval(filter);
+    const [prefix] = generateTimeIntervalDescription(interval, unit);
+    const startingFrom = getStartingFrom(filter);
+    if (!startingFrom) {
+      return [prefix];
+    }
+    const [n, bucketing] = startingFrom;
+    const suffix = formatStartingFrom(bucketing, -n);
+    return [t`${prefix} starting ${n} ${suffix}`];
   } else {
     return values.map(value => generateTimeValueDescription(value, bucketing));
   }

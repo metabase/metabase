@@ -34,7 +34,7 @@ const getIntervalString = (filter: Filter) => {
   const formatString =
     start?.year() === end?.year() && start?.year() === moment().year()
       ? "MMM D"
-      : "MMM D, YY";
+      : "MMM D, YYYY";
   return start.format(formatString) + " - " + end.format(formatString);
 };
 
