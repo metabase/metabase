@@ -4,7 +4,8 @@
 (metabase.public-settings.premium-features/defenterprise my-sum3
   "This is my docstring"
   :feature :embedding
+  :fallback (fn [x y] "fallback!")
   [x y]
   (+ x 100))
 
-(my-sum3 1 2)
+(my-sum3 100 123)

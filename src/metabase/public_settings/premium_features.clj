@@ -277,30 +277,23 @@
      :args    args
      :body    body}))
 
-(def ^:private ee-registry
+(def ee-registry
   "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as their OSS
   equivalents. These fns are called when the EE function must fallback to the OSS behavior due to absence of a feature
   flag."
   (atom {}))
 
-(def ^:private oss-registry
-  "A map from OSS functions to their EE equivalents. Keys and values are tuples of [namespace function] in which
-  both components are symbols."
-  (atom {}))
-
-(defn- register-mappings!
-  "Adds mappings from OSS->EE and EE->OSS to the `oss-registry` and `ee-registry`, respectively."
-  [fn-name ee-ns]
-  (let [oss-parts [(ns-name *ns*) fn-name]
-        ee-parts  [ee-ns fn-name]
-        oss-fn    (fn [args] (apply (apply ns-resolve oss-parts) args))]
-    (swap! oss-registry assoc oss-parts ee-parts)
+(defn- register-mapping!
+  "Adds mapping from EE->OSS fn to the `ee-registry`."
+  [fn-name ee-ns args body]
+  (let [ee-parts  [ee-ns fn-name]
+        oss-fn    (eval `(fn ~args ~@body))]
     (swap! ee-registry assoc ee-parts oss-fn)))
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
   [{:keys [fn-name ee-ns docstr args body]}]
-  (register-mappings! fn-name ee-ns)
+  (register-mapping! fn-name ee-ns args body)
   (let [ee-fn (do
                (u/ignore-exceptions (classloader/require ee-ns))
                (ns-resolve ee-ns fn-name))]
@@ -314,9 +307,22 @@
   [{:keys [fn-name docstr args body options]}]
   `(defn ~fn-name ~docstr ~args
      (if (has-feature? ~(:feature options))
-       (do
-         ~@body))))
-  ;     ~@body)))
+       (do ~@body)
+       ~(let [{:keys [fallback feature]} options]
+          (cond
+            (= fallback :error)
+            `(throw (ex-info (trs "The {0} function requires a premium token with a valid {1} token"
+                                  ~(name fn-name)
+                                  ~(name (:feature options)))
+                             {:status-code 402}))
+
+            (seq? fallback)
+            `(apply ~fallback ~args)
+
+            ;; Default and :oss
+            :default
+            `(apply (get @ee-registry [(ns-name *ns*) (symbol ~(str fn-name))])
+                    ~args))))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE) and Enterprise
@@ -339,9 +345,10 @@
 
   ###### `:fallback`
 
-  A keyword representing the fallback mechanism which should be used if the instance does not have the premium feature
-  defined by the :feature option. Valid options are `:error`, which causes an exception to be thrown, or `:oss`, which
-  causes the CE implementation of the function to be called. (Default: `:error`)"
+  A keyword or function representing the fallback mechanism which should be used if the instance does not have the
+  premium feature defined by the :feature option. If a function is provided, it will be called with the same args
+  as the EE function. Valid keyword options are `:error`, which causes an exception to be thrown, or `:oss`, which
+  causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
   (let [defenterprise-args (-> (parse-defenterprise-args defenterprise-args)
@@ -350,11 +357,8 @@
       `(defenterprise-ee ~defenterprise-args)
       `(defenterprise-oss ~defenterprise-args))))
 
-(comment
-  (defenterprise my-sum3
-    "This is my docstring"
-    metabase-enterprise.core
-    [x y]
-    (+ x y))
-
-  (my-sum3 3 2))
+(defenterprise my-sum3
+  "This is my docstring"
+  metabase-enterprise.core
+  [x y]
+  "Hi from OSS")
