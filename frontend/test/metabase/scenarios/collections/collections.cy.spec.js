@@ -15,59 +15,11 @@ import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
 
-// Z because the api lists them alphabetically by name, so it makes it easier to check
-const [collection, sub_collection] = [
-  {
-    name: "Z Collection",
-    id: null, // TBD from a response body
-  },
-  {
-    name: "ZZ Sub-Collection",
-    id: null, // TBD from a response body
-  },
-];
-
-describe("scenarios > collection_defaults", () => {
+describe("scenarios > collection defaults", () => {
   describe("for admins", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();
-    });
-
-    describe("new collections", () => {
-      beforeEach(() => {
-        cy.log("Create new collection");
-        cy.request("POST", "/api/collection", {
-          name: collection.name,
-          color: "#ff9a9a",
-        }).then(({ body }) => {
-          collection.id = body.id;
-        });
-      });
-
-      describe("a new sub-collection", () => {
-        beforeEach(() => {
-          cy.log(
-            "Create a sub collection within previously created collection",
-          );
-
-          cy.request("POST", "/api/collection", {
-            name: sub_collection.name,
-            color: "#ff9a9a",
-            parent_id: collection.id,
-          }).then(({ body }) => {
-            sub_collection.id = body.id;
-          });
-        });
-
-        it("should be nested under parent on a parent's URL in a sidebar", () => {
-          cy.visit("/collection/root");
-          cy.findByText(sub_collection.name).should("not.exist");
-
-          cy.visit(`/collection/${collection.id}`);
-          cy.findByText(sub_collection.name);
-        });
-      });
     });
 
     describe("sidebar behavior", () => {
