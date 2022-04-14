@@ -33,6 +33,15 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
+  getObjectDetailData = series => {
+    return [
+      {
+        ...series[0],
+        card: { ...series[0].card, display: "object" },
+      },
+    ];
+  };
+
   render() {
     const {
       question,
@@ -94,12 +103,6 @@ export default class VisualizationResult extends Component {
         ...ALLOWED_VISUALIZATION_PROPS,
       );
 
-      // FIXME dev hack
-      const transformedRawSeries = rawSeries.map(rs => ({
-        ...rs,
-        card: { ...rs.card, display: "object" },
-      }));
-
       return (
         <>
           <Visualization
@@ -128,27 +131,8 @@ export default class VisualizationResult extends Component {
           />
           {this.props.isObjectDetail && (
             <Visualization
-              className={className}
-              rawSeries={transformedRawSeries}
-              onChangeCardAndRun={navigateToNewCardInsideQB}
-              isEditing={true}
-              isQueryBuilder={true}
-              queryBuilderMode={queryBuilderMode}
-              showTitle={false}
-              metadata={question.metadata()}
-              timelineEvents={timelineEvents}
-              selectedTimelineEventIds={selectedTimelineEventIds}
-              handleVisualizationClick={this.props.handleVisualizationClick}
-              onOpenTimelines={this.props.onOpenTimelines}
-              onSelectTimelineEvents={this.props.selectTimelineEvents}
-              onDeselectTimelineEvents={this.props.deselectTimelineEvents}
-              onOpenChartSettings={this.props.onOpenChartSettings}
-              onUpdateWarnings={this.props.onUpdateWarnings}
-              onUpdateVisualizationSettings={
-                this.props.onUpdateVisualizationSettings
-              }
-              query={this.props.query}
-              {...vizSpecificProps}
+              isObjectDetail={true}
+              rawSeries={this.getObjectDetailData(rawSeries)}
             />
           )}
         </>
