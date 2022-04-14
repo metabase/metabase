@@ -121,21 +121,16 @@ const DashboardApp = props => {
   useOnUnmount(props.reset);
 
   useEffect(() => {
-    if (!isRunning) {
+    if (isLoadingComplete) {
       setIsShowingToaster(false);
+      if (Notification.permission === "granted" && document.hidden) {
+        showNotification(
+          t`All Set! ${dashboard?.name} is ready.`,
+          t`All questions loaded`,
+        );
+      }
     }
-    if (
-      !isRunning &&
-      isLoadingComplete &&
-      Notification.permission === "granted" &&
-      document.hidden
-    ) {
-      showNotification(
-        t`All Set! ${dashboard.name} is ready.`,
-        t`All questions loaded`,
-      );
-    }
-  }, [isRunning, isLoadingComplete, showNotification, dashboard?.name]);
+  }, [isLoadingComplete, showNotification, dashboard?.name]);
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();

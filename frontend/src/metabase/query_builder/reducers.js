@@ -94,6 +94,8 @@ const DEFAULT_LOADING_CONTROLS = {
   timeoutId: "",
 };
 
+const DEFAULT_QUERY_STATUS = "idle";
+
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
@@ -200,7 +202,6 @@ export const uiControls = handleActions(
     [RUN_QUERY]: state => ({
       ...state,
       isRunning: true,
-      isQueryComplete: false,
     }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
@@ -209,7 +210,6 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({
         ...state,
         isRunning: false,
-        isQueryComplete: true,
       }),
     },
     [QUERY_ERRORED]: {
@@ -331,6 +331,15 @@ export const loadingControls = handleActions(
     }),
   },
   DEFAULT_LOADING_CONTROLS,
+);
+
+export const queryStatus = handleActions(
+  {
+    [RUN_QUERY]: state => "running",
+    [QUERY_COMPLETED]: state => "complete",
+    [CANCEL_QUERY]: state => "idle",
+  },
+  DEFAULT_QUERY_STATUS,
 );
 
 export const zoomedRowObjectId = handleActions(

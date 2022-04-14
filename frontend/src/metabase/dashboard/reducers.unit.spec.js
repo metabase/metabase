@@ -26,7 +26,7 @@ describe("dashboard reducers", () => {
         dashcardIds: [],
         loadingIds: [],
         startTime: null,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       },
       parameterValues: {},
       parameterValuesSearchCache: {},

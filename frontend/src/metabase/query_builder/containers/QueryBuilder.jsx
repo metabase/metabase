@@ -86,6 +86,7 @@ import {
   getDocumentTitle,
   getPageFavicon,
   getIsTimeseries,
+  getIsLoadingComplete,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -186,6 +187,7 @@ const mapStateToProps = (state, props) => {
     snippetCollectionId: getSnippetCollectionId(state),
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
+    isLoadingComplete: getIsLoadingComplete(state),
   };
 };
 
@@ -222,6 +224,7 @@ function QueryBuilder(props) {
     allLoaded,
     showTimelinesForCollection,
     card,
+    isLoadingComplete,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -365,9 +368,9 @@ function QueryBuilder(props) {
     }
   });
 
-  const { isRunning, isQueryComplete } = uiControls;
-
   const [isShowingToaster, setIsShowingToaster] = useState(false);
+
+  const { isRunning } = uiControls;
 
   const onTimeout = useCallback(() => {
     if (Notification.permission === "default") {
@@ -383,21 +386,17 @@ function QueryBuilder(props) {
   const [requestPermission, showNotification] = useWebNotification();
 
   useEffect(() => {
-    if (!isRunning) {
+    if (isLoadingComplete) {
       setIsShowingToaster(false);
+
+      if (Notification.permission === "granted" && document.hidden) {
+        showNotification(
+          t`All Set! Your question is ready.`,
+          t`${card.name} is loaded.`,
+        );
+      }
     }
-    if (
-      !isRunning &&
-      isQueryComplete &&
-      Notification.permission === "granted" &&
-      document.hidden
-    ) {
-      showNotification(
-        t`All Set! Your question is ready.`,
-        t`${card.name} is loaded.`,
-      );
-    }
-  }, [isRunning, isQueryComplete, showNotification, card?.name]);
+  }, [isLoadingComplete, showNotification, card?.name]);
 
   const onConfirmToast = useCallback(async () => {
     await requestPermission();
