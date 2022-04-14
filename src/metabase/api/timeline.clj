@@ -1,7 +1,6 @@
 (ns metabase.api.timeline
   "/api/timeline endpoints."
   (:require [compojure.core :refer [DELETE GET POST PUT]]
-            [honeysql.core :as hsql]
             [metabase.api.common :as api]
             [metabase.models.collection :as collection]
             [metabase.models.timeline :as timeline :refer [Timeline]]
