@@ -73,35 +73,29 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    describe("deeply nested collection navigation", () => {
-      it("should correctly display deep nested collections", () => {
-        cy.request("GET", "/api/collection").then(xhr => {
-          // We need its ID to continue nesting below it
-          const { id: THIRD_COLLECTION_ID } = xhr.body.find(
-            collection => collection.slug === "third_collection",
-          );
+    it("should correctly display deep nested collections with long names", () => {
+      getCollectionIdFromSlug("third_collection", THIRD_COLLECTION_ID => {
+        cy.log("Create two more nested collections");
 
-          cy.log("Create two more nested collections");
-          [
-            "Fourth collection",
-            "Fifth collection with a very long name",
-          ].forEach((collection, index) => {
+        ["Fourth collection", "Fifth collection with a very long name"].forEach(
+          (collection, index) => {
             cy.request("POST", "/api/collection", {
               name: collection,
               parent_id: THIRD_COLLECTION_ID + index,
               color: "#509ee3",
             });
-          });
-        });
-        cy.visit("/collection/root");
-        // 1. Expand out via the chevrons so that all collections are showing
-        displaySidebarChildOf("First collection");
-        displaySidebarChildOf("Second collection");
-        displaySidebarChildOf("Third collection");
-        displaySidebarChildOf("Fourth collection");
-        // 2. Ensure we can see the entire "Fifth level with a long name" collection text
-        cy.findByText("Fifth collection with a very long name");
+          },
+        );
+
+        visitCollection(THIRD_COLLECTION_ID);
       });
+
+      // 1. Expand so that deeply nested collection is showing
+      displaySidebarChildOf("Fourth collection");
+
+      // 2. Ensure we show the helpful tooltip with the full (long) collection name
+      cy.findByText("Fifth collection with a very long name").realHover();
+      popover().contains("Fifth collection with a very long name");
     });
   });
 
