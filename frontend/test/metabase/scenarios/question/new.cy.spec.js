@@ -253,7 +253,7 @@ describe("scenarios > question > new", () => {
       cy.get(".TableInteractive-cellWrapper--firstColumn") // ID (first in the default order for Sample Database)
         .eq(1) // first table body cell
         .should("contain", 1)
-        .click({ force: true });
+        .click();
 
       cy.get(".ObjectDetail");
     });
@@ -289,7 +289,7 @@ describe("scenarios > question > new", () => {
 
       cy.findByTestId("question-table-badges").trigger("mouseenter");
 
-      cy.findByText("10 columns");
+      cy.findByText("9 columns");
     });
 
     it("should allow using `Custom Expression` in orders metrics (metabase#12899)", () => {

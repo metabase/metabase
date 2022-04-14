@@ -61,10 +61,10 @@ describe("issue 19494", () => {
     saveDashboard();
 
     checkAppliedFilter("Card 1 Filter", "Doohickey");
-    cy.findByText("122.77");
+    cy.findByText("148.23");
 
     checkAppliedFilter("Card 2 Filter", "Gizmo");
-    cy.findByText("123.99");
+    cy.findByText("110.93");
   });
 });
 

@@ -27,7 +27,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Total: 50 bins");
 
       cy.get(".bar");
-      cy.findByText("90");
+      cy.findByText("70");
     });
 
     it("should work for time series", () => {
@@ -72,7 +72,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Total: 50 bins");
 
       cy.get(".bar");
-      cy.findByText("90");
+      cy.findByText("70");
     });
 
     it("should work for time series", () => {
