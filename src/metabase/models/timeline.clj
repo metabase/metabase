@@ -47,32 +47,34 @@
   [timeline-ids {:events/keys [all? start end]}]
   (let [timeline-icon {:select [[(hsql/call :coalesce :icon DefaultIcon) :tl_icon]
                                 [:id :tl_id]]
-                       :from [Timeline]}
-        query {:select [[(hsql/call :coalesce :icon :tl_icon) :icon] :*]
-               :from [TimelineEvent]
-               :where [:and
-                       ;; in our collections
-                        [:in :timeline_id timeline-ids]
-                        (when-not all?
-                          [:= :archived false])
-                        (when (or start end)
-                          [:or
-                           ;; absolute time in bounds
-                           [:and
-                            [:= :time_matters true]
-                            ;; less than or equal?
-                            (when start
-                              [:<= start :timestamp])
-                            (when end
-                              [:<= :timestamp end])]
-                           ;; non-specic time in bounds
-                           [:and
-                            [:= :time_matters false]
-                            (when start
-                              [:<= (hx/->date start) (hx/->date :timestamp)])
-                            (when end
-                              [:<= (hx/->date :timestamp) (hx/->date end)])]])]
-                :left-join [[timeline-icon :tl] [:= :timeline_id :tl_id]]}]
+                       :from   [Timeline]}
+        query         {:select    [[(hsql/call :coalesce :icon :tl_icon) :icon]
+                                   :description :archived :timezone :time_matters :name
+                                   :timeline_id :creator_id :updated_at :id :timestamp :created_at]
+                       :from      [TimelineEvent]
+                       :where     [:and
+                               ;; in our collections
+                               [:in :timeline_id timeline-ids]
+                               (when-not all?
+                                 [:= :archived false])
+                               (when (or start end)
+                                 [:or
+                                  ;; absolute time in bounds
+                                  [:and
+                                   [:= :time_matters true]
+                                   ;; less than or equal?
+                                   (when start
+                                     [:<= start :timestamp])
+                                   (when end
+                                     [:<= :timestamp end])]
+                                  ;; non-specic time in bounds
+                                  [:and
+                                   [:= :time_matters false]
+                                   (when start
+                                     [:<= (hx/->date start) (hx/->date :timestamp)])
+                                   (when end
+                                     [:<= (hx/->date :timestamp) (hx/->date end)])]])]
+                       :left-join [[timeline-icon :tl] [:= :timeline_id :tl_id]]}]
     (hydrate (map #(dissoc % :icon_2 :tl_id :tl_icon) (db/query query)) :creator)))
 
 (defn include-events
