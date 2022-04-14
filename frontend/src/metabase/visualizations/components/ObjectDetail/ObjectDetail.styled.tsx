@@ -25,7 +25,7 @@ export const ObjectDetailBodyWrapper = styled.div`
     display: flex;
     max-height: auto;
   }
-  max-height: 90vh;
+  max-height: calc(100vh - 6rem);
 `;
 
 export const ObjectDetailsTable = styled.div`
