@@ -1,3 +1,4 @@
+import { ForeignKey } from "../api/foreignKey";
 import { Database } from "./database";
 
 export interface Table {
@@ -6,5 +7,6 @@ export interface Table {
   db?: Database;
   name: string;
   schema: string;
+  fks?: ForeignKey[];
   schema_name?: string;
 }
