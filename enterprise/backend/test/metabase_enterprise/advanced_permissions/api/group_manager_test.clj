@@ -68,7 +68,7 @@
                   (mt/user-http-request user :post status "permissions/membership"
                                         {:group_id         (:id group-info)
                                          :user_id          (:id user-info)
-                                         :is_group_manager (str is-group-manager)}))))
+                                         :is_group_manager is-group-manager}))))
 
             (update-membership [user status group-info is-group-manager]
               (testing (format ", update membership with %s user" (mt/user-descriptor user))
@@ -76,7 +76,7 @@
                                 PermissionsGroupMembership [{:keys [id]} {:user_id  (:id user-info)
                                                                           :group_id (:id group-info)}]]
                   (mt/user-http-request user :put status (format "permissions/membership/%d" id)
-                                        {:is_group_manager (str is-group-manager)}))))
+                                        {:is_group_manager is-group-manager}))))
 
             (delete-membership [user status group-info]
               (testing (format ", delete membership with %s user" (mt/user-descriptor user))
@@ -160,7 +160,7 @@
                          (mt/user-http-request user :post 400 "permissions/membership"
                                                {:group_id         (:id group)
                                                 :user_id          (:id new-user)
-                                                :is_group_manager "true"})))))
+                                                :is_group_manager true})))))
 
                 (testing "Admin can could view all groups"
                   (is (= (db/select-field :id PermissionsGroup)

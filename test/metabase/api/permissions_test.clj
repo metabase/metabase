@@ -186,9 +186,8 @@
                     PermissionsGroup [group]]
       (testing "requires superuser"
         (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403 "permissions/membership" {:group_id         (:id group)
-                                                                                :user_id          (:id user)
-                                                                                :is_group_manager "false"}))))
+               (mt/user-http-request :rasta :post 403 "permissions/membership" {:group_id (:id group)
+                                                                                :user_id  (:id user)}))))
 
       (testing "Add membership successfully"
         (mt/user-http-request :crowberto :post 200 "permissions/membership"
@@ -203,7 +202,7 @@
                                                           :user_id  (:id user)}]]
       (testing "This API is for EE only"
         (is (= "Group Manager is only enabled if you have a premium token with the advanced permissions feature."
-               (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager "false"})))))))
+               (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager false})))))))
 
 (deftest delete-group-membership-test
   (testing "DELETE /api/permissions/membership/:id"

@@ -175,9 +175,9 @@
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
   {group_id         su/IntGreaterThanZero
    user_id          su/IntGreaterThanZero
-   is_group_manager (s/maybe su/BooleanString)}
-  (validation/check-manager-of-group group_id)
-  (let [is_group_manager (Boolean/parseBoolean is_group_manager)]
+   is_group_manager (s/maybe s/Bool)}
+  (let [is_group_manager (boolean is_group_manager)]
+    (validation/check-manager-of-group group_id)
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
       (check-advanced-permissions-enabled)
@@ -185,9 +185,9 @@
        (db/exists? User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
     (db/insert! PermissionsGroupMembership
-                :group_id         group_id
-                :user_id          user_id
-                :is_group_manager is_group_manager)
+                :group_id         #p group_id
+                :user_id          #p user_id
+                :is_group_manager #p is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
     (group/members {:id group_id})))
@@ -195,13 +195,12 @@
 (api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
-  {is_group_manager su/BooleanString}
+  {is_group_manager s/Bool}
   ;; currently this API is only used to update the `is_group_manager` flag and it's require advanced-permissions
   (check-advanced-permissions-enabled)
   ;; Make sure only Group Managers can call this
   (validation/check-group-manager)
-  (let [old              (db/select-one PermissionsGroupMembership :id id)
-        is_group_manager (Boolean/parseBoolean is_group_manager)]
+  (let [old (db/select-one PermissionsGroupMembership :id id)]
     (api/check-404 old)
     ;; only Group manager of this group could update
     (validation/check-manager-of-group (:group_id old))
