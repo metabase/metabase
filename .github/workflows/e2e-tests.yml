@@ -61,7 +61,6 @@ jobs:
         folder:
           - "downloads"
           - "moderation"
-          - "permissions"
     services:
       maildev:
         image: maildev/maildev:1.1.0
