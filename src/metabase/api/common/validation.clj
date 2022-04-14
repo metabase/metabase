@@ -34,24 +34,28 @@
        (api/check-superuser)))))
 
 (defn check-group-manager
-   "If `advanced-permissions` is enabled, check is `*current-user*` a group manager.
-   Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled.
+  "If `advanced-permissions` is enabled, check is `*current-user*` a manager of at least one group.
+   Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled."
+  ([]
+   (check-group-manager true))
 
-   By default it's check if current user is manager at least one group,
-   if `group-id` is not `nil`, it'll check whether current user is manager of that specific group."
-   ;; check is group manager of at least one group
-   ([]
-    (check-group-manager nil true))
+  ([require-superuser?]
+  (if (premium-features/enable-advanced-permissions?)
+    (api/check-403 (or api/*is-superuser?* api/*is-group-manager?*))
+    (when require-superuser?
+      (api/check-superuser)))))
 
-   ;; check is manager of one specific group
-   ([group-id]
-    (check-group-manager group-id true))
+(defn check-manager-of-group
+  "If `advanced-permissions` is enabled, check is `*current-user*` is manager of `group-or-id`.
+  Set `require-superuser?` to `false` to disable superuser checks if `advanced-permissions` is not enabled."
+  ([group-or-id]
+   (check-manager-of-group group-or-id true))
 
-   ([group-id require-superuser?]
-    (u/ignore-exceptions
-     (classloader/require 'metabase-enterprise.advanced-permissions.common))
-    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                    (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-group-manager?))]
-      (api/check-403 (or api/*is-superuser?* (f group-id)))
-      (when require-superuser?
-        (api/check-superuser)))))
+  ([group-or-id require-superuser?]
+   (u/ignore-exceptions
+    (classloader/require 'metabase-enterprise.advanced-permissions.common))
+   (if-let [f (and (premium-features/enable-advanced-permissions?)
+                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-is-manager-of-group?))]
+     (api/check-403 (or api/*is-superuser?* (f group-or-id)))
+     (when require-superuser?
+       (api/check-superuser)))))

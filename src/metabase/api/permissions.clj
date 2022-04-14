@@ -127,7 +127,7 @@
   "Update the name of a `PermissionsGroup`."
   [group-id :as {{:keys [name]} :body}]
   {name su/NonBlankString}
-  (validation/check-group-manager group-id)
+  (validation/check-manager-of-group group-id)
   (api/check-404 (db/exists? PermissionsGroup :id group-id))
   (db/update! PermissionsGroup group-id
     :name name)
@@ -137,7 +137,7 @@
 (api/defendpoint DELETE "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
   [group-id]
-  (validation/check-group-manager group-id)
+  (validation/check-manager-of-group group-id)
   (db/delete! PermissionsGroup :id group-id)
   api/generic-204-no-content)
 
@@ -176,14 +176,14 @@
   {group_id         su/IntGreaterThanZero
    user_id          su/IntGreaterThanZero
    is_group_manager (s/maybe su/BooleanString)}
-  (validation/check-group-manager group_id)
+  (validation/check-manager-of-group group_id)
   (let [is_group_manager (Boolean/parseBoolean is_group_manager)]
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
       (check-advanced-permissions-enabled)
       (api/check
        (db/exists? User :id user_id :is_superuser false)
-       [400 (tru "Admin can't be a group manager.")]))
+       [400 (tru "Admin cant be a group manager.")]))
     (db/insert! PermissionsGroupMembership
                 :group_id         group_id
                 :user_id          user_id
@@ -204,10 +204,10 @@
         is_group_manager (Boolean/parseBoolean is_group_manager)]
     (api/check-404 old)
     ;; only Group manager of this group could update
-    (validation/check-group-manager (:group_id old))
+    (validation/check-manager-of-group (:group_id old))
     (api/check
        (db/exists? User :id (:user_id old) :is_superuser false)
-       [400 (tru "Admin can't be a group manager.")])
+       [400 (tru "Admin cant be a group manager.")])
     (db/update! PermissionsGroupMembership (:id old)
                 :is_group_manager is_group_manager)
     (db/select-one PermissionsGroupMembership :id (:id old))))
@@ -217,7 +217,7 @@
   [id]
   (let [membership (db/select-one PermissionsGroupMembership :id id)]
     (api/check-404 membership)
-    (validation/check-group-manager (:group_id membership))
+    (validation/check-manager-of-group (:group_id membership))
     (db/delete! PermissionsGroupMembership :id id)
     api/generic-204-no-content))
 

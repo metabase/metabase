@@ -89,7 +89,7 @@
                             channel     (api-alert/email-channel the-pulse)
                             new-channel (assoc channel :recipients (conj (:recipients channel) (mt/fetch-user :lucky)))
                             new-pulse   (assoc the-pulse :channels [new-channel])]
-                        (testing "- add pulse's recipients"
+                        (testing (format "- add pulse's recipients with %s user" (mt/user-descriptor req-user))
                           (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse)))))
 
                   (remove-pulse-recipient [req-user status]
@@ -106,7 +106,7 @@
                               channel     (api-alert/email-channel the-pulse)
                               new-channel (update channel :recipients rest)
                               new-pulse   (assoc the-pulse :channels [new-channel])]
-                          (testing "- remove pulse's recipients"
+                          (testing (format "- remove pulse's recipients with %s user" (mt/user-descriptor req-user))
                             (mt/user-http-request req-user :put status (format "pulse/%d" (:id the-pulse)) new-pulse))))))]
             (testing "anyone could add/remove pulse's recipients if advanced-permissions is disabled"
               (premium-features-test/with-premium-features #{}
@@ -195,7 +195,7 @@
                                     Card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]]
-                      (testing "- add alert's recipient"
+                      (testing (format "- add alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (alert-test/default-alert-req card pc)))))
 
@@ -204,7 +204,7 @@
                                     Card                  [card]
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]]
-                      (testing " - archive alert"
+                      (testing (format "- archive alert with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (-> (alert-test/default-alert-req card pc)
                                                   (assoc :archive true)
@@ -216,7 +216,7 @@
                                     PulseCard             [_     (alert-test/pulse-card alert card)]
                                     PulseChannel          [pc    (alert-test/pulse-channel alert)]
                                     PulseChannelRecipient [_     (alert-test/recipient pc :rasta)]]
-                      (testing "- remove alert's recipient"
+                      (testing (format "- remove alert's recipient with %s user" (mt/user-descriptor req-user))
                         (mt/user-http-request req-user :put status (format "alert/%d" (:id alert))
                                               (assoc-in (alert-test/default-alert-req card pc) [:channels 0 :recipients] [])))))]
             (testing "only admin add/remove recipients and archive"
