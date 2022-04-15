@@ -953,7 +953,7 @@
       (cache/restore-cache!)
       (throw e))))
 
-(defn- obfuscate-value
+(defn obfuscate-value
   "Obfuscate the value of sensitive Setting. We'll still show the last 2 characters so admins can still check that the
   value is what's expected (e.g. the correct password).
 
