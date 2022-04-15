@@ -183,24 +183,19 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("sub-collection should be available in save and move modals (#14122)", () => {
+    it("sub-collection should be available in save and move modals (metabase#14122)", () => {
       const COLLECTION = "14122C";
-      // Create Parent collection within `Our analytics`
-      cy.request("POST", "/api/collection", {
+
+      // Create Parent collection within admin's personal collection
+      cy.createCollection({
         name: COLLECTION,
-        color: "#509EE3",
         parent_id: 1,
       });
-      cy.visit("/collection/root");
-      cy.findByRole("tree").as("sidebar");
 
-      displaySidebarChildOf("Your personal collection");
-      cy.findByText(COLLECTION);
-      cy.get("@sidebar")
-        .contains("Our analytics")
-        .click();
+      visitRootCollection();
 
       openEllipsisMenuFor("Orders");
+
       popover().within(() => {
         cy.findByText("Move").click();
       });
@@ -212,10 +207,8 @@ describe("scenarios > collection defaults", () => {
           .click();
 
         cy.findByText(COLLECTION).click();
-        cy.findByText("Move")
-          .closest(".Button")
-          .should("not.be.disabled")
-          .click();
+
+        cy.button("Move").should("not.be.disabled");
       });
     });
 
