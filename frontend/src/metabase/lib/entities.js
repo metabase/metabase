@@ -421,12 +421,12 @@ export function createEntity(def) {
   );
 
   const getList = createSelector(
-    [state => state, getEntityIds],
+    [getEntities, getEntityIds],
     // delegate to getObject
-    (state, entityIds) =>
+    (entities, entityIds) =>
       entityIds &&
       entityIds
-        .map(entityId => entity.selectors.getObject(state, { entityId }))
+        .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
         .filter(e => e != null), // deleted entities might remain in lists
   );
 
