@@ -289,10 +289,10 @@ describe("scenarios > dashboard > parameters", () => {
     cy.button("Save").click();
     cy.wait("@dashcardQuery");
 
-    // cy.log("Filter name should be 'unnamed' and the value cleared");
+    cy.log("Filter name should be 'unnamed' and the value cleared");
     filterWidget().contains(/unnamed/i);
 
-    // cy.log("URL should reset");
+    cy.log("URL should reset");
     cy.location("search").should("eq", "");
   });
 
