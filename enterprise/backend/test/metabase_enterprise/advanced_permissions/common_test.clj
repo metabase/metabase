@@ -12,6 +12,26 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
+(defn- do-with-all-user-data-perms
+  [graph f]
+  (let [all-users-group-id  (u/the-id (group/all-users))
+        current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
+    (def my-current-graph current-graph)
+    (premium-features-test/with-premium-features #{:advanced-permissions}
+      (memoize/memo-clear! @#'field/cached-perms-object-set)
+      (try
+        (mt/with-model-cleanup [Permissions]
+          (@#'perms/update-group-permissions! all-users-group-id graph)
+          (f))
+        (finally
+          (@#'perms/update-group-permissions! 1 my-current-graph))))))
+
+(defmacro ^:private with-all-users-data-perms
+  "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
+  permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
+  [graph & body]
+  `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
+
 (deftest current-user-test
   (testing "GET /api/user/current returns additional fields if advanced-permissions is enabled"
     (premium-features-test/with-premium-features #{:advanced-permissions}
@@ -37,20 +57,17 @@
                  (user-permissions :rasta))))
 
         (testing "can_access_data_model is true if a user has any data model perms"
-          (mt/with-model-cleanup [Permissions]
-            (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
-              (ee-perms/update-db-data-model-permissions! (u/the-id (group/all-users))
-                                                          (mt/id)
-                                                          {:schemas {"PUBLIC" {id-1 :all
-                                                                               id-2 :none
-                                                                               id-3 :none
-                                                                               id-4 :none}}}))
-            (is (partial= {:can_access_data_model   true}
-                          (user-permissions :rasta)))))
+          (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+            (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
+                                                 :data-model {:schemas {"PUBLIC" {id-1 :all
+                                                                                  id-2 :none
+                                                                                  id-3 :none
+                                                                                  id-4 :none}}}}}
+              (is (partial= {:can_access_data_model true}
+                            (user-permissions :rasta))))))
 
         (testing "can_access_db_details is true if a user has any details perms"
-          (mt/with-model-cleanup [Permissions]
-            (ee-perms/update-db-details-permissions! (u/the-id (group/all-users)) (mt/id) :yes)
+          (with-all-users-data-perms {(mt/id) {:details :yes}}
             (is (partial= {:can_access_db_details true}
                           (user-permissions :rasta)))))))))
 
@@ -58,21 +75,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Data model permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- do-with-all-user-data-perms
-  [graph f]
-  (let [all-users-group-id  (u/the-id (group/all-users))]
-    (premium-features-test/with-premium-features #{:advanced-permissions}
-      (mt/with-model-cleanup [Permissions]
-        (@#'perms/update-group-permissions! all-users-group-id graph)
-        (memoize/memo-clear! @#'field/cached-perms-object-set)
-        (f)))))
-
-(defmacro ^:private with-all-users-data-perms
-  "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
-  permissions feature flag, and clears the (5 second TTL) cache used for Field permissions, for convenience."
-  [graph & body]
-  `(do-with-all-user-data-perms ~graph (fn [] ~@body)))
 
 (deftest fetch-databases-exclude-uneditable-data-model-test
   (testing "GET /api/database?exclude_uneditable_data_model=true"
