@@ -281,18 +281,31 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
+(defn lol 
+  ([x] ["published" "published" "published" "published" "published" "published"])
+  ([x y] ["published" "published" "published" "published" "published" "published"]))
+
+(defmethod hformat/parameterize :dealio [_ value pname]
+  "$1")
+
 (defn- json-query [identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
+          names                (format "%s" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
         hformat/ToSql
         (to-sql [_]
+          ;;;; maybe bind the parametrization method to none here? and then see if we can inject?
+          ;;;; too many params! that's the problem! got repro!
+          (swap! hformat/*params* lol "nfc_path")
+          (swap! hformat/*param-names* lol "nfc_path")
           (hformat/to-params-default names "nfc_path")
-          (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
+          (println hformat/*params*)
+          (println hformat/*param-names*)
+          (format "(%s#>> string_to_array(:?1,',')::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
