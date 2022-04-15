@@ -39,7 +39,7 @@ function diffDatabasePermissions(
     databaseDiff.native = newNativePerm;
   }
   // check each table in this db
-  for (const table of database.tables) {
+  for (const table of database.getTables()) {
     const oldFieldsPerm = getFieldsPermission(
       oldPerms,
       groupId,

@@ -48,8 +48,8 @@ export const getDatabasesEditorBreadcrumbs = (
 
   const schema = database.schema(schemaName);
   const schemaItem = {
-    id: schema.name,
-    text: schema.name,
+    id: schema?.name,
+    text: schema?.name,
   };
   return [groupItem, databaseItem, schemaItem];
 };
@@ -72,14 +72,11 @@ export const getGroupsDataEditorBreadcrumbs = (
     url: getDatabaseFocusPermissionsUrl(getDatabaseEntityId(database)),
   };
 
-  if (
-    (schemaName == null && tableId == null) ||
-    database.schema(schemaName) == null
-  ) {
+  const schema = database.schema(schemaName);
+  if ((schemaName == null && tableId == null) || schema == null) {
     return [databaseItem];
   }
 
-  const schema = database.schema(schemaName);
   const schemaItem = {
     id: schema.id,
     text: schema.name,

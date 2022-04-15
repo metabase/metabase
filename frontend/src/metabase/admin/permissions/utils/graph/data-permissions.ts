@@ -353,7 +353,7 @@ export function updateTablesPermission(
   downgradeNative?: boolean,
 ) {
   const schema = database.schema(schemaName);
-  const tableIds = schema?.tables.map((t: Table) => t.id);
+  const tableIds = schema?.getTables().map((t: Table) => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
