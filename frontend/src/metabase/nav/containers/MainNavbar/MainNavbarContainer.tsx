@@ -81,11 +81,11 @@ function MainNavbarContainer({
   closeNavbar,
   ...props
 }: Props) {
-  const [orderedBookmarks, setOrderedBookmarks] = useState();
+  const [orderedBookmarks, setOrderedBookmarks] = useState([]);
 
   useEffect(() => {
-    if (orderedBookmarks && bookmarks.length !== orderedBookmarks.length) {
-      setOrderedBookmarks(bookmarks);
+    if (bookmarks.length !== orderedBookmarks.length) {
+      setOrderedBookmarks(bookmarks as any);
     }
   }, [orderedBookmarks, bookmarks]);
 
@@ -157,15 +157,14 @@ function MainNavbarContainer({
     newIndex: number;
     oldIndex: number;
   }) => {
-    const bookmarksToBeReordered = orderedBookmarks
-      ? [...orderedBookmarks]
-      : [...bookmarks];
+    const bookmarksToBeReordered =
+      orderedBookmarks.length > 0 ? [...orderedBookmarks] : [...bookmarks];
     const element = bookmarksToBeReordered[oldIndex];
 
     bookmarksToBeReordered.splice(oldIndex, 1);
     bookmarksToBeReordered.splice(newIndex, 0, element);
 
-    setOrderedBookmarks(bookmarksToBeReordered);
+    setOrderedBookmarks(bookmarksToBeReordered as any);
     Bookmarks.actions.reorder(bookmarksToBeReordered);
   };
 
@@ -174,7 +173,7 @@ function MainNavbarContainer({
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
-          bookmarks={orderedBookmarks || bookmarks}
+          bookmarks={orderedBookmarks.length > 0 ? orderedBookmarks : bookmarks}
           isOpen={isOpen}
           currentUser={currentUser}
           collections={collectionTree}

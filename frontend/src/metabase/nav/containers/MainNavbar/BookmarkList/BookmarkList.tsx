@@ -33,7 +33,13 @@ interface CollectionSidebarBookmarksProps {
   selectedItem?: SelectedEntityItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
-  reorderBookmarks: (bookmarks: BookmarksType) => void;
+  reorderBookmarks: ({
+    newIndex,
+    oldIndex,
+  }: {
+    newIndex: number;
+    oldIndex: number;
+  }) => void;
 }
 
 interface BookmarkItemProps {

@@ -47,7 +47,13 @@ type Props = {
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
   handleCloseNavbar: () => void;
-  reorderBookmarks: (bookmarks: BookmarksType) => void;
+  reorderBookmarks: ({
+    newIndex,
+    oldIndex,
+  }: {
+    newIndex: number;
+    oldIndex: number;
+  }) => void;
 };
 
 const BROWSE_URL = "/browse";
