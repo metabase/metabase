@@ -1,64 +1,114 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import Question from "../Question";
-import Base from "./Base";
 import { generateSchemaId } from "metabase/lib/schema";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import { StructuredQuery, NativeQuery } from "metabase-types/types/Query";
+import {
+  Database as IDatabase,
+  InitialSyncStatus,
+  DatabaseNativePermission,
+} from "metabase-types/api";
+
 import Table from "./Table";
 import Schema from "./Schema";
-import Metadata from "./Metadata";
-/**
- * @typedef { import("./metadata").SchemaName } SchemaName
- */
+import Metadata, { EMPTY_METADATA_INSTANCE } from "./Metadata";
 
-/**
- * Wrapper class for database metadata objects. Contains {@link Schema}s, {@link Table}s, {@link Metric}s, {@link Segment}s.
- *
- * Backed by types/Database data structure which matches the backend API contract
- */
-
-export default class Database extends Base {
-  id: number;
-  name: string;
-  description: string;
+export type HydratedDatabaseProperties = {
   tables: Table[];
   schemas: Schema[];
   metadata: Metadata;
+};
 
-  // TODO Atte Keinänen 6/11/17: List all fields here (currently only in types/Database)
+export default class Database {
+  id: number;
+  name: string;
+  engine: string;
+  is_sample: boolean;
+  is_full_sync: boolean;
+  is_on_demand: boolean;
+  auto_run_queries: boolean;
+  is_saved_questions?: boolean;
+  features: string[];
+  native_permissions: DatabaseNativePermission;
+  cache_ttl: number | null;
+  caveats: string | null;
+  description: string | null;
+  creator_id?: number;
+  created_at: string;
+  updated_at: string;
+  timezone?: string;
+  initial_sync_status: InitialSyncStatus;
+
+  tables: Table[] | null;
+  schemas: Schema[] | null;
+  metadata: Metadata;
+
+  _plainObject: IDatabase;
+
+  constructor(database: IDatabase) {
+    this.id = database.id;
+    this.name = database.name;
+    this.engine = database.engine;
+    this.features = database.features;
+    this.is_full_sync = database.is_full_sync;
+    this.is_sample = database.is_sample;
+    this.is_on_demand = database.is_on_demand;
+    this.native_permissions = database.native_permissions;
+    this.auto_run_queries = database.auto_run_queries;
+    this.cache_ttl = database.cache_ttl;
+    this.creator_id = database.creator_id;
+    this.initial_sync_status = database.initial_sync_status;
+    this.caveats = database.caveats;
+    this.description = database.description;
+    this.created_at = database.created_at;
+    this.updated_at = database.updated_at;
+    this.is_saved_questions = database.is_saved_questions;
+
+    // these properties are hydrated after instantiation in metabase/selectors/metadata
+    this.tables = null;
+    this.schemas = null;
+    this.metadata = EMPTY_METADATA_INSTANCE;
+
+    // Assign all properties to the instance from the `database` object in case
+    // there is old, un-typed code that relies on properties missing from IDatabase
+    Object.assign(this, database);
+
+    this._plainObject = database;
+  }
+
   displayName() {
     return this.name;
   }
 
-  // SCHEMAS
+  schema(schemaName: string | undefined | null): Schema | null {
+    if (!schemaName) {
+      return null;
+    }
 
-  /**
-   * @param {SchemaName} [schemaName]
-   */
-  schema(schemaName) {
     return this.metadata.schema(generateSchemaId(this.id, schemaName));
   }
 
   schemaNames() {
-    return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
+    return this.getSchemas()
+      .map(s => s.name)
+      .sort((a, b) => a.localeCompare(b));
   }
 
-  getSchemas() {
-    return this.schemas;
+  getSchemas(): Schema[] {
+    return this.schemas ?? [];
   }
 
   schemasCount() {
-    return this.schemas.length;
+    return this.getSchemas().length;
   }
 
-  getTables() {
-    return this.tables;
+  getTables(): Table[] {
+    return this.tables ?? [];
   }
 
   // TABLES
   @memoize
-  tablesLookup() {
-    return createLookupByProperty(this.tables, "id");
+  tablesLookup(): Record<Table["id"], Table> {
+    return createLookupByProperty(this.getTables(), "id");
   }
 
   // @deprecated: use tablesLookup
@@ -73,7 +123,7 @@ export default class Database extends Base {
    * @typedef {"join"} VirtualDatabaseFeature
    * @param {DatabaseFeature | VirtualDatabaseFeature} [feature]
    */
-  hasFeature(feature) {
+  hasFeature(feature: string | undefined | null) {
     if (!feature) {
       return true;
     }
@@ -101,28 +151,24 @@ export default class Database extends Base {
   }
 
   // QUESTIONS
-  newQuestion() {
-    return this.question()
+  newQuestion(): Question {
+    return this.question({})
       .setDefaultQuery()
       .setDefaultDisplay();
   }
 
-  question(
-    query = {
-      "source-table": null,
-    },
-  ) {
+  question(query: StructuredQuery = {}): Question {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
         database: this.id,
         type: "query",
-        query: query,
+        query,
       },
     });
   }
 
-  nativeQuestion(native = {}) {
+  nativeQuestion(native: Partial<NativeQuery> = {}): Question {
     return Question.create({
       metadata: this.metadata,
       dataset_query: {
@@ -137,42 +183,8 @@ export default class Database extends Base {
     });
   }
 
-  nativeQuery(native) {
-    return this.nativeQuestion(native).query();
-  }
-
   /** Returns a database containing only the saved questions from the same database, if any */
-  savedQuestionsDatabase() {
+  savedQuestionsDatabase(): Database | undefined {
     return this.metadata.databasesList().find(db => db.is_saved_questions);
-  }
-
-  /**
-   * @private
-   * @param {number} id
-   * @param {string} name
-   * @param {?string} description
-   * @param {Table[]} tables
-   * @param {Schema[]} schemas
-   * @param {Metadata} metadata
-   * @param {boolean} auto_run_queries
-   */
-
-  /* istanbul ignore next */
-  _constructor(
-    id,
-    name,
-    description,
-    tables,
-    schemas,
-    metadata,
-    auto_run_queries,
-  ) {
-    this.id = id;
-    this.name = name;
-    this.description = description;
-    this.tables = tables;
-    this.schemas = schemas;
-    this.metadata = metadata;
-    this.auto_run_queries = auto_run_queries;
   }
 }
