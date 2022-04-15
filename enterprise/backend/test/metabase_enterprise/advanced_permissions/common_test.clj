@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions :as ee-perms]
             [metabase.models :refer [Database Field Permissions Table]]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
