@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   restore,
   modal,
@@ -324,7 +323,7 @@ describe("scenarios > collection defaults", () => {
     it("collections list on the home page shouldn't depend on the name of the first 50 objects (metabase#16784)", () => {
       // Although there are already some objects in the default snapshot (3 questions, 1 dashboard, 3 collections),
       // let's create 50 more dashboards with the letter of alphabet `D` coming before the first letter of the existing collection `F`.
-      _.times(50, i => cy.createDashboard({ name: `Dashboard ${i}` }));
+      Cypress._.times(50, i => cy.createDashboard({ name: `Dashboard ${i}` }));
 
       cy.visit("/");
       // There is already a collection named "First collection" in the default snapshot
