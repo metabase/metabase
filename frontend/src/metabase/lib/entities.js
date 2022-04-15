@@ -208,6 +208,8 @@ export function createEntity(def) {
     return entity.actionDecorators[action] || (_ => _);
   }
 
+  // `objectActions` are for actions that accept an entity as their first argument,
+  // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   entity.objectActions = {
     fetch: compose(
       withAction(FETCH_ACTION),

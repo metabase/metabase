@@ -17,6 +17,7 @@ interface Props {
   icon: string | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
+  left?: React.ReactNode;
   right?: React.ReactNode;
   onClick?: () => void;
 }
@@ -33,6 +34,7 @@ function SidebarLink({
   url,
   isSelected = false,
   hasDefaultIconStyle,
+  left = null,
   right = null,
   ...props
 }: Props) {
@@ -53,8 +55,16 @@ function SidebarLink({
       depth={0}
       isSelected={isSelected}
       hasDefaultIconStyle={hasDefaultIconStyle}
+      onMouseDown={e => {
+        // https://www.redips.net/firefox/disable-image-dragging/
+
+        // Also seems to prevent other hickups when dragging items
+        // right after having dragged other items
+        e.preventDefault();
+      }}
       {...props}
     >
+      {React.isValidElement(left) && left}
       <FullWidthLink to={url}>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
