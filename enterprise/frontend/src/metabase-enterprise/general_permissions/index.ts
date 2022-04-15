@@ -15,7 +15,9 @@ if (hasPremiumFeature("advanced_permissions")) {
   NAV_PERMISSION_GUARD["settings"] = canAccessSettings;
 
   PLUGIN_GENERAL_PERMISSIONS.getRoutes = getRoutes;
-  PLUGIN_GENERAL_PERMISSIONS.tabs = [{ name: t`General`, value: `general` }];
+  PLUGIN_GENERAL_PERMISSIONS.tabs = [
+    { name: t`Application`, value: `general` },
+  ];
   PLUGIN_GENERAL_PERMISSIONS.selectors = {
     canManageSubscriptions,
   };

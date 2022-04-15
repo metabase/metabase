@@ -67,7 +67,7 @@ export const getGeneralPermissionEditor = createSelector(
       filterPlaceholder: t`Search for a group`,
       columns: [
         { name: t`Group name` },
-        { name: t`General settings access` },
+        { name: t`Settings access` },
         {
           name: `Monitoring access`,
           hint: t`This grants access to Tools, Audit, and Troubleshooting`,
