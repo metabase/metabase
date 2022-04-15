@@ -1,3 +1,4 @@
+import { createMockDatabase } from "metabase-types/api/mocks";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Schema from "metabase-lib/lib/metadata/Schema";
@@ -102,17 +103,39 @@ describe("copyObjects", () => {
 
 describe("instantiateDatabase", () => {
   it("should return an instance of Database", () => {
-    const instance = instantiateDatabase({ abc: 123 });
+    const instance = instantiateDatabase({ ...createMockDatabase(), abc: 123 });
     expect(instance).toBeInstanceOf(Database);
     expect(instance).toHaveProperty("abc", 123);
   });
 });
 
 describe("instantiateSchema", () => {
+  let databaseInstance;
+  let schemaInstance;
+  beforeEach(() => {
+    databaseInstance = new Database(createMockDatabase());
+    const metadata = new Metadata({
+      databases: {
+        [databaseInstance.id]: databaseInstance,
+      },
+    });
+    schemaInstance = instantiateSchema({
+      abc: 123,
+      database: databaseInstance.id,
+    });
+    schemaInstance.metadata = metadata;
+  });
+
   it("should return an instance of Schema", () => {
-    const instance = instantiateSchema({ abc: 123 });
-    expect(instance).toBeInstanceOf(Schema);
-    expect(instance).toHaveProperty("abc", 123);
+    expect(schemaInstance).toBeInstanceOf(Schema);
+  });
+
+  it("should preserve random props added to it", () => {
+    expect(schemaInstance).toHaveProperty("abc", 123);
+  });
+
+  it("should have accessible database instance", () => {
+    expect(schemaInstance.getDatabase()).toBe(databaseInstance);
   });
 });
 

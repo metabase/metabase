@@ -6,6 +6,8 @@ import Schema from "./Schema";
 import Metadata from "./Metadata";
 import Base from "./Base";
 import Dimension from "../Dimension";
+import { createMockSchemaInstance } from "../mocks";
+
 describe("Field", () => {
   describe("instantiation", () => {
     it("should create an instance of Schema", () => {
@@ -182,12 +184,16 @@ describe("Field", () => {
         ).toBe("field");
       });
       it("should add a combined schema + table display name to the start of the field name", () => {
+        const schema = createMockSchemaInstance({
+          id: "schema:123",
+          name: "schema",
+        });
+
         field.table = new Table({
           display_name: "table",
-          schema: new Schema({
-            name: "schema",
-          }),
+          schema,
         });
+
         expect(
           field.displayName({
             includeTable: true,
