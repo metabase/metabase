@@ -85,38 +85,38 @@
   "Returns a greeting for a user."
   metabase-enterprise.util-test
   [username]
-  (str "Hi " (name username) ", you're an OSS customer!"))
+  (format "Hi %s, you're an OSS customer!" (name username)))
 
 (defenterprise greeting-with-schema
   "Returns a greeting for a user."
   metabase-enterprise.util-test
   [username]
   {username s/Keyword}
-  (str "Hi " (name username) ", you're an OSS customer!"))
+  (format "Hi %s, you're an OSS customer!" (name username)))
 
 (defenterprise greeting-with-valid-token
   "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
   metabase-enterprise.util-test
   [username]
-  (str "Hi " (name username) ", you're not extra special :("))
+  (format "Hi %s, you're not extra special :(" (name username)))
 
 (defenterprise special-greeting
   "Returns a non-special greeting for OSS users, and EE users who don't have the :special-greeting feature token."
   metabase-enterprise.util-test
   [username]
-  (str "Hi " (name username) ", you're not extra special :("))
+  (format "Hi %s, you're not extra special :(" (name username)))
 
 (defenterprise special-greeting-or-error
   "Returns a non-special greeting for OSS users."
   metabase-enterprise.util-test
   [username]
-  (str "Hi " (name username) ", you're not extra special :("))
+  (format "Hi %s, you're not extra special :(" (name username)))
 
 (defenterprise special-greeting-or-custom
   "Returns a non-special greeting for OSS users."
   metabase-enterprise.util-test
   [username]
-  (str "Hi " (name username) ", you're not extra special :("))
+  (format "Hi %s, you're not extra special :(" (name username)))
 
 (def ^:private missing-feature-error-msg
   #"The special-greeting-or-error function requires a valid premium token with the special-greeting feature")

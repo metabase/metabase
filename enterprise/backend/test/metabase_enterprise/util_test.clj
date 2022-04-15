@@ -12,27 +12,27 @@
 (defenterprise greeting
   "Returns an special greeting for an enterprise user."
   [username]
-  (str "Hi " (name username) ", you're running the Enterprise Edition of Metabase!"))
+  (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
 
 (defenterprise greeting-with-schema
   "Returns an special greeting for an enterprise user."
   [username]
   {username s/Keyword}
-  (str "Hi " (name username) ", you're running the Enterprise Edition of Metabase!"))
+  (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
 
 (defenterprise greeting-with-valid-token
   "Returns an extra special greeting for a user if the instance has a valid premium features token. Else, returns the
   default (OSS) greeting."
   :feature :any
   [username]
-  (str "Hi " (name username) ", you're an EE customer with a valid token!"))
+  (format "Hi %s, you're an EE customer with a valid token!" (name username)))
 
 (defenterprise special-greeting
   "Returns an extra special greeting for a user if the instance has a :special-greeting feature token. Else,
   returns the default (OSS) greeting."
   :feature :special-greeting
   [username]
-  (str "Hi " (name username) ", you're an extra special EE customer!"))
+  (format "Hi %s, you're an extra special EE customer!" (name username)))
 
 (defenterprise special-greeting-or-error
   "Returns an extra special greeting for a user if the instance has a :special-greeting feature token. Else,
@@ -40,11 +40,11 @@
   :feature  :special-greeting
   :fallback :error
   [username]
-  (str "Hi " (name username) ", you're an extra special EE customer!"))
+  (format "Hi %s, you're an extra special EE customer!" (name username)))
 
 (defn- special-greeting-fallback
   [username]
-  (str "Hi " (name username) ", you're an EE customer but not extra special."))
+  (format "Hi %s, you're an EE customer but not extra special." (name username)))
 
 (defenterprise special-greeting-or-custom
   "Returns an extra special greeting for a user if the instance has a :special-greeting feature token. Else,
@@ -52,4 +52,4 @@
   :feature  :special-greeting
   :fallback special-greeting-fallback
   [username]
-  (str "Hi " (name username) ", you're an extra special EE customer!"))
+  (format "Hi %s, you're an extra special EE customer!" (name username)))
