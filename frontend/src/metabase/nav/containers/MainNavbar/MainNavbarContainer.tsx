@@ -84,7 +84,7 @@ function MainNavbarContainer({
   const [orderedBookmarks, setOrderedBookmarks] = useState([]);
 
   useEffect(() => {
-    if (bookmarks.length !== orderedBookmarks.length) {
+    if (bookmarks?.length !== orderedBookmarks?.length) {
       setOrderedBookmarks(bookmarks as any);
     }
   }, [orderedBookmarks, bookmarks]);
