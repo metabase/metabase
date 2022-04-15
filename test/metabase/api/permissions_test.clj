@@ -2,15 +2,15 @@
   "Tests for `/api/permissions` endpoints."
   (:require [clojure.test :refer :all]
             [metabase.api.permissions :as permissions-api]
-            [metabase.models.database :refer [Database]]
+            [metabase.models :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
-            [metabase.models.table :refer [Table]]
+            [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
 (comment permissions-api/keep-me)
@@ -23,6 +23,8 @@
 (defn- fetch-groups []
   (set (mt/user-http-request
         :crowberto :get 200 "permissions/group")))
+
+;;; +---------------------------------------------- permissions group apis -----------------------------------------------------------+
 
 (deftest fetch-groups-test
   (testing "GET /api/permissions/group"
@@ -48,11 +50,10 @@
               (is (schema= {:id           su/IntGreaterThanZero
                             :name         su/NonBlankString
                             :member_count (s/eq 0)}
-                           (get id->group (:id group))))))))
-
-      (testing "require superusers"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :get 403 "permissions/group")))))))
+                           (get id->group (:id group)))))))))
+    (testing "requires superuser"
+      (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 "permissions/group"))))))
 
 (deftest groups-list-limit-test
   (testing "GET /api/permissions/group?limit=1&offset=1"
@@ -90,7 +91,14 @@
                    (get id->member (mt/user->id :rasta))))
       (testing "Should *not* include inactive users"
         (is (= nil
-               (get id->member :trashbird)))))))
+               (get id->member :trashbird)))))
+
+    (testing "requires superuers"
+      (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (group/all-users)))))))))
+
+;;; +---------------------------------------------- permissions graph apis -----------------------------------------------------------+
+
 
 (deftest fetch-perms-graph-test
   (testing "GET /api/permissions/graph"
@@ -151,3 +159,60 @@
                      :all))
           (is (= :all
                  (get-in (perms/data-perms-graph) [:groups (u/the-id group) db-id :data :schemas]))))))))
+
+
+;;; +---------------------------------------------- permissions membership apis -----------------------------------------------------------+
+
+(deftest get-group-membership-test
+  (testing "GET /api/permissions/membership"
+    (testing "requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "permissions/membership"))))
+
+    (testing "Return a graph of membership"
+      (let [result (mt/user-http-request :crowberto :get 200 "permissions/membership")]
+        (is (schema= {su/IntGreaterThanZero
+                      [{:membership_id su/IntGreaterThanZero
+                        :group_id su/IntGreaterThanZero
+                        :user_id su/IntGreaterThanZero
+                        :is_group_manager s/Bool}]}
+                     result))
+        (is (= (db/select-field :id 'User) (set (keys result))))))))
+
+
+(deftest add-group-membership-test
+  (testing "POST /api/permissions/membership"
+    (mt/with-temp* [User             [user]
+                    PermissionsGroup [group]]
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :post 403 "permissions/membership" {:group_id (:id group)
+                                                                                :user_id  (:id user)}))))
+
+      (testing "Add membership successfully"
+        (mt/user-http-request :crowberto :post 200 "permissions/membership"
+                              {:group_id         (:id group)
+                               :user_id          (:id user)})))))
+
+(deftest update-group-membership-test
+  (testing "PUT /api/permissions/membership/:id"
+    (mt/with-temp* [User                       [user]
+                    PermissionsGroup           [group]
+                    PermissionsGroupMembership [{id :id} {:group_id (:id group)
+                                                          :user_id  (:id user)}]]
+      (testing "This API is for EE only"
+        (is (= "Group Manager is only enabled if you have a premium token with the advanced permissions feature."
+               (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager false})))))))
+
+(deftest delete-group-membership-test
+  (testing "DELETE /api/permissions/membership/:id"
+    (mt/with-temp* [User                       [user]
+                    PermissionsGroup           [group]
+                    PermissionsGroupMembership [{id :id} {:group_id (:id group)
+                                                          :user_id  (:id user)}]]
+      (testing "requires superuser"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :delete 403 (format "permissions/membership/%d" id)))))
+
+      (testing "Delete membership successfully"
+        (mt/user-http-request :crowberto :delete 204 (format "permissions/membership/%d" id))))))

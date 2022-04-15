@@ -171,6 +171,7 @@
   user->client
   user->credentials
   user->id
+  user-descriptor
   user-http-request
   with-group
   with-group-for-user
