@@ -141,6 +141,28 @@ describe("scenarios > collection defaults", () => {
       cy.signInAsAdmin();
     });
 
+    it("should be able to drag an item to the root collection (metabase#16498)", () => {
+      moveItemToCollection("Orders", "First collection");
+
+      getCollectionIdFromSlug("first_collection", id => {
+        visitCollection(id);
+      });
+
+      cy.findByText("Orders").as("dragSubject");
+
+      navigationSidebar()
+        .findByText("Our analytics")
+        .as("dropTarget");
+
+      dragAndDrop("dragSubject", "dropTarget");
+
+      cy.findByText("Moved question");
+      cy.findByText("Orders").should("not.exist");
+
+      visitRootCollection();
+      cy.findByText("Orders");
+    });
+
     describe("nested collections with revoked parent access", () => {
       const { first_name, last_name } = nocollection;
       const revokedUsersPersonalCollectionName = `${first_name} ${last_name}'s Personal Collection`;
@@ -453,4 +475,29 @@ function moveOpenedCollectionTo(newParent) {
   cy.button("Update").click();
   // Make sure modal closed
   cy.button("Update").should("not.exist");
+}
+
+function dragAndDrop(subjectAlias, targetAlias) {
+  const dataTransfer = new DataTransfer();
+
+  cy.get("@" + subjectAlias).trigger("dragstart", { dataTransfer });
+  cy.get("@" + targetAlias).trigger("drop", { dataTransfer });
+  cy.get("@" + subjectAlias).trigger("dragend");
+}
+
+function moveItemToCollection(itemName, collectionName) {
+  cy.request("GET", "/api/collection/root/items").then(resp => {
+    const ALL_ITEMS = resp.body.data;
+
+    const { id, model } = getCollectionItem(ALL_ITEMS, itemName);
+    const { id: collection_id } = getCollectionItem(ALL_ITEMS, collectionName);
+
+    cy.request("PUT", `/api/${model}/${id}`, {
+      collection_id,
+    });
+  });
+
+  function getCollectionItem(collection, itemName) {
+    return collection.find(item => item.name === itemName);
+  }
 }
