@@ -199,7 +199,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Add filter").click();
   });
 
-  it("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
+  it("should remove parameter from URL after its name has been removed (metabase#10829)", () => {
     // Mirrored issue in metabase-enterprise#275
     cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
