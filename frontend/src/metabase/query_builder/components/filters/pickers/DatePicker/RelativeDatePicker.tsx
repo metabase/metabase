@@ -154,7 +154,7 @@ type Props = {
   reverseIconDirection?: boolean;
 };
 
-const RelativeDatePicker: React.SFC<Props> = props => {
+const RelativeDatePicker: React.FC<Props> = props => {
   const {
     filter,
     onFilterChange,

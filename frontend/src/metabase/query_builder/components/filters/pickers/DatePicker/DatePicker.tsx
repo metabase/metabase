@@ -17,17 +17,13 @@ import {
   setTimeComponent,
 } from "metabase/lib/query_time";
 
-import {
-  AfterPicker,
-  BeforePicker,
-  BetweenPicker,
-  SingleDatePicker,
-} from "./SpecificDatePicker";
 import DatePickerFooter from "./DatePickerFooter";
 import DatePickerHeader from "./DatePickerHeader";
 import ExcludeDatePicker from "./ExcludeDatePicker";
 import DatePickerShortcuts from "./DatePickerShortcuts";
 import { CurrentPicker, NextPicker, PastPicker } from "./RelativeDatePicker";
+import { AfterPicker, BeforePicker, BetweenPicker } from "./RangeDatePicker";
+import SingleDatePicker from "./SingleDatePicker";
 
 const getIntervals = ([op, _field, value, _unit]: Filter) =>
   op === "time-interval" && typeof value === "number" ? Math.abs(value) : 30;
@@ -248,12 +244,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
 };
 
-type State = {
-  operators: DateOperator[];
-  showShortcuts: boolean;
-};
-
-const DatePicker: React.SFC<Props> = props => {
+const DatePicker: React.FC<Props> = props => {
   const {
     className,
     filter,

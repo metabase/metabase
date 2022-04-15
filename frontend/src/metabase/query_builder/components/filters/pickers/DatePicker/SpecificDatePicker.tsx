@@ -10,99 +10,7 @@ import ExpandingContent from "metabase/components/ExpandingContent";
 import HoursMinutesInput from "./HoursMinutesInput";
 
 import moment from "moment";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { TimeContainer } from "./SpecificDatePicker.styled";
 import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
-
-type BetweenPickerProps = {
-  isSidebar?: boolean;
-  className?: string;
-  filter: Filter;
-  onFilterChange: (filter: any[]) => void;
-
-  hideTimeSelectors?: boolean;
-};
-
-export const BetweenPicker = ({
-  className,
-  isSidebar,
-  filter: [op, field, startValue, endValue],
-  onFilterChange,
-  hideTimeSelectors,
-}: BetweenPickerProps) => (
-  <div className={className}>
-    <TimeContainer isSidebar={isSidebar}>
-      <div>
-        <SpecificDatePicker
-          value={startValue}
-          hideTimeSelectors={hideTimeSelectors}
-          onChange={value => onFilterChange([op, field, value, endValue])}
-        />
-      </div>
-      <div>
-        <SpecificDatePicker
-          value={endValue}
-          hideTimeSelectors={hideTimeSelectors}
-          onClear={() =>
-            onFilterChange([
-              op,
-              field,
-              setTimeComponent(startValue),
-              setTimeComponent(endValue),
-            ])
-          }
-          onChange={value => onFilterChange([op, field, startValue, value])}
-        />
-      </div>
-    </TimeContainer>
-    <div className="Calendar--noContext">
-      <Calendar
-        isRangePicker
-        initial={startValue ? moment(startValue) : moment()}
-        selected={startValue && moment(startValue)}
-        selectedEnd={endValue && moment(endValue)}
-        onChange={(startValue, endValue) =>
-          onFilterChange([op, field, startValue, endValue])
-        }
-      />
-    </div>
-  </div>
-);
-
-type SingleDatePickerProps = {
-  className?: string;
-  filter: Filter;
-  selectAll?: SelectAll;
-  onFilterChange: (filter: any[]) => void;
-
-  hideTimeSelectors?: boolean;
-};
-
-export const SingleDatePicker = ({
-  className,
-  filter: [op, field, value],
-  onFilterChange,
-  hideTimeSelectors,
-  selectAll,
-}: SingleDatePickerProps) => (
-  <SpecificDatePicker
-    className={className}
-    value={value}
-    selectAll={selectAll}
-    onChange={value => onFilterChange([op, field, value])}
-    onClear={() => onFilterChange([op, field, setTimeComponent(value)])}
-    hideTimeSelectors={hideTimeSelectors}
-    calendar
-  />
-);
-
-export const BeforePicker = (props: SingleDatePickerProps) => {
-  return <SingleDatePicker {...props} selectAll="before" />;
-};
-
-export const AfterPicker = (props: SingleDatePickerProps) => {
-  return <SingleDatePicker {...props} selectAll="after" />;
-};
 
 type Props = {
   className?: string;
@@ -116,11 +24,7 @@ type Props = {
   onClear?: () => void;
 };
 
-type State = {
-  showCalendar: boolean;
-};
-
-const SpecificDatePicker: React.SFC<Props> = props => {
+const SpecificDatePicker: React.FC<Props> = props => {
   const onChange = (
     date?: string | moment.Moment,
     hours?: number | null,
