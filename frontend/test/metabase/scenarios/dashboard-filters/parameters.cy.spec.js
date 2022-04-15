@@ -241,7 +241,8 @@ describe("scenarios > dashboard > parameters", () => {
       .click();
     cy.findByDisplayValue("Text ends with")
       .click()
-      .clear();
+      .clear()
+      .blur();
     cy.findByText("Save").click();
     cy.wait("@dashboard");
     cy.findByText("You're editing this dashboard.").should("not.exist");
