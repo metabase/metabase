@@ -6,7 +6,12 @@ import _ from "underscore";
 import { IconProps } from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { Bookmark, Collection, User } from "metabase-types/api";
+import {
+  Bookmarks as BookmarksType,
+  Bookmark,
+  Collection,
+  User,
+} from "metabase-types/api";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
@@ -40,6 +45,8 @@ function mapStateToProps(state: unknown) {
 const mapDispatchToProps = {
   openNavbar,
   closeNavbar,
+  reorderBookmarks: (bookmarks: BookmarksType) =>
+    Bookmarks.actions.reorder(bookmarks),
 };
 
 interface CollectionTreeItem extends Collection {
@@ -64,6 +71,7 @@ type Props = {
   };
   openNavbar: () => void;
   closeNavbar: () => void;
+  reorderBookmarks: (bookmarks: BookmarksType) => void;
 };
 
 function MainNavbarContainer({

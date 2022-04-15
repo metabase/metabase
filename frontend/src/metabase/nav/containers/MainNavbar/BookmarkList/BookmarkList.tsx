@@ -14,7 +14,7 @@ import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Bookmark } from "metabase-types/api";
+import { Bookmarks as BookmarksType, Bookmark } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
@@ -29,10 +29,11 @@ const mapDispatchToProps = {
 };
 
 interface CollectionSidebarBookmarksProps {
-  bookmarks: Bookmark[];
+  bookmarks: BookmarksType;
   selectedItem?: SelectedEntityItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
+  reorderBookmarks: (bookmarks: BookmarksType) => void;
 }
 
 interface BookmarkItemProps {
@@ -96,13 +97,9 @@ const BookmarkList = ({
   selectedItem,
   onSelect,
   onDeleteBookmark,
+  reorderBookmarks,
 }: CollectionSidebarBookmarksProps) => {
-  const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
-
-  useEffect(() => {
-    setOrderedBookmarks(bookmarks);
-  }, [bookmarks]);
 
   const onToggleBookmarks = useCallback(isVisible => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
@@ -121,15 +118,13 @@ const BookmarkList = ({
   }) => {
     setIsSorting(false);
 
-    const bookmarksToBeReordered = [...orderedBookmarks];
-    const element = orderedBookmarks[oldIndex];
+    const bookmarksToBeReordered = [...bookmarks];
+    const element = bookmarksToBeReordered[oldIndex];
 
     bookmarksToBeReordered.splice(oldIndex, 1);
     bookmarksToBeReordered.splice(newIndex, 0, element);
 
-    setOrderedBookmarks(bookmarksToBeReordered);
-
-    Bookmarks.actions.reorder(bookmarksToBeReordered);
+    reorderBookmarks(bookmarksToBeReordered);
   };
 
   return (
@@ -148,7 +143,7 @@ const BookmarkList = ({
         lockAxis="y"
         helperClass="sorting"
       >
-        {orderedBookmarks.map((bookmark, index) => (
+        {bookmarks.map((bookmark, index) => (
           <BookmarkItem
             bookmark={bookmark}
             isSorting={isSorting}

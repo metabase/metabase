@@ -2,7 +2,12 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Bookmark, Collection, User } from "metabase-types/api";
+import {
+  Bookmarks as BookmarksType,
+  Bookmark,
+  Collection,
+  User,
+} from "metabase-types/api";
 
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
@@ -47,6 +52,7 @@ type Props = {
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
   handleCloseNavbar: () => void;
+  reorderBookmarks: (bookmarks: BookmarksType) => void;
 };
 
 const BROWSE_URL = "/browse";
@@ -63,6 +69,7 @@ function MainNavbarView({
   selectedItem,
   hasDataAccess,
   handleCloseNavbar,
+  reorderBookmarks,
 }: Props) {
   const isMiscLinkSelected = selectedItem.type === "unknown";
   const isCollectionSelected =
@@ -85,6 +92,7 @@ function MainNavbarView({
                 selectedItem.type !== "unknown" ? selectedItem : undefined
               }
               onSelect={onItemSelect}
+              reorderBookmarks={reorderBookmarks}
             />
           </SidebarSection>
         )}

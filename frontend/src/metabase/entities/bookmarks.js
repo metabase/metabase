@@ -24,7 +24,7 @@ const Bookmarks = createEntity({
     getIcon,
   },
   actions: {
-    reorder: bookmarks => {
+    reorder: bookmarks => dispatch => {
       const bookmarksForOrdering = bookmarks.map(({ type, item_id }) => ({
         type,
         item_id,
@@ -33,9 +33,10 @@ const Bookmarks = createEntity({
         { orderings: { orderings: bookmarksForOrdering } },
         { bodyParamName: "orderings" },
       );
+      dispatch({ type: "someType", bookmarks });
     },
   },
-  reducer: (state = {}, { type, payload, error }) => {
+  reducer: (state = {}, { type, payload, error, bookmarks }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
       state[`card-${payload?.object?.id}`] = undefined;
       return state;
@@ -44,6 +45,15 @@ const Bookmarks = createEntity({
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
       state[`dashboard-${payload?.object?.id}`] = undefined;
       return state;
+    }
+
+    if (type === "someType") {
+      const newState = bookmarks.reduce((acc, bookmark, index) => {
+        acc[bookmark.id] = bookmark;
+        return acc;
+      }, {});
+
+      return newState;
     }
 
     return state;
