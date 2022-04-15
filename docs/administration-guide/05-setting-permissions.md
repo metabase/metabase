@@ -6,13 +6,13 @@ There are always going to be sensitive bits of information in your data, and tha
 
 - Permissions are granted to groups, not people.
 - People can be in more than one group.
-- If a person is in multiple groups, they will have the most permissive access granted to them across all of their groups. For example, if a person is in three groups; if any one of those groups has access to a database, then that person will have access to that database.
+- If a person is in multiple groups, they will have the most permissive access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has access to a database, then that person will have access to that database.
 
 ## What you can set permissions on
 
 - [Data permissions](#data-permissions)
 - [Collection permissions](#collection-permissions)
-- [General permissions](#general-permissions)
+- [Application permissions](#application-permissions)
 - [SQL snippet folder permissions](#sql-snippet-folder-permissions)
 
 ### Data permissions
@@ -20,8 +20,6 @@ There are always going to be sensitive bits of information in your data, and tha
 - [Databases connected to Metabase][data-permissions]
 - [Tables and schemas][table-permissions] in those databases
 - [Rows and columns][data-sandboxing], a.k.a. data sandboxing (available on paid plans)
-
-Data permissions also include controls for
 
 ### Collection permissions
 
@@ -33,13 +31,13 @@ Data permissions also include controls for
 - Events
 - Timelines
 
-### General permissions
+### Application permissions
 
-[General settings](general-permissions.md) (available on paid plans) dictate which groups can access:
+[Application permissions](application-permissions.md) (available on paid plans) dictate access to Metabase application-level features, including:
 
-- **General admin settings**: access to the Settings tab in the Admin panel.
-- **Monitoring access**: the Admin Tools, Audit, and Troubleshooting tabs in the Admin panel.
-- **Subscriptions and Alerts**. Who can create/edit dashboard subscriptions and alerts.
+- **Settings**: The Settings tab in the Admin panel.
+- **Monitoring access**: The Tools, Audit, and Troubleshooting tabs in the Admin panel.
+- **Subscriptions and Alerts**. Which groups can create/edit dashboard subscriptions and alerts.
 
 ### SQL snippet folder permissions
 

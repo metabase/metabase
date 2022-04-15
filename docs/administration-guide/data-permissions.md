@@ -58,7 +58,7 @@ People who aren't in groups with Native query editing permissions will still be 
 You can set permissions on whether people in a group can download results (and how many rows) from a data source. Options are:
 
 - No (they can't download results)
-- Granular (you want to set access for individual tables)
+- Granular (you want to set access for individual tables or schemas)
 - 10 thousand rows
 - 1 million rows
 

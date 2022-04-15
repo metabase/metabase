@@ -38,7 +38,7 @@ See [how to install Metabase](../operations-guide/installing-metabase.md).
 - [Permissions overview](05-setting-permissions.md)
 - [Setting data permissions](data-permissions.md)
 - [Creating and managing collections](06-collections.md)
-- [General permissions](general-permissions.md)
+- [Application permissions](application-permissions.md)
 
 ## Embedding and sharing with public links
 

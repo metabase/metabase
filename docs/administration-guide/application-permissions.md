@@ -1,18 +1,18 @@
-# General permissions
+# Application permissions
 
-{% include plans-blockquote.html feature="General permissions" %}
+{% include plans-blockquote.html feature="Application permissions" %}
 
-These settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
+Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 
-- [General settings access](#general-settings-access)
+- [Settings access](#settings-access)
 - [Monitoring access](#monitoring-access)
 - [Subscriptions and alerts](#subscriptions-and-alerts)
 
-## General settings access
+## Settings access
 
-General settings access defines which groups can set permissions on all of the settings under General settings. These settings include:
+Settings access defines which groups can set permissions on all of the settings under the Admin > Settings tab. These settings include:
 
-- [General settings](08-configuration-settings.md)
+- [Settings](08-configuration-settings.md)
 - [Email](02-setting-up-email.md)
 - [Slack](09-setting-up-slack.md)
 - [Authentication](10-single-sign-on.md)
