@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
 import Form from "metabase/containers/Form";
+import { SubscribeInfo } from "metabase-types/store";
 import {
   FormContainer,
   FormFieldContainer,
@@ -16,7 +17,6 @@ import {
   FormSuccessText,
 } from "./NewsletterForm.styled";
 import { FormProps } from "./types";
-import { SubscribeInfo } from "../../types";
 
 export interface NewsletterFormProps {
   initialEmail?: string;

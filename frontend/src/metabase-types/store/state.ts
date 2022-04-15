@@ -1,10 +1,15 @@
 import { User } from "metabase-types/types/User";
 import { AdminState } from "./admin";
 import { EntitiesState } from "./entities";
+import { FormState } from "./forms";
 import { SettingsState } from "./settings";
+import { SetupState } from "./setup";
+
 export interface State {
   currentUser: User;
   admin: AdminState;
-  settings: SettingsState;
   entities: EntitiesState;
+  form: FormState;
+  settings: SettingsState;
+  setup: SetupState;
 }

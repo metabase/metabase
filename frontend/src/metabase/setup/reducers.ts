@@ -6,6 +6,7 @@ import {
   SET_DATABASE,
   SET_TRACKING,
   SET_INVITE,
+  SET_LOCALE_LOADED,
 } from "./actions";
 import { WELCOME_STEP } from "./constants";
 
@@ -44,6 +45,14 @@ export const invite = handleActions(
   null,
 );
 
+export const isLocaleLoaded = handleActions(
+  {
+    [SET_LOCALE]: { next: () => false },
+    [SET_LOCALE_LOADED]: { next: () => true },
+  },
+  false,
+);
+
 export const isTrackingAllowed = handleActions(
   {
     [SET_TRACKING]: { next: (state, { payload }) => payload },
@@ -56,4 +65,7 @@ export default {
   locale,
   user,
   database,
+  invite,
+  isLocaleLoaded,
+  isTrackingAllowed,
 };

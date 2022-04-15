@@ -32,4 +32,12 @@ export interface SubscribeInfo {
   email: string;
 }
 
-export type LocaleData = [string, string];
+export interface SetupState {
+  step: number;
+  locale?: Locale;
+  user?: UserInfo;
+  database?: DatabaseInfo;
+  invite?: InviteInfo;
+  isLocaleLoaded: boolean;
+  isTrackingAllowed: boolean;
+}

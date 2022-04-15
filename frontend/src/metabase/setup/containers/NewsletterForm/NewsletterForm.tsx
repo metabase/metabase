@@ -1,10 +1,11 @@
 import { connect } from "react-redux";
 import { subscribeToNewsletter } from "metabase/setup/utils";
 import NewsletterForm from "../../components/NewsletterForm";
-import { getUserEmail } from "../../selectors";
+import { getUserEmail, isLocaleLoaded } from "../../selectors";
 
 const mapStateToProps = (state: any) => ({
   initialEmail: getUserEmail(state),
+  isLocaleLoaded: isLocaleLoaded(state),
 });
 
 const mapDispatchToProps = () => ({
