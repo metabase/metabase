@@ -47,9 +47,18 @@ export const OptionsContainer = styled.div`
   padding: ${space(2)} ${space(1)};
 `;
 
-export const OptionButton = styled(Button)<ButtonProps>`
+type OptionButtonProps = ButtonProps & {
+  reverseIconDirection?: boolean;
+};
+
+export const OptionButton = styled(Button)<OptionButtonProps>`
   display: block;
   border: none;
+
+  .Icon {
+    transform: ${({ reverseIconDirection }) =>
+      reverseIconDirection ? "rotate(180deg)" : ""};
+  }
 
   color: ${({ selected, primaryColor = defaultColor }) =>
     selected ? primaryColor : color("text-dark")};

@@ -36,7 +36,11 @@ export const PastPicker = (props: Props) => (
 );
 
 export const NextPicker = (props: Props) => (
-  <RelativeDatePicker {...props} offsetFormatter={value => value * -1} />
+  <RelativeDatePicker
+    {...props}
+    offsetFormatter={value => value * -1}
+    reverseIconDirection
+  />
 );
 
 const periodPopoverText = (period: string) => {
@@ -147,6 +151,7 @@ type Props = {
   formatter: (value: number) => number;
   offsetFormatter: (value: number) => number;
   primaryColor?: string;
+  reverseIconDirection?: boolean;
 };
 
 const RelativeDatePicker: React.SFC<Props> = props => {
@@ -157,6 +162,7 @@ const RelativeDatePicker: React.SFC<Props> = props => {
     offsetFormatter = value => value,
     className,
     primaryColor,
+    reverseIconDirection,
   } = props;
 
   const startingFrom = getStartingFrom(filter);
@@ -173,6 +179,7 @@ const RelativeDatePicker: React.SFC<Props> = props => {
     <OptionsContainer>
       <OptionButton
         icon="arrow_left_to_line"
+        reverseIconDirection={reverseIconDirection}
         onClick={() => {
           setOptionsVisible(false);
           onFilterChange(setStartingFrom(filter));
