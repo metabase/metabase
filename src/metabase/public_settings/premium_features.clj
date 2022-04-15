@@ -315,9 +315,9 @@
   (register-mapping! fn-name ee-ns args body)
   (let [ee-fn (u/ignore-exceptions (classloader/require ee-ns)
                                    (ns-resolve ee-ns fn-name))]
-    `(if ~ee-fn
-       (apply ~ee-fn ~args)
-       ~@body)))
+    (if ee-fn
+      `(apply ~ee-fn ~args)
+      `(do ~@body))))
 
 (defn missing-premium-token-exception
   "The default exception to throw when an EE function is called, but a required premium feature is not present."
