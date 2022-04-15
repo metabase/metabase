@@ -5,8 +5,6 @@ import {
   popover,
   openOrdersTable,
   navigationSidebar,
-  closeNavigationSidebar,
-  openNavigationSidebar,
   getCollectionIdFromSlug,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -221,81 +219,47 @@ describe("scenarios > collection defaults", () => {
       });
     });
 
-    it("should show moved collections inside a folder tree structure (metabase#14280)", () => {
+    it("moving collections should update the UI (metabase#14280, metabase#14482)", () => {
       const NEW_COLLECTION = "New collection";
 
       // Create New collection within `Our analytics`
-      cy.request("POST", "/api/collection", {
+      cy.createCollection({
         name: NEW_COLLECTION,
-        color: "#509EE3",
         parent_id: null,
       });
 
-      cy.visit("/collection/root");
-      cy.findByText(NEW_COLLECTION);
-      cy.findByText("First collection").click();
-      cy.icon("pencil").click();
-      cy.findByText("Edit this collection").click();
-      modal().within(() => {
-        // Open the select dropdown menu
-        cy.findByText("Our analytics").click();
-      });
-      popover().within(() => {
-        cy.findByText(NEW_COLLECTION).click();
-      });
-      // Make sure the correct value is selected
-      cy.findAllByTestId("select-button-content").contains(NEW_COLLECTION);
-      cy.button("Update").click();
-      // Make sure modal closed
-      cy.findByText("Update").should("not.exist");
-
-      // Make sure sidebar updated (waiting for a specific XHR didn't help)
-      closeNavigationSidebar();
-      openNavigationSidebar();
-
       cy.log(
-        "**New collection should immediately be open, showing nested children**",
+        "when nested child collection is moved to the root collection (metabase#14482)",
       );
 
-      getSidebarCollectionChildrenFor(NEW_COLLECTION).within(() => {
-        cy.findByText("First collection");
-        cy.findByText("Second collection");
-      });
-    });
-
-    it("should update UI when nested child collection is moved to the root collection (metabase#14482)", () => {
       getCollectionIdFromSlug("second_collection", id => {
         visitCollection(id);
       });
 
-      cy.icon("pencil").click();
-      cy.findByText("Edit this collection")
-        .should("be.visible")
-        .click();
-      modal().within(() => {
-        // Open the select dropdown menu
-        cy.findByText("First collection").click();
-      });
-
-      popover().within(() => {
-        cy.findAllByText("Our analytics")
-          .last()
-          .click();
-      });
-
-      // Make sure the correct value is selected
-      cy.findAllByTestId("select-button-content").contains("Our analytics");
-
-      cy.button("Update").click();
-      // Make sure modal closed
-      cy.button("Update").should("not.exist");
+      moveOpenedCollectionTo("Our analytics");
 
       navigationSidebar().within(() => {
-        cy.findAllByText("Second collection").should("have.length", 1);
-        cy.findAllByText("Third collection").should("have.length", 1);
+        ensureCollectionHasNoChildren("First collection");
+
+        // Should be expanded automatically
+        ensureCollectionIsExpanded("Second collection");
+        // Move into the "Third collection"
+        cy.findByText("Third collection").click();
       });
 
-      ensureCollectionHasNoChildren("First collection");
+      cy.log(
+        "should show moved collection inside a folder tree structure (metabase#14280)",
+      );
+
+      moveOpenedCollectionTo(NEW_COLLECTION);
+
+      navigationSidebar().within(() => {
+        ensureCollectionHasNoChildren("Second collection");
+
+        ensureCollectionIsExpanded(NEW_COLLECTION, {
+          children: ["Third collection"],
+        });
+      });
     });
 
     describe("bulk actions", () => {
@@ -394,14 +358,6 @@ function selectItemUsingCheckbox(item, icon = "table") {
     });
 }
 
-function getSidebarCollectionChildrenFor(item) {
-  return navigationSidebar()
-    .findByText(item)
-    .parentsUntil("[data-testid=sidebar-collection-link-root]")
-    .parent()
-    .next("ul");
-}
-
 function visitRootCollection() {
   cy.intercept("GET", "/api/collection/root/items?**").as(
     "fetchRootCollectionItems",
@@ -430,4 +386,44 @@ function ensureCollectionHasNoChildren(collection) {
       // this icon is now only hidden. It still exists in the DOM.
       cy.icon("chevronright").should("be.hidden");
     });
+}
+
+function ensureCollectionIsExpanded(collection, { children = [] } = {}) {
+  cy.findByText(collection)
+    .closest("[data-testid=sidebar-collection-link-root]")
+    .as("root")
+    .within(() => {
+      cy.icon("chevronright").should("not.be.hidden");
+    });
+
+  if (children && children.length > 0) {
+    cy.get("@root")
+      .next("ul")
+      .within(() => {
+        children.forEach(child => {
+          cy.findByText(child);
+        });
+      });
+  }
+}
+
+function moveOpenedCollectionTo(newParent) {
+  cy.icon("pencil").click();
+  cy.findByTextEnsureVisible("Edit this collection").click();
+
+  // Open the select dropdown menu
+  modal()
+    .findByTestId("select-button")
+    .click();
+
+  cy.findAllByTestId("item-picker-item")
+    .contains(newParent)
+    .click();
+
+  // Make sure the correct value is selected
+  cy.findAllByTestId("select-button-content").contains(newParent);
+
+  cy.button("Update").click();
+  // Make sure modal closed
+  cy.button("Update").should("not.exist");
 }
