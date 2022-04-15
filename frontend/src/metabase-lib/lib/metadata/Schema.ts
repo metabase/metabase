@@ -1,38 +1,70 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Base from "./Base";
 import { titleize, humanize } from "metabase/lib/formatting";
 import Database from "./Database";
 import Table from "./Table";
-/**
- * Wrapper class for a {@link Database} schema. Contains {@link Table}s.
- */
+import Metadata, { EMPTY_METADATA_INSTANCE } from "./Metadata";
 
-export default class Schema extends Base {
-  id?: string;
+export interface ISchema {
+  id: string;
   name: string;
+  database: number;
+}
+
+export type HydratedSchemaProperties = {
   database: Database;
   tables: Table[];
+  metadata: Metadata;
+};
+
+export default class Schema {
+  id: string;
+  name: string;
+
+  database: Database | number | null;
+  tables: Table[] | null;
+  metadata: Metadata;
+
+  _plainObject: ISchema;
+
+  constructor(schema: ISchema) {
+    this.id = schema.id;
+    this.name = schema.name;
+
+    // these properties are hydrated after instantiation in metabase/selectors/metadata
+    this.metadata = EMPTY_METADATA_INSTANCE;
+    this.tables = null;
+    this.database = null;
+
+    // Assign all properties to the instance from the `schema` object in case
+    // there is old, un-typed code that relies on properties missing from ISchema
+    Object.assign(this, schema);
+
+    this._plainObject = {
+      ...schema,
+    };
+  }
 
   displayName() {
     return titleize(humanize(this.name));
   }
 
-  getTables() {
-    return this.tables;
+  getTables(): Table[] {
+    return this.tables ?? [];
   }
 
-  /**
-   * @private
-   * @param {string} name
-   * @param {Database} database
-   * @param {Table[]} tables
-   */
+  getDatabase(): Database {
+    if (this.database instanceof Database) {
+      return this.database;
+    }
 
-  /* istanbul ignore next */
-  _constructor(name, database, tables) {
-    this.name = name;
-    this.database = database;
-    this.tables = tables;
+    const dbFromMetadata = this.metadata.database(this.database);
+    if (dbFromMetadata) {
+      return dbFromMetadata;
+    }
+
+    throw new Error("Database not found");
+  }
+
+  getDatabaseId(): number {
+    return this._plainObject.database;
   }
 }
