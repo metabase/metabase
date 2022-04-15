@@ -67,4 +67,8 @@ export default class Schema {
   getDatabaseId(): number {
     return this._plainObject.database;
   }
+
+  getPlainObject() {
+    return this._plainObject;
+  }
 }

@@ -187,4 +187,8 @@ export default class Database {
   savedQuestionsDatabase(): Database | undefined {
     return this.metadata?.databasesList().find(db => db.is_saved_questions);
   }
+
+  getPlainObject() {
+    return this._plainObject;
+  }
 }
