@@ -377,7 +377,7 @@ export class UnconnectedDataSelector extends Component {
       setSelectedSchema(selectedTable.schema);
     }
     if (!selectedDatabase && selectedSchema) {
-      setSelectedDatabase(selectedSchema.getDatabase());
+      setSelectedDatabase(selectedSchema.database);
     }
 
     if (tables && tableFilter) {
@@ -468,8 +468,8 @@ export class UnconnectedDataSelector extends Component {
     const invalidSchema =
       selectedDatabase &&
       selectedSchema &&
-      selectedSchema.getDatabaseId() !== selectedDatabase.id &&
-      selectedSchema.getDatabaseId() !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
+      selectedSchema.database.id !== selectedDatabase.id &&
+      selectedSchema.database.id !== SAVED_QUESTIONS_VIRTUAL_DB_ID;
 
     const onStepMissingSchemaAndTable =
       !selectedSchema &&
@@ -1344,7 +1344,7 @@ const DatabaseSchemaPicker = ({
   }
 
   let openSection = selectedSchema
-    ? databases.findIndex(db => db.id === selectedSchema.getDatabaseId())
+    ? databases.findIndex(db => db.id === selectedSchema.database.id)
     : selectedDatabase
     ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
