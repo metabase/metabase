@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -67,6 +67,7 @@ type Props = {
 };
 
 function MainNavbarContainer({
+  bookmarks,
   isOpen,
   currentUser,
   hasOwnDatabase,
@@ -80,6 +81,19 @@ function MainNavbarContainer({
   closeNavbar,
   ...props
 }: Props) {
+  const [haveBookmarksBeenOrdered, setBookmarksHaveBeenOrdered] = useState(
+    false,
+  );
+  const [orderedBookmarks, setOrderedBookmarks] = useState([]);
+
+  useEffect(() => {
+    console.log("🚀", "YoYo");
+    if (!haveBookmarksBeenOrdered) {
+      setOrderedBookmarks(bookmarks);
+      setBookmarksHaveBeenOrdered(true);
+    }
+  }, [bookmarks, haveBookmarksBeenOrdered, setBookmarksHaveBeenOrdered]);
+
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -141,11 +155,30 @@ function MainNavbarContainer({
     return [root, ...buildCollectionTree(preparedCollections)];
   }, [rootCollection, collections, currentUser]);
 
+  const reorderBookmarks = ({
+    newIndex,
+    oldIndex,
+  }: {
+    newIndex: number;
+    oldIndex: number;
+  }) => {
+    const bookmarksToBeReordered = [...orderedBookmarks];
+    const element = orderedBookmarks[oldIndex];
+
+    bookmarksToBeReordered.splice(oldIndex, 1);
+    bookmarksToBeReordered.splice(newIndex, 0, element);
+
+    console.log("🚀", { bookmarks, orderedBookmarks });
+
+    setOrderedBookmarks(bookmarksToBeReordered);
+  };
+
   return (
     <NavRoot isOpen={isOpen}>
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
+          bookmarks={orderedBookmarks}
           isOpen={isOpen}
           currentUser={currentUser}
           collections={collectionTree}
@@ -153,6 +186,7 @@ function MainNavbarContainer({
           selectedItem={selectedItem}
           hasDataAccess={hasDataAccess}
           handleCloseNavbar={closeNavbar}
+          reorderBookmarks={reorderBookmarks}
         />
       ) : (
         <LoadingContainer>

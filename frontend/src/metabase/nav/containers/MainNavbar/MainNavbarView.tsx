@@ -63,6 +63,7 @@ function MainNavbarView({
   selectedItem,
   hasDataAccess,
   handleCloseNavbar,
+  reorderBookmarks,
 }: Props) {
   const isMiscLinkSelected = selectedItem.type === "unknown";
   const isCollectionSelected =
@@ -85,6 +86,7 @@ function MainNavbarView({
                 selectedItem.type !== "unknown" ? selectedItem : undefined
               }
               onSelect={onItemSelect}
+              reorderBookmarks={reorderBookmarks}
             />
           </SidebarSection>
         )}

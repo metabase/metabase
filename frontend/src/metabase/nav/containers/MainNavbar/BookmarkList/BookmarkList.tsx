@@ -54,6 +54,7 @@ const BookmarkItem = ({
   selectedItem,
   onSelect,
   onDeleteBookmark,
+  reorderBookmarks,
 }: BookmarkItemProps) => {
   const { id, item_id, name, type } = bookmark;
   const isSelected =
@@ -96,6 +97,7 @@ const BookmarkList = ({
   selectedItem,
   onSelect,
   onDeleteBookmark,
+  reorderBookmarks,
 }: CollectionSidebarBookmarksProps) => {
   const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
@@ -120,16 +122,17 @@ const BookmarkList = ({
     oldIndex: number;
   }) => {
     setIsSorting(false);
+    reorderBookmarks(newIndex, oldIndex);
 
-    const bookmarksToBeReordered = [...orderedBookmarks];
-    const element = orderedBookmarks[oldIndex];
+    // const bookmarksToBeReordered = [...orderedBookmarks];
+    // const element = orderedBookmarks[oldIndex];
 
-    bookmarksToBeReordered.splice(oldIndex, 1);
-    bookmarksToBeReordered.splice(newIndex, 0, element);
+    // bookmarksToBeReordered.splice(oldIndex, 1);
+    // bookmarksToBeReordered.splice(newIndex, 0, element);
 
-    setOrderedBookmarks(bookmarksToBeReordered);
+    // setOrderedBookmarks(bookmarksToBeReordered);
 
-    Bookmarks.actions.reorder(bookmarksToBeReordered);
+    // Bookmarks.actions.reorder(bookmarksToBeReordered);
   };
 
   return (
