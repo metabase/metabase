@@ -317,4 +317,10 @@
     (testing "A non-admin with block perms for a DB can fetch the DB if they have DB details permissions"
       (with-all-users-data-perms {db-id {:data {:native :none, :schemas :block}
                                          :details :yes}}
-        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))))
+        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+
+    (testing "The returned database contains a :details field for a user iwth DB details permissions"
+      (with-all-users-data-perms {db-id {:data {:native :none, :schemas :block}
+                                         :details :yes}}
+        (is (partial= {:details {}}
+             (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))))))
