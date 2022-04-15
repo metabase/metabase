@@ -2,7 +2,7 @@ import React, { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Bookmark, Collection, User } from "metabase-types/api";
+import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
 
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
@@ -41,12 +41,13 @@ interface CollectionTreeItem extends Collection {
 type Props = {
   isOpen: boolean;
   currentUser: User;
-  bookmarks: Bookmark[];
+  bookmarks: BookmarksType;
   hasDataAccess: boolean;
   hasOwnDatabase: boolean;
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
   handleCloseNavbar: () => void;
+  reorderBookmarks: (bookmarks: BookmarksType) => void;
 };
 
 const BROWSE_URL = "/browse";

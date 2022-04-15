@@ -14,7 +14,7 @@ import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Bookmark } from "metabase-types/api";
+import { Bookmark, BookmarksType } from "metabase-types/api";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
@@ -29,10 +29,11 @@ const mapDispatchToProps = {
 };
 
 interface CollectionSidebarBookmarksProps {
-  bookmarks: Bookmark[];
+  bookmarks: BookmarksType;
   selectedItem?: SelectedEntityItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
+  reorderBookmarks: (bookmarks: BookmarksType) => void;
 }
 
 interface BookmarkItemProps {
@@ -54,7 +55,6 @@ const BookmarkItem = ({
   selectedItem,
   onSelect,
   onDeleteBookmark,
-  reorderBookmarks,
 }: BookmarkItemProps) => {
   const { id, item_id, name, type } = bookmark;
   const isSelected =
@@ -122,17 +122,7 @@ const BookmarkList = ({
     oldIndex: number;
   }) => {
     setIsSorting(false);
-    reorderBookmarks(newIndex, oldIndex);
-
-    // const bookmarksToBeReordered = [...orderedBookmarks];
-    // const element = orderedBookmarks[oldIndex];
-
-    // bookmarksToBeReordered.splice(oldIndex, 1);
-    // bookmarksToBeReordered.splice(newIndex, 0, element);
-
-    // setOrderedBookmarks(bookmarksToBeReordered);
-
-    // Bookmarks.actions.reorder(bookmarksToBeReordered);
+    reorderBookmarks({ newIndex, oldIndex });
   };
 
   return (
