@@ -81,7 +81,7 @@ type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   tableId?: TableId;
-  metadata?: Metadata;
+  metadata?: Metadata | null;
   parameterValues?: ParameterValues;
   type?: "query" | "native";
   name?: string;

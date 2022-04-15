@@ -10,7 +10,7 @@ import {
 
 import Table from "./Table";
 import Schema from "./Schema";
-import Metadata, { EMPTY_METADATA_INSTANCE } from "./Metadata";
+import Metadata from "./Metadata";
 
 export type HydratedDatabaseProperties = {
   tables: Table[];
@@ -40,7 +40,7 @@ export default class Database {
 
   tables: Table[] | null;
   schemas: Schema[] | null;
-  metadata: Metadata;
+  metadata: Metadata | null;
 
   _plainObject: IDatabase;
 
@@ -66,7 +66,7 @@ export default class Database {
     // these properties are hydrated after instantiation in metabase/selectors/metadata
     this.tables = null;
     this.schemas = null;
-    this.metadata = EMPTY_METADATA_INSTANCE;
+    this.metadata = null;
 
     // Assign all properties to the instance from the `database` object in case
     // there is old, un-typed code that relies on properties missing from IDatabase
@@ -84,7 +84,7 @@ export default class Database {
       return null;
     }
 
-    return this.metadata.schema(generateSchemaId(this.id, schemaName));
+    return this.metadata?.schema(generateSchemaId(this.id, schemaName)) || null;
   }
 
   schemaNames() {
@@ -185,6 +185,6 @@ export default class Database {
 
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase(): Database | undefined {
-    return this.metadata.databasesList().find(db => db.is_saved_questions);
+    return this.metadata?.databasesList().find(db => db.is_saved_questions);
   }
 }

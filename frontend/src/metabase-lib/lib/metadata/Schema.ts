@@ -1,7 +1,7 @@
 import { titleize, humanize } from "metabase/lib/formatting";
 import Database from "./Database";
 import Table from "./Table";
-import Metadata, { EMPTY_METADATA_INSTANCE } from "./Metadata";
+import Metadata from "./Metadata";
 
 export interface ISchema {
   id: string;
@@ -21,7 +21,7 @@ export default class Schema {
 
   database: Database | number | null;
   tables: Table[] | null;
-  metadata: Metadata;
+  metadata: Metadata | null;
 
   _plainObject: ISchema;
 
@@ -30,7 +30,7 @@ export default class Schema {
     this.name = schema.name;
 
     // these properties are hydrated after instantiation in metabase/selectors/metadata
-    this.metadata = EMPTY_METADATA_INSTANCE;
+    this.metadata = null;
     this.tables = null;
     this.database = null;
 
@@ -56,12 +56,12 @@ export default class Schema {
       return this.database;
     }
 
-    const dbFromMetadata = this.metadata.database(this.database);
+    const dbFromMetadata = this.metadata?.database(this.database);
     if (dbFromMetadata) {
       return dbFromMetadata;
     }
 
-    throw new Error("Database not found");
+    throw new Error("Database not found.");
   }
 
   getDatabaseId(): number {
