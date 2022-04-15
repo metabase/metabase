@@ -99,7 +99,7 @@ function getDateTimeFieldAndValues(filter: Filter, count: number) {
       ];
     }
   }
-  return [field, ...values];
+  return [field, ...values.filter(value => value !== undefined)];
 }
 
 export type DatePickerGroup = "relative" | "specific";
