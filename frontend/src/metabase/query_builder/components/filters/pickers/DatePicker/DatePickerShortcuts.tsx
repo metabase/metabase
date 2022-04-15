@@ -7,6 +7,7 @@ import { Field } from "metabase-types/types/Field";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
+import { Filter as FilterExpression } from "metabase-types/types/Query";
 
 import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
 
@@ -139,8 +140,8 @@ type Props = {
 
   filter: Filter;
   hideExcludeOperators?: boolean;
-  onCommit: (value: any[]) => void;
-  onFilterChange: (filter: any[]) => void;
+  onCommit: (value: FilterExpression[]) => void;
+  onFilterChange: (filter: FilterExpression[]) => void;
   onBack?: () => void;
 };
 
