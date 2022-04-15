@@ -19,26 +19,14 @@ export const BookmarkIconWrapper = styled(IconWrapper)`
 `;
 export const BookmarkIcon = styled(Icon)`
   @keyframes expand {
-    0% {
-      transform: scale(1);
-    }
     50% {
-      transform: scale(1.24);
-    }
-    100% {
-      transform: scale(1);
+      transform: scale(1.3);
     }
   }
 
   @keyframes shrink {
-    0% {
-      transform: scale(1);
-    }
     50% {
       transform: scale(0.8);
-    }
-    100% {
-      transform: scale(1);
     }
   }
 
