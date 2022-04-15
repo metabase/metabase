@@ -46,16 +46,17 @@
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
 (defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id} read-or-write]
-  ;; To read (e.g., fetch metadata) a Table you either must have data permissions for the Table, or write permissions
-  ;; for the Table (detailed below).
+  ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
+  ;; permissions for the Table (detailed below). Since a user can have one or the other, we use `i/has-any-permissions?`
+  ;; to check both read and write permission sets in the `can-read?` implementation.
   ;;
   ;; To write a Table (e.g. update its metadata):
   ;;   * If Enterprise Edition code is available and the :advanced-permissions feature is enabled, you must have
   ;;     data-model permissions for othe table
   ;;   * Else, you must be an admin
-  (case read-or-write
-    :read #{(perms/table-read-path table-id)}
-    :write #{(perms/data-model-write-perms-path db-id schema table-id)}))
+  #{(case read-or-write
+      :read (perms/table-read-path table-id)
+      :write (perms/data-model-write-perms-path db-id schema table-id))})
 
 (u/strict-extend (class Table)
   models/IModel
@@ -69,7 +70,7 @@
           :pre-delete     pre-delete})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?         (i/check-any
+         {:can-read?         (i/has-any-permissions?
                               (partial i/current-user-has-full-permissions? :read)
                               (partial i/current-user-has-full-permissions? :write))
           :can-write?        (partial i/current-user-has-full-permissions? :write)

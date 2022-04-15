@@ -563,13 +563,6 @@
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
-(s/defn set-has-any-partial-permissions-for-set? :- s/Bool
-  "Do the permissions paths in `permissions-set` grant *partial* access to *any* the object paths in `paths-set`?"
-  [permissions-set paths-set]
-  (boolean
-   (some (partial set-has-partial-permissions? permissions-set)
-         paths-set)))
-
 (s/defn set-has-general-permission-of-type? :- s/Bool
   "Does `permissions-set` grant *full* access to a general permission of type `perm-type`?"
   [permissions-set perm-type]
