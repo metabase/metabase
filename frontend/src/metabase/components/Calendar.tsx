@@ -80,32 +80,29 @@ export default class Calendar extends Component<Props, State> {
     const { selected, selectedEnd, isRangePicker } = this.props;
     if (isRangePicker) {
       if (!selected) {
-        this.props.onChange(
-          date.format("YYYY-MM-DD"),
-          selectedEnd?.format("YYYY-MM-DD") || null,
-          date,
-          selectedEnd,
-        );
-      } else if (selectedEnd && date.isAfter(selectedEnd)) {
-        this.props.onChange(
-          selectedEnd.format("YYYY-MM-DD"),
-          date.format("YYYY-MM-DD"),
-          selectedEnd,
-          date,
-        );
-      } else if (date.isAfter(selected)) {
-        this.props.onChange(
-          selected.format("YYYY-MM-DD"),
-          date.format("YYYY-MM-DD"),
-          selected,
-          date,
-        );
+        this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
+      } else if (!selectedEnd || selected.isSame(selectedEnd)) {
+        if (date.isAfter(selected)) {
+          this.props.onChange(
+            selected.format("YYYY-MM-DD"),
+            date.format("YYYY-MM-DD"),
+            selected,
+            date,
+          );
+        } else {
+          this.props.onChange(
+            date.format("YYYY-MM-DD"),
+            selected.format("YYYY-MM-DD"),
+            date,
+            selected,
+          );
+        }
       } else {
         this.props.onChange(
           date.format("YYYY-MM-DD"),
-          selected.format("YYYY-MM-DD"),
+          date.format("YYYY-MM-DD"),
           date,
-          selected,
+          date,
         );
       }
     } else {
