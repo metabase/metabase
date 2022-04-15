@@ -54,7 +54,7 @@
   ;;     data-model permissions for othe table
   ;;   * Else, you must be an admin
   (case read-or-write
-    :read #{(perms/data-perms-path db-id)}
+    :read #{(perms/table-read-path table-id)}
     :write #{(perms/data-model-write-perms-path db-id schema table-id)}))
 
 (u/strict-extend (class Table)
