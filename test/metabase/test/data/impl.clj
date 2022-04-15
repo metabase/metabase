@@ -93,15 +93,9 @@
   (try
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-<<<<<<< 3c9736cfe9b8a178c4574abb6e28c3fad06d509e
     (u/with-timeout create-database-timeout-ms
       (test.tz/with-system-timezone-id "UTC"
         (tx/create-db! driver database-definition)))
-=======
-    ;; (u/with-timeout create-database-timeout-ms
-    ;;   (tu.tz/with-system-timezone-id "UTC"
-    ;;     (tx/create-db! driver database-definition)))
->>>>>>> hack: skip database creation for tests
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
           db                 (db/insert! Database
