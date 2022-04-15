@@ -5,6 +5,8 @@ import {
   openOrdersTable,
   navigationSidebar,
   getCollectionIdFromSlug,
+  openNavigationSidebar,
+  closeNavigationSidebar,
 } from "__support__/e2e/cypress";
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 import { USERS, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -97,6 +99,39 @@ describe("scenarios > collection defaults", () => {
       // 2. Ensure we show the helpful tooltip with the full (long) collection name
       cy.findByText("Fifth collection with a very long name").realHover();
       popover().contains("Fifth collection with a very long name");
+    });
+
+    it("should be usable on mobile screen sizes (metabase#15006)", () => {
+      cy.viewport(480, 800);
+
+      visitRootCollection();
+
+      cy.log(
+        "should be able to toggle collections sidebar when switched to mobile screen size",
+      );
+
+      navigationSidebar().should("have.attr", "aria-hidden", "true");
+      openNavigationSidebar();
+
+      closeNavigationSidebar();
+      navigationSidebar().should("have.attr", "aria-hidden", "true");
+
+      cy.log(
+        "should close collections sidebar when collection is clicked in mobile screen size",
+      );
+
+      openNavigationSidebar();
+
+      navigationSidebar().within(() => {
+        cy.findByText("First collection").click();
+      });
+
+      cy.findByTestId("collection-name-heading").should(
+        "have.text",
+        "First collection",
+      );
+
+      navigationSidebar().should("have.attr", "aria-hidden", "true");
     });
   });
 
