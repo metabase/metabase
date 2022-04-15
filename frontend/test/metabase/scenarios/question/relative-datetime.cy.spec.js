@@ -1,6 +1,6 @@
 import moment from "moment";
 import _ from "underscore";
-import { restore, popover } from "__support__/e2e/cypress";
+import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -51,6 +51,36 @@ describe("scenarios > question > relative-datetime", () => {
         cy.findByText("Showing 2 rows").should("exist");
       }),
     );
+
+    it("should not clobber filter when value is set to 1", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Created At").click();
+      cy.findByText("Filter by this column").click();
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByText("Last 30 Days").click();
+      cy.wait("@dataset");
+
+      cy.findByText("Created At Previous 30 Days").click();
+      cy.findByDisplayValue("30")
+        .clear()
+        .type(1)
+        .blur();
+      cy.findByText("day").click();
+      popover()
+        .last()
+        .within(() => cy.findByText("year").click());
+      popover().within(() => cy.icon("ellipsis").click());
+      popover()
+        .last()
+        .within(() => cy.findByText("Starting from...").click());
+      cy.findAllByDisplayValue("1")
+        .last()
+        .clear()
+        .type(2)
+        .blur();
+      cy.button("Add filter").should("be.enabled");
+    });
   });
 });
 

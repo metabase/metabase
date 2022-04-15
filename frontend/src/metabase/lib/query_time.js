@@ -395,7 +395,7 @@ export function setStartingFrom(mbql, num, unit) {
       field,
       [intervalOp, num ?? getDefaultDatetimeValue(newUnit), newUnit],
     ];
-    return [op, newExpr, left, right];
+    return op === "=" ? [op, newExpr, left] : [op, newExpr, left, right];
   }
 
   const interval = getTimeInterval(mbql);
