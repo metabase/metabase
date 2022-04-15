@@ -125,18 +125,18 @@
   (when-not config/ee-available?
     (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
       (is (= "Hi rasta, you're an OSS customer!"
-             (greeting :rasta))))
-
-    (testing "If a schema map for args is present, schemas are validated"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Value does not match schema"
-                            (greeting-with-schema "rasta")))))
+             (greeting :rasta)))))
 
   (when config/ee-available?
     (testing "When EE code is available"
       (testing "a call to a defenterprise function calls the EE version"
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
-               (greeting :rasta))))
+               (greeting :rasta)))))
+
+    (testing "If a schema map for args is present, schemas are validated"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Value does not match schema"
+                            (greeting-with-schema "rasta")))
 
       (testing "if :feature = :any, it will check if any feature exists, and fall back to the OSS version by default"
         (with-premium-features #{:some-feature}
