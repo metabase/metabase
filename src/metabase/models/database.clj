@@ -5,7 +5,7 @@
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as mi]
+            [metabase.models.interface :as i]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perm-group]
             [metabase.models.secret :as secret :refer [Secret]]
@@ -182,15 +182,14 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database read-or-write]
-  (let [db-id (u/the-id database)]
-    (case read-or-write
-      ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
-      ;; Since a user can have one or the other, we use `i/current-user-has-any-partial-permissions?` as the
-      ;; `can-read?` implementation.
-      :read #{(perms/data-perms-path db-id)
-              (perms/db-details-write-perms-path db-id)}
-      :write #{(perms/db-details-write-perms-path db-id)})))
+(defn- perms-objects-set [{db-id :id} read-or-write]
+  (case read-or-write
+    ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
+    ;; Since a user can have one or the other, we use `i/current-user-has-any-partial-permissions?` as the
+    ;; `can-read?` implementation.
+    :read #{(perms/data-perms-path db-id)
+            (perms/db-details-write-perms-path db-id)}
+    :write #{(perms/db-details-write-perms-path db-id)}))
 
 (u/strict-extend (class Database)
   models/IModel
@@ -270,7 +269,7 @@
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (if (not (mi/can-write? db))
+    (if (not (i/can-write? db))
       (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce
