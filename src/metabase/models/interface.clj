@@ -342,3 +342,11 @@
   permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
+
+(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+  current-user-has-any-partial-permissions?
+  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
+  permissions for any one of the the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is
+  either `:read` or `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the
+  implementation map)."
+  (partial check-perms-with-fn 'metabase.models.permissions/set-has-any-partial-permissions-for-set?))

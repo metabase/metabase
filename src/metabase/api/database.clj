@@ -304,8 +304,8 @@
               add-expanded-schedules
               (get-database-hydrate-include include))
 
-    api/*is-superuser?* ; for admins, expand inferred secret values in db-details
-    secret/admin-expand-db-details-inferred-secret-values))
+    mi/can-write?
+    secret/expand-db-details-inferred-secret-values))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
