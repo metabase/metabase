@@ -16,7 +16,9 @@ import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
-import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
+
+import Database from "metabase-lib/lib/metadata/Database";
 
 import {
   getEditingDatabase,
@@ -50,15 +52,14 @@ const DATABASE_FORM_NAME = "database";
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
-  const metadata = getMetadata(state);
 
   return {
-    database,
-    metadata,
+    database: database ? new Database(database) : undefined,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
+    isModelPersistenceEnabled: getSetting(state, "enabled-persisted-models"),
   };
 };
 
@@ -99,6 +100,7 @@ export default class DatabaseEditApp extends Component {
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
+    isModelPersistenceEnabled: PropTypes.bool,
   };
 
   async componentDidMount() {
@@ -109,7 +111,6 @@ export default class DatabaseEditApp extends Component {
   render() {
     const {
       database,
-      metadata,
       deleteDatabase,
       discardSavedFieldValues,
       selectedEngine,
@@ -119,6 +120,7 @@ export default class DatabaseEditApp extends Component {
       persistDatabase,
       unpersistDatabase,
       isAdmin,
+      isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -201,8 +203,9 @@ export default class DatabaseEditApp extends Component {
 
           {editingExistingDatabase && (
             <Sidebar
-              database={metadata.database(database.id)}
+              database={database}
               isAdmin={isAdmin}
+              isModelPersistenceEnabled={isModelPersistenceEnabled}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
