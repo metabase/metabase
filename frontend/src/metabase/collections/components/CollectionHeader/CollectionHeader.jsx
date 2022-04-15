@@ -17,6 +17,7 @@ import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
 import {
   BookmarkIcon,
+  BookmarkIconWrapper,
   Container,
   DescriptionHeading,
   MenuContainer,
@@ -117,14 +118,17 @@ function Bookmark({ isBookmarked, onClickBookmark }) {
 
   return (
     <Tooltip tooltip={title}>
-      <IconWrapper onClick={handleClickBookmark}>
+      <BookmarkIconWrapper
+        isBookmarked={isBookmarked}
+        onClick={handleClickBookmark}
+      >
         <BookmarkIcon
           name="bookmark"
           color={iconColor}
           size={20}
           animation={animation}
         />
-      </IconWrapper>
+      </BookmarkIconWrapper>
     </Tooltip>
   );
 }
