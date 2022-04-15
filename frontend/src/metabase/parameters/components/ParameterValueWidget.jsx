@@ -164,7 +164,6 @@ export default class ParameterValueWidget extends Component {
           isEnabled={isDashParamWithoutMapping}
         >
           <div
-            ref={this.trigger}
             className={cx(S.parameter, S.noPopover, className, {
               [S.selected]: hasValue,
               [S.isEditing]: isEditing,
@@ -173,7 +172,6 @@ export default class ParameterValueWidget extends Component {
             {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
             <Widget
               {...this.props}
-              target={this.getTargetRef()}
               onFocusChanged={this.onFocusChanged}
               onPopoverClose={this.onPopoverClose}
               disabled={isDashParamWithoutMapping}
@@ -229,7 +227,6 @@ export default class ParameterValueWidget extends Component {
           >
             <Widget
               {...this.props}
-              target={this.getTargetRef()}
               onFocusChanged={this.onFocusChanged}
               onPopoverClose={this.onPopoverClose}
               disabled={isDashParamWithoutMapping}
@@ -273,7 +270,6 @@ function Widget({
   parameters,
   dashboard,
   disabled,
-  target,
 }) {
   const DateWidget = DATE_WIDGETS[parameter.type];
   const fields = getFields(metadata, parameter);
@@ -295,7 +291,6 @@ function Widget({
   } else if (fields.length > 0 && parameter.hasOnlyFieldTargets) {
     return (
       <ParameterFieldWidget
-        target={target}
         parameter={parameter}
         parameters={parameters}
         dashboard={dashboard}
