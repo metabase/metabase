@@ -354,4 +354,3 @@
     (->> ((apply juxt permission-check-fns) object)
          (some true?)
          boolean)))
-
