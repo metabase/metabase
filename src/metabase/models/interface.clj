@@ -241,14 +241,15 @@
   "Methods for determining whether the current user has read/write permissions for a given object. See documentation
   for [[metabase.models.permissions]] for a high-level overview of the Metabase permissions system."
 
-  (perms-objects-set [instance ^clojure.lang.Keyword read-or-write]
+  (perms-objects-set [instance ^clojure.lang.Keyword perm-type]
     "Return a set of permissions object paths that a user must have access to in order to access this object. This
-    should be something like #{\"/db/1/schema/public/table/20/\"}. `read-or-write` will be either `:read` or `:write`,
-    depending on which permissions set we're fetching (these will be the same sets for most models; they can ignore
-    this param).")
+    should be something like #{\"/db/1/schema/public/table/20/\"}. `perm-type` will typically be either `:read` or
+    `:write`, depending on which permissions set we're fetching (these will be the same sets for most models; they can
+    ignore this param).")
 
   (can-read? [instance] [entity ^Integer id]
-    "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
+    "Return whether `*current-user*` has *read* permissions for an object. You should typically use one of these
+    implementations:
 
   *  `(constantly true)`
   *  `superuser?`
@@ -257,7 +258,8 @@
      this)")
 
   (^{:hydrate :can_write} can-write? [instance] [entity ^Integer id]
-   "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
+   "Return whether `*current-user*` has *write* permissions for an object. You should typically use one of these
+   implmentations:
 
   *  `(constantly true)`
   *  `superuser?`
@@ -315,13 +317,13 @@
   (contains? (current-user-permissions-set) "/"))
 
 (defn- check-perms-with-fn
-  ([fn-symb read-or-write entity object-id]
+  ([fn-symb perm-type entity object-id]
    (or (current-user-has-root-permissions?)
-       (check-perms-with-fn fn-symb read-or-write (entity object-id))))
+       (check-perms-with-fn fn-symb perm-type (entity object-id))))
 
-  ([fn-symb read-or-write object]
+  ([fn-symb perm-type object]
    (and object
-        (check-perms-with-fn fn-symb (perms-objects-set object read-or-write))))
+        (check-perms-with-fn fn-symb (perms-objects-set object perm-type))))
 
   ([fn-symb perms-set]
    (let [f (requiring-resolve fn-symb)]
@@ -329,24 +331,27 @@
      (u/prog1 (f (current-user-permissions-set) perms-set)
        (log/tracef "Perms check: %s -> %s" (pr-str (list fn-symb (current-user-permissions-set) perms-set)) <>)))))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([perm-type entity object-id] [perm-type object] [perms-set])}
   current-user-has-full-permissions?
   "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *full*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
+  permissions for the paths returned by its implementation of `perms-objects-set`. (`perm-type` is typically `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-full-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
+(def ^{:arglists '([perm-type entity object-id] [perm-type object] [perms-set])}
   current-user-has-partial-permissions?
   "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
-  permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
+  permissions for the paths returned by its implementation of `perms-objects-set`. (`perm-type` is typically `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
 
-(def ^{:arglists '([read-or-write entity object-id] [read-or-write object] [perms-set])}
-  current-user-has-any-partial-permissions?
-  "Implementation of `can-read?`/`can-write?` for the old permissions system. `true` if the current user has *partial*
-  permissions for any one of the the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is
-  either `:read` or `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the
-  implementation map)."
-  (partial check-perms-with-fn 'metabase.models.permissions/set-has-any-partial-permissions-for-set?))
+(defn check-any
+  "Accepts multiple permission-checking functions, such as the ones returned by `current-user-has-full-permissions?`
+  and `current-user-has-partial-permissions?`, and returns a function which returns true if any permission functions
+  return true."
+  [& permission-check-fns]
+  (fn [object]
+    (->> ((apply juxt permission-check-fns) object)
+         (some true?)
+         boolean)))
+

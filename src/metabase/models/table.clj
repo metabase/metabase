@@ -54,8 +54,7 @@
   ;;     data-model permissions for othe table
   ;;   * Else, you must be an admin
   (case read-or-write
-    :read #{(perms/data-perms-path db-id)
-            (perms/data-model-write-perms-path db-id schema table-id)}
+    :read #{(perms/data-perms-path db-id)}
     :write #{(perms/data-model-write-perms-path db-id schema table-id)}))
 
 (u/strict-extend (class Table)
@@ -70,7 +69,9 @@
           :pre-delete     pre-delete})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
-         {:can-read?         (partial i/current-user-has-any-partial-permissions? :read)
+         {:can-read?         (i/check-any
+                              (partial i/current-user-has-full-permissions? :read)
+                              (partial i/current-user-has-full-permissions? :write))
           :can-write?        (partial i/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
