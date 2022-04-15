@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import { Group, GroupsPermissions } from "metabase-types/api";
-import Database from "metabase-lib/lib/metadata/Database";
+import { Database } from "metabase-types/types/Database";
 import {
   getFieldsPermission,
   getNativePermission,
@@ -39,7 +39,7 @@ function diffDatabasePermissions(
     databaseDiff.native = newNativePerm;
   }
   // check each table in this db
-  for (const table of database.getTables()) {
+  for (const table of database.tables) {
     const oldFieldsPerm = getFieldsPermission(
       oldPerms,
       groupId,
