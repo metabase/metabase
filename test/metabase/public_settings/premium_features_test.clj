@@ -87,7 +87,7 @@
   [username]
   (format "Hi %s, you're an OSS customer!" (name username)))
 
-(defenterprise greeting-with-schema
+(defenterprise greeting-with-schema :- s/Keyword
   "Returns a greeting for a user."
   metabase-enterprise.util-test
   [username]
@@ -137,6 +137,10 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"Value does not match schema"
                             (greeting-with-schema "rasta")))
+
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Value does not match schema"
+                            (greeting-with-schema :rasta)))
 
       (testing "if :feature = :any, it will check if any feature exists, and fall back to the OSS version by default"
         (with-premium-features #{:some-feature}

@@ -14,7 +14,7 @@
   [username]
   (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
 
-(defenterprise greeting-with-schema
+(defenterprise greeting-with-schema :- s/Keyword
   "Returns an special greeting for an enterprise user."
   [username]
   {username s/Keyword}

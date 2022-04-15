@@ -266,18 +266,29 @@
         [(merge options-map {option-name option-value})
          other-args]))))
 
+(defn- parse-result-schema
+  "Detects the schema for the return value of an enterprise function, indicated with the keyword :-, and returns
+  [schema remaining-args] if it exists. Else returns [nil args]."
+  [args]
+  (let [[schema-indicator [schema & more]] (u/optional #{:-} args)]
+    (if schema-indicator
+      [schema more]
+      [nil args])))
+
 (defn- parse-defenterprise-args
   [defenterprise-args]
-  (let [[docstr more]           (u/optional string? defenterprise-args)
+  (let [[result-schema more]    (parse-result-schema defenterprise-args)
+        [docstr more]           (u/optional string? more)
         [ee-ns more]            (u/optional symbol? more)
         [options [args & more]] (parse-defenterprise-options more)
         [arg->schema body]      (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
-    {:ee-ns       ee-ns
-     :docstr      docstr
-     :options     options
-     :args        args
-     :arg->schema arg->schema
-     :body        body}))
+    {:ee-ns         ee-ns
+     :docstr        docstr
+     :options       options
+     :args          args
+     :arg->schema   arg->schema
+     :result-schema result-schema
+     :body          body}))
 
 (defn validate-args
   "Generate a series of s/validate calls for the arg and schema pairs in `arg->schema`."
@@ -371,13 +382,17 @@
   causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [{:keys [docstr args arg->schema] :as defenterprise-args} (-> (parse-defenterprise-args defenterprise-args)
-                                                                     (assoc :fn-name fn-name))]
+  (let [{:keys [docstr args arg->schema result-schema]
+         :as defenterprise-args} (-> (parse-defenterprise-args defenterprise-args)
+                                     (assoc :fn-name fn-name))]
     (when-not (:docstr defenterprise-args)
       (log/warn (u/format-color 'red "Warning: enterprise function %s/%s does not have a docstring. Go add one."
                   (ns-name *ns*) fn-name)))
     `(defn ~fn-name ~docstr ~args
        ~@(validate-args (:arg->schema defenterprise-args))
-       ~(if (in-ee?)
-          `(defenterprise-ee ~defenterprise-args)
-          `(defenterprise-oss ~defenterprise-args)))))
+       (let [result# ~(if (in-ee?)
+                        `(defenterprise-ee ~defenterprise-args)
+                        `(defenterprise-oss ~defenterprise-args))]
+         (if ~result-schema
+          (s/validate ~result-schema result#)
+          result#)))))
