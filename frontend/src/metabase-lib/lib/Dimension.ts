@@ -1472,7 +1472,11 @@ export class AggregationDimension extends Dimension {
    * Raw aggregation
    */
   _aggregation(): Aggregation {
-    return this._query && this._query.aggregations()[this.aggregationIndex()];
+    return (
+      this._query &&
+      this._query.aggregations &&
+      this._query.aggregations()[this.aggregationIndex()]
+    );
   }
 
   /**
