@@ -7,32 +7,32 @@ import { PermissionsEditor } from "metabase/admin/permissions/components/Permiss
 
 import Groups from "metabase/entities/groups";
 import {
-  getGeneralPermissionEditor,
+  getApplicationPermissionEditor,
   getIsDirty,
-} from "metabase-enterprise/general_permissions/selectors";
+} from "metabase-enterprise/application_permissions/selectors";
 
 import PermissionsPageLayout from "metabase/admin/permissions/components/PermissionsPageLayout";
 import {
-  initializeGeneralPermissions,
-  saveGeneralPermissions,
-  updateGeneralPermission,
-} from "metabase-enterprise/general_permissions/reducer";
-import { GeneralPermissionsState } from "metabase-enterprise/general_permissions/types/state";
+  initializeApplicationPermissions,
+  saveApplicationPermissions,
+  updateApplicationPermission,
+} from "metabase-enterprise/application_permissions/reducer";
+import { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
 
 const mapDispatchToProps = {
-  initialize: initializeGeneralPermissions,
-  updatePermission: updateGeneralPermission,
-  savePermissions: saveGeneralPermissions,
+  initialize: initializeApplicationPermissions,
+  updatePermission: updateApplicationPermission,
+  savePermissions: saveApplicationPermissions,
 };
 
-const mapStateToProps = (state: GeneralPermissionsState) => {
+const mapStateToProps = (state: ApplicationPermissionsState) => {
   return {
-    permissionEditor: getGeneralPermissionEditor(state),
+    permissionEditor: getApplicationPermissionEditor(state),
     isDirty: getIsDirty(state),
   };
 };
 
-interface GeneralPermissionsPageProps {
+interface ApplicationPermissionsPageProps {
   isDirty: boolean;
   permissionEditor: any;
   initialize: () => void;
@@ -41,14 +41,14 @@ interface GeneralPermissionsPageProps {
   route: Route;
 }
 
-const GeneralPermissionsPage = ({
+const ApplicationPermissionsPage = ({
   permissionEditor,
   isDirty,
   initialize,
   savePermissions,
   updatePermission,
   route,
-}: GeneralPermissionsPageProps) => {
+}: ApplicationPermissionsPageProps) => {
   useEffect(() => {
     initialize();
   }, [initialize]);
@@ -65,7 +65,7 @@ const GeneralPermissionsPage = ({
   );
   return (
     <PermissionsPageLayout
-      tab="general"
+      tab="application"
       isDirty={isDirty}
       route={route}
       onSave={savePermissions}
@@ -84,4 +84,4 @@ const GeneralPermissionsPage = ({
 export default _.compose(
   Groups.loadList(),
   connect(mapStateToProps, mapDispatchToProps),
-)(GeneralPermissionsPage);
+)(ApplicationPermissionsPage);

@@ -13,7 +13,7 @@ const SUBSCRIPTIONS_INDEX = 2;
 
 const NORMAL_USER_ID = 2;
 
-describeEE("scenarios > admin > permissions > general", () => {
+describeEE("scenarios > admin > permissions > application", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -22,7 +22,7 @@ describeEE("scenarios > admin > permissions > general", () => {
   describe("subscriptions permission", () => {
     describe("revoked", () => {
       beforeEach(() => {
-        cy.visit("/admin/permissions/general");
+        cy.visit("/admin/permissions/application");
 
         modifyPermission("All Users", SUBSCRIPTIONS_INDEX, "No");
 
@@ -77,7 +77,7 @@ describeEE("scenarios > admin > permissions > general", () => {
   describe("monitoring permission", () => {
     describe("granted", () => {
       beforeEach(() => {
-        cy.visit("/admin/permissions/general");
+        cy.visit("/admin/permissions/application");
 
         modifyPermission("All Users", MONITORING_INDEX, "Yes");
 
@@ -146,7 +146,7 @@ describeEE("scenarios > admin > permissions > general", () => {
   describe("settings permission", () => {
     describe("granted", () => {
       beforeEach(() => {
-        cy.visit("/admin/permissions/general");
+        cy.visit("/admin/permissions/application");
 
         modifyPermission("All Users", SETTINGS_INDEX, "Yes");
 

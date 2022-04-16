@@ -5,44 +5,51 @@ import { Group } from "metabase-types/api";
 import { isAdminGroup } from "metabase/lib/groups";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import { getOrderedGroups } from "metabase/admin/permissions/selectors/data-permissions/groups";
-import { GENERAL_PERMISSIONS_OPTIONS } from "./constants";
+import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
 import { getIn } from "icepick";
-import { GeneralPermissionsState } from "./types/state";
-import { GeneralPermissionKey, GeneralPermissions } from "./types/permissions";
+import { ApplicationPermissionsState } from "./types/state";
+import {
+  ApplicationPermissionKey,
+  ApplicationPermissions,
+} from "./types/permissions";
 
-export const canManageSubscriptions = (state: GeneralPermissionsState) =>
+export const canManageSubscriptions = (state: ApplicationPermissionsState) =>
   state.currentUser.permissions?.can_access_subscription ?? false;
 
-const getGeneralPermission = (
-  permissions: GeneralPermissions,
+const getApplicationPermission = (
+  permissions: ApplicationPermissions,
   groupId: number,
-  permissionKey: GeneralPermissionKey,
+  permissionKey: ApplicationPermissionKey,
 ) => getIn(permissions, [groupId, permissionKey]) ?? "no";
 
 export const getIsDirty = createSelector(
-  (state: GeneralPermissionsState) =>
-    state.plugins.generalPermissionsPlugin?.generalPermissions,
-  state => state.plugins.generalPermissionsPlugin?.originalGeneralPermissions,
+  (state: ApplicationPermissionsState) =>
+    state.plugins.applicationPermissionsPlugin?.applicationPermissions,
+  state =>
+    state.plugins.applicationPermissionsPlugin?.originalApplicationPermissions,
   (permissions, originalPermissions) =>
     !_.isEqual(permissions, originalPermissions),
 );
 
 const getPermission = (
-  permissions: GeneralPermissions,
+  permissions: ApplicationPermissions,
   isAdmin: boolean,
   groupId: number,
-  permissionKey: GeneralPermissionKey,
+  permissionKey: ApplicationPermissionKey,
 ) => ({
   permission: permissionKey,
   isDisabled: isAdmin,
   disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
-  value: getGeneralPermission(permissions, groupId, permissionKey),
-  options: [GENERAL_PERMISSIONS_OPTIONS.yes, GENERAL_PERMISSIONS_OPTIONS.no],
+  value: getApplicationPermission(permissions, groupId, permissionKey),
+  options: [
+    APPLICATION_PERMISSIONS_OPTIONS.yes,
+    APPLICATION_PERMISSIONS_OPTIONS.no,
+  ],
 });
 
-export const getGeneralPermissionEditor = createSelector(
-  (state: GeneralPermissionsState) =>
-    state.plugins.generalPermissionsPlugin?.generalPermissions,
+export const getApplicationPermissionEditor = createSelector(
+  (state: ApplicationPermissionsState) =>
+    state.plugins.applicationPermissionsPlugin?.applicationPermissions,
   getOrderedGroups,
   (permissions, groups: Group[][]) => {
     if (!permissions || groups == null) {

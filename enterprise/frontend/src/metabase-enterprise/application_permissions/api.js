@@ -2,7 +2,7 @@ import _ from "underscore";
 
 import { GET, PUT } from "metabase/lib/api";
 
-export const GeneralPermissionsApi = {
+export const ApplicationPermissionsApi = {
   graph: GET("/api/ee/advanced-permissions/general/graph"),
   updateGraph: PUT("api/ee/advanced-permissions/general/graph"),
 };
