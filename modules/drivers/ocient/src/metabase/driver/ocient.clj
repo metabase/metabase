@@ -98,23 +98,21 @@
   [_ database-type]
   (database-type->base-type database-type))
 
-;; try FK support to see if manual support works ok
-(defmethod driver/database-supports? [:ocient :foreign-keys] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :native-parameters] [_ _ db] false)
 
-(defmethod driver/database-supports? [:ocient :percentile-aggregations] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :standard-deviation-aggregations] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :expression-aggregations] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :advanced-math-expressions] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :left-join] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :right-join] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :inner-join] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :nested-queries] [_ _ db] true)
-(defmethod driver/database-supports? [:ocient :regex] [_ _ db] true)
-
-;; overriding describe fks to see if this will allow FKs to work in MB. May not benecessary to enable this to get manual FK support.
-(defmethod driver/describe-table-fks :ocient [_ _ _]
-  nil)
+(doseq [[feature supported?] {:set-timezone                    true
+                              :native-parameters               true
+                              :basic-aggregations              true
+                              :standard-deviation-aggregations true
+                              :expression-aggregations         true
+                              :advanced-math-expressions       true
+                              :left-join                       true
+                              :right-join                      true
+                              :inner-join                      true
+                              :nested-queries                  true
+                              :regex                           true
+                              :binning                         true
+                              :foreign-keys                    true}]
+  (defmethod driver/supports? [:ocient feature] [_ _] supported?))
 
 ;; overriding driver/describe-table-fields may fix many of our test errors
 ;; TODO
