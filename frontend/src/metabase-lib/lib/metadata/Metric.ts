@@ -1,35 +1,79 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-import Base from "./Base";
-/**
- * @typedef { import("./metadata").Aggregation } Aggregation
- */
+import {
+  StructuredQuery as StructuredQueryType,
+  MetricAgg,
+} from "metabase-types/types/Query";
 
-/**
- * Wrapper class for a metric. Belongs to a {@link Database} and possibly a {@link Table}
- */
+import Aggregation from "../queries/structured/Aggregation";
+import StructuredQuery from "../queries/StructuredQuery";
+import Table from "./Table";
+import Database from "./Database";
+import Metadata from "./Metadata";
 
-export default class Metric extends Base {
+export interface IMetric {
+  name: string;
+  id: number | string;
+  table_id: number;
+  archived: boolean;
+  description: string;
+  definition: StructuredQueryType;
+}
+
+export type HydratedMetricProperties = {
+  table: Table;
+  database: Database;
+};
+
+export default class Metric {
+  name: string;
+  id: number | string;
+  table_id: number;
+  archived: boolean;
+  description: string;
+  definition: StructuredQueryType;
+
+  table: Table | null;
+  metadata: Metadata | null;
+
+  _plainObject: IMetric;
+
+  constructor(metric: IMetric) {
+    this.name = metric.name;
+    this.id = metric.id;
+    this.table_id = metric.table_id;
+    this.archived = metric.archived;
+    this.description = metric.description;
+    this.definition = metric.definition;
+
+    // these properties are hydrated after instantiation in metabase/selectors/metadata
+    this.table = null;
+    this.metadata = null;
+
+    Object.assign(this, metric);
+
+    this._plainObject = { ...metric };
+  }
+
+  getPlainObject() {
+    return this._plainObject;
+  }
+
   displayName() {
     return this.name;
   }
 
-  /**
-   * @returns {Aggregation}
-   */
-  aggregationClause() {
+  aggregationClause(): MetricAgg {
     return ["metric", this.id];
   }
 
   /** Underlying query for this metric */
-  definitionQuery() {
-    return this.definition
+  definitionQuery(): StructuredQuery | null {
+    return this.table && this.definition
       ? this.table.query().setQuery(this.definition)
       : null;
   }
 
   /** Underlying aggregation clause for this metric */
-  aggregation() {
+  aggregation(): Aggregation | undefined {
     const query = this.definitionQuery();
 
     if (query) {
@@ -38,7 +82,7 @@ export default class Metric extends Base {
   }
 
   /** Column name when this metric is used in a query */
-  columnName() {
+  columnName(): string | null {
     const aggregation = this.aggregation();
 
     if (aggregation) {
@@ -53,27 +97,5 @@ export default class Metric extends Base {
 
   isActive() {
     return !this.archived;
-  }
-
-  /**
-   * @private
-   * @param {string} name
-   * @param {string} description
-   * @param {Database} database
-   * @param {Table} table
-   * @param {number} id
-   * @param {StructuredQuery} definition
-   * @param {boolean} archived
-   */
-
-  /* istanbul ignore next */
-  _constructor(name, description, database, table, id, definition, archived) {
-    this.name = name;
-    this.description = description;
-    this.database = database;
-    this.table = table;
-    this.id = id;
-    this.definition = definition;
-    this.archived = archived;
   }
 }
