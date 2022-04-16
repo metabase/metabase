@@ -11462,10 +11462,10 @@ databaseChangeLog:
       comment: Added 0.43.0 - Rename general permissios to application permissions
       changes:
         - sql:
-          sql: >-
-            UPDATE permissions
-            SET object = REPLACE(object, '/general/', '/application/')
-            WHERE object LIKE '/general/%';
+            sql: >-
+              UPDATE permissions
+              SET object = REPLACE(object, '/general/', '/application/')
+              WHERE object LIKE '/general/%';
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
