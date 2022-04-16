@@ -131,7 +131,7 @@ function addBookmarkTo(name) {
 function removeBookmarkFrom(name) {
   openEllipsisMenuFor(name);
 
-  cy.findByText("Remove bookmark").click();
+  cy.findByText("Remove from bookmarks").click();
 
   navigationSidebar().within(() => {
     getSectionTitle(/Bookmarks/).should("not.exist");
