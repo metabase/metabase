@@ -7,12 +7,12 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
+            [metabase.public-settings.premium-features :refer [defenterprise-schema]]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool]
-           metabase.integrations.ldap.interface.LDAPIntegration))
+  (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool]))
 
 ;;; --------------------------------------------------- find-user ----------------------------------------------------
 
@@ -85,10 +85,11 @@
                        (user-groups ldap-connection dn uid settings group-membership-filter)
                        []))}))
 
-(s/defn ^:private find-user* :- (s/maybe i/UserInfo)
-  [ldap-connection :- LDAPConnectionPool
-   username        :- su/NonBlankString
-   settings        :- i/LDAPSettings]
+(defenterprise-schema find-user :- (s/maybe i/UserInfo)
+  "Get user information for the supplied username."
+  metabase-enterprise.enhancements.integrations.ldap
+  [ldap-connection username settings]
+  {username su/NonBlankString}
   (when-let [result (search ldap-connection username settings)]
     (ldap-search-result->user-info ldap-connection result settings group-membership-filter)))
 
@@ -122,11 +123,16 @@
     mb-name
     (or ldap-name (trs "Unknown"))))
 
-(s/defn ^:private fetch-or-create-user!* :- (class User)
-  [{:keys [first-name last-name email groups]} :- i/UserInfo
-   {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
-  (let [user     (db/select-one [User :id :last_login :first_name :last_name :is_active]
-                                :%lower.email (u/lower-case-en email))
+(defenterprise-schema fetch-or-create-user! :- (class User)
+  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
+  metabase-enterprise.enhancements.integrations.ldap
+  [user-info settings]
+  {user-info i/UserInfo
+   settings i/LDAPSettings}
+  (let [{:keys [first-name last-name email groups]} user-info
+        sync-groups? (:sync-groups? settings)
+        user (db/select-one [User :id :last_login :first_name :last_name :is_active]
+                            :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
                          old-last-name  (:last_name user)
@@ -145,23 +151,7 @@
                                                          :email      email})
                        (assoc :is_active true)))]
     (u/prog1 new-user
-      (when sync-groups?
+      (when (:sync-groups? settings)
         (let [group-ids            (ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (all-mapped-group-ids settings)]
           (integrations.common/sync-group-memberships! new-user group-ids all-mapped-group-ids))))))
-
-;;; ------------------------------------------------------ impl ------------------------------------------------------
-
-(def impl
-  "Default LDAP integration."
-  (reify
-    PrettyPrintable
-    (pretty [_]
-      `impl)
-
-    LDAPIntegration
-    (find-user [_ ldap-connection username ldap-settings]
-      (find-user* ldap-connection username ldap-settings))
-
-    (fetch-or-create-user! [_ user-info ldap-settings]
-      (fetch-or-create-user!* user-info ldap-settings))))

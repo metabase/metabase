@@ -28,13 +28,3 @@
    :group-base           (s/maybe su/NonBlankString)
    :group-mappings       (s/maybe {DN [su/IntGreaterThanZero]})
    s/Keyword             s/Any})
-
-(p/defprotocol+ LDAPIntegration
-  "Protocol for LDAP integration implementations."
-  (find-user [this ^com.unboundid.ldap.sdk.LDAPConnectionPool ldap-connection username ldap-settings]
-    "Find LDAP user with `username`. If a corresponding LDAP user is found, result should be in the format specified
-  by the `UserInfo` schema above. `ldap-settings` match the `LDAPSettings` schema above.")
-
-  (fetch-or-create-user! [this user-info ldap-settings]
-    "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary.
-    `ldap-settings` match the `LDAPSettings` schema above."))

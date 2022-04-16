@@ -2,19 +2,19 @@
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase.integrations.common :as integrations.common]
+            [metabase.integrations.ldap :as ldap]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise-schema]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import com.unboundid.ldap.sdk.LDAPConnectionPool
-           metabase.integrations.ldap.interface.LDAPIntegration))
+  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
 
 (def ^:private EEUserInfo
   (assoc i/UserInfo :attributes (s/maybe {s/Keyword s/Any})))
@@ -60,10 +60,11 @@
                   (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
                 user))))
 
-(s/defn ^:private find-user* :- (s/maybe EEUserInfo)
-  [ldap-connection :- LDAPConnectionPool
-   username        :- su/NonBlankString
-   settings        :- i/LDAPSettings]
+(defenterprise-schema find-user :- (s/maybe EEUserInfo)
+  "Get user information for the supplied username."
+  :feature :any
+  [ldap-connection username settings]
+  {username su/NonBlankString}
   (when-let [result (default-impl/search ldap-connection username settings)]
     (when-let [user-info (default-impl/ldap-search-result->user-info
                           ldap-connection
@@ -72,40 +73,24 @@
                           (ldap-group-membership-filter))]
       (assoc user-info :attributes (syncable-user-attributes result)))))
 
-(s/defn ^:private fetch-or-create-user!* :- (class User)
-  [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
-   {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
-  (let [user (or (attribute-synced-user user-info)
+(defenterprise-schema fetch-or-create-user! :- (class User)
+  "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
+  :feature :any
+  [user-info settings]
+  {user-info i/UserInfo
+   settings i/LDAPSettings}
+  (let [{:keys [first-name last-name email groups attributes]} user-info
+        sync-groups? (:sync-groups? settings)
+        user (or (attribute-synced-user user-info)
                  (-> (user/create-new-ldap-auth-user! {:first_name       (or first-name (trs "Unknown"))
                                                        :last_name        (or last-name (trs "Unknown"))
                                                        :email            email
                                                        :login_attributes attributes})
                      (assoc :is_active true)))]
     (u/prog1 user
-      (when sync-groups?
+      (when (:sync-groups? settings)
         (let [group-ids            (default-impl/ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (default-impl/all-mapped-group-ids settings)]
           (integrations.common/sync-group-memberships! user
                                                        group-ids
                                                        all-mapped-group-ids))))))
-
-(def ^:private impl
-  (reify
-    PrettyPrintable
-    (pretty [_]
-      `impl)
-
-    LDAPIntegration
-    (find-user [_ ldap-connection username ldap-settings]
-      (find-user* ldap-connection username ldap-settings))
-
-    (fetch-or-create-user! [_ user-info ldap-settings]
-      (fetch-or-create-user!* user-info ldap-settings))))
-
-(def ee-strategy-impl
-  "Enterprise version of the LDAP integration. Uses our EE strategy pattern adapter: if EE features *are* enabled,
-  forwards method invocations to `impl`; if EE features *are not* enabled, forwards method invocations to the
-  default OSS impl."
-  ;; TODO -- should we require `:sso` token features for using the LDAP enhancements?
-  (ee-strategy-impl/reify-ee-strategy-impl #'premium-features/enable-enhancements? impl default-impl/impl
-    LDAPIntegration))

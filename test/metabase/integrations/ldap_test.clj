@@ -66,7 +66,7 @@
 
 (deftest find-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [premium-features/enable-enhancements? (constantly false)]
+  (with-redefs [premium-features/has-any-features? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "find by username"
         (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
@@ -121,7 +121,7 @@
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`
-  (with-redefs [premium-features/enable-enhancements? (constantly false)]
+  (with-redefs [premium-features/has-any-features? (constantly false)]
     (ldap.test/with-ldap-server
       (testing "a new user is created when they don't already exist"
         (try

@@ -126,13 +126,13 @@
   ^LDAPConnectionPool []
   (ldap/connect (settings->ldap-options)))
 
-(defn- do-with-ldap-connection
+(defn do-with-ldap-connection
   "Impl for `with-ldap-connection` macro."
   [f]
   (with-open [conn (get-connection)]
     (f conn)))
 
-(defmacro ^:private with-ldap-connection
+(defmacro with-ldap-connection
   "Execute `body` with `connection-binding` bound to a LDAP connection."
   [[connection-binding] & body]
   `(do-with-ldap-connection (fn [~(vary-meta connection-binding assoc :tag `LDAPConnectionPool)]
@@ -186,19 +186,7 @@
    (let [dn (if (string? user-info) user-info (:dn user-info))]
      (ldap/bind? conn dn password))))
 
-;; we want the EE implementation namespace to be loaded immediately if present so the extra Settings that it defines
-;; are available elsewhere (e.g. so they'll show up in the API endpoints that list Settings)
-(def ^:private impl
-  ;; if EE impl is present, use it. It implements the strategy pattern and will forward method invocations to the
-  ;; default OSS impl if we don't have a valid EE token. Thus the actual EE versions of the methods won't get used
-  ;; unless EE code is present *and* we have a valid EE token.
-  (u/prog1 (or (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.enhancements.integrations.ldap)
-                 (some-> (resolve 'metabase-enterprise.enhancements.integrations.ldap/ee-strategy-impl) var-get))
-               default-impl/impl)
-    (log/debugf "LDAP integration set to %s" <>)))
-
-(s/defn ^:private ldap-settings :- i/LDAPSettings
+(s/defn ldap-settings
   []
   {:first-name-attribute (ldap-attribute-firstname)
    :last-name-attribute  (ldap-attribute-lastname)
@@ -216,9 +204,9 @@
      (find-user conn username)))
 
   ([ldap-connection :- LDAPConnectionPool, username :- su/NonBlankString]
-   (i/find-user impl ldap-connection username (ldap-settings))))
+   (default-impl/find-user ldap-connection username (ldap-settings))))
 
 (s/defn fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   [user-info :- i/UserInfo]
-  (i/fetch-or-create-user! impl user-info (ldap-settings)))
+  (default-impl/fetch-or-create-user! user-info (ldap-settings)))
