@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.monitoring-test
-  "Permisisons tests for API that needs to be enforced by General Permissions of type `:monitoring`."
+  "Permisisons tests for API that needs to be enforced by Application Permissions of type `:monitoring`."
   (:require [clojure.test :refer :all]
             [metabase.models :refer [TaskHistory]]
             [metabase.models.permissions :as perms]
@@ -36,7 +36,7 @@
                 (get-task-info user 403))
 
               (testing "allowed if user's group has `monitoring` permission"
-                (perms/grant-general-permissions! group :monitoring)
+                (perms/grant-application-permissions! group :monitoring)
                 (get-tasks user 200)
                 (get-single-task user 200)
                 (get-task-info user 200)))))))))
@@ -78,7 +78,7 @@
               (get-db-connection-info user 403))
 
           (testing "allowed if user's group has `monitoring` permission"
-            (perms/grant-general-permissions! group :monitoring)
+            (perms/grant-application-permissions! group :monitoring)
             (get-logs user 200)
             (get-stats user 200)
             (get-bug-report-detail user 200)

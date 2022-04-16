@@ -96,7 +96,7 @@
   (try
    (validation/check-group-manager)
    (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-general-permission :setting)))
+     (validation/check-has-application-permission :setting)))
   (let [query (when (and (not api/*is-superuser?*)
                          (premium-features/enable-advanced-permissions?)
                          api/*is-group-manager?*)

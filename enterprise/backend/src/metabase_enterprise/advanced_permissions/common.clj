@@ -12,18 +12,18 @@
   [user]
   (let [permissions-set @api/*current-user-permissions-set*]
     (assoc user :permissions
-           {:can_access_setting      (perms/set-has-general-permission-of-type? permissions-set :setting)
-            :can_access_subscription (perms/set-has-general-permission-of-type? permissions-set :subscription)
-            :can_access_monitoring   (perms/set-has-general-permission-of-type? permissions-set :monitoring)
+           {:can_access_setting      (perms/set-has-application-permission-of-type? permissions-set :setting)
+            :can_access_subscription (perms/set-has-application-permission-of-type? permissions-set :subscription)
+            :can_access_monitoring   (perms/set-has-application-permission-of-type? permissions-set :monitoring)
             :can_access_data_model   (perms/set-has-partial-permissions? permissions-set "/data-model/")
             :can_access_db_details   (perms/set-has-partial-permissions? permissions-set "/details/")
             :is_group_manager        api/*is-group-manager?*})))
 
-(defn current-user-has-general-permissions?
-  "Check if `*current-user*` has permissions for a general permissions of type `perm-type`."
+(defn current-user-has-application-permissions?
+  "Check if `*current-user*` has permissions for a application permissions of type `perm-type`."
   [perm-type]
   (or api/*is-superuser?*
-      (perms/set-has-general-permission-of-type? @api/*current-user-permissions-set* perm-type)))
+      (perms/set-has-application-permission-of-type? @api/*current-user-permissions-set* perm-type)))
 
 (defn current-user-is-manager-of-group?
   "Return true if current-user is a manager of `group-or-id`."

@@ -11445,6 +11445,28 @@ databaseChangeLog:
                   name: user_id
             indexName: idx_bookmark_ordering_user_id
 
+  - changeSet:
+      id: v43.00-056
+      author: qnkhuat
+      comment: >-
+        Added 0.43.0 - Rename general permission revision table
+        It's safe to rename this table without breaking downgrades compatibility because this table was also added in 0.43.0.
+      changes:
+        - renameTable:
+            oldTableName: general_permissions_revision
+            newTableName: application_permissions_revision
+
+  - changeSet:
+      id: v43.00-057
+      author: qnkhuat
+      comment: Added 0.43.0 - Rename general permissios to application permissions
+      changes:
+        - sql:
+          sql: >-
+            UPDATE permissions
+            SET object = REPLACE(object, '/general/', '/application/')
+            WHERE object LIKE '/general/%';
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

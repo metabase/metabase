@@ -1,7 +1,7 @@
-(ns metabase-enterprise.advanced-permissions.models.permissions.general-permissions-test
+(ns metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test
   (:require [clojure.test :refer :all]
-            [metabase-enterprise.advanced-permissions.models.permissions.general-permissions :as g-perms]
-            [metabase.models :refer [GeneralPermissionsRevision PermissionsGroup]]
+            [metabase-enterprise.advanced-permissions.models.permissions.application-permissions :as g-perms]
+            [metabase.models :refer [ApplicationPermissionsRevision PermissionsGroup]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
@@ -9,11 +9,11 @@
 
 ;; -------------------------------------------------- Fetch Graph ---------------------------------------------------
 
-(deftest general-permissions-graph-test
+(deftest application-permissions-graph-test
   (mt/with-temp* [PermissionsGroup [{group-id :id}]]
     ;; clear the graph revisions
-    (db/delete! GeneralPermissionsRevision)
-    (testing "group should be in graph if one of general permission is enabled"
+    (db/delete! ApplicationPermissionsRevision)
+    (testing "group should be in graph if one of application permission is enabled"
       (let [graph (g-perms/graph)]
         (is (= 0 (:revision graph)))
         (is (partial= {(:id (group/admin))
@@ -39,7 +39,7 @@
      (mt/with-current-user (mt/user->id :crowberto)
        ((fn [~group-id-binding ~current-graph-binding] ~@body) group-id# (g-perms/graph)))))
 
-(deftest general-permissions-update-graph!-test
+(deftest application-permissions-update-graph!-test
   (testing "Grant successfully and increase revision"
     (with-new-group-and-current-graph group-id current-graph
       (let [new-graph     (assoc-in current-graph [:groups group-id] {:setting      :yes
@@ -84,7 +84,7 @@
   (testing "Able to grant for a group that was not in the old graph"
     (with-new-group-and-current-graph group-id current-graph
       ;; subscription is granted for new group by default, so revoke it
-      (perms/revoke-general-permissions! group-id :subscription)
+      (perms/revoke-application-permissions! group-id :subscription)
       ;; making sure the `group-id` is not in the current-graph
       (is (not (contains? (-> (:groups (g-perms/graph)) keys set)
                           group-id)))

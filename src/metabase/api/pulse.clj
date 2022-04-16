@@ -66,7 +66,7 @@
    collection_position (s/maybe su/IntGreaterThanZero)
    dashboard_id        (s/maybe su/IntGreaterThanZero)
    parameters          [su/Map]}
-  (validation/check-has-general-permission :subscription false)
+  (validation/check-has-application-permission :subscription false)
   ;; make sure we are allowed to *read* all the Cards we want to put in this Pulse
   (check-card-read-permissions cards)
   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
@@ -109,9 +109,9 @@
    parameters    [su/Map]}
   ;; do various perms checks
   (try
-   (validation/check-has-general-permission :monitoring)
+   (validation/check-has-application-permission :monitoring)
    (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-general-permission :subscription false)))
+     (validation/check-has-application-permission :subscription false)))
 
   (let [pulse-before-update (api/write-check (pulse/retrieve-pulse id))]
     (check-card-read-permissions cards)
@@ -122,12 +122,12 @@
     (when (premium-features/enable-advanced-permissions?)
       (let [to-add-recipients (difference (set (map :id (:recipients (api-alert/email-channel pulse-updates))))
                                           (set (map :id (:recipients (api-alert/email-channel pulse-before-update)))))
-            current-user-has-general-permissions?
+            current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
-                 (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
+                 (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
             has-subscription-perms?
-            (and current-user-has-general-permissions?
-                 (current-user-has-general-permissions? :subscription))]
+            (and current-user-has-application-permissions?
+                 (current-user-has-application-permissions? :subscription))]
         (api/check (or api/*is-superuser?*
                        has-subscription-perms?
                        (empty? to-add-recipients))
@@ -148,7 +148,7 @@
 (api/defendpoint GET "/form_input"
   "Provides relevant configuration information and user choices for creating/updating Pulses."
   []
-  (validation/check-has-general-permission :subscription false)
+  (validation/check-has-application-permission :subscription false)
   (let [chan-types (-> channel-types
                        (assoc-in [:slack :configured] (slack/slack-configured?))
                        (assoc-in [:email :configured] (email/email-configured?)))]

@@ -90,7 +90,7 @@
   "Update LDAP related settings. You must be a superuser to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (let [ldap-settings (-> settings
                           (select-keys (keys mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]

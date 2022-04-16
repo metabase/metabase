@@ -111,7 +111,7 @@
 (s/defn ^:private process-internal-query
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery rff context]
   ;; Make sure current user is a superuser or has monitoring permissions
-  (validation/check-has-general-permission :monitoring)
+  (validation/check-has-application-permission :monitoring)
   ;; Make sure audit app is enabled (currently the only use case for internal queries). We can figure out a way to
   ;; allow non-audit-app queries if and when we add some
   (when-not (premium-features/enable-audit-app?)

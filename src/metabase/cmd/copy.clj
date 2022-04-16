@@ -9,11 +9,11 @@
             [metabase.db.connection :as mdb.conn]
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity BookmarkOrdering Card CardBookmark
+            [metabase.models :refer [Activity ApplicationPermissionsRevision BookmarkOrdering Card CardBookmark
                                      Collection CollectionBookmark CollectionPermissionGraphRevision
                                      Dashboard DashboardBookmark DashboardCard DashboardCardSeries
                                      Database Dependency Dimension Field FieldValues
-                                     GeneralPermissionsRevision LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
+                                     LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
                                      Timeline TimelineEvent User ViewLog]]
@@ -78,7 +78,7 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
-   GeneralPermissionsRevision
+   ApplicationPermissionsRevision
    Dimension
    NativeQuerySnippet
    LoginHistory
