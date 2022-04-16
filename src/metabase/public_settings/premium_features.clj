@@ -309,16 +309,6 @@
         oss-fn    (eval `(fn ~args ~@body))]
     (swap! ee-registry assoc ee-parts oss-fn)))
 
-(defmacro defenterprise-oss
-  "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name ee-ns docstr args body]}]
-  (register-mapping! fn-name ee-ns args body)
-  (let [ee-fn (u/ignore-exceptions (classloader/require ee-ns)
-                                   (ns-resolve ee-ns fn-name))]
-    (if ee-fn
-      `(apply ~ee-fn ~args)
-      `(do ~@body))))
-
 (defn missing-premium-token-exception
   "The default exception to throw when an EE function is called, but a required premium feature is not present."
   [fn-name feature]
@@ -332,13 +322,18 @@
 
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
-  [{:keys [fn-name docstr args body options]}]
+  [{:keys [fn-name docstr args body result-schema options]}]
   (let [feature (:feature options)]
     `(if (or (not ~feature)
              (if (= ~feature :any)
                (has-any-features?)
                (has-feature? ~feature)))
-       (do ~@body)
+
+       (let [result# (do ~@body)]
+         (if ~result-schema
+           (s/validate ~result-schema result#)
+           result#))
+
        ~(let [fallback (:fallback options)
               ee-ns    (ns-name *ns*)]
           (cond
@@ -353,6 +348,19 @@
             `(apply (get @ee-registry [(symbol ~(str ee-ns))
                                        (symbol ~(str fn-name))])
                     ~args))))))
+
+(defmacro defenterprise-oss
+  "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
+  [{:keys [fn-name ee-ns docstr args body result-schema]}]
+  (register-mapping! fn-name ee-ns args body)
+  (let [ee-fn (u/ignore-exceptions (classloader/require ee-ns)
+                                   (ns-resolve ee-ns fn-name))]
+    (if ee-fn
+      `(apply ~ee-fn ~args)
+      `(let [result# (do ~@body)]
+         (if ~result-schema
+           (s/validate ~result-schema result#)
+           result#)))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -390,9 +398,6 @@
                   (ns-name *ns*) fn-name)))
     `(defn ~fn-name ~docstr ~args
        ~@(validate-args (:arg->schema defenterprise-args))
-       (let [result# ~(if (in-ee?)
-                        `(defenterprise-ee ~defenterprise-args)
-                        `(defenterprise-oss ~defenterprise-args))]
-         (if ~result-schema
-          (s/validate ~result-schema result#)
-          result#)))))
+       ~(if (in-ee?)
+          `(defenterprise-ee ~defenterprise-args)
+          `(defenterprise-oss ~defenterprise-args)))))
