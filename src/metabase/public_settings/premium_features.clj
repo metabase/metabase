@@ -353,11 +353,11 @@
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
   [{:keys [fn-name ee-ns docstr args body result-schema]}]
   (register-mapping! fn-name ee-ns args body)
-  (let [ee-fn (u/ignore-exceptions (classloader/require ee-ns)
-                                   (ns-resolve ee-ns fn-name))]
-    (if ee-fn
-      `(apply ~ee-fn ~args)
-      `(let [result# (do ~@body)]
+  `(let [ee-fn# (u/ignore-exceptions (classloader/require (symbol ~(str ee-ns)))
+                                     (ns-resolve (symbol ~(str ee-ns)) (symbol ~(str fn-name))))]
+     (if ee-fn#
+       (apply ee-fn# ~args)
+       (let [result# (do ~@body)]
          (if ~result-schema
            (s/validate ~result-schema result#)
            result#)))))
