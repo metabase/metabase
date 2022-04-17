@@ -14,7 +14,9 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.common :as common]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sql.util :as sql.u]
@@ -35,7 +37,8 @@
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s])
-  (:import java.sql.SQLException))
+  (:import java.sql.SQLException
+           [java.sql Connection DatabaseMetaData ResultSet]))
 
 (sql-jdbc.tx/add-test-extensions! :ocient)
 
@@ -93,10 +96,10 @@
                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:ocient base-type] [_ _] db-type))
 
-;; Ocient doesn't support FKs, at least not adding them via DDL
-(defmethod sql.tx/add-fk-sql :ocient
-  [_ _ _ _]
-  nil)
+(defn in?
+  "true if coll contains elm"
+  [coll elm]
+  (some #(= elm %) coll))
 
 ;; The Ocient JDBC driver barfs when trailing semicolons are tacked onto SQL statments
 (defn- execute-sql-spec!
@@ -224,11 +227,6 @@
     (assert (= (name fn-name) "timestamp"))
     (->insertable (u.date/parse (str/replace s #"'" "")))))
 
-;; Inserts one or more elements in front of the target elements
-(defn- add-first-vec
-  [target addition]
-  (apply conj (if (vector? addition) addition [addition]) target))
-
 ;; Ocient has different syntax for inserting multiple rows, it looks like:
 ;;
 ;;    INSERT INTO table
@@ -245,15 +243,16 @@
        "INSERT INTO \"%s\".\"%s\" SELECT %s"
        session-schema
        ((comp last :components) (into {} table-identifier))
-       (let [rows    (u/one-or-many row-or-rows)
-             columns (keys (first rows))
+       (let [rows                       (u/one-or-many row-or-rows)
+             columns                    (keys (first rows))
              values  (for [row rows]
                        (for [value (map row columns)]
                          (hformat/to-sql
                           (sql.qp/->honeysql driver (->insertable value)))))]
          (str/join
           " UNION ALL SELECT "
-          (map-indexed (fn [i row] (str/join ", " (add-first-vec row [(tc/to-long (time/now)) i]))) values)))))))
+          (map (fn [row] (str/join  ", " row)) values)))))))
+
 
 
 (defmethod load-data/do-insert! :ocient
@@ -265,28 +264,57 @@
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
       (doseq [sql+args statements]
         (let [sql (unprepare/unprepare driver sql+args)]
-          (log/infof "[insert] %s" (pr-str sql))
+          (log/debugf "[insert] %s" (pr-str sql))
           (execute-sql-spec! spec sql)))
       (catch SQLException e
         (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
         (jdbc/print-sql-exception-chain e)
         (throw e)))))
 
-;; Middleware function intended for use with `make-load-data-fn `. Insert rows in chunks, which default to 200 rows each.
-(defn- load-data-chunked
-  ([insert!]                   (load-data-chunked map insert!))
-  ([map-fn insert!]            (load-data-chunked map-fn 40 insert!))
-  ([map-fn chunk-size insert!] (fn [rows]
-                                 (dorun (map-fn insert! (partition-all chunk-size rows))))))
 
-(def ^{:arglists '([driver dbdef tabledef])} load-data-add-ids-timestamps!
-  (load-data/make-load-data-fn load-data-chunked))
+(defn- add-ids
+  "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
+  specified. (This isn't meant for composition with `load-data-get-rows`; "
+  [rows]
+  (let [columns                    (keys (first rows))]
+    (log/infof "Processing row like %s" (pr-str (first rows)))
+    (log/infof "Processing row like %s" (type (first rows)))
+    (for [[i row] (m/indexed rows)]
+      (if (in? columns :created_at)
+        (apply array-map (keyword id-column-key) (inc i) (flatten (vec row)))
+        (apply array-map (keyword timestamp-column-key) (tc/to-long (time/now)) (keyword id-column-key) (inc i) (flatten (vec row)))))))
+
+(defn- load-data-add-ids
+  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
+  insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
+  args."
+  [insert!]
+  (fn [rows]
+    (insert! (vec (add-ids rows)))))
+
+
+(defn- load-data [dbdef tabledef]
+  ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
+  ;; parameters being set in a single statement; these numbers were arrived at empirically
+  (let [chunk-size (case (:table-name tabledef)
+                     "people" 30
+                     "reviews" 40
+                     "orders" 30
+                     "venues" 50
+                     "products" 20
+                     "cities" 50
+                     "sightings" 50
+                     "incidents" 50
+                     "checkins" 25
+                     "airport" 50
+                     100)
+        load-fn    (load-data/make-load-data-fn load-data-add-ids
+                                                (partial load-data/load-data-chunked pmap chunk-size))]
+    (load-fn :ocient dbdef tabledef)))
 
 ;; Ocient requires an id and a timestamp for each row
-(defmethod load-data/load-data! :ocient [driver dbdef tabledef]
-  (load-data-add-ids-timestamps! driver dbdef tabledef))
-  ;; (log/infof "Skipping :ocient load")
-  ;; nil)
+(defmethod load-data/load-data! :ocient [_ dbdef tabledef]
+  (load-data dbdef tabledef))
 
 (defmethod tx/destroy-db! :ocient [driver dbdef]
   (println "Ocient destroy-db! entered")
