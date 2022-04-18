@@ -15,7 +15,6 @@
   [graph f]
   (let [all-users-group-id  (u/the-id (group/all-users))
         current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
-    (def my-current-graph current-graph)
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (try
@@ -23,7 +22,7 @@
           (@#'perms/update-group-permissions! all-users-group-id graph)
           (f))
         (finally
-          (@#'perms/update-group-permissions! 1 my-current-graph))))))
+          (@#'perms/update-group-permissions! all-users-group-id my-current-graph))))))
 
 (defmacro ^:private with-all-users-data-perms
   "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced

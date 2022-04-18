@@ -320,15 +320,21 @@
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively.  If the requestor is an admin, then certain
   inferred secret values will also be included in the returned details (see
-  [[metabase.models.secret/admin-expand-db-details-inferred-secret-values]] for full details)."
-  [id include]
-  {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (cond-> (-> (api/read-check Database id)
-              add-expanded-schedules
-              (get-database-hydrate-include include))
+  [[metabase.models.secret/admin-expand-db-details-inferred-secret-values]] for full details).
 
-    mi/can-write?
-    secret/expand-db-details-inferred-secret-values))
+  Passing include_editable_data_model will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
+  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
+  and tables, with no additional metadata."
+  [id include include_editable_data_model]
+  {include (s/maybe (s/enum "tables" "tables.fields"))}
+  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)]
+    (cond-> (api/check-404 (Database id))
+      (not include-editable-data-model?) api/write-check
+      true                              add-expanded-schedules
+      true                              (get-database-hydrate-include include)
+      mi/can-write?                     secret/expand-db-details-inferred-secret-values
+      include-editable-data-model?      (check-db-data-model-perms include-editable-data-model?))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
@@ -353,7 +359,7 @@
 
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
   (-> (if include-editable-data-model?
-        (Database id)
+        (api/check-404 (Database id))
         (api/read-check Database id))
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (if include-hidden?
