@@ -25,11 +25,12 @@ export const RowLeft = styled.div`
   display: flex;
   flex-direction: row;
   align-items: center;
+  width: calc(50% - 60px);
 `;
 
 export const RowRight = styled(RowLeft)`
-  flex: 1;
   justify-content: flex-end;
+  width: calc(50% - 60px);
 `;
 
 export const LogoIconWrapper = styled.div`
@@ -39,7 +40,6 @@ export const LogoIconWrapper = styled.div`
   justify-content: center;
   border-radius: 6px;
   padding: ${space(1)};
-  margin-left: ${space(1)};
 
   &:hover {
     background-color: ${color("bg-light")};

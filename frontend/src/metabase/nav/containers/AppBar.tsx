@@ -20,6 +20,7 @@ import {
   SearchBarContainer,
   SearchBarContent,
   RowLeft,
+  RowMiddle,
   RowRight,
 } from "./AppBar.styled";
 
@@ -70,11 +71,6 @@ function AppBar({
   return (
     <AppBarRoot>
       <RowLeft>
-        <LogoIconWrapper>
-          <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
-            <LogoIcon size={24} />
-          </Link>
-        </LogoIconWrapper>
         {!isSearchActive && (
           <Tooltip tooltip={sidebarButtonTooltip}>
             <SidebarButton
@@ -84,6 +80,13 @@ function AppBar({
           </Tooltip>
         )}
       </RowLeft>
+      <div>
+        <LogoIconWrapper>
+          <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
+            <LogoIcon size={24} />
+          </Link>
+        </LogoIconWrapper>
+      </div>
       <RowRight>
         <SearchBarContainer>
           <SearchBarContent>
