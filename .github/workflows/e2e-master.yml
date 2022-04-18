@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - "master"
+      - "permissions-burst"
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -39,7 +39,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 90
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -55,25 +55,25 @@ jobs:
         java-version: [11]
         edition: [oss, ee]
         folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "dashboard-filters-sql"
-          - "downloads"
-          - "embedding"
-          - "joins"
-          - "models"
-          - "moderation"
-          - "native"
-          - "native-filters"
-          - "onboarding"
+          # - "admin"
+          # - "binning"
+          # - "collections"
+          # - "custom-column"
+          # - "dashboard"
+          # - "dashboard-filters"
+          # - "dashboard-filters-sql"
+          # - "downloads"
+          # - "embedding"
+          # - "joins"
+          # - "models"
+          # - "moderation"
+          # - "native"
+          # - "native-filters"
+          # - "onboarding"
           - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
+          # - "question"
+          # - "sharing"
+          # - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -129,11 +129,7 @@ jobs:
 
     - name: Run Cypress tests on ${{ matrix.folder }}
       run: |
-        yarn run test-cypress-run \
-          --folder ${{ matrix.folder }} \
-          --record --key ${{ secrets.CURRENTS_KEY }} \
-          --group ${{ matrix.folder }}-${{ matrix.edition }} \
-          --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
+        yarn run test-cypress-run --spec "frontend/test/metabase/scenarios/permissions/*.spec.js" --env burn=20
       env:
         TERM: xterm
 
