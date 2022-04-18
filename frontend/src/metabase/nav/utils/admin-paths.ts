@@ -61,8 +61,14 @@ const getAllMenuItems: MenuItemsGetter = () => {
     },
   ];
 
+  const isModelPersistenceEnabled = MetabaseSettings.get(
+    "enabled-persisted-models",
+  );
+  const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
+
   if (
-    MetabaseSettings.get("enabled-persisted-models") ||
+    !hasLoadedSettings ||
+    isModelPersistenceEnabled ||
     PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0
   ) {
     items.push({
