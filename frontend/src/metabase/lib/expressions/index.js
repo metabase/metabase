@@ -77,11 +77,20 @@ export function formatMetricName(metric, options) {
 // SEGMENTS
 
 export function parseSegment(segmentName, { query }) {
-  return query
-    .table()
-    .segments.find(
-      segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
-    );
+  const table = query.table();
+  const segment = table.segments.find(
+    segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
+  );
+  if (segment) {
+    return segment;
+  }
+
+  const field = table.fields.find(
+    field => field.name.toLowerCase() === segmentName.toLowerCase(),
+  );
+  if (field?.isBoolean()) {
+    return field;
+  }
 }
 
 export function formatSegmentName(segment, options) {

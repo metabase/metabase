@@ -305,6 +305,56 @@ export const adjustCase = tree =>
     return node;
   });
 
+export const adjustBooleans = tree =>
+  modify(tree, node => {
+    if (Array.isArray(node)) {
+      if (node?.[0] === "case") {
+        const [operator, pairs, options] = node;
+        return withAST(
+          [
+            operator,
+            pairs.map(([operand, value]) => {
+              if (!Array.isArray(operand)) {
+                return [operand, value];
+              }
+              const [op, _id, opts] = operand;
+              const isBooleanField =
+                op === "field" && opts?.["base-type"] === "type/Boolean";
+              if (isBooleanField || op === "segment") {
+                return withAST([["=", operand, true], value], operand);
+              }
+              return [operand, value];
+            }),
+            options,
+          ],
+          node,
+        );
+      } else {
+        const [operator, ...operands] = node;
+        const { args = [] } = MBQL_CLAUSES[operator] || {};
+        return withAST(
+          [
+            operator,
+            ...operands.map((operand, index) => {
+              if (!Array.isArray(operand) || args[index] !== "boolean") {
+                return operand;
+              }
+              const [op, _id, opts] = operand;
+              const isBooleanField =
+                op === "field" && opts?.["base-type"] === "type/Boolean";
+              if (isBooleanField || op === "segment") {
+                return withAST(["=", operand, true], operand);
+              }
+              return operand;
+            }),
+          ],
+          node,
+        );
+      }
+    }
+    return node;
+  });
+
 const pipe = (...fns) => x => fns.reduce((v, f) => f(v), x);
 
 export const parse = pipe(

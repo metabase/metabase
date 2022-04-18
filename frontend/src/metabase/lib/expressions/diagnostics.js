@@ -111,7 +111,7 @@ function prattCompiler(source, startRule, query) {
       if (!segment) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-      return ["segment", segment.id];
+      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
       // fallback
       const dimension = parseDimension(name, options);

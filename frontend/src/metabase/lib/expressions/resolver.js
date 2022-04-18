@@ -42,10 +42,7 @@ const isCompatible = (a, b) => {
   if (a === b) {
     return true;
   }
-  if (
-    a === "expression" &&
-    (b === "number" || b === "string" || b === "boolean")
-  ) {
+  if (a === "expression" && (b === "number" || b === "string")) {
     return true;
   }
   if (a === "aggregation" && b === "number") {
@@ -166,7 +163,12 @@ export function resolve(expression, type = "expression", fn = undefined) {
       return resolve(operand, args[i], fn);
     });
     return [op, ...resolvedOperands];
-  } else if (!isCompatible(type, typeof expression)) {
+  } else if (
+    !isCompatible(
+      type,
+      typeof expression === "boolean" ? "expression" : typeof expression,
+    )
+  ) {
     throw new Error(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
     );
