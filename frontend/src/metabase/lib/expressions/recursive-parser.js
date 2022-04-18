@@ -223,7 +223,7 @@ const modify = (node, transform) => {
 const withAST = (result, expr) => {
   // If this expression comes from the compiler, an object property
   // containing the parent AST node will be included for errors
-  if (expr.node && typeof result.node === "undefined") {
+  if (expr?.node && typeof result.node === "undefined") {
     Object.defineProperty(result, "node", {
       writable: false,
       enumerable: false,
@@ -320,7 +320,7 @@ export const adjustBooleans = tree =>
             const isBooleanField =
               op === "field" && opts?.["base-type"] === "type/Boolean";
             if (isBooleanField || op === "segment") {
-              return [["=", operand, true], value];
+              return withAST([["=", operand, true], value], operand);
             }
             return [operand, value];
           }),
@@ -339,7 +339,7 @@ export const adjustBooleans = tree =>
             const isBooleanField =
               op === "field" && opts?.["base-type"] === "type/Boolean";
             if (isBooleanField || op === "segment") {
-              return ["=", operand, true];
+              return withAST(["=", operand, true], operand);
             }
             return operand;
           }),
