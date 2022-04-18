@@ -149,6 +149,7 @@ function QuestionActionButtons({
           animation={animation}
           icon="bookmark"
           iconSize={ICON_SIZE}
+          isBookmarked={isBookmarked}
           onClick={handleClickBookmark}
           color={bookmarkButtonColor}
         />
