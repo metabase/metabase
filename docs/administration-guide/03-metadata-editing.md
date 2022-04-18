@@ -15,7 +15,7 @@ Or are you instead looking for docs on [models](../users-guide/models.md)?
 
 ## Accessing the Data Model page
 
-Click the settings gear in the top right of the Metabase navigation bar, and select **Admin**. Then click on **Data Model** tab from the top menu.
+At the bottom of the navigation sidebar, click on **gear** icon, and select **Admin** > **Data Model**.
 
 In the sidebar on the left, you can choose which database to configure. Next, select the table to view and edit its metadata.
 
