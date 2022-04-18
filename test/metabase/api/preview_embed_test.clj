@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.api.embed-test :as embed-test]
             [metabase.api.pivots :as pivots]
+            [metabase.api.preview-embed :as preview-embed]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -140,7 +141,25 @@
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
                                                             "?venue_id=200")))))))))
-
+(deftest query-max-results-constraint-test
+  (testing "GET /api/preview_embed/card/:token/query"
+    (testing "Only 2000 results returned when there are many more"
+      (let [orders-row-count (count
+                              (mt/rows
+                               (mt/dataset sample-dataset
+                                 (mt/process-query
+                                  (mt/query orders)))))
+            expected-row-count 1]
+        (with-redefs [preview-embed/max-results expected-row-count]
+          (mt/dataset sample-dataset
+            (embed-test/with-embedding-enabled-and-new-secret-key
+              (let [sample-db-orders-question (mt/query orders)]
+                (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
+                  (let [limited (count
+                                 (mt/rows
+                                  (mt/user-http-request :crowberto :get 202 (card-query-url card))))]
+                    (is (= expected-row-count limited))
+                    (is (not= expected-row-count orders-row-count))))))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
