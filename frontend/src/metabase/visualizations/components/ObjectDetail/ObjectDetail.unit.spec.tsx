@@ -100,6 +100,7 @@ describe("Object Detail", () => {
         loadObjectDetailFKReferences={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
+        closeObjectDetail={() => null}
       />,
     );
 
