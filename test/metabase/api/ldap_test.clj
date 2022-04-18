@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.api.ldap :as ldap-api]
             [metabase.integrations.ldap :as ldap]
+            [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.integrations.ldap :as ldap.test]))
 
@@ -35,6 +36,10 @@
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
                               (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false))
         (is (= 389 (ldap/ldap-port))))
+
+      (testing "Could update with obfuscated password"
+        (mt/user-http-request :crowberto :put 200 "ldap/settings"
+                              (update (ldap-test-details) :ldap-password #(setting/obfuscate-value %))))
 
       (testing "Requires superusers"
         (is (= "You don't have permissions to do that."
