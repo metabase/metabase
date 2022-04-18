@@ -68,8 +68,8 @@ class SnippetRow extends React.Component {
           <div className="px3 pb2 pt1">
             {description && <p className="text-medium mt0">{description}</p>}
             <pre
-              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap overflow-scroll overflow-x-scroll"
-              style={{ maxHeight: 320 }}
+              className="bg-light bordered rounded p1 text-monospace text-small text-pre-wrap"
+              style={{ maxHeight: 320, overflow: "auto" }}
             >
               {content}
             </pre>
