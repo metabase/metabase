@@ -14,6 +14,7 @@ import {
   ModerationSectionContainer,
 } from "./QuestionDetailsSidebarPanel.styled";
 import DatasetManagementSection from "./DatasetManagementSection";
+import ModelCacheSection from "./ModelCacheSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
@@ -59,6 +60,7 @@ function QuestionDetailsSidebarPanel({
           description={description}
           onEdit={onDescriptionEdit}
         />
+        {isDataset && <ModelCacheSection model={question} />}
         <BorderedSectionContainer>
           {isDataset && canWrite && (
             <DatasetManagementSection dataset={question} />
