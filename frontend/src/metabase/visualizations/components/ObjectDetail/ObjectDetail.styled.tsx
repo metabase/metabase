@@ -24,8 +24,9 @@ export const ObjectDetailBodyWrapper = styled.div`
   ${breakpointMinMedium} {
     display: flex;
     max-height: auto;
+    min-height: calc(480px - 4rem);
   }
-  max-height: calc(100vh - 6rem);
+  max-height: calc(100vh - 8rem);
 `;
 
 export const ObjectDetailsTable = styled.div`
@@ -33,7 +34,7 @@ export const ObjectDetailsTable = styled.div`
   flex: 1;
   padding: 2rem;
   ${breakpointMinMedium} {
-    max-height: calc(100vh - 15rem);
+    max-height: calc(100vh - 12rem);
   }
 `;
 
@@ -44,6 +45,20 @@ export const ObjectRelationships = styled.div`
   background-color: ${colors["bg-light"]};
   ${breakpointMinMedium} {
     flex: 0 0 33.3333%;
-    max-height: calc(100vh - 15rem);
+    max-height: calc(100vh - 12rem);
   }
+`;
+
+export const CloseButton = styled.div`
+  display: flex;
+  margin-left: 1rem;
+  padding-left: 1rem;
+  border-left: 1px solid ${colors.border};
+  ${breakpointMinMedium} {
+    display: none;
+  }
+`;
+
+export const ErrorWrapper = styled.div`
+  height: 480px;
 `;

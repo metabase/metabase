@@ -40,6 +40,8 @@ import { Relationships } from "./ObjectRelationships";
 import {
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
+  CloseButton,
+  ErrorWrapper,
 } from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: unknown) => ({
@@ -184,7 +186,9 @@ export function ObjectDetailFn({
     >
       <ObjectDetailModal wide={hasRelationships}>
         {hasNotFoundError ? (
-          <NotFound />
+          <ErrorWrapper>
+            <NotFound />
+          </ErrorWrapper>
         ) : (
           <div className="ObjectDetail" data-testid="object-detail">
             <ObjectDetailHeader
@@ -236,34 +240,49 @@ export function ObjectDetailHeader({
   closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
-    <div className="Grid border-bottom relative p4">
+    <div className="Grid border-bottom relative">
       <div className="Grid-cell">
-        <h1>
+        <h1 className="p3">
           {objectName} {objectId}
         </h1>
       </div>
       <div className="flex align-center">
-        {!!canZoom && (
-          <div>
+        <div className="flex p2">
+          {!!canZoom && (
+            <>
+              <Button
+                data-testId="view-previous-object-detail"
+                onlyIcon
+                borderless
+                className="mr1"
+                disabled={!canZoomPreviousRow}
+                onClick={viewPreviousObjectDetail}
+                icon="chevronup"
+                iconSize={20}
+              />
+              <Button
+                data-testId="view-next-object-detail"
+                onlyIcon
+                borderless
+                disabled={!canZoomNextRow}
+                onClick={viewNextObjectDetail}
+                icon="chevrondown"
+                iconSize={20}
+              />
+            </>
+          )}
+          <CloseButton>
             <Button
-              onlyIcon
-              borderless
-              className="mr1"
-              disabled={!canZoomPreviousRow}
-              onClick={viewPreviousObjectDetail}
-              icon="chevronup"
-              iconSize={20}
-            />
-            <Button
+              data-testId="object-detail-close-button"
               onlyIcon
               borderless
               disabled={!canZoomNextRow}
-              onClick={viewNextObjectDetail}
-              icon="chevrondown"
+              onClick={closeObjectDetail}
+              icon="close"
               iconSize={20}
             />
-          </div>
-        )}
+          </CloseButton>
+        </div>
       </div>
     </div>
   );
