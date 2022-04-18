@@ -75,10 +75,10 @@
 ;;; |                                        Data model permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest fetch-databases-exclude-uneditable-data-model-test
-  (testing "GET /api/database?exclude_uneditable_data_model=true"
+(deftest fetch-databases-include-editable-data-model-test
+  (testing "GET /api/database?include_editable_data_model=true"
     (letfn [(get-test-db
-              ([] (get-test-db "database?exclude_uneditable_data_model=true"))
+              ([] (get-test-db "database?include_editable_data_model=true"))
               ([url] (->> (mt/user-http-request :rasta :get 200 url)
                           :data
                           (filter (fn [db] (= (mt/id) (:id db))))
@@ -102,7 +102,7 @@
             (is (partial= {:id (mt/id)} (get-test-db))))
 
           (testing "if include=tables, only tables with data model perms are included"
-            (is (= [id-1] (->> (get-test-db "database?exclude_uneditable_data_model=true&include=tables")
+            (is (= [id-1] (->> (get-test-db "database?include_editable_data_model=true&include=tables")
                                :tables
                                (map :id))))))))))
 

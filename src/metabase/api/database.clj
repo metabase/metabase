@@ -185,24 +185,39 @@
       (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- filter-databases-by-data-model-perms
+  "Filters the provided list of databases by data model perms, returning only the databases for which the current user
+  can fully or partially edit the data model. If the user also has block permissions for any databases, returns only the
+  name and ID of these databases, removing all other fields."
   [dbs]
-  (if-let [f (u/ignore-exceptions
-              (classloader/require 'metabase-enterprise.advanced-permissions.common)
-              (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
-    (f dbs)
-    dbs))
+  (let [filtered-dbs
+        (if-let [f (u/ignore-exceptions
+                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+          (f dbs)
+          dbs)]
+    (map
+     (fn [db] (if (mi/can-read? db)
+                db
+                (select-keys db [:id :name :tables])))
+     filtered-dbs)))
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
                            include-saved-questions-tables?
-                           exclude-uneditable-data-model?
+                           include-editable-data-model?
                            exclude-uneditable-details?]}]
-  (let [dbs (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]}))
+  (let [dbs (db/select Database {:order-by [:%lower.name :%lower.engine]})
+        dbs (if include-editable-data-model?
+              ;; Since users can have *data model* perms even if they have no *data* perms for a DB, we don't filter by
+              ;; read permissions here if `include-editable-data-model?` is true. Instead, we only return ID, name
+              ;; and tables for DBs for which the user has no data perms, to avoid exposing unecessary DB metadata.
+              dbs
+              (filter mi/can-read? dbs))
         dbs (if exclude-uneditable-details? (filter mi/can-write? dbs) dbs)]
     (cond-> (add-native-perms-info dbs)
-      include-tables?                add-tables
-      exclude-uneditable-data-model? filter-databases-by-data-model-perms
-      include-saved-questions-db?    (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-tables?              add-tables
+      include-editable-data-model? filter-databases-by-data-model-perms
+      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
   "Schema for matching the include parameter of the GET / endpoint"
@@ -224,18 +239,18 @@
     use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
     questions virtual DB). Prefer using `include` and `saved` instead.
 
-  * `exclude_uneditable_data_model` will only include DBs for which the current user has data model editing
+  * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved exclude_uneditable_data_model exclude_uneditable_details]
+  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
   {include_tables                (s/maybe su/BooleanString)
    include_cards                 (s/maybe su/BooleanString)
    include                       FetchAllIncludeValues
    saved                         (s/maybe su/BooleanString)
-   exclude_uneditable_data_model (s/maybe su/BooleanString)
+   include_editable_data_model   (s/maybe su/BooleanString)
    exclude_uneditable_details    (s/maybe su/BooleanString)}
   (when (and config/is-dev?
              (or include_tables include_cards))
@@ -255,7 +270,7 @@
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
-                                                      :exclude-uneditable-data-model?  (Boolean/parseBoolean exclude_uneditable_data_model)
+                                                      :include-editable-data-model?    (Boolean/parseBoolean include_editable_data_model)
                                                       :exclude-uneditable-details?     (Boolean/parseBoolean exclude_uneditable_details))
                                             [])]
     {:data  db-list-res
