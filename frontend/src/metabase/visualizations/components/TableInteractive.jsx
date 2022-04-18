@@ -38,7 +38,7 @@ import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfo
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
-const SIDEBAR_WIDTH = 50;
+const SIDEBAR_WIDTH = 38;
 
 const MIN_COLUMN_WIDTH = ROW_HEIGHT;
 const RESIZE_HANDLE_WIDTH = 5;
@@ -1053,7 +1053,7 @@ function DetailShortcut() {
   return (
     <div
       id="detail-shortcut"
-      className="TableInteractive-cellWrapper px1 cursor-pointer"
+      className="TableInteractive-cellWrapper cursor-pointer"
       style={{
         position: "absolute",
         left: 0,
