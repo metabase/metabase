@@ -57,9 +57,9 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @Databases.load({
   id: (state, props) => props.databaseId,
-  query: () => ({
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps,
-  }),
+  query: {
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
   loadingAndErrorWrapper: false,
 })
 class MetadataEditor extends Component {

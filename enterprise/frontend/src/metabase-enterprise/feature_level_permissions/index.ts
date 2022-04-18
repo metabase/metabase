@@ -25,11 +25,7 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.getDownloadWidgetMessageOverride = getDownloadWidgetMessageOverride;
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults = canDownloadResults;
 
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps = {
-    include_editable_data_model: true,
-  };
-
-  PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps = {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps = {
     include_editable_data_model: true,
   };
 

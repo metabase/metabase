@@ -38,7 +38,9 @@ const MetadataTable = ({
 }: MetadataTableProps) => {
   const [tab, setTab] = useState("columns");
   useEffect(() => {
-    database?.fetchIdfields();
+    database?.fetchIdfields({
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [database?.id]);
 
@@ -158,16 +160,16 @@ const MetadataTable = ({
 export default _.compose(
   Databases.load({
     id: (_state: State, { databaseId }: { databaseId: number }) => databaseId,
-    query: () => ({
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps,
-    }),
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
     wrapped: true,
   }),
   Tables.load({
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
-    query: () => ({
-      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps,
-    }),
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
     wrapped: true,
     selectorName: "getObjectUnfiltered",
   }),

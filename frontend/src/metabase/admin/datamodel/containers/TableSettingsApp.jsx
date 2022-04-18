@@ -10,6 +10,7 @@ import Section, { SectionHeader } from "../components/Section";
 
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 import { rescanTableFieldValues, discardTableFieldValues } from "../table";
 
@@ -45,9 +46,17 @@ export default class TableSettingsApp extends Component {
   }
 }
 
-@Databases.load({ id: (state, { databaseId }) => databaseId })
+@Databases.load({
+  id: (state, { databaseId }) => databaseId,
+  query: {
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
+})
 @Tables.load({
   id: (state, { tableId }) => tableId,
+  query: {
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
   selectorName: "getObjectUnfiltered",
 })
 class Nav extends Component {

@@ -22,7 +22,7 @@ export default ComposedComponent => {
       this.props.table.fetchMetadataAndForeignTables({
         params: {
           include_sensitive_fields: true,
-          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps,
+          ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
         },
       });
     }

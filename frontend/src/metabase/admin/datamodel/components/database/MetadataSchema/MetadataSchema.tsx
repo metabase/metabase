@@ -94,7 +94,9 @@ const MetadataSchema = ({ table }: MetadataSchemaProps) => {
 export default _.compose(
   Tables.load({
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
     wrapped: true,
   }),
   withTableMetadataLoaded,
