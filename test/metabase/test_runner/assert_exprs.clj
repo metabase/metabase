@@ -118,10 +118,11 @@
      :diffs    [[actual [only-in-expected only-in-actual]]]}))
 
 (defmethod t/assert-expr 'partial=
-  [message [_ expected actual]]
-  {:pre [(some? expected) (some? actual)]}
-  `(t/do-report
-     (partial=-report ~message ~expected ~actual)))
+  [message [_ expected actual :as form]]
+  `(do
+     (assert (= 2 ~(count (rest form))) "partial= expects exactly 2 arguments")
+     (t/do-report
+       (partial=-report ~message ~expected ~actual))))
 
 (defn sql=-report
   [message expected query]
