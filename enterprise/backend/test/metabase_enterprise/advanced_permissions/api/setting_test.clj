@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.setting-test
-  "Permisisons tests for API that needs to be enforced by General Permissions to access Admin/Setting pages."
+  "Permisisons tests for API that needs to be enforced by Application Permissions to access Admin/Setting pages."
   (:require [clojure.test :refer :all]
             [metabase.api.geojson-test :as geojson-test]
             [metabase.api.ldap-test :as ldap-test]
@@ -56,7 +56,7 @@
               (update-settings :crowberto 204))
 
             (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
+              (perms/grant-application-permissions! group :setting)
               (get-setting user 200)
               (update-setting user 204)
               (update-settings user 204))))))))
@@ -106,7 +106,7 @@
               (send-test-email :crowberto 200))
 
             (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
+              (perms/grant-application-permissions! group :setting)
               (set-email-setting user 200)
               (delete-email-setting user 204)
               (send-test-email user 200))))))))
@@ -146,7 +146,7 @@
               (get-manifest :crowberto 200))
 
             (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
+              (perms/grant-application-permissions! group :setting)
               (set-slack-settings user 200)
               (get-manifest user 200)
               (set-slack-settings :crowberto 200)
@@ -175,7 +175,7 @@
               (update-ldap-settings :crowberto 200))
 
             (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
+              (perms/grant-application-permissions! group :setting)
               (update-ldap-settings user 200)
               (update-ldap-settings :crowberto 200))))))))
 
@@ -202,7 +202,7 @@
               (get-geojson :crowberto 200))
 
             (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
+              (perms/grant-application-permissions! group :setting)
               (get-geojson user 200)
               (get-geojson :crowberto 200))))))))
 
@@ -227,7 +227,7 @@
               (get-permission-groups :crowberto 200))
 
             (testing "succeed if user's group has `setting` permission"
-              (perms/grant-general-permissions! group :setting)
+              (perms/grant-application-permissions! group :setting)
               (get-permission-groups user 200)
               (get-permission-groups :crowberto 200))))))))
 
@@ -271,7 +271,7 @@
                 (delete-public-dashboard :crowberto 204))
 
               (testing "succeed if user's group has `setting` permission,"
-                (perms/grant-general-permissions! group :setting)
+                (perms/grant-application-permissions! group :setting)
                 (get-public-dashboards user 200)
                 (get-embeddable-dashboards user 200)
                 (delete-public-dashboard user 204)))))))))
@@ -318,7 +318,7 @@
                 (delete-public-card :crowberto 204))
 
               (testing "succeed if user's group has `setting` permission,"
-                (perms/grant-general-permissions! group :setting)
+                (perms/grant-application-permissions! group :setting)
                 (get-public-cards user 200)
                 (get-embeddable-cards user 200)
                 (delete-public-card user 204)))))))))

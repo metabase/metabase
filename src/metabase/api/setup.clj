@@ -301,7 +301,7 @@
 (api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (admin-checklist))
 
 ;; User defaults endpoint

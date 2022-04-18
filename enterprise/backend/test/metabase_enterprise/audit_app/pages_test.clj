@@ -44,7 +44,7 @@
   (testing "non-admin users with monitoring permissions"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
-      (perms/grant-general-permissions! group :monitoring)
+      (perms/grant-application-permissions! group :monitoring)
       (testing "still fail if advanced-permissions is disabled"
         (premium-features-test/with-premium-features #{:audit-app}
           (is (= {:status "failed", :error "You don't have permissions to do that."}

@@ -114,8 +114,8 @@ export const PLUGIN_CACHING = {
   getQuestionsImplicitCacheTTL: () => null,
 };
 
-export const PLUGIN_REDUCERS: { generalPermissionsPlugin: any } = {
-  generalPermissionsPlugin: () => null,
+export const PLUGIN_REDUCERS: { applicationPermissionsPlugin: any } = {
+  applicationPermissionsPlugin: () => null,
 };
 
 export const PLUGIN_ADVANCED_PERMISSIONS = {
@@ -146,7 +146,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
   databaseDetailsQueryProps: {} as any,
 };
 
-export const PLUGIN_GENERAL_PERMISSIONS = {
+export const PLUGIN_APPLICATION_PERMISSIONS = {
   getRoutes: (): React.ReactNode => null,
   tabs: [] as any,
   selectors: {
