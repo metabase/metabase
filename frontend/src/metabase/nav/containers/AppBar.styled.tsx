@@ -49,7 +49,9 @@ export const LogoIconWrapper = styled.div`
 export const SearchBarContainer = styled.div`
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   margin-right: 1rem;
+  width: 100%;
 
   ${breakpointMaxSmall} {
     width: 100%;
@@ -62,7 +64,8 @@ export const SearchBarContent = styled.div`
   }
 
   ${breakpointMinSmall} {
+    max-width: 300px;
     position: relative;
-    width: 500px;
+    width: 100%;
   }
 `;

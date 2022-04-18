@@ -20,7 +20,6 @@ import {
   SearchBarContainer,
   SearchBarContent,
   RowLeft,
-  RowMiddle,
   RowRight,
 } from "./AppBar.styled";
 
