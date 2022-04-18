@@ -48,6 +48,25 @@ export function suggest({
     return { suggestions };
   }
 
+  suggestions.push(
+    {
+      type: "literal",
+      name: "True",
+      text: "True",
+      index: targetOffset,
+      icon: "compare",
+      order: 1,
+    },
+    {
+      type: "literal",
+      name: "False",
+      text: "False",
+      index: targetOffset,
+      icon: "compare",
+      order: 1,
+    },
+  );
+
   const database = query.database();
   if (_.first(matchPrefix) !== "[") {
     suggestions.push({

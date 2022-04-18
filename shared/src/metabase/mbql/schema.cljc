@@ -449,9 +449,14 @@
   "Set of valid arithmetic expression clause keywords."
   #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
 
+(def boolean-expressions
+  "Set of valid boolean expression clause keywords."
+  #{:and :or :not :< :<= :> :>= := :!=})
+
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
 (declare ArithmeticExpression)
+(declare BooleanExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -475,6 +480,12 @@
   (s/conditional
    number?
    s/Num
+
+   boolean?
+   s/Bool
+
+   (partial is-clause? boolean-expressions)
+   (s/recursive #'BooleanExpression)
 
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
@@ -705,10 +716,20 @@
 ;; segments and pass-thru to GA.
 (defclause ^:sugar segment, segment-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
 
+(declare BooleanExpression*)
+
+(def ^:private BooleanExpression
+  "Schema for the definition of an arithmetic expression."
+  (s/recursive #'BooleanExpression*))
+
+(def ^:private BooleanExpression*
+  (one-of and or not < <= > >= = !=))
+
 (def ^:private Filter*
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement
@@ -743,6 +764,7 @@
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    (partial is-clause? :case)                  case
    :else                                       Field))
 

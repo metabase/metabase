@@ -132,6 +132,29 @@ describe("metabase/lib/expressions/recursive-parser", () => {
     expect(filter("NOT contains(B,C)")).toEqual(["does-not-contain", B, C]);
   });
 
+  it("should parse booleans", () => {
+    expect(process("Canceled = true")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      true,
+    ]);
+    expect(process("Canceled = True")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      true,
+    ]);
+    expect(process("Canceled = false")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      false,
+    ]);
+    expect(process("Canceled = False")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      false,
+    ]);
+  });
+
   it("should parse comparisons", () => {
     expect(process("round(3.14) = 3")).toEqual(["=", ["round", 3.14], 3]);
     expect(process("Tax != 0")).toEqual(["!=", ["dimension", "Tax"], 0]);
