@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const fs = require("fs-promise");
 const os = require("os");
 const path = require("path");
