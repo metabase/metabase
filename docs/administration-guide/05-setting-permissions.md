@@ -6,7 +6,7 @@ There are always going to be sensitive bits of information in your data, and tha
 
 - Permissions are granted to groups, not people.
 - People can be in more than one group.
-- If a person is in multiple groups, they will have the most permissive access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has access to a database, then that person will have access to that database.
+- If a person is in multiple groups, they will have the _most permissive_ access granted to them across all of their groups. For example, if a person is in three groups, and any one of those groups has access to a database, then that person will have access to that database.
 
 ## What you can set permissions on
 

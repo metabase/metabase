@@ -40,7 +40,11 @@ This action doesn't affect email distribution lists that are managed outside of 
 
 ## Groups
 
-To determine [who has access to what](05-setting-permissions.md), you’ll need to create one or more groups, choose which level of access that group has to different databases, collections, and so on, then add people to those groups.
+To determine [who has access to what](05-setting-permissions.md), you’ll need to
+
+- Create one or more groups.
+- Choose which level of access that group has to different databases, collections, and so on.
+- Then add people to those groups.
 
 To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click on **Groups** from the side menu.
 
@@ -50,8 +54,15 @@ To view and manage your groups, go to the **Admin Panel** > **People** tab, and 
 
 Every Metabase has two default groups: Administrators and All Users. These are special groups that can’t be removed.
 
-- **Administrators**. To make someone an admin of Metabase, you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
-- **All users**. The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
+#### Administrators
+
+To make someone an admin of Metabase, you just need to add them to the Administrators group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
+
+#### All users
+
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
+
+It's important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. See [Setting permissions](05-setting-permissions.md).
 
 ### Managing groups
 

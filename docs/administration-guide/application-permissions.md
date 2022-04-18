@@ -4,13 +4,15 @@
 
 Application settings are useful for granting groups access to some, but not all, of Metabase's administrative features.
 
+To set application permissions, click on the **Gears** icon at the bottom of the navigation sidebar and go to **Admin settings** > **Permissions** > **Application**.
+
 - [Settings access](#settings-access)
 - [Monitoring access](#monitoring-access)
 - [Subscriptions and alerts](#subscriptions-and-alerts)
 
 ## Settings access
 
-Settings access defines which groups can set permissions on all of the settings under the Admin > Settings tab. These settings include:
+Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:
 
 - [Settings](08-configuration-settings.md)
 - [Email](02-setting-up-email.md)

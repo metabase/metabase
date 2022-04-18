@@ -99,12 +99,9 @@ Sandboxed access to a table can restrict access to columns and rows of a table. 
 
 - [Permissions overview](05-setting-permissions.md)
 - [Learn permissions](/learn/permissions)
+- [Troubleshooting permissions](../troubleshooting-guide/permissions.md)
 - [Data sandboxing: setting row-level permissions][sandbox-rows]
 - [Advanced data sandboxing: limiting access to columns][sandbox-columns]
-
-## Next: Collection permissions
-
-Metabase lets you create and set permissions on collections of dashboards and questions. [Learn how][collections].
 
 [collections]: 06-collections.md
 [dashboard-subscriptions]: ../users-guide/dashboard-subscriptions.md
