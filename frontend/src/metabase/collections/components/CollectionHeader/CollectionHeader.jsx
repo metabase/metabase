@@ -105,7 +105,7 @@ function EditMenu({
 }
 
 function Bookmark({ isBookmarked, onClickBookmark }) {
-  const title = t`Bookmarks`;
+  const title = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
   const iconColor = isBookmarked ? color("brand") : "";
 
   return (

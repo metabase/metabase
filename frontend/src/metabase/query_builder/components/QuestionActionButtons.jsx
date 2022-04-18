@@ -63,6 +63,7 @@ function QuestionActionButtons({
     checkDatabaseSupportsModels(question.query().database());
 
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
+  const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   return (
     <Container data-testid="question-action-buttons">
@@ -135,7 +136,7 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
-      <Tooltip tooltip={t`Bookmark`}>
+      <Tooltip tooltip={bookmarkTooltip}>
         <Button
           onlyIcon
           icon="bookmark"
