@@ -34,7 +34,10 @@ export const LogoLink = styled(Link)`
   padding-left: ${space(2)};
   margin-left: ${space(1)};
   position: absolute;
-  background-color: ${color("bg-light")};
+  transition: opacity 0.3s;
+
+  &:hover {
+    background-color: ${color("bg-light")};
   }
 `;
 
@@ -43,6 +46,7 @@ export const SidebarButtonContainer = styled.div`
   opacity: 0;
   position: absolute;
   top: 1px;
+  transition: opacity 0.3s;
 `;
 
 export const RowLeft = styled.div`
@@ -50,7 +54,7 @@ export const RowLeft = styled.div`
   height: 100%;
   flex-direction: row;
   align-items: center;
-  width: 50%;
+  width: 30%;
 
   &:hover {
     ${LogoIconWrapper} {
