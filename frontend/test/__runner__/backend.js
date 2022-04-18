@@ -1,11 +1,11 @@
-import fs from "fs-promise";
-import os from "os";
-import path from "path";
-import { spawn } from "child_process";
+const fs = require("fs-promise");
+const os = require("os");
+const path = require("path");
+const { spawn } = require("child_process");
 
-import fetch from "isomorphic-fetch";
+const fetch = require("isomorphic-fetch");
 
-export const DEFAULT_DB_KEY = "/test_db_fixture.db";
+const DEFAULT_DB_KEY = "/test_db_fixture.db";
 
 let testDbId = 0;
 const getDbFile = () =>
@@ -14,7 +14,7 @@ const getDbFile = () =>
 let port = 4000;
 const getPort = () => port++;
 
-export const BackendResource = createSharedResource("BackendResource", {
+const BackendResource = createSharedResource("BackendResource", {
   getKey({ dbKey = DEFAULT_DB_KEY }) {
     return dbKey || {};
   },
@@ -124,7 +124,7 @@ export const BackendResource = createSharedResource("BackendResource", {
   },
 });
 
-export async function isReady(host) {
+async function isReady(host) {
   try {
     const response = await fetch(`${host}/api/health`);
     if (response.status === 200) {
@@ -191,3 +191,5 @@ function createSharedResource(
 function delay(duration) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
+
+module.exports = { DEFAULT_DB_KEY, BackendResource, isReady };
