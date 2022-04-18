@@ -317,42 +317,25 @@
 ;;                 ;;
 ;;;;;;;;;;;;;;;;;;;;;
 
-(defn- get-timestamp-field-name
-  [field-definitions]
-  (log/infof "Got %s" (pr-str field-definitions))
-  (first
-   (map
-    (fn [{:keys [field-name]}] field-name)
-    (filter
-     (fn [{:keys [field-name base-type]}] (and (= field-name "created_at") (in? timestamp-base-types base-type)))
-     field-definitions))))
 
 ;; Ocient requires a timestamp column and a clustering index key. These fields are prepended to the field definitions
 (defmethod sql.tx/create-table-sql :ocient
-  [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as tabledef}]
   (let [quot                  #(sql.u/quote-name driver :field (tx/format-name driver %))
-        timestamp-field-name  (get-timestamp-field-name field-definitions)
-        has-timestamp-field   (some? timestamp-field-name)
-        timestamp-field-name  (if has-timestamp-field
-                                timestamp-field-name
-                                timestamp-column-key)]
+        rows                  (load-data/load-data-get-rows driver dbdef tabledef)
+        columns               (keys (first rows))]
     (str/join "\n"
               (list
                (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote driver database-name table-name)),
                ;; HACK If no timestamp column exists, create one. A timestamp column is REQUIRED for all Ocient tables.
                ;; NOTE: ddl/insert-rows-honeysql-form routine will need to account for this additional column
-               (if (not has-timestamp-field)
-                 (format "  %s TIMESTAMP TIME KEY BUCKET(3650, DAY) NOT NULL DEFAULT '0'," timestamp-field-name)
-                 "")
                (format "  %s INT NOT NULL," id-column-key),
                (str/join
                 ",\n"
                 (for [{:keys [field-name base-type field-comment] :as field} field-definitions]
                   (str (format
                         ;; The table contains a TIMESTAMP column
-                        (if (and has-timestamp-field (= field-name timestamp-field-name))
-                          "  %s %s TIME KEY BUCKET(3650, DAY) NOT NULL DEFAULT '0'"
-                          "  %s %s")
+                        "%s %s"
                         (quot field-name)
                         (or (cond
                               (and (map? base-type) (contains? base-type :native))
@@ -387,7 +370,8 @@
                       \"maxBatchSize\": \"10GB\",
                       \"segmentGenerationTimeout\": \"30s\"
                   }
-                }'"))))
+                }'"
+               (format "AS SELECT 0, %s LIMIT 0" (str/join  ", " (map (fn nullify [_] "NULL") columns)))))))
 
 (defmethod ddl/create-db-tables-ddl-statements :ocient
   [driver {:keys [database-name, table-definitions], :as dbdef} & _]
@@ -484,13 +468,8 @@
   "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
   specified. (This isn't meant for composition with `load-data-get-rows`; "
   [rows]
-  (let [columns                    (keys (first rows))]
-    (log/infof "Processing row like %s" (pr-str (first rows)))
-    (log/infof "Processing row like %s" (type (first rows)))
-    (for [[i row] (m/indexed rows)]
-      (if (in? columns :created_at)
-        (apply array-map (keyword id-column-key) (inc i) (flatten (vec row)))
-        (apply array-map (keyword timestamp-column-key) (tc/to-long (time/now)) (keyword id-column-key) (inc i) (flatten (vec row)))))))
+  (for [[i row] (m/indexed rows)]
+    (apply array-map (keyword id-column-key) (inc i) (flatten (vec row)))))
 
 (defn- load-data-add-ids
   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
