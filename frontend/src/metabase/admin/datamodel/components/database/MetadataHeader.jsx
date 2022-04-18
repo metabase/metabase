@@ -12,9 +12,9 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 @withRouter
 @Databases.loadList({
-  query: () => ({
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps,
-  }),
+  query: {
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
 })
 export default class MetadataHeader extends Component {
   static propTypes = {

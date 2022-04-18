@@ -485,12 +485,12 @@
   "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
-  [db-id schema table-id]
+  [& path-components]
   (let [f (u/ignore-exceptions
            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
-      (f db-id schema table-id)
+      (apply f path-components)
       "/")))
 
 (s/defn db-details-write-perms-path :- Path

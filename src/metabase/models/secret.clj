@@ -258,11 +258,11 @@
       (= :file-path src) ; for file path sources only, populate the value
       (assoc (subprop "-value") (value->string secret*)))))
 
-(defn admin-expand-db-details-inferred-secret-values
-  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving admin
-  requests (ex: to edit an existing database or view its current details).  This is to populate certain values that
-  shouldn't be stored in the details blob itself, but which can be derived from the details->secret association itself.
-  Refer to the docstring for [[expand-inferred-secret-values]] for full details."
+(defn expand-db-details-inferred-secret-values
+  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving requests by
+  users with write permissions for the DB (ex: to edit an existing database or view its current details). This is to
+  populate certain values that shouldn't be stored in the details blob itself, but which can be derived from the
+  details->secret association itself. Refer to the docstring for [[expand-inferred-secret-values]] for full details."
   {:added "0.42.0"}
   [database]
   (update database :details (fn [details]
