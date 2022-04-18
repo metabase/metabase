@@ -26,11 +26,11 @@ if (hasPremiumFeature("advanced_permissions")) {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults = canDownloadResults;
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps = {
-    exclude_uneditable: true,
+    include_editable_data_model: true,
   };
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps = {
-    exclude_uneditable_data_model: true,
+    include_editable_data_model: true,
   };
 
   PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps = {
