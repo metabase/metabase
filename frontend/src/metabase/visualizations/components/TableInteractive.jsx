@@ -524,8 +524,14 @@ export default class TableInteractive extends Component {
               }
             : undefined
         }
-        onMouseEnter={() => this.handleHoverRow(rowIndex)}
-        onMouseLeave={() => this.handleLeaveRow(rowIndex)}
+        onMouseEnter={
+          this.state.IDColumn
+            ? e => this.handleHoverRow(e, rowIndex)
+            : undefined
+        }
+        onMouseLeave={
+          this.state.IDColumn ? e => this.handleLeaveRow() : undefined
+        }
         tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
@@ -817,17 +823,47 @@ export default class TableInteractive extends Component {
     );
   };
 
-  handleHoverRow = rowIndex => {
-    // tracking the hovered row in state kills performance
-    document
-      .querySelector(`[data-show-detail-rowindex="${rowIndex}"] button`)
-      ?.classList.add("show");
+  handleHoverRow = (event, rowIndex) => {
+    const hoverDetailEl = document?.getElementById("detail-shortcut");
+    const detailButton = document?.querySelector(
+      ".TableInteractive-detailButton",
+    );
+
+    if (!hoverDetailEl) {
+      return;
+    }
+
+    const scrollOffset =
+      document.getElementById("main-data-grid")?.scrollTop || 0;
+
+    // infer row index from mouse position when we hover the gutter column
+    if (event?.currentTarget?.id === "gutter-column") {
+      const gutterTop = event.currentTarget?.getBoundingClientRect()?.top;
+      const fromTop = event.clientY - gutterTop;
+
+      const newIndex = Math.floor((fromTop + scrollOffset) / ROW_HEIGHT);
+
+      if (newIndex >= this.props.data.rows.length) {
+        return;
+      }
+      detailButton.classList.add("show");
+      hoverDetailEl.style.top = `${newIndex * ROW_HEIGHT - scrollOffset}px`;
+      hoverDetailEl.dataset.showDetailRowindex = newIndex;
+      hoverDetailEl.onclick = this.pkClick(newIndex);
+      return;
+    }
+
+    const targetOffset = event?.currentTarget?.offsetTop;
+    detailButton.classList.add("show");
+    hoverDetailEl.style.top = `${targetOffset - scrollOffset}px`;
+    hoverDetailEl.dataset.showDetailRowindex = rowIndex;
+    hoverDetailEl.onclick = this.pkClick(rowIndex);
   };
 
-  handleLeaveRow = rowIndex => {
+  handleLeaveRow = () => {
     document
-      .querySelector(`[data-show-detail-rowindex="${rowIndex}"] button`)
-      ?.classList.remove("show");
+      ?.querySelector(".TableInteractive-detailButton")
+      .classList.remove("show");
   };
 
   handleOnMouseEnter = () => {
@@ -895,38 +931,25 @@ export default class TableInteractive extends Component {
                       left: 0,
                       width: SIDEBAR_WIDTH,
                       height: headerHeight,
-                      zIndex: 2,
+                      zIndex: 4,
                     }}
                   />
-                  <Grid
-                    ref={ref => (this.sidebar = ref)}
-                    className="scroll-hide-all TableInteractive-header"
+                  <div
+                    id="gutter-column"
+                    className="TableInteractive-gutter"
                     style={{
                       position: "absolute",
                       top: headerHeight,
                       left: 0,
-                      zIndex: 2,
+                      height: height - headerHeight - getScrollBarSize(),
+                      width: SIDEBAR_WIDTH,
+                      zIndex: 3,
                     }}
-                    width={SIDEBAR_WIDTH}
-                    height={height - headerHeight - getScrollBarSize()}
-                    columnCount={1}
-                    columnWidth={SIDEBAR_WIDTH}
-                    rowCount={rows.length}
-                    rowHeight={ROW_HEIGHT}
-                    cellRenderer={({ rowIndex, key, style }) => (
-                      <DetailShortcut
-                        onClick={this.pkClick(rowIndex)}
-                        onMouseEnter={() => this.handleHoverRow(rowIndex)}
-                        onMouseLeave={() => this.handleLeaveRow(rowIndex)}
-                        rowIndex={rowIndex}
-                        key={key}
-                        style={style}
-                      />
-                    )}
-                    scrollTop={scrollTop}
-                    onScroll={({ scrollTop }) => onScroll({ scrollTop })}
-                    overscanRowCount={20}
-                  />
+                    onMouseMove={this.handleHoverRow}
+                    onMouseLeave={this.handleLeaveRow}
+                  >
+                    <DetailShortcut />
+                  </div>
                 </>
               )}
               <Grid
@@ -961,6 +984,7 @@ export default class TableInteractive extends Component {
                 scrollToColumn={scrollToColumn}
               />
               <Grid
+                id="main-data-grid"
                 ref={ref => (this.grid = ref)}
                 style={{
                   top: headerHeight,
@@ -1025,23 +1049,19 @@ export default class TableInteractive extends Component {
   }
 }
 
-function DetailShortcut({
-  rowIndex,
-  key,
-  style,
-  onMouseEnter,
-  onMouseLeave,
-  onClick,
-}) {
+function DetailShortcut() {
   return (
     <div
-      key={key}
+      id="detail-shortcut"
       className="TableInteractive-cellWrapper px1 cursor-pointer"
-      style={style}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      data-show-detail-rowindex={rowIndex}
+      style={{
+        position: "absolute",
+        left: 0,
+        top: 0,
+        height: ROW_HEIGHT,
+        width: SIDEBAR_WIDTH,
+        zIndex: 3,
+      }}
     >
       <Tooltip tooltip="View Details">
         <Button
