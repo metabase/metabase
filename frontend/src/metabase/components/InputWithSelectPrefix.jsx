@@ -29,6 +29,7 @@ const propTypes = {
   defaultPrefix: PropTypes.string,
   caseInsensitivePrefix: PropTypes.bool,
   onChange: PropTypes.func,
+  placeholder: PropTypes.string,
 };
 
 export default class InputWithSelectPrefix extends Component {
@@ -80,7 +81,7 @@ export default class InputWithSelectPrefix extends Component {
           type="text"
           className="Form-input flex-full borderless"
           value={rest}
-          placeholder={"foo"}
+          placeholder={this.props.placeholder}
           onBlurChange={e => this.setState({ rest: e.target.value })}
         />
       </div>
