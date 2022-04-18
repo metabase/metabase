@@ -19,6 +19,7 @@ import {
   VisibilityType,
 } from "./MetadataTable.styled";
 import { Field } from "metabase-types/api/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 const getDescriptionPlaceholder = () => t`No table description yet`;
 
@@ -157,10 +158,16 @@ const MetadataTable = ({
 export default _.compose(
   Databases.load({
     id: (_state: State, { databaseId }: { databaseId: number }) => databaseId,
+    query: () => ({
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps,
+    }),
     wrapped: true,
   }),
   Tables.load({
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
+    query: () => ({
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps,
+    }),
     wrapped: true,
     selectorName: "getObjectUnfiltered",
   }),

@@ -5,7 +5,7 @@ import withTableMetadataLoaded from "metabase/admin/datamodel/hoc/withTableMetad
 import Tables from "metabase/entities/tables";
 import { Field, Table } from "metabase-types/api";
 import { State } from "metabase-types/store";
-import { getFieldRawName } from "../../../utils";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import {
   ColumnNameCell,
   DataTypeCell,
@@ -94,6 +94,7 @@ const MetadataSchema = ({ table }: MetadataSchemaProps) => {
 export default _.compose(
   Tables.load({
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps,
     wrapped: true,
   }),
   withTableMetadataLoaded,
