@@ -9,7 +9,7 @@ import ModalContent from "metabase/components/ModalContent";
 import { State } from "metabase-types/store";
 import PersistedModels from "metabase/entities/persisted-models";
 
-import { ModelCacheRefreshJob } from "metabase-types/api";
+import { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
 
@@ -21,8 +21,8 @@ type ModelCacheRefreshJobModalOwnProps = {
 };
 
 type ModelCacheRefreshJobModalStateProps = {
-  job?: ModelCacheRefreshJob;
-  onRefresh: (job: ModelCacheRefreshJob) => void;
+  job?: ModelCacheRefreshStatus;
+  onRefresh: (job: ModelCacheRefreshStatus) => void;
 };
 
 type ModelCacheRefreshJobModalProps = ModelCacheRefreshJobModalOwnProps &
@@ -41,7 +41,7 @@ function mapStateToProps(
 }
 
 const mapDispatchToProps = {
-  onRefresh: (job: ModelCacheRefreshJob) =>
+  onRefresh: (job: ModelCacheRefreshStatus) =>
     PersistedModels.objectActions.refreshCache(job),
 };
 

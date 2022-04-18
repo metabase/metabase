@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import PersistedModels from "metabase/entities/persisted-models";
 
 import Question from "metabase-lib/lib/Question";
-import { ModelCacheRefreshJob } from "metabase-types/api";
+import { ModelCacheRefreshStatus } from "metabase-types/api";
 
 import {
   Row,
@@ -20,14 +20,14 @@ import {
 
 type Props = {
   model: Question;
-  onRefresh: (job: ModelCacheRefreshJob) => void;
+  onRefresh: (job: ModelCacheRefreshStatus) => void;
 };
 
 type LoaderRenderProps = {
-  persistedModels: ModelCacheRefreshJob[];
+  persistedModels: ModelCacheRefreshStatus[];
 };
 
-function getStatusMessage(job: ModelCacheRefreshJob) {
+function getStatusMessage(job: ModelCacheRefreshStatus) {
   if (job.state === "error") {
     return t`Failed to update model cache`;
   }
@@ -39,7 +39,7 @@ function getStatusMessage(job: ModelCacheRefreshJob) {
 }
 
 const mapDispatchToProps = {
-  onRefresh: (job: ModelCacheRefreshJob) =>
+  onRefresh: (job: ModelCacheRefreshStatus) =>
     PersistedModels.objectActions.refreshCache(job),
 };
 

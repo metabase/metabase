@@ -7,7 +7,7 @@ import {
 } from "metabase-types/api";
 import { CardId } from "metabase-types/types/Card";
 
-export interface ModelCacheRefreshJob {
+export interface ModelCacheRefreshStatus {
   id: number;
   state: "refreshing" | "persisted" | "error";
   error: string | null;
