@@ -138,7 +138,6 @@ jobs:
         TERM: xterm
     - name: Run Cypress tests on ${{ matrix.folder }}
       if: ${{ github.ref != 'refs/heads/master' }}
-      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
       run: |
         yarn run test-cypress-no-build \
           --folder ${{ matrix.folder }}
