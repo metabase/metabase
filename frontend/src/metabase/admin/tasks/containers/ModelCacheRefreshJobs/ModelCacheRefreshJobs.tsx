@@ -15,7 +15,8 @@ import * as Urls from "metabase/lib/urls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 
-import { ModelCacheRefreshJob } from "./types";
+import { ModelCacheRefreshJob } from "metabase-types/api";
+
 import {
   ErrorBox,
   IconButtonContainer,

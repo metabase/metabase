@@ -1,4 +1,11 @@
-import { BaseUser, CollectionId, UserId } from "metabase-types/api";
+import {
+  BaseUser,
+  CollectionId,
+  CollectionAuthorityLevel,
+  DatabaseId,
+  UserId,
+} from "metabase-types/api";
+import { CardId } from "metabase-types/types/Card";
 
 export interface ModelCacheRefreshJob {
   id: number;
@@ -6,15 +13,15 @@ export interface ModelCacheRefreshJob {
   error: string | null;
   active: boolean;
 
-  card_id: number;
+  card_id: CardId;
   card_name: string;
 
   collection_id: CollectionId;
   collection_name: string;
-  collection_authority_level: "official" | null;
+  collection_authority_level: CollectionAuthorityLevel;
 
   columns: string[];
-  database_id: number;
+  database_id: DatabaseId;
   database_name: string;
   schema_name: string;
   table_name: string;

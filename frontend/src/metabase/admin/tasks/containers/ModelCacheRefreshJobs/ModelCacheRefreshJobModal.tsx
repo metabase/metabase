@@ -9,7 +9,8 @@ import ModalContent from "metabase/components/ModalContent";
 import { State } from "metabase-types/store";
 import PersistedModels from "metabase/entities/persisted-models";
 
-import { ModelCacheRefreshJob } from "./types";
+import { ModelCacheRefreshJob } from "metabase-types/api";
+
 import { ErrorBox } from "./ModelCacheRefreshJobs.styled";
 
 type ModelCacheRefreshJobModalOwnProps = {
