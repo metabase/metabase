@@ -23,7 +23,7 @@
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
-  [limit offset]
+  [persisted-info-id limit offset]
   (let [instance-id-str  (public-settings/site-uuid)
         db-id->fire-time (some->> task.persist-refresh/persistence-job-key
                                   task/job-info
@@ -42,7 +42,8 @@
                  :left-join [[Database :db] [:= :db.id :p.database_id]
                              [Card :c] [:= :c.id :p.card_id]
                              [Collection :col] [:= :c.collection_id :col.id]]
-                 :order-by  [[:p.refresh_begin :asc]]}
+                 :order-by  [[:p.refresh_begin :desc]]}
+          persisted-info-id (assoc :where [:= :p.id persisted-info-id])
           limit (hh/limit limit)
           offset (hh/offset offset))
         (db/query)
@@ -57,10 +58,17 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (api/check-superuser)
-  {:data   (fetch-persisted-info offset-paging/*limit* offset-paging/*offset*)
+  {:data   (fetch-persisted-info nil offset-paging/*limit* offset-paging/*offset*)
    :total  (db/count PersistedInfo)
    :limit  offset-paging/*limit*
    :offset offset-paging/*offset*})
+
+(api/defendpoint GET "/:persisted-info-id"
+  "Fetch a particular [[PersistedInfo]] by id."
+  [persisted-info-id]
+  {persisted-info-id (s/maybe su/IntGreaterThanZero)}
+  (api/check-superuser)
+  (first (fetch-persisted-info persisted-info-id nil nil)))
 
 (def ^:private HoursInterval
   "Schema representing valid interval hours for refreshing persisted models."
