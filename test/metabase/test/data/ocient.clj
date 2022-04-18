@@ -42,6 +42,8 @@
 
 (sql-jdbc.tx/add-test-extensions! :ocient)
 
+(defmethod driver/supports? [:ocient :foreign-keys] [_ _] (not config/is-test?))
+
 ;; Use the public schema for all tables
 (defonce session-schema (str "public"))
 
