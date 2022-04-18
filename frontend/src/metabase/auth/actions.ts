@@ -1,10 +1,9 @@
-import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
 import { createThunkAction } from "metabase/lib/redux";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
+import { refreshCurrentUser } from "metabase/redux/user";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -29,10 +28,10 @@ export const login = createThunkAction(
   LOGIN,
   (data: LoginData, redirectUrl = "/") => async (dispatch: any) => {
     await SessionApi.create(data);
+    await dispatch(refreshSession());
     trackLogin();
 
-    await dispatch(refreshSession());
-    dispatch(push(redirectUrl));
+    window.location.assign(redirectUrl);
   },
 );
 
@@ -42,10 +41,10 @@ export const loginGoogle = createThunkAction(
   (token: string, redirectUrl = "/") => async (dispatch: any) => {
     try {
       await SessionApi.createWithGoogleAuth({ token });
+      await dispatch(refreshSession());
       trackLoginGoogle();
 
-      await dispatch(refreshSession());
-      dispatch(push(redirectUrl));
+      window.location.assign(redirectUrl);
     } catch (error) {
       await clearGoogleAuthCredentials();
       throw error;
@@ -55,14 +54,12 @@ export const loginGoogle = createThunkAction(
 
 export const LOGOUT = "metabase/auth/LOGOUT";
 export const logout = createThunkAction(LOGOUT, () => {
-  return async (dispatch: any) => {
+  return async () => {
     await deleteSession();
     await clearGoogleAuthCredentials();
-    await dispatch(clearCurrentUser());
     trackLogout();
 
-    dispatch(push("/auth/login"));
-    window.location.reload();
+    window.location.assign("/auth/login");
   };
 });
 
