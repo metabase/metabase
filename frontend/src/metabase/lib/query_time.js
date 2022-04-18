@@ -564,6 +564,11 @@ export const getTimeComponent = value => {
   return { hours, minutes, date };
 };
 
+export const hasTimeComponent = value => {
+  const { hours, minutes } = getTimeComponent(value);
+  return typeof hours === "number" && typeof minutes === "number";
+};
+
 export const setTimeComponent = (value, hours, minutes) => {
   const m = moment(value);
   if (!m.isValid()) {
@@ -583,3 +588,6 @@ export const setTimeComponent = (value, hours, minutes) => {
     return m.format(DATE_FORMAT);
   }
 };
+
+export const TIME_SELECTOR_DEFAULT_HOUR = 12;
+export const TIME_SELECTOR_DEFAULT_MINUTE = 30;

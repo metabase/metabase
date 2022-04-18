@@ -80,7 +80,7 @@ export function getDateTimeFieldTarget(field: any[]) {
 
 // add temporal-unit to fields if any of them have a time component
 function getDateTimeFieldAndValues(filter: Filter, count: number) {
-  let values = filter.slice(2, 2 + count).map(value => getDate(value));
+  let values = filter.slice(2, 2 + count).map(value => value && getDate(value));
   const bucketing = _.any(values, hasTime) ? "minute" : null;
   const field = getDateTimeField(filter, bucketing);
   const { hours, minutes } = getTimeComponent(values[0]);
@@ -175,8 +175,7 @@ export const DATE_OPERATORS: DateOperator[] = [
     displayName: t`Between`,
     init: filter => {
       const [field, ...values] = getDateTimeFieldAndValues(filter, 2);
-      const tail = values.length === 2 ? [] : [values[0]];
-      return ["between", field, ...values, ...tail];
+      return ["between", field, ...values];
     },
     test: ([op, _field, left, right]) =>
       op === "between" &&

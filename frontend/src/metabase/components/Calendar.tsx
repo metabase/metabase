@@ -78,35 +78,24 @@ export default class Calendar extends Component<Props, State> {
 
   onClickDay = (date: Moment) => {
     const { selected, selectedEnd, isRangePicker } = this.props;
-    if (isRangePicker) {
-      if (!selected) {
-        this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
-      } else if (!selectedEnd || selected.isSame(selectedEnd)) {
-        if (date.isAfter(selected)) {
-          this.props.onChange(
-            selected.format("YYYY-MM-DD"),
-            date.format("YYYY-MM-DD"),
-            selected,
-            date,
-          );
-        } else {
-          this.props.onChange(
-            date.format("YYYY-MM-DD"),
-            selected.format("YYYY-MM-DD"),
-            date,
-            selected,
-          );
-        }
+    if (!isRangePicker || !selected || selectedEnd) {
+      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
+    } else if (!selectedEnd) {
+      if (date.isAfter(selected)) {
+        this.props.onChange(
+          selected.format("YYYY-MM-DD"),
+          date.format("YYYY-MM-DD"),
+          selected,
+          date,
+        );
       } else {
         this.props.onChange(
           date.format("YYYY-MM-DD"),
-          date.format("YYYY-MM-DD"),
+          selected.format("YYYY-MM-DD"),
           date,
-          date,
+          selected,
         );
       }
-    } else {
-      this.props.onChange(date.format("YYYY-MM-DD"), null, date, null);
     }
   };
 
@@ -254,7 +243,6 @@ class Week extends Component<WeekProps> {
       const bgColor = isSelected ? primaryColor : alpha(primaryColor, 0.1);
       const isEnd = selectAll === "before" && date.isSame(selected, "day");
       const classes = cx("Calendar-day cursor-pointer text-centered", {
-        "Calendar-day--today": date.isSame(new Date(), "day"),
         "Calendar-day--this-month": date.month() === month.month(),
         "Calendar-day--selected":
           !isEnd && selected && date.isSame(selected, "day"),

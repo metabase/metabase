@@ -13,6 +13,8 @@ import {
   getTimeComponent,
   isStartingFrom,
   setTimeComponent,
+  TIME_SELECTOR_DEFAULT_HOUR,
+  TIME_SELECTOR_DEFAULT_MINUTE,
 } from "metabase/lib/query_time";
 
 type Props = {
@@ -25,9 +27,6 @@ type Props = {
 };
 
 const HAS_TIME_TOGGLE = ["between", "=", "<", ">"];
-
-const TIME_SELECTOR_DEFAULT_HOUR = 12;
-const TIME_SELECTOR_DEFAULT_MINUTE = 30;
 
 const getIntervalString = (filter: Filter) => {
   const [start = moment(), end = moment()] = computeFilterTimeRange(filter);
