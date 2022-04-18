@@ -4,9 +4,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
-import Link from "metabase/core/components/Link";
 import { closeNavbar } from "metabase/redux/app";
 import * as Urls from "metabase/lib/urls";
+
+import { NewButtonLink } from "./NewButton.styled";
 
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
@@ -29,15 +30,13 @@ function NewButton({
     <EntityMenu
       className="hide sm-show mr1"
       trigger={
-        <Link
-          mr={1}
-          p={1}
-          className="Button Button--primary flex align-center"
+        <NewButtonLink
+          className="Button Button--primary"
           data-metabase-event={`NavBar;Create Menu Click`}
         >
           <Icon name="add" size={14} />
           <h4 className="hide sm-show ml1 text-nowrap">{t`New`}</h4>
-        </Link>
+        </NewButtonLink>
       }
       items={[
         ...(hasDataAccess
