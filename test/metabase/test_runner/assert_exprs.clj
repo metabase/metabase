@@ -119,10 +119,9 @@
 
 (defmethod t/assert-expr 'partial=
   [message [_ expected actual :as form]]
-  `(do
-     (assert (= 2 ~(count (rest form))) "partial= expects exactly 2 arguments")
-     (t/do-report
-       (partial=-report ~message ~expected ~actual))))
+  (assert (= (count (rest form)) 2) "partial= expects exactly 2 arguments")
+  `(t/do-report
+    (partial=-report ~message ~expected ~actual)))
 
 (defn sql=-report
   [message expected query]
