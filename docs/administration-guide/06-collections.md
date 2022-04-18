@@ -9,7 +9,7 @@ Metabase starts out with a default top-level collection which is called **Our an
 ## Collection permission levels
 
 - **Curate access**: the user can edit, move, archive, and pin items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
-- **View access**: the user can see all the questions, dashboards, and pulses in the collection. If the user does not have permission to view some or all of the questions included in a given dashboard or pulse then those questions will not be visible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the user doesn't have access to the underlying data used to in the question._
+- **View access**: the user can see all the questions, dashboards, and models in the collection. If the user does not have permission to view some or all of the questions included in a given dashboard then those questions will not be visible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the user doesn't have access to the underlying data used to in the question._
 - **No access**: the user won't see this collection listed, and doesn't have access to any of the items saved within it.
 
 ### Setting permissions for collections
@@ -26,11 +26,11 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 ### Permissions and sub-collections
 
-One nuance with how collections permissions work has to do with sub-collections. A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group does _not_ have access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
+A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group does _not_ have access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
 ### Archiving collections
 
-Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select **Archive this collection** to archive it. This will also archive all questions, dashboards, pulses, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards and Pulses that use them.
+Users with curate permission for a collection can archive collections. Click the edit icon in the top-right of the collection screen and select **Archive this collection** to archive it. This will also archive all questions, dashboards, models, and all other sub-collections and their contents. Importantly, this will also remove any archived questions from all dashboards that use them.
 
 You can _unarchive_ items. In the Collections list sidebar, at the bottom, click on **View archive**. Search for the item you'd like to unarchive (you'll either need to scroll down the page, or use the browser's find in page functionality, as archived items won't appear in Metabase's search results). Select the open box with an up arrow icon to "Unarchive this".
 
@@ -42,7 +42,7 @@ People in groups with Curate access to a collection can pin items in the collect
 
 To pin an item, select the **pin icon** next to the item's name.
 
-Note that collections themselves can't be pinned. If you're running on a [a paid plan](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
+Note that collections themselves can't be pinned. If you're running on a [paid plan](https://www.metabase.com/pricing), admins can designate [Offical Collections][offical-collections].
 
 ## Special collections
 
@@ -54,7 +54,7 @@ Each person has a personal collection where they're always allowed to save thing
 
 Administrators can see and edit the contents of every user's personal collection (even those belonging to other Administrators) by clicking on the **Other users' personal collections** link at the bottom of the sidebar when viewing "Our analytics".
 
-A personal collection works just like any other collection except that its permissions are fixed and cannot be changed. If a sub-collection within a personal collection is moved to a different collection, the sub-collection will inherit the permissions of the parent collection.
+A personal collection works just like any other collection except that its permissions are fixed and cannot be changed. If a sub-collection within a personal collection is moved to a different collection, the sub-collection will inherit the permissions of its new parent collection.
 
 ## Further reading
 
