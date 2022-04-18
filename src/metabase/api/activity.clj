@@ -145,7 +145,7 @@
                                                  (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
                                                  [:in :model #{"dashboard" "table"}]
                                                  [:= :bm.id nil]]
-                                     :order-by  [[:model :desc] [:max_ts :desc]]
+                                     :order-by  [[:max_ts :desc] [:model :desc]]
                                      :limit     views-limit
                                      :left-join [[DashboardBookmark :bm]
                                                  [:and
