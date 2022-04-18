@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import moment, { Moment } from "moment";
+import moment from "moment";
 import _ from "underscore";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";

@@ -39,8 +39,6 @@ export default class Calendar extends Component<Props, State> {
     };
   }
 
-  static propTypes = {};
-
   static defaultProps = {
     isRangePicker: true,
   };

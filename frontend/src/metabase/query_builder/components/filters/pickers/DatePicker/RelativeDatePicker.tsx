@@ -49,7 +49,6 @@ const periodPopoverText = (period: string) => {
   switch (period) {
     case "day":
       return t`Right now, this is ${now.format("ddd, MMM D")}`;
-    // return t`Right now, this is {day of week}, {three-letter month, like Nov} {number}`;
     case "week":
       start = now.startOf("week").format("ddd, MMM D");
       end = now.endOf("week").format("ddd, MMM D");
