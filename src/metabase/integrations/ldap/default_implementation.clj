@@ -1,12 +1,12 @@
 (ns metabase.integrations.ldap.default-implementation
   "Default LDAP integration. This integration is used by OSS or for EE if enterprise features are not enabled."
-  (:require [clj-ldap.client :as ldap-client]
+  (:require [clj-ldap.client :as ldap]
             [clojure.string :as str]
             [metabase.integrations.common :as integrations.common]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.user :as user :refer [User]]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
@@ -28,7 +28,7 @@
    username                        :- su/NonBlankString
    {:keys [user-base user-filter]} :- i/LDAPSettings]
   (some-> (first
-           (ldap-client/search
+           (ldap/search
             ldap-connection
             user-base
             {:scope      :sub
@@ -54,7 +54,7 @@
    {:keys [group-base]}    :- i/LDAPSettings
    group-membership-filter :- su/NonBlankString]
   (when group-base
-    (let [results (ldap-client/search
+    (let [results (ldap/search
                    ldap-connection
                    group-base
                    {:scope  :sub

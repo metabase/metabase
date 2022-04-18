@@ -5,7 +5,7 @@
             [kixi.stats.core :as stats]
             [kixi.stats.math :as math]
             [medley.core :as m]
-            [metabase.sync.analyze.classifiers.name :as classify.name]
+            [metabase.sync.analyze.classifiers.name :as classifiers.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -256,4 +256,4 @@
                      (cond-> field
                        ;; Try to get a better guestimate of what we're dealing with on first sync
                        (every? nil? ((juxt :semantic_type :last_analyzed) field))
-                       (assoc :semantic_type (classify.name/infer-semantic-type field)))))))
+                       (assoc :semantic_type (classifiers.name/infer-semantic-type field)))))))

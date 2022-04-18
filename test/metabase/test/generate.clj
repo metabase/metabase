@@ -8,7 +8,7 @@
             [reifyhealth.specmonstah.core :as rs]
             [reifyhealth.specmonstah.spec-gen :as rsg]
             [talltale.core :as tt]
-            [toucan.db :as tdb]))
+            [toucan.db :as db]))
 
 (def ^:private ^:const product-names
   {:adjective '[Small, Ergonomic, Rustic, Intelligent, Gorgeous, Incredible, Fantastic, Practical, Sleek, Awesome,
@@ -276,7 +276,7 @@
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
-                    (tdb/insert! (:model schema-opts)
+                    (db/insert! (:model schema-opts)
                       (rsg/spec-gen-assoc-relations
                        sm-db
                        (assoc visit-opts :visit-val (:spec-gen attrs))))

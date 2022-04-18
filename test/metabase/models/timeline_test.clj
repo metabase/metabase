@@ -2,7 +2,7 @@
   "Tests for the Timeline model."
   (:require [clojure.test :refer :all]
             [metabase.models.collection :refer [Collection]]
-            [metabase.models.timeline :as tl :refer [Timeline]]
+            [metabase.models.timeline :as timeline :refer [Timeline]]
             [metabase.models.timeline-event :refer [TimelineEvent]]
             [metabase.test :as mt]
             [metabase.util :as u]))
@@ -21,16 +21,16 @@
         (testing "Fetching timelines"
           (testing "don't include events by default"
             (is (= #{}
-                   (->> (tl/timelines-for-collection (u/the-id collection) {})
+                   (->> (timeline/timelines-for-collection (u/the-id collection) {})
                         event-names))))
           (testing "include only unarchived events by default"
             (is (= #{"e-a" "e-c"}
-                   (->> (tl/timelines-for-collection (u/the-id collection)
-                                                     {:timeline/events? true})
+                   (->> (timeline/timelines-for-collection (u/the-id collection)
+                                                           {:timeline/events? true})
                         event-names))))
           (testing "can load all events if specify `:events/all?`"
             (is (= #{"e-a" "e-b" "e-c" "e-d"}
-                   (->> (tl/timelines-for-collection (u/the-id collection)
-                                                     {:timeline/events? true
-                                                      :events/all?      true})
+                   (->> (timeline/timelines-for-collection (u/the-id collection)
+                                                           {:timeline/events? true
+                                                            :events/all?      true})
                         event-names)))))))))

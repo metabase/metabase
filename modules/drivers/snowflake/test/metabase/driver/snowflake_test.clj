@@ -10,7 +10,7 @@
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.data.dataset-definitions :as dataset-defs]
+            [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.sql :as sql.tx]
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
@@ -20,7 +20,7 @@
   (testing "make sure we didn't break the code that is used to generate DDL statements when we add new test datasets"
     (testing "Create DB DDL statements"
       (is (= "DROP DATABASE IF EXISTS \"v3_test-data\"; CREATE DATABASE \"v3_test-data\";"
-             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition dataset-defs/test-data)))))
+             (sql.tx/create-db-sql :snowflake (mt/get-dataset-definition defs/test-data)))))
 
     (testing "Create Table DDL statements"
       (is (= (map
@@ -43,7 +43,7 @@
                 FOREIGN KEY (\"user_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"users\" (\"id\");"
                "ALTER TABLE \"v3_test-data\".\"PUBLIC\".\"checkins\" ADD CONSTRAINT \"ins_venue_id_venues_-833167948\"
                 FOREIGN KEY (\"venue_id\") REFERENCES \"v3_test-data\".\"PUBLIC\".\"venues\" (\"id\");"])
-             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition dataset-defs/test-data)
+             (ddl/create-db-tables-ddl-statements :snowflake (-> (mt/get-dataset-definition defs/test-data)
                                                                  (update :database-name #(str "v3_" %)))))))))
 
 ;; TODO -- disabled because these are randomly failing, will figure out when I'm back from vacation. I think it's a

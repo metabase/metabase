@@ -5,7 +5,7 @@
             [metabase.models :refer [Database Permissions PermissionsGroup]]
             [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.sync.sync-metadata.tables :as sync-tables]
             [metabase.test :as mt]
@@ -118,7 +118,7 @@
   (mt/with-temp* [Database [{db-id :id :as database} {:engine ::download-permissions}]]
     (replace-tables ["Table 1" "Table 2"])
     (letfn [(all-users-native-download-perms []
-              (get-in (perms/data-perms-graph) [:groups (u/the-id (group/all-users)) db-id :download :native]))]
+              (get-in (perms/data-perms-graph) [:groups (u/the-id (perms-group/all-users)) db-id :download :native]))]
       (testing "If a group has full download perms for a DB, native download perms are unchanged when a new table is
                found during sync"
         (is (= :full (all-users-native-download-perms)))
@@ -134,7 +134,7 @@
                                (-> (into {} (for [id table-ids] [id :full]))
                                    (assoc limited-downloads-id :limited))}}]
           (premium-features-test/with-premium-features #{:advanced-permissions}
-            (@#'ee-perms/update-db-download-permissions! (u/the-id (group/all-users)) db-id graph))
+            (@#'ee-perms/update-db-download-permissions! (u/the-id (perms-group/all-users)) db-id graph))
           (is (= :limited (all-users-native-download-perms)))
           (replace-tables ["Table 1" "Table 2" "Table 3" "Table 4"])
           (sync-tables/sync-tables-and-database! database)

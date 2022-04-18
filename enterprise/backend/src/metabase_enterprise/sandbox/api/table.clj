@@ -3,10 +3,10 @@
             [compojure.core :refer [GET]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api]
-            [metabase.api.table :as table-api]
+            [metabase.api.table :as api.table]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as models.i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.table :as table :refer [Table]]
@@ -66,7 +66,7 @@
         thunk            (fn []
                            (maybe-filter-fields
                             table
-                            (table-api/fetch-query-metadata
+                            (api.table/fetch-query-metadata
                              table
                              include_sensitive_fields
                              include_hidden_fields)))]
@@ -76,7 +76,7 @@
       (binding [api/*current-user-permissions-set* (atom
                                                     (set/union
                                                      @api/*current-user-permissions-set*
-                                                     (models.i/perms-objects-set table :read)))]
+                                                     (mi/perms-objects-set table :read)))]
         (thunk))
       (thunk))))
 

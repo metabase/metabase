@@ -4,7 +4,7 @@
             [metabase.db :as mdb]
             [metabase.models.setting :refer [Setting]]
             [metabase.models.setting-test :as setting-test]
-            [metabase.models.setting.cache :as cache]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.public-settings :as public-settings]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -15,16 +15,16 @@
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
 
 (defn clear-cache! []
-  (reset! (#'metabase.models.setting.cache/cache*) nil))
+  (reset! (#'setting.cache/cache*) nil))
 
 (defn- settings-last-updated-value-in-cache []
-  (get (cache/cache) cache/settings-last-updated-key))
+  (get (setting.cache/cache) setting.cache/settings-last-updated-key))
 
 (defn- update-settings-last-updated-value-in-db!
   "Simulate a different instance updating the value of `settings-last-updated` in the DB by updating its value without
   updating our locally cached value.."
   []
-  (db/update-where! Setting {:key cache/settings-last-updated-key}
+  (db/update-where! Setting {:key setting.cache/settings-last-updated-key}
     :value (hsql/raw (case (mdb/db-type)
                        ;; make it one second in the future so we don't end up getting an exact match when we try to test
                        ;; to see if things update below
@@ -41,7 +41,7 @@
 (defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
-  (reset! (var-get #'cache/last-update-check) 0))
+  (reset! (var-get #'setting.cache/last-update-check) 0))
 
 (deftest update-settings-last-updated-test
   (testing "When I update a Setting, does it set/update `settings-last-updated`?"
@@ -66,20 +66,20 @@
 (deftest cache-out-of-date-test
   (testing "If there is no cache, it should be considered out of date!"
     (clear-cache!)
-    (#'cache/cache-out-of-date?))
+    (#'setting.cache/cache-out-of-date?))
 
   (testing "But if I set a setting, it should cause the cache to be populated, and be up-to-date"
     (clear-cache!)
     (setting-test/toucan-name "Reggae Toucan")
     (is (= false
-           (#'cache/cache-out-of-date?))))
+           (#'setting.cache/cache-out-of-date?))))
 
   (testing "If another instance updates a Setting, `cache-out-of-date?` should return `true` based on DB comparisons..."
     (clear-cache!)
     (setting-test/toucan-name "Reggae Toucan")
     (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
     (is (= true
-           (#'cache/cache-out-of-date?)))))
+           (#'setting.cache/cache-out-of-date?)))))
 
 (deftest restore-cache-if-needed-test
   (testing (str "of course, `restore-cache-if-needed!` should use TTL memoization, and the cache should not get "
@@ -128,7 +128,7 @@
     (reset-last-update-check!)
     (setting-test/test-setting-1 "Starfish")
     ;; 1. User writes
-    (with-redefs [metabase.models.setting.cache/cache* external-cache]
+    (with-redefs [setting.cache/cache* external-cache]
       (setting-test/toucan-name "Batman Toucan"))
     (setting-test/test-setting-1 "Batman")
     (is (= "Batman Toucan"

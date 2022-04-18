@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql.query-processor.deprecated :as deprecated]
@@ -15,7 +15,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.middleware.wrap-value-literals :as value-literal]
+            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.query-processor.util.nest-query :as nest-query]
@@ -603,7 +603,7 @@
                              (->honeysql driver (hx/identifier
                                                  :field-alias
                                                  (driver/escape-alias driver (annotate/aggregation-name ag))))]))]
-    (reduce h/merge-select honeysql-form honeysql-ags)))
+    (reduce hh/merge-select honeysql-form honeysql-ags)))
 
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
@@ -611,16 +611,16 @@
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (->> breakout-fields
-                                        (remove (set fields-fields))
-                                        (mapv (fn [field-clause]
-                                                (as driver field-clause)))))
-    (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
+    (apply hh/merge-select new-hsql (->> breakout-fields
+                                         (remove (set fields-fields))
+                                         (mapv (fn [field-clause]
+                                                 (as driver field-clause)))))
+    (apply hh/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
-  (apply h/merge-select honeysql-form (vec (for [field-clause fields]
-                                             (as driver field-clause)))))
+  (apply hh/merge-select honeysql-form (vec (for [field-clause fields]
+                                              (as driver field-clause)))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -692,7 +692,7 @@
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  (if (nil? (value-literal/unwrap-value-literal value))
+  (if (nil? (qp.wrap-value-literals/unwrap-value-literal value))
     [:not= (->honeysql driver field) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= field value])))
 
@@ -715,7 +715,7 @@
 
 (defmethod apply-top-level-clause [:sql :filter]
   [driver _ honeysql-form {clause :filter}]
-  (h/where honeysql-form (->honeysql driver clause)))
+  (hh/where honeysql-form (->honeysql driver clause)))
 
 
 ;;; -------------------------------------------------- join tables ---------------------------------------------------
@@ -761,10 +761,10 @@
    (->honeysql driver condition)])
 
 (def ^:private join-strategy->merge-fn
-  {:left-join  h/merge-left-join
-   :right-join h/merge-right-join
-   :inner-join h/merge-join
-   :full-join  h/merge-full-join})
+  {:left-join  hh/merge-left-join
+   :right-join hh/merge-right-join
+   :inner-join hh/merge-join
+   :full-join  hh/merge-full-join})
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
@@ -787,19 +787,19 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
+  (reduce hh/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :limit]
   [_ _ honeysql-form {value :limit}]
-  (h/limit honeysql-form value))
+  (hh/limit honeysql-form value))
 
 (defmethod apply-top-level-clause [:sql :page]
   [_ _ honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
-      (h/limit items)
-      (h/offset (* items (dec page)))))
+      (hh/limit items)
+      (hh/offset (* items (dec page)))))
 
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
@@ -811,7 +811,7 @@
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
-  (h/from honeysql-form (->honeysql driver (qp.store/table source-table-id))))
+  (hh/from honeysql-form (->honeysql driver (qp.store/table source-table-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

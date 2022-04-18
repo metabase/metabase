@@ -1,10 +1,10 @@
 (ns metabase.api.permissions-test
   "Tests for `/api/permissions` endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.api.permissions :as permissions-api]
+            [metabase.api.permissions :as api.permissions]
             [metabase.models :refer [Database PermissionsGroup PermissionsGroupMembership Table User]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -13,7 +13,7 @@
             [toucan.db :as db]))
 
 ;; there are some issues where it doesn't look like the hydrate function for `member_count` is being added (?)
-(comment permissions-api/keep-me)
+(comment api.permissions/keep-me)
 
 ;; make sure test users are created first, otherwise we're possibly going to have some WEIRD results
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -30,15 +30,15 @@
   (testing "GET /api/permissions/group"
     (letfn [(check-default-groups-returned [id->group]
               (testing "All Users Group should be returned"
-                (is (schema= {:id           (s/eq (:id (group/all-users)))
+                (is (schema= {:id           (s/eq (:id (perms-group/all-users)))
                               :name         (s/eq "All Users")
                               :member_count su/IntGreaterThanZero}
-                             (get id->group (:id (group/all-users))))))
+                             (get id->group (:id (perms-group/all-users))))))
               (testing "Administrators Group should be returned"
-                (is (schema= {:id           (s/eq (:id (group/admin)))
+                (is (schema= {:id           (s/eq (:id (perms-group/admin)))
                               :name         (s/eq "Administrators")
                               :member_count su/IntGreaterThanZero}
-                             (get id->group (:id (group/admin)))))))]
+                             (get id->group (:id (perms-group/admin)))))))]
       (let [id->group (u/key-by :id (fetch-groups))]
         (check-default-groups-returned id->group))
 
@@ -69,7 +69,7 @@
 (deftest fetch-group-test
   (testing "GET /permissions/group/:id"
     (let [{:keys [members]} (mt/user-http-request
-                             :crowberto :get 200 (format "permissions/group/%d" (:id (group/all-users))))
+                             :crowberto :get 200 (format "permissions/group/%d" (:id (perms-group/all-users))))
           id->member        (u/key-by :user_id members)]
       (is (schema= {:first_name    (s/eq "Crowberto")
                     :last_name     (s/eq "Corv")
@@ -95,7 +95,7 @@
 
     (testing "requires superuers"
       (is (= "You don't have permissions to do that."
-           (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (group/all-users)))))))))
+           (mt/user-http-request :rasta :get 403 (format "permissions/group/%d" (:id (perms-group/all-users)))))))))
 
 ;;; +---------------------------------------------- permissions graph apis -----------------------------------------------------------+
 
@@ -105,7 +105,7 @@
     (testing "make sure we can fetch the perms graph from the API"
       (mt/with-temp Database [{db-id :id}]
         (let [graph (mt/user-http-request :crowberto :get 200 "permissions/graph")]
-          (is (partial= {:groups {(u/the-id (group/admin))
+          (is (partial= {:groups {(u/the-id (perms-group/admin))
                                   {db-id {:data {:native "write" :schemas "all"}}}}}
                         graph)))))
 

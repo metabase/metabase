@@ -2,14 +2,14 @@
   "Tests for *MBQL* parameter substitution."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.parameters.mbql :as mbql-params]
+            [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
             [metabase.test :as mt]))
 
 (defn- expand-parameters [query]
-  (let [query (normalize/normalize query)]
-    (mbql-params/expand (dissoc query :parameters) (:parameters query))))
+  (let [query (mbql.normalize/normalize query)]
+    (qp.mbql/expand (dissoc query :parameters) (:parameters query))))
 
 (defn- expanded-query-with-filter [filter-clause]
   {:database 1
@@ -275,7 +275,7 @@
 (deftest convert-ids-to-numbers-test
   (is (= (mt/$ids venues
            [:= $id 1])
-         (#'mbql-params/build-filter-clause
+         (#'qp.mbql/build-filter-clause
           (mt/$ids venues
             {:type   :id
              :target [:dimension $id]

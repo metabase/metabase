@@ -5,7 +5,7 @@
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.table :refer [Table]]
             [metabase.sync :as sync]
-            [metabase.sync.util-test :as sut]
+            [metabase.sync.util-test :as sync.util-test]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
@@ -15,8 +15,8 @@
   (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))
 
 (defn- sync-database!' [step database]
-  (let [{:keys [step-info task-history]} (sut/sync-database! step database)]
-    [(sut/only-step-keys step-info)
+  (let [{:keys [step-info task-history]} (sync.util-test/sync-database! step database)]
+    [(sync.util-test/only-step-keys step-info)
      (:task_details task-history)]))
 
 (deftest sync-recreate-field-values-test

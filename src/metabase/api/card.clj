@@ -9,8 +9,8 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
-            [metabase.api.dataset :as dataset-api]
-            [metabase.api.timeline :as timeline-api]
+            [metabase.api.dataset :as api.dataset]
+            [metabase.api.timeline :as api.timeline]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -31,7 +31,7 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
@@ -165,7 +165,7 @@
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
-  {include (s/maybe timeline-api/Include)
+  {include (s/maybe api.timeline/Include)
    start   (s/maybe su/TemporalString)
    end     (s/maybe su/TemporalString)}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
@@ -215,7 +215,7 @@
                               (map mbql.normalize/normalize-source-metadata metadata)
                               original-metadata)
                   fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
-              (qputil/combine-metadata fresh metadata')))
+              (qp.util/combine-metadata fresh metadata')))
       :else
       ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
@@ -678,12 +678,12 @@
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
-   export-format dataset-api/ExportFormat}
+   export-format api.dataset/ExportFormat}
   (qp.card/run-query-for-card-async
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
-   :context     (dataset-api/export-format->context export-format)
+   :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true

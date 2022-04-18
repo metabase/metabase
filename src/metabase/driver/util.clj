@@ -9,7 +9,7 @@
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
@@ -260,7 +260,7 @@
                                  (recur transitive-props next-acc)
                                  (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
                                      (trs driver cyclic-props)
-                                     (ex-info {:type               error-type/driver
+                                     (ex-info {:type               qp.error-type/driver
                                                :driver             driver
                                                :cyclic-visible-ifs cyclic-props})
                                      throw)))

@@ -5,10 +5,10 @@
             [clojure.test :refer :all]
             [clojure.walk :as walk]
             [medley.core :as m]
-            [metabase.api.card-test :as card-api-test]
-            [metabase.api.dashboard :as dashboard-api]
-            [metabase.api.pivots :as pivots]
-            [metabase.http-client :as http]
+            [metabase.api.card-test :as api.card-test]
+            [metabase.api.dashboard :as api.dashboard]
+            [metabase.api.pivots :as api.pivots]
+            [metabase.http-client :as client]
             [metabase.models
              :refer
              [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
@@ -16,10 +16,10 @@
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
             [metabase.query-processor.streaming.test-util :as streaming.test-util]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.util :as u]
             [ring.util.codec :as codec]
@@ -78,7 +78,7 @@
 (defn- do-with-dashboards-in-a-collection [grant-collection-perms-fn! dashboards-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
-      (grant-collection-perms-fn! (group/all-users) collection)
+      (grant-collection-perms-fn! (perms-group/all-users) collection)
       (doseq [dashboard-or-id dashboards-or-ids]
         (db/update! Dashboard (u/the-id dashboard-or-id) :collection_id (u/the-id collection)))
       (f))))
@@ -98,9 +98,9 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-test
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :get 401 "dashboard")
-         (http/client :put 401 "dashboard/13"))))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :get 401 "dashboard")
+         (client/client :put 401 "dashboard/13"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -138,7 +138,7 @@
   (testing "POST /api/dashboard"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp Collection [collection]
-        (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (let [test-dashboard-name "Test Create Dashboard"]
           (try
             (is (= (merge
@@ -165,7 +165,7 @@
     (testing "Make sure we can create a Dashboard with a Collection position"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
-          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (let [dashboard-name (mt/random-name)]
             (try
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                dashboard-name
@@ -208,7 +208,7 @@
                                                                                               dashboard-id
                                                                                               dashboard)}]]
         (with-dashboards-in-readable-collection [dashboard-id]
-          (card-api-test/with-cards-in-readable-collection [card-id]
+          (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge
                     dashboard-defaults
                     {:name          "Test Dashboard"
@@ -228,7 +228,7 @@
                                       :created_at             true
                                       :parameter_mappings     []
                                       :visualization_settings {}
-                                      :card                   (merge card-api-test/card-defaults-no-hydrate
+                                      :card                   (merge api.card-test/card-defaults-no-hydrate
                                                                      {:name                   "Dashboard Test Card"
                                                                       :creator_id             (mt/user->id :rasta)
                                                                       :collection_id          true
@@ -250,7 +250,7 @@
                                                                                :parameter_id "foo"
                                                                                :target       [:dimension [:field field-id nil]]}]}]]
         (with-dashboards-in-readable-collection [dashboard-id]
-          (card-api-test/with-cards-in-readable-collection [card-id]
+          (api.card-test/with-cards-in-readable-collection [card-id]
             (is (= (merge dashboard-defaults
                           {:name          "Test Dashboard"
                            :creator_id    (mt/user->id :rasta)
@@ -277,7 +277,7 @@
                                                                       :parameter_id "foo"
                                                                       :target       ["dimension" ["field" field-id nil]]}]
                                             :visualization_settings {}
-                                            :card                   (merge card-api-test/card-defaults-no-hydrate
+                                            :card                   (merge api.card-test/card-defaults-no-hydrate
                                                                            {:name                   "Dashboard Test Card"
                                                                             :creator_id             (mt/user->id :rasta)
                                                                             :collection_id          true
@@ -293,7 +293,7 @@
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                       DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]]
         (with-dashboards-in-readable-collection [dashboard-id]
-          (card-api-test/with-cards-in-readable-collection [card-id]
+          (api.card-test/with-cards-in-readable-collection [card-id]
             (is (nil?
                  (-> (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" dashboard-id)))
                      :collection_authority_level)))
@@ -323,8 +323,8 @@
 (deftest param-values-test
   (testing "Don't return `param_values` for Fields for which the current User has no data perms."
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (group/all-users) (mt/id))
-      (perms/grant-permissions! (group/all-users) (perms/table-read-path (Table (mt/id :venues))))
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+      (perms/grant-permissions! (perms-group/all-users) (perms/table-read-path (Table (mt/id :venues))))
       (mt/with-temp* [Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
                       Card          [{card-id :id}      {:name "Dashboard Test Card"}]
                       DashboardCard [{_ :id}            {:dashboard_id       dashboard-id
@@ -429,7 +429,7 @@
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
           ;; now make an API call to move collections
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dash)) {:collection_id (u/the-id new-collection)})
           ;; Check to make sure the ID has changed in the DB
@@ -441,7 +441,7 @@
         (dashboard-test/with-dash-in-collection [db collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *new* collection
-            (perms/grant-collection-readwrite-permissions! (group/all-users) new-collection)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
             ;; now make an API call to move collections. Should fail
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "dashboard/" (u/the-id dash))
@@ -452,7 +452,7 @@
         (dashboard-test/with-dash-in-collection [db collection dash]
           (mt/with-temp Collection [new-collection]
             ;; grant Permissions for only the *old* collection
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             ;; now make an API call to move collections. Should fail
             (is (schema= {:message (s/eq "You do not have curate permissions for this Collection.")
                           s/Keyword s/Any}
@@ -470,7 +470,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp* [Collection [collection]
                         Dashboard  [dashboard {:collection_id (u/the-id collection)}]]
-          (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                 {:collection_position 1})
           (is (= 1
@@ -500,14 +500,14 @@
 (deftest update-dashboard-position-test
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
-      (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
       (letfn [(move-dashboard! [dashboard new-position]
                 (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id dashboard))
                                       {:collection_position new-position}))
               (items []
-                (card-api-test/get-name->collection-position :rasta collection))]
+                (api.card-test/get-name->collection-position :rasta collection))]
         (testing "Check that we can update a dashboard's position in a collection of only dashboards"
-          (card-api-test/with-ordered-items collection [Dashboard a
+          (api.card-test/with-ordered-items collection [Dashboard a
                                                         Dashboard b
                                                         Dashboard c
                                                         Dashboard d]
@@ -516,7 +516,7 @@
                    (items)))))
 
         (testing "Check that updating a dashboard at position 3 to position 1 will increment the positions before 3, not after"
-          (card-api-test/with-ordered-items collection [Card      a
+          (api.card-test/with-ordered-items collection [Card      a
                                                         Pulse     b
                                                         Dashboard c
                                                         Dashboard d]
@@ -525,7 +525,7 @@
                    (items)))))
 
         (testing "Check that updating position 1 to 3 will cause b and c to be decremented"
-          (card-api-test/with-ordered-items collection [Dashboard a
+          (api.card-test/with-ordered-items collection [Dashboard a
                                                         Card      b
                                                         Pulse     c
                                                         Dashboard d]
@@ -535,7 +535,7 @@
 
 
         (testing "Check that updating position 1 to 4 will cause a through c to be decremented"
-          (card-api-test/with-ordered-items collection [Dashboard a
+          (api.card-test/with-ordered-items collection [Dashboard a
                                                         Card      b
                                                         Pulse     c
                                                         Pulse     d]
@@ -544,7 +544,7 @@
                    (items)))))
 
         (testing "Check that updating position 4 to 1 will cause a through c to be incremented"
-          (card-api-test/with-ordered-items collection [Card      a
+          (api.card-test/with-ordered-items collection [Card      a
                                                         Pulse     b
                                                         Card      c
                                                         Dashboard d]
@@ -557,16 +557,16 @@
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp* [Collection [collection-1]
                       Collection [collection-2]]
-        (card-api-test/with-ordered-items collection-1 [Dashboard a
+        (api.card-test/with-ordered-items collection-1 [Dashboard a
                                                         Card      b
                                                         Card      c
                                                         Pulse     d]
-          (card-api-test/with-ordered-items collection-2 [Pulse     e
+          (api.card-test/with-ordered-items collection-2 [Pulse     e
                                                           Pulse     f
                                                           Dashboard g
                                                           Card      h]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection-1)
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection-2)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
             ;; Move the first dashboard in collection-1 to collection-1
             (mt/user-http-request :rasta :put 200 (str "dashboard/" (u/the-id a))
                                   {:collection_position 1, :collection_id (u/the-id collection-2)})
@@ -575,7 +575,7 @@
               (is (= {"b" 1
                       "c" 2
                       "d" 3}
-                     (card-api-test/get-name->collection-position :rasta collection-1))))
+                     (api.card-test/get-name->collection-position :rasta collection-1))))
             ;; "a" is now first, all other dashboards in collection-2 bumped down 1
             (testing "new collection"
               (is (= {"a" 1
@@ -583,21 +583,21 @@
                       "f" 3
                       "g" 4
                       "h" 5}
-                     (card-api-test/get-name->collection-position :rasta collection-2))))))))))
+                     (api.card-test/get-name->collection-position :rasta collection-2))))))))))
 
 (deftest insert-dashboard-increment-existing-collection-position-test
   (testing "POST /api/dashboard"
     (testing "Check that adding a new Dashboard at Collection position 3 will increment position of the existing item at position 3"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
-          (card-api-test/with-ordered-items collection [Card  a
+          (api.card-test/with-ordered-items collection [Card  a
                                                         Pulse b
                                                         Card  d]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (is (= {"a" 1
                     "b" 2
                     "d" 3}
-                   (card-api-test/get-name->collection-position :rasta collection)))
+                   (api.card-test/get-name->collection-position :rasta collection)))
             (try
               (mt/user-http-request :rasta :post 200 "dashboard" {:name                "c"
                                                                   :collection_id       (u/the-id collection)
@@ -606,7 +606,7 @@
                       "b" 2
                       "c" 3
                       "d" 4}
-                     (card-api-test/get-name->collection-position :rasta collection)))
+                     (api.card-test/get-name->collection-position :rasta collection)))
               (finally
                 (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
@@ -615,14 +615,14 @@
     (testing "Check that adding a new Dashboard without a position, leaves the existing positions unchanged"
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp Collection [collection]
-          (card-api-test/with-ordered-items collection [Dashboard a
+          (api.card-test/with-ordered-items collection [Dashboard a
                                                         Card      b
                                                         Pulse     d]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (is (= {"a" 1
                     "b" 2
                     "d" 3}
-                   (card-api-test/get-name->collection-position :rasta collection)))
+                   (api.card-test/get-name->collection-position :rasta collection)))
             (try
               (mt/user-http-request :rasta :post 200 "dashboard" {:name          "c"
                                                                   :collection_id (u/the-id collection)})
@@ -630,7 +630,7 @@
                       "b" 2
                       "c" nil
                       "d" 3}
-                     (card-api-test/get-name->collection-position :rasta collection)))
+                     (api.card-test/get-name->collection-position :rasta collection)))
               (finally
                 (db/delete! Dashboard :collection_id (u/the-id collection))))))))))
 
@@ -708,7 +708,7 @@
         (mt/with-temp Collection [new-collection]
           ;; grant Permissions for both new and old collections
           (doseq [coll [collection new-collection]]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) coll))
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
           (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (u/the-id dash)) {:collection_id (u/the-id new-collection)})]
             (try
               ;; Check to make sure the ID of the collection is correct
@@ -727,7 +727,7 @@
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
-      (card-api-test/with-cards-in-readable-collection [card-id]
+      (api.card-test/with-cards-in-readable-collection [card-id]
         (is (= {:sizeX                  2
                 :sizeY                  2
                 :col                    4
@@ -761,7 +761,7 @@
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
-      (card-api-test/with-cards-in-readable-collection [card-id series-id-1]
+      (api.card-test/with-cards-in-readable-collection [card-id series-id-1]
         (let [dashboard-card (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
                                                    {:cardId card-id
                                                     :row    4
@@ -775,7 +775,7 @@
                   :visualization_settings {}
                   :series                 [{:name                   "Series Card"
                                             :description            nil
-                                            :dataset_query          (:dataset_query card-api-test/card-defaults)
+                                            :dataset_query          (:dataset_query api.card-test/card-defaults)
                                             :display                "table"
                                             :visualization_settings {}}]
                   :created_at             true
@@ -792,7 +792,7 @@
 
 (defn do-with-add-card-parameter-mapping-permissions-fixtures [f]
   (mt/with-temp-copy-of-db
-    (perms/revoke-data-perms! (group/all-users) (mt/id))
+    (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
     (mt/with-temp* [Dashboard     [{dashboard-id :id} {:parameters [{:name "Category ID"
                                                                      :slug "category_id"
                                                                      :id   "_CATEGORY_ID_"
@@ -826,14 +826,14 @@
          (is (= []
                 (dashcards)))
          (testing "Permissions for a different table in the same DB should not count"
-           (perms/grant-permissions! (group/all-users) (perms/table-query-path (mt/id :categories)))
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :categories)))
            (is (schema= {:message  (s/eq "You must have data permissions to add a parameter referencing the Table \"VENUES\".")
                          s/Keyword s/Any}
                         (add-card! 403)))
            (is (= []
                   (dashcards))))
          (testing "If they have data permissions, it should be ok"
-           (perms/grant-permissions! (group/all-users) (perms/table-query-path (mt/id :venues)))
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
            (is (schema= {:card_id            (s/eq card-id)
                          :parameter_mappings [(s/one
                                                {:parameter_id (s/eq "_CATEGORY_ID_")
@@ -890,7 +890,7 @@
            (is (= (:sizeX new-dashcard-info)
                   (db/select-one-field :sizeX DashboardCard :dashboard_id dashboard-id, :card_id card-id))))
          (testing "Should be able to update `:parameter_mappings` *with* proper data permissions."
-           (perms/grant-permissions! (group/all-users) (perms/table-query-path (mt/id :venues)))
+           (perms/grant-permissions! (perms-group/all-users) (perms/table-query-path (mt/id :venues)))
            (is (= {:status "ok"}
                   (update-mappings! 200)))
            (is (= new-mappings
@@ -1225,7 +1225,7 @@
              "Wn9nubTcKZX5862pHFaibkqqbsqAfGa3gVhN3D4FrJw="]]]]
     (testing (pr-str dashcard)
       (is (= expected
-             (base-64-encode-byte-arrays (#'dashboard-api/dashcard->query-hashes dashcard)))))))
+             (base-64-encode-byte-arrays (#'api.dashboard/dashcard->query-hashes dashcard)))))))
 
 (deftest dashcards->query-hashes-test
   (is (= ["k9Y1XOETkQ31kX+S9DXW/cbDPGF7v4uS5f6dZsXjMRs="
@@ -1237,7 +1237,7 @@
           "rP5XFvxpRDCPXeM0A2Z7uoUkH0zwV0Z0o22obH3c1Uk="
           "Wn9nubTcKZX5862pHFaibkqqbsqAfGa3gVhN3D4FrJw="]
          (base-64-encode-byte-arrays
-           (#'dashboard-api/dashcards->query-hashes
+           (#'api.dashboard/dashcards->query-hashes
             [{:card {:dataset_query {:database 1}}}
              {:card   {:dataset_query {:database 2}}
               :series [{:dataset_query {:database 3}}
@@ -1249,7 +1249,7 @@
           {:card   {:dataset_query {:database 2}, :query_average_duration 333}
            :series [{:dataset_query {:database 3}, :query_average_duration 555}
                     {:dataset_query {:database 4}, :query_average_duration 777}]}]
-         (#'dashboard-api/add-query-average-duration-to-dashcards
+         (#'api.dashboard/add-query-average-duration-to-dashcards
           [{:card {:dataset_query {:database 1}}}
            {:card   {:dataset_query {:database 2}}
             :series [{:dataset_query {:database 3}}
@@ -1283,7 +1283,7 @@
   (testing "mappings->field-ids"
     (testing "Should extra Field IDs from parameter mappings"
       (is (= #{1 2}
-             (#'dashboard-api/mappings->field-ids
+             (#'api.dashboard/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension [:field 1 nil]]}
@@ -1292,7 +1292,7 @@
                 :target       [:dimension [:field 2 nil]]}]))))
     (testing "Should normalize MBQL clauses"
       (is (= #{1 2}
-             (#'dashboard-api/mappings->field-ids
+             (#'api.dashboard/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension ["field" 1 nil]]}
@@ -1301,7 +1301,7 @@
                 :target       ["dimension" ["field" 2 nil]]}]))))
     (testing "Should ignore field-literal clauses"
       (is (= #{1}
-             (#'dashboard-api/mappings->field-ids
+             (#'api.dashboard/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension ["field" 1 nil]]}
@@ -1310,7 +1310,7 @@
                 :target       ["dimension" ["field" "wow" {:base-type "type/Text"}]]}]))))
     (testing "Should ignore invalid mappings"
       (is (= #{1}
-             (#'dashboard-api/mappings->field-ids
+             (#'api.dashboard/mappings->field-ids
               [{:parameter_id "8e8eafa7"
                 :card_id      1
                 :target       [:dimension ["field" 1 nil]]}
@@ -1436,7 +1436,7 @@
     (testing "should check perms for the Fields in question"
       (mt/with-temp-copy-of-db
         (with-chain-filter-fixtures [{:keys [dashboard param-keys]}]
-          (perms/revoke-data-perms! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (chain-filter-values-url (:id dashboard) (:category-name param-keys))))))))))
 
@@ -1591,7 +1591,7 @@
       (testing "should check perms for the Fields in question"
         (with-chain-filter-fixtures [{{dashboard-id :id} :dashboard}]
           (mt/with-temp-copy-of-db
-            (perms/revoke-data-perms! (group/all-users) (mt/id))
+            (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :get 403 (mt/$ids (url [%venues.price] [%categories.name])))))))))))
 
@@ -1628,7 +1628,7 @@
             (is (schema= (dashboard-card-query-expected-results-schema)
                          (mt/user-http-request :rasta :post 202 (url))))
             (testing "Should *not* require data perms"
-              (perms/revoke-data-perms! (group/all-users) (mt/id))
+              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
               (is (schema= (dashboard-card-query-expected-results-schema)
                            (mt/user-http-request :rasta :post 202 (url))))))
 
@@ -1643,7 +1643,7 @@
 
             (testing "perms"
               (mt/with-temp Collection [{collection-id :id}]
-                (perms/revoke-collection-permissions! (group/all-users) collection-id)
+                (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
                 (testing "Should return error if current User doesn't have read perms for the Dashboard"
                   (mt/with-temp-vals-in-db Dashboard dashboard-id {:collection_id collection-id}
                     (is (= "You don't have permissions to do that."
@@ -1726,10 +1726,10 @@
 
 (deftest dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
-    (mt/test-drivers (pivots/applicable-drivers)
+    (mt/test-drivers (api.pivots/applicable-drivers)
       (mt/dataset sample-dataset
         (mt/with-temp* [Dashboard     [{dashboard-id :id}]
-                        Card          [{card-id :id} (pivots/pivot-card)]
+                        Card          [{card-id :id} (api.pivots/pivot-card)]
                         DashboardCard [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]]
           (let [result (mt/user-http-request :rasta :post 202 (dashcard-pivot-query-endpoint dashboard-id card-id dashcard-id))
                   rows   (mt/rows result)]

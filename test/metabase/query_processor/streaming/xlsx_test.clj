@@ -1,10 +1,10 @@
 (ns metabase.query-processor.streaming.xlsx-test
-  (:require [cheshire.generate :as generate]
+  (:require [cheshire.generate :as json.generate]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.query-processor.streaming.interface :as i]
-            [metabase.query-processor.streaming.xlsx :as xlsx]
+            [metabase.query-processor.streaming.interface :as qp.si]
+            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator
@@ -20,7 +20,7 @@
    (format-string format-settings nil))
 
   ([format-settings semantic-type]
-   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings {:semantic_type  semantic-type
+   (let [format-strings (@#'qp.xlsx/format-settings->format-strings format-settings {:semantic_type  semantic-type
                                                                                   :effective_type :type/Temporal})]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
@@ -264,12 +264,12 @@
   ([ordered-cols viz-settings rows parse-fn]
    (with-open [bos (ByteArrayOutputStream.)
                os  (BufferedOutputStream. bos)]
-     (let [results-writer (i/streaming-results-writer :xlsx os)]
-       (i/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
+     (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
+       (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
        (doall (map-indexed
-               (fn [i row] (i/write-row! results-writer row i ordered-cols viz-settings))
+               (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
                rows))
-       (i/finish! results-writer {:row_count (count rows)}))
+       (qp.si/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
        (parse-xlsx-results bytea parse-fn)))))
 
@@ -423,7 +423,7 @@
   (testing "LocalDateTime formatted as a string; should be parsed when *parse-temporal-string-values* is true"
     (is (= ["2020-03-28T10:12:06.681"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
-    (binding [xlsx/*parse-temporal-string-values* true]
+    (binding [qp.xlsx/*parse-temporal-string-values* true]
       (is (= [#inst "2020-03-28T10:12:06.681"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
@@ -438,7 +438,7 @@
         (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]])))))))
   (testing "Strings representing country names/codes don't error when *parse-temporal-string-values* is true (#18724)"
-    (binding [xlsx/*parse-temporal-string-values* true]
+    (binding [qp.xlsx/*parse-temporal-string-values* true]
       (is (= ["GB"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
       (is (= ["Portugal"]
@@ -454,7 +454,7 @@
 
 (defrecord ^:private SampleNastyClass [^String v])
 
-(generate/add-encoder
+(json.generate/add-encoder
  SampleNastyClass
  (fn [obj, ^JsonGenerator json-generator]
    (.writeString json-generator (str (:v obj)))))
@@ -485,7 +485,7 @@
       (is (<= 2300 col1-width 2400))
       (is (<= 7950 col2-width 8200))))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
-    (binding [xlsx/*auto-sizing-threshold* 2]
+    (binding [qp.xlsx/*auto-sizing-threshold* 2]
       (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
                                              {}
                                              [["abcdef"] ["abcedf"]]
@@ -509,10 +509,10 @@
           expected-poifiles-count (count (file-seq poifiles-directory))
           bos                (ByteArrayOutputStream.)
           os                 (BufferedOutputStream. bos)
-          results-writer     (i/streaming-results-writer :xlsx os)]
+          results-writer     (qp.si/streaming-results-writer :xlsx os)]
       (.close os)
-      (i/begin! results-writer {:data {:ordered-cols []}} {})
-      (i/finish! results-writer {:row_count 0})
+      (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+      (qp.si/finish! results-writer {:row_count 0})
       ;; No additional files should exist in the temp directory
       (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
 

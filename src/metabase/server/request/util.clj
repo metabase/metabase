@@ -8,7 +8,7 @@
             [metabase.config :as config]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [user-agent :as user-agent]))

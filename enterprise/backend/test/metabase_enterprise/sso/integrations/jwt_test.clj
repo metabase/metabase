@@ -6,7 +6,7 @@
             [crypto.random :as crypto-random]
             [metabase-enterprise.sso.integrations.jwt :as mt.jwt]
             [metabase-enterprise.sso.integrations.saml-test :as saml-test]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
             [metabase.public-settings.premium-features-test :as premium-features-test]

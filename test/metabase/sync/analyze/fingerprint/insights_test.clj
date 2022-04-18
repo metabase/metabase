@@ -1,6 +1,6 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
   (:require [clojure.test :refer :all]
-            [metabase.sync.analyze.fingerprint.insights :as i :refer :all]
+            [metabase.sync.analyze.fingerprint.insights :as insights :refer [change insights valid-period?]]
             [metabase.util :as u]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
@@ -27,12 +27,12 @@
 
 (defn- inst->day
   [t]
-  (some-> t (#'i/->millis-from-epoch) (#'i/ms->day)))
+  (some-> t (#'insights/->millis-from-epoch) (#'insights/ms->day)))
 
 (defn- valid-period?
-  ([from to] (valid-period? from to (#'i/infer-unit (inst->day from) (inst->day to))))
+  ([from to] (valid-period? from to (#'insights/infer-unit (inst->day from) (inst->day to))))
   ([from to period]
-   (boolean (#'i/valid-period? (inst->day from) (inst->day to) period))))
+   (boolean (#'insights/valid-period? (inst->day from) (inst->day to) period))))
 
 (deftest valid-period-test
   (is (= true
@@ -67,7 +67,7 @@
 ;; Make sure we don't return nosense results like infinitiy coeficients
 ;; Fixes https://github.com/metabase/metabase/issues/9070
 
-;; Keep the size of this dataset below `i/validation-set-size` else result might depend on which
+;; Keep the size of this dataset below `insights/validation-set-size` else result might depend on which
 ;; data points are included in the sample, producing intermittent test failures
 (def ^:private ts [["2018-11-01",296,10875]
                    ["2018-11-02",257,11762]
