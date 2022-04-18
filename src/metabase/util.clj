@@ -18,7 +18,8 @@
             [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
-  (:import [java.net InetAddress InetSocketAddress Socket]
+  (:import [java.math MathContext RoundingMode]
+           [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            (java.util Locale PriorityQueue)
            java.util.concurrent.TimeoutException
@@ -365,10 +366,25 @@
 (defn round-to-decimals
   "Round (presumabily floating-point) `number` to `decimal-place`. Returns a `Double`.
 
-     (round-to-decimals 2 35.5058998M) -> 35.51"
+  Rounds by decimal places, no matter how many significant figures the number has. See [[round-to-precision]].
+
+    (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
+
+(defn round-to-precision
+  "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
+
+  This rounds by significant figures, not decimal places. See [[round-to-decimals]] for that.
+
+    (round-to-precision 4 1234567.89) -> 123500.0"
+  ^Double [^Integer sig-figures ^Number number]
+  {:pre [(integer? sig-figures) (number? number)]}
+  (-> number
+      bigdec
+      (.round (MathContext. sig-figures RoundingMode/HALF_EVEN))
+      double))
 
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"

@@ -19,6 +19,11 @@
   "Schema enumerating bookmarkable models."
   (s/enum "card" "dashboard" "collection"))
 
+(def BookmarkOrderings
+  "Schema for an ordered of boomark orderings"
+  [{:type Models
+    :item_id su/IntGreaterThanZero}])
+
 (def ^:private lookup
   "Lookup map from model as a string to [model bookmark-model item-id-key]."
   {"card"       [Card       CardBookmark       :card_id]
@@ -55,5 +60,12 @@
                 :user_id api/*current-user-id*
                 item-key id)
     api/generic-204-no-content))
+
+(api/defendpoint PUT "/ordering"
+  "Sets the order of bookmarks for user."
+  [:as {{:keys [orderings]} :body}]
+  {orderings BookmarkOrderings}
+  (bookmarks/save-ordering api/*current-user-id* orderings)
+  api/generic-204-no-content)
 
 (api/define-routes)

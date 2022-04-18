@@ -1,6 +1,7 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
   (:require [clojure.test :refer :all]
-            [metabase.sync.analyze.fingerprint.insights :as i :refer :all]))
+            [metabase.sync.analyze.fingerprint.insights :as i :refer :all]
+            [metabase.util :as u]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
@@ -95,7 +96,7 @@
            :last-change    -0.19553072625698323,
            :slope          -7.671473413418271,
            :offset         137234.92983406168,
-           :best-fit       [:* 1.5672560913548484E227 [:exp [:* -0.02899533549378612 :x]]],
+           :best-fit [:* 1.56726E227 [:exp [:* -0.02899533549378612 :x]]],
            :unit           :day,
            :col            nil}
           {:last-value     2525,
@@ -106,11 +107,13 @@
            :best-fit       [:+ 8915371.843617931 [:* -498.764272733624 :x]],
            :col            nil,
            :unit           :day}]
-         (transduce identity
-                    (insights [{:base_type :type/DateTime}
-                               {:base_type :type/Number}
-                               {:base_type :type/Number}])
-                    ts)))
+         (-> (transduce identity
+                        (insights [{:base_type :type/DateTime}
+                                   {:base_type :type/Number}
+                                   {:base_type :type/Number}])
+                        ts)
+             ; This value varies between machines (M1 Macs? JVMs?) so round it to avoid test failures.
+             (update-in [0 :best-fit 1] #(u/round-to-precision 6 %)))))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= [{:last-value     20.0
              :previous-value 10.0

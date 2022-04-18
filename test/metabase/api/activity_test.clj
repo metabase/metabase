@@ -160,6 +160,9 @@
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
                                     :creator_id  (mt/user->id :crowberto)}]
+                  Dashboard [dash2 {:name        "other-dashboard"
+                                    :description "just another dashboard"
+                                    :creator_id  (mt/user->id :crowberto)}]
                   Table     [table1 {:name "rand-name"}]
                   Table     [hidden-table {:name            "hidden table"
                                            :visibility_type "hidden"}]
@@ -168,21 +171,47 @@
                                       :creator_id             (mt/user->id :crowberto)
                                       :display                "table"
                                       :visualization_settings {}}]]
-    (mt/with-model-cleanup [ViewLog QueryExecution]
-      (create-views! (concat
-                      ;; one item with many views is considered more popular
-                      (repeat 10 [(mt/user->id :rasta) "card" (:id dataset)])
-                      [[(mt/user->id :rasta) "dashboard" (:id dash1)]
-                       [(mt/user->id :rasta) "card"      (:id card1)]
-                       [(mt/user->id :rasta) "table"     (:id table1)]
-                       [(mt/user->id :rasta) "card"      (:id card1)]]))
-      (is (= [["dataset" (:id dataset)]
-              ["card" (:id card1)]
-              ["table" (:id table1)]
-              ["dashboard" (:id dash1)]]
-             ;; all views are from :rasta, but :crowberto can still see popular items
-             (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
-               ((juxt :model :model_id) popular-item)))))))
+    (testing "Items viewed by multiple users are not duplicated in the popular items list."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! [[(mt/user->id :rasta)     "dashboard" (:id dash1)]
+                        [(mt/user->id :crowberto) "dashboard" (:id dash1)]
+                        [(mt/user->id :rasta)     "card"      (:id card1)]
+                        [(mt/user->id :crowberto) "card"      (:id card1)]])
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))
+    (testing "Items viewed by other users can still show up in popular items."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! [[(mt/user->id :rasta) "dashboard" (:id dash1)]
+                        [(mt/user->id :rasta) "card"      (:id card1)]
+                        [(mt/user->id :rasta) "table"     (:id table1)]
+                        [(mt/user->id :rasta) "card"      (:id dataset)]])
+        (is (= [["dashboard" (:id dash1)]
+                ["card" (:id card1)]
+                ["dataset" (:id dataset)]
+                ["table" (:id table1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))
+    (testing "Items with more views show up sooner in popular items."
+      (mt/with-model-cleanup [ViewLog QueryExecution]
+        (create-views! (concat
+                        ;; one item with many views is considered more popular
+                        (repeat 10 [(mt/user->id :rasta) "dashboard" (:id dash1)])
+                        [[(mt/user->id :rasta) "dashboard" (:id dash2)]
+                         [(mt/user->id :rasta) "card"      (:id dataset)]
+                         [(mt/user->id :rasta) "table"     (:id table1)]
+                         [(mt/user->id :rasta) "card"      (:id card1)]]))
+        (is (= [["dashboard" (:id dash1)]
+                ["dashboard" (:id dash2)]
+                ["card" (:id card1)]
+                ["dataset" (:id dataset)]
+                ["table" (:id table1)]]
+               ;; all views are from :rasta, but :crowberto can still see popular items
+               (for [popular-item (mt/user-http-request :crowberto :get 200 "activity/popular_items")]
+                 ((juxt :model :model_id) popular-item))))))))
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
 

@@ -78,6 +78,18 @@ import { utf8_to_b64url } from "metabase/lib/encoding";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
+export type QuestionCreatorOpts = {
+  databaseId?: DatabaseId;
+  tableId?: TableId;
+  metadata?: Metadata;
+  parameterValues?: ParameterValues;
+  type?: "query" | "native";
+  name?: string;
+  display?: string;
+  visualization_settings?: VisualizationSettings;
+  dataset_query?: DatasetQuery;
+};
+
 /**
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
@@ -155,17 +167,7 @@ export default class Question {
     dataset_query = type === "native"
       ? NATIVE_QUERY_TEMPLATE
       : STRUCTURED_QUERY_TEMPLATE,
-  }: {
-    databaseId?: DatabaseId;
-    tableId?: TableId;
-    metadata: Metadata;
-    parameterValues?: ParameterValues;
-    type?: "query" | "native";
-    name?: string;
-    display?: string;
-    visualization_settings?: VisualizationSettings;
-    dataset_query?: DatasetQuery;
-  } = {}) {
+  }: QuestionCreatorOpts = {}) {
     let card: CardObject = {
       name,
       collection_id: collectionId,
@@ -925,7 +927,7 @@ export default class Question {
     clean?: boolean;
     query?: Record<string, any>;
     includeDisplayIsLocked?: boolean;
-    creationType: string;
+    creationType?: string;
   } = {}): string {
     const question = this.omitTransientCardIds();
 

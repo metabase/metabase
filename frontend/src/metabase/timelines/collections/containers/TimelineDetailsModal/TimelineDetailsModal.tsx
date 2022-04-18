@@ -38,8 +38,8 @@ const mapDispatchToProps = (dispatch: any) => ({
   onArchive: async (event: TimelineEvent) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
   },
-  onGoBack: (timeline: Timeline, collection: Collection) => {
-    dispatch(push(Urls.timelinesInCollection(collection)));
+  onGoBack: (timeline: Timeline) => {
+    dispatch(push(Urls.timelinesInCollection(timeline.collection)));
   },
 });
 

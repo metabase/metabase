@@ -350,7 +350,6 @@
 
 .ScalarValue {
   font-weight: 900;
-  font-size: 1.8rem;
   white-space: pre;
 }
 
@@ -368,9 +367,6 @@
 }
 
 @media screen and (min-width: 1280px) {
-  .ScalarValue {
-    font-size: 2.2rem;
-  }
   .AutomaticDashboard.AutomaticDashboard--withSidebar
     #SmartScalar-PreviousValue {
     display: none;
@@ -378,9 +374,6 @@
 }
 
 @media screen and (min-width: 1540px) {
-  .ScalarValue {
-    font-size: 2.8rem;
-  }
   .AutomaticDashboard.AutomaticDashboard--withSidebar
     #SmartScalar-PreviousValue {
     display: inherit;

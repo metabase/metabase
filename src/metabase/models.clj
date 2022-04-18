@@ -1,5 +1,6 @@
 (ns metabase.models
   (:require [metabase.models.activity :as activity]
+            [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
             [metabase.models.collection :as collection]
@@ -12,7 +13,6 @@
             [metabase.models.dimension :as dimension]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
-            [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.login-history :as login-history]
             [metabase.models.metric :as metric]
             [metabase.models.metric-important-field :as metric-important-field]
@@ -55,7 +55,7 @@
          dimension/keep-me
          field/keep-me
          field-values/keep-me
-         g-perm-revision/keep-me
+         a-perm-revision/keep-me
          login-history/keep-me
          metric/keep-me
          moderation-review/keep-me
@@ -88,6 +88,7 @@
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
+ [bookmark BookmarkOrdering]
  [card Card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
@@ -108,7 +109,7 @@
  [permissions-group PermissionsGroup]
  [permissions-group-membership PermissionsGroupMembership]
  [permissions-revision PermissionsRevision]
- [g-perm-revision GeneralPermissionsRevision]
+ [a-perm-revision ApplicationPermissionsRevision]
  [pulse Pulse]
  [pulse-card PulseCard]
  [pulse-channel PulseChannel]

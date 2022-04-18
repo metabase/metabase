@@ -19,7 +19,7 @@
   [:as {{slack-app-token :slack-app-token, slack-files-channel :slack-files-channel} :body}]
   {slack-app-token     (s/maybe su/NonBlankString)
    slack-files-channel (s/maybe su/NonBlankString)}
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (try
     (when (and slack-app-token
                (not config/is-test?)
@@ -51,7 +51,7 @@
 (api/defendpoint GET "/manifest"
   "Returns the YAML manifest file that should be used to bootstrap new Slack apps"
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   @slack-manifest)
 
 (api/define-routes)

@@ -1827,6 +1827,10 @@
   (testing "DELETE /api/card/:id/public_link"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp Card [card (shared-card)]
+        (testing "requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :delete 403 (format "card/%d/public_link" (u/the-id card))))))
+
         (mt/user-http-request :crowberto :delete 204 (format "card/%d/public_link" (u/the-id card)))
         (is (= false
                (db/exists? Card :id (u/the-id card), :public_uuid (:public_uuid card))))))))
@@ -1852,9 +1856,14 @@
   (testing "GET /api/card/public"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp Card [card (shared-card)]
-        (is (= [{:name true, :id true, :public_uuid true}]
-               (for [card (mt/user-http-request :crowberto :get 200 "card/public")]
-                 (m/map-vals boolean (select-keys card [:name :id :public_uuid])))))))))
+        (testing "Test that it requires superuser"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403 "card/public"))))
+
+        (testing "Test that superusers can fetch a list of publicly-accessible cards"
+          (is (= [{:name true, :id true, :public_uuid true}]
+                 (for [card (mt/user-http-request :crowberto :get 200 "card/public")]
+                   (m/map-vals boolean (select-keys card [:name :id :public_uuid]))))))))))
 
 (deftest test-that-we-can-fetch-a-list-of-embeddable-cards
   (testing "GET /api/card/embeddable"

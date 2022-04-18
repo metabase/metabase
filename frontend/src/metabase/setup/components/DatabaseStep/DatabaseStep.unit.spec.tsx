@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
-import { DatabaseDetails, DatabaseInfo } from "../../types";
+import { DatabaseDetails, DatabaseInfo } from "metabase-types/store";
 
 const ComponentMock = () => <div />;
 

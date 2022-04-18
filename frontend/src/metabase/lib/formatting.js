@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import {
+  isBoolean,
   isCoordinate,
   isDate,
   isDateWithoutTime,
@@ -418,11 +419,18 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
   return m.format(format.join(", "));
 }
 
-function formatDateTime(value, options) {
-  return formatDateTimeWithUnit(value, "minute", options);
-}
-
 export function formatDateTimeWithUnit(value, unit, options = {}) {
+  if (options.isExclude && unit === "hour-of-day") {
+    return moment(value)
+      .utc()
+      .format("h A");
+  } else if (options.isExclude && unit === "day-of-week") {
+    const date = moment(value);
+    if (date.isValid()) {
+      return date.utc().format("dddd");
+    }
+  }
+
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
@@ -735,6 +743,9 @@ export function formatValueRaw(value, options = {}) {
 
   if (value === NULL_NUMERIC_VALUE) {
     return NULL_DISPLAY_VALUE;
+  } else if (value === null && isBoolean(column)) {
+    // Custom expressions returning the False literal return null
+    return JSON.stringify(false);
   } else if (value == null) {
     return null;
   } else if (
@@ -775,7 +786,7 @@ export function formatValueRaw(value, options = {}) {
     moment.isMoment(value) ||
     moment(value, ["YYYY-MM-DD'T'HH:mm:ss.SSSZ"], true).isValid()
   ) {
-    return formatDateTime(value, options);
+    return formatDateTimeWithUnit(value, "minute", options);
   } else if (typeof value === "string") {
     if (column && column.semantic_type != null) {
       return value;
@@ -796,6 +807,8 @@ export function formatValueRaw(value, options = {}) {
     } else {
       return formatNumber(value, options);
     }
+  } else if (typeof value === "boolean" && isBoolean(column)) {
+    return JSON.stringify(value);
   } else if (typeof value === "object") {
     // no extra whitespace for table cells
     return JSON.stringify(value);

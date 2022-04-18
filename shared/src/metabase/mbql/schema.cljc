@@ -41,6 +41,9 @@
 
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
+;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; 1 = first day of the week (e.g. Sunday)
+;; 7 = last day of the week (e.g. Saturday)
 (def date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
@@ -98,15 +101,18 @@
 
 ;; TODO -- currently these are all the same between date/time/datetime
 
-(def ^:private ^{:arglists '([s])} can-parse-date?
+(def ^{:arglists '([s])} can-parse-date?
+  "Returns whether a string can be parsed to an ISO 8601 date or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-datetime?
+(def ^{:arglists '([s])} can-parse-datetime?
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE_TIME)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-time?
+(def ^{:arglists '([s])} can-parse-time?
+  "Returns whether a string can be parsed to an ISO 8601 time or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_TIME)
      :cljs can-parse-iso-8601?))
 
@@ -443,9 +449,14 @@
   "Set of valid arithmetic expression clause keywords."
   #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
 
+(def boolean-expressions
+  "Set of valid boolean expression clause keywords."
+  #{:and :or :not :< :<= :> :>= := :!=})
+
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
 (declare ArithmeticExpression)
+(declare BooleanExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -469,6 +480,12 @@
   (s/conditional
    number?
    s/Num
+
+   boolean?
+   s/Bool
+
+   (partial is-clause? boolean-expressions)
+   (s/recursive #'BooleanExpression)
 
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
@@ -699,10 +716,20 @@
 ;; segments and pass-thru to GA.
 (defclause ^:sugar segment, segment-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
 
+(declare BooleanExpression*)
+
+(def ^:private BooleanExpression
+  "Schema for the definition of an arithmetic expression."
+  (s/recursive #'BooleanExpression*))
+
+(def ^:private BooleanExpression*
+  (one-of and or not < <= > >= = !=))
+
 (def ^:private Filter*
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement
@@ -737,6 +764,7 @@
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    (partial is-clause? :case)                  case
    :else                                       Field))
 

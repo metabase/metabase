@@ -27,6 +27,10 @@
     (embed-api/card-for-unsigned-token unsigned-token
       :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params]))))
 
+(def ^:private max-results
+  "Embedding previews need to be limited in size to avoid performance issues (#20938)."
+  2000)
+
 (api/defendpoint ^:streaming GET "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token & query-params]
@@ -37,6 +41,7 @@
       :card-id          card-id
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+      :constraints      {:max-results max-results}
       :query-params     query-params)))
 
 (api/defendpoint GET "/dashboard/:token"

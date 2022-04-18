@@ -38,6 +38,7 @@ import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 export const getUiControls = state => state.qb.uiControls;
+const getQueryStatus = state => state.qb.queryStatus;
 const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
@@ -69,6 +70,8 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
 
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
+export const getIsLoadingComplete = state =>
+  getQueryStatus(state) === "complete";
 
 export const getCard = state => state.qb.card;
 export const getOriginalCard = state => state.qb.originalCard;

@@ -9,6 +9,7 @@ import {
 import { STRING, getOperatorByTypeAndName } from "metabase/lib/schema_metadata";
 
 import _ from "underscore";
+import { isStartingFrom } from "../query_time";
 
 // returns canonical list of Filters
 export function getFilters(filter) {
@@ -69,6 +70,9 @@ export function isStandard(filter) {
 
   const [op, field, ...args] = filter;
 
+  if (isStartingFrom(filter)) {
+    return true;
+  }
   if (FILTER_OPERATORS.has(op) || op === "between") {
     // only allows constant argument(s), e.g. 42 in ["<", field, 42]
     return isValidField(field) && _.all(args, arg => isLiteralOrUndefined(arg));

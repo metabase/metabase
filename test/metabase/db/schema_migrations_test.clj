@@ -562,3 +562,14 @@
                                           :from      [[Permissions :p]]
                                           :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                                           :where     [:= :p.object "/general/subscription/"]}))))))))
+
+(deftest grant-subscription-permission-tests
+  (testing "Migration v43.00-057: Rename general permissios to application permissions"
+    (impl/test-migrations ["v43.00-057" "v43.00-058"] [migrate!]
+      (letfn [(get-perms [object] (set (map :name (db/query {:select    [:pg.name]
+                                                             :from      [[Permissions :p]]
+                                                             :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                                             :where     [:= :p.object object]}))))]
+        (is (= #{"All Users"} (get-perms "/general/subscription/")))
+        (migrate!)
+        (is (= #{"All Users"} (get-perms "/application/subscription/")))))))

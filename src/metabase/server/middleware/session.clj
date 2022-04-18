@@ -1,18 +1,22 @@
 (ns metabase.server.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
-  (:require
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-superuser?*]]
+            [honeysql.helpers :as hh]
+            [metabase.api.common
+             :refer
+             [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :refer [*user-local-values*]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
@@ -175,25 +179,36 @@
 
 ;; Because this query runs on every single API request it's worth it to optimize it a bit and only compile it to SQL
 ;; once rather than every time
-(def ^:private ^{:arglists '([db-type max-age-minutes session-type])} session-with-id-query
+(def ^:private ^{:arglists '([db-type max-age-minutes session-type enable-advanced-permissions?])} session-with-id-query
   (memoize
-   (fn [db-type max-age-minutes session-type]
+   (fn [db-type max-age-minutes session-type enable-advanced-permissions?]
      (first
       (db/honeysql->sql
-       {:select    [[:session.user_id :metabase-user-id]
-                    [:user.is_superuser :is-superuser?]
-                    [:user.locale :user-locale]]
-        :from      [[Session :session]]
-        :left-join [[User :user] [:= :session.user_id :user.id]]
-        :where     [:and
-                    [:= :user.is_active true]
-                    [:= :session.id (hsql/raw "?")]
-                    (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                      [:> :session.created_at oldest-allowed])
-                    [:= :session.anti_csrf_token (case session-type
-                                                   :normal         nil
-                                                   :full-app-embed "?")]]
-        :limit     1})))))
+       (cond->
+         {:select    [[:session.user_id :metabase-user-id]
+                      [:user.is_superuser :is-superuser?]
+                      [:user.locale :user-locale]]
+          :from      [[Session :session]]
+          :left-join [[User :user] [:= :session.user_id :user.id]
+                      ]
+          :where     [:and
+                      [:= :user.is_active true]
+                      [:= :session.id (hsql/raw "?")]
+                      (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
+                        [:> :session.created_at oldest-allowed])
+                      [:= :session.anti_csrf_token (case session-type
+                                                     :normal         nil
+                                                     :full-app-embed "?")]]
+          :limit     1}
+
+         enable-advanced-permissions?
+         (->
+          (hh/merge-select
+           [:pgm.is_group_manager :is-group-manager?])
+          (hh/merge-left-join
+           [PermissionsGroupMembership :pgm] [:and
+                                              [:= :pgm.user_id :user.id]
+                                              [:is :pgm.is_group_manager true]]))))))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
@@ -201,11 +216,14 @@
   (when (and session-id (init-status/complete?))
     (let [sql    (session-with-id-query (mdb/db-type)
                                         (config/config-int :max-session-age)
-                                        (if (seq anti-csrf-token) :full-app-embed :normal))
+                                        (if (seq anti-csrf-token) :full-app-embed :normal)
+                                        (premium-features/enable-advanced-permissions?))
           params (concat [session-id]
                          (when (seq anti-csrf-token)
                            [anti-csrf-token]))]
-      (first (jdbc/query (db/connection) (cons sql params))))))
+      (some-> (first (jdbc/query (db/connection) (cons sql params)))
+              ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
+              (update :is-group-manager? boolean)))))
 
 (defn- merge-current-user-info
   [{:keys [metabase-session-id anti-csrf-token], {:strs [x-metabase-locale]} :headers, :as request}]
@@ -217,7 +235,7 @@
      {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
-  "Add `:metabase-user-id`, `:is-superuser?`, and `:user-locale` to the request if a valid session token was passed."
+  "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session token was passed."
   [handler]
   (fn [request respond raise]
     (handler (merge-current-user-info request) respond raise)))
@@ -241,9 +259,10 @@
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? user-locale settings]} thunk]
+  [{:keys [metabase-user-id is-superuser? user-locale settings is-group-manager?]} thunk]
   (binding [*current-user-id*              metabase-user-id
             i18n/*user-locale*             user-locale
+            *is-group-manager?*            (boolean is-group-manager?)
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))
@@ -264,6 +283,7 @@
   *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User.
                                         Overrides `site-locale` if set.
   *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
+  *  `*is-group-manager?*`              Boolean stating whether current user is a group manager of at least one group.
   *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB
   *  `*user-local-values*`              atom containing a map of user-local settings and values for the current user"
   [handler]

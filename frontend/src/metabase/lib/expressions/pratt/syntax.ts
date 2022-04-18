@@ -25,6 +25,7 @@ export const COMMA = {} as NodeType;
 export const END_OF_INPUT = {} as NodeType;
 export const EQUALITY = {} as NodeType;
 export const NUMBER = {} as NodeType;
+export const BOOLEAN = {} as NodeType;
 export const LOGICAL_NOT = {} as NodeType;
 export const NEGATIVE = {} as NodeType;
 export const LOGICAL_OR = {} as NodeType;
@@ -64,6 +65,7 @@ const ALL_NODES = [
   END_OF_INPUT,
   EQUALITY,
   NUMBER,
+  BOOLEAN,
   NEGATIVE,
   LOGICAL_NOT,
   LOGICAL_OR,
@@ -126,7 +128,7 @@ setAttributes(
   [{ resolvesAs: "number" }, [ADD, NUMBER, NEGATIVE, MULDIV_OP, SUB]],
   [
     { resolvesAs: "boolean" },
-    [LOGICAL_AND, EQUALITY, LOGICAL_NOT, LOGICAL_OR, COMPARISON],
+    [LOGICAL_AND, EQUALITY, LOGICAL_NOT, LOGICAL_OR, COMPARISON, BOOLEAN],
   ],
 
   // Expected types
@@ -176,6 +178,7 @@ LOGICAL_NOT.checkChildConstraints = childConstraintByPosition([
 
   NEGATIVE,
   NUMBER,
+  BOOLEAN,
   STRING,
   ADD,
   SUB,
@@ -219,6 +222,7 @@ ROOT.checkChildConstraints = anyChildConstraint(
   CALL,
   EQUALITY,
   NUMBER,
+  BOOLEAN,
   NEGATIVE,
   LOGICAL_NOT,
   MULDIV_OP,
@@ -245,7 +249,7 @@ ROOT.checkChildConstraints = anyChildConstraint(
   [LOGICAL_NOT],
   [LOGICAL_AND],
   [LOGICAL_OR],
-  [IDENTIFIER],
+  [BOOLEAN, IDENTIFIER],
 ].forEach((tier, precedence, tiers) => {
   for (const type of tier) {
     type.precedence = tiers.length - precedence;

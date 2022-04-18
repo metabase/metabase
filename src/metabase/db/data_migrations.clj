@@ -204,7 +204,9 @@
   ;;  But on upgrade, to make sure we don't unexpectedly begin adding or removing admin users:
   ;;  - for LDAP, if the `ldap-sync-admin-group` toggle is disabled, we remove all mapping for the admin group
   ;;  - for SAML, JWT, we remove all mapping for admin group, because they were previously never being synced
-  (when (= (raw-setting :ldap-sync-admin-group) "false")
+  ;; if `ldap-sync-admin-group` has never been written, getting raw-setting will return a `nil`, and nil could also be interpreted as disabled.
+  ;; so checking (not= x "true") is safer than (= x "false")
+  (when (not= (raw-setting :ldap-sync-admin-group) "true")
     (remove-admin-group-from-mappings-by-setting-key! :ldap-group-mappings))
   ;; sso are enterprise feature but we still run this even in OSS in case a customer
   ;; have switched from enterprise -> SSO and stil have this mapping in Setting table
