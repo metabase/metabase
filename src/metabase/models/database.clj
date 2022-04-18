@@ -185,7 +185,7 @@
 (defn- perms-objects-set [{db-id :id} read-or-write]
   #{(case read-or-write
       ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
-      ;; Since a user can have one or the other, we use `i/has-any-permissions?` to check both read and write permission
+      ;; Since a user can have one or the other, we use `mi/has-any-permissions?` to check both read and write permission
       ;; sets in the `can-read?` implementation.
       :read (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
@@ -270,7 +270,7 @@
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (if (not (i/can-write? db))
+    (if (not (mi/can-write? db))
       (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce
