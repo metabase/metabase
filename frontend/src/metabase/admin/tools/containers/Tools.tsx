@@ -5,6 +5,11 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import Radio from "metabase/core/components/Radio";
+
+import { State } from "metabase-types/store";
+
+import { getSetting } from "metabase/selectors/settings";
+
 import { PLUGIN_ADMIN_TOOLS } from "metabase/plugins";
 
 import { TabsContainer, ContentContainer } from "./Tools.styled";
@@ -14,41 +19,62 @@ type ToolsOwnProps = {
   children: React.ReactNode;
 };
 
+type ToolsStateProps = {
+  isModelPersistenceEnabled?: boolean;
+};
+
 type ToolsDispatchProps = {
   navigateToTab: (tab: string) => void;
 };
 
-type Props = ToolsOwnProps & ToolsDispatchProps;
+type Props = ToolsOwnProps & ToolsStateProps & ToolsDispatchProps;
+
+type ToolTab = {
+  name: string;
+  value: string;
+};
+
+function mapStateToProps(state: State) {
+  return {
+    isModelPersistenceEnabled: getSetting(state, "enabled-persisted-models"),
+  };
+}
 
 const mapDispatchToProps = {
   navigateToTab: (tab: string) => push(`/admin/tools/${tab}`),
 };
 
-const TABS = [
-  ...PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES_INFO,
-  {
-    name: t`Model Caching Log`,
-    value: "model-caching",
-  },
-];
-
-function getCurrentTab(location: Location) {
+function getCurrentTab(location: Location, tabs: ToolTab[]) {
   const parts = location.pathname.split("/");
-  const tab = TABS.find(tab => parts.some(part => part === tab.value));
+  const tab = tabs.find(tab => parts.some(part => part === tab.value));
   return tab?.value;
 }
 
-function Tools({ location, children, navigateToTab }: Props) {
-  const currentTab = getCurrentTab(location);
+function Tools({
+  location,
+  isModelPersistenceEnabled,
+  children,
+  navigateToTab,
+}: Props) {
+  const tabs: ToolTab[] = [...PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES_INFO];
+
+  if (isModelPersistenceEnabled) {
+    tabs.push({
+      name: t`Model Caching Log`,
+      value: "model-caching",
+    });
+  }
+
+  const currentTab = getCurrentTab(location, tabs);
 
   return (
     <>
-      {TABS.length > 1 && (
+      {tabs.length > 1 && (
         <TabsContainer>
           <Radio
             colorScheme="accent7"
             value={currentTab}
-            options={TABS}
+            options={tabs}
             onOptionClick={navigateToTab}
             variant="underlined"
           />
@@ -59,7 +85,12 @@ function Tools({ location, children, navigateToTab }: Props) {
   );
 }
 
-export default connect<unknown, ToolsDispatchProps, ToolsOwnProps>(
-  null,
+export default connect<
+  ToolsStateProps,
+  ToolsDispatchProps,
+  ToolsOwnProps,
+  State
+>(
+  mapStateToProps,
   mapDispatchToProps,
 )(Tools);
