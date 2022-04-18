@@ -330,11 +330,11 @@
   {include (s/maybe (s/enum "tables" "tables.fields"))}
   (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)]
     (cond-> (api/check-404 (Database id))
-      (not include-editable-data-model?) api/write-check
-      true                              add-expanded-schedules
-      true                              (get-database-hydrate-include include)
-      mi/can-write?                     secret/expand-db-details-inferred-secret-values
-      include-editable-data-model?      (check-db-data-model-perms include-editable-data-model?))))
+      (not include-editable-data-model?) api/read-check
+      true                               add-expanded-schedules
+      true                               (get-database-hydrate-include include)
+      mi/can-write?                      secret/expand-db-details-inferred-secret-values
+      include-editable-data-model?       (check-db-data-model-perms include-editable-data-model?))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
