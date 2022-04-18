@@ -230,6 +230,7 @@ type Props = {
   operators?: DateOperator[];
 
   hideTimeSelectors?: boolean;
+  disableStartingFrom?: boolean;
   hideExcludeOperators?: boolean;
   hideEmptinessOperators?: boolean;
   disableOperatorSelection?: boolean;

@@ -151,6 +151,7 @@ type Props = {
   offsetFormatter: (value: number) => number;
   primaryColor?: string;
   reverseIconDirection?: boolean;
+  disableStartingFrom?: boolean;
 };
 
 const RelativeDatePicker: React.FC<Props> = props => {
@@ -162,6 +163,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
     className,
     primaryColor,
     reverseIconDirection,
+    disableStartingFrom,
   } = props;
 
   const startingFrom = getStartingFrom(filter);
@@ -176,16 +178,18 @@ const RelativeDatePicker: React.FC<Props> = props => {
 
   const optionsContent = (
     <OptionsContainer>
-      <OptionButton
-        icon="arrow_left_to_line"
-        reverseIconDirection={reverseIconDirection}
-        onClick={() => {
-          setOptionsVisible(false);
-          onFilterChange(setStartingFrom(filter));
-        }}
-      >
-        {t`Starting from...`}
-      </OptionButton>
+      {!disableStartingFrom ? (
+        <OptionButton
+          icon="arrow_left_to_line"
+          reverseIconDirection={reverseIconDirection}
+          onClick={() => {
+            setOptionsVisible(false);
+            onFilterChange(setStartingFrom(filter));
+          }}
+        >
+          {t`Starting from...`}
+        </OptionButton>
+      ) : null}
       <OptionButton
         selected={includeCurrent}
         primaryColor={primaryColor}
