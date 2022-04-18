@@ -1,5 +1,5 @@
-/* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import PropTypes from "prop-types";
 
 import Select, { Option } from "metabase/core/components/Select";
 import InputBlurChange from "./InputBlurChange";
@@ -22,6 +22,14 @@ function splitValue({
 
   return prefix ? [prefix, value.slice(prefix.length)] : [defaultPrefix, value];
 }
+
+const propTypes = {
+  value: PropTypes.string,
+  prefixes: PropTypes.arrayOf(PropTypes.string),
+  defaultPrefix: PropTypes.string,
+  caseInsensitivePrefix: PropTypes.bool,
+  onChange: PropTypes.func,
+};
 
 export default class InputWithSelectPrefix extends Component {
   constructor(props) {
@@ -79,3 +87,5 @@ export default class InputWithSelectPrefix extends Component {
     );
   }
 }
+
+InputWithSelectPrefix.propTypes = propTypes;
