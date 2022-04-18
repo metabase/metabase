@@ -767,7 +767,7 @@
   {card-id su/IntGreaterThanZero}
   (api/check-superuser)
   ;; if we change from superuser make sure to start on read/write checks
-  (api/let-404 [{:keys [dataset dataset_query result_metadata database_id] :as card} (Card card-id)]
+  (api/let-404 [{:keys [dataset database_id] :as card} (Card card-id)]
     (let [database (Database database_id)]
       (when-not (driver/database-supports? (:engine database)
                                            :persist-models database)
@@ -783,21 +783,8 @@
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
       (when (db/exists? PersistedInfo :card_id card-id)
         (throw (ex-info (tru "Model already persisted") {:status-code 400})))
-      (let [slug           (-> card :name persisted-info/slug-name)
-            ;; todo: figure out the balance of what goes in here initially and what is set in the ddl.i/persist!
-            persisted-info (db/insert! PersistedInfo {:card_id       card-id
-                                                      :database_id   database_id
-                                                      :question_slug slug
-                                                      :query_hash    (persisted-info/query-hash dataset_query)
-                                                      :table_name    (format "model_%s_%s" card-id slug)
-                                                      :columns       (mapv :name result_metadata)
-                                                      :active        false
-                                                      :refresh_begin :%now
-                                                      :refresh_end   nil
-                                                      :state         "creating"
-                                                      :creator_id    api/*current-user-id*})]
-        (ddl.concurrent/submit-task
-         #(ddl.i/persist! (:engine database) database persisted-info card)))
+      (ddl.concurrent/submit-task
+        #(ddl.i/persist! (:engine database) database api/*current-user-id* card))
       ;; todo: persist it
       api/generic-204-no-content)))
 

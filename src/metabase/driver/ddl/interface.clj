@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [metabase.driver :as driver]
             [metabase.models.persisted-info :refer [PersistedInfo]]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
@@ -57,8 +58,22 @@
 
 (defn persist!
   "Public API for persistence. Handles state transition of the persisted-info"
-  [driver database persisted-info card]
-  (let [{:keys [state] :as results} (persist!* driver database persisted-info card)]
+  [driver database user-id card]
+  (let [slug (-> card :name persisted-info/slug-name)
+        {:keys [dataset_query result_metadata database_id]} card
+        card-id (u/the-id card)
+        persisted-info (db/insert! PersistedInfo {:card_id       card-id
+                                                  :database_id   database_id
+                                                  :question_slug slug
+                                                  :query_hash    (persisted-info/query-hash dataset_query)
+                                                  :table_name    (format "model_%s_%s" card-id slug)
+                                                  :columns       (mapv :name result_metadata)
+                                                  :active        false
+                                                  :refresh_begin :%now
+                                                  :refresh_end   nil
+                                                  :state         "creating"
+                                                  :creator_id    user-id})
+        {:keys [state] :as results} (persist!* driver database persisted-info card)]
     (if (= state :success)
       (db/update! PersistedInfo (u/the-id persisted-info)
         :active true, :refresh_end :%now :state "persisted")
