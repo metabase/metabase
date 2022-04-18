@@ -4,7 +4,7 @@
 
 As an administrator of Metabase, you already know the importance of using data to understand your how people interact with your products or services. With the Audit tool, you can use Metabase to understand how people in your organization use Metabase. It's, well, meta! 
 
-Access the tool by clicking the gear icon in the upper right and then clicking __Audit__ in the top navigation. There's a lot of data available, not only about your people, but also about your questions, dashboards, databases and more! We'll walk you through each of the sections below.
+To view the audit logs, click on the **gear** icon at the bottom of the navigation sidebar, and click **Admin settings** > **Audit**. There's a lot of data available, not only about your people, but also about your questions, dashboards, databases and more! We'll walk you through each of the sections below.
 
 ## People
 

@@ -1,6 +1,6 @@
 # Managing people and groups
 
-To start managing people, first go to the **Admin panel** by clicking on the **gear** icon in the bottom left of the main navigation sidebar and selecting **Admin settings**.
+To start managing people, first go to the **Admin panel** by clicking on the **gear** icon in the bottom of the navigation sidebar and selecting **Admin settings**.
 
 In the Admin panel, select the **People** tab from the menu bar at the top of the screen. You'll see a list of all the people in your organization.
 
