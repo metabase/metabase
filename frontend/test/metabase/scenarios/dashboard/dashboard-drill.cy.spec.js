@@ -674,8 +674,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.wait("@cardQuery").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
-    cy.findByText("37.65");
-    cy.findByText("No relationships found.");
+    cy.findByTestId("object-detail");
+    cy.findAllByText("37.65");
   });
 
   it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
