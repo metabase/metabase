@@ -6,7 +6,6 @@ import {
 import Aggregation from "../queries/structured/Aggregation";
 import StructuredQuery from "../queries/StructuredQuery";
 import Table from "./Table";
-import Database from "./Database";
 import Metadata from "./Metadata";
 
 export interface IMetric {
@@ -20,7 +19,7 @@ export interface IMetric {
 
 export type HydratedMetricProperties = {
   table: Table;
-  database: Database;
+  metadata: Metadata;
 };
 
 export default class Metric {
@@ -48,12 +47,14 @@ export default class Metric {
     this.table = null;
     this.metadata = null;
 
+    // Assign all properties to the instance from the `metric` because
+    // there is old, un-typed code that might rely on properties missing from IMetric
     Object.assign(this, metric);
 
     this._plainObject = { ...metric };
   }
 
-  getPlainObject() {
+  getPlainObject(): IMetric {
     return this._plainObject;
   }
 
