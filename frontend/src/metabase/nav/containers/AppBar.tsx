@@ -21,6 +21,7 @@ import {
   SearchBarContent,
   RowLeft,
   RowRight,
+  SidebarButtonContainer,
 } from "./AppBar.styled";
 
 type Props = {
@@ -78,12 +79,14 @@ function AppBar({
           <LogoIcon size={24} />
         </LogoLink>
         {!isSearchActive && (
-          <Tooltip tooltip={sidebarButtonTooltip}>
-            <SidebarButton
-              isSidebarOpen={isSidebarOpen}
-              onClick={onToggleSidebarClick}
-            />
-          </Tooltip>
+          <SidebarButtonContainer>
+            <Tooltip tooltip={sidebarButtonTooltip}>
+              <SidebarButton
+                isSidebarOpen={isSidebarOpen}
+                onClick={onToggleSidebarClick}
+              />
+            </Tooltip>
+          </SidebarButtonContainer>
         )}
       </RowLeft>
       <RowRight>
