@@ -391,7 +391,7 @@ export function createEntity(def) {
   const getObject = createCachedSelector(
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
-  )((state, { entityId }) =>
+  )((state, { entityId } = {}) =>
     typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
   ); // must stringify objects
 
@@ -420,15 +420,17 @@ export function createEntity(def) {
     entities => entities && entities.metadata,
   );
 
-  const getList = createSelector(
+  const getList = createCachedSelector(
     [getEntities, getEntityIds],
     // delegate to getObject
     (entities, entityIds) =>
       entityIds &&
       entityIds
         .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
-        .filter(e => e != null), // deleted entities might remain in lists
-  );
+        .filter(e => e != null), // deleted entities might remain in lists,
+  )((state, { entityQuery } = {}) => {
+    return entityQuery ? JSON.stringify(entityQuery) : "";
+  });
 
   // REQUEST STATE SELECTORS
 
