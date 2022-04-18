@@ -184,12 +184,11 @@
 
 (defn- perms-objects-set [{db-id :id} read-or-write]
   #{(case read-or-write
-      ;; We should let a user read a DB if they have write perms for the DB details, write perms for the DB data model,
-      ;; *or* self-service data access. Since a user can have one or the other, we use `i/has-any-permissions?` to check
-      ;; all three permission sets in the `can-read?` implementation.
-      :read       (perms/data-perms-path db-id)
-      :data-model (perms/data-model-write-perms-path db-id)
-      :write     (perms/db-details-write-perms-path db-id))})
+      ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
+      ;; Since a user can have one or the other, we use `i/has-any-permissions?` to check both read and write permission
+      ;; sets in the `can-read?` implementation.
+      :read (perms/data-perms-path db-id)
+      :write (perms/db-details-write-perms-path db-id))})
 
 (u/strict-extend (class Database)
   models/IModel
@@ -213,7 +212,6 @@
          {:perms-objects-set perms-objects-set
           :can-read?         (i/has-any-permissions?
                               (partial i/current-user-has-partial-permissions? :read)
-                              (partial i/current-user-has-partial-permissions? :data-model)
                               (partial i/current-user-has-full-permissions? :write))
           :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
