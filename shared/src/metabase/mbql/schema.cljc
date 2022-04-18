@@ -1509,6 +1509,7 @@
 (def Context
   "Schema for `info.context`; used for informational purposes to record how a query was executed."
   (s/enum :ad-hoc
+          :collection
           :csv-download
           :dashboard
           :embedded-dashboard
