@@ -4,11 +4,23 @@ import React, { Component } from "react";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import FilterPopover from "./FilterPopover";
-import Filter from "metabase/query_builder/components/Filter";
+import FilterComponent from "metabase/query_builder/components/Filter";
 
 import cx from "classnames";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-export const filterWidgetFilterRenderer = ({ field, operator, values }) => (
+type PillProps = {
+  field: string;
+  operator: string;
+  values: string[];
+};
+
+export const filterWidgetFilterRenderer = ({
+  field,
+  operator,
+  values,
+}: PillProps) => (
   <div className="flex flex-column justify-center">
     <div
       className="flex align-center"
@@ -43,8 +55,20 @@ export const filterWidgetFilterRenderer = ({ field, operator, values }) => (
   </div>
 );
 
-export default class FilterWidget extends Component {
-  constructor(props) {
+type Props = {
+  filter: Filter;
+  query: StructuredQuery;
+  updateFilter: (index: number, filter: any[]) => void;
+  index: number;
+  removeFilter: (index: number) => void;
+};
+
+type State = {
+  isOpen: boolean;
+};
+
+export default class FilterWidget extends Component<Props, State> {
+  constructor(props: Props) {
     super(props);
 
     this.state = {
@@ -67,12 +91,12 @@ export default class FilterWidget extends Component {
   renderFilter() {
     const { query } = this.props;
     return (
-      <Filter
+      <FilterComponent
         metadata={query && query.metadata && query.metadata()}
         {...this.props}
       >
         {filterWidgetFilterRenderer}
-      </Filter>
+      </FilterComponent>
     );
   }
 
@@ -96,6 +120,7 @@ export default class FilterWidget extends Component {
               this.props.updateFilter(this.props.index, filter)
             }
             onClose={this.close}
+            isNew={false}
           />
         </Popover>
       );

@@ -419,6 +419,17 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 }
 
 export function formatDateTimeWithUnit(value, unit, options = {}) {
+  if (options.isExclude && unit === "hour-of-day") {
+    return moment(value)
+      .utc()
+      .format("h A");
+  } else if (options.isExclude && unit === "day-of-week") {
+    const date = moment(value);
+    if (date.isValid()) {
+      return date.utc().format("dddd");
+    }
+  }
+
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);

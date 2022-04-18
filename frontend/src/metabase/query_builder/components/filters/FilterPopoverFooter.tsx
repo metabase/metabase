@@ -1,12 +1,24 @@
 import React from "react";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
 
 import Button from "metabase/core/components/Button";
 
 import FilterOptions from "./FilterOptions";
-import { getOperator } from "../filters/pickers/DatePicker";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+
+type Props = {
+  className?: string;
+  primaryColor?: string;
+  filter: Filter;
+  onFilterChange: (filter: any[]) => void;
+  onCommit?: (() => void) | null;
+
+  isSidebar?: boolean;
+  minWidth?: number;
+  maxWidth?: number;
+  isNew?: boolean;
+};
 
 export default function FilterPopoverFooter({
   filter,
@@ -15,9 +27,10 @@ export default function FilterPopoverFooter({
   onFilterChange,
   onCommit,
   className,
-}) {
+  primaryColor,
+}: Props) {
   const dimension = filter.dimension();
-  const field = dimension.field();
+  const field = dimension?.field();
 
   const containerClassName = cx(className, "flex align-center", {
     PopoverFooter: !isSidebar,
@@ -28,21 +41,18 @@ export default function FilterPopoverFooter({
       <FilterOptions
         filter={filter}
         onFilterChange={onFilterChange}
-        operator={
-          field.isDate()
-            ? // DatePicker uses a different set of operator objects
-              getOperator(filter)
-            : // Normal operators defined in schema_metadata
-              filter.operator()
-        }
+        operator={filter.operator()}
       />
       {onCommit && (
         <Button
           data-ui-tag="add-filter"
           purple
+          style={{ backgroundColor: primaryColor }}
           disabled={!filter.isValid()}
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
           ml="auto"
-          onClick={onCommit}
+          onClick={() => onCommit()}
         >
           {isNew ? t`Add filter` : t`Update filter`}
         </Button>
@@ -50,12 +60,3 @@ export default function FilterPopoverFooter({
     </div>
   );
 }
-
-FilterPopoverFooter.propTypes = {
-  filter: PropTypes.object,
-  isNew: PropTypes.bool,
-  isSidebar: PropTypes.bool,
-  onFilterChange: PropTypes.func,
-  onCommit: PropTypes.func,
-  className: PropTypes.string,
-};

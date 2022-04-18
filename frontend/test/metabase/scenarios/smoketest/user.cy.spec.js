@@ -139,7 +139,7 @@ describe("smoketest > user", () => {
     cy.findByText("Equal to").click();
     cy.findByText("Greater than or equal to").click();
     cy.get("input[placeholder='Enter a number']").type("4");
-    cy.findByText("Update filter").click();
+    cy.findByText("Add filter").click();
 
     cy.get(".TableInteractive-cellWrapper--lastColumn")
       .eq(1)

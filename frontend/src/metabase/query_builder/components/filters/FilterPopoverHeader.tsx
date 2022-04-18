@@ -4,6 +4,17 @@ import cx from "classnames";
 
 import OperatorSelector from "../filters/OperatorSelector";
 import SidebarHeader from "../SidebarHeader";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
+
+type Props = {
+  className?: string;
+
+  showFieldPicker?: boolean;
+  filter: Filter;
+  onFilterChange: (filter: any[]) => void;
+  onBack: () => void;
+  isSidebar?: boolean;
+};
 
 export default function FilterPopoverHeader({
   className,
@@ -12,20 +23,20 @@ export default function FilterPopoverHeader({
   onFilterChange,
   onBack,
   isSidebar,
-}) {
+}: Props) {
   const dimension = filter.dimension();
+  if (!dimension) {
+    return null;
+  }
+
   const field = dimension.field();
   const operator = filter.operatorName();
 
-  const showOperatorSelector = !(
-    field.isTime() ||
-    field.isDate() ||
-    field.isBoolean()
-  );
+  const showOperatorSelector = !field.isBoolean();
   const showHeader = showFieldPicker || showOperatorSelector;
   const showOperatorSelectorOnOwnRow = isSidebar || !showFieldPicker;
 
-  const setOperator = operatorName => {
+  const setOperator = (operatorName: string) => {
     if (filter.operatorName() !== operatorName) {
       onFilterChange(filter.setOperator(operatorName));
     }
@@ -35,6 +46,8 @@ export default function FilterPopoverHeader({
     <div
       className={cx(className, "text-medium", {
         "flex align-center": !showOperatorSelectorOnOwnRow,
+        "px1 pt1": isSidebar,
+        "p1 mb1 border-bottom": !isSidebar,
       })}
     >
       {showFieldPicker && (
