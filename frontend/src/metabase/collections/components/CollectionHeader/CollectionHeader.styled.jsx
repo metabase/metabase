@@ -3,6 +3,10 @@ import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
+import {
+  shrinkOrExpandOnClick,
+  shrinkOrExpandDuration,
+} from "metabase/styled-components/theme/button.ts";
 
 import Icon, { IconWrapper } from "metabase/components/Icon";
 
@@ -18,28 +22,18 @@ export const BookmarkIconWrapper = styled(IconWrapper)`
     `}
 `;
 export const BookmarkIcon = styled(Icon)`
-  @keyframes expand {
-    50% {
-      transform: scale(1.3);
-    }
-  }
-
-  @keyframes shrink {
-    50% {
-      transform: scale(0.8);
-    }
-  }
+  ${shrinkOrExpandOnClick}
 
   ${props =>
     props.animation === "expand" &&
     css`
-      animation: expand linear 0.3s;
+      animation: expand linear ${shrinkOrExpandDuration};
     `}
 
   ${props =>
     props.animation === "shrink" &&
     css`
-      animation: shrink linear 0.3s;
+      animation: shrink linear ${shrinkOrExpandDuration};
     `}
 `;
 
