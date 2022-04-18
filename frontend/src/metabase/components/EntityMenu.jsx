@@ -65,7 +65,7 @@ class EntityMenu extends Component {
           hasArrow={false}
           hasBackground={false}
           horizontalAttachments={["left", "right"]}
-          targetOffsetY={0}
+          targetOffsetY={20}
         >
           {/* Note: @kdoh 10/12/17
            * React Motion has a flow type problem with children see
