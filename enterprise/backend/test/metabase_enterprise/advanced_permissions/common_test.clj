@@ -107,7 +107,7 @@
                                (map :id))))))))))
 
 (deftest fetch-database-metadata-exclude-uneditable-test
-  (testing "GET /api/database/:id/metadata?exclude_uneditable=true"
+  (testing "GET /api/database/:id/metadata?include_editable_data_model=true"
     (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
       (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
                                            :data-model {:schemas {"PUBLIC" {id-1 :all
@@ -117,9 +117,24 @@
         (let [tables (->> (mt/user-http-request :rasta
                                                 :get
                                                 200
-                                                (format "database/%d/metadata?exclude_uneditable=true" (mt/id)))
+                                                (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))
                           :tables)]
-          (is (= [id-1] (map :id tables))))))))
+          (is (= [id-1] (map :id tables))))))
+
+
+    (testing "A user with data model perms can still fetch a DB name and tables if they have block perms for a DB"
+      (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
+        (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
+                                             :data-model {:schemas {"PUBLIC" {id-1 :all
+                                                                              id-2 :none
+                                                                              id-3 :none
+                                                                              id-4 :none}}}}}
+          (let [result (mt/user-http-request :rasta
+                                             :get
+                                             200
+                                             (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))]
+            (is (= {:id (mt/id) :name (:name (mt/db))} (dissoc result :tables)))
+            (is (= [id-1] (map :id (:tables result))))))))))
 
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]

@@ -201,6 +201,14 @@
                 (select-keys db [:id :name :tables])))
      filtered-dbs)))
 
+(defn- check-db-data-model-perms
+  [db include-editable-data-model?]
+  (if include-editable-data-model?
+    (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
+      (when (seq filtered-dbs)
+        (first filtered-dbs)))
+    db))
+
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
                            include-saved-questions-tables?
@@ -343,8 +351,10 @@
     (f tables)
     tables))
 
-(defn- db-metadata [id include-hidden? exclude-uneditable?]
-  (-> (api/read-check Database id)
+(defn- db-metadata [id include-hidden? include-editable-data-model?]
+  (-> (if include-editable-data-model?
+        (Database id)
+        (api/read-check Database id))
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (if include-hidden?
                         identity
@@ -359,21 +369,25 @@
                               (update :segments (partial filter mi/can-read?))
                               (update :metrics  (partial filter mi/can-read?))))))
       (update :tables (fn [tables]
-                        (if exclude-uneditable?
+                        (if include-editable-data-model?
                           (filter-tables-by-data-model-perms tables)
-                          tables)))))
+                          tables)))
+      (check-db-data-model-perms include-editable-data-model?)))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
-  Passing exclude_uneditable=true will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present."
-  [id include_hidden exclude_uneditable]
-  {include_hidden     (s/maybe su/BooleanString)
-   exclude_uneditable (s/maybe su/BooleanString)}
+
+  Passing include_editable_data_model will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
+  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
+  and tables, with no additional metadata."
+  [id include_hidden include_editable_data_model]
+  {include_hidden              (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
   (db-metadata id
                (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean exclude_uneditable)))
+               (Boolean/parseBoolean include_editable_data_model)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
