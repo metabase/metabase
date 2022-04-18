@@ -136,7 +136,7 @@
    alert_above_goal (s/maybe s/Bool)
    card             pulse/CardRef
    channels         (su/non-empty [su/Map])}
-  (validation/check-has-general-permission :subscription false)
+  (validation/check-has-application-permission :subscription false)
   ;; do various perms checks as needed. Perms for an Alert == perms for its Card. So to create an Alert you need write
   ;; perms for its Card
   (api/write-check Card (u/the-id card))
@@ -168,18 +168,18 @@
    channels         (s/maybe (su/non-empty [su/Map]))
    archived         (s/maybe s/Bool)}
   (try
-   (validation/check-has-general-permission :monitoring)
+   (validation/check-has-application-permission :monitoring)
    (catch clojure.lang.ExceptionInfo _e
-     (validation/check-has-general-permission :subscription false)))
+     (validation/check-has-application-permission :subscription false)))
 
   ;; fetch the existing Alert in the DB
   (let [alert-before-update                   (api/check-404 (pulse/retrieve-alert id))
-        current-user-has-general-permissions? (and (premium-features/enable-advanced-permissions?)
-                                                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))
-        has-subscription-perms?               (and current-user-has-general-permissions?
-                                                   (current-user-has-general-permissions? :subscription))
-        has-monitoring-permissions?           (and current-user-has-general-permissions?
-                                                   (current-user-has-general-permissions? :monitoring))]
+        current-user-has-application-permissions? (and (premium-features/enable-advanced-permissions?)
+                                                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
+        has-subscription-perms?               (and current-user-has-application-permissions?
+                                                   (current-user-has-application-permissions? :subscription))
+        has-monitoring-permissions?           (and current-user-has-application-permissions?
+                                                   (current-user-has-application-permissions? :monitoring))]
     (assert (:card alert-before-update)
             (tru "Invalid Alert: Alert does not have a Card associated with it"))
     ;; check permissions as needed.
@@ -239,7 +239,7 @@
 (api/defendpoint DELETE "/:id/subscription"
   "For users to unsubscribe themselves from the given alert."
   [id]
-  (validation/check-has-general-permission :subscription false)
+  (validation/check-has-application-permission :subscription false)
   (let [alert (pulse/retrieve-alert id)]
     (api/read-check alert)
     (api/let-404 [alert-id (u/the-id alert)

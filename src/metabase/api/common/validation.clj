@@ -20,15 +20,15 @@
   (api/check (public-settings/enable-embedding)
              [400 (tru "Embedding is not enabled.")]))
 
-(defn check-has-general-permission
-  "If `advanced-permissions` is enabled, check `*current-user*` has general permission of type `perm-type`.
+(defn check-has-application-permission
+  "If `advanced-permissions` is enabled, check `*current-user*` has application permission of type `perm-type`.
   Set `require-superuser?` to `true` to perform a superuser check when `advanced-permissions` is disabled."
   ([perm-type]
-   (check-has-general-permission perm-type true))
+   (check-has-application-permission perm-type true))
 
   ([perm-type require-superuser?]
    (if-let [f (and (premium-features/enable-advanced-permissions?)
-                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-general-permissions?))]
+                   (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))]
      (api/check-403 (f perm-type))
      (when require-superuser?
        (api/check-superuser)))))

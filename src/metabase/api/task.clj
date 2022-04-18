@@ -12,7 +12,7 @@
 (api/defendpoint GET "/"
   "Fetch a list of recent tasks stored as Task History"
   []
-  (validation/check-has-general-permission :monitoring)
+  (validation/check-has-application-permission :monitoring)
   {:total  (db/count TaskHistory)
    :limit  offset-paging/*limit*
    :offset offset-paging/*offset*
@@ -26,7 +26,7 @@
 (api/defendpoint GET "/info"
   "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
   []
-  (validation/check-has-general-permission :monitoring)
+  (validation/check-has-application-permission :monitoring)
   (task/scheduler-info))
 
 

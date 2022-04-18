@@ -1,5 +1,5 @@
 (ns metabase-enterprise.advanced-permissions.api.subscription-test
-  "Permisisons tests for API that needs to be enforced by General Permissions to create and edit alerts/subscriptions."
+  "Permisisons tests for API that needs to be enforced by Application Permissions to create and edit alerts/subscriptions."
   (:require [clojure.test :refer :all]
             [metabase.api.alert :as api-alert]
             [metabase.api.alert-test :as alert-test]
@@ -18,10 +18,10 @@
   Use it when we need to isolate a user's permissions during tests."
   [& body]
   `(try
-    (perms/revoke-general-permissions! (group/all-users) :subscription)
+    (perms/revoke-application-permissions! (group/all-users) :subscription)
     ~@body
     (finally
-     (perms/grant-general-permissions! (group/all-users) :subscription))))
+     (perms/grant-application-permissions! (group/all-users) :subscription))))
 
 (deftest pulse-permissions-test
   (testing "/api/pulse/*"
@@ -53,7 +53,7 @@
                                (testing "get form input"
                                  (mt/user-http-request user :get status "pulse/form_input")))]
             (testing "user's group has no subscription permissions"
-              (perms/revoke-general-permissions! group :subscription)
+              (perms/revoke-application-permissions! group :subscription)
               (testing "should succeed if `advanced-permissions` is disabled"
                 (premium-features-test/with-premium-features #{}
                   (create-pulse 200)
@@ -67,7 +67,7 @@
                   (get-form 403))))
 
             (testing "User's group with subscription permission"
-              (perms/grant-general-permissions! group :subscription)
+              (perms/grant-application-permissions! group :subscription)
               (premium-features-test/with-premium-features #{:advanced-permissions}
                 (testing "should succeed if `advanced-permissions` is enabled"
                   (create-pulse 200)
@@ -121,7 +121,7 @@
                 (remove-pulse-recipient user 403)
 
                 (testing "what if they have monitoring permissions?"
-                  (perms/grant-general-permissions! group :monitoring)
+                  (perms/grant-application-permissions! group :monitoring)
                   (testing "they can remove recipients"
                     (remove-pulse-recipient user 200))
 
@@ -129,7 +129,7 @@
                     (add-pulse-recipient user 403)))
 
                 (testing "unless subscription permissions"
-                  (perms/grant-general-permissions! group :subscription)
+                  (perms/grant-application-permissions! group :subscription)
                   (add-pulse-recipient user 200))))))))))
 
 (deftest alert-permissions-test
@@ -157,16 +157,16 @@
                                  (mt/user-http-request user :post status "alert"
                                                        alert-default)))
                 user-alert   (premium-features-test/with-premium-features #{:advanced-permissions}
-                               (perms/grant-general-permissions! group :subscription)
+                               (perms/grant-application-permissions! group :subscription)
                                (u/prog1 (create-alert 200)
-                                        (perms/revoke-general-permissions! group :subscription)))
+                                        (perms/revoke-application-permissions! group :subscription)))
                 update-alert (fn [status]
                                (testing "update alert"
                                  (mt/user-http-request user :put status (format "alert/%d" (:id user-alert))
                                                        (dissoc (merge alert-default {:alert_condition "goal"})
                                                                :channels))))]
             (testing "user's group has no subscription permissions"
-              (perms/revoke-general-permissions! group :subscription)
+              (perms/revoke-application-permissions! group :subscription)
               (testing "should succeed if `advanced-permissions` is disabled"
                 (premium-features-test/with-premium-features #{}
                   (create-alert 200)
@@ -178,7 +178,7 @@
                   (update-alert 403))))
 
             (testing "User's group with subscription permission"
-              (perms/grant-general-permissions! group :subscription)
+              (perms/grant-application-permissions! group :subscription)
               (premium-features-test/with-premium-features #{:advanced-permissions}
                 (testing "should succeed if `advanced-permissions` is enabled"
                   (create-alert 200)
@@ -235,7 +235,7 @@
                 (remove-alert-recipient user 403)
 
                 (testing "what if they have monitoring permissions?"
-                  (perms/grant-general-permissions! group :monitoring)
+                  (perms/grant-application-permissions! group :monitoring)
                   (testing "they can remove or archive recipients"
                     (archive-alert-recipient user 200)
                     (remove-alert-recipient user 200))
@@ -244,5 +244,5 @@
                     (add-alert-recipient user 403)))
 
                 (testing "unless have subscription permissions"
-                  (perms/grant-general-permissions! group :subscription)
+                  (perms/grant-application-permissions! group :subscription)
                   (add-alert-recipient user 200))))))))))

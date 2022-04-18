@@ -34,7 +34,7 @@
   Otherwise it requires superusers."
   [_task _read-or-write]
   #{(if (premium-features/enable-advanced-permissions?)
-      (perms/general-perms-path :monitoring)
+      (perms/application-perms-path :monitoring)
       "/")})
 
 (u/strict-extend (class TaskHistory)
