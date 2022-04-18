@@ -42,8 +42,12 @@
 
 (sql-jdbc.tx/add-test-extensions! :ocient)
 
-;; Use the public schema for all tables
+;; Use the public schema for all tables.
+;; Metabase expects a particular schema which is provided via a VIEW.
 (defonce session-schema (str "public"))
+
+;; The system schema includes the required timestamp column
+(defonce system-schema (str "system"))
 
 ;; Additional columns required by the Ocient database 
 (defonce id-column-key (str "id"))
@@ -297,7 +301,7 @@
                                 timestamp-column-key)]
     (str/join "\n"
               (list
-               (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote driver database-name table-name)),
+               (format "CREATE TABLE %s (" (str/replace (sql.tx/qualify-and-quote driver database-name table-name) session-schema system-schema)),
                ;; HACK If no timestamp column exists, create one. A timestamp column is REQUIRED for all Ocient tables.
                ;; NOTE: ddl/insert-rows-honeysql-form routine will need to account for this additional column
                (if (not has-timestamp-field)
@@ -348,6 +352,15 @@
                   }
                 }'"))))
 
+(defn- create-view-sql
+  [{:keys [database-name]} {:keys [table-name field-definitions]}]
+  (let [quot                  #(sql.u/quote-name :ocient :field (tx/format-name :ocient %))]
+    (format "CREATE VIEW %s AS (SELECT %s, %s FROM %s)"
+            (sql.tx/qualify-and-quote :ocient database-name table-name)
+            (quot id-column-key)
+            (str/join ", " (for [{:keys [field-name]} field-definitions] (quot field-name)))
+            (str/replace (sql.tx/qualify-and-quote :ocient database-name table-name) session-schema system-schema))))
+
 (defmethod ddl/create-db-tables-ddl-statements :ocient
   [driver {:keys [database-name, table-definitions], :as dbdef} & _]
   ;; Build combined statement for creating tables + FKs + comments
@@ -359,7 +372,8 @@
       (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
             (drop-fks-table-sql database-name (get tabledef :table-name))
             (sql.tx/create-table-sql driver dbdef tabledef)
-            (create-fks-table-sql database-name (get tabledef :table-name))))
+            (create-fks-table-sql database-name (get tabledef :table-name))
+            (create-view-sql dbdef tabledef)))
     ;; Add the SQL for adding FK constraints
     (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
       (doseq [[id {:keys [fk], :as fielddef}] (map-indexed vector field-definitions)]
@@ -447,7 +461,7 @@
     (to-sql [_]
       (format
        "INSERT INTO \"%s\".\"%s\" SELECT %s"
-       session-schema
+       system-schema
        ((comp last :components) (into {} table-identifier))
        (let [rows                       (u/one-or-many row-or-rows)
              columns                    (keys (first rows))
@@ -528,7 +542,7 @@
 
 (defmethod sql.tx/drop-table-if-exists-sql :ocient
   [driver {:keys [database-name]} {:keys [table-name]}]
-  (format "DROP TABLE IF EXISTS %s" (sql.tx/qualify-and-quote driver database-name table-name)))
+  (format "DROP TABLE IF EXISTS %s" (str/replace (sql.tx/qualify-and-quote driver database-name table-name) session-schema system-schema)))
 
 (defmethod tx.impl/verify-data-loaded-correctly :ocient
   [_ _ _]
