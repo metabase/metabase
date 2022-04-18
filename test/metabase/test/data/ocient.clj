@@ -180,39 +180,192 @@
 (defmethod execute/execute-sql! :ocient [driver context defdef sql]
   (execute-sql! driver context defdef sql))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                        ;;
+;; FOREIGN KEY MANAGEMENT ;;
+;;                        ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Defines the Primary Key used for each table
+(defmethod sql.tx/pk-field-name :ocient [_] id-column-key)
+
+(defonce fks-table-name-suffix (str "fks"))
+(defonce fks-table-field-name (str "field"))
+(defonce fks-table-dest-table-name (str "dest"))
+
+(defn- fks-table-name
+  [table-name]
+  (str table-name \- fks-table-name-suffix))
+
+;; Creates the FKs table in the database
+(defn- create-fks-table-sql
+  [database-name table-name]
+  (str/join "\n"
+            (list
+             (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))),
+             (format "  %s TIMESTAMP TIME KEY BUCKET(1, HOUR) NOT NULL DEFAULT '0'," timestamp-column-key),
+             (format "  %s INT NOT NULL," id-column-key),
+             (format "  %s VARCHAR(255) NOT NULL," fks-table-field-name),
+             (format "  %s VARCHAR(255) NOT NULL," fks-table-dest-table-name),
+             (format "  CLUSTERING INDEX idx01 (%s)" id-column-key),
+             ")")))
+
+;; Drops the FKs table
+(defn- drop-fks-table-sql
+  [database-name table-name]
+  (format "DROP TABLE IF EXISTS %s" (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))))
+
+;; Inserts the FK mapping into the table
+(defn- insert-fk-sql
+  [database-name table-name field-name dest-table-name id]
+  (let [quot            #(sql.u/quote-name :ocient %1 (tx/format-name :ocient %2))]
+    (format "INSERT INTO %s SELECT %s, %s, '%s', '%s'"
+            (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))
+            (tc/to-long (time/now))
+            id
+            field-name
+            dest-table-name)))
+
+(defn- add-fk-sql
+  [{:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name} id]
+  (insert-fk-sql database-name table-name field-name (name dest-table-name) id))
+
+;; Ocient does not support foreign keys, but this is needed to enable some of the join functionality
+(defmethod sql.tx/add-fk-sql :ocient
+  [_ dbdef tabledef fielddef]
+  (add-fk-sql dbdef tabledef fielddef 0))
+
+
+;; Returns the FK mappings for the table
+(defn- describe-table-fks*
+  [^Connection conn {^String table-name :name}]
+  (when (not (str/ends-with? table-name fks-table-name-suffix))
+    (let [fks-table-name (str/join "-" [table-name fks-table-name-suffix])
+          [sql & params] (hsql/format {:select [[(keyword fks-table-field-name) (keyword fks-table-field-name)]
+                                                [(keyword fks-table-dest-table-name) (keyword fks-table-dest-table-name)]]
+                                       :from   [(keyword (str session-schema \. (tx/format-name :ocient fks-table-name)))]}
+                                      nil)]
+      (.setSchema conn session-schema)
+      (with-open [stmt (sql-jdbc.execute/prepared-statement :ocient conn sql params)]
+        (into
+         #{}
+         (common/reducible-results
+          #(sql-jdbc.execute/execute-prepared-statement! :ocient stmt)
+          (fn [^ResultSet rs]
+            (fn []
+              {:fk-column-name   (.getString rs fks-table-field-name)
+               :dest-table       {:name   (.getString rs fks-table-dest-table-name)
+                                  :schema session-schema}
+               :dest-column-name id-column-key}))))))))
+
+;; overriding describe fks to see if this will allow FKs to work in MB. May not benecessary to enable this to get manual FK support.
+(defmethod driver/describe-table-fks :ocient
+  [_ db-or-id-or-spec-or-conn table & _]
+  ;; Return an empty sequence for the FKs tables themselves
+  ;; (when (not (str/ends-with? db-name-or-nil fks-table-name-suffix))
+  (when true
+    (if (instance? Connection db-or-id-or-spec-or-conn)
+      (describe-table-fks* db-or-id-or-spec-or-conn table)
+      (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
+        (with-open [conn (jdbc/get-connection spec)]
+          (describe-table-fks* conn table))))))
+
+;;;;;;;;;;;;;;;;;;;;;
+;;                 ;;
+;; CREATE DATABASE ;;
+;;                 ;;
+;;;;;;;;;;;;;;;;;;;;;
+
+(defn- get-timestamp-field-name
+  [field-definitions]
+  (log/infof "Got %s" (pr-str field-definitions))
+  (first
+   (map
+    (fn [{:keys [field-name]}] field-name)
+    (filter
+     (fn [{:keys [field-name base-type]}] (and (= field-name "created_at") (in? timestamp-base-types base-type)))
+     field-definitions))))
+
 ;; Ocient requires a timestamp column and a clustering index key. These fields are prepended to the field definitions
 (defmethod sql.tx/create-table-sql :ocient
   [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
-  (let [quot          #(sql.u/quote-name driver :field (tx/format-name driver %))]
+  (let [quot                  #(sql.u/quote-name driver :field (tx/format-name driver %))
+        timestamp-field-name  (get-timestamp-field-name field-definitions)
+        has-timestamp-field   (some? timestamp-field-name)
+        timestamp-field-name  (if has-timestamp-field
+                                timestamp-field-name
+                                timestamp-column-key)]
     (str/join "\n"
               (list
                (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote driver database-name table-name)),
-               (format "  %s TIMESTAMP TIME KEY BUCKET(1, HOUR) NOT NULL DEFAULT '0'," timestamp-column-key),
+               ;; HACK If no timestamp column exists, create one. A timestamp column is REQUIRED for all Ocient tables.
+               ;; NOTE: ddl/insert-rows-honeysql-form routine will need to account for this additional column
+               (if (not has-timestamp-field)
+                 (format "  %s TIMESTAMP TIME KEY BUCKET(3650, DAY) NOT NULL DEFAULT '0'," timestamp-field-name)
+                 "")
                (format "  %s INT NOT NULL," id-column-key),
                (str/join
                 ",\n"
                 (for [{:keys [field-name base-type field-comment] :as field} field-definitions]
-                  (str (format "  %s %s"
-                               (quot field-name)
-                               (or (cond
-                                     (and (map? base-type) (contains? base-type :native))
-                                     (:native base-type)
+                  (str (format
+                        ;; The table contains a TIMESTAMP column
+                        (if (and has-timestamp-field (= field-name timestamp-field-name))
+                          "  %s %s TIME KEY BUCKET(3650, DAY) NOT NULL DEFAULT '0'"
+                          "  %s %s")
+                        (quot field-name)
+                        (or (cond
+                              (and (map? base-type) (contains? base-type :native))
+                              (:native base-type)
 
-                                     (and (map? base-type) (contains? base-type :natives))
-                                     (get-in base-type [:natives driver])
+                              (and (map? base-type) (contains? base-type :natives))
+                              (get-in base-type [:natives driver])
 
-                                     base-type
-                                     (sql.tx/field-base-type->sql-type driver base-type))
-                                   (throw (ex-info (format "Missing datatype for field %s for driver: %s"
-                                                           field-name driver)
-                                                   {:field field
-                                                    :driver driver
-                                                    :database-name database-name}))))
+                              base-type
+                              (sql.tx/field-base-type->sql-type driver base-type))
+                            (throw (ex-info (format "Missing datatype for field %s for driver: %s"
+                                                    field-name driver)
+                                            {:field field
+                                             :driver driver
+                                             :database-name database-name}))))
+
                        (when-let [comment (sql.tx/inline-column-comment-sql driver field-comment)]
                          (str " " comment))))),
                ",",
                (format "  CLUSTERING INDEX idx01 (%s)" id-column-key),
-               ")"))))
+               ")"
+               "REDUNDANCY index (PARITY),
+                REDUNDANCY stats (PARITY),
+                REDUNDANCY summary_stats (PARITY),
+                REDUNDANCY cde (PARITY),
+                REDUNDANCY data (PARITY),
+                REDUNDANCY pdf (PARITY)
+                STREAMLOADER_PROPERTIES '{
+                  \"pageQueryExclusionDuration\" : \"0s\",
+                  \"streamLoaderParameters\" : {
+                      \"segmentGenerationWatermark\": \"1GB\",
+                      \"maxBatchSize\": \"10GB\",
+                      \"segmentGenerationTimeout\": \"30s\"
+                  }
+                }'"))))
+
+(defmethod ddl/create-db-tables-ddl-statements :ocient
+  [driver {:keys [database-name, table-definitions], :as dbdef} & _]
+  ;; Build combined statement for creating tables + FKs + comments
+  (let [statements (atom [])
+        add!       (fn [& stmnts]
+                     (swap! statements concat (filter some? stmnts)))]
+    ;; Add the SQL for creating each Table
+    (doseq [tabledef table-definitions]
+      (add! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef)
+            (drop-fks-table-sql database-name (get tabledef :table-name))
+            (sql.tx/create-table-sql driver dbdef tabledef)
+            (create-fks-table-sql database-name (get tabledef :table-name))))
+    ;; Add the SQL for adding FK constraints
+    (doseq [{:keys [field-definitions], :as tabledef} table-definitions]
+      (doseq [[id {:keys [fk], :as fielddef}] (map-indexed vector field-definitions)]
+        (when fk
+          (add! (add-fk-sql dbdef tabledef fielddef id)))))
+    @statements))
 
 ;;A System Administrator must first create the database before the tests can procede
 (defmethod tx/create-db! :ocient
