@@ -325,6 +325,23 @@
                                          :details :yes}}
         (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
 
+    (testing "A non-admin without self-service perms for a DB can fetch the DB if they have data model permissions"
+      (with-all-users-data-perms {db-id {:data    {:native :none :schemas :none}
+                                         :details    :no
+                                         :data-model {:schemas :all}}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+
+    (testing "A non-admin with block perms perms for a DB can fetch the DB if they have data model permissions"
+      (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
+                                         :details    :no
+                                         :data-model {:schemas :all}}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+
+    (testing "A non-admin with block perms for a DB can fetch the DB if they have DB details permissions"
+      (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
+                                         :details :yes}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+
     (testing "The returned database contains a :details field for a user with DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
                                          :details :yes}}
