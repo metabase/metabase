@@ -306,7 +306,7 @@
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
 
-      (some? nfc-path)
+      (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
         (json-query identifier stored-field))
@@ -314,8 +314,10 @@
       :else
       identifier)))
 
-;; Postgres is not happy with JSON fields which are in group-bys being described twice instead of using the alias.
-;; Therefore, force the alias, but only for JSON fields."
+;; Postgres is not happy with JSON fields which are in group-bys or order-bys
+;; being described twice instead of using the alias.
+;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
+;; The alias names in JSON fields are unique wrt nfc path"
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
@@ -327,22 +329,30 @@
         unqualified      (parent-method (update query
                                                 :breakout
                                                 sql.qp/rewrite-fields-to-force-using-column-aliases))]
-    (if (some :nfc_path stored-fields)
+    (if (some field/json-field? stored-fields)
       (merge qualified
              (select-keys unqualified #{:group-by}))
       qualified)))
 
-(defmethod sql.qp/->honeysql [:postgres :asc]
+(defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
-  ((get-method sql.qp/->honeysql [:sql :asc])
-   driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+  (let [stored-field-id (second (second clause))
+        stored-field    (when (integer? stored-field-id)
+                          (qp.store/field stored-field-id))
+        new-clause      (if (field/json-field? stored-field)
+                          (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                          clause)]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
-  ((get-method sql.qp/->honeysql [:sql :asc])
-   driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+  (let [stored-field-id (second (second clause))
+        stored-field    (when (integer? stored-field-id)
+                          (qp.store/field stored-field-id))
+        new-clause      (if (field/json-field? stored-field)
+                          (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                          clause)]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
