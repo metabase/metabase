@@ -26,6 +26,7 @@ import {
   CollectionsMoreIconContainer,
   CollectionsMoreIcon,
   CollectionMenuList,
+  HomePageLink,
   ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
@@ -87,9 +88,11 @@ function MainNavbarView({
   return (
     <SidebarContentRoot>
       <div>
-        <SidebarLink icon="home" url="/">
-          {t`Home page`}
-        </SidebarLink>
+        <SidebarSection>
+          <HomePageLink icon="home" url="/">
+            {t`Home page`}
+          </HomePageLink>
+        </SidebarSection>
 
         {bookmarks.length > 0 && (
           <SidebarSection>
