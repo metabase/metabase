@@ -30,7 +30,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
-import Dimension from "../Dimension";
+import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
 /**
@@ -223,7 +223,18 @@ export default class Field extends Base {
   }
 
   dimension() {
-    return Dimension.parseMBQL(this.reference(), this.metadata, this.query);
+    const ref = this.reference();
+    const fieldDimension = new FieldDimension(
+      ref[1],
+      ref[2],
+      this.metadata,
+      this.query,
+      {
+        _field: this,
+      },
+    );
+
+    return fieldDimension;
   }
 
   sourceField() {

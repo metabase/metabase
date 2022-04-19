@@ -807,6 +807,10 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
+    if (this._field && this._field._trusted === true) {
+      return this._field;
+    }
+
     const question = this.query()?.question();
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
     const fieldMetadata = question
@@ -915,6 +919,9 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
+      this._field && {
+        _field: this._field,
+      },
     );
   }
 

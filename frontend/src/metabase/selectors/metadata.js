@@ -69,7 +69,7 @@ export const getShallowSegments = getNormalizedSegments;
 export const instantiateDatabase = obj => new Database(obj);
 export const instantiateSchema = obj => new Schema(obj);
 export const instantiateTable = obj => new Table(obj);
-export const instantiateField = obj => new Field(obj);
+export const instantiateField = obj => new Field({ ...obj, _trusted: true });
 export const instantiateSegment = obj => new Segment(obj);
 export const instantiateMetric = obj => new Metric(obj);
 
