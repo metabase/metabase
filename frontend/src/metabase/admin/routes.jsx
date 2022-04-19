@@ -1,6 +1,8 @@
 import React from "react";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
+import { routerActions } from "react-router-redux";
+import { UserAuthWrapper } from "redux-auth-wrapper";
 
 import { Route } from "metabase/hoc/Title";
 import {
@@ -9,6 +11,7 @@ import {
   PLUGIN_ADMIN_TOOLS,
 } from "metabase/plugins";
 
+import { getSetting } from "metabase/selectors/settings";
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import {
@@ -66,6 +69,25 @@ import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
 // Tools
 import Tools from "metabase/admin/tools/containers/Tools";
+
+const UserCanAccessTools = UserAuthWrapper({
+  predicate: isEnabled => isEnabled,
+  failureRedirectPath: "/admin",
+  authSelector: state => {
+    if (PLUGIN_ADMIN_TOOLS.EXTRA_ROUTES.length > 0) {
+      return true;
+    }
+    const isModelPersistenceEnabled = getSetting(
+      state,
+      "enabled-persisted-models",
+    );
+    const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
+    return !hasLoadedSettings || isModelPersistenceEnabled;
+  },
+  wrapperDisplayName: "UserCanAccessTools",
+  allowRedirectBack: false,
+  redirectAction: routerActions.replace,
+});
 
 const getRoutes = (store, CanAccessSettings, IsAdmin) => (
   <Route
@@ -181,7 +203,10 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         {getAdminPermissionsRoutes(store)}
       </Route>
 
-      <Route path="tools" component={createAdminRouteGuard("tools")}>
+      <Route
+        path="tools"
+        component={UserCanAccessTools(createAdminRouteGuard("tools"))}
+      >
         <Route title={t`Tools`} component={Tools}>
           <IndexRedirect to={PLUGIN_ADMIN_TOOLS.INDEX_ROUTE} />
           <Route
