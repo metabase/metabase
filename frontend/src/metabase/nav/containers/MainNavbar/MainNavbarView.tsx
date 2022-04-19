@@ -86,13 +86,9 @@ function MainNavbarView({
   return (
     <SidebarContentRoot>
       <div>
-        <SidebarSection>
-          <SidebarHeading>
-            <Link to="/" data-metabase-event="Sidebar;Home">
-              {t`Home page`}
-            </Link>
-          </SidebarHeading>
-        </SidebarSection>
+        <SidebarLink icon="home" url="/">
+          {t`Home page`}
+        </SidebarLink>
 
         {bookmarks.length > 0 && (
           <SidebarSection>
