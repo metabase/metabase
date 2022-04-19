@@ -4,11 +4,11 @@
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.parameters.mbql :as params.mbql]
-            [metabase.query-processor.middleware.parameters.native :as params.native]
+            [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
+            [metabase.query-processor.middleware.parameters.native :as qp.native]
             [metabase.util :as u]
             [schema.core :as s]))
 
@@ -30,10 +30,10 @@
           (dissoc :filter)))))
 
 (defn- expand-mbql-params [outer-query {:keys [parameters], :as m}]
-  ;; HACK `params.mbql/expand` assumes it's operating on an outer query so wrap `m` to look like an outer query. TODO
-  ;; - fix `params.mbql` to operate on abitrary maps instead of only on top-level queries.
+  ;; HACK `qp.mbql/expand` assumes it's operating on an outer query so wrap `m` to look like an outer query. TODO
+  ;; - fix `qp.mbql` to operate on abitrary maps instead of only on top-level queries.
   (let [wrapped           (assoc outer-query :query m)
-        {expanded :query} (params.mbql/expand (dissoc wrapped :parameters) parameters)]
+        {expanded :query} (qp.mbql/expand (dissoc wrapped :parameters) parameters)]
     (cond-> expanded
       (join? m) move-join-condition-to-source-query)))
 
@@ -43,10 +43,10 @@
   ;; HACK - normalization does not yet operate on `:parameters` that aren't at the top level, so double-check that
   ;; they're normalized properly before proceeding.
   (let [m        (cond-> m
-                   (seq parameters) (update :parameters (partial normalize/normalize-fragment [:parameters])))
+                   (seq parameters) (update :parameters (partial mbql.normalize/normalize-fragment [:parameters])))
         expanded (if (or source-table source-query)
                    (expand-mbql-params outer-query m)
-                   (params.native/expand-inner m))]
+                   (qp.native/expand-inner m))]
     (dissoc expanded :parameters :template-tags)))
 
 (defn- expand-all

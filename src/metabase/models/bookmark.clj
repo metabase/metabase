@@ -1,6 +1,6 @@
 (ns metabase.models.bookmark
   (:require [clojure.string :as str]
-            [metabase.db.connection :as mdb]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -46,7 +46,7 @@
 
 (defn- bookmarks-union-query
   [user-id]
-  (let [as-null (when (= (mdb/db-type) :postgres) (hx/->integer nil))]
+  (let [as-null (when (= (mdb.connection/db-type) :postgres) (hx/->integer nil))]
     {:union-all [{:select [:card_id
                            [as-null :dashboard_id]
                            [as-null :collection_id]

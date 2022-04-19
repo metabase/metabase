@@ -1,10 +1,10 @@
 (ns metabase.util.i18n
   "i18n functionality."
-  (:require [cheshire.generate :as json-gen]
+  (:require [cheshire.generate :as json.generate]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [metabase.util.i18n.impl :as impl]
+            [metabase.util.i18n.impl :as i18n.impl]
             [potemkin :as p]
             [potemkin.types :as p.types]
             [schema.core :as s])
@@ -12,7 +12,7 @@
            java.util.Locale))
 
 (p/import-vars
- [impl
+ [i18n.impl
   available-locale?
   fallback-locale
   locale
@@ -33,7 +33,7 @@
   "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
   (locale (or *site-locale-override*
-              (impl/site-locale-from-setting)
+              (i18n.impl/site-locale-from-setting)
               ;; if DB is not initialized yet fall back to English
               "en")))
 
@@ -48,7 +48,7 @@
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
   []
-  (for [locale-name (impl/available-locale-names)]
+  (for [locale-name (i18n.impl/available-locale-names)]
     ;; Abbreviation must be normalized or the language picker will show incorrect saved value
     ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
     [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
@@ -86,13 +86,13 @@
 
 (defn- localized-to-json
   "Write a UserLocalizedString or SiteLocalizedString to the `json-generator`. This is intended for
-  `json-gen/add-encoder`. Ideally we'd implement those protocols directly as it's faster, but currently that doesn't
+  `json.generate/add-encoder`. Ideally we'd implement those protocols directly as it's faster, but currently that doesn't
   work with Cheshire"
   [localized-string json-generator]
-  (json-gen/write-string json-generator (str localized-string)))
+  (json.generate/write-string json-generator (str localized-string)))
 
-(json-gen/add-encoder UserLocalizedString localized-to-json)
-(json-gen/add-encoder SiteLocalizedString localized-to-json)
+(json.generate/add-encoder UserLocalizedString localized-to-json)
+(json.generate/add-encoder SiteLocalizedString localized-to-json)
 
 (def LocalizedString
   "Schema for user and system localized string instances"

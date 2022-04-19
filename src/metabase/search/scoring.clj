@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.plugins.classloader :as classloader]
             [metabase.search.config :as search-config]
             [metabase.util :as u]
@@ -233,7 +233,7 @@
                           :name            collection_name
                           :authority_level collection_authority_level}
          :scores          scores)
-        (update :dataset_query #(some-> % json/parse-string normalize/normalize))
+        (update :dataset_query #(some-> % json/parse-string mbql.normalize/normalize))
         (dissoc
          :collection_id
          :collection_name

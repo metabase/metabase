@@ -24,7 +24,7 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.api.common :as api]
-            [metabase.api.session :as session]
+            [metabase.api.session :as api.session]
             [metabase.integrations.common :as integrations.common]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
@@ -32,7 +32,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
-            [ring.util.response :as resp]
+            [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
   (:import java.util.UUID))
@@ -82,7 +82,7 @@
                                                        :sso_source       "saml"
                                                        :login_attributes user-attributes}))]
     (sync-groups! user group-names)
-    (session/create-session! :sso user device-info)))
+    (api.session/create-session! :sso user device-info)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,5 +192,5 @@
                         :group-names     groups
                         :user-attributes attrs
                         :device-info     (request.u/device-info request)})
-        response      (resp/redirect (or continue-url (public-settings/site-url)))]
+        response      (response/redirect (or continue-url (public-settings/site-url)))]
     (mw.session/set-session-cookie request response session)))

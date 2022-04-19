@@ -1,9 +1,9 @@
 (ns metabase.driver.common.parameters.parse-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.common.parameters.parse :as parse]))
+            [metabase.driver.common.parameters.parse :as params.parse]))
 
-(def ^:private ^{:arglists '([field-name])} param    (var-get #'parse/param))
-(def ^:private ^{:arglists '([& args])}     optional (var-get #'parse/optional))
+(def ^:private ^{:arglists '([field-name])} param    (var-get #'params.parse/param))
+(def ^:private ^{:arglists '([& args])}     optional (var-get #'params.parse/optional))
 
 (deftest tokenize-test
   (doseq [[query expected]
@@ -23,7 +23,7 @@
            ["SELECT * FROM toucanneries WHERE TRUE " :optional-begin "AND num_toucans > " :param-begin "num_toucans" :param-end :optional-end
             " " :optional-begin "AND total_birds > " :param-begin "total_birds" :param-end :optional-end]}]
     (is (= expected
-           (#'parse/tokenize query))
+           (#'params.parse/tokenize query))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
 (deftest parse-test
@@ -80,7 +80,7 @@
     (testing group
       (doseq [[s expected] s->expected]
         (is (= expected
-               (parse/parse s))
+               (params.parse/parse s))
             (format "%s should get parsed to %s" (pr-str s) (pr-str expected))))))
 
   (testing "Testing that invalid/unterminated template params/clauses throw an exception"
@@ -89,5 +89,5 @@
                      "select * from foo {{bar}} {{baz"
                      "select * from foo [[clause 1 {{bar}}]] [[clause 2"]]
       (is (thrown? clojure.lang.ExceptionInfo
-                   (parse/parse invalid))
+                   (params.parse/parse invalid))
           (format "Parsing %s should throw an exception" (pr-str invalid))))))

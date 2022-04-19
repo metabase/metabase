@@ -1,7 +1,7 @@
 (ns metabase.db.spec-test
   (:require [clojure.test :refer :all]
             [metabase.config :as config]
-            [metabase.db.spec :as db.spec]))
+            [metabase.db.spec :as mdb.spec]))
 
 (defn- default-pg-spec [db]
   {:classname                     "org.postgresql.Driver"
@@ -13,7 +13,7 @@
 (deftest basic-test
   (testing "Basic minimal config"
     (is (= (default-pg-spec "metabase")
-           (db.spec/spec
+           (mdb.spec/spec
             :postgres
             {:host "localhost"
              :port 5432
@@ -23,7 +23,7 @@
   (testing (str "Users that don't specify a `:dbname` (and thus no `:db`) will use the user's default, we should "
                 "allow that")
     (is (= (assoc (default-pg-spec "") :dbname nil)
-           (db.spec/spec
+           (mdb.spec/spec
             :postgres
             {:host   "localhost"
              :port   5432
@@ -33,7 +33,7 @@
 (deftest allow-other-nils-test
   (testing "We should be tolerant of other random nil values sneaking through"
     (is (= (assoc (default-pg-spec "") :dbname nil, :somethingrandom nil)
-           (db.spec/spec
+           (mdb.spec/spec
             :postgres
             {:host            "localhost"
              :port            nil
@@ -44,7 +44,7 @@
 (deftest postgres-default-values-test
   (testing "Not specifying any of the values results in defaults"
     (is (= (default-pg-spec "")
-           (db.spec/spec :postgres {})))))
+           (mdb.spec/spec :postgres {})))))
 
 (defn- default-mysql-spec [db]
   {:classname                     "org.mariadb.jdbc.Driver"
@@ -54,7 +54,7 @@
 (deftest mysql-default-port-test
   (testing "Check that we default to port 3306 for MySQL databases, if `:port` is `nil`"
     (is (= (assoc (default-mysql-spec "") :dbname nil)
-           (db.spec/spec
+           (mdb.spec/spec
             :mysql
             {:host   "localhost"
              :port   nil

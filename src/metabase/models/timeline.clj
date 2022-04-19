@@ -1,6 +1,6 @@
 (ns metabase.models.timeline
   (:require [metabase.models.collection :as collection]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
@@ -53,5 +53,5 @@
    models/IModelDefaults
    {:properties (constantly {:timestamped? true})})
 
-  i/IObjectPermissions
+  mi/IObjectPermissions
   perms/IObjectPermissionsForParentCollection)

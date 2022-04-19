@@ -6,7 +6,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.config :as config]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [schema.core :as s])

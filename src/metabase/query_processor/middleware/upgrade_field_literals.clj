@@ -4,7 +4,7 @@
             [clojure.walk :as walk]
             [metabase.config :as config]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
+            [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]))
@@ -109,5 +109,5 @@
                   (not (get-in form [:source-query :native])))
            (upgrade-field-literals-one-level form)
            form))
-       (resolve-fields/resolve-fields query))
-      resolve-fields/resolve-fields))
+       (qp.resolve-fields/resolve-fields query))
+      qp.resolve-fields/resolve-fields))

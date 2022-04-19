@@ -1,7 +1,7 @@
 (ns metabase-enterprise.enhancements.ee-strategy-impl-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase.public-settings.premium-features :as settings.premium-features]
+            metabase.public-settings.premium-features
             [pretty.core :refer [PrettyPrintable]]))
 
 (defprotocol ^:private MyProtocol
@@ -77,16 +77,17 @@
                MyProtocol
                (m2 [_ x y]
                  (- x y)))
-        impl (ee-strategy-impl/reify-ee-strategy-impl #'settings.premium-features/enable-enhancements? ee oss MyProtocol)]
+        impl (ee-strategy-impl/reify-ee-strategy-impl
+               #'metabase.public-settings.premium-features/enable-enhancements? ee oss MyProtocol)]
     (testing "sanity check"
       (is (= 3
              (m2 ee 1 2)))
       (is (= -1
              (m2 oss 1 2))))
-    (with-redefs [settings.premium-features/enable-enhancements? (constantly false)]
+    (with-redefs [metabase.public-settings.premium-features/enable-enhancements? (constantly false)]
       (is (= -1
              (m2 impl 1 2))))
-    (with-redefs [settings.premium-features/enable-enhancements? (constantly true)]
+    (with-redefs [metabase.public-settings.premium-features/enable-enhancements? (constantly true)]
       (is (= 3
              (m2 impl 1 2))))
     (testing "Should pretty print"

@@ -7,7 +7,7 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -29,10 +29,10 @@
                                        :kind   :keyword
                                        :source :keyword})
           :properties     (constantly {:timestamped? true})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         i/superuser?
-          :can-write?        i/superuser?}))
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         mi/superuser?
+          :can-write?        mi/superuser?}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 

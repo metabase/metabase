@@ -7,10 +7,10 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [medley.core :as m]
-            [metabase.api.card :as card-api]
-            [metabase.api.pivots :as pivots]
+            [metabase.api.card :as api.card]
+            [metabase.api.pivots :as api.pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
@@ -21,10 +21,10 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data.users :as test.users]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -33,7 +33,7 @@
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
-(comment card-api/keep-me)
+(comment api.card/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -186,8 +186,8 @@
 
 
 (deftest authentication-test
-  (is (= (get middleware.u/response-unauthentic :body) (http/client :get 401 "card")))
-  (is (= (get middleware.u/response-unauthentic :body) (http/client :put 401 "card/13"))))
+  (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
@@ -1425,7 +1425,7 @@
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-          (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+          (with-redefs [qp.constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
@@ -1439,9 +1439,9 @@
 
 (defn- test-download-response-headers
   [url]
-  (-> (http/client-full-response (test-users/username->token :rasta)
-                                 :post 200 url
-                                 :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+  (-> (client/client-full-response (test.users/username->token :rasta)
+                                   :post 200 url
+                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
@@ -1569,10 +1569,10 @@
 
 (deftest changed?-test
   (letfn [(changed? [before after]
-            (#'card-api/changed? card-api/card-compare-keys before after))]
+            (#'api.card/changed? api.card/card-compare-keys before after))]
    (testing "Ignores keyword/string"
      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-   (testing "Ignores properties not in `card-api/card-compare-keys"
+   (testing "Ignores properties not in `api.card/card-compare-keys"
      (is (false? (changed? {:collection_id 1
                             :collection_position 0}
                            {:collection_id 2
@@ -1886,10 +1886,10 @@
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
 (deftest pivot-card-test
-  (mt/test-drivers (pivots/applicable-drivers)
+  (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
-        (mt/with-temp Card [card (pivots/pivot-card)]
+        (mt/with-temp Card [card (api.pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))

@@ -1,6 +1,6 @@
 (ns metabase.api.revision
   (:require [compojure.core :refer [GET POST]]
-            [metabase.api.card :as card-api]
+            [metabase.api.card :as api.card]
             [metabase.api.common :as api]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -36,7 +36,7 @@
         revision         (api/check-404 (Revision :model (:name model), :model_id id, :id revision_id))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model Card)
-      (card-api/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
+      (api.card/check-data-permissions-for-query (get-in revision [:object :dataset_query])))
     ;; ok, we're g2g
     (revision/revert!
       :entity      model

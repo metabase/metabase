@@ -2,23 +2,23 @@
   "Tests for /api/timeline endpoints."
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.timeline :refer [Timeline]]
             [metabase.models.timeline-event :refer [TimelineEvent]]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest auth-tests
   (testing "Authentication"
-    (is (= (get middleware.u/response-unauthentic :body)
-           (http/client :get 401 "/timeline")))
-    (is (= (get middleware.u/response-unauthentic :body)
-           (http/client :get 401 "/timeline/1")))))
+    (is (= (get mw.util/response-unauthentic :body)
+           (client/client :get 401 "/timeline")))
+    (is (= (get mw.util/response-unauthentic :body)
+           (client/client :get 401 "/timeline/1")))))
 
 (deftest list-timelines-test
   (testing "GET /api/timeline"
@@ -58,7 +58,7 @@
         (letfn [(events-for [user events?]
                   (->> (m/mapply mt/user-http-request user :get 200 "timeline" (when events? {:include "events"}))
                        (filter (comp #{coll-id} :collection_id))))]
-          (perms/revoke-collection-permissions! (group/all-users) coll-id)
+          (perms/revoke-collection-permissions! (perms-group/all-users) coll-id)
           (testing "a non-admin user cannot see any timelines"
             (is (= [] (events-for :rasta true)))
             (is (= [] (events-for :rasta false))))

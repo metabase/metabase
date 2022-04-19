@@ -7,7 +7,7 @@
             [metabase.api.common :as api]
             [metabase.db.connection :as mdb.connection]
             [metabase.task :as task]
-            [metabase.util.files :as files])
+            [metabase.util.files :as u.files])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource
            metabase.db.connection.ApplicationDB))
 
@@ -19,8 +19,8 @@
 
 (defn- snapshot-path-for-name
   ^String [snapshot-name]
-  (let [path (files/get-path "frontend" "test" "snapshots"
-                             (str (str/replace (name snapshot-name) #"\W" "_") ".sql"))]
+  (let [path (u.files/get-path "frontend" "test" "snapshots"
+                               (str (str/replace (name snapshot-name) #"\W" "_") ".sql"))]
     (str (.toAbsolutePath path))))
 
 ;;;; SAVE

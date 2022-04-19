@@ -4,7 +4,7 @@
             [compojure.core :refer [GET POST PUT]]
             [metabase.api.common :as api]
             [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet :as snippet :refer [NativeQuerySnippet]]
+            [metabase.models.native-query-snippet :as native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -41,7 +41,7 @@
   [:as {{:keys [content description name collection_id]} :body}]
   {content       s/Str
    description   (s/maybe s/Str)
-   name          snippet/NativeQuerySnippetName
+   name          native-query-snippet/NativeQuerySnippetName
    collection_id (s/maybe su/IntGreaterThanZero)}
   (check-snippet-name-is-unique name)
   (let [snippet {:content       content
@@ -74,7 +74,7 @@
   {archived      (s/maybe s/Bool)
    content       (s/maybe s/Str)
    description   (s/maybe s/Str)
-   name          (s/maybe snippet/NativeQuerySnippetName)
+   name          (s/maybe native-query-snippet/NativeQuerySnippetName)
    collection_id (s/maybe su/IntGreaterThanZero)}
   (check-perms-and-update-snippet! id body))
 

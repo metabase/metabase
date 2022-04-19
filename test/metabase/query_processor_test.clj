@@ -11,7 +11,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as joins]
+            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
             [metabase.test-runner.init :as test-runner.init]
             [metabase.test.data :as data]
             [metabase.test.data.env :as tx.env]
@@ -190,8 +190,8 @@
                :fk_field_id  (:id source-col)
                :source_alias (driver/escape-alias
                               driver/*driver*
-                              (#'joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
-                                                  (:name source-col)))))))
+                              (#'qp.add-implicit-joins/join-alias (db/select-one-field :name Table :id (data/id dest-table-kw))
+                                                                  (:name source-col)))))))
 
 (declare cols)
 
