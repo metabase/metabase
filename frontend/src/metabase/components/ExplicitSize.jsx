@@ -10,7 +10,7 @@ import { isCypressActive } from "metabase/env";
 
 // After adding throttling for resize re-renders, our Cypress tests became flaky
 // due to queried DOM elements are getting detached after re-renders
-const throttleDuration = isCypressActive ? 0 : 300;
+const debounceDuration = isCypressActive ? 0 : 300;
 
 export default ({ selector, wrapped } = {}) => ComposedComponent =>
   class extends Component {
@@ -97,7 +97,7 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
 
     // if _currentElement's dimensions change too frequently this function
     // can freeze the application
-    _updateSize = _.throttle(() => {
+    _updateSize = _.debounce(() => {
       const element = this._getElement();
       if (element) {
         const { width, height } = element.getBoundingClientRect();
@@ -105,7 +105,7 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
           this.setState({ width, height });
         }
       }
-    }, throttleDuration);
+    }, debounceDuration);
 
     render() {
       if (wrapped) {
