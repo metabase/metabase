@@ -83,7 +83,6 @@ describe("scenarios > home > homepage", () => {
 
     it("should display popular items for a new user", () => {
       cy.signInAsAdmin();
-
       visitDashboard(1);
       cy.findByText("Orders in a dashboard");
       cy.signOut();
