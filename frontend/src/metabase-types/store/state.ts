@@ -6,8 +6,8 @@ import { SettingsState } from "./settings";
 import { SetupState } from "./setup";
 
 export interface State {
-  currentUser: User;
   admin: AdminState;
+  currentUser: User;
   entities: EntitiesState;
   form: FormState;
   settings: SettingsState;
