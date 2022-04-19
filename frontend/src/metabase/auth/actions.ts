@@ -22,9 +22,10 @@ export const refreshSession = createThunkAction(
   REFRESH_SESSION,
   () => async (dispatch: any) => {
     await Promise.all([
-      dispatch(refreshCurrentUser()).then(() => loadUserLocalization()),
+      dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
     ]);
+    await dispatch(loadUserLocalization());
   },
 );
 

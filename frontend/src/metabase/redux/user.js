@@ -37,7 +37,7 @@ export const loadUserLocalization = createThunkAction(
     if (user && user.locale) {
       await loadLocalization(user.locale);
     } else {
-      await loadLocalization(Settings.get("user-locale"));
+      await loadLocalization(Settings.get("site-locale"));
     }
   },
 );
