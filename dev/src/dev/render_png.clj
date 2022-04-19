@@ -4,7 +4,7 @@
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
             [clojure.string :as str]
-            [hiccup.core :refer hiccup]
+            [hiccup.core :as hiccup]
             [metabase.models.card :as card]
             [metabase.models.user :as user]
             [metabase.pulse :as pulse]
