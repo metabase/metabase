@@ -42,10 +42,10 @@ export const LogoLink = styled(Link)`
 `;
 
 export const SidebarButtonContainer = styled.div`
-  left: 7px;
+  left: 15px;
   opacity: 0;
   position: absolute;
-  top: 1px;
+  top: 4px;
   transition: opacity 0.3s;
 `;
 
@@ -57,7 +57,7 @@ export const RowLeft = styled.div`
   width: 30%;
 
   &:hover {
-    ${LogoIconWrapper} {
+    ${LogoLink} {
       opacity: 0;
       pointer-events: none;
     }
