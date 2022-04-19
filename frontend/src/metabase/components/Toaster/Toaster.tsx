@@ -7,6 +7,7 @@ import {
   ToasterContainer,
   ToasterMessage,
   ToasterButton,
+  ToasterDismiss,
 } from "./Toaster.styled";
 
 export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
@@ -49,7 +50,11 @@ const Toaster = ({
     <ToasterContainer show={open} fixed={fixed} className={className}>
       <ToasterMessage>{message}</ToasterMessage>
       <ToasterButton onClick={onConfirm}>{confirmText}</ToasterButton>
-      <Icon name="close" color={color("bg-dark")} onClick={onDismiss} />
+      <ToasterDismiss
+        name="close"
+        color={color("bg-dark")}
+        onClick={onDismiss}
+      />
     </ToasterContainer>
   ) : null;
 };

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 
-import { alpha, color } from "metabase/lib/colors";
+import { alpha, color, lighten } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 interface ToasterContainerProps {
   show: boolean;
@@ -52,5 +53,13 @@ export const ToasterButton = styled.button`
   &:hover {
     cursor: pointer;
     background-color: ${alpha(color("bg-white"), 0.3)};
+  }
+`;
+
+export const ToasterDismiss = styled(Icon)`
+  cursor: pointer;
+  transition: color 200ms ease;
+  &:hover {
+    color: ${lighten("bg-dark", 0.3)};
   }
 `;
