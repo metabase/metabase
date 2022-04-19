@@ -64,7 +64,7 @@ const BaseButton = forwardRef(function BaseButton(
     iconRight,
     iconSize,
     iconColor,
-    iconVertical,
+    iconVertical = false,
     labelBreakpoint,
     children,
     ...props
@@ -91,6 +91,7 @@ const BaseButton = forwardRef(function BaseButton(
           <ButtonTextContainer
             hasIcon={!!icon}
             hasRightIcon={!!iconRight}
+            iconVertical={iconVertical}
             className={cx({
               [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
             })}

@@ -18,9 +18,9 @@ export const ButtonContent = styled.div<ButtonContentProps>`
 `;
 
 export interface ButtonTextContainerProps {
-  iconVertical?: boolean;
-  hasIcon?: boolean;
-  hasRightIcon?: boolean;
+  iconVertical: boolean;
+  hasIcon: boolean;
+  hasRightIcon: boolean;
 }
 
 const verticalTopIconCSS = css`
@@ -36,17 +36,21 @@ const horizontalLeftIconCSS = css`
 `;
 
 const horizontalRightIconCSS = css`
-  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 `;
 
 export const ButtonTextContainer = styled.div<ButtonTextContainerProps>`
-  ${props =>
-    props.hasIcon && props.iconVertical
-      ? verticalTopIconCSS
-      : horizontalLeftIconCSS};
+  ${props => {
+    if (props.hasIcon) {
+      return props.iconVertical ? verticalTopIconCSS : horizontalLeftIconCSS;
+    }
+  }}
 
-  ${props =>
-    props.hasRightIcon && props.iconVertical
-      ? verticalBottomIconCSS
-      : horizontalRightIconCSS};
+  ${props => {
+    if (props.hasRightIcon) {
+      return props.iconVertical
+        ? verticalBottomIconCSS
+        : horizontalRightIconCSS;
+    }
+  }}
 `;
