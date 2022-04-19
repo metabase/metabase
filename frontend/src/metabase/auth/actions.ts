@@ -16,9 +16,9 @@ import {
 } from "./analytics";
 import { LoginData } from "./types";
 
-export const LOAD_USER_LOCALIZATION = "metabase/user/LOAD_USER_LOCALIZATION";
-export const loadUserLocalization = createThunkAction(
-  LOAD_USER_LOCALIZATION,
+export const REFRESH_LOCALE = "metabase/user/REFRESH_LOCALE";
+export const refreshLocale = createThunkAction(
+  REFRESH_LOCALE,
   () => async (dispatch: any, getState: () => State) => {
     const userLocale = getState().currentUser?.locale;
     const siteLocale = Settings.get("site-locale");
@@ -34,7 +34,7 @@ export const refreshSession = createThunkAction(
       dispatch(refreshCurrentUser()),
       dispatch(refreshSiteSettings()),
     ]);
-    await dispatch(loadUserLocalization());
+    await dispatch(refreshLocale());
   },
 );
 
@@ -73,7 +73,7 @@ export const logout = createThunkAction(LOGOUT, () => {
     await deleteSession();
     await clearGoogleAuthCredentials();
     await dispatch(clearCurrentUser());
-    await dispatch(loadUserLocalization());
+    await dispatch(refreshLocale());
     trackLogout();
 
     dispatch(push("/auth/login"));
