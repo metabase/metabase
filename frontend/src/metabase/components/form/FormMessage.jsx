@@ -9,7 +9,7 @@ export const UNKNOWN_ERROR_MESSAGE = t`Unknown error encountered`;
 
 export default class FormMessage extends Component {
   render() {
-    const { className, formSuccess, message } = this.props;
+    const { className, message, formSuccess, noPadding } = this.props;
 
     const treatedMessage = getMessage(this.props);
 
@@ -17,6 +17,7 @@ export default class FormMessage extends Component {
       <FormMessageStyled
         className={className}
         visible={!!message}
+        noPadding={noPadding}
         hasSucceeded={formSuccess}
       >
         {treatedMessage}

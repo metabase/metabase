@@ -241,7 +241,7 @@ CustomFormSubmit.contextTypes = {
 };
 
 export const CustomFormMessage = (props, { error }) =>
-  error ? <FormMessage message={error} formError /> : null;
+  error ? <FormMessage {...props} message={error} formError /> : null;
 CustomFormMessage.contextTypes = {
   error: PropTypes.string,
 };
@@ -314,7 +314,7 @@ export const CustomFormFooter = (
         </Button>
       )}
       <div className="flex-full" />
-      <CustomFormMessage />
+      <CustomFormMessage className="ml1" noPadding />
       {footerExtraButtons}
     </div>
   );
