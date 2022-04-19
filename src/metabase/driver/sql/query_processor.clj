@@ -604,7 +604,9 @@
                            (assoc ::add/source-alias        (::add/desired-alias opts)
                                   ::add/source-table        ::add/none
                                   ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
-                                  ::nest-query/outer-select true)
+                                  ::nest-query/outer-select true
+                                  ;; used to indicate that this is a forced alias
+                                  ::forced-alias            true)
                            ;; don't want to do temporal bucketing or binning inside the order by or breakout either.
                            ;; That happens inside the `SELECT`
                            (dissoc :temporal-unit :binning))]))

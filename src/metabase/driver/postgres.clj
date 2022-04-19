@@ -21,6 +21,7 @@
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -295,18 +296,22 @@
           (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name _opts :as clause]]
+  [driver [_ id-or-name opts :as clause]]
   (let [stored-field (when (integer? id-or-name)
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)
         nfc-path      (:nfc_path stored-field)]
+    (println opts)
+    (println (::sql.qp/forced-alias opts))
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
 
       (some? nfc-path)
-      (json-query identifier stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (json-query identifier stored-field))
 
       :else
       identifier)))
@@ -319,14 +324,8 @@
         unqualified   (parent-method (update query
                                              :breakout
                                              sql.qp/rewrite-fields-to-force-using-column-aliases))]
-    (println breakout-fields)
-    (println fields-fields)
-    (if (or
-          (some some? breakout-fields)
-          (some some? fields-fields))
-      (merge qualified
-             (select-keys unqualified #{:group-by}))
-      qualified)))
+    (merge qualified
+           (select-keys unqualified #{:group-by}))))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
