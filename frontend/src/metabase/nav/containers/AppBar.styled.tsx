@@ -41,7 +41,7 @@ export const LogoLink = styled(Link)`
   justify-content: center;
   border-radius: 6px;
   padding: ${space(1)};
-  margin-left: ${space(1)};
+  padding-left: ${space(2)};
 
   &:hover {
     background-color: ${color("bg-light")};
