@@ -1,14 +1,11 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { Component, ErrorInfo } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
+import { Location } from "history";
 
 import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 
 import ScrollToTop from "metabase/hoc/ScrollToTop";
-import AppBar from "metabase/nav/containers/AppBar";
-import Navbar from "metabase/nav/containers/Navbar";
-
 import {
   Archived,
   NotFound,
@@ -16,57 +13,72 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 import UndoListing from "metabase/containers/UndoListing";
+
+import { getErrorPage } from "metabase/selectors/app";
+import { getUser } from "metabase/selectors/user";
+import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
+import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
+
+import AppBar from "metabase/nav/containers/AppBar";
+import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
 
-import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
-
-import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
+import { User } from "metabase-types/api";
+import { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContentContainer, AppContent } from "./App.styled";
 
-const mapStateToProps = state => ({
-  currentUser: state.currentUser,
-  errorPage: state.app.errorPage,
-  isEditingDashboard: getIsEditingDashboard(state),
-});
-
-const getErrorComponent = ({ status, data, context }) => {
+const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403) {
     return <Unauthorized />;
-  } else if (status === 404 || data?.error_code === "not-found") {
-    return <NotFound />;
-  } else if (
-    data &&
-    data.error_code === "archived" &&
-    context === "dashboard"
-  ) {
-    return <Archived entityName="dashboard" linkTo="/dashboards/archive" />;
-  } else if (
-    data &&
-    data.error_code === "archived" &&
-    context === "query-builder"
-  ) {
-    return <Archived entityName="question" linkTo="/questions/archive" />;
-  } else {
-    return <GenericError details={data && data.message} />;
   }
+  if (status === 404 || data?.error_code === "not-found") {
+    return <NotFound />;
+  }
+  if (data?.error_code === "archived" && context === "dashboard") {
+    return <Archived entityName="dashboard" linkTo="/dashboards/archive" />;
+  }
+  if (data?.error_code === "archived" && context === "query-builder") {
+    return <Archived entityName="question" linkTo="/questions/archive" />;
+  }
+  return <GenericError details={data?.message} />;
 };
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
 const EMBEDDED_ROUTES_WITH_NAVBAR = ["/collection", "/archive"];
 
-class App extends Component {
+interface AppStateProps {
+  currentUser?: User;
+  errorPage: AppErrorDescriptor | null;
+  isEditingDashboard: boolean;
+}
+
+interface AppRouterOwnProps {
+  location: Location;
+}
+
+type AppProps = AppStateProps & AppRouterOwnProps;
+
+function mapStateToProps(state: State): AppStateProps {
+  return {
+    currentUser: getUser(state),
+    errorPage: getErrorPage(state),
+    isEditingDashboard: getIsEditingDashboard(state),
+  };
+}
+
+class App extends Component<AppProps> {
   state = {
     errorInfo: undefined,
   };
 
-  constructor(props) {
+  constructor(props: AppProps) {
     super(props);
     initializeIframeResizer();
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
   }
 
@@ -132,4 +144,6 @@ class App extends Component {
   }
 }
 
-export default connect(mapStateToProps)(App);
+export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
+  mapStateToProps,
+)(App);

@@ -11,7 +11,7 @@ import { t } from "ttag";
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
-import App from "metabase/App.jsx";
+import App from "metabase/App.tsx";
 
 import ActivityApp from "metabase/home/containers/ActivityApp";
 
