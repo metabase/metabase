@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { BookmarksType, Collection, User } from "metabase-types/api";
 
+import Link from "metabase/core/components/Link";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -86,6 +87,14 @@ function MainNavbarView({
   return (
     <SidebarContentRoot>
       <div>
+        <SidebarSection>
+          <SidebarHeading>
+            <Link to="/" data-metabase-event="Sidebar;Home">
+              {t`Home page`}
+            </Link>
+          </SidebarHeading>
+        </SidebarSection>
+
         {bookmarks.length > 0 && (
           <SidebarSection>
             <BookmarkList
@@ -98,6 +107,7 @@ function MainNavbarView({
             />
           </SidebarSection>
         )}
+
         <SidebarSection>
           <CollectionSectionHeading currentUser={currentUser} />
           <Tree
