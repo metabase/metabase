@@ -281,15 +281,6 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn lol 
-  ([x] ["published" "published" "published" "published" "published" "published"])
-  ([x y] ["published" "published" "published" "published" "published" "published"]))
-
-(defmethod hformat/parameterize :dealio [_ value pname]
-  "$1")
-
-(def num-fields (atom 0))
-
 (defn- json-query [identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
@@ -326,7 +317,9 @@
   (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
                                driver top-level-clause honeysql-form)
         qualified     (parent-method query)
-        unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
+        unqualified   (parent-method (update query
+                                             :breakout
+                                             sql.qp/rewrite-fields-to-force-using-column-aliases))]
     (if (any? some shit breakout-fields some shit)
       (merge qualified
              (select-keys unqualified #{:group-by}))
