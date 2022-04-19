@@ -324,10 +324,10 @@
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr args body result-schema options]}]
   (let [feature (:feature options)]
-    `(if (or (not ~feature)
-             (if (= ~feature :any)
-               (has-any-features?)
-               (has-feature? ~feature)))
+    `(if ~(or (not feature)
+              (if (= feature :any)
+                `(has-any-features?)
+                `(has-feature? ~feature)))
 
        (let [result# (do ~@body)]
          (if ~result-schema
