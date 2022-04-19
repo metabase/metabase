@@ -23,9 +23,9 @@ import {
   LogoLink,
   SearchBarContainer,
   SearchBarContent,
-  RowLeft,
-  RowMiddle,
-  RowRight,
+  LeftContainer,
+  MiddleContainer,
+  RightContainer,
   SidebarButtonContainer,
 } from "./AppBar.styled";
 
@@ -92,7 +92,7 @@ function AppBar({
 
   return (
     <AppBarRoot>
-      <RowLeft isSearchActive={isSearchActive}>
+      <LeftContainer isSearchActive={isSearchActive}>
         <HomepageLink handleClick={onLogoClick} />
         <SidebarButtonContainer>
           <Tooltip tooltip={sidebarButtonTooltip} isEnabled={!isSmallScreen()}>
@@ -102,13 +102,13 @@ function AppBar({
             />
           </Tooltip>
         </SidebarButtonContainer>
-      </RowLeft>
+      </LeftContainer>
       {!isSearchActive && (
-        <RowMiddle>
+        <MiddleContainer>
           <HomepageLink handleClick={onLogoClick} />
-        </RowMiddle>
+        </MiddleContainer>
       )}
-      <RowRight>
+      <RightContainer>
         <SearchBarContainer>
           <SearchBarContent>
             <SearchBar
@@ -120,7 +120,7 @@ function AppBar({
           </SearchBarContent>
         </SearchBarContainer>
         <NewButton />
-      </RowRight>
+      </RightContainer>
     </AppBarRoot>
   );
 }
