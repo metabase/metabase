@@ -12,12 +12,12 @@ import _ from "underscore";
 import { assoc, dissoc } from "icepick";
 
 import Users from "metabase/entities/users";
-
-export const LOAD_MEMBERSHIPS = "metabase/admin/people/LOAD_MEMBERSHIPS";
-export const CREATE_MEMBERSHIP = "metabase/admin/people/CREATE_MEMBERSHIP";
-export const DELETE_MEMBERSHIP = "metabase/admin/people/DELETE_MEMBERSHIP";
-export const CLEAR_TEMPORARY_PASSWORD =
-  "metabase/admin/people/CLEAR_TEMPORARY_PASSWORD";
+import {
+  LOAD_MEMBERSHIPS,
+  CREATE_MEMBERSHIP,
+  DELETE_MEMBERSHIP,
+  CLEAR_TEMPORARY_PASSWORD,
+} from "./events";
 
 // ACTION CREATORS
 
@@ -42,17 +42,16 @@ export const createMembership = createAction(
     return {
       user_id: userId,
       group_id: groupId,
-      membership_id: _.findWhere(groupMemberships, { user_id: userId })
-        .membership_id,
+      membership: _.findWhere(groupMemberships, { user_id: userId }),
     };
   },
 );
 export const deleteMembership = createAction(
   DELETE_MEMBERSHIP,
-  async ({ membershipId }) => {
+  async ({ membershipId, groupId }) => {
     await PermissionsApi.deleteMembership({ id: membershipId });
     MetabaseAnalytics.trackStructEvent("People Groups", "Membership Deleted");
-    return membershipId;
+    return { membershipId, groupId };
   },
 );
 
@@ -66,11 +65,15 @@ const memberships = handleActions(
       next: (state, { payload: memberships }) => memberships,
     },
     [CREATE_MEMBERSHIP]: {
-      next: (state, { payload: membership }) =>
-        assoc(state, membership.membership_id, membership),
+      next: (state, { payload: { group_id, user_id, membership } }) =>
+        assoc(state, membership.membership_id, {
+          group_id,
+          user_id,
+          membership_id: membership.membership_id,
+        }),
     },
     [DELETE_MEMBERSHIP]: {
-      next: (state, { payload: membershipId }) => dissoc(state, membershipId),
+      next: (state, { payload }) => dissoc(state, payload.membershipId),
     },
   },
   {},

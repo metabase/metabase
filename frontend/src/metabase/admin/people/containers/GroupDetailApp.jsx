@@ -9,7 +9,7 @@ import { getUser } from "metabase/selectors/user";
 import GroupDetail from "../components/GroupDetail";
 
 @User.loadList()
-@Group.load({ id: (state, props) => props.params.groupId })
+@Group.load({ id: (state, props) => props.params.groupId, reload: true })
 @connect((state, props) => ({
   currentUser: getUser(state),
   users: getUsersWithMemberships(state, props),
