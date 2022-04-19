@@ -142,7 +142,7 @@
                             #"Value does not match schema"
                             (greeting-with-schema :rasta)))
 
-      (testing "if :feature = :any, it will check if any feature exists, and fall back to the OSS version by default"
+      (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
         (with-premium-features #{:some-feature}
           (is (= "Hi rasta, you're an EE customer with a valid token!"
                  (greeting-with-valid-token :rasta))))

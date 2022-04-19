@@ -11,6 +11,7 @@
 
 (defenterprise greeting
   "Returns an special greeting for anyone running the Enterprise Edition, regardless of token."
+  :feature :none
   [username]
   (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
 
