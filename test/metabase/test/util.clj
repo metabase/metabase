@@ -19,6 +19,7 @@
             [metabase.models.permissions-group :as group]
             [metabase.models.setting :as setting]
             [metabase.models.setting.cache :as setting.cache]
+            [metabase.models.timeline :as timeline]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
             [metabase.test-runner.assert-exprs :as assert-exprs]
@@ -199,11 +200,13 @@
    (fn [_]
      {:name       "Timeline of bird squawks"
       :default    false
+      :icon       timeline/DefaultIcon
       :creator_id (rasta-id)})
 
    TimelineEvent
    (fn [_]
      {:name         "default timeline event"
+      :icon         timeline/DefaultIcon
       :timestamp    (t/zoned-date-time)
       :timezone     "US/Pacific"
       :time_matters true
