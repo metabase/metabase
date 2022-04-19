@@ -8,6 +8,7 @@ import {
   popover,
   visitQuestionAdhoc,
   visualize,
+  summarize,
   filter,
 } from "__support__/e2e/cypress";
 
@@ -235,7 +236,7 @@ describe("scenarios > question > filter", () => {
     openOrdersTable({ mode: "notebook" });
     filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
-    cy.findByText("Previous").click();
+    cy.findByText("Specific dates...").click();
     cy.findByText("Before").click();
     // Collapse the calendar view
     cy.icon("calendar").click();
@@ -433,7 +434,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter by this column").click();
     cy.findByText("Is").click();
     cy.findByText("Is empty").click();
-    cy.findByText("Update filter").click();
+    cy.findByText("Add filter").click();
 
     // filter out everything
     cy.contains("Showing 0 rows");
@@ -456,7 +457,7 @@ describe("scenarios > question > filter", () => {
     cy.findByText("Filter by this column").click();
     cy.findByText("Equal to").click();
     cy.findByText("Is empty").click();
-    cy.findByText("Update filter").click();
+    cy.findByText("Add filter").click();
 
     // filter out everything
     cy.contains("Showing 0 rows");
@@ -528,7 +529,14 @@ describe("scenarios > question > filter", () => {
     // Via the GUI, create a filter with "include-current" option
     filter({ mode: "notebook" });
     cy.findByText("Created At").click({ force: true });
-    cy.contains("Include today").click();
+    popover().within(() => {
+      cy.contains("Relative dates...").click();
+      cy.contains("Past").click();
+      cy.icon("ellipsis").click();
+    });
+    popover()
+      .last()
+      .within(() => cy.findByText(/^Include/).click());
     cy.button("Add filter").click();
 
     // Switch to custom expression
@@ -536,13 +544,22 @@ describe("scenarios > question > filter", () => {
 
     popover().within(() => {
       cy.icon("chevronleft").click();
+      cy.icon("chevronleft").click();
       cy.findByText("Custom Expression").click();
     });
     cy.button("Done").click();
 
     // Back to GUI and "Include today" should be still checked
     cy.findByText("Created At Previous 30 Days").click();
-    cy.findByLabelText("Include today").should("be.checked");
+    popover().within(() => {
+      cy.icon("ellipsis").click();
+    });
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText(/^Include/).should("exist");
+        cy.icon("check").should("exist");
+      });
   });
 
   it("should be able to convert case-insensitive filter to custom expression (metabase#14959)", () => {
@@ -905,33 +922,37 @@ describe("scenarios > question > filter", () => {
     });
   });
 
+  const BOOLEAN_QUERY =
+    'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"';
+
+  const setupBooleanQuery = () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.createNativeQuestion(
+      {
+        name: "16386",
+        native: {
+          query: BOOLEAN_QUERY,
+        },
+        visualization_settings: {
+          "table.pivot_column": "boolean",
+          "table.cell_column": "integer",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByText("Explore results").click();
+    cy.wait("@dataset");
+  };
+
   ["true", "false"].forEach(condition => {
     const regexCondition = new RegExp(`${condition}`, "i");
     // We must use and return strings instead of boolean and numbers
     const integerAssociatedWithCondition = condition === "true" ? "0" : "1";
 
     describe(`should be able to filter on the boolean column ${condition.toUpperCase()} (metabase#16386)`, () => {
-      beforeEach(() => {
-        cy.intercept("POST", "/api/dataset").as("dataset");
-
-        cy.createNativeQuestion(
-          {
-            name: "16386",
-            native: {
-              query:
-                'select 0::integer as "integer", true::boolean AS "boolean" union all \nselect 1::integer as "integer", false::boolean AS "boolean" union all \nselect null as "integer", true::boolean AS "boolean" union all \nselect -1::integer as "integer", null AS "boolean"',
-            },
-            visualization_settings: {
-              "table.pivot_column": "boolean",
-              "table.cell_column": "integer",
-            },
-          },
-          { visitQuestion: true },
-        );
-
-        cy.findByText("Explore results").click();
-        cy.wait("@dataset");
-      });
+      beforeEach(setupBooleanQuery);
 
       it("from the column popover (metabase#16386-1)", () => {
         cy.get(".cellData")
@@ -949,7 +970,7 @@ describe("scenarios > question > filter", () => {
           cy.findByLabelText(regexCondition)
             .check({ force: true }) // the radio input is hidden
             .should("be.checked");
-          cy.button("Update filter").click();
+          cy.button("Add filter").click();
           cy.wait("@dataset");
         });
 
@@ -982,6 +1003,24 @@ describe("scenarios > question > filter", () => {
         });
       });
 
+      it("from custom expressions", () => {
+        cy.icon("notebook").click();
+
+        filter({ mode: "notebook" });
+
+        popover()
+          .contains("Custom Expression")
+          .click();
+        popover().within(() => {
+          enterCustomColumnDetails({ formula: `boolean = ${condition}` });
+          cy.button("Done").click();
+        });
+
+        visualize(() => {
+          assertOnTheResult();
+        });
+      });
+
       function addBooleanFilter() {
         // This is really inconvenient way to ensure that the element is selected, but it's the only one currently
         cy.findByLabelText(regexCondition)
@@ -995,6 +1034,54 @@ describe("scenarios > question > filter", () => {
         cy.findByTextEnsureVisible(`boolean is ${condition}`);
         cy.get(".cellData").should("contain", integerAssociatedWithCondition);
       }
+    });
+  });
+
+  describe("should handle boolean arguments", () => {
+    beforeEach(setupBooleanQuery);
+
+    it("with case", () => {
+      cy.icon("notebook").click();
+
+      cy.findByText("Custom column").click();
+      enterCustomColumnDetails({
+        formula: "Case(boolean, 45, -10)",
+        name: "Test",
+      });
+      cy.button("Done").click();
+
+      filter({ mode: "notebook" });
+
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        enterCustomColumnDetails({ formula: `boolean = true` });
+        cy.button("Done").click();
+      });
+
+      visualize(() => {
+        cy.contains("45").should("exist");
+        cy.contains("-10").should("not.exist");
+      });
+    });
+
+    it("with CountIf", () => {
+      cy.icon("notebook").click();
+      summarize({ mode: "notebook" });
+      popover()
+        .contains("Custom Expression")
+        .click();
+      popover().within(() => {
+        enterCustomColumnDetails({ formula: "CountIf(boolean)" });
+        cy.findByPlaceholderText("Name (required)").type(
+          "count if boolean is true",
+        );
+        cy.findByText("Done").click();
+      });
+      visualize(() => {
+        cy.contains("2").should("exist");
+      });
     });
   });
 });

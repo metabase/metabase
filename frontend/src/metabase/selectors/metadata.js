@@ -163,10 +163,6 @@ export const getMetadata = createSelector(
 
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
-    console.log(">>>>>>>>>>>");
-    console.log(">>>databases", meta.databases);
-    console.log(">>>schemas", meta.schemas);
-    console.log(">>>tables", meta.tables);
     return meta;
   },
 );

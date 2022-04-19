@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
+import { UserInfo } from "metabase-types/store";
 import UserStep, { UserStepProps } from "./UserStep";
-import { UserInfo } from "../../types";
 
 const FormMock = () => <div />;
 

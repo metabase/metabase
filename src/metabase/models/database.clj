@@ -2,7 +2,6 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -183,10 +182,13 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database read-or-write]
+(defn- perms-objects-set [{db-id :id} read-or-write]
   #{(case read-or-write
-      :read (perms/data-perms-path (u/the-id database))
-      :write (perms/db-details-write-perms-path (u/the-id database)))})
+      ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
+      ;; Since a user can have one or the other, we use `i/has-any-permissions?` to check both read and write permission
+      ;; sets in the `can-read?` implementation.
+      :read (perms/data-perms-path db-id)
+      :write (perms/db-details-write-perms-path db-id))})
 
 (u/strict-extend (class Database)
   models/IModel
@@ -208,7 +210,9 @@
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-partial-permissions? :read)
+          :can-read?         (i/has-any-permissions?
+                              (partial i/current-user-has-partial-permissions? :read)
+                              (partial i/current-user-has-full-permissions? :write))
           :can-write?        (partial i/current-user-has-full-permissions? :write)}))
 
 
@@ -259,13 +263,14 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` and `settings` for any non-admin User. For admin users they can
-;; still see the `details` but remove anything resembling a password. No one gets to see this in an API response!
+;; when encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+;; an API response!
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (if (not (:is_superuser @*current-user*))
+    (if (not (i/can-write? db))
       (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce

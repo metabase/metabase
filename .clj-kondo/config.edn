@@ -16,7 +16,7 @@
                       (clojure.core.logic/matcha)
                       (clojure.core.logic/run)
                       (metabase.test/with-temporary-setting-values)
-                      (clojure.test/is [query= sql=])
+                      (clojure.test/is [query= sql= partial=])
                       (toucan.util.test/with-temp*)
                       (metabase.test/with-temp*)
                       (taoensso.nippy/extend-freeze)

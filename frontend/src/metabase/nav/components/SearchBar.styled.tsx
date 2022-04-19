@@ -23,7 +23,8 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   align-items: center;
   position: relative;
 
-  background-color: ${color("bg-light")};
+  background-color: ${props =>
+    props.isActive ? color("bg-medium") : color("bg-light")};
   border: 1px solid ${color("border")};
 
   overflow: hidden;
@@ -75,7 +76,7 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   }
 
   ${breakpointMinSmall} {
-    padding: 10px 12px;
+    padding: 9px 12px;
   }
 
   ${breakpointMaxSmall} {
@@ -130,7 +131,7 @@ export const SearchResultsFloatingContainer = styled.div`
   }
 
   ${breakpointMinSmall} {
-    top: 60px;
+    top: 42px;
   }
 `;
 

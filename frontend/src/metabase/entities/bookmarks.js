@@ -23,7 +23,18 @@ const Bookmarks = createEntity({
   objectSelectors: {
     getIcon,
   },
-
+  actions: {
+    reorder: bookmarks => {
+      const bookmarksForOrdering = bookmarks.map(({ type, item_id }) => ({
+        type,
+        item_id,
+      }));
+      BookmarkApi.reorder(
+        { orderings: { orderings: bookmarksForOrdering } },
+        { bodyParamName: "orderings" },
+      );
+    },
+  },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
       state[`card-${payload?.object?.id}`] = undefined;

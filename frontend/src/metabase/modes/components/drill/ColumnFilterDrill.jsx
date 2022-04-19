@@ -48,6 +48,7 @@ export default function QuickFilterDrill({ question, clicked }) {
             onClose();
           }}
           showFieldPicker={false}
+          isNew={true}
         />
       ),
     },

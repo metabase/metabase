@@ -87,12 +87,7 @@ Some things to remember with bookmarks:
 - Bookmarks are personal; other people can't see your bookmarks. If you want to highlight something for everyone, you'll want to put it in an official collection and/or pin the item in the collection (see [collections][collections]).
 - If you end up bookmarking a lot of items, you can collapse the bookmarks section in the sidebar (or remove the bookmarks that are just getting in your way).
 - Items that you bookmark will get a boost in your search results (but not the search results of other people).
-
----
-
-## Next: Asking questions
-
-So what do you do if you can't find an existing dashboard or question that's exactly what you're looking for? Let's learn about [asking our own new questions](04-asking-questions.md).
+- To reorder bookmarks, simply drag and drop them in the sidebar.
 
 [collections]: collections.md
 [dashboards]: 07-dashboards.md

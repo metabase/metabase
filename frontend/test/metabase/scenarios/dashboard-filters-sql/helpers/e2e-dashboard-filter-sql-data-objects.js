@@ -130,7 +130,7 @@ export const DASHBOARD_SQL_DATE_FILTERS = {
   "All Options": {
     sqlFilter: "date/all-options",
     value: {
-      timeBucket: "Years",
+      timeBucket: "years",
     },
     representativeResult: "Hudson Borer",
   },

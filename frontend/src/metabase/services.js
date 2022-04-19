@@ -28,6 +28,7 @@ export const BookmarkApi = {
     create: POST("/api/bookmark/dashboard/:id"),
     delete: DELETE("/api/bookmark/dashboard/:id"),
   },
+  reorder: PUT("/api/bookmark/ordering"),
 };
 
 // only available with token loaded

@@ -462,12 +462,13 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-empty", verboseName: t`Not empty` },
   ],
   [TEMPORAL]: [
+    { name: "!=", verboseName: t`Excludes` },
     { name: "=", verboseName: t`Is` },
     { name: "<", verboseName: t`Before` },
     { name: ">", verboseName: t`After` },
     { name: "between", verboseName: t`Between` },
     { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    { name: "not-null", verboseName: t`Is not empty` },
   ],
   [LOCATION]: [
     { name: "=", verboseName: t`Is` },

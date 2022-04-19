@@ -656,8 +656,9 @@
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache dashboard_id], :or {ignore_cache false dashboard_id nil}} :body}]
+  [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
+   collection_preview (s/maybe s/Bool)
    dashboard_id (s/maybe su/IntGreaterThanZero)}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
@@ -669,6 +670,7 @@
    :parameters   parameters
    :ignore_cache ignore_cache
    :dashboard-id dashboard_id
+   :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
@@ -698,7 +700,7 @@
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [card-id]
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
@@ -710,7 +712,7 @@
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
@@ -721,7 +723,7 @@
 (api/defendpoint GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -729,7 +731,7 @@
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 

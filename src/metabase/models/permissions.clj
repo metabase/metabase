@@ -89,7 +89,7 @@
     User would otherwise have. See the `Determining query permissions` section below for more details. As with
     segmented permissions, block anti-permissions are only available in Metabase® Enterprise Edition™.
 
-  * _General permisisons_ -- are per-Group permissions that give non-admin users access to features like:
+  * _Application permisisons_ -- are per-Group permissions that give non-admin users access to features like:
     change instance's Settings; access Audit, Tools, Troubleshooting ...
 
   ### Determining CRUD permissions in the REST API
@@ -286,11 +286,11 @@
                           ;; /collection/namespace/:namespace/root/read/ -> read perms for 'Root' Collection in
                           ;; non-default namespace
                           (opt "read/"))))
-               ;; any path starting with /general is a permissions that is not scoped by database or collection
-               ;; /general/setting/      -> permissions to access /admin/settings page
-               ;; /general/monitoring/   -> permissions to access tools, audit and troubleshooting
-               ;; /general/subscription/ -> permisisons to create/edit subscriptions and alerts
-               (and "general/"
+               ;; any path starting with /application is a permissions that is not scoped by database or collection
+               ;; /application/setting/      -> permissions to access /admin/settings page
+               ;; /application/monitoring/   -> permissions to access tools, audit and troubleshooting
+               ;; /application/subscription/ -> permisisons to create/edit subscriptions and alerts
+               (and "application/"
                     (or
                      "setting/"
                      "monitoring/"
@@ -485,12 +485,12 @@
   "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
-  [db-id schema table-id]
+  [& path-components]
   (let [f (u/ignore-exceptions
            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
-      (f db-id schema table-id)
+      (apply f path-components)
       "/")))
 
 (s/defn db-details-write-perms-path :- Path
@@ -505,18 +505,18 @@
       (f db-id)
       "/")))
 
-(s/defn general-perms-path :- Path
-  "Returns the permissions path for *full* access a general permission."
+(s/defn application-perms-path :- Path
+  "Returns the permissions path for *full* access a application permission."
   [perm-type]
   (case perm-type
     :setting
-    "/general/setting/"
+    "/application/setting/"
 
     :monitoring
-    "/general/monitoring/"
+    "/application/monitoring/"
 
     :subscription
-    "/general/subscription/"))
+    "/application/subscription/"))
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
 
@@ -563,10 +563,10 @@
   (every? (partial set-has-partial-permissions? permissions-set)
           paths-set))
 
-(s/defn set-has-general-permission-of-type? :- s/Bool
-  "Does `permissions-set` grant *full* access to a general permission of type `perm-type`?"
+(s/defn set-has-application-permission-of-type? :- s/Bool
+  "Does `permissions-set` grant *full* access to a application permission of type `perm-type`?"
   [permissions-set perm-type]
-  (set-has-full-permissions? permissions-set (general-perms-path perm-type)))
+  (set-has-full-permissions? permissions-set (application-perms-path perm-type)))
 
 (s/defn perms-objects-set-for-parent-collection :- #{Path}
   "Implementation of `IModel` `perms-objects-set` for models with a `collection_id`, such as Card, Dashboard, or Pulse.
@@ -881,10 +881,10 @@
   (delete-related-permissions! group-or-id (data-perms-path database-or-id)
     [:not= :object (adhoc-native-query-path database-or-id)]))
 
-(defn revoke-general-permissions!
-  "Remove all permissions entries for a Group to access a General feature."
+(defn revoke-application-permissions!
+  "Remove all permissions entries for a Group to access a Application permisisons"
   [group-or-id perm-type]
-  (delete-related-permissions! group-or-id (general-perms-path perm-type)))
+  (delete-related-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn grant-permissions-for-all-schemas!
   "Grant full permissions for all schemas belonging to this database.
@@ -902,10 +902,10 @@
   [group-or-id database-or-id]
   (grant-permissions! group-or-id (feature-perms-path :download :full database-or-id)))
 
-(defn grant-general-permissions!
-  "Grant full permissions for a group to access a General feature."
+(defn grant-application-permissions!
+  "Grant full permissions for a group to access a Application permisisons."
   [group-or-id perm-type]
-  (grant-permissions! group-or-id (general-perms-path perm-type)))
+  (grant-permissions! group-or-id (application-perms-path perm-type)))
 
 (defn- is-personal-collection-or-descendant-of-one? [collection]
   (classloader/require 'metabase.models.collection)
@@ -1158,7 +1158,7 @@
   "Save changes made to permission graph for logging/auditing purposes.
   This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
   *  `model`   -- revision model, should be one of
-                  [PermissionsRevision, CollectionPermissionGraphRevision, GeneralPermissionsRevision]
+                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
   *  `before`  -- the graph before the changes
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]

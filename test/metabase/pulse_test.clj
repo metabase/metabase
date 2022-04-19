@@ -34,7 +34,7 @@
   (mt/email-to :rasta {:subject subject
                        :body email-body}))
 
-(defn- do-with-pulse-for-card
+(defn do-with-pulse-for-card
   "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
   invokes
 
@@ -63,7 +63,7 @@
         (f pulse))
       (f pulse))))
 
-(defmacro ^:private with-pulse-for-card
+(defmacro with-pulse-for-card
   "e.g.
 
     (with-pulse-for-card [pulse {:card my-card, :pulse pulse-properties, ...}]

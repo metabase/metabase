@@ -98,6 +98,15 @@
       {:pre [(contains? usernames user-name)]}
       (u/the-id (fetch-user user-name))))))
 
+(defn user-descriptor
+  "Returns \"admin\" or \"non-admin\" for a given user.
+  User could be a keyword like `:rasta` or a user object."
+  [user]
+  (cond
+   (keyword user)       (user-descriptor (fetch-user user))
+   (:is_superuser user) "admin"
+   :else                "non-admin"))
+
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
   "Return a map with `:username` and `:password` for User with `username`.
 

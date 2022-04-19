@@ -50,6 +50,7 @@ export default class DashCard extends Component {
   static propTypes = {
     dashcard: PropTypes.object.isRequired,
     gridItemWidth: PropTypes.number.isRequired,
+    totalNumGridCols: PropTypes.number.isRequired,
     dashcardData: PropTypes.object.isRequired,
     slowCards: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
@@ -168,6 +169,8 @@ export default class DashCard extends Component {
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
 
+    const gridSize = { width: dashcard.sizeX, height: dashcard.sizeY };
+
     return (
       <div
         className={cx(
@@ -198,6 +201,7 @@ export default class DashCard extends Component {
               }
               isPreviewing={this.state.isPreviewingCard}
               onPreviewToggle={this.handlePreviewToggle}
+              dashboard={dashboard}
             />
           </DashboardCardActionsPanel>
         ) : null}
@@ -220,11 +224,8 @@ export default class DashCard extends Component {
           parameterValuesBySlug={parameterValuesBySlug}
           isEditing={isEditing}
           isPreviewing={this.state.isPreviewingCard}
-          gridSize={
-            this.props.isMobile
-              ? undefined
-              : { width: dashcard.sizeX, height: dashcard.sizeY }
-          }
+          gridSize={gridSize}
+          totalNumGridCols={this.props.totalNumGridCols}
           actionButtons={
             isEmbed ? (
               <QueryDownloadWidget
@@ -317,6 +318,7 @@ const DashCardActionButtons = ({
   showClickBehaviorSidebar,
   onPreviewToggle,
   isPreviewing,
+  dashboard,
 }) => {
   const buttons = [];
 
@@ -340,6 +342,7 @@ const DashCardActionButtons = ({
           key="chart-settings-button"
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          dashboard={dashboard}
         />,
       );
     }
@@ -379,7 +382,11 @@ const DashCardActionButtons = ({
   );
 };
 
-const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
+const ChartSettingsButton = ({
+  series,
+  onReplaceAllVisualizationSettings,
+  dashboard,
+}) => (
   <ModalWithTrigger
     wide
     tall
@@ -400,6 +407,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
       series={series}
       onChange={onReplaceAllVisualizationSettings}
       isDashboard
+      dashboard={dashboard}
     />
   </ModalWithTrigger>
 );

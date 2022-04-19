@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -6,7 +6,7 @@ import _ from "underscore";
 import { IconProps } from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { Bookmark, Collection, User } from "metabase-types/api";
+import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
@@ -50,7 +50,7 @@ interface CollectionTreeItem extends Collection {
 type Props = {
   isOpen: boolean;
   currentUser: User;
-  bookmarks: Bookmark[];
+  bookmarks: BookmarksType;
   collections: Collection[];
   rootCollection: Collection;
   hasDataAccess: boolean;
@@ -67,6 +67,7 @@ type Props = {
 };
 
 function MainNavbarContainer({
+  bookmarks,
   isOpen,
   currentUser,
   hasOwnDatabase,
@@ -80,6 +81,14 @@ function MainNavbarContainer({
   closeNavbar,
   ...props
 }: Props) {
+  const [orderedBookmarks, setOrderedBookmarks] = useState([]);
+
+  useEffect(() => {
+    if (bookmarks?.length !== orderedBookmarks?.length) {
+      setOrderedBookmarks(bookmarks as any);
+    }
+  }, [orderedBookmarks, bookmarks]);
+
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
       if (e.key === "." && (e.ctrlKey || e.metaKey)) {
@@ -141,11 +150,30 @@ function MainNavbarContainer({
     return [root, ...buildCollectionTree(preparedCollections)];
   }, [rootCollection, collections, currentUser]);
 
+  const reorderBookmarks = ({
+    newIndex,
+    oldIndex,
+  }: {
+    newIndex: number;
+    oldIndex: number;
+  }) => {
+    const bookmarksToBeReordered =
+      orderedBookmarks.length > 0 ? [...orderedBookmarks] : [...bookmarks];
+    const element = bookmarksToBeReordered[oldIndex];
+
+    bookmarksToBeReordered.splice(oldIndex, 1);
+    bookmarksToBeReordered.splice(newIndex, 0, element);
+
+    setOrderedBookmarks(bookmarksToBeReordered as any);
+    Bookmarks.actions.reorder(bookmarksToBeReordered);
+  };
+
   return (
     <NavRoot isOpen={isOpen}>
       {allFetched && rootCollection ? (
         <MainNavbarView
           {...props}
+          bookmarks={orderedBookmarks.length > 0 ? orderedBookmarks : bookmarks}
           isOpen={isOpen}
           currentUser={currentUser}
           collections={collectionTree}
@@ -153,6 +181,7 @@ function MainNavbarContainer({
           selectedItem={selectedItem}
           hasDataAccess={hasDataAccess}
           handleCloseNavbar={closeNavbar}
+          reorderBookmarks={reorderBookmarks}
         />
       ) : (
         <LoadingContainer>
