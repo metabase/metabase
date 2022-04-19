@@ -87,7 +87,7 @@
     (mt/with-temp-scheduler
       (is (schema= {:scheduler (su/non-empty [s/Str])
                     :jobs      [{:key         su/NonBlankString
-                                 :description su/NonBlankString
+                                 :description (s/maybe su/NonBlankString)
                                  :triggers    [{:key                 su/NonBlankString
                                                 :description         su/NonBlankString
                                                 :misfire-instruction su/NonBlankString
