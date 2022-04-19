@@ -47,7 +47,10 @@ function CollectionCardVisualization({
               questionRef.current || new Question(card, metadata);
 
             return (
-              <QuestionResultLoader question={questionRef.current}>
+              <QuestionResultLoader
+                question={questionRef.current}
+                collectionPreview
+              >
                 {({ loading, error, reload, rawSeries, results, result }) => {
                   const shouldShowLoader = loading && results == null;
                   const { errorMessage, errorIcon } = getErrorProps(
