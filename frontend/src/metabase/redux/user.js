@@ -33,12 +33,9 @@ export const LOAD_USER_LOCALIZATION = "metabase/user/LOAD_USER_LOCALIZATION";
 export const loadUserLocalization = createThunkAction(
   LOAD_USER_LOCALIZATION,
   () => async (dispatch, getState) => {
-    const user = getState().currentUser;
-    if (user && user.locale) {
-      await loadLocalization(user.locale);
-    } else {
-      await loadLocalization(Settings.get("site-locale"));
-    }
+    const userLocale = getState().currentUser?.locale;
+    const siteLocale = Settings.get("site-locale");
+    await loadLocalization(userLocale ?? siteLocale ?? "en");
   },
 );
 
