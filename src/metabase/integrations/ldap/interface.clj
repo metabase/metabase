@@ -2,7 +2,6 @@
   "There are separate EE and OSS versions of the LDAP integration; this namespace defines a common protocol both
   implementations conform to."
   (:require [metabase.util.schema :as su]
-            [potemkin :as p]
             [schema.core :as s])
   (:import com.unboundid.ldap.sdk.DN))
 

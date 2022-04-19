@@ -5,11 +5,11 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.user :as user :refer [User]]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.public-settings.premium-features :refer [defenterprise-schema]]
             [metabase.util.schema :as su]
-            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import [com.unboundid.ldap.sdk DN Filter LDAPConnectionPool]))

@@ -1,12 +1,10 @@
 (ns metabase.integrations.ldap
   (:require [cheshire.core :as json]
             [clj-ldap.client :as ldap]
-            [clojure.tools.logging :as log]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :refer [User]]
-            [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -187,6 +185,7 @@
      (ldap/bind? conn dn password))))
 
 (s/defn ldap-settings
+  "A map of all ldap settings"
   []
   {:first-name-attribute (ldap-attribute-firstname)
    :last-name-attribute  (ldap-attribute-lastname)

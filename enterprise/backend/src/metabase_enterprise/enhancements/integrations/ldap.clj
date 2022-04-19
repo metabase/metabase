@@ -1,8 +1,6 @@
 (ns metabase-enterprise.enhancements.integrations.ldap
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
-  (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.integrations.ldap :as ldap]
+  (:require [metabase.integrations.common :as integrations.common]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.setting :as setting :refer [defsetting]]
@@ -11,10 +9,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
-            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
+            [toucan.db :as db]))
 
 (def ^:private EEUserInfo
   (assoc i/UserInfo :attributes (s/maybe {s/Keyword s/Any})))
