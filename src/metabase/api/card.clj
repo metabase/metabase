@@ -656,8 +656,9 @@
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache dashboard_id], :or {ignore_cache false dashboard_id nil}} :body}]
+  [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
+   collection_preview (s/maybe s/Bool)
    dashboard_id (s/maybe su/IntGreaterThanZero)}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
@@ -669,6 +670,7 @@
    :parameters   parameters
    :ignore_cache ignore_cache
    :dashboard-id dashboard_id
+   :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
