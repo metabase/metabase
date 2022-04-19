@@ -525,25 +525,24 @@ export const initializeQB = (location, params) => {
             }
           }
         }
-
-        const dbId = card.database_id;
-        let database = Databases.selectors.getObject(getState(), {
-          entityId: dbId,
-        });
-        // if we haven't already loaded this database, block on loading dbs now so we can check features and write permissions
-        if (!database) {
-          await dispatch(Databases.actions.fetchList());
-          database = Databases.selectors.getObject(getState(), {
-            entityId: dbId,
-          });
-        }
-
         // if this card has any snippet tags we might need to fetch snippets pending permissions
         if (
           Object.values(
             getIn(card, ["dataset_query", "native", "template-tags"]) || {},
           ).filter(t => t.type === "snippet").length > 0
         ) {
+          const dbId = card.database_id;
+          let database = Databases.selectors.getObject(getState(), {
+            entityId: dbId,
+          });
+          // if we haven't already loaded this database, block on loading dbs now so we can check write permissions
+          if (!database) {
+            await dispatch(Databases.actions.fetchList());
+            database = Databases.selectors.getObject(getState(), {
+              entityId: dbId,
+            });
+          }
+
           // database could still be missing if the user doesn't have any permissions
           // if the user has native permissions against this db, fetch snippets
           if (database && database.native_permissions === "write") {
@@ -650,6 +649,10 @@ export const initializeQB = (location, params) => {
     // Fetch the question metadata (blocking)
     if (card) {
       await dispatch(loadMetadataForCard(card));
+    }
+    // Fetch all databases so switching between them works correctly
+    if (!Databases.selectors.getLoaded(getState())) {
+      await dispatch(Databases.actions.fetchList());
     }
 
     let question = card && new Question(card, getMetadata(getState()));
