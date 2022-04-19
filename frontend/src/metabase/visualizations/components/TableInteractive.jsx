@@ -74,6 +74,7 @@ export default class TableInteractive extends Component {
     };
     this.columnHasResized = {};
     this.headerRefs = [];
+    this.detailShortcutRef = React.createRef();
 
     window.METABASE_TABLE = this;
   }
@@ -824,17 +825,17 @@ export default class TableInteractive extends Component {
   };
 
   handleHoverRow = (event, rowIndex) => {
-    const hoverDetailEl = document?.getElementById("detail-shortcut");
-    const detailButton = document?.querySelector(
-      ".TableInteractive-detailButton",
-    );
+    const hoverDetailEl = this.detailShortcutRef.current;
 
     if (!hoverDetailEl) {
       return;
     }
 
-    const scrollOffset =
-      document.getElementById("main-data-grid")?.scrollTop || 0;
+    const detailButton = hoverDetailEl.querySelector(
+      ".TableInteractive-detailButton",
+    );
+
+    const scrollOffset = ReactDOM.findDOMNode(this.grid)?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
     if (event?.currentTarget?.id === "gutter-column") {
@@ -861,7 +862,7 @@ export default class TableInteractive extends Component {
   };
 
   handleLeaveRow = () => {
-    document
+    this.detailShortcutRef.current
       ?.querySelector(".TableInteractive-detailButton")
       .classList.remove("show");
   };
@@ -948,7 +949,7 @@ export default class TableInteractive extends Component {
                     onMouseMove={this.handleHoverRow}
                     onMouseLeave={this.handleLeaveRow}
                   >
-                    <DetailShortcut />
+                    <DetailShortcut ref={this.detailShortcutRef} />
                   </div>
                 </>
               )}
@@ -1049,28 +1050,29 @@ export default class TableInteractive extends Component {
   }
 }
 
-function DetailShortcut() {
-  return (
-    <div
-      id="detail-shortcut"
-      className="TableInteractive-cellWrapper cursor-pointer"
-      style={{
-        position: "absolute",
-        left: 0,
-        top: 0,
-        height: ROW_HEIGHT,
-        width: SIDEBAR_WIDTH,
-        zIndex: 3,
-      }}
-    >
-      <Tooltip tooltip="View Details">
-        <Button
-          iconOnly
-          iconSize={10}
-          icon="expand"
-          className="TableInteractive-detailButton"
-        />
-      </Tooltip>
-    </div>
-  );
-}
+const DetailShortcut = React.forwardRef((_props, ref) => (
+  <div
+    id="detail-shortcut"
+    className="TableInteractive-cellWrapper cursor-pointer"
+    ref={ref}
+    style={{
+      position: "absolute",
+      left: 0,
+      top: 0,
+      height: ROW_HEIGHT,
+      width: SIDEBAR_WIDTH,
+      zIndex: 3,
+    }}
+  >
+    <Tooltip tooltip="View Details">
+      <Button
+        iconOnly
+        iconSize={10}
+        icon="expand"
+        className="TableInteractive-detailButton"
+      />
+    </Tooltip>
+  </div>
+));
+
+DetailShortcut.displayName = "DetailShortcut";
