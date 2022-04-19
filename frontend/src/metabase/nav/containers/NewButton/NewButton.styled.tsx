@@ -20,6 +20,10 @@ export const StyledButton = styled(Button)`
   padding: 0.5rem;
   height: 36px;
 
+  ${Button.TextContainer} {
+    margin-left: 0;
+  }
+
   ${breakpointMaxSmall} {
     display: none;
   }

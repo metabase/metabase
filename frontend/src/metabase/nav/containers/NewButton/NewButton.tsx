@@ -113,10 +113,10 @@ function NewButton({
       trigger={
         <StyledButton
           primary
-          contentClassName="flex align-center"
+          icon="add"
+          iconSize={14}
           data-metabase-event="NavBar;Create Menu Click"
         >
-          <Icon name="add" size={14} />
           <Title>{t`New`}</Title>
         </StyledButton>
       }
