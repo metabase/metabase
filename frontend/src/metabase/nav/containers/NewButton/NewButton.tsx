@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { connect } from "react-redux";
-import { withRouter } from "react-router";
+import { push } from "react-router-redux";
 import { LocationDescriptor } from "history";
 
 import Modal from "metabase/components/Modal";
@@ -28,10 +28,6 @@ type NewButtonModal = "MODAL_NEW_DASHBOARD" | "MODAL_NEW_COLLECTION" | null;
 const MODAL_NEW_DASHBOARD: NewButtonModal = "MODAL_NEW_DASHBOARD";
 const MODAL_NEW_COLLECTION: NewButtonModal = "MODAL_NEW_COLLECTION";
 
-interface NewButtonRouterProps {
-  onChangeLocation: (nextLocation: LocationDescriptor) => void;
-}
-
 interface NewButtonStateProps {
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
@@ -39,13 +35,11 @@ interface NewButtonStateProps {
 }
 
 interface NewButtonDispatchProps {
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
   closeNavbar: () => void;
 }
 
-interface NewButtonProps
-  extends NewButtonRouterProps,
-    NewButtonStateProps,
-    NewButtonDispatchProps {}
+interface NewButtonProps extends NewButtonStateProps, NewButtonDispatchProps {}
 
 const mapStateToProps: (state: State) => NewButtonStateProps = state => ({
   hasDataAccess: getHasDataAccess(state),
@@ -54,6 +48,7 @@ const mapStateToProps: (state: State) => NewButtonStateProps = state => ({
 });
 
 const mapDispatchToProps = {
+  onChangeLocation: push,
   closeNavbar,
 };
 
@@ -160,7 +155,6 @@ function NewButton({
 }
 
 export default _.compose(
-  withRouter,
   connect<NewButtonStateProps, NewButtonDispatchProps, unknown, State>(
     mapStateToProps,
     mapDispatchToProps,
