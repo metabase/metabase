@@ -426,6 +426,8 @@ export const PermissionsApi = {
 };
 
 export const PersistedModelsApi = {
+  get: GET("/api/persist/:id"),
+  getForModel: GET("/api/persist/card/:id"),
   enablePersistence: POST("/api/persist/enable"),
   disablePersistence: POST("/api/persist/disable"),
   setRefreshInterval: POST("/api/persist/set-interval"),
