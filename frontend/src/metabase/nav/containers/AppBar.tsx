@@ -16,7 +16,7 @@ import { isSmallScreen } from "metabase/lib/dom";
 
 import {
   AppBarRoot,
-  LogoIconWrapper,
+  LogoLink,
   SearchBarContainer,
   SearchBarContent,
   RowLeft,
@@ -26,7 +26,7 @@ import {
 type Props = {
   isSidebarOpen: boolean;
   location: Location;
-  onNewClick: () => void;
+  onNewClick: (modalName: string) => void;
   onToggleSidebarClick: () => void;
   handleCloseSidebar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
@@ -70,11 +70,13 @@ function AppBar({
   return (
     <AppBarRoot>
       <RowLeft>
-        <LogoIconWrapper>
-          <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
-            <LogoIcon size={24} />
-          </Link>
-        </LogoIconWrapper>
+        <LogoLink
+          to="/"
+          onClick={onLogoClick}
+          data-metabase-event="Navbar;Logo"
+        >
+          <LogoIcon size={24} />
+        </LogoLink>
         {!isSearchActive && (
           <Tooltip tooltip={sidebarButtonTooltip}>
             <SidebarButton
