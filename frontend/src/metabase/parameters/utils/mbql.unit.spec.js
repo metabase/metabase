@@ -1,3 +1,5 @@
+import moment from "moment";
+
 import {
   dateParameterValueToMBQL,
   stringParameterValueToMBQL,
@@ -25,6 +27,14 @@ describe("parameters/utils/mbql", () => {
         { "include-current": true },
       ]);
     });
+    it("should parse past30days~3years", () => {
+      expect(dateParameterValueToMBQL("past30days~3years", null)).toEqual([
+        "between",
+        ["+", null, ["interval", 3, "year"]],
+        ["relative-datetime", -30, "day"],
+        ["relative-datetime", 0, "day"],
+      ]);
+    });
     it("should parse next2years", () => {
       expect(dateParameterValueToMBQL("next2years", null)).toEqual([
         "time-interval",
@@ -40,6 +50,14 @@ describe("parameters/utils/mbql", () => {
         2,
         "year",
         { "include-current": true },
+      ]);
+    });
+    it("should parse next2years~3months", () => {
+      expect(dateParameterValueToMBQL("next2years~3months", null)).toEqual([
+        "between",
+        ["+", null, ["interval", -3, "month"]],
+        ["relative-datetime", 0, "year"],
+        ["relative-datetime", 2, "year"],
       ]);
     });
     it("should parse thisday", () => {
@@ -93,6 +111,80 @@ describe("parameters/utils/mbql", () => {
         "2017-05-02",
       ]);
     });
+    it("should parse hours~0", () => {
+      expect(dateParameterValueToMBQL("hours~0", null)).toEqual([
+        "!=",
+        ["field", null, { "temporal-unit": "hour-of-day" }],
+        date()
+          .hour(0)
+          .toISOString(),
+      ]);
+    });
+    it("should parse hours~0-23", () => {
+      expect(dateParameterValueToMBQL("hours~0-23", null)).toEqual([
+        "!=",
+        ["field", null, { "temporal-unit": "hour-of-day" }],
+        date()
+          .hour(0)
+          .toISOString(),
+        date()
+          .hour(23)
+          .toISOString(),
+      ]);
+    });
+    it("should parse quarters~1", () => {
+      expect(dateParameterValueToMBQL("quarters~1", null)).toEqual([
+        "!=",
+        ["field", null, { "temporal-unit": "quarter-of-year" }],
+        date()
+          .quarter(1)
+          .format("YYYY-MM-DD"),
+      ]);
+    });
+    it("should parse quarters~1-2", () => {
+      expect(dateParameterValueToMBQL("quarters~1-2", null)).toEqual([
+        "!=",
+        ["field", null, { "temporal-unit": "quarter-of-year" }],
+        date()
+          .quarter(1)
+          .format("YYYY-MM-DD"),
+        date()
+          .quarter(2)
+          .format("YYYY-MM-DD"),
+      ]);
+    });
+    it("should parse months~Feb-Mar", () => {
+      expect(dateParameterValueToMBQL("months~Feb-Mar", null)).toEqual([
+        "!=",
+        ["field", null, { "temporal-unit": "month-of-year" }],
+        date()
+          .month(1)
+          .format("YYYY-MM-DD"),
+        date()
+          .month(2)
+          .format("YYYY-MM-DD"),
+      ]);
+    });
+    it("should parse days~Mon-Fri", () => {
+      expect(dateParameterValueToMBQL("days~Mon-Fri", null)).toEqual([
+        "!=",
+        ["field", null, { "temporal-unit": "day-of-week" }],
+        date()
+          .day(1)
+          .format("YYYY-MM-DD"),
+        date()
+          .day(5)
+          .format("YYYY-MM-DD"),
+      ]);
+    });
+
+    const date = () =>
+      moment()
+        .utc()
+        .hours(0)
+        .minutes(0)
+        .seconds(0)
+        .milliseconds(0);
   });
 
   describe("stringParameterValueToMBQL", () => {

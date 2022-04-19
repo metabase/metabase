@@ -1,3 +1,4 @@
+import _ from "underscore";
 import moment from "moment";
 import { assoc } from "icepick";
 import inflection from "inflection";
@@ -591,3 +592,97 @@ export const setTimeComponent = (value, hours, minutes) => {
 
 export const TIME_SELECTOR_DEFAULT_HOUR = 12;
 export const TIME_SELECTOR_DEFAULT_MINUTE = 30;
+
+export const EXCLUDE_UNITS = {
+  days: "day-of-week",
+  months: "month-of-year",
+  quarters: "quarter-of-year",
+  hours: "hour-of-day",
+};
+
+export const EXCLUDE_OPTIONS = {
+  [EXCLUDE_UNITS["days"]]: () => {
+    const now = moment()
+      .utc()
+      .hours(0)
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    return [
+      _.range(0, 7).map(day => {
+        const date = now.day(day + 1);
+        const displayName = date.format("dddd");
+        const value = date.format("YYYY-MM-DD");
+        return {
+          displayName,
+          value,
+          serialized: date.format("ddd"),
+          test: val => value === val,
+        };
+      }),
+    ];
+  },
+  [EXCLUDE_UNITS["months"]]: () => {
+    const now = moment()
+      .utc()
+      .hours(0)
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    const func = month => {
+      const date = now.month(month);
+      const displayName = date.format("MMMM");
+      const value = date.format("YYYY-MM-DD");
+      return {
+        displayName,
+        value,
+        serialized: date.format("MMM"),
+        test: value => moment(value).format("MMMM") === displayName,
+      };
+    };
+    return [_.range(0, 6).map(func), _.range(6, 12).map(func)];
+  },
+  [EXCLUDE_UNITS["quarters"]]: () => {
+    const now = moment()
+      .utc()
+      .hours(0)
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    const suffix = " " + t`quarter`;
+    return [
+      _.range(1, 5).map(quarter => {
+        const date = now.quarter(quarter);
+        const displayName = date.format("Qo");
+        const value = date.format("YYYY-MM-DD");
+        return {
+          displayName: displayName + suffix,
+          value,
+          serialized: date.format("Q"),
+          test: value => moment(value).format("Qo") === displayName,
+        };
+      }),
+    ];
+  },
+  [EXCLUDE_UNITS["hours"]]: () => {
+    const now = moment()
+      .utc()
+      .minutes(0)
+      .seconds(0)
+      .milliseconds(0);
+    const func = hour => {
+      const date = now.hour(hour);
+      const displayName = date.format("h A");
+      return {
+        displayName,
+        value: date.toISOString(),
+        serialized: date.format("H"),
+        test: value =>
+          moment(value)
+            .utc()
+            .format("h A") === displayName,
+      };
+    };
+    return [_.range(0, 12).map(func), _.range(12, 24).map(func)];
+  },
+};
