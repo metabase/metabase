@@ -1,11 +1,7 @@
 (ns metabase.driver.ddl.interface
   (:require [clojure.string :as str]
             [metabase.driver :as driver]
-            [metabase.models.persisted-info :refer [PersistedInfo]]
-            [metabase.models.persisted-info :as persisted-info]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [toucan.db :as db]))
+            [metabase.util.i18n :refer [tru]]))
 
 (defn schema-name
   "Returns a schema name for persisting models. Needs the database to use the db id and the site-uuid to ensure that
@@ -47,62 +43,13 @@
     :persist.check/read-table (tru "Lack permission to read table in schema {0}" schema)
     :persist.check/delete-table (tru "Lack permission to delete table in schema {0}" schema)))
 
-;; db_id, table def, table metadata, table_id
-(defmulti persist!*
-  "Persist a model in a datastore. A table is created and populated in the source datastore, not the application
-  database. Assumes that the destination schema is populated and permissions are correct. This should all be true
-  if `(driver/database-supports engine :persisted-models database)` returns true."
-  {:arglists '([driver database persisted-info card])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defn persist!
-  "Public API for persistence. Handles state transition of the persisted-info"
-  [driver database user-id card]
-  (let [slug (-> card :name persisted-info/slug-name)
-        {:keys [dataset_query result_metadata database_id]} card
-        card-id (u/the-id card)
-        persisted-info (db/insert! PersistedInfo {:card_id       card-id
-                                                  :database_id   database_id
-                                                  :question_slug slug
-                                                  :query_hash    (persisted-info/query-hash dataset_query)
-                                                  :table_name    (format "model_%s_%s" card-id slug)
-                                                  :columns       (mapv :name result_metadata)
-                                                  :active        false
-                                                  :refresh_begin :%now
-                                                  :refresh_end   nil
-                                                  :state         "creating"
-                                                  :creator_id    user-id})
-        {:keys [state] :as results} (persist!* driver database persisted-info card)]
-    (if (= state :success)
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :active true, :refresh_end :%now :state "persisted")
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :refresh_end :%now :state "error", :error (:error results)))
-    ;; todo: some new table to store refresh/create runs
-    results))
-
-(defmulti refresh!*
+(defmulti refresh!
   "Refresh a model in a datastore. A table is created and populated in the source datastore, not the application
   database. Assumes that the destination schema is populated and permissions are correct. This should all be true
   if `(driver/database-supports engine :persisted-models database)` returns true."
   {:arglists '([driver database persisted-info])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
-
-(defn refresh!
-  "Public API to refresh a persisted model. Handles state transitions of the persisted-info record. Returns ???"
-  [driver database persisted-info]
-  (db/update! PersistedInfo (u/the-id persisted-info)
-    :active false, :refresh_begin :%now, :refresh_end nil, :state "refreshing")
-  (let [{:keys [state] :as results} (refresh!* driver database persisted-info)]
-    (if (= state :success)
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :active true, :refresh_end :%now, :state "persisted"
-        :columns (->> results :args :definition :field-definitions (map :field-name))
-        :error nil)
-      (db/update! PersistedInfo (u/the-id persisted-info)
-        :refresh_end :%now :state "error", :error (:error results)))))
 
 (defmulti unpersist!
   "Unpersist a persisted model. Will delete the persisted info after removing the persisted table."

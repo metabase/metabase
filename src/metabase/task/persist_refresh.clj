@@ -7,7 +7,7 @@
             [java-time :as t]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
-            [metabase.models.persisted-info :refer [PersistedInfo]]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.public-settings :as public-settings]
             [metabase.task :as task]
@@ -29,8 +29,8 @@
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
   multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
   allow for easy to control custom behavior in tests."
-  (unpersist! [this database persisted-info])
-  (refresh! [this database persisted-info]))
+  (refresh! [this database persisted-info])
+  (unpersist! [this database persisted-info]))
 
 (def dispatching-refresher
   "Refresher implementation that dispatches to the multimethods in [[metabase.driver.ddl.interface]]."
@@ -39,6 +39,29 @@
       (ddl.i/refresh! (:engine database) database persisted-info))
     (unpersist! [_ database persisted-info]
      (ddl.i/unpersist! (:engine database) database persisted-info))))
+
+(defn- refresh-with-state! [refresher database persisted-info]
+  (when-not (= "deleteable" (:state persisted-info))
+    (db/update! PersistedInfo (u/the-id persisted-info)
+                :active false,
+                :refresh_begin :%now,
+                :refresh_end nil,
+                :state "refreshing"
+                :state_change_at :%now)
+    (let [{:keys [state] :as results} (refresh! refresher database persisted-info)]
+      (if (= state :success)
+        (db/update! PersistedInfo (u/the-id persisted-info)
+                    :active true,
+                    :refresh_end :%now,
+                    :state "persisted"
+                    :state_change_at :%now
+                    :columns (->> results :args :definition :field-definitions (map :field-name))
+                    :error nil)
+        (db/update! PersistedInfo (u/the-id persisted-info)
+                    :state_change_at :%now
+                    :refresh_end :%now
+                    :state "error"
+                    :error (:error results))))))
 
 (defn- saving-task-history
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
@@ -61,14 +84,15 @@
       (let [db-id->db    (u/key-by :id (db/select Database :id
                                                   [:in (map :database_id deleteable)]))
             unpersist-fn (fn []
-                           (reduce (fn [stats d]
-                                     (let [database (-> d :database_id db-id->db)]
-                                       (log/info (trs "Unpersisting model with card-id {0}" (:card_id d)))
+                           (reduce (fn [stats persisted-info]
+                                     (let [database (-> persisted-info :database_id db-id->db)]
+                                       (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
                                        (try
-                                         (unpersist! refresher database d)
+                                         (unpersist! refresher database persisted-info)
+                                         (db/delete! PersistedInfo :id (:id persisted-info))
                                          (update stats :success inc)
                                          (catch Exception e
-                                           (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id d)))
+                                           (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
                                            (update stats :error inc)))))
                                    {:success 0, :error 0}
                                    deleteable))]
@@ -85,7 +109,7 @@
         thunk     (fn []
                     (reduce (fn [stats p]
                               (try
-                                (refresh! refresher database p)
+                                (refresh-with-state! refresher database p)
                                 (update stats :success inc)
                                 (catch Exception e
                                   (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id p)))
@@ -93,10 +117,9 @@
                             {:success 0, :error 0}
                             persisted))]
     (saving-task-history "persist-refresh" database-id thunk))
-  (log/info (trs "Finished persisted model refresh task for Database {0}." database-id))
-  (prune-deleteable-persists! refresher))
+  (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
 
-(defn refresh-individual!
+(defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher]
   (log/info (trs "Attempting to refresh individual for persisted-info {0}."
@@ -108,7 +131,7 @@
       (do
        (saving-task-history "persist-refresh" (u/the-id database)
                             (fn []
-                              (try (refresh! refresher database persisted-info)
+                              (try (refresh-with-state! refresher database persisted-info)
                                    {:success 1 :error 0}
                                    (catch Exception e
                                      (log/info e (trs "Error refreshing persisting model with card-id {0}"
@@ -128,26 +151,52 @@
       "individual" (refresh-individual! persisted-id dispatching-refresher)
       (log/info (trs "Unknown payload type {0}" type)))))
 
+(defn- prune-job-fn!
+  [_job-context]
+  (prune-deleteable-persists! dispatching-refresher))
+
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} PersistenceRefresh
   [job-context]
   (refresh-job-fn! job-context))
 
-(def persistence-job-key
-  "Job key string for persistence job. Call `(jobs/key persistence-job-key)` if you need the org.quartz.JobKey
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} PersistencePrune
+  [job-context]
+  (prune-job-fn! job-context))
+
+(def ^:private refresh-job-key
+  "Job key string for refresh job. Call `(jobs/key refresh-job-key)` if you need the org.quartz.JobKey
   instance."
   "metabase.task.PersistenceRefresh.job")
 
-(def ^:private persistence-job
+(def ^:private prune-job-key
+  "Job key string for prune job. Call `(jobs/key prune-job-key)` if you need the org.quartz.JobKey
+  instance."
+  "metabase.task.PersistencePrune.job")
+
+(def ^:private refresh-job
   (jobs/build
    (jobs/with-description "Persisted Model refresh task")
    (jobs/of-type PersistenceRefresh)
-   (jobs/with-identity (jobs/key persistence-job-key))
+   (jobs/with-identity (jobs/key refresh-job-key))
    (jobs/store-durably)))
 
-(defn- trigger-key [database]
-  (triggers/key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id database))))
+(def ^:private prune-job
+  (jobs/build
+   (jobs/with-description "Persisted Model prune task")
+   (jobs/of-type PersistencePrune)
+   (jobs/with-identity (jobs/key prune-job-key))
+   (jobs/store-durably)))
 
-(defn individual-trigger-key [persisted-info]
+(def ^:private prune-scheduled-trigger-key
+  (triggers/key "metabase.task.PersistencePrune.scheduled.trigger"))
+
+(def ^:private prune-once-trigger-key
+  (triggers/key "metabase.task.PersistencePrune.once.trigger"))
+
+(defn- database-trigger-key [database]
+  (triggers/key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id database))))
+
+(defn- individual-trigger-key [persisted-info]
   (triggers/key (format "metabase.task.PersistenceRefresh.individual.trigger.%d"
                         (u/the-id persisted-info))))
 
@@ -162,21 +211,48 @@
                          (format "0 0 0/%d * * ? *" hours)))
    (cron/with-misfire-handling-instruction-do-nothing)))
 
-(defn- trigger [database interval-hours]
+(def ^:private prune-scheduled-trigger
+  (triggers/build
+    (triggers/with-description "Prune deletable PersistInfo once per hour")
+    (triggers/with-identity prune-scheduled-trigger-key)
+    (triggers/for-job (jobs/key prune-job-key))
+    (triggers/start-now)
+    (triggers/with-schedule
+      (cron-schedule 1))))
+
+(def ^:private prune-once-trigger
+  (triggers/build
+    (triggers/with-description "Prune deletable PersistInfo now")
+    (triggers/with-identity prune-once-trigger-key)
+    (triggers/for-job (jobs/key prune-job-key))
+    (triggers/start-now)))
+
+(defn- database-trigger [database interval-hours]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
-   (triggers/with-identity (trigger-key database))
+   (triggers/with-identity (database-trigger-key database))
    (triggers/using-job-data {"db-id" (u/the-id database)
                              "type"  "database"})
-   (triggers/for-job (jobs/key persistence-job-key))
+   (triggers/for-job (jobs/key refresh-job-key))
    (triggers/start-now)
    (triggers/with-schedule
      (cron-schedule interval-hours))))
 
+(defn- individual-trigger [persisted-info]
+  (triggers/build
+   (triggers/with-description (format "Refresh model %d: persisted-info %d"
+                                      (:card_id persisted-info)
+                                      (u/the-id persisted-info)))
+   (triggers/with-identity (individual-trigger-key persisted-info))
+   (triggers/using-job-data {"persisted-id" (u/the-id persisted-info)
+                             "type"         "individual"})
+   (triggers/for-job (jobs/key refresh-job-key))
+   (triggers/start-now)))
+
 (defn schedule-persistence-for-database
   "Schedule a database for persistence refreshing."
   [database interval-hours]
-  (let [tggr (trigger database interval-hours)]
+  (let [tggr (database-trigger database interval-hours)]
     (log/info
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
@@ -187,17 +263,6 @@
             (u/format-color 'green "Persistence already present for database %d: trigger: %s"
                             (u/the-id database)
                             (.. ^Trigger tggr getKey getName)))))))
-
-(defn- individual-trigger [persisted-info]
-  (triggers/build
-   (triggers/with-description (format "Refresh model %d: persisted-info %d"
-                                      (:card_id persisted-info)
-                                      (u/the-id persisted-info)))
-   (triggers/with-identity (individual-trigger-key persisted-info))
-   (triggers/using-job-data {"persisted-id" (u/the-id persisted-info)
-                             "type"         "individual"})
-   (triggers/for-job (jobs/key persistence-job-key))
-   (triggers/start-now)))
 
 (defn schedule-refresh-for-individual
   "Schedule a refresh of an individual [[PersistedInfo record]]. Done through quartz for locking purposes."
@@ -216,16 +281,22 @@
          ;; other errors?
          )))
 
+(defn job-info-by-db-id []
+  (some->> refresh-job-key
+           task/job-info
+           :triggers
+           (u/key-by (comp #(get % "db-id") qc/from-job-data :data))))
+
 (defn unschedule-persistence-for-database
   "Stop refreshing tables for a given database. Should only be called when marking the database as not
   persisting. Tables will be left over and up to the caller to clean up."
   [database]
-  (task/delete-trigger! (trigger-key database)))
+  (task/delete-trigger! (database-trigger-key database)))
 
-(defn unschedule-all-triggers
-  "Unschedule all database persisted model refresh triggers."
-  []
-  (let [trigger-keys (->> (task/job-info persistence-job-key)
+(defn- unschedule-all-refresh-triggers
+  "Unschedule all job triggers."
+  [job-key]
+  (let [trigger-keys (->> (task/job-info job-key)
                           :triggers
                           (map :key))]
     (doseq [tk trigger-keys]
@@ -237,15 +308,32 @@
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
         interval-hours       (public-settings/persisted-model-refresh-interval-hours)]
-    (unschedule-all-triggers)
+    (unschedule-all-refresh-triggers refresh-job-key)
     (doseq [db dbs-with-persistence]
       (schedule-persistence-for-database db interval-hours))))
 
+(defn enable-persisting []
+  (unschedule-all-refresh-triggers prune-job-key)
+  (task/add-trigger! prune-scheduled-trigger))
+
+(defn disable-persisting []
+  (persisted-info/mark-for-deletion {})
+  (unschedule-all-refresh-triggers refresh-job-key)
+  (task/delete-trigger! prune-scheduled-trigger-key)
+  ;; ensure we clean up marked for deletion
+  (task/add-trigger! prune-once-trigger))
+
 (defn- job-init
   []
-  (task/add-job! persistence-job))
+  (task/add-job! refresh-job))
 
 (defmethod task/init! ::PersistRefresh
   [_]
   (job-init)
   (reschedule-refresh))
+
+(defmethod task/init! ::PersistPrune
+  [_]
+  (task/add-job! prune-job)
+  (when (public-settings/enabled-persisted-models)
+    (enable-persisting)))

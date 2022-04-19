@@ -11,7 +11,7 @@
   rebuild the persisted table."
   true)
 
-(defn slug-name
+(defn- slug-name
   "A slug from a card suitable for a table name."
   [nom]
   (->> (str/replace (str/lower-case nom) #"\s+" "_")
@@ -35,3 +35,32 @@
   {:hydrate :persisted}
   [card]
   (db/exists? PersistedInfo :card_id (:id card)))
+
+(defn mark-for-deletion [conditions-map]
+  (db/update-where! PersistedInfo conditions-map :active false, :state "deleteable", :state_change_at :%now))
+
+(defn make-ready [user-id card]
+  (let [slug (-> card :name slug-name)
+        {:keys [dataset_query result_metadata database_id]} card
+        card-id (u/the-id card)
+        existing-persisted-info (db/select-one PersistedInfo :card_id card-id)
+        persisted-info (cond
+                         (not existing-persisted-info)
+                         (db/insert! PersistedInfo {:card_id         card-id
+                                                    :database_id     database_id
+                                                    :question_slug   slug
+                                                    :query_hash      (query-hash dataset_query)
+                                                    :table_name      (format "model_%s_%s" card-id slug)
+                                                    :columns         (mapv :name result_metadata)
+                                                    :active          false
+                                                    :refresh_begin   :%now
+                                                    :refresh_end     nil
+                                                    :state           "creating"
+                                                    :state_change_at :%now
+                                                    :creator_id      user-id})
+
+                         (= "deleteable" (:state existing-persisted-info))
+                         (do
+                           (db/update! PersistedInfo :active false, :state "creating", :state_change_at :%now)
+                           (db/select-one PersistedInfo :card_id card-id)))]
+    persisted-info))

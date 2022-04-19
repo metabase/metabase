@@ -9,7 +9,6 @@
             [metabase.api.table :as table-api]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.driver.ddl.concurrent :as ddl.concurrent]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
@@ -17,12 +16,13 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :as database :refer [Database protected-password]]
+            [metabase.models.database :as database :refer [Database
+                                                           protected-password]]
             [metabase.models.field :refer [Field readable-fields-only]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.persisted-info :refer [PersistedInfo]]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
@@ -640,17 +640,7 @@
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
-          (db/update-where! PersistedInfo {:database_id id}
-                            :active false, :state "deleteable")
-          (ddl.concurrent/submit-task
-           (fn []
-             (let [to-unpersist (db/select PersistedInfo :database_id id)]
-               (doseq [unpersist to-unpersist]
-                 (try (ddl.i/unpersist! (:engine database) database unpersist)
-                      (catch Exception e
-                        (log/info e
-                                  (tru "Error unpersisting model with card-id {0}"
-                                       (:card_id unpersist)))))))))
+          (persisted-info/mark-for-deletion {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist

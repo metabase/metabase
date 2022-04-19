@@ -1,8 +1,8 @@
 (ns metabase.task.persist-refresh-test
   (:require [clojure.test :refer :all]
             [clojurewerkz.quartzite.conversion :as qc]
+            [medley.core :as m]
             [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
-            [metabase.task :as task]
             [metabase.task.persist-refresh :as pr]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -29,14 +29,14 @@
 
 (deftest trigger-job-info-test
   (testing "Database refresh trigger"
-    (let [tggr (#'pr/trigger {:id 1} 5)]
+    (let [tggr (#'pr/database-trigger {:id 1} 5)]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0/5 * * ? *"
              (schedule-string tggr)))
-      (is (= "metabase.task.PersistenceRefresh.trigger.1"
+      (is (= "metabase.task.PersistenceRefresh.database.trigger.1"
              (.. tggr getKey getName))))
-    (let [tggr (#'pr/trigger {:id 1} 24)]
+    (let [tggr (#'pr/database-trigger {:id 1} 24)]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0 * * ? *"
@@ -51,13 +51,9 @@
 (defn- job-info
   [& dbs]
   (let [ids  (into #{} (map u/the-id dbs))]
-    (->> (task/job-info pr/persistence-job-key)
-         :triggers
-         (map #(update % :data qc/from-job-data))
-         (filter (comp ids #(get % "db-id") :data))
-         (map (juxt #(-> % :data (get "db-id"))
-                    #(select-keys % [:data :schedule :key])))
-         (into {}))))
+    (m/map-vals
+      #(select-keys % [:data :schedule :key])
+      (select-keys (pr/job-info-by-db-id) ids))))
 
 (deftest reschedule-refresh-test
   (mt/with-temp-scheduler
@@ -68,19 +64,19 @@
         (pr/reschedule-refresh)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
-                                 :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-1))}
+                                 :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
                 (u/the-id db-2) {:data {"db-id" (u/the-id db-2) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
-                                 :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-2))}}
+                                 :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2))))
       (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 8]
         (pr/reschedule-refresh)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
-                                 :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-1))}
+                                 :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
                 (u/the-id db-2) {:data {"db-id" (u/the-id db-2) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
-                                 :key (format "metabase.task.PersistenceRefresh.trigger.%d" (u/the-id db-2))}}
+                                 :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2)))))))
 
 
@@ -137,7 +133,7 @@
                                  (refresh! [_ _ _])
                                  (unpersist! [_ _database persisted]
                                    (swap! called-on conj (u/the-id persisted))))]
-            (#'pr/refresh-tables! (u/the-id db) test-refresher)
+            (#'pr/prune-deleteable-persists! test-refresher)
             ;; don't assert equality if there are any deleteable in the app db
             (is (contains? @called-on (u/the-id deleteable)))
             (is (partial= {:task "unpersist-tables"

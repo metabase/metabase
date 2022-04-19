@@ -6,14 +6,12 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
-            [toucan.db :as db]))
+            [schema.core :as s]))
 
 (defn- field-metadata->field-defintion
   "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
@@ -145,12 +143,7 @@
                              (update :results conj [step {:error (ex-message e)}])))))))
                  steps))))
 
-(defmethod ddl.i/persist!* :postgres
-  [_driver database persisted-info card]
-  ;; don't set persisted-info information because it was created in a "creating" state
-  (execute-steps database persisted-info card [:create-table :populate-table]))
-
-(defmethod ddl.i/refresh!* :postgres [_driver database persisted-info]
+(defmethod ddl.i/refresh! :postgres [_driver database persisted-info]
   (let [card (Card (:card_id persisted-info))]
     (execute-steps database persisted-info card
                    [:drop-table :create-table :populate-table])))
@@ -160,7 +153,6 @@
   (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
     (try
       (jdbc/execute! conn [(drop-table-sql database (:table_name persisted-info))])
-      (db/delete! PersistedInfo :id (:id persisted-info))
       (catch Exception e
         (log/warn e)
         (throw e)))))

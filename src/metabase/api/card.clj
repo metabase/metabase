@@ -781,11 +781,8 @@
                          :database    (:name database)})))
       (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when (db/exists? PersistedInfo :card_id card-id)
-        (throw (ex-info (tru "Model already persisted") {:status-code 400})))
-      (ddl.concurrent/submit-task
-        #(ddl.i/persist! (:engine database) database api/*current-user-id* card))
-      ;; todo: persist it
+      (when-let [persisted-info (persisted-info/make-ready api/*current-user-id* card)]
+        (task.persist-refresh/schedule-refresh-for-individual persisted-info))
       api/generic-204-no-content)))
 
 (api/defendpoint POST "/:card-id/refresh"
@@ -804,12 +801,9 @@
   {card-id su/IntGreaterThanZero}
   (api/check-superuser)
   ;; if we change from superuser make sure to start on read/write checks
-  (api/let-404 [card (Card card-id)]
+  (api/let-404 [_card (Card card-id)]
     (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
-      (let [database (Database (:database_id card))]
-        (db/update! PersistedInfo (:id persisted-info), :active false)
-        (ddl.concurrent/submit-task
-         #(ddl.i/unpersist! (:engine database) database persisted-info)))
+      (persisted-info/mark-for-deletion {:id (:id persisted-info)})
       api/generic-204-no-content)))
 
 (api/define-routes)

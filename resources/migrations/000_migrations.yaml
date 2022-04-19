@@ -11417,6 +11417,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  remarks: The timestamp of when the most recent state changed
+                  name: state_change_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
                   remarks: Error message from persisting if applicable
                   name: error
                   type: ${text.type}
