@@ -107,6 +107,7 @@ export type DatePickerGroup = "relative" | "specific";
 export type DateOperator = {
   name: string;
   displayName: string;
+  displayPrefix?: string;
   init: (filter: Filter) => any[];
   test: (filter: Filter) => boolean;
   widget: any;
@@ -211,6 +212,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "exclude",
     displayName: t`Exclude...`,
+    displayPrefix: t`Exclude`,
     init: ([op, field, ...values]) =>
       op === "!=" ? [op, field, ...values] : [op, field],
     test: ([op]) => ["!=", "is-null", "not-null"].indexOf(op) > -1,
@@ -257,10 +259,6 @@ const DatePicker: React.FC<Props> = props => {
     hideTimeSelectors,
     hideExcludeOperators,
   } = props;
-
-  const [showShortcuts, setShowShortcuts] = React.useState(
-    !filter?.isValid?.() && !disableOperatorSelection,
-  );
   const operators = React.useMemo(() => {
     let ops = props.operators || DATE_OPERATORS;
     if (props.hideExcludeOperators) {
@@ -270,6 +268,9 @@ const DatePicker: React.FC<Props> = props => {
   }, [props.operators, props.hideExcludeOperators]);
 
   const operator = getOperator(props.filter, operators);
+  const [showShortcuts, setShowShortcuts] = React.useState(
+    !operator && !disableOperatorSelection,
+  );
   const Widget = operator && operator.widget;
 
   const onBack = () => {
