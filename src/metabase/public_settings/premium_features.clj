@@ -346,18 +346,26 @@
                                      (symbol ~(str fn-name))])
                   ~args)))))
 
+(def resolve-ee
+  "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
+  available, the function is not found, or any other error occurs. Memoized to avoid unecessary repeat calls to
+  `classloader/require` and `ns-resolve`."
+  (memoize
+   (fn [ee-ns fn-name]
+     (u/ignore-exceptions
+      (classloader/require (symbol ee-ns))
+      (ns-resolve (symbol ee-ns) (symbol fn-name))))))
+
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
   [{:keys [fn-name ee-ns docstr args body result-schema]}]
   (register-mapping! fn-name ee-ns args body)
-  `(let [ee-fn# (u/ignore-exceptions (classloader/require (symbol ~(str ee-ns)))
-                                     (ns-resolve (symbol ~(str ee-ns)) (symbol ~(str fn-name))))]
-     (if ee-fn#
-       (apply ee-fn# ~args)
-       (let [result# (do ~@body)]
-         (if ~result-schema
-           (s/validate ~result-schema result#)
-           result#)))))
+  `(if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
+     (apply ee-fn# ~args)
+     (let [result# (do ~@body)]
+       (if ~result-schema
+         (s/validate ~result-schema result#)
+         result#))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and

@@ -123,9 +123,14 @@
 
 (deftest defenterprise-oss-test
   (when-not config/ee-available?
-    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
-      (is (= "Hi rasta, you're an OSS customer!"
-             (greeting :rasta)))))
+   (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
+     (is (= "Hi rasta, you're an OSS customer!"
+            (greeting :rasta))))
+
+   (testing "A second call to the same function doesn't perform EE function resolution again"
+     (with-redefs [clojure.core/ns-resolve (fn [_ _] (constantly "This should not be printed!"))]
+       (is (= "Hi rasta, you're an OSS customer!"
+              (greeting :rasta))))))
 
   (when config/ee-available?
     (testing "When EE code is available"
