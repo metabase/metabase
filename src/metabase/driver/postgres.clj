@@ -302,8 +302,6 @@
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)
         nfc-path      (:nfc_path stored-field)]
-    (println opts)
-    (println (::sql.qp/forced-alias opts))
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
@@ -316,16 +314,23 @@
       :else
       identifier)))
 
-(defmethod sql.qp/apply-top-level-clause [:postgres :breakout]
+;; Postgres is not happy with JSON fields which are in group-bys being described twice instead of using the alias.
+;; Therefore, force the alias, but only for JSON fields."
+(defmethod sql.qp/apply-top-level-clause
+  [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
-  (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                               driver clause honeysql-form)
-        qualified     (parent-method query)
-        unqualified   (parent-method (update query
-                                             :breakout
-                                             sql.qp/rewrite-fields-to-force-using-column-aliases))]
-    (merge qualified
-           (select-keys unqualified #{:group-by}))))
+  (let [stored-field-ids (map second breakout-fields)
+        stored-fields    (map #(when (integer? %) (qp.store/field %)) stored-field-ids)
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                  driver clause honeysql-form)
+        qualified        (parent-method query)
+        unqualified      (parent-method (update query
+                                                :breakout
+                                                sql.qp/rewrite-fields-to-force-using-column-aliases))]
+    (if (some :nfc_path stored-fields)
+      (merge qualified
+             (select-keys unqualified #{:group-by}))
+      qualified)))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
