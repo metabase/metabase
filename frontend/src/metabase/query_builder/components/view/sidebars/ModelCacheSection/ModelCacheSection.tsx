@@ -24,7 +24,7 @@ type Props = {
 };
 
 type LoaderRenderProps = {
-  persistedModels: ModelCacheRefreshStatus[];
+  persistedModel: ModelCacheRefreshStatus;
 };
 
 function getStatusMessage(job: ModelCacheRefreshStatus) {
@@ -45,26 +45,25 @@ const mapDispatchToProps = {
 
 function ModelCacheSection({ model, onRefresh }: Props) {
   return (
-    <PersistedModels.ListLoader
-      query={{
-        limit: 100,
-        offset: 0,
-      }}
+    <PersistedModels.Loader
+      id={model.id()}
+      entityQuery={{ type: "byModelId" }}
+      selectorName="getByModelId"
+      loadingAndErrorWrapper={false}
     >
-      {({ persistedModels }: LoaderRenderProps) => {
-        const job = persistedModels.find(job => job.card_id === model.id());
-        if (!job) {
+      {({ persistedModel }: LoaderRenderProps) => {
+        if (!persistedModel) {
           return null;
         }
 
-        const isError = job.state === "error";
-        const lastRefreshTime = moment(job.refresh_end).fromNow();
+        const isError = persistedModel.state === "error";
+        const lastRefreshTime = moment(persistedModel.refresh_end).fromNow();
 
         return (
           <Row>
             <div>
               <StatusContainer>
-                <StatusLabel>{getStatusMessage(job)}</StatusLabel>
+                <StatusLabel>{getStatusMessage(persistedModel)}</StatusLabel>
                 {isError && <ErrorIcon name="warning" size={14} />}
               </StatusContainer>
               {isError && (
@@ -73,13 +72,13 @@ function ModelCacheSection({ model, onRefresh }: Props) {
                 </LastRefreshTimeLabel>
               )}
             </div>
-            <IconButton onClick={() => onRefresh(job)}>
+            <IconButton onClick={() => onRefresh(persistedModel)}>
               <RefreshIcon name="refresh" tooltip={t`Refresh now`} size={14} />
             </IconButton>
           </Row>
         );
       }}
-    </PersistedModels.ListLoader>
+    </PersistedModels.Loader>
   );
 }
 
