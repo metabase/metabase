@@ -240,11 +240,20 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn ^:private default-ssh-tunnel-target-port  [driver]
+  (when-let [port-info (some
+                        #(when (= "port" (:name %)) %)
+                        (driver/connection-properties driver))]
+    (or (:default port-info)
+        (:placeholder port-info))))
+
 (defn details->connection-spec-for-testing-connection
   "Return an appropriate JDBC connection spec to test whether a set of connection details is valid (i.e., implementing
   `can-connect?`)."
-  [driver details]
-  (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details driver details)]
+  [driver {:keys [port] :as details}]
+  (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details
+                             driver
+                             (update details :port #(or % (default-ssh-tunnel-target-port driver))))]
     (connection-details->spec driver details-with-tunnel)))
 
 (defn can-connect-with-spec?
