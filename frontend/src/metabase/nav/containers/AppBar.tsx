@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-import { Location, LocationDescriptorObject } from "history";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
@@ -31,10 +30,8 @@ import {
 
 type Props = {
   isNavbarOpen: boolean;
-  location: Location;
   toggleNavbar: () => void;
   closeNavbar: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
 function mapStateToProps(state: State) {
@@ -56,13 +53,7 @@ function HomepageLink({ handleClick }: { handleClick: () => void }) {
   );
 }
 
-function AppBar({
-  isNavbarOpen,
-  location,
-  toggleNavbar,
-  closeNavbar,
-  onChangeLocation,
-}: Props) {
+function AppBar({ isNavbarOpen, toggleNavbar, closeNavbar }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
 
   const onLogoClick = useCallback(() => {
@@ -112,8 +103,6 @@ function AppBar({
         <SearchBarContainer>
           <SearchBarContent>
             <SearchBar
-              location={location}
-              onChangeLocation={onChangeLocation}
               onSearchActive={onSearchActive}
               onSearchInactive={onSearchInactive}
             />
