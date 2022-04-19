@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo } from "react";
+import React, { ErrorInfo, ReactNode, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import _ from "underscore";
 import { Location } from "history";
@@ -17,6 +17,7 @@ import UndoListing from "metabase/containers/UndoListing";
 import { getErrorPage } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
 import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import AppBar from "metabase/nav/containers/AppBar";
@@ -56,6 +57,7 @@ interface AppStateProps {
 
 interface AppRouterOwnProps {
   location: Location;
+  children: ReactNode;
 }
 
 type AppProps = AppStateProps & AppRouterOwnProps;
@@ -68,31 +70,34 @@ function mapStateToProps(state: State): AppStateProps {
   };
 }
 
-class App extends Component<AppProps> {
-  state = {
-    errorInfo: undefined,
-  };
-
-  constructor(props: AppProps) {
-    super(props);
-    initializeIframeResizer();
-  }
-
+class ErrorBoundary extends React.Component<{
+  onError: (errorInfo: ErrorInfo) => void;
+}> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.setState({ errorInfo });
+    this.props.onError(errorInfo);
   }
 
-  isAdminApp = () => {
-    const { pathname } = this.props.location;
-    return pathname.startsWith("/admin/");
-  };
+  render() {
+    return this.props.children;
+  }
+}
 
-  hasNavbar = () => {
-    const {
-      currentUser,
-      isEditingDashboard,
-      location: { pathname },
-    } = this.props;
+function App({
+  currentUser,
+  errorPage,
+  location: { pathname },
+  isEditingDashboard,
+  children,
+}: AppProps) {
+  const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
+
+  useOnMount(() => {
+    initializeIframeResizer();
+  });
+
+  const isAdminApp = useMemo(() => pathname.startsWith("/admin/"), [pathname]);
+
+  const hasNavbar = useMemo(() => {
     if (!currentUser || isEditingDashboard) {
       return false;
     }
@@ -102,36 +107,25 @@ class App extends Component<AppProps> {
       );
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  };
+  }, [currentUser, pathname, isEditingDashboard]);
 
-  hasAppBar = () => {
-    const {
-      currentUser,
-      location: { pathname },
-      isEditingDashboard,
-    } = this.props;
-    if (!currentUser || IFRAMED || this.isAdminApp() || isEditingDashboard) {
+  const hasAppBar = useMemo(() => {
+    if (!currentUser || IFRAMED || isAdminApp || isEditingDashboard) {
       return false;
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  };
+  }, [currentUser, pathname, isEditingDashboard, isAdminApp]);
 
-  render() {
-    const { children, errorPage } = this.props;
-    const { errorInfo } = this.state;
-    const hasAppBar = this.hasAppBar();
-    return (
+  return (
+    <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
         {errorPage ? (
           getErrorComponent(errorPage)
         ) : (
           <>
             {hasAppBar && <AppBar />}
-            <AppContentContainer
-              hasAppBar={hasAppBar}
-              isAdminApp={this.isAdminApp()}
-            >
-              {this.hasNavbar() && <Navbar />}
+            <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
+              {hasNavbar && <Navbar />}
               <AppContent>{children}</AppContent>
               <UndoListing />
               <StatusListing />
@@ -140,8 +134,8 @@ class App extends Component<AppProps> {
         )}
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
-    );
-  }
+    </ErrorBoundary>
+  );
 }
 
 export default connect<AppStateProps, unknown, AppRouterOwnProps, State>(
