@@ -19,13 +19,16 @@ export const StyledButton = styled(Button)`
   margin-right: 0.5rem;
   padding: 0.5rem;
   height: 36px;
-`;
-
-export const Title = styled.h4`
-  margin-left: 0.5rem;
-  white-space: nowrap;
 
   ${breakpointMaxSmall} {
     display: none;
   }
+`;
+
+export const Title = styled.h4`
+  display: inline;
+
+  margin-left: 0.5rem;
+
+  white-space: nowrap;
 `;

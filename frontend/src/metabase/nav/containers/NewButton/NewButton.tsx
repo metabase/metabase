@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import Icon from "metabase/components/Icon";
+
 import { State } from "metabase-types/store";
 
 import { closeNavbar } from "metabase/redux/app";
@@ -111,10 +113,10 @@ function NewButton({
       trigger={
         <StyledButton
           primary
-          icon="add"
-          iconSize={14}
+          contentClassName="flex align-center"
           data-metabase-event="NavBar;Create Menu Click"
         >
+          <Icon name="add" size={14} />
           <Title>{t`New`}</Title>
         </StyledButton>
       }
