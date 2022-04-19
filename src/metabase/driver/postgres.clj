@@ -288,24 +288,20 @@
 (defmethod hformat/parameterize :dealio [_ value pname]
   "$1")
 
+(def num-fields (atom 0))
+
 (defn- json-query [identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          names                (format "%s" (str/join "," (map handle-name (rest nfc-path))))]
+          names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
         hformat/ToSql
         (to-sql [_]
-          ;;;; maybe bind the parametrization method to none here? and then see if we can inject?
-          ;;;; too many params! that's the problem! got repro!
-          (swap! hformat/*params* lol "nfc_path")
-          (swap! hformat/*param-names* lol "nfc_path")
           (hformat/to-params-default names "nfc_path")
-          (println hformat/*params*)
-          (println hformat/*param-names*)
-          (format "(%s#>> string_to_array(:?1,',')::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
+          (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name _opts :as clause]]
@@ -323,6 +319,20 @@
 
       :else
       identifier)))
+
+
+(defmethod apply-top-level-clause [:postgres :breakout]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
+  (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                               driver top-level-clause honeysql-form)
+        qualified     (parent-method query)
+        unqualified   (parent-method (update query :breakout sql.qp/rewrite-fields-to-force-using-column-aliases))]
+    (if (any? some shit breakout-fields some shit)
+      (merge qualified
+             (select-keys unqualified #{:group-by}))
+      qualified)))
+
+;;; asc and desc maybe?
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
