@@ -5,8 +5,8 @@
             [metabase.http-client :as client]
             [metabase.models.database :as database]
             [metabase.server.middleware.util :as mw.util]
-            [metabase.sync]
-            [metabase.sync.sync-metadata]
+            metabase.sync
+            metabase.sync.sync-metadata
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]))

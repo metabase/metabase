@@ -6,7 +6,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [hiccup.util]
+            hiccup.util
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]

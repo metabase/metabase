@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
             [metabase.models.pulse :as pulse]
-            [metabase.pulse]
+            metabase.pulse
             [metabase.pulse.render.body :as body]
             [metabase.pulse.test-util :refer :all]
             [metabase.test :as mt]

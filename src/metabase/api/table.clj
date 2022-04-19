@@ -15,7 +15,7 @@
             [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.sync.field-values]
+            metabase.sync.field-values
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]

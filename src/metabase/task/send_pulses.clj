@@ -10,7 +10,7 @@
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-channel :as pulse-channel]
             [metabase.models.task-history :as task-history]
-            [metabase.pulse]
+            metabase.pulse
             [metabase.task :as task]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))

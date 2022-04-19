@@ -14,7 +14,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core]
+            schema.core
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 

@@ -7,7 +7,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse :as pulse]
-            [metabase.pulse]
+            metabase.pulse
             [metabase.pulse.render :as render]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.test-util :refer :all]

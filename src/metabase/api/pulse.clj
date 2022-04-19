@@ -17,7 +17,7 @@
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.pulse]
+            metabase.pulse
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]

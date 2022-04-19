@@ -6,7 +6,7 @@
             [metabase.email.messages :as messages]
             [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.pulse :as pulse]
-            [metabase.pulse]
+            metabase.pulse
             [metabase.pulse.test-util :as pulse.tu]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
