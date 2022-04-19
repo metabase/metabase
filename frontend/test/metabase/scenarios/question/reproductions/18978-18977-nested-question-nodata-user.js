@@ -1,5 +1,6 @@
 import {
   restore,
+  appBar,
   popover,
   openNavigationSidebar,
   visitQuestion,
@@ -31,6 +32,9 @@ export function issue18978() {
           cy.findByText(/SQL query/).should("not.exist");
           cy.findByText(/Native query/).should("not.exist");
         });
+
+        // Click outside to close the "new" button popover
+        appBar().click();
 
         cy.findByTestId("qb-header-action-panel").within(() => {
           cy.icon("notebook").should("not.exist");
