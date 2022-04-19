@@ -4,7 +4,7 @@ Whether you're keeping track of revenue, users, or negative reviews, there are o
 
 ### Getting alerts
 
-To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../administration-guide/02-setting-up-email.md) is set up first.
+To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../administration-guide/02-setting-up-email.md) or Slack is set up first.
 
 ### Types of alerts
 
@@ -38,8 +38,6 @@ This is where you'll get to choose a few things:
 
 Click Done, and your alert will be all set up! You'll get an email confirmation, too. If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that administrators might have added you to.
 
-![Edit menu](./images/alerts/edit-menu.png)
-
 ### Progress bar alerts
 
 Setting up this kind of alert is really similar to setting up a goal line alert. First, create a question that returns a single number as its result, then choose the Progress Bar chart type from the Visualization menu. Open the settings menu to select a goal value, click Done, then save your question.
@@ -49,8 +47,6 @@ Next, click the bell icon in the bottom-right and you'll see that same screen of
 ### Results alerts
 
 Lastly, you can get an alert when one of your saved questions returns any result. This kind of alert is the most useful if you have a question that doesn't _usually_ return any results, but you just want to know when it _does_. For example, you might have a table called `Reviews`, and you want to know any time a customer leaves a bad review, which you consider to be anything below three stars. To set up an alert for this situation, you'd go and create a raw data question (i.e., a question that returns a list of reviews), and add a filter to only include results with one or two stars.
-
-![Bad reviews](./images/alerts/bad-reviews.png)
 
 You probably don't want to be alerted about all the bad reviews you've _ever_ gotten, but just recent ones. So you can add a filter to only include results from yesterday or today, depending on how often you want to check for these bad reviews. At this point, when you check the results of this question, it probably won't return any results, which is a good thing.
 
