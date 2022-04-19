@@ -125,61 +125,62 @@
   (when-not config/ee-available?
    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
      (is (= "Hi rasta, you're an OSS customer!"
-            (greeting :rasta))))
-
-   (testing "A second call to the same function doesn't perform EE function resolution again"
-     (with-redefs [clojure.core/ns-resolve (fn [_ _] (constantly "This should not be printed!"))]
-       (is (= "Hi rasta, you're an OSS customer!"
-              (greeting :rasta))))))
+            (greeting :rasta)))))
 
   (when config/ee-available?
     (testing "When EE code is available"
       (testing "a call to a defenterprise function calls the EE version"
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
-               (greeting :rasta)))))
+               (greeting :rasta))))
 
-    (testing "If a schema map for args is present, schemas are validated"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Value does not match schema"
-                            (greeting-with-schema "rasta")))
+      (testing "A second call to the same function doesn't perform EE function resolution again"
+        (with-redefs [clojure.core/ns-resolve (fn [_ _] (constantly "This should not be printed!"))]
+          (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
+                 (greeting :rasta)))))
 
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Value does not match schema"
-                            (greeting-with-schema :rasta)))
 
-      (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
-        (with-premium-features #{:some-feature}
-          (is (= "Hi rasta, you're an EE customer with a valid token!"
-                 (greeting-with-valid-token :rasta))))
+     (testing "If a schema map for args is present, schemas are validated"
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                             #"Value does not match schema"
+                             (greeting-with-schema "rasta")))
 
-        (with-premium-features #{}
-          (is (= "Hi rasta, you're not extra special :("
-                 (greeting-with-valid-token :rasta)))))
+       (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                             #"Value does not match schema"
+                             (greeting-with-schema :rasta))))
 
-      (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
-        (with-premium-features #{:special-greeting}
-          (is (= "Hi rasta, you're an extra special EE customer!"
-                 (special-greeting :rasta))))
+     (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
+       (with-premium-features #{:some-feature}
+         (is (= "Hi rasta, you're an EE customer with a valid token!"
+                (greeting-with-valid-token :rasta))))
 
-        (with-premium-features #{}
-          (is (= "Hi rasta, you're not extra special :("
-                 (special-greeting :rasta)))))
+       (with-premium-features #{}
+         (is (= "Hi rasta, you're not extra special :("
+                (greeting-with-valid-token :rasta)))))
 
-      (testing "when :fallback = :error, a generic exception is thrown when the required token is not present"
-        (with-premium-features #{:special-greeting}
-          (is (= "Hi rasta, you're an extra special EE customer!"
-                 (special-greeting-or-error :rasta))))
+     (testing "if a specific premium feature is required, it will check for it, and fall back to the OSS version by default"
+       (with-premium-features #{:special-greeting}
+         (is (= "Hi rasta, you're an extra special EE customer!"
+                (special-greeting :rasta))))
 
-        (with-premium-features #{}
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                missing-feature-error-msg
-                                (special-greeting-or-error :rasta)))))
+       (with-premium-features #{}
+         (is (= "Hi rasta, you're not extra special :("
+                (special-greeting :rasta)))))
 
-      (testing "when :fallback is a function, it is run when the required token is not present"
-        (with-premium-features #{:special-greeting}
-          (is (= "Hi rasta, you're an extra special EE customer!"
-                 (special-greeting-or-custom :rasta))))
+     (testing "when :fallback = :error, a generic exception is thrown when the required token is not present"
+       (with-premium-features #{:special-greeting}
+         (is (= "Hi rasta, you're an extra special EE customer!"
+                (special-greeting-or-error :rasta))))
 
-        (with-premium-features #{}
-          (is (= "Hi rasta, you're an EE customer but not extra special."
-                 (special-greeting-or-custom :rasta))))))))
+       (with-premium-features #{}
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                               missing-feature-error-msg
+                               (special-greeting-or-error :rasta)))))
+
+     (testing "when :fallback is a function, it is run when the required token is not present"
+       (with-premium-features #{:special-greeting}
+         (is (= "Hi rasta, you're an extra special EE customer!"
+                (special-greeting-or-custom :rasta))))
+
+       (with-premium-features #{}
+         (is (= "Hi rasta, you're an EE customer but not extra special."
+                (special-greeting-or-custom :rasta))))))))
