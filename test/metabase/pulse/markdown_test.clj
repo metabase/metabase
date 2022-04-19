@@ -1,16 +1,16 @@
 (ns metabase.pulse.markdown-test
   (:require [clojure.test :refer :all]
             [metabase.public-settings :refer [site-url]]
-            [metabase.pulse.markdown :as md]
+            [metabase.pulse.markdown :as markdown]
             [metabase.test.util :as tu]))
 
 (defn- mrkdwn
   [markdown]
-  (md/process-markdown markdown :mrkdwn))
+  (markdown/process-markdown markdown :mrkdwn))
 
 (defn- escape
   [text]
-  (@#'md/escape-text text))
+  (@#'markdown/escape-text text))
 
 (deftest process-markdown-slack-test
   (testing "Headers are converted to bold text"
@@ -173,7 +173,7 @@
 
 (defn- html
   [markdown]
-  (md/process-markdown markdown :html))
+  (markdown/process-markdown markdown :html))
 
 (deftest process-markdown-email-test
   (testing "HTML is generated correctly from Markdown input for emails. Not an exhaustive test suite since parsing and

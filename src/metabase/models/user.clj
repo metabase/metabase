@@ -5,8 +5,8 @@
             [clojure.tools.logging :as log]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
-            [metabase.models.permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -54,29 +54,29 @@
 (defn- post-insert [{user-id :id, superuser? :is_superuser, :as user}]
   (u/prog1 user
     ;; add the newly created user to the magic perms groups
-    (binding [perm-membership/*allow-changing-all-users-group-members* true]
+    (binding [perms-group-membership/*allow-changing-all-users-group-members* true]
       (log/info (trs "Adding User {0} to All Users permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
-        :group_id (:id (group/all-users))))
+        :group_id (:id (perms-group/all-users))))
     (when superuser?
       (log/info (trs "Adding User {0} to Admin permissions group..." user-id))
       (db/insert! PermissionsGroupMembership
         :user_id  user-id
-        :group_id (:id (group/admin))))))
+        :group_id (:id (perms-group/admin))))))
 
 (defn- pre-update
   [{reset-token :reset_token, superuser? :is_superuser, active? :is_active, :keys [email id locale], :as user}]
   ;; when `:is_superuser` is toggled add or remove the user from the 'Admin' group as appropriate
   (when (some? superuser?)
     (let [membership-exists? (db/exists? PermissionsGroupMembership
-                               :group_id (:id (group/admin))
+                               :group_id (:id (perms-group/admin))
                                :user_id  id)]
       (cond
         (and superuser?
              (not membership-exists?))
         (db/insert! PermissionsGroupMembership
-          :group_id (u/the-id (group/admin))
+          :group_id (u/the-id (perms-group/admin))
           :user_id  id)
         ;; don't use `delete!` here because that does the opposite and tries to update this user
         ;; which leads to a stack overflow of calls between the two
@@ -84,7 +84,7 @@
         (and (not superuser?)
              membership-exists?)
         (db/simple-delete! PermissionsGroupMembership
-          :group_id (u/the-id (group/admin))
+          :group_id (u/the-id (perms-group/admin))
           :user_id  id))))
   ;; make sure email and locale are valid if set
   (when email

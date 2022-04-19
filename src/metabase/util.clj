@@ -7,7 +7,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
+            [clojure.tools.namespace.find :as ns.find]
             [clojure.walk :as walk]
             [colorize.core :as colorize]
             [flatland.ordered.map :refer [ordered-map]]
@@ -550,7 +550,7 @@
 (defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for
   use by various routines that load related namespaces, such as task and events initialization."}
   metabase-namespace-symbols
-  (vec (sort (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
+  (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
                    :when   (and (.startsWith (name ns-symb) "metabase.")
                                 (not (.contains (name ns-symb) "test")))]
                ns-symb))))

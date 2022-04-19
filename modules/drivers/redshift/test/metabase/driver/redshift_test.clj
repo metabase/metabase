@@ -6,12 +6,12 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-database :as sync.describe-database]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-            [metabase.public-settings :as pubset]
+            [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -53,7 +53,7 @@
     (let [expected (str/replace
                     (str
                      "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":1234,\"optional_user_id\":1000,"
-                     "\"optional_account_id\":\"" (pubset/site-uuid) "\","
+                     "\"optional_account_id\":\"" (public-settings/site-uuid) "\","
                      "\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */"
                      " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
                      "SELECT \"%schema%\".\"test_data_users\".\"id\" AS \"id\","
@@ -251,18 +251,18 @@
       (let [fake-schema-name (u/qualified-name ::fake-schema)]
         (binding [redshift.test/*use-original-filtered-syncable-schemas-impl?* true]
           ;; override `all-schemas` so it returns our fake schema in addition to the real ones.
-          (with-redefs [sync.describe-database/all-schemas (let [orig sync.describe-database/all-schemas]
-                                                             (fn [metadata]
-                                                               (eduction
-                                                                cat
-                                                                [(orig metadata) [fake-schema-name]])))]
+          (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
+                                                                 (fn [metadata]
+                                                                   (eduction
+                                                                     cat
+                                                                     [(orig metadata) [fake-schema-name]])))]
             (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
               (with-open [conn (jdbc/get-connection jdbc-spec)]
                 (letfn [(schemas []
                           (reduce
-                           conj
-                           #{}
-                           (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
+                            conj
+                            #{}
+                            (sql-jdbc.sync/filtered-syncable-schemas :redshift conn (.getMetaData conn) nil nil)))]
                   (testing "if schemas-with-usage-permissions is disabled, the ::fake-schema should come back"
                     (with-redefs [redshift/reducible-schemas-with-usage-permissions (fn [_ reducible]
                                                                                       reducible)]

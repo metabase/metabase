@@ -5,9 +5,9 @@
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perm-group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -44,9 +44,9 @@
 (defn- post-insert [database]
   (u/prog1 database
     ;; add this database to the All Users permissions group
-    (perms/grant-full-data-permissions! (perm-group/all-users) database)
+    (perms/grant-full-data-permissions! (perms-group/all-users) database)
     ;; give full download perms for this database to the All Users permissions group
-    (perms/grant-full-download-permissions! (perm-group/all-users) database)
+    (perms/grant-full-download-permissions! (perms-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
@@ -185,7 +185,7 @@
 (defn- perms-objects-set [{db-id :id} read-or-write]
   #{(case read-or-write
       ;; We should let a user read a DB if they have write perms for the DB details *or* self-service data access.
-      ;; Since a user can have one or the other, we use `i/has-any-permissions?` to check both read and write permission
+      ;; Since a user can have one or the other, we use `mi/has-any-permissions?` to check both read and write permission
       ;; sets in the `can-read?` implementation.
       :read (perms/data-perms-path db-id)
       :write (perms/db-details-write-perms-path db-id))})
@@ -207,13 +207,13 @@
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (i/has-any-permissions?
-                              (partial i/current-user-has-partial-permissions? :read)
-                              (partial i/current-user-has-full-permissions? :write))
-          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+          :can-read?         (mi/has-any-permissions?
+                              (partial mi/current-user-has-partial-permissions? :read)
+                              (partial mi/current-user-has-full-permissions? :write))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -270,7 +270,7 @@
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (if (not (i/can-write? db))
+    (if (not (mi/can-write? db))
       (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce

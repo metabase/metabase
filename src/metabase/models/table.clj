@@ -6,7 +6,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
@@ -68,12 +68,12 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         (i/has-any-permissions?
-                              (partial i/current-user-has-full-permissions? :read)
-                              (partial i/current-user-has-full-permissions? :write))
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         (mi/has-any-permissions?
+                              (partial mi/current-user-has-full-permissions? :read)
+                              (partial mi/current-user-has-full-permissions? :write))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 

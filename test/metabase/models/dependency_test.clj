@@ -1,6 +1,6 @@
 (ns metabase.models.dependency-test
   (:require [clojure.test :refer :all]
-            [metabase.models.dependency :as dep :refer [Dependency]]
+            [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]
@@ -11,7 +11,7 @@
 (models/defmodel ^:private Mock :mock)
 
 (extend (class Mock)
-  dep/IDependent
+  dependency/IDependent
   {:dependencies
    (constantly
     {:a [1 2]
@@ -20,7 +20,7 @@
 (deftest dependencies-test
   (is (= {:a [1 2]
           :b [3 4 5]}
-         (dep/dependencies Mock 7 {}))))
+         (dependency/dependencies Mock 7 {}))))
 
 (defn format-dependencies [deps]
   (->> deps
@@ -48,18 +48,18 @@
                 :model_id           4
                 :dependent_on_model "foobar"
                 :dependent_on_id    13}}
-             (format-dependencies (dep/retrieve-dependencies Mock 4)))))))
+             (format-dependencies (dependency/retrieve-dependencies Mock 4)))))))
 
 (deftest update-dependencies!-test
   (testing "we skip over values which aren't integers"
     (mt/with-model-cleanup [Dependency]
-      (dep/update-dependencies! Mock 2 {:test ["a" "b" "c"]})
+      (dependency/update-dependencies! Mock 2 {:test ["a" "b" "c"]})
       (is (= #{}
              (set (db/select Dependency, :model "Mock", :model_id 2))))))
 
   (testing "valid working dependencies list"
     (mt/with-model-cleanup [Dependency]
-      (dep/update-dependencies! Mock 7 {:test [1 2 3]})
+      (dependency/update-dependencies! Mock 7 {:test [1 2 3]})
       (is (= #{{:model              "Mock"
                 :model_id           7
                 :dependent_on_model "test"
@@ -81,7 +81,7 @@
                                  :dependent_on_id    5
                                  :created_at         :%now}]
       (mt/with-model-cleanup [Dependency]
-        (dep/update-dependencies! Mock 1 {:test [1 2]})
+        (dependency/update-dependencies! Mock 1 {:test [1 2]})
         (is (= #{{:model              "Mock"
                   :model_id           1
                   :dependent_on_model "test"

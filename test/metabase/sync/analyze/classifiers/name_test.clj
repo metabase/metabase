@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
-            [metabase.sync.analyze.classifiers.name :as classify.names]
+            [metabase.sync.analyze.classifiers.name :as classifiers.name]
             [metabase.test :as mt]))
 
 (deftest semantic-type-for-name-and-base-type-test
@@ -14,13 +14,13 @@
                             ["country" :type/Integer] nil}]
     (testing (pr-str (cons 'semantic-type-for-name-and-base-type input))
       (is (= expected
-             (apply #'classify.names/semantic-type-for-name-and-base-type input))))))
+             (apply #'classifiers.name/semantic-type-for-name-and-base-type input))))))
 
 (deftest infer-entity-type-test
   (testing "name matches"
     (let [classify (fn [table-name] (-> {:name table-name}
                                         table/map->TableInstance
-                                        classify.names/infer-entity-type
+                                        classifiers.name/infer-entity-type
                                         :entity_type))]
       (testing "matches simple"
         (is (= :entity/TransactionTable (classify "MY_ORDERS"))))
@@ -37,18 +37,18 @@
                                              :semantic_type :type/FK
                                              :name          "City"
                                              :base_type     :type/Text}]]
-        (is (nil? (-> field-id Field (classify.names/infer-and-assoc-semantic-type nil) :semantic_type)))))
+        (is (nil? (-> field-id Field (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
     (testing "but does infer on non-PK/FK fields"
       (mt/with-temp* [Table [{table-id :id}]
                       Field [{field-id :id} {:table_id      table-id
                                              :semantic_type :type/Category
                                              :name          "City"
                                              :base_type     :type/Text}]]
-        (-> field-id Field (classify.names/infer-and-assoc-semantic-type nil) :semantic_type)))))
+        (-> field-id Field (classifiers.name/infer-and-assoc-semantic-type nil) :semantic_type)))))
 
 (deftest infer-semantic-type-test
   (let [infer (fn infer [column-name & [base-type]]
-                (classify.names/infer-semantic-type
+                (classifiers.name/infer-semantic-type
                   {:name column-name, :base_type (or base-type :type/Text)}))]
     (testing "standard checks"
       ;; not exhausting but a place for edge cases in the future
@@ -60,7 +60,7 @@
       (testing "matches \"updated at\" style columns"
         (let [classify (fn [table-name table-type] (-> {:name table-name :base_type table-type}
                                                        table/map->TableInstance
-                                                       classify.names/infer-semantic-type))]
+                                                       classifiers.name/infer-semantic-type))]
           (doseq [[col-type expected] [[:type/Date :type/UpdatedDate]
                                        [:type/DateTime :type/UpdatedTimestamp]
                                        [:type/Time :type/UpdatedTime]]]

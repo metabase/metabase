@@ -6,8 +6,8 @@
             [environ.core :as env]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
-            [metabase.plugins.initialize :as initialize]
-            [metabase.util.files :as files]
+            [metabase.plugins.initialize :as plugins.init]
+            [metabase.util.files :as u.files]
             [metabase.util.i18n :refer [trs]]
             [yaml.core :as yaml])
   (:import java.io.File
@@ -23,8 +23,8 @@
     (let [filename (plugins-dir-filename)]
       (try
         ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
-        (let [path (files/get-path filename)]
-          (files/create-dir-if-not-exists! path)
+        (let [path (u.files/get-path filename)]
+          (u.files/create-dir-if-not-exists! path)
           (assert (Files/isWritable path)
             (trs "Metabase does not have permissions to write to plugins directory {0}" filename))
           path)
@@ -40,7 +40,7 @@
            (trs "Falling back to a temporary directory for now."))
           ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
           ;; gracefully proceed here. Throw an Exception detailing the critical issues.
-          (let [path (files/get-path (System/getProperty "java.io.tmpdir"))]
+          (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
             (assert (Files/isWritable path)
               (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))
             path))))))
@@ -56,8 +56,8 @@
 (defn- extract-system-modules! []
   (when (io/resource "modules")
     (let [plugins-path (plugins-dir)]
-      (files/with-open-path-to-resource [modules-path "modules"]
-        (files/copy-files! modules-path plugins-path)))))
+      (u.files/with-open-path-to-resource [modules-path "modules"]
+        (u.files/copy-files! modules-path plugins-path)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -68,14 +68,14 @@
   (classloader/add-url-to-classpath! (-> jar-path .toUri .toURL)))
 
 (defn- plugin-info [^Path jar-path]
-  (some-> (files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
+  (some-> (u.files/slurp-file-from-archive jar-path "metabase-plugin.yaml")
           yaml/parse-string))
 
 (defn- init-plugin-with-info!
   "Initiaize plugin using parsed info from a plugin maifest. Returns truthy if plugin was successfully initialized;
   falsey otherwise."
   [info]
-  (initialize/init-plugin-with-info! info))
+  (plugins.init/init-plugin-with-info! info))
 
 (defn- init-plugin!
   "Init plugin JAR file; returns truthy if plugin initialization was successful."
@@ -92,9 +92,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- plugins-paths []
-  (for [^Path path (files/files-seq (plugins-dir))
-        :when      (and (files/regular-file? path)
-                        (files/readable? path)
+  (for [^Path path (u.files/files-seq (plugins-dir))
+        :when      (and (u.files/regular-file? path)
+                        (u.files/readable? path)
                         (str/ends-with? (.getFileName path) ".jar")
                         (or (not (str/ends-with? (.getFileName path) "spark-deps.jar"))
                             ;; if the JAR in question is the spark deps JAR we cannot load it because it's signed, and
@@ -107,7 +107,7 @@
 
 (when (or config/is-dev? config/is-test?)
   (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml.core/parse-string initialize/init-plugin-with-info!))
+    (some-> (slurp (str path)) yaml.core/parse-string plugins.init/init-plugin-with-info!))
 
   (defn- driver-manifest-paths
     "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
@@ -127,7 +127,7 @@
      ;; `MB_DEV_ADDITIONAL_DRIVER_MANIFEST_PATHS=...` to have that plugin manifest get loaded during startup. Specify
      ;; multiple plugin manifests by comma-separating them.
      (when-let [additional-paths (env/env :mb-dev-additional-driver-manifest-paths)]
-       (map files/get-path (str/split additional-paths #",")))))
+       (map u.files/get-path (str/split additional-paths #",")))))
 
   (defn- load-local-plugin-manifests!
     "Load local plugin manifest files when running in dev or test mode, to simulate what would happen when loading those
@@ -140,7 +140,7 @@
       (load-local-plugin-manifest! manifest-path))))
 
 (defn- has-manifest? ^Boolean [^Path path]
-  (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))
+  (boolean (u.files/file-exists-in-archive? path "metabase-plugin.yaml")))
 
 (defn- init-plugins! [paths]
   ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC

@@ -6,7 +6,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity ApplicationPermissionsRevision BookmarkOrdering Card CardBookmark
@@ -98,7 +98,7 @@
   ;;
   ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
   (let [source-keys (keys (first objs))
-        quote-style (mdb.conn/quoting-style target-db-type)
+        quote-style (mdb.connection/quoting-style target-db-type)
         quote-fn    (get @#'hformat/quote-fns quote-style)
         _           (assert (fn? quote-fn) (str "No function for quote style: " quote-style))
         dest-keys   (for [k source-keys]

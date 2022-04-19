@@ -7,14 +7,14 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.mongo :as mongo]
-            [metabase.driver.mongo.util :as mongo.u]
+            [metabase.driver.mongo.util :as mongo.util]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor-test :as qp.t :refer [rows]]
+            [metabase.query-processor-test :as qp.test :refer [rows]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
@@ -332,7 +332,7 @@
                   (mt/run-mbql-query categories
                     {:order-by [[:asc $id]]
                      :limit    3})
-                  qp.t/data
+                  qp.test/data
                   (select-keys [:columns :rows])))))))))
 
 ;; Make sure we correctly (un-)freeze BSON IDs
@@ -363,7 +363,7 @@
         (tx/destroy-db! :mongo dbdef)
         (let [details (tx/dbdef->connection-details :mongo :db dbdef)]
           ;; load rows
-          (mongo.u/with-mongo-connection [conn details]
+          (mongo.util/with-mongo-connection [conn details]
             (doseq [[i row] (map-indexed vector row-maps)
                     :let    [row (assoc row :_id (inc i))]]
               (try

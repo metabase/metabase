@@ -4,7 +4,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]))
+            [metabase.util.i18n :refer [tru]]))
 
 ;; TODO: figure out what other functions to move here from metabase.api.common
 

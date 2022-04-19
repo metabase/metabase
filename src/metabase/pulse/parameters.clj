@@ -4,7 +4,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.pulse.interface :as i]
             [metabase.util :as u]
-            [metabase.util.urls :as url]
+            [metabase.util.urls :as urls]
             [ring.util.codec :as codec]))
 
 (def ^:private parameters-impl
@@ -31,7 +31,7 @@
 (defn dashboard-url
   "Given a dashboard's ID and parameters, returns a URL for the dashboard with filters included"
   [dashboard-id parameters]
-  (let [base-url   (url/dashboard-url dashboard-id)
+  (let [base-url   (urls/dashboard-url dashboard-id)
         url-params (flatten
                     (for [param parameters]
                       (for [value (u/one-or-many (or (:value param) (:default param)))]

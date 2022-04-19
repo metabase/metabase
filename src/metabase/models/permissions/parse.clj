@@ -4,7 +4,7 @@
   - Convert strings to parse tree
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
   - Convert set of paths to a map, the permission graph"
-  (:require [clojure.core.match :as match]
+  (:require [clojure.core.match :refer [match]]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [instaparse.core :as insta]
@@ -57,7 +57,7 @@
 
 (defn- path1
   [tree]
-  (match/match tree
+  (match tree
     [:permission t]                (path1 t)
     [:all]                         [:all] ; admin permissions
     [:db db-id]                    (let [db-id (Long/parseUnsignedLong db-id)]
@@ -101,7 +101,7 @@
 
 (defn- path2
   [tree]
-  (match/match tree
+  (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
     ;; data model perms
