@@ -1,14 +1,13 @@
 import { push } from "react-router-redux";
 import { getIn } from "icepick";
 import { SessionApi, UtilApi } from "metabase/services";
+import Settings from "metabase/lib/settings";
 import { createThunkAction } from "metabase/lib/redux";
+import { loadLocalization } from "metabase/lib/i18n";
 import { clearGoogleAuthCredentials, deleteSession } from "metabase/lib/auth";
+import { clearCurrentUser, refreshCurrentUser } from "metabase/redux/user";
 import { refreshSiteSettings } from "metabase/redux/settings";
-import {
-  clearCurrentUser,
-  refreshCurrentUser,
-  loadUserLocalization,
-} from "metabase/redux/user";
+import { State } from "metabase-types/store";
 import {
   trackLogin,
   trackLoginGoogle,
@@ -16,6 +15,16 @@ import {
   trackPasswordReset,
 } from "./analytics";
 import { LoginData } from "./types";
+
+export const LOAD_USER_LOCALIZATION = "metabase/user/LOAD_USER_LOCALIZATION";
+export const loadUserLocalization = createThunkAction(
+  LOAD_USER_LOCALIZATION,
+  () => async (dispatch: any, getState: () => State) => {
+    const userLocale = getState().currentUser?.locale;
+    const siteLocale = Settings.get("site-locale");
+    await loadLocalization(userLocale ?? siteLocale ?? "en");
+  },
+);
 
 export const REFRESH_SESSION = "metabase/auth/REFRESH_SESSION";
 export const refreshSession = createThunkAction(

@@ -1,14 +1,10 @@
 import {
   createAction,
-  handleActions,
   createThunkAction,
+  handleActions,
 } from "metabase/lib/redux";
-
-import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
-
 import { UserApi } from "metabase/services";
-import Settings from "metabase/lib/settings";
-import { loadLocalization } from "metabase/lib/i18n";
+import { CLOSE_QB_NEWB_MODAL } from "metabase/query_builder/actions";
 
 export const REFRESH_CURRENT_USER = "metabase/user/REFRESH_CURRENT_USER";
 export const refreshCurrentUser = createAction(REFRESH_CURRENT_USER, () => {
@@ -26,16 +22,6 @@ export const loadCurrentUser = createThunkAction(
     if (!getState().currentUser) {
       await dispatch(refreshCurrentUser());
     }
-  },
-);
-
-export const LOAD_USER_LOCALIZATION = "metabase/user/LOAD_USER_LOCALIZATION";
-export const loadUserLocalization = createThunkAction(
-  LOAD_USER_LOCALIZATION,
-  () => async (dispatch, getState) => {
-    const userLocale = getState().currentUser?.locale;
-    const siteLocale = Settings.get("site-locale");
-    await loadLocalization(userLocale ?? siteLocale ?? "en");
   },
 );
 
