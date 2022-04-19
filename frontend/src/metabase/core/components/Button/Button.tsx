@@ -25,6 +25,8 @@ const BUTTON_VARIANTS = [
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
+  contentClassName?: string;
+
   icon?: string;
   iconSize?: number;
   iconColor?: string;
@@ -55,6 +57,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 const BaseButton = forwardRef(function BaseButton(
   {
     className,
+    contentClassName,
     icon,
     iconRight,
     iconSize,
@@ -84,11 +87,14 @@ const BaseButton = forwardRef(function BaseButton(
         )}
         {children && (
           <div
-            className={cx({
-              [iconVertical ? "mt1" : "ml1"]: icon,
-              [iconVertical ? "mb1" : "mr1"]: iconRight,
-              [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
-            })}
+            className={cx(
+              {
+                [iconVertical ? "mt1" : "ml1"]: icon,
+                [iconVertical ? "mb1" : "mr1"]: iconRight,
+                [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
+              },
+              contentClassName,
+            )}
           >
             {children}
           </div>
