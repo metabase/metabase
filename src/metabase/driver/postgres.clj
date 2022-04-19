@@ -311,21 +311,34 @@
       :else
       identifier)))
 
-
-(defmethod apply-top-level-clause [:postgres :breakout]
-  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
+(defmethod sql.qp/apply-top-level-clause [:postgres :breakout]
+  [driver clause honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (let [parent-method (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
-                               driver top-level-clause honeysql-form)
+                               driver clause honeysql-form)
         qualified     (parent-method query)
         unqualified   (parent-method (update query
                                              :breakout
                                              sql.qp/rewrite-fields-to-force-using-column-aliases))]
-    (if (any? some shit breakout-fields some shit)
+    (println breakout-fields)
+    (println fields-fields)
+    (if (or
+          (some some? breakout-fields)
+          (some some? fields-fields))
       (merge qualified
              (select-keys unqualified #{:group-by}))
       qualified)))
 
-;;; asc and desc maybe?
+(defmethod sql.qp/->honeysql [:postgres :asc]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :asc])
+   driver
+   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+
+(defmethod sql.qp/->honeysql [:postgres :asc]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :asc])
+   driver
+   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]

@@ -595,7 +595,7 @@
 ;;
 ;; See #17536 and #18742
 
-(defn- rewrite-fields-to-force-using-column-aliases
+(defn rewrite-fields-to-force-using-column-aliases
   "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
   [form]
   (mbql.u/replace form
