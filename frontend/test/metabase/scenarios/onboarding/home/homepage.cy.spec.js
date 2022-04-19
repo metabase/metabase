@@ -8,7 +8,7 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
     cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
-    cy.intercept("POST", `/api/card/**/*/query`).as("getQuestionQuery");
+    cy.intercept("POST", `/api/card/*/query`).as("getQuestionQuery");
   });
 
   describe("after setup", () => {
