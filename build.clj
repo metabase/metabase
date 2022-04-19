@@ -1,7 +1,7 @@
 (ns build
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.tools.build.api :as build]
+            [clojure.tools.build.api :as b]
             [clojure.tools.build.util.zip :as build.zip]
             [clojure.tools.namespace.dependency :as ns.deps]
             [clojure.tools.namespace.find :as ns.find]
@@ -33,7 +33,7 @@
 
 (defn create-basis [edition]
   {:pre [(#{:ee :oss} edition)]}
-  (build/create-basis {:project "deps.edn", :aliases #{edition}}))
+  (b/create-basis {:project "deps.edn", :aliases #{edition}}))
 
 (defn all-paths [basis]
   (concat (:paths basis)
@@ -42,9 +42,9 @@
 (defn clean! []
   (u/step "Clean"
     (u/step (format "Delete %s" class-dir)
-      (build/delete {:path class-dir}))
+      (b/delete {:path class-dir}))
     (u/step (format "Delete %s" uberjar-filename)
-      (build/delete {:path uberjar-filename}))))
+      (b/delete {:path uberjar-filename}))))
 
 ;; this topo sort order stuff is required for stuff to work correctly... I copied it from my Cloverage PR
 ;; https://github.com/cloverage/cloverage/pull/303
@@ -78,10 +78,10 @@
           ns-decls (u/step "Determine compilation order for Metabase files"
                      (metabase-namespaces-in-topo-order basis))]
       (with-duration-ms [duration-ms]
-        (build/compile-clj {:basis      basis
-                            :src-dirs   paths
-                            :class-dir  class-dir
-                            :ns-compile ns-decls})
+        (b/compile-clj {:basis      basis
+                        :src-dirs   paths
+                        :class-dir  class-dir
+                        :ns-compile ns-decls})
         (u/announce "Finished compilation in %.1f seconds." (/ duration-ms 1000.0))))))
 
 (defn copy-resources! [edition basis]
@@ -89,7 +89,7 @@
     ;; technically we don't NEED to copy the Clojure source files but it doesn't really hurt anything IMO.
     (doseq [path (all-paths basis)]
       (u/step (format "Copy %s" path)
-        (build/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
+        (b/copy-dir {:target-dir class-dir, :src-dirs [path]})))))
 
 (defn create-uberjar! [basis]
   (u/step "Create uberjar"

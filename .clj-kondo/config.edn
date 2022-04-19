@@ -92,7 +92,7 @@
                                         clojure.spec.alpha                                              s
                                         clojure.string                                                  str
                                         clojure.test                                                    t
-                                        clojure.tools.build.api                                         build
+                                        clojure.tools.build.api                                         b
                                         clojure.tools.namespace.dependency                              ns.deps
                                         clojure.tools.namespace.find                                    ns.find
                                         clojure.tools.namespace.parse                                   ns.parse
