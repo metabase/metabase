@@ -52,7 +52,7 @@ export const getDashboardActions = (
     // Getting notifications with static text-only cards doesn't make a lot of sense
     if (canCreateSubscription) {
       buttons.push(
-        <Tooltip tooltip={t`Subscriptions`}>
+        <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
           <span>
             <DashboardHeaderButton
               disabled={!canManageSubscriptions}
