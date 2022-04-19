@@ -6,6 +6,7 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.db.connection :as mdb.connection]
+            [metabase.task :as task]
             [metabase.util.files :as files])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource
            metabase.db.connection.ApplicationDB))
@@ -84,6 +85,8 @@
   (let [path   (snapshot-path-for-name snapshot-name)
         app-db mdb.connection/*application-db*]
     (try
+      (log/info "Stopping task scheduler")
+      (task/stop-scheduler!)
       (log/info "Temporarily setting *application-db* to no-op dummy app DB")
       ;; set the app DB to `nil` so nobody else can access it.
       (alter-var-root #'mdb.connection/*application-db* (constantly (dummy-app-db)))
@@ -92,7 +95,9 @@
       (finally
         (let [app-db (increment-app-db-unique-indentifier app-db)]
           (log/info "Restoring *application-db*")
-          (alter-var-root #'mdb.connection/*application-db* (constantly app-db))))))
+          (alter-var-root #'mdb.connection/*application-db* (constantly app-db)))
+        (log/info "Restarting task scheduler")
+        (task/start-scheduler!))))
   :ok)
 
 (api/defendpoint POST "/restore/:name"
