@@ -1,17 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
 import _ from "underscore";
 
 import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
-import Modal from "metabase/components/Modal";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
-import * as Urls from "metabase/lib/urls";
 
 import {
   Archived,
@@ -22,25 +18,17 @@ import {
 import UndoListing from "metabase/containers/UndoListing";
 import StatusListing from "metabase/status/containers/StatusListing";
 
-import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
 
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import { AppContentContainer, AppContent } from "./App.styled";
 
-export const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
-export const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
-
 const mapStateToProps = state => ({
   currentUser: state.currentUser,
   errorPage: state.app.errorPage,
   isEditingDashboard: getIsEditingDashboard(state),
 });
-
-const mapDispatchToProps = {
-  onChangeLocation: push,
-};
 
 const getErrorComponent = ({ status, data, context }) => {
   if (status === 403) {
@@ -116,55 +104,6 @@ class App extends Component {
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
   };
 
-  closeModal = () => {
-    this.setState({ modal: null });
-  };
-
-  setModal = modal => {
-    this.setState({ modal });
-    if (this._newPopover) {
-      this._newPopover.close();
-    }
-  };
-
-  renderModalContent() {
-    const { modal } = this.state;
-    const { onChangeLocation } = this.props;
-
-    switch (modal) {
-      case MODAL_NEW_COLLECTION:
-        return (
-          <CollectionCreate
-            onClose={() => this.setState({ modal: null })}
-            onSaved={collection => {
-              this.setState({ modal: null });
-              onChangeLocation(Urls.collection(collection));
-            }}
-          />
-        );
-      case MODAL_NEW_DASHBOARD:
-        return (
-          <CreateDashboardModal
-            onClose={() => this.setState({ modal: null })}
-          />
-        );
-      default:
-        return null;
-    }
-  }
-
-  renderModal = () => {
-    const { modal } = this.state;
-
-    if (modal) {
-      return (
-        <Modal onClose={this.closeModal}>{this.renderModalContent()}</Modal>
-      );
-    } else {
-      return null;
-    }
-  };
-
   render() {
     const { children, errorPage } = this.props;
     const { errorInfo } = this.state;
@@ -175,14 +114,13 @@ class App extends Component {
           getErrorComponent(errorPage)
         ) : (
           <>
-            {hasAppBar && <AppBar onNewClick={this.setModal} />}
+            {hasAppBar && <AppBar />}
             <AppContentContainer
               hasAppBar={hasAppBar}
               isAdminApp={this.isAdminApp()}
             >
               {this.hasNavbar() && <Navbar />}
               <AppContent>{children}</AppContent>
-              {this.renderModal()}
               <UndoListing />
               <StatusListing />
             </AppContentContainer>
@@ -194,4 +132,4 @@ class App extends Component {
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(App);
+export default connect(mapStateToProps)(App);

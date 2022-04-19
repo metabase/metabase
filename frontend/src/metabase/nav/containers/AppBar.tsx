@@ -32,7 +32,6 @@ import {
 type Props = {
   isNavbarOpen: boolean;
   location: Location;
-  onNewClick: (modalName: string) => void;
   toggleNavbar: () => void;
   closeNavbar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
@@ -60,7 +59,6 @@ function HomepageLink({ handleClick }: { handleClick: () => void }) {
 function AppBar({
   isNavbarOpen,
   location,
-  onNewClick,
   toggleNavbar,
   closeNavbar,
   onChangeLocation,
@@ -121,7 +119,7 @@ function AppBar({
             />
           </SearchBarContent>
         </SearchBarContainer>
-        <NewButton setModal={onNewClick} />
+        <NewButton />
       </RowRight>
     </AppBarRoot>
   );
