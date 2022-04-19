@@ -151,7 +151,7 @@
       (log/debug e (trs "Error validating token"))
       #{})))
 
-(defn has-any-features?
+(defn- has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
   (boolean (seq (token-features))))
@@ -323,31 +323,28 @@
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr args body result-schema options]}]
-  (let [feature (:feature options)]
-    `(if ~(or (not feature)
-              (if (= feature :any)
-                `(has-any-features?)
+  (let [{:keys [feature fallback]} options]
+    `(if ~(or (= feature :none)
+              (if (or (not feature) (= feature :any))
+                `(enable-enhancements?)
                 `(has-feature? ~feature)))
 
-       (let [result# (do ~@body)]
-         (if ~result-schema
-           (s/validate ~result-schema result#)
-           result#))
+       ~(if result-schema
+          `(s/validate ~result-schema (do ~@body))
+          `(do ~@body))
 
-       ~(let [fallback (:fallback options)
-              ee-ns    (ns-name *ns*)]
-          (cond
-            (= fallback :error)
-            `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
+       ~(cond
+          (= fallback :error)
+          `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
 
-            (or (symbol? fallback) (seq? fallback))
-            `(apply ~fallback ~args)
+          (or (symbol? fallback) (seq? fallback))
+          `(apply ~fallback ~args)
 
-            ;; :oss and default case
-            :else
-            `(apply (get @ee-registry [(symbol ~(str ee-ns))
-                                       (symbol ~(str fn-name))])
-                    ~args))))))
+          ;; :oss and default case
+          :else
+          `(apply (get @ee-registry [(symbol ~(str (ns-name *ns*)))
+                                     (symbol ~(str fn-name))])
+                  ~args)))))
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
@@ -380,7 +377,8 @@
   ###### `:feature`
 
   A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
-  require a valid premium token, but no specific features. Omit to always run the EE implementation when available.
+  require a valid premium token with at least one feature, but no specific feature. Use `:none` to always run the
+  EE implementation if available, regardless of token. (Default: `:any`)
 
   ###### `:fallback`
 

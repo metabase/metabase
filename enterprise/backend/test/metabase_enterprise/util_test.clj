@@ -10,12 +10,13 @@
 ;; `metabase.public-settings.premium-features-test`, for testing the `defenterprise` macro itself
 
 (defenterprise greeting
-  "Returns an special greeting for an enterprise user."
+  "Returns an special greeting for anyone running the Enterprise Edition, regardless of token."
   [username]
   (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
 
 (defenterprise greeting-with-schema :- s/Keyword
-  "Returns an special greeting for an enterprise user."
+  "Returns an special greeting for anyone running the Enterprise Edition, regardless of token."
+  :feature :none
   [username]
   {username s/Keyword}
   (format "Hi %s, you're running the Enterprise Edition of Metabase!" (name username)))
@@ -23,7 +24,6 @@
 (defenterprise greeting-with-valid-token
   "Returns an extra special greeting for a user if the instance has a valid premium features token. Else, returns the
   default (OSS) greeting."
-  :feature :any
   [username]
   (format "Hi %s, you're an EE customer with a valid token!" (name username)))
 
