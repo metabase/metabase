@@ -25,7 +25,6 @@ import StatusListing from "metabase/status/containers/StatusListing";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
 
-import { toggleNavbar, closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
 import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import { AppContentContainer, AppContent } from "./App.styled";
@@ -36,14 +35,11 @@ export const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
 const mapStateToProps = state => ({
   currentUser: state.currentUser,
   errorPage: state.app.errorPage,
-  isSidebarOpen: getIsNavbarOpen(state),
   isEditingDashboard: getIsEditingDashboard(state),
 });
 
 const mapDispatchToProps = {
   onChangeLocation: push,
-  toggleNavbar,
-  closeNavbar,
 };
 
 const getErrorComponent = ({ status, data, context }) => {
@@ -170,15 +166,7 @@ class App extends Component {
   };
 
   render() {
-    const {
-      isSidebarOpen,
-      children,
-      location,
-      errorPage,
-      onChangeLocation,
-      toggleNavbar,
-      closeNavbar,
-    } = this.props;
+    const { children, errorPage } = this.props;
     const { errorInfo } = this.state;
     const hasAppBar = this.hasAppBar();
     return (
@@ -187,16 +175,7 @@ class App extends Component {
           getErrorComponent(errorPage)
         ) : (
           <>
-            {hasAppBar && (
-              <AppBar
-                isSidebarOpen={isSidebarOpen}
-                location={location}
-                onNewClick={this.setModal}
-                onToggleSidebarClick={toggleNavbar}
-                handleCloseSidebar={closeNavbar}
-                onChangeLocation={onChangeLocation}
-              />
-            )}
+            {hasAppBar && <AppBar onNewClick={this.setModal} />}
             <AppContentContainer
               hasAppBar={hasAppBar}
               isAdminApp={this.isAdminApp()}
