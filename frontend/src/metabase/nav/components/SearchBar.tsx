@@ -151,7 +151,7 @@ function SearchBar({
           onKeyPress={handleInputKeyPress}
           ref={searchInput}
         />
-        {isSmallScreen() && hasSearchText && (
+        {isSmallScreen() && isActive && (
           <ClearIconButton onClick={onClear}>
             <Icon name="close" />
           </ClearIconButton>

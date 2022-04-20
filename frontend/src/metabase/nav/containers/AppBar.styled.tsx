@@ -49,7 +49,11 @@ export const SidebarButtonContainer = styled.div`
   transition: opacity 0.3s;
 `;
 
-export const RowLeft = styled.div`
+export interface RowLeftProps {
+  isSearchActive: boolean;
+}
+
+export const RowLeft = styled.div<RowLeftProps>`
   display: flex;
   height: 100%;
   flex-direction: row;
@@ -97,11 +101,7 @@ export const RowMiddle = styled.div`
   }
 `;
 
-export interface RowRightProps {
-  isSearchActive: boolean;
-}
-
-export const RowRight = styled.div<RowRightProps>`
+export const RowRight = styled.div`
   display: flex;
   height: 100%;
   flex-direction: row;
@@ -110,7 +110,7 @@ export const RowRight = styled.div<RowRightProps>`
   justify-content: flex-end;
 
   ${breakpointMaxSmall} {
-    width: ${props => (props.isSearchActive ? "100%" : "calc(100% - 60px);")};
+    width: calc(100% - 60px);
   }
 `;
 
@@ -131,6 +131,6 @@ export const SearchBarContent = styled.div`
 
   ${breakpointMinSmall} {
     position: relative;
-    width: 500px;
+    width: 460px;
   }
 `;
