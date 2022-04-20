@@ -108,9 +108,17 @@ export default class TableSimple extends Component {
     if (sortColumn != null) {
       rowIndexes = _.sortBy(rowIndexes, rowIndex => {
         let value = rows[rowIndex][sortColumn];
+        const col = cols[sortColumn];
         // for strings we should be case insensitive
         if (typeof value === "string") {
-          value = value.toLowerCase();
+          if (isID(col)) {
+            value = parseInt(value, 10);
+          } else {
+            value = value.toLowerCase();
+          }
+        }
+        if (value === null) {
+          value = undefined;
         }
         return value;
       });
