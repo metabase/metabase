@@ -79,22 +79,22 @@ function AppBar({
 
   return (
     <AppBarRoot>
-      <RowLeft>
+      <RowLeft isSearchActive={isSearchActive}>
         <LinkToHomePage handleClick={onLogoClick} />
-        {!isSearchActive && (
-          <SidebarButtonContainer>
-            <Tooltip tooltip={sidebarButtonTooltip}>
-              <SidebarButton
-                isSidebarOpen={isSidebarOpen}
-                onClick={onToggleSidebarClick}
-              />
-            </Tooltip>
-          </SidebarButtonContainer>
-        )}
+        <SidebarButtonContainer>
+          <Tooltip tooltip={sidebarButtonTooltip}>
+            <SidebarButton
+              isSidebarOpen={isSidebarOpen}
+              onClick={onToggleSidebarClick}
+            />
+          </Tooltip>
+        </SidebarButtonContainer>
       </RowLeft>
-      <RowMiddle>
-        <LinkToHomePage handleClick={onLogoClick} />
-      </RowMiddle>
+      {!isSearchActive && (
+        <RowMiddle>
+          <LinkToHomePage handleClick={onLogoClick} />
+        </RowMiddle>
+      )}
       <RowRight>
         <SearchBarContainer>
           <SearchBarContent>

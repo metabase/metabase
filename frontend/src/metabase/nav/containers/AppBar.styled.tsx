@@ -68,7 +68,7 @@ export const RowLeft = styled.div`
   }
 
   ${breakpointMaxSmall} {
-    width: calc(100% - 60px);
+    width: ${props => (props.isSearchActive ? "80px" : "calc(100% - 60px);")};
 
     ${LogoLink} {
       opacity: 0;
@@ -97,11 +97,20 @@ export const RowMiddle = styled.div`
   }
 `;
 
-export const RowRight = styled(RowLeft)`
+export interface RowRightProps {
+  isSearchActive: boolean;
+}
+
+export const RowRight = styled.div<RowRightProps>`
+  display: flex;
+  height: 100%;
+  flex-direction: row;
+  align-items: center;
+  width: 30%;
   justify-content: flex-end;
 
   ${breakpointMaxSmall} {
-    width: calc(100% - 60px);
+    width: ${props => (props.isSearchActive ? "100%" : "calc(100% - 60px);")};
   }
 `;
 
