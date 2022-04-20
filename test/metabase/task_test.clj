@@ -89,7 +89,7 @@
                     :jobs      [{:key         su/NonBlankString
                                  :description (s/maybe su/NonBlankString)
                                  :triggers    [{:key                 su/NonBlankString
-                                                :description         su/NonBlankString
+                                                :description         (s/maybe su/NonBlankString)
                                                 :misfire-instruction su/NonBlankString
                                                 :state               su/NonBlankString
                                                 s/Keyword            s/Any}]
