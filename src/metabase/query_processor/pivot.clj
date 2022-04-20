@@ -2,6 +2,7 @@
   "Pivot table actions for the query processor"
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.query-processor :as qp]
             [metabase.query-processor.context :as qp.context]
@@ -100,6 +101,13 @@
       (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
       query)))
 
+(defn- remove-existing-order-bys
+  "Remove existing `:order-by` clauses from the query. Since we're adding our own breakouts (i.e. `GROUP BY` and `ORDER
+  BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work -- `ORDER BY` isn't
+  allowed for fields that don't appear in `GROUP BY`."
+  [outer-query]
+  (m/dissoc-in outer-query [:query :order-by]))
+
 (defn- generate-queries
   "Generate the additional queries to perform a generic pivot table"
   [{{all-breakouts :breakout} :query, :keys [pivot-rows pivot-cols query], :as outer-query}]
@@ -109,7 +117,9 @@
           :let             [group-bitmask (group-bitmask (count all-breakouts) breakout-indices)
                             new-breakouts (for [i breakout-indices]
                                             (nth all-breakouts i))]]
-      (add-grouping-field outer-query new-breakouts group-bitmask))
+      (-> outer-query
+          remove-existing-order-bys
+          (add-grouping-field new-breakouts group-bitmask)))
     (catch Throwable e
       (throw (ex-info (tru "Error generating pivot queries")
                       {:type qp.error-type/qp, :query query}
