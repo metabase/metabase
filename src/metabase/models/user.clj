@@ -181,7 +181,8 @@
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn add-user-group-memberships
-  "Efficiently add PermissionsGroup `groups` to a collection of `users`."
+  "Add to each `user` a list of Group Memberships Info with each item is a map with 2 keys [:id :is_group_manager].
+  In which `is_group_manager` is only added when `advanced-permissions` is enabled."
   {:batched-hydrate :user_group_memberships}
   [users]
   (when (seq users)

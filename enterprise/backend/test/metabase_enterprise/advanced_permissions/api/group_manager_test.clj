@@ -200,8 +200,8 @@
 (deftest update-user-api-test
   (testing "PUT /api/user/:id"
     (mt/with-user-in-groups
-      [group        {:name "New Group"}
-       user         [group]]
+      [group {:name "New Group"}
+       user  [group]]
       (mt/with-temp User [user-to-update]
         (letfn [(update-user-firstname [req-user status]
                   (testing (format "- update users firstname with %s user" (mt/user-descriptor user))
