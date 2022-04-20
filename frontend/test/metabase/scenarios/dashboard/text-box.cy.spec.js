@@ -96,7 +96,8 @@ describe("scenarios > dashboard > text-box", () => {
 
       // The test fails if there is no scroll bar
       cy.get(".text-card-markdown")
-        .should("have.css", "overflow", "auto")
+        .should("have.css", "overflow-x", "hidden")
+        .should("have.css", "overflow-y", "auto")
         .scrollTo("bottom");
     });
 
