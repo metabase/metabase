@@ -302,13 +302,14 @@
                          (format "INSERT INTO json_alias_test (json_part) VALUES ('%s');" json-part))]
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [insert]))
-        (mt/with-temp* [Database [database {:engine :postgres, :details details}]
-                        Table    [table    {:db_id (u/the-id database) :name "json_alias_test"}]
-                        Field    [field    {:table_id (u/the-id table)
-                                            :nfc_path [:bob
-                                                       "injection' OR 1=1--' AND released = 1"
-                                                       (keyword "injection' OR 1=1--' AND released = 1")],
-                                            :name "json_alias_test"}]]
+        (mt/with-temp* [Database [database    {:engine :postgres, :details details}]
+                        Table    [table       {:db_id (u/the-id database) :name "json_alias_test"}]
+                        Field    [dummy-field {}]
+                        Field    [field       {:table_id (u/the-id table)
+                                               :nfc_path [:bob
+                                                          "injection' OR 1=1--' AND released = 1"
+                                                          (keyword "injection' OR 1=1--' AND released = 1")],
+                                               :name     "json_alias_test"}]]
           (let [compile-res (qp/compile
                               {:database (u/the-id database)
                                :type     :query
