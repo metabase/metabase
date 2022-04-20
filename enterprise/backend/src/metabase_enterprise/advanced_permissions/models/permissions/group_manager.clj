@@ -4,7 +4,7 @@
             [metabase.api.common :as api]
             [metabase.models :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
 (defn user-group-memberships
@@ -24,6 +24,8 @@
   (into {} (map (fn [x] [(:id x) (dissoc x :id)]) user-group-memberships)))
 
 (defn set-user-group-memberships!
+  "Update User Groups Memberships when `advanced-permissions` is enabled.
+  It's used to add/remove users from groups and also promote/demote Group Managers."
   [user-or-id new-user-group-memberships]
   (let [user-id                       (u/the-id user-or-id)
         old-user-group-memberships    (user-group-memberships user-id)
