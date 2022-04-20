@@ -68,7 +68,7 @@ export const RowLeft = styled.div`
   }
 
   ${breakpointMaxSmall} {
-    width: 33.333%;
+    width: calc(100% - 60px);
 
     ${LogoLink} {
       opacity: 0;
@@ -88,7 +88,6 @@ export const RowMiddle = styled.div`
 
   ${breakpointMaxSmall} {
     display: flex;
-    width: 33.333%;
   }
 
   ${LogoLink} {
@@ -102,7 +101,7 @@ export const RowRight = styled(RowLeft)`
   justify-content: flex-end;
 
   ${breakpointMaxSmall} {
-    width: 33.33%;
+    width: calc(100% - 60px);
   }
 `;
 
