@@ -353,8 +353,8 @@
       (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
       (with-all-users-data-perms {(mt/id) {:data    {:schemas :block :native :none}
                                            :details :yes}}
-        (binding [api.database/*rescan-values-async* false]
-         (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
+        (with-redefs [api.database/*rescan-values-async* false]
+          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
       (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))
 
     (testing "A non-admin can discard saved field values if they have DB details permissions"
