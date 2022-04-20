@@ -21,6 +21,7 @@ const nativeQuestionDetails = {
     query: "select count(*) from orders limit 5",
   },
   display: "scalar",
+  collection_id: 1,
 };
 
 const questionDetails = {

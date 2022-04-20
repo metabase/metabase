@@ -174,6 +174,7 @@ export function visitDashboard(dashboard_id) {
       //  - the one which user doesn't have access to
       // the last request will always be `GET /api/dashboard/:dashboard_id`
       cy.visit(`/dashboard/${dashboard_id}`);
+
       cy.wait(`@${dashboardAlias}`);
     }
   });
@@ -185,10 +186,15 @@ function hasAccess(statusCode) {
 
 function dashboardHasQuestions(cards) {
   if (Array.isArray(cards) && cards.length > 0) {
-    // We need to filter out the markdown cards
-    const questions = cards.filter(({ card_id }) => {
-      return card_id !== null;
-    });
+    const questions = cards
+      // Filter out markdown cards
+      .filter(({ card_id }) => {
+        return card_id !== null;
+      })
+      // Filter out cards which the current user is not allowed to see
+      .filter(({ card }) => {
+        return card.dataset_query !== undefined;
+      });
 
     const isPopulated = questions.length > 0;
 
