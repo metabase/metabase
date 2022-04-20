@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
@@ -9,11 +9,12 @@ import {
   NameContainer,
   NodeRoot,
   SidebarIcon,
+  FullWidthButton,
 } from "./SidebarItems.styled";
 
 interface Props {
   children: string;
-  url: string;
+  url?: string;
   icon: string | IconProps | React.ReactElement;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
@@ -21,6 +22,10 @@ interface Props {
   right?: React.ReactNode;
   onClick?: () => void;
 }
+
+type ContentProps = {
+  children: React.ReactNode;
+};
 
 function isIconPropsObject(
   icon: string | IconProps | React.ReactNode,
@@ -58,6 +63,14 @@ function SidebarLink({
     );
   }, [icon, isSelected]);
 
+  const Content = useMemo(() => {
+    return url
+      ? (props: ContentProps) => <FullWidthLink {...props} to={url} />
+      : (props: ContentProps) => (
+          <FullWidthButton {...props} isSelected={isSelected} />
+        );
+  }, [url, isSelected]);
+
   return (
     <NodeRoot
       depth={0}
@@ -67,10 +80,10 @@ function SidebarLink({
       {...props}
     >
       {React.isValidElement(left) && left}
-      <FullWidthLink to={url}>
+      <Content>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
-      </FullWidthLink>
+      </Content>
       {React.isValidElement(right) && right}
     </NodeRoot>
   );
