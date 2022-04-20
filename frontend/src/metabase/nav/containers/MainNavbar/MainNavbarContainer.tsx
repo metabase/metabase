@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
@@ -159,23 +159,20 @@ function MainNavbarContainer({
     return [root, ...buildCollectionTree(preparedCollections)];
   }, [rootCollection, collections, currentUser]);
 
-  const reorderBookmarks = ({
-    newIndex,
-    oldIndex,
-  }: {
-    newIndex: number;
-    oldIndex: number;
-  }) => {
-    const bookmarksToBeReordered =
-      orderedBookmarks.length > 0 ? [...orderedBookmarks] : [...bookmarks];
-    const element = bookmarksToBeReordered[oldIndex];
+  const reorderBookmarks = useCallback(
+    ({ newIndex, oldIndex }) => {
+      const bookmarksToBeReordered =
+        orderedBookmarks.length > 0 ? [...orderedBookmarks] : [...bookmarks];
+      const element = bookmarksToBeReordered[oldIndex];
 
-    bookmarksToBeReordered.splice(oldIndex, 1);
-    bookmarksToBeReordered.splice(newIndex, 0, element);
+      bookmarksToBeReordered.splice(oldIndex, 1);
+      bookmarksToBeReordered.splice(newIndex, 0, element);
 
-    setOrderedBookmarks(bookmarksToBeReordered as any);
-    Bookmarks.actions.reorder(bookmarksToBeReordered);
-  };
+      setOrderedBookmarks(bookmarksToBeReordered as any);
+      Bookmarks.actions.reorder(bookmarksToBeReordered);
+    },
+    [bookmarks, orderedBookmarks],
+  );
 
   return (
     <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
