@@ -66,10 +66,44 @@ export const RowLeft = styled.div`
       opacity: 1;
     }
   }
+
+  ${breakpointMaxSmall} {
+    width: 33.333%;
+
+    ${LogoLink} {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    ${SidebarButtonContainer} {
+      opacity: 1;
+    }
+  }
+`;
+
+export const RowMiddle = styled.div`
+  display: none;
+  justify-content: center;
+  width: 80px;
+
+  ${breakpointMaxSmall} {
+    display: flex;
+    width: 33.333%;
+  }
+
+  ${LogoLink} {
+    position: relative;
+    padding-left: 8px;
+    margin-left: 0;
+  }
 `;
 
 export const RowRight = styled(RowLeft)`
   justify-content: flex-end;
+
+  ${breakpointMaxSmall} {
+    width: 33.33%;
+  }
 `;
 
 export const SearchBarContainer = styled.div`
