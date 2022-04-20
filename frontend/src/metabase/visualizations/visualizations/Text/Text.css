@@ -5,9 +5,11 @@
 :local .Text {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 0.5em 0.75em;
   height: 100%;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0;
 }
 :local .Text .text-card-textarea {
   padding: 0.25em 0.75em;
@@ -27,35 +29,53 @@
 }
 :local .Text .text-card-markdown {
   height: 100%;
-  overflow: auto;
+  padding: 0.5em 0.75em;
   pointer-events: all;
+}
+
+:local .Text .text-card-markdown h1,
+:local .Text .text-card-markdown h2,
+:local .Text .text-card-markdown h3,
+:local .Text .text-card-markdown h4,
+:local .Text .text-card-markdown h5,
+:local .Text .text-card-markdown h6 {
+  margin: 0.375em 0 0.25em 0;
+  padding-right: 1.5em;
+}
+
+:local .Text .text-card-markdown h1:first-child,
+:local .Text .text-card-markdown h2:first-child,
+:local .Text .text-card-markdown h3:first-child,
+:local .Text .text-card-markdown h4:first-child,
+:local .Text .text-card-markdown h5:first-child,
+:local .Text .text-card-markdown h6:first-child {
+  margin-top: 0.125em;
+}
+
+:local .Text .text-card-markdown h1:last-child,
+:local .Text .text-card-markdown h2:last-child,
+:local .Text .text-card-markdown h3:last-child,
+:local .Text .text-card-markdown h4:last-child,
+:local .Text .text-card-markdown h5:last-child,
+:local .Text .text-card-markdown h6:last-child {
+  margin-bottom: 0.125em;
 }
 
 :local .Text .text-card-markdown h1 {
   font-weight: 900;
   font-size: 1.831em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h2 {
   font-size: 1.627em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h3 {
   font-size: 1.447em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h4 {
   font-size: 1.286em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown h5 {
   font-size: 1.143em;
-  margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
 }
 :local .Text .text-card-markdown p {
   font-size: 1.143em;
