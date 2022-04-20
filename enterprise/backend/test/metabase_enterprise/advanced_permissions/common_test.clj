@@ -2,14 +2,15 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.test :refer :all]
-            [metabase.models :refer [Database Field Permissions Table]]
+            [metabase.models :refer [Database Field FieldValues Permissions Table]]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (defn- do-with-all-user-data-perms
   [graph f]
@@ -176,6 +177,7 @@
         (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {schema {table-id :none}}}}}
             (mt/user-http-request :rasta :post 403 (format "field/%d/rescan_values" field-id)))
+
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {schema {table-id :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" field-id)))))
 
@@ -226,6 +228,7 @@
       (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/rescan_values" table-id)))
+
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
           (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id)))))
 
@@ -319,9 +322,24 @@
       (with-all-users-data-perms {db-id {:details :yes}}
         (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" db-id))))
 
+    (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
+      (db/delete! FieldValues :field_id (mt/id :venues :price))
+      (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+      (with-all-users-data-perms {(mt/id) {:data    {:schemas :block :native :none}
+                                           :details :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
+      (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))
+
     (testing "A non-admin can discard saved field values if they have DB details permissions"
       (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))))
+        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
+
+    (testing "A non-admin with no data access can discard field values if they have DB details perms"
+      (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+      (with-all-users-data-perms {(mt/id) {:data    {:schemas :block :native :none}
+                                           :details :yes}}
+        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" (mt/id))))
+      (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))))
 
 (deftest fetch-db-test
   (mt/with-temp Database [{db-id :id}]
