@@ -1,5 +1,7 @@
 import { push } from "react-router-redux";
 import { GroupsPermissions } from "metabase-types/api";
+import { t } from "ttag";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   EntityId,
@@ -12,7 +14,6 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { t } from "ttag";
 
 export const DATA_MODEL_PERMISSION_REQUIRES_DATA_ACCESS = t`Data model access requires full data access.`;
 
@@ -35,18 +36,6 @@ export const DATA_MODEL_PERMISSION_OPTIONS = {
     icon: "permissions_limited",
     iconColor: "warning",
   },
-};
-
-const buildControlledActionUrl = (
-  entityId: EntityId,
-  groupId: number,
-  permissionSubject: PermissionSubject,
-) => {
-  if (permissionSubject === "schemas") {
-    return `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}`;
-  }
-
-  return `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`;
 };
 
 const getPermissionValue = (
@@ -108,9 +97,7 @@ export const buildDataModelPermission = (
     postActions: hasChildEntities
       ? {
           controlled: () =>
-            push(
-              buildControlledActionUrl(entityId, groupId, permissionSubject),
-            ),
+            push(getGroupFocusPermissionsUrl(groupId, entityId)),
         }
       : undefined,
   };
