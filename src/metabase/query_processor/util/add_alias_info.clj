@@ -171,13 +171,14 @@
 (defn- field-source-table-alias
   "Determine the appropriate `::source-table` alias for a `field-clause`."
   {:arglists '([inner-query field-clause])}
-  [{:keys [source-table source-query], :as inner-query} [_ _id-or-name {:keys [join-alias]}, :as field-clause]]
+  [{:keys [source-table source-query], :as inner-query} [_ id-or-name {:keys [join-alias]}, :as field-clause]]
   (let [table-id            (field-table-id field-clause)
         join-is-this-level? (field-is-from-join-in-this-level? inner-query field-clause)]
     (cond
       join-is-this-level?                      join-alias
       (and table-id (= table-id source-table)) table-id
       source-query                             ::source
+      (string? id-or-name)                     source-table
       :else
       (throw (ex-info (trs "Cannot determine the source table or query for Field clause {0}" (pr-str field-clause))
                       {:type   qp.error-type/invalid-query
