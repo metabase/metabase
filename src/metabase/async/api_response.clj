@@ -14,7 +14,7 @@
             [compojure.response :refer [Sendable]]
             [metabase.server.middleware.exceptions :as mw.exceptions]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [trs]]
+            [metabase.util.i18n :refer [trs]]
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as response])
   (:import clojure.core.async.impl.channels.ManyToManyChannel

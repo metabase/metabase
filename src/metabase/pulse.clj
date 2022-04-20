@@ -18,10 +18,10 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.server.middleware.session :as session]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
-            [metabase.util.ui-logic :as ui]
+            [metabase.util.ui-logic :as ui-logic]
             [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
@@ -46,7 +46,7 @@
   (try
     (let [card-id (u/the-id card-or-id)
           card    (Card :id card-id)
-          result  (session/with-current-user owner-id
+          result  (mw.session/with-current-user owner-id
                     (qp.dashboard/run-query-for-dashcard-async
                      :dashboard-id  (u/the-id dashboard)
                      :card-id       card-id
@@ -223,8 +223,8 @@
 
 (defn- goal-met? [{:keys [alert_above_goal], :as pulse} [first-result]]
   (let [goal-comparison      (if alert_above_goal >= <)
-        goal-val             (ui/find-goal-value first-result)
-        comparison-col-rowfn (ui/make-goal-comparison-rowfn (:card first-result)
+        goal-val             (ui-logic/find-goal-value first-result)
+        comparison-col-rowfn (ui-logic/make-goal-comparison-rowfn (:card first-result)
                                                             (get-in first-result [:result :data]))]
 
     (when-not (and goal-val comparison-col-rowfn)
@@ -318,7 +318,7 @@
     {:subject      email-subject
      :recipients   email-recipients
      :message-type :attachments
-     :message      (messages/render-alert-email timezone pulse channel results (ui/find-goal-value first-result))}))
+     :message      (messages/render-alert-email timezone pulse channel results (ui-logic/find-goal-value first-result))}))
 
 (defmethod notification [:alert :slack]
   [pulse results {{channel-id :channel} :details}]

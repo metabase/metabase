@@ -1,7 +1,7 @@
 (ns metabase-enterprise.serialization.upsert
   "Upsert-or-skip functionality for our models."
   (:require [cheshire.core :as json]
-            [clojure.data :as diff]
+            [clojure.data :as data]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase-enterprise.serialization.names :refer [name-for-logging]]
@@ -100,7 +100,7 @@
 (defn- group-by-action
   "Return `entities` grouped by the action that needs to be done given the `context`."
   [{:keys [mode]} model entities]
-  (let [same? (comp nil? second diff/diff)]
+  (let [same? (comp nil? second data/diff)]
     (->> entities
          (map-indexed (fn [position entity]
                         [position

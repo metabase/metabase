@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
-            [metabase.sync.util-test :as sut]
+            [metabase.sync.util-test :as sync.util-test]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -23,10 +23,10 @@
               ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
               ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
               _                                (driver/notify-database-updated driver/*driver* db)
-              {:keys [step-info task-history]} (sut/sync-database! "sync-timezone" db)]
+              {:keys [step-info task-history]} (sync.util-test/sync-database! "sync-timezone" db)]
           (testing "only step keys"
             (is (= {:timezone-id "UTC"}
-                   (sut/only-step-keys step-info))))
+                   (sync.util-test/only-step-keys step-info))))
           (testing "task details"
             (is (= {:timezone-id "UTC"}
                    (:task_details task-history))))

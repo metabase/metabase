@@ -44,7 +44,7 @@ export default class UserGroupSelect extends Component {
       const membershipId = userMemberships.find(m => m.group_id === group.id)
         .membership_id;
 
-      deleteMembership({ membershipId });
+      deleteMembership({ membershipId, groupId: group.id });
     }
   };
 

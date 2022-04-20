@@ -3,7 +3,7 @@
   (:require [cemerick.friend.credentials :as creds]
             [clojure.test :as t]
             [medley.core :as m]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
@@ -133,7 +133,7 @@
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
-            (u/prog1 (http/authenticate (user->credentials username))
+            (u/prog1 (client/authenticate (user->credentials username))
               (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
@@ -149,7 +149,7 @@
 
 (defn- client-fn [username & args]
   (try
-    (apply http/client (username->token username) args)
+    (apply client/client (username->token username) args)
     (catch ExceptionInfo e
       (let [{:keys [status-code]} (ex-data e)]
         (when-not (= status-code 401)
@@ -199,7 +199,7 @@
                       :set    {:password      (creds/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
-        (apply http/client {:username user-email, :password user-email} args)
+        (apply client/client {:username user-email, :password user-email} args)
         (finally
           (db/execute! {:update User
                         :set    old-password-info

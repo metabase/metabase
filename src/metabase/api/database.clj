@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
-            [metabase.api.table :as table-api]
+            [metabase.api.table :as api.table]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
@@ -26,11 +26,11 @@
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as sync-field-values]
+            [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
+            [metabase.util.cron :as u.cron]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -166,7 +166,7 @@
    Builder.)"
   [question-type & {:keys [include-fields?]}]
   (for [card (source-query-cards question-type)]
-    (table-api/card->virtual-table card :include-fields? include-fields?)))
+    (api.table/card->virtual-table card :include-fields? include-fields?)))
 
 (defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
@@ -288,8 +288,8 @@
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (s/defn ^:private expanded-schedules [db :- DatabaseInstance]
-  {:cache_field_values (cron-util/cron-string->schedule-map (:cache_field_values_schedule db))
-   :metadata_sync      (cron-util/cron-string->schedule-map (:metadata_sync_schedule db))})
+  {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
+   :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 
 (defn- add-expanded-schedules
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
@@ -753,7 +753,7 @@
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (Database id))]
     (future
-      (sync-field-values/update-field-values! db)))
+      (field-values/update-field-values! db)))
   {:status :ok})
 
 
@@ -858,10 +858,10 @@
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :card
-          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
+          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                       [:= :collection_id nil]
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
-         (map table-api/card->virtual-table))))
+         (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
@@ -870,10 +870,10 @@
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :dataset
-          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
+          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                       [:= :collection_id nil]
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
-         (map table-api/card->virtual-table))))
+         (map api.table/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
   "Return a list of database IDs using currently deprecated drivers."

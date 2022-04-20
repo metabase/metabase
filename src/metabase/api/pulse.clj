@@ -3,7 +3,7 @@
   (:require [clojure.set :refer [difference]]
             [compojure.core :refer [GET POST PUT]]
             [hiccup.core :refer [html]]
-            [metabase.api.alert :as api-alert]
+            [metabase.api.alert :as api.alert]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.email :as email]
@@ -17,7 +17,7 @@
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.pulse :as p]
+            metabase.pulse
             [metabase.pulse.render :as render]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -120,8 +120,8 @@
     ;; if advanced-permissions is enabled, only superuser or non-admin with subscription permission can
     ;; update pulse's recipients
     (when (premium-features/enable-advanced-permissions?)
-      (let [to-add-recipients (difference (set (map :id (:recipients (api-alert/email-channel pulse-updates))))
-                                          (set (map :id (:recipients (api-alert/email-channel pulse-before-update)))))
+      (let [to-add-recipients (difference (set (map :id (:recipients (api.alert/email-channel pulse-updates))))
+                                          (set (map :id (:recipients (api.alert/email-channel pulse-before-update)))))
             current-user-has-application-permissions?
             (and (premium-features/enable-advanced-permissions?)
                  (resolve 'metabase-enterprise.advanced-permissions.common/current-user-has-application-permissions?))
@@ -192,7 +192,7 @@
                [:body {:style "margin: 0;"}
                 (binding [render/*include-title*   true
                           render/*include-buttons* true]
-                  (render/render-pulse-card-for-display (p/defaulted-timezone card) card result))]])}))
+                  (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result))]])}))
 
 (api/defendpoint GET "/preview_card_info/:id"
   "Get JSON object containing HTML rendering of a Card with `id` and other information."
@@ -202,7 +202,7 @@
         data      (:data result)
         card-type (render/detect-pulse-chart-type card nil data)
         card-html (html (binding [render/*include-title* true]
-                          (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
+                          (render/render-pulse-card-for-display (metabase.pulse/defaulted-timezone card) card result)))]
     {:id              id
      :pulse_card_type card-type
      :pulse_card_html card-html
@@ -219,7 +219,7 @@
   (let [card   (api/read-check Card id)
         result (pulse-card-query-results card)
         ba     (binding [render/*include-title* true]
-                 (render/render-pulse-card-to-png (p/defaulted-timezone card) card result preview-card-width))]
+                 (render/render-pulse-card-to-png (metabase.pulse/defaulted-timezone card) card result preview-card-width))]
     {:status 200, :headers {"Content-Type" "image/png"}, :body (ByteArrayInputStream. ba)}))
 
 (api/defendpoint POST "/test"
@@ -236,7 +236,7 @@
   ;; make sure any email addresses that are specified are allowed before sending the test Pulse.
   (doseq [channel channels]
     (pulse-channel/validate-email-domains channel))
-  (p/send-pulse! (assoc body :creator_id api/*current-user-id*))
+  (metabase.pulse/send-pulse! (assoc body :creator_id api/*current-user-id*))
   {:ok true})
 
 (api/defendpoint DELETE "/:id/subscription"

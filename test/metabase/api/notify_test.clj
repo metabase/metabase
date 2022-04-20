@@ -1,10 +1,12 @@
 (ns metabase.api.notify-test
-  (:require [clj-http.client :as client]
+  (:require [clj-http.client :as http]
             [clojure.test :refer :all]
-            [metabase.api.notify :as notify]
-            [metabase.http-client :as http]
+            [metabase.api.notify :as api.notify]
+            [metabase.http-client :as client]
             [metabase.models.database :as database]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
+            metabase.sync
+            metabase.sync.sync-metadata
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]))
@@ -14,23 +16,23 @@
 (deftest unauthenticated-test
   (testing "POST /api/notify/db/:id"
     (testing "endpoint should require authentication"
-      (is (= (get middleware.u/response-forbidden :body)
-             (http/client :post 403 "notify/db/100"))))))
+      (is (= (get mw.util/response-forbidden :body)
+             (client/client :post 403 "notify/db/100"))))))
 
 (deftest not-found-test
   (testing "POST /api/notify/db/:id"
     (testing "database must exist or we get a 404"
       (is (= {:status 404
               :body   "Not found."}
-             (try (client/post (http/build-url (format "notify/db/%d" Integer/MAX_VALUE) {})
-                               {:accept  :json
-                                :headers {"X-METABASE-APIKEY" "test-api-key"
-                                          "Content-Type"      "application/json"}})
+             (try (http/post (client/build-url (format "notify/db/%d" Integer/MAX_VALUE) {})
+                                    {:accept  :json
+                                     :headers {"X-METABASE-APIKEY" "test-api-key"
+                                               "Content-Type"      "application/json"}})
                   (catch clojure.lang.ExceptionInfo e
                     (select-keys (ex-data e) [:status :body]))))))))
 
 (deftest post-db-id-test
-  (binding [notify/*execute-asynchronously* false]
+  (binding [api.notify/*execute-asynchronously* false]
     (mt/test-drivers (mt/normal-drivers)
       (let [table-name (->> (mt/db) database/tables first :name)
             post       (fn post-api

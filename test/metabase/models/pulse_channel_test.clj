@@ -1,9 +1,9 @@
 (ns metabase.models.pulse-channel-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.models.pulse :as p :refer [Pulse]]
-            [metabase.models.pulse-channel :as pc :refer [PulseChannel]]
-            [metabase.models.pulse-channel-recipient :as pcr :refer [PulseChannelRecipient]]
+            [metabase.models.pulse :refer [Pulse]]
+            [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
+            [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -21,7 +21,7 @@
                         :mon  false}]
     (testing x
       (is (= expected
-             (pc/day-of-week? x))))))
+             (pulse-channel/day-of-week? x))))))
 
 (deftest hour-of-day?-test
   (doseq [[x expected] {nil   false
@@ -34,7 +34,7 @@
                         23    true}]
     (testing x
       (is (= expected
-             (pc/hour-of-day? x))))))
+             (pulse-channel/hour-of-day? x))))))
 
 (deftest schedule-type?-test
   (doseq [[x expected] {nil     false
@@ -46,7 +46,7 @@
                         :weekly true}]
     (testing x
       (is (= expected
-             (pc/schedule-type? x))))))
+             (pulse-channel/schedule-type? x))))))
 
 (deftest schedule-frame?-test
   (doseq [[x expected] {nil     false
@@ -58,7 +58,7 @@
                         :last   true}]
     (testing x
       (is (= expected
-             (pc/schedule-frame? x))))))
+             (pulse-channel/schedule-frame? x))))))
 
 (deftest valid-schedule?-test
   (doseq [[group args->expected] {"nil"
@@ -95,7 +95,7 @@
     (testing group
       (testing (cons 'valid-schedule? args)
         (is (= expected
-               (apply pc/valid-schedule? args)))))))
+               (apply pulse-channel/valid-schedule? args)))))))
 
 (deftest channel-type?-test
   (doseq [[x expected] {nil     false
@@ -107,7 +107,7 @@
                         :slack  true}]
     (testing x
       (is (= expected
-             (pc/channel-type? x))))))
+             (pulse-channel/channel-type? x))))))
 
 (deftest supports-recipients?-test
   (doseq [[x expected] {nil    false
@@ -116,7 +116,7 @@
                         :slack false}]
     (testing x
       (is (= expected
-             (pc/supports-recipients? x))))))
+             (pulse-channel/supports-recipients? x))))))
 
 ;; helper functions
 
@@ -130,7 +130,7 @@
 ;; create a channel then select its details
 (defn- create-channel-then-select!
   [channel]
-  (when-let [new-channel-id (pc/create-pulse-channel! channel)]
+  (when-let [new-channel-id (pulse-channel/create-pulse-channel! channel)]
     (-> (PulseChannel new-channel-id)
         (hydrate :recipients)
         (update :recipients #(sort-by :email %))
@@ -140,7 +140,7 @@
 
 (defn- update-channel-then-select!
   [{:keys [id] :as channel}]
-  (pc/update-pulse-channel! channel)
+  (pulse-channel/update-pulse-channel! channel)
   (-> (PulseChannel id)
       (hydrate :recipients)
       (dissoc :id :pulse_id :created_at :updated_at)
@@ -267,7 +267,7 @@
 
     (testing "hourly schedules don't require day/hour settings (should be nil), fully change recipients"
       (mt/with-temp PulseChannel [{channel-id :id} {:pulse_id pulse-id, :details {:emails ["foo@bar.com"]}}]
-        (pc/update-recipients! channel-id [(mt/user->id :rasta)])
+        (pulse-channel/update-recipients! channel-id [(mt/user->id :rasta)])
         (is (= {:enabled       true
                 :channel_type  :email
                 :schedule_type :hourly
@@ -308,7 +308,7 @@
   (mt/with-temp* [Pulse        [{pulse-id :id}]
                   PulseChannel [{channel-id :id} {:pulse_id pulse-id}]]
     (letfn [(upd-recipients! [recipients]
-              (pc/update-recipients! channel-id recipients)
+              (pulse-channel/update-recipients! channel-id recipients)
               (db/select-field :user_id PulseChannelRecipient, :pulse_channel_id channel-id))]
       (doseq [[new-recipients expected] {[]                  nil
                                          [:rasta]            [:rasta]
@@ -321,7 +321,7 @@
 
 (deftest retrieve-scheduled-channels-test
   (letfn [(retrieve-channels [hour day]
-            (for [channel (pc/retrieve-scheduled-channels hour day :other :other)]
+            (for [channel (pulse-channel/retrieve-scheduled-channels hour day :other :other)]
               (dissoc (into {} channel) :id :pulse_id)))]
     (testing "test a simple scenario with a single Pulse and 2 channels on hourly/daily schedules"
       (mt/with-temp* [Pulse        [{pulse-id :id}]
@@ -359,7 +359,7 @@
 (deftest retrive-monthly-scheduled-pulses-test
   (testing "specific test for various monthly scheduling permutations"
     (letfn [(retrieve-channels [& args]
-              (for [channel (apply pc/retrieve-scheduled-channels args)]
+              (for [channel (apply pulse-channel/retrieve-scheduled-channels args)]
                 (dissoc (into {} channel) :id :pulse_id)))]
       (mt/with-temp* [Pulse        [{pulse-1-id :id}]
                       Pulse        [{pulse-2-id :id}]
@@ -418,12 +418,12 @@
              (:recipients (hydrate channel :recipients)))))))
 
 (deftest validate-email-domains-check-user-ids-match-emails
-  (testing `pc/validate-email-domains
+  (testing `pulse-channel/validate-email-domains
     (testing "should check that User `:id` and `:email`s match for User `:recipients`"
       (let [input {:recipients [{:email "rasta@metabase.com"
                                  :id    (mt/user->id :rasta)}]}]
         (is (= input
-               (pc/validate-email-domains input))))
+               (pulse-channel/validate-email-domains input))))
       (testing "Throw Exception if User does not exist"
         ;; should validate even if `:email` isn't specified
         (doseq [input [{:id Integer/MAX_VALUE}
@@ -433,9 +433,9 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"User [\d,]+ does not exist"
-                 (pc/validate-email-domains {:recipients [input]}))))))
+                 (pulse-channel/validate-email-domains {:recipients [input]}))))))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Wrong email address for User [\d,]+"
-           (pc/validate-email-domains {:recipients [{:email "rasta@example.com"
-                                                     :id    (mt/user->id :rasta)}]}))))))
+           (pulse-channel/validate-email-domains {:recipients [{:email "rasta@example.com"
+                                                                :id    (mt/user->id :rasta)}]}))))))

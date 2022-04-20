@@ -1,5 +1,5 @@
 (ns metabase.events.view-log
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
             [metabase.models.view-log :refer [ViewLog]]
@@ -15,7 +15,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for view counting."}
   view-log-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------

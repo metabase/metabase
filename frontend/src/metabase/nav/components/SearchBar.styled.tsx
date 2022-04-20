@@ -76,7 +76,7 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   }
 
   ${breakpointMinSmall} {
-    padding: 10px 12px;
+    padding: 9px 12px;
   }
 
   ${breakpointMaxSmall} {

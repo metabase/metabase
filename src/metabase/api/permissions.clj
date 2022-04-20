@@ -1,20 +1,20 @@
 (ns metabase.api.permissions
   "/api/permissions endpoints."
-  (:require [clojure.spec.alpha :as spec]
+  (:require [clojure.spec.alpha :as s]
             [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
-            [metabase.api.permission-graph :as pg]
+            [metabase.api.permission-graph :as api.permission-graph]
             [metabase.models :refer [PermissionsGroupMembership User]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as offset-paging]
+            [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
+            schema.core
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -42,12 +42,12 @@
   [:as {body :body}]
   {body su/Map}
   (api/check-superuser)
-  (let [graph (pg/converted-json->graph ::pg/data-permissions-graph body)]
+  (let [graph (api.permission-graph/converted-json->graph ::api.permission-graph/data-permissions-graph body)]
     (when (= graph :clojure.spec.alpha/invalid)
       (throw (ex-info (tru "Cannot parse permissions graph because it is invalid: {0}"
-                           (spec/explain-str ::pg/data-permissions-graph body))
+                           (s/explain-str ::api.permission-graph/data-permissions-graph body))
                       {:status-code 400
-                       :error       (spec/explain-data ::pg/data-permissions-graph body)})))
+                       :error       (s/explain-data ::api.permission-graph/data-permissions-graph body)})))
     (perms/update-data-perms-graph! graph))
   (perms/data-perms-graph))
 
@@ -105,7 +105,7 @@
                           :where  [:and
                                    [:= :user_id api/*current-user-id*]
                                    [:= :is_group_manager true]]}])]
-    (-> (ordered-groups offset-paging/*limit* offset-paging/*offset* query)
+    (-> (ordered-groups mw.offset-paging/*limit* mw.offset-paging/*offset* query)
         (hydrate :member_count))))
 
 (api/defendpoint GET "/group/:id"
@@ -170,7 +170,7 @@
   [:as {{:keys [group_id user_id is_group_manager]} :body}]
   {group_id         su/IntGreaterThanZero
    user_id          su/IntGreaterThanZero
-   is_group_manager (s/maybe s/Bool)}
+   is_group_manager (schema.core/maybe schema.core/Bool)}
   (let [is_group_manager (boolean is_group_manager)]
     (validation/check-manager-of-group group_id)
     (when is_group_manager
@@ -185,12 +185,12 @@
                 :is_group_manager is_group_manager)
     ;; TODO - it's a bit silly to return the entire list of members for the group, just return the newly created one and
     ;; let the frontend add it as appropriate
-    (group/members {:id group_id})))
+    (perms-group/members {:id group_id})))
 
 (api/defendpoint PUT "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
-  {is_group_manager s/Bool}
+  {is_group_manager schema.core/Bool}
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (validation/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this

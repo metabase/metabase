@@ -2,20 +2,20 @@
   "Tests for the `:limit` clause and `:max-results` constraints."
   (:require [clojure.test :refer :all]
             [metabase.query-processor.context.default :as context.default]
-            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.test :as mt]))
 
 (def ^:private test-max-results 10000)
 
 (defn- limit [query]
-  (with-redefs [i/absolute-max-results test-max-results]
+  (with-redefs [qp.i/absolute-max-results test-max-results]
     (let [rff (limit/limit-result-rows query context.default/default-rff)
           rf  (rff {})]
       (transduce identity rf (repeat (inc test-max-results) [:ok])))))
 
 (deftest limit-results-rows-test
-  (testing "Apply to an infinite sequence and make sure it gets capped at `i/absolute-max-results`"
+  (testing "Apply to an infinite sequence and make sure it gets capped at `qp.i/absolute-max-results`"
     (is (= test-max-results
            (-> (limit {:type :native}) mt/rows count)))))
 

@@ -1,7 +1,7 @@
 (ns metabase.driver.common.parameters.dates-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.driver.common.parameters.dates :as dates]
+            [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.test :as mt]
             [metabase.util.date-2 :as u.date]))
 
@@ -11,57 +11,57 @@
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"
             "2019-04-30"]
-           (dates/date-string->filter "2019-04" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "2019-04" [:field "field" {:base-type :type/DateTime}]))))
   (testing "quarter year"
     (is (= [:between
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"
             "2019-06-30"]
-           (dates/date-string->filter "Q2-2019" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "Q2-2019" [:field "field" {:base-type :type/DateTime}]))))
   (testing "single day"
     (is (= [:=
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"]
-           (dates/date-string->filter "2019-04-01" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "2019-04-01" [:field "field" {:base-type :type/DateTime}]))))
   (testing "day range"
     (is (= [:between
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"
             "2019-04-03"]
-           (dates/date-string->filter "2019-04-01~2019-04-03" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "2019-04-01~2019-04-03" [:field "field" {:base-type :type/DateTime}]))))
   (testing "after day"
     (is (= [:>
             [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
             "2019-04-01"]
-           (dates/date-string->filter "2019-04-01~" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "2019-04-01~" [:field "field" {:base-type :type/DateTime}]))))
   (testing "relative (past) exclusive"
     (is (= [:time-interval
             [:field "field" {:base-type :type/DateTime}]
             -3
             :day
             {:include-current false}]
-           (dates/date-string->filter "past3days" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "past3days" [:field "field" {:base-type :type/DateTime}]))))
   (testing "relative (past) inclusive"
     (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
             -3
             :day
             {:include-current true}]
-           (dates/date-string->filter "past3days~" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "past3days~" [:field "field" {:base-type :type/DateTime}]))))
   (testing "relative (next) exclusive"
     (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
             3
             :day
             {:include-current false}]
-           (dates/date-string->filter "next3days" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "next3days" [:field "field" {:base-type :type/DateTime}]))))
   (testing "relative (next) inclusive"
     (is (= [:time-interval [:field "field" {:base-type :type/DateTime}]
             3
             :day
             {:include-current true}]
-           (dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}]))))
+           (params.dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}]))))
   (testing "quarters (#21083)"
     (is (= [:time-interval [:field "field" {:base-type :type/DateTime}] -30 :quarter {:include-current false}]
-           (dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}])))))
+           (params.dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}])))))
 
 (deftest date-string->range-test
   (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
@@ -129,7 +129,7 @@
                                          {:inclusive-start? false, :inclusive-end? false} (comp adjust-start adjust-end)})
                 :let                  [expected (range-xform inclusive-range)]]
           (is (= expected
-                 (dates/date-string->range s options))
+                 (params.dates/date-string->range s options))
               (format "%s with options %s should parse to %s" (pr-str s) (pr-str options) (pr-str expected))))))))
 
 (deftest custom-start-of-week-test
@@ -144,4 +144,4 @@
                                             "saturday"  {:start "2021-02-20", :end "2021-02-26"}}]
         (mt/with-temporary-setting-values [start-of-week first-day-of-week]
           (is (= expected
-                 (dates/date-string->range "past1weeks"))))))))
+                 (params.dates/date-string->range "past1weeks"))))))))

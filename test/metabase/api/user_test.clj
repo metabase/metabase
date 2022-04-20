@@ -1,13 +1,13 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Dashboard LoginHistory
                                      PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.collection :as collection]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.user-test :as user-test]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -49,11 +49,11 @@
 (deftest user-list-authentication-test
   (testing "authentication"
     (testing "GET /api/user"
-      (is (= (get middleware.u/response-unauthentic :body)
-             (http/client :get 401 "user"))))
+      (is (= (get mw.util/response-unauthentic :body)
+             (client/client :get 401 "user"))))
     (testing "GET /api/user/current"
-      (is (= (get middleware.u/response-unauthentic :body)
-             (http/client :get 401 "user/current"))))))
+      (is (= (get mw.util/response-unauthentic :body)
+             (client/client :get 401 "user/current"))))))
 
 (deftest user-list-test
   (testing "GET /api/user"
@@ -101,20 +101,20 @@
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge @user-defaults))
@@ -129,13 +129,13 @@
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (group/admin))) :data)
+             (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (perms-group/admin))) :data)
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
@@ -157,27 +157,27 @@
                     :first_name             "Trash"
                     :last_name              "Bird"
                     :is_active              false
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Trash Bird"}
                    {:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge @user-defaults))
@@ -191,27 +191,27 @@
                     :first_name             "Trash"
                     :last_name              "Bird"
                     :is_active              false
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Trash Bird"}
                    {:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge @user-defaults))
@@ -261,7 +261,7 @@
                      :last_name                  "Toucan"
                      :common_name                "Rasta Toucan"
                      :first_login                "2021-03-18T19:52:41.808482Z"
-                     :group_ids                  [(u/the-id (group/all-users))]
+                     :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard false
                      :is_installer               (= 1 (mt/user->id :rasta))
@@ -279,7 +279,7 @@
                      :first_name                 "Rasta"
                      :last_name                  "Toucan"
                      :common_name                "Rasta Toucan"
-                     :group_ids                  [(u/the-id (group/all-users))]
+                     :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard true
                      :is_installer               (= 1 (mt/user->id :rasta))
@@ -298,7 +298,7 @@
                    :first_name  "Rasta"
                    :last_name   "Toucan"
                    :common_name "Rasta Toucan"
-                   :group_ids   [(u/the-id (group/all-users))]})
+                   :group_ids   [(u/the-id (perms-group/all-users))]})
                  (dissoc :is_qbnewb :last_login))
              (-> (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))
                  mt/boolean-ids-and-timestamps
@@ -315,7 +315,7 @@
                    :first_name  "Rasta"
                    :last_name   "Toucan"
                    :common_name "Rasta Toucan"
-                   :group_ids   [(u/the-id (group/all-users))]})
+                   :group_ids   [(u/the-id (perms-group/all-users))]})
                  (dissoc :is_qbnewb :last_login))
              (-> (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))
                  mt/boolean-ids-and-timestamps
@@ -344,7 +344,7 @@
                             :first_name       user-name
                             :last_name        user-name
                             :common_name      (str user-name " " user-name)
-                            :group_ids        [(u/the-id (group/all-users))]
+                            :group_ids        [(u/the-id (perms-group/all-users))]
                             :login_attributes {:test "value"}}))
                    (mt/boolean-ids-and-timestamps
                     (mt/user-http-request :crowberto :post 200 "user"
@@ -408,7 +408,7 @@
                                 {:first_name "Cam"
                                  :last_name  "Era"
                                  :email      email
-                                 :group_ids  (map u/the-id [(group/all-users) group-1 group-2])})
+                                 :group_ids  (map u/the-id [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
                  (user-test/user-group-names (User :email email)))))))
 
@@ -429,7 +429,7 @@
   {:is-superuser? (db/select-one-field :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (db/exists? PermissionsGroupMembership
                     :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
-                    :group_id (u/the-id (group/admin)))})
+                    :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
   (testing "POST /api/user"
@@ -440,7 +440,7 @@
                               {:first_name "Cam"
                                :last_name  "Era"
                                :email      email
-                               :group_ids  (map u/the-id [(group/all-users) (group/admin)])})
+                               :group_ids  (map u/the-id [(perms-group/all-users) (perms-group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))
 
@@ -512,8 +512,8 @@
             (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                              {:last_name "Eron"
                                               :email     "cam.eron@metabase.com"})]
-              (is (= (group-or-ids->user-group-memberships [(group/all-users)
-                                                            (group/admin)])
+              (is (= (group-or-ids->user-group-memberships [(perms-group/all-users)
+                                                            (perms-group/admin)])
                      (:user_group_memberships resp)))
               (is (= (merge
                       @user-defaults
@@ -606,8 +606,8 @@
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
-                 (http/client creds :put 403 (format "user/%d" (u/the-id user))
-                              {:email "adifferentemail@metabase.com"}))))))
+                 (client/client creds :put 403 (format "user/%d" (u/the-id user))
+                                {:email "adifferentemail@metabase.com"}))))))
 
     (testing (str "Similar to Google auth accounts, we should not allow LDAP users to change their own email address "
                   "as we get that from the LDAP server")
@@ -617,8 +617,8 @@
         (let [creds {:username "anemail@metabase.com"
                      :password "def123"}]
           (is (= "You don't have permissions to do that."
-                 (http/client creds :put 403 (format "user/%d" (u/the-id user))
-                              {:email "adifferentemail@metabase.com"}))))))))
+                 (client/client creds :put 403 (format "user/%d" (u/the-id user))
+                                {:email "adifferentemail@metabase.com"}))))))))
 
 (defn- do-with-preserved-rasta-personal-collection-name [thunk]
   (let [{collection-name :name, :keys [slug id]} (collection/user->personal-collection (mt/user->id :rasta))]
@@ -637,7 +637,7 @@
       (mt/with-temp* [User             [user]
                       PermissionsGroup [group {:name "Blue Man Group"}]]
         (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
-                              {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) group])})
+                              {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])})
         (is (= #{"All Users" "Blue Man Group"}
                (user-test/user-group-names user)))))
 
@@ -647,7 +647,7 @@
         (with-preserved-rasta-personal-collection-name
           (mt/with-temp PermissionsGroup [group {:name "Blue Man Group"}]
             (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
-                                  {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) group])
+                                  {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) group])
                                    :first_name             "Reggae"})))
         (testing "groups"
           (is (= #{"All Users"}
@@ -660,7 +660,7 @@
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
         (with-preserved-rasta-personal-collection-name
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                                {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users)])
+                                {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])
                                  :first_name             "Reggae"}))
         (testing "groups"
           (is (= #{"All Users"}
@@ -674,7 +674,7 @@
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
                               {:is_superuser           true
-                               :user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) (group/admin)])})
+                               :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))
 
@@ -683,7 +683,7 @@
       (mt/with-temp User [{:keys [email id]} {:first_name "Old First Name"}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
                               {:is_superuser           false
-                               :user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) (group/admin)])
+                               :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])
                                :first_name             "Cool New First Name"})
         (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
                (assoc (superuser-and-admin-pgm-info email)
@@ -694,7 +694,7 @@
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
                               {:is_superuser           true
-                               :user_group_memberships (group-or-ids->user-group-memberships [(group/all-users)])})
+                               :user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users)])})
         (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email)))))
 
@@ -708,7 +708,7 @@
     (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                              {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) (group/admin)])})
+                              {:user_group_memberships (group-or-ids->user-group-memberships [(perms-group/all-users) (perms-group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email))))))
 

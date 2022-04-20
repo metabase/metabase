@@ -1,7 +1,7 @@
 (ns metabase.driver.sql-jdbc.connection-test
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -39,7 +39,7 @@
       (let [destroyed?         (atom false)
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
             connection-details {:db "mem:connection_test"}
-            spec               (db.spec/spec :h2 connection-details)]
+            spec               (mdb.spec/spec :h2 connection-details)]
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
                                                     (original-destroy id destroyed-spec)
                                                     (reset! destroyed? true))]

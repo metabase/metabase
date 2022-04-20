@@ -13,7 +13,7 @@
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -28,7 +28,7 @@
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 
-(driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]

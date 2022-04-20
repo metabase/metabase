@@ -9,13 +9,13 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.sync.field-values :as sync-field-values]
+            metabase.sync.field-values
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -264,7 +264,7 @@
           (fn [fields]
             (for [{:keys [values] :as field} fields]
               (if (seq values)
-                (update field :values fv/field-values->pairs)
+                (update field :values field-values/field-values->pairs)
                 field)))))
 
 (defn fetch-query-metadata
@@ -411,7 +411,7 @@
     ;; async so as not to block the UI
     (sync.concurrent/submit-task
       (fn []
-        (sync-field-values/update-field-values-for-table! table)))
+        (metabase.sync.field-values/update-field-values-for-table! table)))
     {:status :success}))
 
 (api/defendpoint POST "/:id/discard_values"
