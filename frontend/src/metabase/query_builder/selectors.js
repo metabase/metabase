@@ -395,6 +395,10 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableMetadata,
   ) => {
+    if (question && question.query().readOnly()) {
+      return false;
+    }
+
     // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // We need to escape the isDirty check as it will always be true in this case,
