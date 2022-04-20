@@ -157,14 +157,15 @@ export function ObjectDetailFn({
   ]);
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "ArrowUp") {
-      viewPreviousObjectDetail();
-    }
-    if (event.key === "ArrowDown") {
-      viewNextObjectDetail();
-    }
-    if (event.key === "Escape") {
-      closeObjectDetail();
+    const capturedKeys: { [key: string]: () => void } = {
+      ArrowUp: viewPreviousObjectDetail,
+      ArrowDown: viewNextObjectDetail,
+      Escape: closeObjectDetail,
+    };
+
+    if (capturedKeys[event.key]) {
+      event.preventDefault();
+      capturedKeys[event.key]();
     }
   };
 
@@ -251,7 +252,7 @@ export function ObjectDetailHeader({
           {!!canZoom && (
             <>
               <Button
-                data-testId="view-previous-object-detail"
+                data-testid="view-previous-object-detail"
                 onlyIcon
                 borderless
                 className="mr1"
@@ -261,7 +262,7 @@ export function ObjectDetailHeader({
                 iconSize={20}
               />
               <Button
-                data-testId="view-next-object-detail"
+                data-testid="view-next-object-detail"
                 onlyIcon
                 borderless
                 disabled={!canZoomNextRow}
