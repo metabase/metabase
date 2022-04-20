@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.test :refer :all]
+            [metabase.api.database :as api.database]
             [metabase.models :refer [Database Field FieldValues Permissions Table]]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
@@ -352,7 +353,8 @@
       (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
       (with-all-users-data-perms {(mt/id) {:data    {:schemas :block :native :none}
                                            :details :yes}}
-        (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
+        (binding [api.database/*rescan-values-async* false]
+         (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
       (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))
 
     (testing "A non-admin can discard saved field values if they have DB details permissions"
@@ -360,6 +362,7 @@
         (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
 
     (testing "A non-admin with no data access can discard field values if they have DB details perms"
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (mt/id)))
       (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
       (with-all-users-data-perms {(mt/id) {:data    {:schemas :block :native :none}
                                            :details :yes}}
