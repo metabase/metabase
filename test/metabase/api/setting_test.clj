@@ -2,12 +2,29 @@
   (:require [clojure.test :refer :all]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3
                                                   test-user-local-allowed-setting test-user-local-only-setting]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util.i18n :refer [deferred-tru]]
             [schema.core :as s]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defsetting test-api-setting-boolean
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :public
+  :type :boolean)
+
+(defsetting test-api-setting-double
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :public
+  :type :double)
+
+(defsetting test-api-setting-integer
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :public
+  :type :integer)
 
 ;; ## Helper Fns
 (defn- fetch-test-settings
@@ -57,7 +74,19 @@
 
     (testing "Check that non-superusers cannot fetch a single setting if it is not user-local"
       (is (= "You don't have permissions to do that."
-             (fetch-setting :rasta :test-setting-2 403))))))
+             (fetch-setting :rasta :test-setting-2 403))))
+    (testing "non-string values work over the api (#20735)"
+      ;; n.b. the api will return nil if a setting is its default value.
+      (test-api-setting-double 3.14)
+      (is (= 3.14 (fetch-setting :test-api-setting-double 200)))
+
+      (test-api-setting-boolean true)
+      (is (= true (fetch-setting :test-api-setting-boolean 200)))
+
+      (test-api-setting-integer 42)
+      (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
+
+(test-api-setting-integer)
 
 (deftest fetch-calculated-settings-test
   (testing "GET /api/setting"
