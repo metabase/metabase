@@ -10,27 +10,32 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 0;
+  width: 100%;
 }
+
 :local .Text .text-card-textarea {
-  padding: 0.25em 0.75em;
+  border-radius: var(--default-border-radius);
   font-size: 1.143em;
+  height: inherit;
   line-height: 1.602em;
+  min-height: unset;
+  outline: none;
+  padding: 0.25em 0.75em;
   pointer-events: all;
   resize: none;
-  outline: none;
-  border-radius: var(--default-border-radius);
-  min-height: unset;
-  height: inherit;
+  width: 100%;
 }
 :local .Text .text-card-textarea:focus {
   border-color: var(--color-brand);
   background-color: white;
   box-shadow: 0 1px 7px var(--color-shadow);
 }
+
 :local .Text .text-card-markdown {
   height: 100%;
-  padding: 0.5em 0.75em;
+  padding: 0.5em 16px;
   pointer-events: all;
+  width: 100%;
 }
 
 :local .Text .text-card-markdown h1,
@@ -86,14 +91,14 @@
 
 :local .text-card-markdown ul {
   font-size: 16px;
-  margin: 0.5em 0 0.5em 0;
-  padding: 0 1.5em;
+  margin: 0;
+  padding: 0.5em 1.5em;
   list-style-type: disc;
 }
 :local .text-card-markdown ol {
   font-size: 16px;
-  margin: 0.5em 0 0.5em 0;
-  padding: 0 1.5em;
+  margin: 0;
+  padding: 0.5em 1.5em;
   list-style-type: decimal;
 }
 
