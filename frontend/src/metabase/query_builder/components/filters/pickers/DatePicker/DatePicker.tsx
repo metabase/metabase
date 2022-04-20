@@ -273,6 +273,9 @@ const DatePicker: React.FC<Props> = props => {
   );
   const Widget = operator && operator.widget;
 
+  const enableBackButton =
+    (!showShortcuts && !disableOperatorSelection) ||
+    (showShortcuts && props.onBack);
   const onBack = () => {
     if (showShortcuts) {
       props.onBack?.();
@@ -294,7 +297,7 @@ const DatePicker: React.FC<Props> = props => {
           hideExcludeOperators={hideExcludeOperators}
           onCommit={onCommit}
           filter={filter}
-          onBack={onBack}
+          onBack={enableBackButton ? onBack : undefined}
         />
       ) : (
         <>
