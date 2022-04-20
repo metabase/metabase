@@ -7,6 +7,8 @@ import { IconProps } from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { BookmarksType, Collection, User } from "metabase-types/api";
+import { State } from "metabase-types/store";
+
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
@@ -35,7 +37,7 @@ import {
   LoadingTitle,
 } from "./MainNavbar.styled";
 
-function mapStateToProps(state: unknown) {
+function mapStateToProps(state: State) {
   return {
     currentUser: getUser(state),
     hasDataAccess: getHasDataAccess(state),
