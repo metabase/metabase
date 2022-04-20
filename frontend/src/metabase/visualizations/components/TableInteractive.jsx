@@ -641,8 +641,7 @@ export default class TableInteractive extends Component {
 
     const clicked = this.getHeaderClickedObject(columnIndex);
 
-    const isEditableQuery = query && query.isEditable();
-    const isDraggable = !isPivoted && isEditableQuery;
+    const isDraggable = !isPivoted && query && query.isEditable();
     const isDragging = dragColIndex === columnIndex;
     const isClickable = this.visualizationIsClickable(clicked);
     const isSortable = isClickable && column.source && !isPivoted;
@@ -768,40 +767,38 @@ export default class TableInteractive extends Component {
               columnIndex,
             )}
           </DimensionInfoPopover>
-          {isEditableQuery && (
-            <Draggable
-              enableUserSelectHack={!isVirtual}
-              axis="x"
-              bounds={{ left: RESIZE_HANDLE_WIDTH }}
-              position={{
-                x: this.getColumnWidth({ index: columnIndex }),
-                y: 0,
+          <Draggable
+            enableUserSelectHack={!isVirtual}
+            axis="x"
+            bounds={{ left: RESIZE_HANDLE_WIDTH }}
+            position={{
+              x: this.getColumnWidth({ index: columnIndex }),
+              y: 0,
+            }}
+            onStart={e => {
+              e.stopPropagation();
+              this.setState({ dragColIndex: columnIndex });
+            }}
+            onStop={(e, { x }) => {
+              // prevent onVisualizationClick from being fired
+              e.stopPropagation();
+              this.onColumnResize(columnIndex, x);
+              this.setState({ dragColIndex: null });
+            }}
+          >
+            <div
+              className="bg-brand-hover bg-brand-active"
+              style={{
+                zIndex: 99,
+                position: "absolute",
+                width: RESIZE_HANDLE_WIDTH,
+                top: 0,
+                bottom: 0,
+                left: -RESIZE_HANDLE_WIDTH - 1,
+                cursor: "ew-resize",
               }}
-              onStart={e => {
-                e.stopPropagation();
-                this.setState({ dragColIndex: columnIndex });
-              }}
-              onStop={(e, { x }) => {
-                // prevent onVisualizationClick from being fired
-                e.stopPropagation();
-                this.onColumnResize(columnIndex, x);
-                this.setState({ dragColIndex: null });
-              }}
-            >
-              <div
-                className="bg-brand-hover bg-brand-active"
-                style={{
-                  zIndex: 99,
-                  position: "absolute",
-                  width: RESIZE_HANDLE_WIDTH,
-                  top: 0,
-                  bottom: 0,
-                  left: -RESIZE_HANDLE_WIDTH - 1,
-                  cursor: "ew-resize",
-                }}
-              />
-            </Draggable>
-          )}
+            />
+          </Draggable>
         </div>
       </Draggable>
     );
