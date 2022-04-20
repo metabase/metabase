@@ -363,7 +363,8 @@
       (with-all-users-data-perms {(mt/id) {:data    {:schemas :block :native :none}
                                            :details :yes}}
         (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" (mt/id))))
-      (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))))
+      (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+      (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (mt/id))))))
 
 (deftest fetch-db-test
   (mt/with-temp Database [{db-id :id}]
