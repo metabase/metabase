@@ -25,7 +25,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
-            [metabase.server.middleware.session :as session]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
@@ -757,7 +757,7 @@
       ;; Override *current-user* so that permission checks are not enforced during sync. If a user has DB detail perms
       ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
       ;; return any actual field values from this API. (#21764)
-      (session/with-current-user nil
+      (mw.session/with-current-user nil
        (field-values/update-field-values! (Database id)))))
   {:status :ok})
 

@@ -13,9 +13,10 @@
             [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.related :as related]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
-            metabase.sync.field-values
+            [metabase.sync.field-values :as sync.field-values]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -406,13 +407,16 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (let [table (Table id)]
-    (api/write-check table)
+  (let [table (api/write-check (Table id))]
+   ;; Override *current-user* so that permission checks are not enforced during sync. If a user has data model perms
+   ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+   ;; return any actual field values from this API. (#21764)
+   (mw.session/with-current-user nil
     ;; async so as not to block the UI
     (sync.concurrent/submit-task
-      (fn []
-        (metabase.sync.field-values/update-field-values-for-table! table)))
-    {:status :success}))
+     (fn []
+       (sync.field-values/update-field-values-for-table! table)))
+    {:status :success})))
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If

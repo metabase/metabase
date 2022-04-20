@@ -13,6 +13,7 @@
             [metabase.query-processor :as qp]
             [metabase.related :as related]
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
             [metabase.types :as types]
@@ -280,7 +281,12 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (field-values/create-or-update-field-values! (api/write-check (Field id)))
+  (let [field (api/write-check (Field id))]
+    ;; Override *current-user* so that permission checks are not enforced during sync. If a user has data model perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (mw.session/with-current-user nil
+      (field-values/create-or-update-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
