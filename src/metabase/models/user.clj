@@ -144,7 +144,14 @@
   (when user-or-id
     (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
-(defn user-group-memberships
+(def UserGroupMembership
+  "Group Membership info of a User.
+  In which :is_group_manager is only included if `advanced-permissions` is enabled."
+  {:id                                su/IntGreaterThanZero
+   ;; is_group_manager only included if `advanced-permissions` is enabled
+   (s/optional-key :is_group_manager) s/Bool})
+
+(s/defn user-group-memberships :- (s/maybe [UserGroupMembership])
   "Return a list of group memberships a User belongs to.
   Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
   advanced-permissions is available."

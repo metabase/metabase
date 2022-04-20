@@ -261,11 +261,6 @@
     (not google_auth)
     (not ldap_auth))))
 
-(def UserGroupMembership
-  {:id                                su/IntGreaterThanZero
-   ;; is_group_manager only included if `advanced-permissions` is enabled
-   (s/optional-key :is_group_manager) s/Bool})
-
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`.
   Self or superusers can update user info and groups.
@@ -275,7 +270,7 @@
   {email                  (s/maybe su/Email)
    first_name             (s/maybe su/NonBlankString)
    last_name              (s/maybe su/NonBlankString)
-   user_group_memberships (s/maybe [UserGroupMembership])
+   user_group_memberships (s/maybe [user/UserGroupMembership])
    is_superuser           (s/maybe s/Bool)
    is_group_manager       (s/maybe s/Bool)
    login_attributes       (s/maybe user/LoginAttributes)
