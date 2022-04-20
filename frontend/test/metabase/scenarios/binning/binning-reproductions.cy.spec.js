@@ -109,7 +109,7 @@ describe("binning related reproductions", () => {
     cy.findByText("CREATED_AT");
   });
 
-  it.skip("should render binning options when joining on the saved native question (metabase#18646)", () => {
+  it("should render binning options when joining on the saved native question (metabase#18646)", () => {
     cy.createNativeQuestion(
       {
         name: "18646",
@@ -133,13 +133,10 @@ describe("binning related reproductions", () => {
       .click();
 
     popover().within(() => {
-      cy.findByText("CREATED_AT")
-        .closest(".List-item")
-        .findByText("by month")
-        .click();
+      cy.findByText("ID").click();
     });
 
-    cy.findByText("Pick the metric you want to see").click();
+    cy.findByText("Summarize").click();
     cy.findByText("Count of rows").click();
 
     cy.findByText("Pick a column to group by").click();
