@@ -90,6 +90,10 @@
   (for [user users]
     (update user :group_ids set)))
 
+(defn- group-or-ids->user-group-memberships
+  [group-or-ids]
+  (map (fn [group-or-id] {:id (u/the-id group-or-id)}) group-or-ids))
+
 (deftest admin-user-list-test
   (testing "GET /api/user"
     (testing "Check that admins can get a list of active Users. Should include additional admin Fields"
@@ -119,7 +123,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))
+                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships))))))
     (testing "Get list of users with a group id"
       (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
@@ -135,7 +139,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login))))))))
+                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships))))))))
 
 (deftest user-list-include-inactive-test
   (testing "GET /api/user?include_deactivated=true"
@@ -182,7 +186,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login)))))
+                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships)))))
       (is (= (->> [{:email                  "trashbird@metabase.com"
                     :first_name             "Trash"
                     :last_name              "Bird"
@@ -216,7 +220,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login)))))))
+                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships)))))))
 
   (testing "GET /api/user?include_deactivated=false should return only active users"
     (is (= (->> [{:email "crowberto@metabase.com"}
@@ -505,20 +509,25 @@
                     :personal_collection_name "Cam Era's Personal Collection"}
                    (user))))
           (testing "response"
-            (is (= (merge
-                    @user-defaults
-                    {:common_name  "Cam Eron"
-                     :email        "cam.eron@metabase.com"
-                     :first_name   "Cam"
-                     :last_name    "Eron"
-                     :is_superuser true
-                     :group_ids    #{(u/the-id (group/all-users))
-                                     (u/the-id (group/admin))}})
-                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+            (let [resp (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                              {:last_name "Eron"
-                                              :email     "cam.eron@metabase.com"})
-                       (update :group_ids set)
-                       mt/boolean-ids-and-timestamps))))
+                                              :email     "cam.eron@metabase.com"})]
+              (is (= (group-or-ids->user-group-memberships [(group/all-users)
+                                                            (group/admin)])
+                     (:user_group_memberships resp)))
+              (is (= (merge
+                      @user-defaults
+                      {:common_name            "Cam Eron"
+                       :email                  "cam.eron@metabase.com"
+                       :first_name             "Cam"
+                       :last_name              "Eron"
+                       :is_superuser           true})
+
+                     (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
+                                                  {:last_name "Eron"
+                                                   :email     "cam.eron@metabase.com"})
+                         (dissoc :user_group_memberships)
+                         mt/boolean-ids-and-timestamps)))))
           (testing "after API call"
             (is (= {:first_name               "Cam"
                     :last_name                "Eron"
@@ -536,18 +545,16 @@
                                          :is_superuser true}]
         (is (= (merge
                 @user-defaults
-                {:is_superuser     true
-                 :email            "testuser@metabase.com"
-                 :first_name       "Test"
-                 :login_attributes {:test "value"}
-                 :common_name      "Test User"
-                 :last_name        "User"
-                 :group_ids        #{(u/the-id (group/all-users))
-                                     (u/the-id (group/admin))}})
+                {:is_superuser           true
+                 :email                  "testuser@metabase.com"
+                 :first_name             "Test"
+                 :login_attributes       {:test "value"}
+                 :common_name            "Test User"
+                 :last_name              "User"})
                (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
                                          {:email            "testuser@metabase.com"
                                           :login_attributes {:test "value"}})
-                   (update :group_ids set)
+                   (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
 (deftest update-email-check-if-already-used-test
@@ -630,18 +637,18 @@
       (mt/with-temp* [User             [user]
                       PermissionsGroup [group {:name "Blue Man Group"}]]
         (mt/user-http-request :crowberto :put 200 (str "user/" (u/the-id user))
-                              {:group_ids (map u/the-id [(group/all-users) group])})
+                              {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) group])})
         (is (= #{"All Users" "Blue Man Group"}
                (user-test/user-group-names user)))))
 
-    (testing "if we pass group_ids, and are updating ourselves as a non-superuser, the entire call should fail"
+    (testing "if we pass user_group_memberships, and are updating ourselves as a non-superuser, the entire call should fail"
       ;; By wrapping the test in this macro even if the test fails it will restore the original values
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
         (with-preserved-rasta-personal-collection-name
           (mt/with-temp PermissionsGroup [group {:name "Blue Man Group"}]
             (mt/user-http-request :rasta :put 403 (str "user/" (mt/user->id :rasta))
-                                  {:group_ids  (map u/the-id [(group/all-users) group])
-                                   :first_name "Reggae"})))
+                                  {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) group])
+                                   :first_name             "Reggae"})))
         (testing "groups"
           (is (= #{"All Users"}
                  (user-test/user-group-names (mt/user->id :rasta)))))
@@ -649,12 +656,12 @@
           (is (= "Rasta"
                  (db/select-one-field :first_name User :id (mt/user->id :rasta)))))))
 
-    (testing "if we pass group_ids as a non-superuser the call should succeed, so long as the value doesn't change"
+    (testing "if we pass user_group_memberships as a non-superuser the call should succeed, so long as the value doesn't change"
       (mt/with-temp-vals-in-db User (mt/user->id :rasta) {:first_name "Rasta"}
         (with-preserved-rasta-personal-collection-name
           (mt/user-http-request :rasta :put 200 (str "user/" (mt/user->id :rasta))
-                                {:group_ids  [(u/the-id (group/all-users))]
-                                 :first_name "Reggae"}))
+                                {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users)])
+                                 :first_name             "Reggae"}))
         (testing "groups"
           (is (= #{"All Users"}
                  (user-test/user-group-names (mt/user->id :rasta)))))
@@ -663,46 +670,45 @@
                  (db/select-one-field :first_name User :id (mt/user->id :rasta)))))))
 
     (testing (str "We should be able to put someone in the Admin group when we update them them (is_superuser = TRUE "
-                  "and group_ids including admin group ID)")
+                  "and user_group_memberships including admin group ID)")
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                              {:is_superuser true
-                               :group_ids    (map u/the-id [(group/all-users) (group/admin)])})
+                              {:is_superuser           true
+                               :user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) (group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))
 
-    (testing (str "if we try to create a new user with is_superuser FALSE but group_ids that includes the Admin group "
+    (testing (str "if we try to create a new user with is_superuser FALSE but user_group_memberships that includes the Admin group "
                   "ID, the entire call should fail")
       (mt/with-temp User [{:keys [email id]} {:first_name "Old First Name"}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
-                              {:is_superuser false
-                               :group_ids    (map u/the-id [(group/all-users) (group/admin)])
-                               :first_name   "Cool New First Name"})
+                              {:is_superuser           false
+                               :user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) (group/admin)])
+                               :first_name             "Cool New First Name"})
         (is (= {:is-superuser? false, :pgm-exists? false, :first-name "Old First Name"}
                (assoc (superuser-and-admin-pgm-info email)
                       :first-name (db/select-one-field :first_name User :id id))))))
 
-    (testing (str "if we try to create a new user with is_superuser TRUE but group_ids that does not include the Admin "
+    (testing (str "if we try to create a new user with is_superuser TRUE but user_group_memberships that does not include the Admin "
                   "group ID, things should fail")
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 400 (str "user/" id)
-                              {:is_superuser true
-                               :group_ids    [(u/the-id (group/all-users))]})
+                              {:is_superuser           true
+                               :user_group_memberships (group-or-ids->user-group-memberships [(group/all-users)])})
         (is (= {:is-superuser? false, :pgm-exists? false}
                (superuser-and-admin-pgm-info email)))))
 
-    (testing "if we PUT a user with is_superuser TRUE but don't specify group_ids, we should be ok"
+    (testing "if we PUT a user with is_superuser TRUE but don't specify user_group_memberships, we should be ok"
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
                               {:is_superuser true})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))
 
-    (testing "if we include Admin in group_ids but don't specify is_superuser we should be ok"
+    (testing "if we include Admin in user_group_memberships but don't specify is_superuser we should be ok"
       (mt/with-temp User [{:keys [email id]}]
         (mt/user-http-request :crowberto :put 200 (str "user/" id)
-                              {:group_ids [(u/the-id (group/all-users))
-                                           (u/the-id (group/admin))]})
+                              {:user_group_memberships (group-or-ids->user-group-memberships [(group/all-users) (group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email))))))
 

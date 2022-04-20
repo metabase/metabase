@@ -1,9 +1,13 @@
 (ns metabase-enterprise.advanced-permissions.api.group-manager-test
-  "Permisisons tests for API that needs to be enforced by Group Mnanager permisisons."
+  "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
   (:require [clojure.test :refer :all]
+            [clojure.set :refer [subset?]]
+            [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
             [metabase.models :refer [PermissionsGroup PermissionsGroupMembership User]]
             [metabase.public-settings.premium-features-test :as premium-features-test]
+            [metabase.models.permissions-group :as group]
             [metabase.test :as mt]
+            [metabase.util :as u]
             [toucan.db :as db]))
 
 (deftest permissions-group-apis-test
@@ -143,13 +147,13 @@
               (testing "succeed if users access group that they are manager of,"
                 (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
                                                               :group_id (:id group)}
-                                :is_group_manager true)
-              (testing "can set is_group_manager=true"
-                (add-membership :crowberto 200 group true)
-                (add-membership user 200 group true))
+                                  :is_group_manager true)
+                (testing "can set is_group_manager=true"
+                  (add-membership :crowberto 200 group true)
+                  (add-membership user 200 group true))
 
-              (testing "non-admin user can only view groups that are manager of"
-                (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
+                (testing "non-admin user can only view groups that are manager of"
+                  (is (= #{(:id group)} (membership->groups-ids (get-membership user 200))))))
 
               (testing "admin cant be group manager"
                 (mt/with-temp* [User                       [new-user {:is_superuser true}]
@@ -162,6 +166,110 @@
                                                 :user_id          (:id new-user)
                                                 :is_group_manager true})))))
 
-                (testing "Admin can could view all groups"
-                  (is (= (db/select-field :id PermissionsGroup)
-                         (membership->groups-ids (get-membership :crowberto 200))))))))))))
+              (testing "Admin can could view all groups"
+                (is (= (db/select-field :id PermissionsGroup)
+                       (membership->groups-ids (get-membership :crowberto 200))))))))))))
+
+(deftest get-user-api-test
+  (testing "GET /api/user?status=all"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(get-users [req-user status]
+                (testing (format "- get users with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request req-user :get status "/user?status=all")))]
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (premium-features-test/with-premium-features #{}
+            (get-users user 403)
+            (get-users :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "requires Group Manager or admins"
+              (get-users user 403)
+              (get-users :crowberto 200))
+            (testing "succeed if users is a group manager and returns additional fields"
+              (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
+                                                            :group_id (:id group)}
+                                :is_group_manager true)
+              (is (subset? #{:group_ids :user_group_memberships} (-> (:data (get-users user 200))
+                                                                     first
+                                                                     keys
+                                                                     set))))))))))
+
+(deftest update-user-api-test
+  (testing "PUT /api/user/:id"
+    (mt/with-user-in-groups
+      [group        {:name "New Group"}
+       user         [group]]
+      (mt/with-temp User [user-to-update]
+        (letfn [(update-user-firstname [req-user status]
+                  (testing (format "- update users firstname with %s user" (mt/user-descriptor user))
+                    (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
+                                          {:first_name (mt/random-name)})))
+
+                (add-user-to-group [req-user status group-to-add]
+                  ;; ensure `user-to-update` is not in `group-to-add`
+                  (db/delete! PermissionsGroupMembership
+                              :user_id (:id user-to-update)
+                              :group_id (:id group-to-add))
+                    (let [current-user-group-membership (gm/user-group-memberships user-to-update)
+                          new-user-group-membership     (conj current-user-group-membership
+                                                              {:id               (:id group-to-add)
+                                                               :is_group_manager true})]
+                      (testing (format "- add user to group with %s user" (mt/user-descriptor user))
+                        (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
+                                              {:user_group_memberships new-user-group-membership}))))
+
+                (remove-user-from-group [req-user status group-to-remove]
+                  (u/ignore-exceptions
+                   ;; ensure `user-to-update` is in `group-to-remove`
+                   (db/insert! PermissionsGroupMembership
+                               :user_id (:id user-to-update)
+                               :group_id (:id group-to-remove)))
+                    (let [current-user-group-membership (gm/user-group-memberships user-to-update)
+                          new-user-group-membership     (into [] (filter #(not= (:id group-to-remove)
+                                                                                (:id %))
+                                                                         current-user-group-membership))]
+                      (testing (format "- remove user from group with %s user" (mt/user-descriptor user))
+                        (mt/user-http-request req-user :put status (format "user/%d" (:id user-to-update))
+                                              {:user_group_memberships new-user-group-membership}))))]
+
+
+          (testing "if `advanced-permissions` is disabled, requires admins"
+            (premium-features-test/with-premium-features #{}
+              (update-user-firstname user 403)
+              (add-user-to-group user 403 group)
+              (remove-user-from-group user 403 group)
+              (update-user-firstname :crowberto 200)
+              (add-user-to-group :crowberto 200 group)
+              (remove-user-from-group :crowberto 200 group)))
+
+          (testing "if `advanced-permissions` is enabled"
+            (premium-features-test/with-premium-features #{:advanced-permissions}
+              (testing "Group Managers"
+                (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
+                                                              :group_id (:id group)}
+                                  :is_group_manager true)
+
+                (testing "Can't edit users' info"
+                  (let [current-user-first-name (db/select-one-field :first_name User :id (:id user))]
+                    (update-user-firstname user 200)
+                    ;; call still success but first name won't get updated
+                    (is (= current-user-first-name
+                           (db/select-one-field :first_name User :id (:id user))))))
+
+                (testing "Can add/remove user to groups they're manager of"
+                  (is (= [{:id               (:id (group/all-users))
+                           :is_group_manager false}
+                          {:id               (:id group)
+                           :is_group_manager true}]
+                         (:user_group_memberships (add-user-to-group user 200 group))))
+                  (is (= [{:id               (:id (group/all-users))
+                           :is_group_manager false}]
+                         (:user_group_memberships (remove-user-from-group user 200 group)))))
+
+                (testing "Can't remove users from group they're not manager of"
+                  (mt/with-temp PermissionsGroup [random-group]
+                    (add-user-to-group user 403 random-group)
+                    (remove-user-from-group user 403 random-group)))))))))))

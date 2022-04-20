@@ -10,6 +10,7 @@
             [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
@@ -143,6 +144,16 @@
   (when user-or-id
     (db/select-field :group_id PermissionsGroupMembership :user_id (u/the-id user-or-id))))
 
+(defn user-group-memberships
+  "Return a list of group memberships a User belongs to.
+  Group membership is a map  with 2 keys [:id :is_group_manager], in which `is_group_manager` will only returned if
+  advanced-permissions is available."
+  [user-or-id]
+  (when user-or-id
+    (let [selector (cond-> [PermissionsGroupMembership [:group_id :id]]
+                     (premium-features/enable-advanced-permissions?)
+                     (conj :is_group_manager))]
+      (db/select selector :user_id (u/the-id user-or-id)))))
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -162,8 +173,23 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
+(defn add-user-group-memberships
+  "Efficiently add PermissionsGroup `groups` to a collection of `users`."
+  {:batched-hydrate :user_group_memberships}
+  [users]
+  (when (seq users)
+    (let [user-id->memberships (group-by :user_id (db/select [PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager]
+                                                             :user_id [:in (set (map u/the-id users))]))
+          membership->group    (fn [membership]
+                                 (select-keys membership
+                                              [:id (when (premium-features/enable-advanced-permissions?)
+                                                     :is_group_manager)]))]
+      (for [user users]
+        (assoc user :user_group_memberships (map membership->group (user-id->memberships (u/the-id user))))))))
+
 (defn add-group-ids
-  "Efficiently add PermissionsGroup `group_ids` to a collection of `users`."
+  "Efficiently add PermissionsGroup `group_ids` to a collection of `users`.
+  TODO: depreacte :group_ids and use :user_group_memberships instead"
   {:batched-hydrate :group_ids}
   [users]
   (when (seq users)
@@ -297,11 +323,11 @@
         [to-remove to-add] (data/diff old-group-ids new-group-ids)]
     (when (seq (concat to-remove to-add))
       (db/transaction
-        (when (seq to-remove)
-          (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
-        ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
-        ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
-        ;; do things like automatically set the `is_superuser` flag for a User
-        (doseq [group-id to-add]
-          (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id})))
-      true)))
+       (when (seq to-remove)
+         (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove]))
+       ;; a little inefficient, but we need to do a separate `insert!` for each group we're adding membership to,
+       ;; because `insert-many!` does not currently trigger methods such as `pre-insert`. We rely on those methods to
+       ;; do things like automatically set the `is_superuser` flag for a User
+       (doseq [group-id to-add]
+         (db/insert! PermissionsGroupMembership {:user_id user-id, :group_id group-id}))))
+      true))

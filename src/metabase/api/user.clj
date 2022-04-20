@@ -7,6 +7,7 @@
             [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.email.messages :as email]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
@@ -25,7 +26,8 @@
             [toucan.hydrate :refer [hydrate]]))
 
 (u/ignore-exceptions (classloader/require 'metabase-enterprise.sandbox.api.util
-                                          'metabase-enterprise.advanced-permissions.common))
+                                          'metabase-enterprise.advanced-permissions.common
+                                          'metabase-enterprise.advanced-permissions.models.permissions.group-manager))
 
 (defn check-self-or-superuser
   "Check that `user-id` is *current-user-id*` or that `*current-user*` is a superuser, or throw a 403."
@@ -39,18 +41,23 @@
 (defn- fetch-user [& query-criteria]
   (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
 
-(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids & [is-superuser?]]
-  ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
-  ;; agrees with is_superuser -- don't want to have ambiguous behavior
-  (when (and (some? is-superuser?)
-             new-groups-or-ids)
-    (api/checkp (= is-superuser? (contains? (set new-groups-or-ids) (u/the-id (group/admin))))
-      "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
-  (when (some? new-groups-or-ids)
-    (when-not (= (user/group-ids user-or-id)
-                 (set (map u/the-id new-groups-or-ids)))
-      (api/check-superuser)
-      (user/set-permissions-groups! user-or-id new-groups-or-ids))))
+(defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
+  (when (and (some? new-groups-or-ids)
+             (not (= (user/group-ids user-or-id)
+                     (set (map u/the-id new-groups-or-ids)))))
+    (api/check-superuser)
+    (user/set-permissions-groups! user-or-id new-groups-or-ids)))
+
+(defn- maybe-set-user-group-memberships!
+  [user-or-id new-user-group-memberships is-superuser?]
+  (when (some? new-user-group-memberships)
+    (when (some? is-superuser?)
+      (api/checkp (= is-superuser? (contains? (set (map :id new-user-group-memberships)) (u/the-id (group/admin))))
+                  "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
+    (if-let [f (and (premium-features/enable-advanced-permissions?)
+                    (resolve 'metabase-enterprise.advanced-permissions.models.permissions.group-manager/set-user-group-memberships!))]
+      (f user-or-id new-user-group-memberships)
+      (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
 (defn- updated-user-name [user-before-update first_name last_name]
   (let [prev_first_name (:first_name user-before-update)
@@ -140,7 +147,7 @@
    group_id               (s/maybe su/IntGreaterThanZero)
    include_deactivated    (s/maybe su/BooleanString)}
   (when (or status include_deactivated)
-    (api/check-superuser))
+    (validation/check-group-manager))
   (let [include_deactivated (Boolean/parseBoolean include_deactivated)]
     {:data   (cond-> (db/select
                        (vec (cons User (user-visible-columns)))
@@ -148,8 +155,13 @@
                             true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                             (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
                             (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
-               ;; For admins, also include the IDs of the  Users' Personal Collections
-               api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
+               ;; For admins also include the IDs of Users' Personal Collections
+               api/*is-superuser?*
+               (hydrate :personal_collection_id)
+
+               (or api/*is-superuser?*
+                   api/*is-group-manager?*)
+               (hydrate :group_ids :user_group_memberships))
      :total  (db/count User (user-clauses status query group_id include_deactivated))
      :limit  offset-paging/*limit*
      :offset offset-paging/*offset*}))
@@ -247,37 +259,54 @@
     (not google_auth)
     (not ldap_auth))))
 
+(def UserGroupMembership
+  {:id                                su/IntGreaterThanZero
+   ;; is_group_manager only included if `advanced-permissions` is enabled
+   (s/optional-key :is_group_manager) s/Bool})
+
 (api/defendpoint PUT "/:id"
-  "Update an existing, active `User`."
-  [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes locale] :as body} :body}]
-  {email            (s/maybe su/Email)
-   first_name       (s/maybe su/NonBlankString)
-   last_name        (s/maybe su/NonBlankString)
-   group_ids        (s/maybe [su/IntGreaterThanZero])
-   is_superuser     (s/maybe s/Bool)
-   login_attributes (s/maybe user/LoginAttributes)
-   locale           (s/maybe su/ValidLocale)}
-  (check-self-or-superuser id)
+  "Update an existing, active `User`.
+  Self or superusers can update user info and groups.
+  Group Managers can only add/remove users from groups they are manager of."
+  [id :as {{:keys [email first_name last_name user_group_memberships
+                   is_superuser is_group_manager login_attributes locale] :as body} :body}]
+  {email                  (s/maybe su/Email)
+   first_name             (s/maybe su/NonBlankString)
+   last_name              (s/maybe su/NonBlankString)
+   user_group_memberships (s/maybe [UserGroupMembership])
+   is_superuser           (s/maybe s/Bool)
+   is_group_manager       (s/maybe s/Bool)
+   login_attributes       (s/maybe user/LoginAttributes)
+   locale                 (s/maybe su/ValidLocale)}
+  (try
+   (check-self-or-superuser id)
+   (catch clojure.lang.ExceptionInfo _e
+     (validation/check-group-manager)))
+
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]
     ;; Google/LDAP non-admin users can't change their email to prevent account hijacking
     (api/check-403 (valid-email-update? user-before-update email))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
-      "email" (tru "Email address already associated to another user."))
+                "email" (tru "Email address already associated to another user."))
     (db/transaction
-      (api/check-500
-       (db/update! User id
-         (u/select-keys-when body
-           :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
-           :non-nil (set (concat [:first_name :last_name :email]
-                                 (when api/*is-superuser?*
-                                   [:is_superuser]))))))
-      (maybe-set-user-permissions-groups! id group_ids is_superuser)
-      (maybe-update-user-personal-collection-name! user-before-update first_name last_name)))
+     ;; only user or self can update user info
+     ;; implicitly prevent group manager from updating users' info
+     (when (or (= id api/*current-user-id*)
+               api/*is-superuser?*)
+       (api/check-500
+        (let [new-user
+              (u/select-keys-when body
+                                  :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
+                                  :non-nil (set (concat [:first_name :last_name :email]
+                                                        (when api/*is-superuser?*
+                                                          [:is_superuser]))))]
+          (db/update! User id new-user)))
+       (maybe-update-user-personal-collection-name! user-before-update first_name last_name))
+     (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
-      (hydrate :group_ids)))
-
+      (hydrate :user_group_memberships)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |
