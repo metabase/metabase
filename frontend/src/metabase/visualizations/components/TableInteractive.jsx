@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+import { t } from "ttag";
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
@@ -146,7 +147,10 @@ export default class TableInteractive extends Component {
   }
 
   _findIDColumn = (data, isPivoted = false) => {
-    const pkIndex = isPivoted ? -1 : data.cols.findIndex(col => isPK(col));
+    const pkIndex = isPivoted
+      ? -1
+      : data.cols.findIndex(col => isPK(col) && col.id !== undefined);
+
     this.setState({
       IDColumnIndex: pkIndex === -1 ? null : pkIndex,
       IDColumn: pkIndex === -1 ? null : data.cols[pkIndex],
@@ -1064,7 +1068,7 @@ const DetailShortcut = React.forwardRef((_props, ref) => (
       zIndex: 3,
     }}
   >
-    <Tooltip tooltip="View Details">
+    <Tooltip tooltip={t`View Details`}>
       <Button
         iconOnly
         iconSize={10}
