@@ -85,7 +85,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
-    it.skip("should have 'Custom expression' in a filter list (metabase#13069)", () => {
+    it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
       cy.visit("/admin/datamodel/metrics");
       cy.findByText("New metric").click();
       cy.findByText("Select a table").click();
@@ -262,6 +262,23 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.findByText("13022_Metric"); // Name
       cy.findByText("Orders, CE"); // Definition
+    });
+
+    it("should show CE that uses 'AND/OR' (metabase#13070)", () => {
+      cy.visit("/admin/datamodel/metrics");
+      cy.findByText("New metric").click();
+      cy.findByText("Select a table").click();
+      cy.findByText("Orders").click();
+      cy.findByText("Add filters to narrow your answer").click();
+      cy.findByText("Custom Expression").click();
+      cy.get(".ace_text-input")
+        .click()
+        .clear()
+        .type("[ID] > 0 OR [ID] < 9876543210", { delay: 100 });
+      cy.findByText("Done").click();
+
+      cy.log("**Assert that there is a filter text visible**");
+      cy.findByText("ID > 0 OR ID < 9876543210");
     });
   });
 });
