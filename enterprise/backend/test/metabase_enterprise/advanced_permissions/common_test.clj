@@ -8,6 +8,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -250,7 +251,7 @@
       (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
         (db/delete! FieldValues :field_id (mt/id :venues :price))
         (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
-        (with-redefs [metabase.sync.concurrent/submit-task (fn [task] (task))]
+        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
           (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
                                                :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
             (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
