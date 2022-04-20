@@ -181,18 +181,22 @@ function CollectionSectionHeading({
   currentUser,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ onClose }) => (
+    ({ closePopover }) => (
       <CollectionMenuList>
         {currentUser.is_superuser && (
           <SidebarLink
             icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
             url={OTHER_USERS_COLLECTIONS_URL}
-            onClick={onClose}
+            onClick={closePopover}
           >
             {t`Other users' personal collections`}
           </SidebarLink>
         )}
-        <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
+        <SidebarLink
+          icon="view_archive"
+          url={ARCHIVE_URL}
+          onClick={closePopover}
+        >
           {t`View archive`}
         </SidebarLink>
       </CollectionMenuList>
