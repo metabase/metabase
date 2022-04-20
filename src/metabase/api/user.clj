@@ -293,13 +293,11 @@
      (when (or (= id api/*current-user-id*)
                api/*is-superuser?*)
        (api/check-500
-        (let [new-user
-              (u/select-keys-when body
-                                  :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
-                                  :non-nil (set (concat [:first_name :last_name :email]
-                                                        (when api/*is-superuser?*
-                                                          [:is_superuser]))))]
-          (db/update! User id new-user)))
+        (db/update! User id (u/select-keys-when body
+                                                :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
+                                                :non-nil (set (concat [:first_name :last_name :email]
+                                                                      (when api/*is-superuser?*
+                                                                        [:is_superuser]))))))
        (maybe-update-user-personal-collection-name! user-before-update first_name last_name))
      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
