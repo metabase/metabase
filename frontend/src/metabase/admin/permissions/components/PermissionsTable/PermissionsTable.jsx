@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import Tooltip from "metabase/components/Tooltip";
 import Modal from "metabase/components/Modal";
 import ConfirmContent from "metabase/components/ConfirmContent";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import { PermissionsSelect } from "../PermissionsSelect";
 import {
@@ -102,10 +103,12 @@ export function PermissionsTable({
                 <PermissionsTableCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>
-                      {entity.name}
+                      <Ellipsified>{entity.name}</Ellipsified>
                     </EntityNameLink>
                   ) : (
-                    <EntityName>{entity.name}</EntityName>
+                    <EntityName>
+                      <Ellipsified>{entity.name}</Ellipsified>
+                    </EntityName>
                   )}
 
                   {entity.hint && (
