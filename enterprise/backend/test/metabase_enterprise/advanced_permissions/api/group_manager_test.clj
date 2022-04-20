@@ -1,11 +1,11 @@
 (ns metabase-enterprise.advanced-permissions.api.group-manager-test
   "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
-  (:require [clojure.test :refer :all]
-            [clojure.set :refer [subset?]]
+  (:require [clojure.set :refer [subset?]]
+            [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
             [metabase.models :refer [PermissionsGroup PermissionsGroupMembership User]]
-            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.models.permissions-group :as group]
+            [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))

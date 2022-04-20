@@ -4,6 +4,7 @@
             [metabase.api.common :as api]
             [metabase.models :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
+            [metabase.util.i18n :as ui18n :refer [tru]]
             [toucan.db :as db]))
 
 (defn user-group-memberships
@@ -13,29 +14,41 @@
   (when user-or-id
     (db/select [PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id (u/the-id user-or-id))))
 
+(defn- user-group-memberships->map
+  "Transorm user-group-memberships to a map with keys are group-id and values are membership info.
+
+  [{:id 1, :is_group_manager true}] => {1 {:is_group_manager true}}
+
+  We can diff this map to decide which membership to adds/removes."
+  [user-group-memberships]
+  (into {} (map (fn [x] [(:id x) (dissoc x :id)]) user-group-memberships)))
+
 (defn set-user-group-memberships!
   [user-or-id new-user-group-memberships]
-  (let [user-id                    (u/the-id user-or-id)
-        manager-of-groups-ids      (db/select-field :group_id PermissionsGroupMembership
-                                                    :user_id api/*current-user-id* :is_group_manager true)
-        old-user-group-memberships (user-group-memberships user-id)
-        ;; convert form [{:id 1 :is_group_manager true}] -> {1 {:is_group_manager true}}
-        old-group-id->group-info   (into {} (map (fn [x] [(:id x) (dissoc x :id)]) old-user-group-memberships))
-        new-group-id->group-info   (into {} (map (fn [x] [(:id x) (dissoc x :id)]) new-user-group-memberships))
-        [to-remove to-add]         (data/diff old-group-id->group-info new-group-id->group-info)
-        to-remove-group-ids        (keys to-remove)
-        to-add-group-ids           (keys to-add)]
+  (let [user-id                       (u/the-id user-or-id)
+        old-user-group-memberships    (user-group-memberships user-id)
+        old-group-id->membership-info (user-group-memberships->map old-user-group-memberships)
+        new-group-id->membership-info (user-group-memberships->map new-user-group-memberships)
+        [to-remove to-add]            (data/diff old-group-id->membership-info new-group-id->membership-info)
+        to-remove-group-ids           (keys to-remove)
+        to-add-group-ids              (keys to-add)]
+    ;; TODO: Should do this check in the API layer
     (when-not api/*is-superuser?*
       ;; prevent groups manager from update membership of groups that they're not manager of
-      (api/check-403 (subset? (set (concat to-remove-group-ids to-add-group-ids)) manager-of-groups-ids)))
-    (when (seq (concat to-remove to-add))
+      (when-not (and api/*is-group-manager?*
+                     (subset? (set (concat to-remove-group-ids to-add-group-ids))
+                              (db/select-field :group_id PermissionsGroupMembership
+                                               :user_id api/*current-user-id* :is_group_manager true)))
+        (throw (ex-info (tru "Not allowed to edit group memberships")
+                        {:status-code 403}))))
+    (when (seq (concat to-remove-group-ids to-add-group-ids))
       (db/transaction
        (when (seq to-remove-group-ids)
          (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
        (when (seq to-add-group-ids)
          ;; do multilple single insert because insert-many! does not call post-insert! hook
-         (for [group-id to-add-group-ids]
+         (doseq [group-id to-add-group-ids]
            (db/insert! PermissionsGroupMembership
                        {:user_id          user-id
                         :group_id         group-id
-                        :is_group_manager (:is_group_manager (new-group-id->group-info group-id))})))))))
+                        :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))})))))))
