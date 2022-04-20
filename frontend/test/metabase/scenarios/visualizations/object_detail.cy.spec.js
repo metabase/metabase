@@ -34,18 +34,14 @@ describe("scenarios > question > object details", () => {
       .click();
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
-    getPreviousObjectDetailButton().should(
-      "have.attr",
-      "aria-disabled",
-      "true",
-    );
+    getPreviousObjectDetailButton().should("have.attr", "disabled", "disabled");
 
     getNextObjectDetailButton().click();
     assertOrderDetailView({ id: SECOND_ORDER_ID });
 
     getNextObjectDetailButton().click();
     assertOrderDetailView({ id: THIRD_ORDER_ID });
-    getNextObjectDetailButton().should("have.attr", "aria-disabled", "true");
+    getNextObjectDetailButton().should("have.attr", "disabled", "disabled");
 
     getPreviousObjectDetailButton().click();
     assertOrderDetailView({ id: SECOND_ORDER_ID });
@@ -104,10 +100,14 @@ describe("scenarios > question > object details", () => {
       .click();
     cy.url().should("contain", "objectId=2");
 
-    cy.findByText("Domenica Williamson").click();
+    cy.findByTestId("object-detail")
+      .findByText("Domenica Williamson")
+      .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
-    cy.findByText("Searsboro").click();
+    cy.findByTestId("object-detail")
+      .findByText("Searsboro")
+      .click();
   });
 });
 

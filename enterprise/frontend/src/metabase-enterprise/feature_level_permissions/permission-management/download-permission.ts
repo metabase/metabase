@@ -13,6 +13,7 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
 export const DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS = t`Download results access requires full data access.`;
@@ -42,18 +43,6 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
     icon: "permissions_limited",
     iconColor: "warning",
   },
-};
-
-const buildControlledActionUrl = (
-  entityId: EntityId,
-  groupId: number,
-  permissionSubject: PermissionSubject,
-) => {
-  if (permissionSubject === "schemas") {
-    return `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}`;
-  }
-
-  return `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`;
 };
 
 const getPermissionValue = (
@@ -120,9 +109,7 @@ export const buildDownloadPermission = (
     postActions: hasChildEntities
       ? {
           controlled: () =>
-            push(
-              buildControlledActionUrl(entityId, groupId, permissionSubject),
-            ),
+            push(getGroupFocusPermissionsUrl(groupId, entityId)),
         }
       : undefined,
   };
