@@ -297,17 +297,33 @@ export default class View extends React.Component {
     );
   };
 
+  renderNativeQueryEditor = () => {
+    const { question, query, card, height, isDirty } = this.props;
+
+    if (question.isDataset() && !query.isEditable()) {
+      return null;
+    }
+
+    return (
+      <NativeQueryEditorContainer>
+        <NativeQueryEditor
+          {...this.props}
+          viewHeight={height}
+          isOpen={!card.dataset_query.native.query || isDirty}
+          datasetQuery={card && card.dataset_query}
+        />
+      </NativeQueryEditorContainer>
+    );
+  };
+
   renderMain = ({ leftSidebar, rightSidebar }) => {
     const {
       query,
-      card,
       mode,
       parameters,
-      isDirty,
       isLiveResizable,
       isPreviewable,
       isPreviewing,
-      height,
       setParameterValue,
       setIsPreviewing,
     } = this.props;
@@ -334,14 +350,7 @@ export default class View extends React.Component {
     return (
       <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
         {isNative ? (
-          <NativeQueryEditorContainer>
-            <NativeQueryEditor
-              {...this.props}
-              viewHeight={height}
-              isOpen={!card.dataset_query.native.query || isDirty}
-              datasetQuery={card && card.dataset_query}
-            />
-          </NativeQueryEditorContainer>
+          this.renderNativeQueryEditor()
         ) : (
           <StyledSyncedParametersList
             parameters={parameters}
