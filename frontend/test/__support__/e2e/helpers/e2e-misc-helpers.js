@@ -155,15 +155,22 @@ export function visitDashboard(dashboard_id) {
     if (canViewDashboard && validQuestions) {
       // If dashboard has valid questions (GUI or native),
       // we need to alias each request and wait for their reponses
-      const aliases = validQuestions.map(({ id, card_id }) => {
-        const interceptUrl = `/api/dashboard/${dashboard_id}/dashcard/${id}/card/${card_id}/query`;
+      const aliases = validQuestions.map(
+        ({ id, card_id, card: { display } }) => {
+          const baseUrl =
+            display === "pivot"
+              ? `/api/dashboard/pivot/${dashboard_id}`
+              : `/api/dashboard/${dashboard_id}`;
 
-        const alias = "dashcardQuery" + id;
+          const interceptUrl = `${baseUrl}/dashcard/${id}/card/${card_id}/query`;
 
-        cy.intercept("POST", interceptUrl).as(alias);
+          const alias = "dashcardQuery" + id;
 
-        return `@${alias}`;
-      });
+          cy.intercept("POST", interceptUrl).as(alias);
+
+          return `@${alias}`;
+        },
+      );
 
       cy.visit(`/dashboard/${dashboard_id}`);
 

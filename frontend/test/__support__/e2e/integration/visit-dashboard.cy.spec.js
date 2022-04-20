@@ -47,7 +47,7 @@ describe(`visitDashboard e2e helper`, () => {
         });
       });
 
-      it("should work on a dashboard with multiple cards (including markdown and models)", () => {
+      it("should work on a dashboard with multiple cards (including markdown, models, pivot tables, GUI and native)", () => {
         cy.get("@multiDashboard").then(id => {
           visitDashboard(id);
         });

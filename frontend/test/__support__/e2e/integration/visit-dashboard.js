@@ -1,6 +1,6 @@
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { PEOPLE_ID, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PEOPLE_ID, PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 const markdownCard = {
   virtual_card: {
@@ -21,6 +21,7 @@ const nativeQuestionDetails = {
     query: "select count(*) from orders limit 5",
   },
   display: "scalar",
+  // Put native question inside admin's personal collection
   collection_id: 1,
 };
 
@@ -33,6 +34,19 @@ const modelDetails = {
   name: "GUI Model",
   query: { "source-table": PRODUCTS_ID },
   dataset: true,
+};
+
+const pivotTable = {
+  name: "Pivot Table",
+  query: {
+    "source-table": PRODUCTS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["datetime-field", ["field-id", PRODUCTS.CREATED_AT], "year"],
+      ["field-id", PRODUCTS.CATEGORY],
+    ],
+  },
+  display: "pivot",
 };
 
 export function setup() {
@@ -172,6 +186,14 @@ function addMultiDashboard(name, alias) {
         card_id,
         dashboard_id,
         card: { row: 11, col: 0, sizeX: 12, sizeY: 8 },
+      });
+    });
+
+    cy.createQuestion(pivotTable).then(({ body: { id: card_id } }) => {
+      addCardToDashboard({
+        card_id,
+        dashboard_id,
+        card: { row: 11, col: 12, sizeX: 6, sizeY: 8 },
       });
     });
 
