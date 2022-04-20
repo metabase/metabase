@@ -31,7 +31,7 @@ type Props = DroppableProps &
     collection: Collection;
   };
 
-const TIME_BEFORE_EXPANDING_ON_HOVER = 500;
+const TIME_BEFORE_EXPANDING_ON_HOVER = 600;
 
 const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
