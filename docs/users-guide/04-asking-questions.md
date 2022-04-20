@@ -38,7 +38,7 @@ This is the query builder's notebook editor. It has three default steps.
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
 
 To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
- 
+
 ![Previewing results](./images/notebook/preview-table.png)
 
 ## Picking data
@@ -65,7 +65,7 @@ Broadly speaking, there are three types of columns, each with their own set of f
 
 You can add subsequent filter steps after every summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
-Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied. 
+Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
 ![An active filter](./images/notebook/filter-badge.png)
 
@@ -175,7 +175,7 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; they'll only be present in the given question.
 
-You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. 
+You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
 ## Sorting results
 
@@ -199,14 +199,11 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-![The graphical query builder](./images/asking-questions/simple-mode.png)
-
 If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
 
----
+## Further reading
 
-## Next: Visualizing results
-
-Next, we'll learn how to [visualize results](05-visualizing-results.md).
+- [Visualize results](05-visualizing-results.md).
+- [Asking questions](/learn/questions)
 
 [model]: models.md
