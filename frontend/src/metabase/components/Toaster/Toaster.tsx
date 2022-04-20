@@ -1,7 +1,6 @@
 import React, { useState, useEffect, HTMLAttributes } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
 
 import {
   ToasterContainer,
@@ -53,7 +52,7 @@ const Toaster = ({
         {confirmText}
       </ToasterButton>
       <ToasterDismiss onClick={onDismiss} aria-label="Close">
-        <Icon name="close" color={color("bg-dark")} />
+        <Icon name="close" />
       </ToasterDismiss>
     </ToasterContainer>
   ) : null;
