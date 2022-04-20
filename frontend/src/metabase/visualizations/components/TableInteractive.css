@@ -149,6 +149,6 @@
   opacity: 0;
 }
 
-.TableInteractive-detailButton.show {
+.show .TableInteractive-detailButton {
   opacity: 1;
 }

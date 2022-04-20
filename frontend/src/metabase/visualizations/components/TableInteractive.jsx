@@ -445,15 +445,14 @@ export default class TableInteractive extends Component {
   }
 
   onKeyDown = event => {
-    const visibleDetailButton = document.querySelector(
-      ".TableInteractive-detailButton.show",
-    );
+    const detailEl = this.detailShortcutRef.current;
+    console.log(detailEl.classList);
+    const visibleDetailButton =
+      !!detailEl && Array.from(detailEl.classList).includes("show") && detailEl;
     const canViewRowDetail = !!this.state.IDColumn && !!visibleDetailButton;
 
     if (event.key === "Enter" && canViewRowDetail) {
-      const hoveredRowIndex = Number(
-        visibleDetailButton.parentElement.dataset.showDetailRowindex,
-      );
+      const hoveredRowIndex = Number(detailEl.dataset.showDetailRowindex);
       this.pkClick(hoveredRowIndex)(event);
     }
   };
@@ -835,10 +834,6 @@ export default class TableInteractive extends Component {
       return;
     }
 
-    const detailButton = hoverDetailEl.querySelector(
-      ".TableInteractive-detailButton",
-    );
-
     const scrollOffset = ReactDOM.findDOMNode(this.grid)?.scrollTop || 0;
 
     // infer row index from mouse position when we hover the gutter column
@@ -851,7 +846,7 @@ export default class TableInteractive extends Component {
       if (newIndex >= this.props.data.rows.length) {
         return;
       }
-      detailButton.classList.add("show");
+      hoverDetailEl.classList.add("show");
       hoverDetailEl.style.top = `${newIndex * ROW_HEIGHT - scrollOffset}px`;
       hoverDetailEl.dataset.showDetailRowindex = newIndex;
       hoverDetailEl.onclick = this.pkClick(newIndex);
@@ -859,16 +854,14 @@ export default class TableInteractive extends Component {
     }
 
     const targetOffset = event?.currentTarget?.offsetTop;
-    detailButton.classList.add("show");
+    hoverDetailEl.classList.add("show");
     hoverDetailEl.style.top = `${targetOffset - scrollOffset}px`;
     hoverDetailEl.dataset.showDetailRowindex = rowIndex;
     hoverDetailEl.onclick = this.pkClick(rowIndex);
   };
 
   handleLeaveRow = () => {
-    this.detailShortcutRef.current
-      ?.querySelector(".TableInteractive-detailButton")
-      .classList.remove("show");
+    this.detailShortcutRef.current.classList.remove("show");
   };
 
   handleOnMouseEnter = () => {
