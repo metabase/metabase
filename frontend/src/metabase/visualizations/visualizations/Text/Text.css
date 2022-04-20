@@ -48,7 +48,6 @@
 :local .Text .text-card-markdown h5,
 :local .Text .text-card-markdown h6 {
   margin: 0.375em 0 0.25em 0;
-  padding-right: 1.5em;
 }
 
 :local .Text .text-card-markdown h1:first-child,
@@ -97,7 +96,7 @@
   font-size: 1.143em;
   line-height: 1.602em;
   padding: 0;
-  margin: 0 1.5em 0.5em 0;
+  margin: 0 0 0.5em 0;
 }
 
 :local .text-card-markdown ul {

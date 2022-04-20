@@ -95,11 +95,7 @@ export default class Text extends Component {
 
   render() {
     const { className, gridSize, settings, isEditing } = this.props;
-
     const isSingleRow = gridSize && gridSize.height === 1;
-    if (isSingleRow) {
-      settings["text.align_vertical"] = "middle";
-    }
 
     if (isEditing) {
       return (
