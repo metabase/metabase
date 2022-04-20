@@ -527,8 +527,16 @@ export const getQuery = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion],
-  question => question && question.canRun(),
+  [getQuestion, getIsDirty],
+  (question, isDirty) => {
+    if (!question) {
+      return false;
+    }
+    if (!question.isSaved() || isDirty) {
+      return question.canRun() && !question.query().readOnly();
+    }
+    return question.canRun();
+  },
 );
 
 export const getQuestionAlerts = createSelector(
