@@ -34,6 +34,7 @@
         :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
     setting))
 
+
 (defn- fetch-setting
   "Fetch a single setting."
   ([setting-name status]
