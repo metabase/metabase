@@ -161,9 +161,11 @@
 
    PersistedInfo
    (fn [_] {:question_slug (random-name)
-            :query_hash    (random-hash)
+            :definition    {:table-name (random-name)
+                            :field-definitions (repeatedly
+                                                 4
+                                                 #(do {:field-name (random-name) :base-type "type/Text"}))}
             :table_name    (random-name)
-            :columns       (vec (repeatedly 4 random-name))
             :active        true
             :state         "persisted"
             :refresh_begin (t/zoned-date-time)

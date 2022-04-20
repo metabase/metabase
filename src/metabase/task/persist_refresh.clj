@@ -6,6 +6,7 @@
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.task-history :refer [TaskHistory]]
@@ -27,35 +28,39 @@
 
 (p/defprotocol+ Refresher
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
-  multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
-  allow for easy to control custom behavior in tests."
-  (refresh! [this database persisted-info])
+   multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
+   allow for easy to control custom behavior in tests."
+  (refresh! [this database definition dataset-query])
   (unpersist! [this database persisted-info]))
 
 (def dispatching-refresher
   "Refresher implementation that dispatches to the multimethods in [[metabase.driver.ddl.interface]]."
   (reify Refresher
-    (refresh! [_ database persisted-info]
-      (ddl.i/refresh! (:engine database) database persisted-info))
+    (refresh! [_ database definition dataset-query]
+      (binding [persisted-info/*allow-persisted-substitution* false]
+        (ddl.i/refresh! (:engine database) database definition dataset-query)))
     (unpersist! [_ database persisted-info]
      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
 (defn- refresh-with-state! [refresher database persisted-info]
   (when-not (= "deleteable" (:state persisted-info))
-    (db/update! PersistedInfo (u/the-id persisted-info)
-                :active false,
-                :refresh_begin :%now,
-                :refresh_end nil,
-                :state "refreshing"
-                :state_change_at :%now)
-    (let [{:keys [state] :as results} (refresh! refresher database persisted-info)]
+    (let [card (Card (:card_id persisted-info))
+          definition (persisted-info/metadata->definition (:result_metadata card)
+                                                          (:table_name persisted-info))
+          _ (db/update! PersistedInfo (u/the-id persisted-info)
+                        :definition definition
+                        :active false,
+                        :refresh_begin :%now,
+                        :refresh_end nil,
+                        :state "refreshing"
+                        :state_change_at :%now)
+          {:keys [state] :as results} (refresh! refresher database definition (:dataset_query card))]
       (if (= state :success)
         (db/update! PersistedInfo (u/the-id persisted-info)
                     :active true,
                     :refresh_end :%now,
                     :state "persisted"
                     :state_change_at :%now
-                    :columns (->> results :args :definition :field-definitions (map :field-name))
                     :error nil)
         (db/update! PersistedInfo (u/the-id persisted-info)
                     :state_change_at :%now
@@ -337,3 +342,8 @@
   (task/add-job! prune-job)
   (when (public-settings/enabled-persisted-models)
     (enable-persisting)))
+
+
+(comment
+  (task/add-trigger! prune-once-trigger)
+  (schedule-refresh-for-individual (PersistedInfo 3)))

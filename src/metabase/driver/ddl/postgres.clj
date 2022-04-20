@@ -5,43 +5,15 @@
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.persisted-info :as persisted-info]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
-            [metabase.util.i18n :refer [trs]]
-            [metabase.util.schema :as su]
-            [schema.core :as s]))
-
-(defn- field-metadata->field-defintion
-  "Map containing the type and name of fields for dll. The type is :base-type and uses the effective_type else base_type
-  of a field."
-  [{:keys [name base_type effective_type]}]
-  {:field-name name
-   :base-type  (or effective_type base_type)})
-
-(def ^:private Metadata
-  "Spec for metadata. Just asserting we have base types and names, not the full metadata of the qp."
-  [(su/open-schema
-    {:name s/Str, (s/optional-key :effective_type) s/Keyword, :base_type s/Keyword})])
-
-(def Definition
-  "Definition spec for a cached table."
-  {:table-name su/NonBlankString
-   :field-definitions [{:field-name su/NonBlankString
-                        :base-type  s/Keyword}]})
-
-(s/defn ^:private metadata->definition :- Definition
-  "Returns a ddl definition datastructure. A :table-name and :field-deifinitions vector of field-name and base-type."
-  [metadata :- Metadata table-name]
-  {:table-name        table-name
-   :field-definitions (mapv field-metadata->field-defintion metadata)})
+            [metabase.util.i18n :refer [trs]]))
 
 (defn- quote-fn [driver]
   (fn quote [ident entity]
     (sql.u/quote-name driver ident (ddl.i/format-name driver entity))))
 
-(defn create-schema-sql
+(defn- create-schema-sql
   "SQL string to create a schema suitable for postgres"
   [{driver :engine :as database}]
   (let [q (quote-fn driver)]
@@ -77,76 +49,17 @@
               (q :field field-name)))
            query)))
 
-(def StepArg
-  "Schema for argument to step"
-  (let [Map {s/Any s/Any}]
-    {:card Map
-     :database Map
-     :persisted-info Map
-     :definition Map}))
-
-(def ^:private all-steps
-  {:drop-table     {:func (s/fn drop-table-step [conn {:keys [database persisted-info]} :- StepArg]
-                            (jdbc/execute!
-                             conn
-                             [(drop-table-sql database (:table_name persisted-info))])
-                            true)}
-   :create-table   {:func (s/fn create-table-step [conn {:keys [database definition]} :- StepArg]
-                            (jdbc/execute! conn [(create-table-sql database definition)])
-                            true)}
-   :populate-table {:func (s/fn populate-table-step [conn {:keys [database definition card]} :- StepArg]
-                            (jdbc/execute!
-                             conn
-                             [(populate-table-sql database
-                                                  definition
-                                                  (binding [persisted-info/*allow-persisted-substitution* false]
-                                                    (-> (:dataset_query card)
-                                                        qp/compile
-                                                        :query)))]))}})
-
-(def ^:private Steps
-  "Schema for available steps"
-  (let [steps (keys all-steps)]
-    [(apply s/enum steps)]))
-
-(s/defn execute-steps
-  "Executes `steps`. These steps should be in `all-steps` and have a signature of `[conn
-  {:database :persisted-info :card :definition}]`. The `conn` arg is a connection to the database acted upon and help
-  open for the duration of the steps. Returns a map of {:args :state :results}` where args is the map arg passed to
-  each step, state is either :error or :success, and results is a vector of tuples of step name and step return value.
-
-  Will catch errors in each step and not continue running steps after that point."
-  [database persisted-info card steps :- Steps]
-  (let [args {:database       database
-              :persisted-info persisted-info
-              :card           card
-              :definition     (metadata->definition (:result_metadata card)
-                                                    (:table_name persisted-info))}]
+(defmethod ddl.i/refresh! :postgres [_driver database definition dataset-query]
+  (try
     (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
-      (transduce identity
-                 (fn step-runner
-                   ([] {:state   :valid
-                        :results []})
-                   ([results]
-                    (-> results
-                        (update :state #(if (#{:valid} %) :success %))
-                        (assoc :args args)))
-                   ([results step]
-                    (try
-                      (let [{f :func} (all-steps step)
-                            f-result  (f conn args)]
-                        (update results :results conj [step {:success f-result}]))
-                      (catch Exception e
-                        (reduced
-                         (-> results
-                             (assoc :state :error, :error (ex-message e))
-                             (update :results conj [step {:error (ex-message e)}])))))))
-                 steps))))
-
-(defmethod ddl.i/refresh! :postgres [_driver database persisted-info]
-  (let [card (Card (:card_id persisted-info))]
-    (execute-steps database persisted-info card
-                   [:drop-table :create-table :populate-table])))
+      (jdbc/execute! conn [(drop-table-sql database (:table-name definition))])
+      (jdbc/execute! conn [(create-table-sql database definition)])
+      (jdbc/execute! conn [(populate-table-sql database definition (-> dataset-query
+                                                                       qp/compile
+                                                                       :query))])
+      {:state :success})
+    (catch Exception e
+      {:state :error :error (ex-message e)})))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]

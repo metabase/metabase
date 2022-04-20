@@ -11374,23 +11374,17 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
-                  remarks: Hash of the query persisted
-                  name: query_hash
-                  type: ${text.type}
-                  constraints:
-                    nullable: false
-              - column:
                   remarks: Name of the table persisted
                   name: table_name
                   type: ${text.type}
                   constraints:
                     nullable: false
               - column:
-                  remarks: JSON array of columns in the persisted table
-                  name: columns
+                  remarks: JSON object that captures the state of the table when we persisted
+                  name: definition
                   type: ${text.type}
                   constraints:
-                    nullable: false
+                    nullable: true
               - column:
                   remarks: Indicating whether the persisted table is active and can be swapped
                   name: active

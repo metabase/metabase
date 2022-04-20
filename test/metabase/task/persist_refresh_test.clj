@@ -90,12 +90,9 @@
       (testing "Calls refresh on each persisted-info row"
         (let [call-count (atom 0)
               test-refresher (reify pr/Refresher
-                               (refresh! [_ _database persisted]
-                                 (is (contains? (set [(u/the-id p1) (u/the-id p2)])
-                                                (u/the-id persisted))
-                                     "Called on a persisted-info not related to the database")
+                               (refresh! [_ _database _definition _dataset-query]
                                  (swap! call-count inc))
-                               (unpersist! [_ _database _persisted]))]
+                               (unpersist! [_ _database _persisted-info]))]
           (#'pr/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
@@ -107,15 +104,12 @@
       (testing "Handles errors and continues"
         (let [call-count (atom 0)
               test-refresher (reify pr/Refresher
-                               (refresh! [_ _database persisted]
-                                 (is (contains? (set [(u/the-id p1) (u/the-id p2)])
-                                                (u/the-id persisted))
-                                     "Called on a persisted-info not related to the database")
+                               (refresh! [_ _database _definition _dataset-query]
                                  (swap! call-count inc)
                                  ;; throw on first persist
                                  (when (= @call-count 1)
                                    (throw (ex-info "DBs are risky" {:ka :boom}))))
-                               (unpersist! [_ _database _persisted]))]
+                               (unpersist! [_ _database _persisted-info]))]
           (#'pr/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))
           (is (partial= {:task "persist-refresh"
@@ -123,24 +117,25 @@
                         (db/select-one TaskHistory
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
-                                       {:order-by [[:id :desc]]})))))
-      (testing "Deletes any in a deleteable state"
-        (mt/with-temp* [Card     [model3 {:dataset true :database_id (u/the-id db)}]
-                        PersistedInfo [deleteable {:card_id (u/the-id model3) :database_id (u/the-id db)
-                                                   :state "deleteable"}]]
-          (let [called-on (atom #{})
-                test-refresher (reify pr/Refresher
-                                 (refresh! [_ _ _])
-                                 (unpersist! [_ _database persisted]
-                                   (swap! called-on conj (u/the-id persisted))))]
-            (#'pr/prune-deleteable-persists! test-refresher)
-            ;; don't assert equality if there are any deleteable in the app db
-            (is (contains? @called-on (u/the-id deleteable)))
-            (is (partial= {:task "unpersist-tables"
-                           :task_details {:success 1 :error 0}}
-                          (db/select-one TaskHistory
-                                         :task "unpersist-tables"
-                                         {:order-by [[:id :desc]]})))))))))
+                                       {:order-by [[:id :desc]]}))))))
+    (testing "Deletes any in a deleteable state"
+      (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
+                      Card     [model3 {:dataset true :database_id (u/the-id db)}]
+                      PersistedInfo [deleteable {:card_id (u/the-id model3) :database_id (u/the-id db)
+                                                 :state "deleteable"}]]
+        (let [called-on (atom #{})
+              test-refresher (reify pr/Refresher
+                               (refresh! [_ _ _ _])
+                               (unpersist! [_ _database persisted-info]
+                                 (swap! called-on conj (u/the-id persisted-info))))]
+          (#'pr/prune-deleteable-persists! test-refresher)
+          ;; don't assert equality if there are any deleteable in the app db
+          (is (contains? @called-on (u/the-id deleteable)))
+          (is (partial= {:task "unpersist-tables"
+                         :task_details {:success 1 :error 0}}
+                        (db/select-one TaskHistory
+                                       :task "unpersist-tables"
+                                       {:order-by [[:id :desc]]}))))))))
 
 (comment
   (run-tests)

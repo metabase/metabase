@@ -113,8 +113,8 @@
    (let [card
          ;; todo: we need to cache this. We are running this in preprocess, compile, and then again
          (or (->> (db/query {:select    [:card.dataset_query :card.database_id :card.result_metadata :card.dataset
-                                         :persisted.table_name :persisted.columns
-                                         :persisted.query_hash :persisted.state :persisted.active]
+                                         :persisted.table_name :persisted.definition
+                                         :persisted.state :persisted.active]
                              :from      [[Card :card]]
                              :left-join [[PersistedInfo :persisted] [:= :card.id :persisted.card_id]]
                              :where     [:= :card.id card-id]})
@@ -134,8 +134,9 @@
          [persisted? source-query]
          (or (when (and persisted-info/*allow-persisted-substitution*
                         (:active card)
-                        (:query_hash card)
-                        (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
+                        (:definition card)
+                        (= (:definition card) (persisted-info/metadata->definition (:result_metadata card)
+                                                                                   (:table_name card)))
                         (= (:state card) "persisted"))
                (when log?
                  (log/info (trs "Substituting cached query for card {0} from {1}.{2}"
@@ -144,7 +145,7 @@
                                 (:table_name card))))
                [true
                 {:native (format "select %s from %s.%s"
-                                 (str/join ", " (:columns card))
+                                 (str/join ", " (map :field-name (get-in card [:definition :field-definitions])))
                                  (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
                                  (:table_name card))}])
              (when mbql-query
