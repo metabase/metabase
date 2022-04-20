@@ -1049,16 +1049,18 @@ export const navigateToNewCardInsideQB = createThunkAction(
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion,
-  { doNotClearNameAndId = false, run = false, shouldUpdateUrl = false } = {},
+  { run = false, shouldUpdateUrl = false } = {},
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
     const mode = getQueryBuilderMode(getState());
 
+    const shouldConvertIntoAdHoc = newQuestion.query().isEditable();
+
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
-      !doNotClearNameAndId &&
+      shouldConvertIntoAdHoc &&
       !getIsEditing(getState()) &&
       newQuestion.isSaved() &&
       mode !== "dataset"
