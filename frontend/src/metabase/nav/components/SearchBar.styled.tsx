@@ -50,7 +50,7 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
     ${props =>
       props.isActive &&
       css`
-        width: 95%;
+        width: 100%;
         ${activeInputCSS};
       `}
   }
