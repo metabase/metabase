@@ -49,12 +49,12 @@ const Toaster = ({
   return render ? (
     <ToasterContainer show={open} fixed={fixed} className={className}>
       <ToasterMessage>{message}</ToasterMessage>
-      <ToasterButton onClick={onConfirm}>{confirmText}</ToasterButton>
-      <ToasterDismiss
-        name="close"
-        color={color("bg-dark")}
-        onClick={onDismiss}
-      />
+      <ToasterButton onClick={onConfirm} aria-label="Confirm">
+        {confirmText}
+      </ToasterButton>
+      <ToasterDismiss onClick={onDismiss} aria-label="Close">
+        <Icon name="close" color={color("bg-dark")} />
+      </ToasterDismiss>
     </ToasterContainer>
   ) : null;
 };
