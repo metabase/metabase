@@ -197,7 +197,7 @@
 
 (defn add-group-ids
   "Efficiently add PermissionsGroup `group_ids` to a collection of `users`.
-  TODO: depreacte :group_ids and use :user_group_memberships instead"
+  TODO: deprecate :group_ids and use :user_group_memberships instead"
   {:batched-hydrate :group_ids}
   [users]
   (when (seq users)

@@ -163,7 +163,7 @@
 
                (or api/*is-superuser?*
                    api/*is-group-manager?*)
-               (hydrate :group_ids :user_group_memberships))
+               (hydrate :group_ids))
      :total  (db/count User (user-clauses status query group_id include_deactivated))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
@@ -209,11 +209,14 @@
       maybe-add-advanced-permissions))
 
 (api/defendpoint GET "/:id"
-  "Fetch a `User`. You must be fetching yourself *or* be a superuser."
+  "Fetch a `User`. You must be fetching yourself *or* be a superuser *or* a Group Manager."
   [id]
-  (check-self-or-superuser id)
+  (try
+   (check-self-or-superuser id)
+   (catch clojure.lang.ExceptionInfo _e
+     (validation/check-group-manager)))
   (-> (api/check-404 (fetch-user :id id, :is_active true))
-      (hydrate :group_ids)))
+      (hydrate :user_group_memberships)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

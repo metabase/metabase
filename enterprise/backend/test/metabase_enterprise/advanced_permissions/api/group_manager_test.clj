@@ -4,7 +4,7 @@
             [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
             [metabase.models :refer [PermissionsGroup PermissionsGroupMembership User]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -170,7 +170,7 @@
                 (is (= (db/select-field :id PermissionsGroup)
                        (membership->groups-ids (get-membership :crowberto 200))))))))))))
 
-(deftest get-user-api-test
+(deftest get-users-api-test
   (testing "GET /api/user?status=all"
     (mt/with-user-in-groups
       [group {:name "New Group"}
@@ -192,10 +192,36 @@
               (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
                                                             :group_id (:id group)}
                                 :is_group_manager true)
-              (is (subset? #{:group_ids :user_group_memberships} (-> (:data (get-users user 200))
-                                                                     first
-                                                                     keys
-                                                                     set))))))))))
+              (get-users user 200))))))))
+
+(deftest get-user-api-test
+  (testing "GET /api/user/:id"
+    (mt/with-user-in-groups
+      [group {:name "New Group"}
+       user  [group]]
+      (letfn [(get-user [req-user status]
+                (testing (format "- get user with %s user" (mt/user-descriptor user))
+                  (mt/with-temp User [new-user]
+                    (mt/user-http-request req-user :get status (format "user/%d" (:id new-user))))))]
+
+        (testing "if `advanced-permissions` is disabled, require admins"
+          (premium-features-test/with-premium-features #{}
+            (get-user user 403)
+            (get-user :crowberto 200)))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "requires Group Manager or admins"
+              (get-user user 403)
+              (get-user :crowberto 200))
+
+            (testing "succeed if users is a group manager and returns additional fields"
+              (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
+                                                            :group_id (:id group)}
+                                :is_group_manager true)
+              (is (= [{:id               (:id (perms-group/all-users))
+                       :is_group_manager false}]
+                     (:user_group_memberships (get-user user 200)))))))))))
 
 (deftest update-user-api-test
   (testing "PUT /api/user/:id"

@@ -123,7 +123,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships))))))
+                  (map #(dissoc % :is_qbnewb :last_login))))))
     (testing "Get list of users with a group id"
       (is (= (->> [{:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
@@ -139,7 +139,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships))))))))
+                  (map #(dissoc % :is_qbnewb :last_login))))))))
 
 (deftest user-list-include-inactive-test
   (testing "GET /api/user?include_deactivated=true"
@@ -186,7 +186,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships)))))
+                  (map #(dissoc % :is_qbnewb :last_login)))))
       (is (= (->> [{:email                  "trashbird@metabase.com"
                     :first_name             "Trash"
                     :last_name              "Bird"
@@ -220,7 +220,7 @@
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
-                  (map #(dissoc % :is_qbnewb :last_login :user_group_memberships)))))))
+                  (map #(dissoc % :is_qbnewb :last_login)))))))
 
   (testing "GET /api/user?include_deactivated=false should return only active users"
     (is (= (->> [{:email "crowberto@metabase.com"}
@@ -292,34 +292,38 @@
 (deftest get-user-test
   (testing "GET /api/user/:id"
     (testing "should return a smaller set of fields"
-      (is (= (-> (merge
-                  @user-defaults
-                  {:email       "rasta@metabase.com"
-                   :first_name  "Rasta"
-                   :last_name   "Toucan"
-                   :common_name "Rasta Toucan"
-                   :group_ids   [(u/the-id (perms-group/all-users))]})
-                 (dissoc :is_qbnewb :last_login))
-             (-> (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))
-                 mt/boolean-ids-and-timestamps
-                 (dissoc :is_qbnewb :last_login)))))
+      (let [resp (mt/user-http-request :rasta :get 200 (str "user/" (mt/user->id :rasta)))]
+        (is (= [{:id (:id (perms-group/all-users))}]
+               (:user_group_memberships resp)))
+        (is (= (-> (merge
+                    @user-defaults
+                    {:email       "rasta@metabase.com"
+                     :first_name  "Rasta"
+                     :last_name   "Toucan"
+                     :common_name "Rasta Toucan"})
+                   (dissoc :is_qbnewb :last_login))
+               (-> resp
+                   mt/boolean-ids-and-timestamps
+                   (dissoc :is_qbnewb :last_login :user_group_memberships))))))
 
     (testing "Check that a non-superuser CANNOT fetch someone else's user details"
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :get 403 (str "user/" (mt/user->id :trashbird))))))
 
     (testing "A superuser should be allowed to fetch another users data"
-      (is (= (-> (merge
-                  @user-defaults
-                  {:email       "rasta@metabase.com"
-                   :first_name  "Rasta"
-                   :last_name   "Toucan"
-                   :common_name "Rasta Toucan"
-                   :group_ids   [(u/the-id (perms-group/all-users))]})
-                 (dissoc :is_qbnewb :last_login))
-             (-> (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))
-                 mt/boolean-ids-and-timestamps
-                 (dissoc :is_qbnewb :last_login)))))
+      (let [resp (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :rasta)))]
+        (is (= [{:id (:id (perms-group/all-users))}]
+               (:user_group_memberships resp)))
+        (is (= (-> (merge
+                    @user-defaults
+                    {:email       "rasta@metabase.com"
+                     :first_name  "Rasta"
+                     :last_name   "Toucan"
+                     :common_name "Rasta Toucan"})
+                   (dissoc :is_qbnewb :last_login))
+               (-> resp
+                   mt/boolean-ids-and-timestamps
+                   (dissoc :is_qbnewb :last_login :user_group_memberships))))))
 
     (testing "We should get a 404 when trying to access a disabled account"
       (is (= "Not found."
@@ -522,10 +526,9 @@
                        :first_name             "Cam"
                        :last_name              "Eron"
                        :is_superuser           true})
-
                      (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id)
-                                                  {:last_name "Eron"
-                                                   :email     "cam.eron@metabase.com"})
+                                               {:last_name "Eron"
+                                                :email     "cam.eron@metabase.com"})
                          (dissoc :user_group_memberships)
                          mt/boolean-ids-and-timestamps)))))
           (testing "after API call"
