@@ -28,6 +28,14 @@ function isIconPropsObject(
   return _.isObject(icon);
 }
 
+function disableImageDragging(e: React.MouseEvent) {
+  // https://www.redips.net/firefox/disable-image-dragging/
+
+  // Also seems to prevent other hickups when dragging items
+  // right after having dragged other items
+  e.preventDefault();
+}
+
 function SidebarLink({
   children,
   icon,
@@ -55,13 +63,7 @@ function SidebarLink({
       depth={0}
       isSelected={isSelected}
       hasDefaultIconStyle={hasDefaultIconStyle}
-      onMouseDown={e => {
-        // https://www.redips.net/firefox/disable-image-dragging/
-
-        // Also seems to prevent other hickups when dragging items
-        // right after having dragged other items
-        e.preventDefault();
-      }}
+      onMouseDown={disableImageDragging}
       {...props}
     >
       {React.isValidElement(left) && left}
