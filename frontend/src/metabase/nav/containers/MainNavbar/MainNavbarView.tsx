@@ -126,7 +126,7 @@ function MainNavbarView({
               </BrowseLink>
               {!hasOwnDatabase && (
                 <AddYourOwnDataLink
-                  icon="database"
+                  icon="add"
                   url={ADD_YOUR_OWN_DATA_URL}
                   isSelected={
                     isMiscLinkSelected &&
