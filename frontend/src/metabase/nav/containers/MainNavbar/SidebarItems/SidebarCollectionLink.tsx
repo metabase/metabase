@@ -1,4 +1,4 @@
-import React, { useCallback, KeyboardEvent } from "react";
+import React, { useEffect, useCallback, useRef, KeyboardEvent } from "react";
 import _ from "underscore";
 
 import { Collection } from "metabase-types/api";
@@ -7,6 +7,7 @@ import { TreeNode } from "metabase/components/tree/TreeNode";
 import { TreeNodeProps } from "metabase/components/tree/types";
 
 import CollectionDropTarget from "metabase/containers/dnd/CollectionDropTarget";
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getCollectionIcon } from "metabase/entities/collections";
@@ -30,11 +31,13 @@ type Props = DroppableProps &
     collection: Collection;
   };
 
+const TIME_BEFORE_EXPANDING_ON_HOVER = 500;
+
 const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
       collection,
-      hovered,
+      hovered: isHovered,
       depth,
       onSelect,
       isExpanded,
@@ -44,7 +47,23 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
     }: Props,
     ref,
   ) {
-    const { name } = collection;
+    const wasHovered = usePrevious(isHovered);
+    const timeoutId = useRef<any>(null);
+
+    useEffect(() => {
+      const justHovered = !wasHovered && isHovered;
+
+      if (justHovered && !isExpanded) {
+        timeoutId.current = setTimeout(() => {
+          if (isHovered) {
+            onToggleExpand();
+          }
+        }, TIME_BEFORE_EXPANDING_ON_HOVER);
+      }
+
+      return () => clearTimeout(timeoutId.current);
+    }, [wasHovered, isHovered, isExpanded, onToggleExpand]);
+
     const url = Urls.collection(collection);
 
     const onKeyDown = useCallback(
@@ -74,7 +93,7 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
         role="treeitem"
         depth={depth}
         isSelected={isSelected}
-        hovered={hovered}
+        hovered={isHovered}
         onClick={onToggleExpand}
         hasDefaultIconStyle={isRegularCollection}
         ref={ref}
@@ -90,7 +109,7 @@ const SidebarCollectionLink = React.forwardRef<HTMLLIElement, Props>(
           <TreeNode.IconContainer transparent={false}>
             <SidebarIcon {...icon} isSelected={isSelected} />
           </TreeNode.IconContainer>
-          <NameContainer>{name}</NameContainer>
+          <NameContainer>{collection.name}</NameContainer>
         </FullWidthLink>
       </CollectionNodeRoot>
     );
