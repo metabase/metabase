@@ -70,12 +70,11 @@
   (gens/let [source-table-id (gen.data/source-table-id-generator database-or-id)
              inner-query     (inner-query-generator (gen.data/field-generator source-table-id))]
     {:database (u/the-id database-or-id)
-     :type :query
-     :query (merge {:source-table source-table-id
-                    :-source-table-name (db/select-one-field :name 'Table :id source-table-id)}
+     :type     :query
+     :query    (merge {:source-table       source-table-id
+                       :-source-table-name (db/select-one-field :name 'Table :id source-table-id)}
                    inner-query)}))
 
-;; TODO expressions
 ;; TODO `:source-query` with or without `:source-metadata`
 ;; TODO `:joins`
 
