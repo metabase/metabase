@@ -26,8 +26,8 @@ describe("Object Detail", () => {
     screen.getByText(/778/i);
   });
 
-  it("renders an object detail header with enable next object button and disabled previous object button", () => {
-    const { container } = render(
+  it("renders an object detail header with enabled next object button and disabled previous object button", () => {
+    render(
       <ObjectDetailHeader
         canZoom={true}
         objectName="Large Sandstone Socks"
@@ -39,16 +39,16 @@ describe("Object Detail", () => {
         closeObjectDetail={() => null}
       />,
     );
-    const nextIsDisabled = container
-      ?.querySelector(".Icon-chevrondown")
-      ?.closest("button")?.disabled;
+    const nextDisabled = screen
+      .getByTestId("view-next-object-detail")
+      .getAttribute("disabled");
 
-    const prevIsDisabled = container
-      ?.querySelector(".Icon-chevronup")
-      ?.closest("button")?.disabled;
+    const prevDisabled = screen
+      .getByTestId("view-previous-object-detail")
+      .getAttribute("disabled");
 
-    expect(prevIsDisabled).toBeTruthy();
-    expect(nextIsDisabled).toBeFalsy();
+    expect(nextDisabled).toBeNull();
+    expect(prevDisabled).not.toBeNull();
   });
 
   it("renders an object detail body", () => {
