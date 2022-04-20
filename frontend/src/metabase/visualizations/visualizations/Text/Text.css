@@ -3,12 +3,13 @@
 }
 
 :local .Text {
+  border: none;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   height: 100%;
   justify-content: center;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 0;
   width: 100%;
 }
@@ -33,6 +34,8 @@
 
 :local .Text .text-card-markdown {
   height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 0.5em 16px;
   pointer-events: all;
   width: 100%;
@@ -53,7 +56,11 @@
 :local .Text .text-card-markdown h3:first-child,
 :local .Text .text-card-markdown h4:first-child,
 :local .Text .text-card-markdown h5:first-child,
-:local .Text .text-card-markdown h6:first-child {
+:local .Text .text-card-markdown h6:first-child,
+:local .Text .text-card-markdown p:first-child,
+:local .Text .text-card-markdown ul:first-child,
+:local .Text .text-card-markdown ol:first-child,
+:local .Text .text-card-markdown table:first-child {
   margin-top: 0.125em;
 }
 
@@ -62,7 +69,11 @@
 :local .Text .text-card-markdown h3:last-child,
 :local .Text .text-card-markdown h4:last-child,
 :local .Text .text-card-markdown h5:last-child,
-:local .Text .text-card-markdown h6:last-child {
+:local .Text .text-card-markdown h6:last-child,
+:local .Text .text-card-markdown p:last-child,
+:local .Text .text-card-markdown ul:last-child,
+:local .Text .text-card-markdown ol:last-child,
+:local .Text .text-card-markdown table:last-child {
   margin-bottom: 0.125em;
 }
 
@@ -130,7 +141,7 @@
   border-collapse: collapse;
   border-spacing: 0;
 
-  margin: 1em 0 1em 0;
+  margin: 1em 0;
   width: 100%;
   font-family: Monaco, monospace;
   font-size: 12.64px;

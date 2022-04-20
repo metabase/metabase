@@ -157,10 +157,8 @@
 
 .DashCard .Card {
   border: none;
-  /* border-color: transparent; */
   border-radius: 8px;
   box-shadow: 0px 1px 3px var(--color-shadow);
-  overflow: hidden;
 }
 
 @media (prefers-reduced-motion) {
