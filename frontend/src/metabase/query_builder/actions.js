@@ -858,10 +858,12 @@ export const updateCardVisualizationSettings = settings => async (
     return;
   }
 
+  // The check allows users without data permission to resize/rearrange columns
+  const hasWritePermissions = question.query().isEditable();
   await dispatch(
     updateQuestion(question.updateSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
+      run: hasWritePermissions ? "auto" : false,
+      shouldUpdateUrl: hasWritePermissions,
     }),
   );
 };
@@ -871,10 +873,13 @@ export const replaceAllCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+
+  // The check allows users without data permission to resize/rearrange columns
+  const hasWritePermissions = question.query().isEditable();
   await dispatch(
     updateQuestion(question.setSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
+      run: hasWritePermissions ? "auto" : false,
+      shouldUpdateUrl: hasWritePermissions,
     }),
   );
 };
