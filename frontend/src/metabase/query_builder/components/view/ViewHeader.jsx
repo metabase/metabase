@@ -398,7 +398,8 @@ function ViewTitleHeaderRightSide(props) {
     onCollapseFilters,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canRunAdhocQueries = !question.query().readOnly();
+  const isReadOnlyQuery = question.query().readOnly();
+  const canRunAdhocQueries = !isReadOnlyQuery;
   const hasExploreResultsLink =
     isNative &&
     isSaved &&
@@ -410,7 +411,7 @@ function ViewTitleHeaderRightSide(props) {
       className="ml-auto flex align-center"
       data-testid="qb-header-action-panel"
     >
-      {!!isDirty && !isDataset && (
+      {!!isDirty && !isDataset && !isReadOnlyQuery && (
         <SaveButton
           disabled={!question.canRun()}
           data-metabase-event={
