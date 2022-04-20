@@ -807,8 +807,11 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
-    if (this._field && this._field._trusted === true) {
-      return this._field;
+    if (
+      this._fieldInstance &&
+      this._fieldInstance._comesFromEndpoint === true
+    ) {
+      return this._fieldInstance;
     }
 
     const question = this.query()?.question();
@@ -919,8 +922,8 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
-      this._field && {
-        _field: this._field,
+      this._fieldInstance && {
+        _fieldInstance: this._fieldInstance,
       },
     );
   }

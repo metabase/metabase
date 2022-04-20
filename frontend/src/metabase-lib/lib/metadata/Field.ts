@@ -230,7 +230,7 @@ export default class Field extends Base {
       this.metadata,
       this.query,
       {
-        _field: this,
+        _fieldInstance: this,
       },
     );
 
