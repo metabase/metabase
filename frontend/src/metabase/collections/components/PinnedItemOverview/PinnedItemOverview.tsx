@@ -102,6 +102,9 @@ function PinnedItemOverview({
               <ItemDragSource item={item} collection={collection}>
                 <div>
                   <PinnedItemCard
+                    bookmarks={bookmarks}
+                    createBookmark={createBookmark}
+                    deleteBookmark={deleteBookmark}
                     item={item}
                     collection={collection}
                     onCopy={onCopy}
@@ -142,6 +145,9 @@ function PinnedItemOverview({
                 <ItemDragSource item={item} collection={collection}>
                   <div>
                     <PinnedItemCard
+                      bookmarks={bookmarks}
+                      createBookmark={createBookmark}
+                      deleteBookmark={deleteBookmark}
                       item={item}
                       collection={collection}
                       onCopy={onCopy}

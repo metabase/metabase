@@ -60,28 +60,24 @@ describe("Bookmarks in a collection page", () => {
 
   it("can add/remove bookmark from pinned Question in collection", () => {
     const name = "Orders";
-
     cy.visit("/collection/root");
 
     pin(name);
-
     cy.findByText(/Rows/);
-
-    cy.findByText(name)
-      .closest("a")
-      .find(".Icon-ellipsis")
-      .click({ force: true });
-
-    cy.findByText("Bookmark").click();
-
-    navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/);
-      cy.findByText(name);
-    });
+    bookmarkPinnedItem(name);
   });
 
-  it("can add/remove bookmark from Dashboard in collection", () => {
+  it("can add/remove bookmark from unpinned Dashboard in collection", () => {
     addThenRemoveBookmarkTo("Orders in a dashboard");
+  });
+
+  it("can add/remove bookmark from pinned Question in collection", () => {
+    const name = "Orders in a dashboard";
+    cy.visit("/collection/root");
+
+    pin(name);
+    cy.findByText("A dashboard");
+    bookmarkPinnedItem(name);
   });
 
   it("adds and removes bookmarks from Model in collection", () => {
@@ -186,5 +182,19 @@ function archive(name) {
   openEllipsisMenuFor(name);
   popover().within(() => {
     cy.findByText("Archive").click();
+  });
+}
+
+function bookmarkPinnedItem(name) {
+  cy.findByText(name)
+    .closest("a")
+    .find(".Icon-ellipsis")
+    .click({ force: true });
+
+  cy.findByText("Bookmark").click();
+
+  navigationSidebar().within(() => {
+    getSectionTitle(/Bookmarks/);
+    cy.findByText(name);
   });
 }
