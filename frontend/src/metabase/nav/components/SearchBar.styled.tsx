@@ -81,6 +81,7 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
 
   ${breakpointMaxSmall} {
     width: 0;
+    padding: 0;
 
     ${props =>
       props.isActive &&
@@ -96,9 +97,14 @@ const ICON_MARGIN = "10px";
 
 export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
   ${breakpointMaxSmall} {
-    margin-left: ${props => (props.isActive ? ICON_MARGIN : "3px")};
-    margin-right: ${props => (props.isActive ? ICON_MARGIN : 0)};
     transition: margin 0.3s;
+
+    ${props =>
+      props.isActive &&
+      css`
+        margin-left: ${ICON_MARGIN};
+        margin-right: ${ICON_MARGIN};
+      `}
   }
 
   ${breakpointMinSmall} {
