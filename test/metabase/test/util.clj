@@ -1187,3 +1187,12 @@
     (with-open [is (FileInputStream. f)]
       (.read is ary)
       ary)))
+
+(defn works-after
+  [x f]
+  (let [a (atom x)]
+    (fn [& args]
+      (swap! a dec)
+      (if (neg? @a)
+        (apply f args)
+        (throw (ex-info "Not yet" {:remaining @a}))))))

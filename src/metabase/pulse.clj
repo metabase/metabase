@@ -377,7 +377,7 @@
 
 (defmethod send-notification! :email
   [{:keys [subject recipients message-type message]}]
-  (email/send-message!
+  (email/send-message-retrying!
     :subject      subject
     :recipients   recipients
     :message-type message-type

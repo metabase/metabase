@@ -150,3 +150,14 @@
   []
   (when-let [user-json (env/env :mb-user-defaults)]
     (json/parse-string user-json true)))
+
+(defmacro run-mode-val
+  "Select a value based on Metabase's run mode. This is just a shorthand for a
+  case form dispatching on the run mode keyword.
+
+  (run-mode-val
+    (:test :dev) 1
+    5000)"
+  {:style/indent 0}
+  [& cases]
+  `(case (config-kw :mb-run-mode) ~@cases))

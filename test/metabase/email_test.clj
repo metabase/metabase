@@ -275,3 +275,28 @@
               (is (re-find
                    #"(?s)Content-Disposition: attachment.+filename=.+this-is-quite-[\-\s?=0-9a-zA-Z]+-characters.csv"
                    (m/mapply email/send-message! params-with-problematic-file))))))))))
+
+(deftest send-message-retrying!-test
+  (tu/with-log-level [metabase.email :error]
+    (tu/with-temporary-setting-values [email-from-address "lucky@metabase.com"
+                                       email-smtp-host    "smtp.metabase.com"
+                                       email-smtp-username "lucky"
+                                       email-smtp-password "d1nner3scapee!"
+                                       email-smtp-port     1025
+                                       email-smtp-security :none
+                                       email-retry-max-attempts 2]
+      (testing "sending with retry"
+        (is (=
+             [{:from    (email/email-from-address)
+               :to      ["test@test.com"]
+               :subject "101 Reasons to use Metabase"
+               :body    [{:type    "text/html; charset=utf-8"
+                          :content "101. Metabase will make you a better person"}]}]
+             (with-redefs [fake-inbox-email-fn (tu/works-after 1 fake-inbox-email-fn)]
+               (with-fake-inbox
+                 (email/send-message-retrying!
+                  :subject      "101 Reasons to use Metabase"
+                  :recipients   ["test@test.com"]
+                  :message-type :html
+                  :message      "101. Metabase will make you a better person")
+                 (@inbox "test@test.com")))))))))

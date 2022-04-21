@@ -128,7 +128,7 @@
                                                   :today         (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
                                                   :logoHeader    true
                                                   :sentFromSetup sent-from-setup?}))]
-    (email/send-message!
+    (email/send-message-retrying!
      :subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
      :recipients   [(:email invited)]
      :message-type :html
@@ -149,7 +149,7 @@
   [new-user & {:keys [google-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
-    (email/send-message!
+    (email/send-message-retrying!
      :subject      (str (if google-auth?
                           (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
                           (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
@@ -181,7 +181,7 @@
                               :isActive         is-active?
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
-    (email/send-message!
+    (email/send-message-retrying!
      :subject      (trs "[{0}] Password Reset Request" (app-name-trs))
      :recipients   [email]
      :message-type :html
@@ -201,7 +201,7 @@
                              :timestamp  timestamp})
         message-body (stencil/render-file "metabase/email/login_from_new_device"
                                           context)]
-    (email/send-message!
+    (email/send-message-retrying!
      :subject      (trs "We''ve Noticed a New {0} Login, {1}" (app-name-trs) (:first-name user-info))
      :recipients   [(:email user-info)]
      :message-type :html
@@ -240,7 +240,7 @@
                             notification-context)
         message-body (stencil/render-file "metabase/email/notification"
                                           (merge (common-context) context))]
-    (email/send-message!
+    (email/send-message-retrying!
      :subject      (trs "[{0}] Notification" (app-name-trs))
      :recipients   [email]
      :message-type :html
@@ -259,7 +259,7 @@
                               (follow-up-context)))
         message-body (stencil/render-file "metabase/email/follow_up_email"
                                           (merge (common-context) context))]
-    (email/send-message!
+    (email/send-message-retrying!
      :subject      subject
      :recipients   [email]
      :message-type :html
@@ -637,7 +637,7 @@
 (defn send-slack-token-error-emails!
   "Email all admins when a Slack API call fails due to a revoked token or other auth error"
   []
-  (email/send-message!
+  (email/send-message-retrying!
    :subject (trs "Your Slack connection stopped working")
    :recipients (all-admin-recipients)
    :message-type :html
