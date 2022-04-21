@@ -43,6 +43,43 @@ function getFKTargetField(question, column) {
   return fkField?.target;
 }
 
+function getBaseActionObject() {
+  return {
+    name: "object-detail",
+    section: "details",
+    title: t`View details`,
+    buttonType: "horizontal",
+    icon: "document",
+    default: true,
+  };
+}
+
+function getPKAction({ question, column, objectId, isDashboard }) {
+  const actionObject = getBaseActionObject();
+  const [actionKey, action] = getActionForPKColumn({
+    question,
+    column,
+    objectId,
+    isDashboard,
+  });
+  actionObject[actionKey] = action;
+  return actionObject;
+}
+
+function getFKAction({ question, column, objectId }) {
+  const actionObject = getBaseActionObject();
+  const targetField = getFKTargetField(question, column);
+  if (!targetField) {
+    return;
+  }
+  const [actionKey, action] = getActionForFKColumn({
+    targetField,
+    objectId,
+  });
+  actionObject[actionKey] = action;
+  return actionObject;
+}
+
 export default ({ question, clicked }) => {
   if (
     !clicked?.column ||
@@ -55,34 +92,8 @@ export default ({ question, clicked }) => {
   const { column, value: objectId, extraData } = clicked;
   const isDashboard = !!extraData?.dashboard;
 
-  const actionObject = {
-    name: "object-detail",
-    section: "details",
-    title: t`View details`,
-    buttonType: "horizontal",
-    icon: "document",
-    default: true,
-  };
+  const params = { question, column, objectId, isDashboard };
 
-  if (isPK(column)) {
-    const [actionKey, action] = getActionForPKColumn({
-      question,
-      column,
-      objectId,
-      isDashboard,
-    });
-    actionObject[actionKey] = action;
-  } else {
-    const targetField = getFKTargetField(question, column);
-    if (!targetField) {
-      return [];
-    }
-    const [actionKey, action] = getActionForFKColumn({
-      targetField,
-      objectId,
-    });
-    actionObject[actionKey] = action;
-  }
-
-  return [actionObject];
+  const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
+  return actionObject ? [actionObject] : [];
 };
