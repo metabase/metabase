@@ -85,8 +85,6 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
-  const isHomePage = window.location.pathname === "/";
-
   return (
     <SidebarContentRoot>
       <div>
