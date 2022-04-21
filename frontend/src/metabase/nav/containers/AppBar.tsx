@@ -34,7 +34,7 @@ type Props = {
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
 
-function LinkToHomePage({ handleClick }: { handleClick: () => void }) {
+function HomepageLink({ handleClick }: { handleClick: () => void }) {
   return (
     <LogoLink to="/" onClick={handleClick} data-metabase-event="Navbar;Logo">
       <LogoIcon size={24} />
@@ -80,7 +80,7 @@ function AppBar({
   return (
     <AppBarRoot>
       <RowLeft isSearchActive={isSearchActive}>
-        <LinkToHomePage handleClick={onLogoClick} />
+        <HomepageLink handleClick={onLogoClick} />
         <SidebarButtonContainer>
           <Tooltip tooltip={sidebarButtonTooltip}>
             <SidebarButton
@@ -92,7 +92,7 @@ function AppBar({
       </RowLeft>
       {!isSearchActive && (
         <RowMiddle>
-          <LinkToHomePage handleClick={onLogoClick} />
+          <HomepageLink handleClick={onLogoClick} />
         </RowMiddle>
       )}
       <RowRight>

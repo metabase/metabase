@@ -108,7 +108,7 @@ export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
 `;
 
 export const HomePageLink = styled(SidebarLink)`
-  padding-left: 0.75rem;
+  padding-left: 12px;
 `;
 
 export const BrowseLink = styled(SidebarLink)`

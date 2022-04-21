@@ -8,4 +8,11 @@ export type SelectedNonEntityItem = {
   url: string;
 };
 
-export type SelectedItem = SelectedEntityItem | SelectedNonEntityItem;
+type HomepageItem = {
+  type: "homepage";
+};
+
+export type SelectedItem =
+  | SelectedEntityItem
+  | SelectedNonEntityItem
+  | HomepageItem;

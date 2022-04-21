@@ -79,10 +79,6 @@ function SearchBar({
     setSearchText(e.target.value);
   }, []);
 
-  const onClear = useCallback(e => {
-    setSearchText("");
-  }, []);
-
   useOnClickOutside(container, setInactive);
 
   useKeyboardShortcut("Escape", setInactive);
@@ -144,10 +140,13 @@ function SearchBar({
 
   const hasSearchText = searchText.trim().length > 0;
 
-  const handleClickOnClose = (e: MouseEvent) => {
-    e.stopPropagation();
-    setInactive();
-  };
+  const handleClickOnClose = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      setInactive();
+    },
+    [setInactive],
+  );
 
   return (
     <div ref={container}>
