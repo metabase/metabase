@@ -112,13 +112,9 @@ export default class Dashboard extends Component {
   }
 
   throttleParameterWidgetStickiness = _.throttle(
-    () => this._onThrottle(),
+    () => updateParametersWidgetStickiness(),
     SCROLL_THROTTLE_INTERVAL,
   );
-
-  _onThrottle() {
-    updateParametersWidgetStickiness(this);
-  }
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
