@@ -28,6 +28,10 @@
                              ;; This is a reentrant read-write lock, which means any number of read locks are allowed at
                              ;; the same time, but the write lock is exclusive. So if you want to prevent anyone from
                              ;; getting new connections, lock the write lock.
+                             ;;
+                             ;; The main purpose of this is to power [[metabase.api.testing]] which allows you to reset
+                             ;; the application DB with data from a SQL dump -- during the restore process it is
+                             ;; important that we do not allow anyone to access the DB.
                              ^ReentrantReadWriteLock lock]
   javax.sql.DataSource
   (getConnection [_]
