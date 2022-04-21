@@ -69,7 +69,13 @@ export const getShallowSegments = getNormalizedSegments;
 export const instantiateDatabase = obj => new Database(obj);
 export const instantiateSchema = obj => new Schema(obj);
 export const instantiateTable = obj => new Table(obj);
-export const instantiateField = obj => new Field(obj);
+// We need a way to distinguish field objects that come from the server
+// vs. those that are created client-side to handle lossy transformations between
+// Field instances and FieldDimension instances.
+// There are scenarios where we are failing to convert FieldDimensions back into Fields,
+// and as a safeguard we instantiate a new Field that is missing most of its properties.
+export const instantiateField = obj =>
+  new Field({ ...obj, _comesFromEndpoint: true });
 export const instantiateSegment = obj => new Segment(obj);
 export const instantiateMetric = obj => new Metric(obj);
 

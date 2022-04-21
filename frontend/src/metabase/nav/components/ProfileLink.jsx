@@ -24,6 +24,7 @@ export default class ProfileLink extends Component {
   static propTypes = {
     user: PropTypes.object.isRequired,
     handleCloseNavbar: PropTypes.func.isRequired,
+    handleLogout: PropTypes.func.isRequired,
   };
 
   openModal = modalName => {
@@ -81,7 +82,7 @@ export default class ProfileLink extends Component {
       {
         title: t`Sign out`,
         icon: null,
-        link: "auth/logout",
+        action: () => this.props.handleLogout(),
         event: `Navbar;Profile Dropdown;Logout`,
       },
     ].filter(Boolean);

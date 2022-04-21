@@ -70,7 +70,7 @@ const ViewFooter = ({
   onOpenTimelines,
   onCloseTimelines,
 }) => {
-  if (!result || isObjectDetail) {
+  if (!result) {
     return null;
   }
 

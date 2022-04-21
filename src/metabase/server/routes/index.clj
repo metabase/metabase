@@ -77,6 +77,7 @@
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
+      :language           (hiccup.util/escape-html (public-settings/site-locale))
       :favicon            (hiccup.util/escape-html (public-settings/application-favicon-url))
       :applicationName    (hiccup.util/escape-html (public-settings/application-name))
       :uri                (hiccup.util/escape-html uri)

@@ -3,12 +3,14 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { DatasetData } from "metabase-types/types/Dataset";
-import { OnVisualizationClickType } from "./types";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
 import { isID } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
+
+import { OnVisualizationClickType } from "./types";
+import { ObjectDetailsTable } from "./ObjectDetail.styled";
 
 export interface DetailsTableCellProps {
   column: any;
@@ -106,7 +108,7 @@ export function DetailsTable({
   const row = zoomedRow || rows[0];
 
   return (
-    <>
+    <ObjectDetailsTable>
       {cols.map((column, columnIndex) => (
         <div className="Grid Grid--1of2 mb2" key={columnIndex}>
           <div className="Grid-cell">
@@ -134,6 +136,6 @@ export function DetailsTable({
           </div>
         </div>
       ))}
-    </>
+    </ObjectDetailsTable>
   );
 }

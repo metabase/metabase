@@ -102,6 +102,7 @@ describe("scenarios > question > notebook", () => {
   });
 
   it("should append indexes to duplicate custom expression names (metabase#12104)", () => {
+    cy.viewport(1920, 800); // we're looking for a column name beyond the right of the default viewport
     cy.intercept("POST", "/api/dataset").as("dataset");
     openProductsTable({ mode: "notebook" });
 

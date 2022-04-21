@@ -35,7 +35,7 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       cy.wait("@getXrayCandidates");
       cy.findByText("Here are some explorations of");
-      cy.findByText("H2");
+      cy.findAllByRole("link").contains("H2");
       cy.findByText("Orders").click();
 
       cy.wait("@getXrayDashboard");
@@ -50,7 +50,7 @@ describe("scenarios > home > homepage", () => {
       cy.visit("/");
       cy.findByText(/Here are some explorations of the/);
       cy.findByText("public");
-      cy.findByText("H2");
+      cy.findAllByRole("link").contains("H2");
       cy.findByText("Orders");
       cy.findByText("People").should("not.exist");
 

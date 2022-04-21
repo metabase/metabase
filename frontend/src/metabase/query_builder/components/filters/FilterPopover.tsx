@@ -122,7 +122,8 @@ export default class FilterPopover extends Component<Props, State> {
 
   handleDimensionChange = (dimension: FieldDimension) => {
     let filter = this.state.filter;
-    if (!filter || filter.query() !== dimension.query()) {
+    const field = dimension?.field();
+    if (!filter || filter.query() !== dimension.query() || field?.isDate?.()) {
       filter = new Filter(
         [],
         null,

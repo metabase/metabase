@@ -6,7 +6,7 @@ import _ from "underscore";
 import { IconProps } from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
+import { BookmarksType, Collection, User } from "metabase-types/api";
 import Bookmarks from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
@@ -14,6 +14,7 @@ import Collections, {
   buildCollectionTree,
 } from "metabase/entities/collections";
 import { openNavbar, closeNavbar } from "metabase/redux/app";
+import { logout } from "metabase/auth/actions";
 import {
   getHasOwnDatabase,
   getHasDataAccess,
@@ -40,6 +41,7 @@ function mapStateToProps(state: unknown) {
 const mapDispatchToProps = {
   openNavbar,
   closeNavbar,
+  logout,
 };
 
 interface CollectionTreeItem extends Collection {
@@ -64,6 +66,7 @@ type Props = {
   };
   openNavbar: () => void;
   closeNavbar: () => void;
+  logout: () => void;
 };
 
 function MainNavbarContainer({
@@ -79,6 +82,7 @@ function MainNavbarContainer({
   params,
   openNavbar,
   closeNavbar,
+  logout,
   ...props
 }: Props) {
   const [orderedBookmarks, setOrderedBookmarks] = useState([]);
@@ -121,7 +125,7 @@ function MainNavbarContainer({
     if (pathname.startsWith("/question") || pathname.startsWith("/model")) {
       return { type: "card", id: Urls.extractEntityId(slug) };
     }
-    return { type: "unknown", url: pathname };
+    return { type: "non-entity", url: pathname };
   }, [location, params]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
@@ -180,8 +184,9 @@ function MainNavbarContainer({
           hasOwnDatabase={hasOwnDatabase}
           selectedItem={selectedItem}
           hasDataAccess={hasDataAccess}
-          handleCloseNavbar={closeNavbar}
           reorderBookmarks={reorderBookmarks}
+          handleCloseNavbar={closeNavbar}
+          handleLogout={logout}
         />
       ) : (
         <LoadingContainer>
