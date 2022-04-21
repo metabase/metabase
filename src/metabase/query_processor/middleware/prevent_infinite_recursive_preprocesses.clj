@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses
   (:require [clojure.tools.logging :as log]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^:dynamic *preprocessing-level* 1)
@@ -18,5 +18,5 @@
       (when (>= *preprocessing-level* max-preprocessing-level)
         (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
                                   max-preprocessing-level))
-                        {:type error-type/qp})))
+                        {:type qp.error-type/qp})))
       (qp query rff context))))

@@ -6,7 +6,7 @@
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.config :as config]
-            [metabase.email.messages :as email]
+            [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
@@ -18,13 +18,13 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
-            [metabase.util.password :as pass]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.password :as u.password]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [throttle.core :as throttle]
             [toucan.db :as db]
-            [toucan.models :as t.models])
+            [toucan.models :as models])
   (:import com.unboundid.util.LDAPSDKException
            java.util.UUID))
 
@@ -54,7 +54,7 @@
                         :id      (str session-uuid)
                         :user_id (u/the-id user))
                       ;; HACK !!! For some reason `db/insert` doesn't seem to be working correctly for Session.
-                      (t.models/post-insert (Session (str session-uuid))))]
+                      (models/post-insert (Session (str session-uuid))))]
     (assert (map? session))
     (events/publish-event! :user-login
       {:user_id (u/the-id user), :session_id (str session-uuid), :first_login (nil? (:last_login user))})
@@ -115,7 +115,7 @@
   "Find a matching `User` if one exists and return a new Session for them, or `nil` if they couldn't be authenticated."
   [username password device-info :- request.u/DeviceInfo]
   (if-let [user (db/select-one [User :id :password_salt :password :last_login :is_active], :%lower.email (u/lower-case-en username))]
-    (when (pass/verify-password password (:password_salt user) (:password user))
+    (when (u.password/verify-password password (:password_salt user) (:password user))
       (if (:is_active user)
         (create-session! :password user device-info)
         (throw (ex-info (str disabled-account-message)
@@ -123,7 +123,7 @@
                          :errors      {:_error disabled-account-snippet}}))))
     (do
       ;; User doesn't exist; run bcrypt hash anyway to avoid leaking account existence in request timing
-      (pass/verify-password password fake-salt fake-hashed-password)
+      (u.password/verify-password password fake-salt fake-hashed-password)
       nil)))
 
 (def ^:private throttling-disabled? (config/config-bool :mb-disable-session-throttle))
@@ -204,7 +204,7 @@
       (let [reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (log/info password-reset-url)
-        (email/send-password-reset-email! email google-auth? password-reset-url is-active?)))))
+        (messages/send-password-reset-email! email google-auth? password-reset-url is-active?)))))
 
 (api/defendpoint POST "/forgot_password"
   "Send a reset email when user has forgotten their password."
@@ -247,7 +247,7 @@
         ;; if this is the first time the user has logged in it means that they're just accepted their Metabase invite.
         ;; Send all the active admins an email :D
         (when-not (:last_login user)
-          (email/send-user-joined-admin-notification-email! (User user-id)))
+          (messages/send-user-joined-admin-notification-email! (User user-id)))
         ;; after a successful password update go ahead and offer the client a new session that they can use
         (let [{session-uuid :id, :as session} (create-session! :password user (request.u/device-info request))
               response                        {:success    true

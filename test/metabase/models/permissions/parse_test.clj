@@ -1,10 +1,10 @@
 (ns metabase.models.permissions.parse-test
   (:require [clojure.test :refer :all]
-            [metabase.models.permissions.parse :as parse]))
+            [metabase.models.permissions.parse :as perms-parse]))
 
 (deftest permissions->graph
   (testing "Parses each permission string to the correct graph"
-    (are [x y] (= y (parse/permissions->graph [x]))
+    (are [x y] (= y (perms-parse/permissions->graph [x]))
       "/db/3/"                                        {:db {3 {:data {:native  :write
                                                                        :schemas :all}}}}
       "/db/3/native/"                                 {:db {3 {:data {:native :write}}}}
@@ -64,10 +64,10 @@
                          (partition-all (count groups) 1)
                          (map vec)))]
       (is (= (get-in group [0 1])
-             (parse/permissions->graph (map first group)))))))
+             (perms-parse/permissions->graph (map first group)))))))
 
 (deftest permissions->graph-collections
-  (are [x y] (= y (parse/permissions->graph [x]))
+  (are [x y] (= y (perms-parse/permissions->graph [x]))
     "/collection/root/"      {:collection {:root :write}}
     "/collection/root/read/" {:collection {:root :read}}
     "/collection/1/"         {:collection {1 :write}}
@@ -80,16 +80,16 @@
                          5 {:data {:schemas {"PUBLIC" {10 {:read :all}}}}}}
             :collection {:root :write
                          1     :read}}
-           (parse/permissions->graph #{"/db/3/"
-                                       "/db/5/schema/PUBLIC/table/10/read/"
-                                       "/collection/root/"
-                                       "/collection/1/read/"})))))
+           (perms-parse/permissions->graph #{"/db/3/"
+                                             "/db/5/schema/PUBLIC/table/10/read/"
+                                             "/collection/root/"
+                                             "/collection/1/read/"})))))
 
 (deftest block-permissions-test
   (testing "Should parse block permissions entries correctly"
     (is (= {:db {1 {:data {:schemas :block}}
                  2 {:data {:schemas :block}}}}
-           (parse/permissions->graph #{"/block/db/1/" "/block/db/2/"}))))
+           (perms-parse/permissions->graph #{"/block/db/1/" "/block/db/2/"}))))
   (testing (str "Block perms and data perms shouldn't exist together at the same time for a given DB, but if they do "
                 "for some  reason, ignore the data perms and return the block perms")
     (doseq [path  ["/db/1/"
@@ -108,4 +108,4 @@
                                      ;; access but that's not the parsing code's concern.
                                      (when (= path "/db/1/")
                                        {:native :write}))}}}
-               (parse/permissions->graph paths)))))))
+               (perms-parse/permissions->graph paths)))))))

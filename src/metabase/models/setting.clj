@@ -81,11 +81,11 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.models.setting.cache :as cache]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-trs deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.models :as models])
@@ -252,7 +252,7 @@
 ;; this isn't really something that needs to be a multimethod, but I'm using it because the logic can't really live in
 ;; [[metabase.models.setting.cache]] but the cache has to live here; this is a good enough way to prevent circular
 ;; references for now
-(defmethod cache/call-on-change :default
+(defmethod setting.cache/call-on-change :default
   [old new]
   (let [rs      @registered-settings
         [d1 d2] (data/diff old new)]
@@ -388,8 +388,8 @@
       (let [v (if *disable-cache*
                 (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
                 (do
-                  (cache/restore-cache-if-needed!)
-                  (clojure.core/get (cache/cache) (setting-name setting-definition-or-name))))]
+                  (setting.cache/restore-cache-if-needed!)
+                  (clojure.core/get (setting.cache/cache) (setting-name setting-definition-or-name))))]
         (when (seq v)
           v)))))
 
@@ -526,7 +526,7 @@
 (defn- update-setting!
   "Update an existing Setting. Used internally by [[set-value-of-type!]] for `:string` below; do not use directly."
   [setting-name new-value]
-  (assert (not= setting-name cache/settings-last-updated-key)
+  (assert (not= setting-name setting.cache/settings-last-updated-key)
     (tru "You cannot update `settings-last-updated` yourself! This is done automatically."))
   ;; This is indeed a very annoying way of having to do things, but `update-where!` doesn't call `pre-update` (in case
   ;; it updates thousands of objects). So we need to manually trigger `pre-update` behavior by calling `do-pre-update`
@@ -592,26 +592,26 @@
               (throw (ex-info (tru "Site-wide values are not allowed for Setting {0}" (:name setting))
                               {:setting (:name setting)})))
             ;; always update the cache entirely when updating a Setting.
-            (cache/restore-cache!)
+            (setting.cache/restore-cache!)
             ;; write to DB
             (cond
               (nil? new-value)
               (db/simple-delete! Setting :key setting-name)
 
               ;; if there's a value in the cache then the row already exists in the DB; update that
-              (contains? (cache/cache) setting-name)
+              (contains? (setting.cache/cache) setting-name)
               (update-setting! setting-name new-value)
 
               ;; if there's nothing in the cache then the row doesn't exist, insert a new one
               :else
               (set-new-setting! setting-name new-value))
             ;; update cached value
-            (cache/update-cache! setting-name new-value)
+            (setting.cache/update-cache! setting-name new-value)
             ;; Record the fact that a Setting has been updated so eventaully other instances (if applicable) find out
             ;; about it (For Settings that don't use the Cache, don't update the `last-updated` value, because it will
             ;; cause other instances to do needless reloading of the cache from the DB)
             (when-not *disable-cache*
-              (cache/update-settings-last-updated!))))
+              (setting.cache/update-settings-last-updated!))))
         ;; Now return the `new-value`.
         new-value))))
 
@@ -950,7 +950,7 @@
         (metabase.models.setting/set! k v)))
     settings
     (catch Throwable e
-      (cache/restore-cache!)
+      (setting.cache/restore-cache!)
       (throw e))))
 
 (defn obfuscate-value

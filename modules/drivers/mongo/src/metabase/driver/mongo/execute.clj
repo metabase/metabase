@@ -5,10 +5,10 @@
             [clojure.tools.logging :as log]
             [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.reducible :as qp.reducible]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [monger.conversion :as m.conversion]
             [monger.util :as m.util]
             [schema.core :as s])
@@ -42,7 +42,7 @@
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
         (throw (ex-info (tru "Unexpected columns in results: {0}" (sort not-in-expected))
-                        {:type     error-type/driver
+                        {:type     qp.error-type/driver
                          :actual   actual-cols
                          :expected expected-cols}))))))
 
@@ -126,7 +126,7 @@
                 (do (vreset! has-returned-first-row? true)
                     (first-row-thunk))
                 (remaining-rows-thunk)))]
-      (qp.reducible/reducible-rows row-thunk (context/canceled-chan context)))))
+      (qp.reducible/reducible-rows row-thunk (qp.context/canceled-chan context)))))
 
 (defn- reduce-results [native-query context ^Cursor cursor respond]
   (try
@@ -150,7 +150,7 @@
       (com.mongodb.BasicDBObject. (.asDocument v)))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-               {:type  error-type/invalid-query
+               {:type  qp.error-type/invalid-query
                 :query s}
                e)))))
 
@@ -160,9 +160,9 @@
   {:pre [(string? collection) (fn? respond)]}
   (let [query  (cond-> query
                  (string? query) parse-query-string)
-        cursor (aggregate *mongo-connection* collection query (context/timeout context))]
+        cursor (aggregate *mongo-connection* collection query (qp.context/timeout context))]
     (a/go
-      (when (a/<! (context/canceled-chan context))
+      (when (a/<! (qp.context/canceled-chan context))
         ;; Eastwood seems to get confused here and not realize there's already a tag on `cursor` (returned by
         ;; `aggregate`)
         (.close ^Cursor cursor)))

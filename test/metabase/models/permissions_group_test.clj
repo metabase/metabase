@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as perm-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
@@ -18,12 +18,12 @@
 
 (deftest admin-root-entry-test
   (testing "Check that the root entry for Admin was created"
-    (is (db/exists? Permissions :group_id (u/the-id (perm-group/admin)), :object "/"))))
+    (is (db/exists? Permissions :group_id (u/the-id (perms-group/admin)), :object "/"))))
 
 (deftest magic-groups-test
   (testing "check that we can get the magic permissions groups through the helper functions\n"
-    (doseq [[group-name group] {"All Users"      (perm-group/all-users)
-                                "Administrators" (perm-group/admin)}]
+    (doseq [[group-name group] {"All Users"      (perms-group/all-users)
+                                "Administrators" (perms-group/admin)}]
       (testing group-name
         (is (instance? PermissionsGroupInstance group))
         (is (= group-name
@@ -46,22 +46,22 @@
         (testing "Should be added to All Users group"
           (is (db/exists? PermissionsGroupMembership
                 :user_id  user-id
-                :group_id (u/the-id (perm-group/all-users)))))
+                :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should not be added to Admin group"
           (is (not (db/exists? PermissionsGroupMembership
                      :user_id  user-id
-                     :group_id (u/the-id (perm-group/admin))))))))
+                     :group_id (u/the-id (perms-group/admin))))))))
 
     (testing "superuser"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
         (testing "Should be added to All Users group"
           (is (db/exists? PermissionsGroupMembership
                 :user_id  user-id
-                :group_id (u/the-id (perm-group/all-users)))))
+                :group_id (u/the-id (perms-group/all-users)))))
         (testing "Should be added to Admin group"
           (is (db/exists? PermissionsGroupMembership
                 :user_id  user-id
-                :group_id (u/the-id (perm-group/admin)))))))))
+                :group_id (u/the-id (perms-group/admin)))))))))
 
 (s/defn ^:private group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
@@ -74,8 +74,8 @@
 (deftest newly-created-databases-test
   (testing "magic groups should have permissions for newly created databases\n"
     (mt/with-temp Database [{database-id :id}]
-      (doseq [group [(perm-group/all-users)
-                     (perm-group/admin)]]
+      (doseq [group [(perms-group/all-users)
+                     (perms-group/admin)]]
         (testing (format "Group = %s" (pr-str (:name group)))
           (group-has-full-access? (u/the-id group) (perms/data-perms-path database-id)))))))
 
@@ -83,13 +83,13 @@
   (testing "flipping the is_superuser bit should add/remove user from Admin group as appropriate"
     (testing "adding user to Admin should set is_superuser -> true")
     (mt/with-temp User [{user-id :id}]
-      (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perm-group/admin)))
+      (db/insert! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
       (is (= true
              (db/select-one-field :is_superuser User, :id user-id))))
 
     (testing "removing user from Admin should set is_superuser -> false"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
-        (db/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perm-group/admin)))
+        (db/delete! PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))
         (is (= false
                (db/select-one-field :is_superuser User, :id user-id)))))
 
@@ -97,10 +97,10 @@
       (mt/with-temp User [{user-id :id}]
         (db/update! User user-id, :is_superuser true)
         (is (= true
-               (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perm-group/admin)))))))
+               (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))
 
     (testing "setting is_superuser -> false should remove user from Admin"
       (mt/with-temp User [{user-id :id} {:is_superuser true}]
         (db/update! User user-id, :is_superuser false)
         (is (= false
-               (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perm-group/admin)))))))))
+               (db/exists? PermissionsGroupMembership, :user_id user-id, :group_id (u/the-id (perms-group/admin)))))))))

@@ -1,12 +1,12 @@
 (ns metabase.http-client
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [cheshire.core :as json]
-            [clj-http.client :as client]
+            [clj-http.client :as http]
             [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :as t]
             [clojure.tools.logging :as log]
-            [java-time :as java-time]
+            java-time
             [metabase.config :as config]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
@@ -167,10 +167,10 @@
                   method-name url expected-status-code actual-status-code))))
 
 (def ^:private method->request-fn
-  {:get    client/get
-   :post   client/post
-   :put    client/put
-   :delete client/delete})
+  {:get    http/get
+   :post   http/post
+   :put    http/put
+   :delete http/delete})
 
 (def ^:private ClientParamsMap
   {(s/optional-key :credentials)      (s/maybe (s/cond-pre UUIDString Credentials))

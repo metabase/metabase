@@ -7,16 +7,16 @@
             [java-time :as t]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
-            [metabase.email.messages :as email]
+            [metabase.email.messages :as messages]
             [metabase.integrations.google :as google]
             [metabase.integrations.ldap :as ldap]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.login-history :refer [LoginHistory]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.server.middleware.offset-paging :as offset-paging]
+            [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -44,7 +44,7 @@
   ;; agrees with is_superuser -- don't want to have ambiguous behavior
   (when (and (some? is-superuser?)
              new-groups-or-ids)
-    (api/checkp (= is-superuser? (contains? (set new-groups-or-ids) (u/the-id (group/admin))))
+    (api/checkp (= is-superuser? (contains? (set new-groups-or-ids) (u/the-id (perms-group/admin))))
       "is_superuser" (tru "Value of is_superuser must correspond to presence of Admin group ID in group_ids.")))
   (when (some? new-groups-or-ids)
     (when-not (= (user/group-ids user-or-id)
@@ -146,13 +146,13 @@
                        (vec (cons User (user-visible-columns)))
                        (cond-> (user-clauses status query group_id include_deactivated)
                             true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                            (some? offset-paging/*limit*)  (hh/limit offset-paging/*limit*)
-                            (some? offset-paging/*offset*) (hh/offset offset-paging/*offset*)))
+                            (some? mw.offset-paging/*limit*)  (hh/limit mw.offset-paging/*limit*)
+                            (some? mw.offset-paging/*offset*) (hh/offset mw.offset-paging/*offset*)))
                ;; For admins, also include the IDs of the  Users' Personal Collections
                api/*is-superuser?* (hydrate :personal_collection_id :group_ids))
      :total  (db/count User (user-clauses status query group_id include_deactivated))
-     :limit  offset-paging/*limit*
-     :offset offset-paging/*offset*}))
+     :limit  mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}))
 
 
 (defn- maybe-add-advanced-permissions
@@ -367,7 +367,7 @@
     (let [reset-token (user/set-password-reset-token! id)
           ;; NOTE: the new user join url is just a password reset with an indicator that this is a first time user
           join-url    (str (user/form-password-reset-url reset-token) "#new")]
-      (email/send-new-user-email! user @api/*current-user* join-url false)))
+      (messages/send-new-user-email! user @api/*current-user* join-url false)))
   {:success true})
 
 (api/define-routes)

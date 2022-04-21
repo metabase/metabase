@@ -3,7 +3,7 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -685,8 +685,8 @@
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
     (mt/with-temp Database [{db-id :id}]
-      (perms/revoke-data-perms! (group/all-users) db-id)
-      (let [ks [:groups (u/the-id (group/all-users)) db-id :data]]
+      (perms/revoke-data-perms! (perms-group/all-users) db-id)
+      (let [ks [:groups (u/the-id (perms-group/all-users)) db-id :data]]
         (letfn [(perms []
                   (get-in (perms/data-perms-graph) ks))
                 (set-perms! [new-perms]
@@ -724,7 +724,7 @@
   (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"
     (is (thrown? Exception
                  (perms/revoke-collection-permissions!
-                  (group/all-users)
+                  (perms-group/all-users)
                   (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
@@ -732,12 +732,12 @@
                                                        (collection/user->personal-collection
                                                         (mt/user->id :lucky)))}]
         (is (thrown? Exception
-                     (perms/revoke-collection-permissions! (group/all-users) collection)))))))
+                     (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
     (mt/with-temp Collection [{collection-id :id}]
-      (perms/revoke-collection-permissions! (group/all-users) collection-id)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
         (is (some? (db/select-one Collection :id collection-id)))))))
 
@@ -751,13 +751,13 @@
                        perms-type)
         (is (thrown?
              Exception
-             (f (group/all-users)
+             (f (perms-group/all-users)
                 (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
         (testing "(should apply to descendants as well)"
           (is (thrown?
                Exception
-               (f (group/all-users) collection))))))))
+               (f (perms-group/all-users) collection))))))))
 
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]

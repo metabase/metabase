@@ -7,88 +7,118 @@ describe("scenarios > home > homepage", () => {
     cy.intercept("GET", "/api/automagic-*/database/**").as("getXrayCandidates");
     cy.intercept("GET", "/api/activity/recent_views").as("getRecentItems");
     cy.intercept("GET", "/api/activity/popular_items").as("getPopularItems");
+    cy.intercept("GET", "/api/collection/*/items*").as("getCollectionItems");
+    cy.intercept("POST", `/api/card/*/query`).as("getQuestionQuery");
   });
 
-  it("should display x-rays for the sample database", () => {
-    restore("setup");
-    cy.signInAsAdmin();
+  describe("after setup", () => {
+    beforeEach(() => {
+      restore("setup");
+    });
 
-    cy.visit("/");
-    cy.wait("@getXrayCandidates");
-    cy.findByText("Try out these sample x-rays to see what Metabase can do.");
-    cy.findByText("Orders").click();
+    it("should display x-rays for the sample database", () => {
+      cy.signInAsAdmin();
 
-    cy.wait("@getXrayDashboard");
-    cy.findByText("More X-rays");
+      cy.visit("/");
+      cy.wait("@getXrayCandidates");
+      cy.findByText("Try out these sample x-rays to see what Metabase can do.");
+      cy.findByText("Orders").click();
+
+      cy.wait("@getXrayDashboard");
+      cy.findByText("More X-rays");
+    });
+
+    it("should display x-rays for a user database", () => {
+      cy.signInAsAdmin();
+      cy.addH2SampleDatabase({ name: "H2" });
+
+      cy.visit("/");
+      cy.wait("@getXrayCandidates");
+      cy.findByText("Here are some explorations of");
+      cy.findAllByRole("link").contains("H2");
+      cy.findByText("Orders").click();
+
+      cy.wait("@getXrayDashboard");
+      cy.findByText("More X-rays");
+    });
+
+    it("should allow switching between multiple schemas for x-rays", () => {
+      cy.signInAsAdmin();
+      cy.addH2SampleDatabase({ name: "H2" });
+      cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
+
+      cy.visit("/");
+      cy.findByText(/Here are some explorations of the/);
+      cy.findByText("public");
+      cy.findAllByRole("link").contains("H2");
+      cy.findByText("Orders");
+      cy.findByText("People").should("not.exist");
+
+      cy.findByText("public").click();
+      cy.findByText("private").click();
+      cy.findByText("People");
+      cy.findByText("Orders").should("not.exist");
+    });
   });
 
-  it("should display x-rays for a user database", () => {
-    restore("setup");
-    cy.signInAsAdmin();
-    cy.addH2SampleDatabase({ name: "H2" });
+  describe("after content creation", () => {
+    beforeEach(() => {
+      restore("default");
+    });
 
-    cy.visit("/");
-    cy.wait("@getXrayCandidates");
-    cy.findByText("Here are some explorations of");
-    cy.findByText("H2");
-    cy.findByText("Orders").click();
+    it("should display recent items", () => {
+      cy.signInAsAdmin();
 
-    cy.wait("@getXrayDashboard");
-    cy.findByText("More X-rays");
-  });
+      visitDashboard(1);
+      cy.findByText("Orders in a dashboard");
 
-  it("should allow switching between multiple schemas for x-rays", () => {
-    restore("setup");
-    cy.signInAsAdmin();
-    cy.addH2SampleDatabase({ name: "H2" });
-    cy.intercept("/api/automagic-*/database/**", getXrayCandidates());
+      cy.visit("/");
+      cy.wait("@getRecentItems");
+      cy.findByText("Pick up where you left off");
 
-    cy.visit("/");
-    cy.findByText(/Here are some explorations of the/);
-    cy.findByText("public");
-    cy.findByText("H2");
-    cy.findByText("Orders");
-    cy.findByText("People").should("not.exist");
+      cy.findByText("Orders in a dashboard").click();
+      cy.wait("@getDashboard");
+      cy.findByText("Orders");
+    });
 
-    cy.findByText("public").click();
-    cy.findByText("private").click();
-    cy.findByText("People");
-    cy.findByText("Orders").should("not.exist");
-  });
+    it("should display popular items for a new user", () => {
+      cy.signInAsAdmin();
+      visitDashboard(1);
+      cy.findByText("Orders in a dashboard");
+      cy.signOut();
 
-  it("should display recent items", () => {
-    restore("default");
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.wait("@getPopularItems");
+      cy.findByText("Here are some popular dashboards");
+      cy.findByText("Orders in a dashboard").click();
+      cy.wait("@getDashboard");
+      cy.findByText("Orders");
+    });
 
-    cy.signInAsAdmin();
-    visitDashboard(1);
-    cy.findByText("Orders in a dashboard");
+    it("should not show pinned questions in recent items when viewed in a collection", () => {
+      cy.signInAsAdmin();
 
-    cy.visit("/");
-    cy.wait("@getRecentItems");
-    cy.findByText("Pick up where you left off");
+      visitDashboard(1);
+      cy.findByText("Orders in a dashboard");
 
-    cy.findByText("Orders in a dashboard").click();
-    cy.wait("@getDashboard");
-    cy.findByText("Orders");
-  });
+      cy.visit("/collection/root");
+      cy.wait("@getCollectionItems");
+      getQuestionRow("Orders, Count").within(() => cy.icon("pin").click());
+      cy.wait("@getCollectionItems");
+      cy.wait("@getQuestionQuery");
 
-  it("should display popular items for a new user", () => {
-    restore("default");
-
-    cy.signInAsAdmin();
-    visitDashboard(1);
-    cy.findByText("Orders in a dashboard");
-    cy.signOut();
-
-    cy.signInAsNormalUser();
-    cy.visit("/");
-    cy.wait("@getPopularItems");
-    cy.findByText("Here are some popular dashboards");
-    cy.findByText("Orders in a dashboard").click();
-    cy.wait("@getDashboard");
-    cy.findByText("Orders");
+      cy.visit("/");
+      cy.wait("@getRecentItems");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText("Orders, Count").should("not.exist");
+    });
   });
 });
+
+const getQuestionRow = name => {
+  return cy.findByText(name).closest("tr");
+};
 
 const getXrayCandidates = () => [
   {

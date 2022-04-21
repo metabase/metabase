@@ -7,7 +7,7 @@
             [metabase.events :as events]
             [metabase.models.query :as query]
             [metabase.models.query-execution :as query-execution :refer [QueryExecution]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -127,7 +127,7 @@
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
   (fn [query rff {:keys [raisef], :as context}]
-    (let [query          (assoc-in query [:info :query-hash] (qputil/query-hash query))
+    (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
           execution-info (query-execution-info query)]
       (letfn [(rff* [metadata]
                 (add-and-save-execution-info-xform! execution-info (rff metadata)))

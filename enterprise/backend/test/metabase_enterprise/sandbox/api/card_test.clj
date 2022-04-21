@@ -1,6 +1,6 @@
 (ns metabase-enterprise.sandbox.api.card-test
   (:require [clojure.test :refer :all]
-            [metabase.api.card-test :as card-api.test]
+            [metabase.api.card-test :as api.card-test]
             [metabase.models :refer [Card Collection Database PermissionsGroup PermissionsGroupMembership Table]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -22,7 +22,7 @@
             (perms/grant-permissions! group (perms/table-segmented-query-path table))
             (perms/grant-collection-readwrite-permissions! group collection)
             (is (some? ((mt/user->client :rasta) :post 202 "card"
-                        (assoc (card-api.test/card-with-name-and-query card-name (card-api.test/mbql-count-query db table))
+                        (assoc (api.card-test/card-with-name-and-query card-name (api.card-test/mbql-count-query db table))
                                :collection_id (u/the-id collection)))))))))
 
     (testing "Users with segmented permissions should be able to update the query associated to a card"
@@ -42,4 +42,4 @@
             (is (= "Another Name"
                    (:name ((mt/user->client :rasta) :put 202 (str "card/" (u/the-id card))
                            {:name          "Another Name"
-                            :dataset_query (card-api.test/mbql-count-query db table)}))))))))))
+                            :dataset_query (api.card-test/mbql-count-query db table)}))))))))))

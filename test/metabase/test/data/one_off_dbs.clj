@@ -3,7 +3,7 @@
   infamous `blueberries_consumed` database, used by sync tests in several different namespaces."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
             [metabase.test.data :as data]
@@ -22,7 +22,7 @@
   (let [details {:db (str "mem:" (tu/random-name) ";DB_CLOSE_DELAY=10")}]
     (tt/with-temp Database [db {:engine :h2, :details details}]
       (data/with-db db
-        (jdbc/with-db-connection [conn (db.spec/spec :h2 details)]
+        (jdbc/with-db-connection [conn (mdb.spec/spec :h2 details)]
           (binding [*conn* conn]
             (f)))))))
 

@@ -29,7 +29,7 @@ export const TableLink = styled(Link)`
 export const TableActionLink = styled(Link)`
   line-height: initial;
 
-  &:not(:first-child) {
+  &:not(:first-of-type) {
     margin-left: ${space(1)};
   }
 `;

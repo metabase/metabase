@@ -19,6 +19,7 @@ import {
   VisibilityType,
 } from "./MetadataTable.styled";
 import { Field } from "metabase-types/api/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 const getDescriptionPlaceholder = () => t`No table description yet`;
 
@@ -37,7 +38,9 @@ const MetadataTable = ({
 }: MetadataTableProps) => {
   const [tab, setTab] = useState("columns");
   useEffect(() => {
-    database?.fetchIdfields();
+    database?.fetchIdfields({
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [database?.id]);
 
@@ -157,10 +160,16 @@ const MetadataTable = ({
 export default _.compose(
   Databases.load({
     id: (_state: State, { databaseId }: { databaseId: number }) => databaseId,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
     wrapped: true,
   }),
   Tables.load({
     id: (_state: State, { tableId }: { tableId: number }) => tableId,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
     wrapped: true,
     selectorName: "getObjectUnfiltered",
   }),

@@ -9,15 +9,15 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync.common :as common]
-            [metabase.driver.sql-jdbc.sync.interface :as i]
+            [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.common]
+            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.schema :as mbql.s]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
 
-(defmethod i/column->semantic-type :sql-jdbc [_ _ _] nil)
+(defmethod sql-jdbc.sync.interface/column->semantic-type :sql-jdbc [_ _ _] nil)
 
 (defn pattern-based-database-type->base-type
   "Return a `database-type->base-type` function that matches types based on a sequence of pattern / base-type pairs.
@@ -40,7 +40,7 @@
 (defn- database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]
-  (or (i/database-type->base-type driver (keyword database-type))
+  (or (sql-jdbc.sync.interface/database-type->base-type driver (keyword database-type))
       (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
                             database-type))
           :type/*)))
@@ -48,12 +48,12 @@
 (defn- calculated-semantic-type
   "Get an appropriate semantic type for a column with `column-name` of type `database-type`."
   [driver ^String column-name ^String database-type]
-  (when-let [semantic-type (i/column->semantic-type driver database-type column-name)]
+  (when-let [semantic-type (sql-jdbc.sync.interface/column->semantic-type driver database-type column-name)]
     (assert (isa? semantic-type :type/*)
       (str "Invalid type: " semantic-type))
     semantic-type))
 
-(defmethod i/fallback-metadata-query :sql-jdbc
+(defmethod sql-jdbc.sync.interface/fallback-metadata-query :sql-jdbc
   [driver schema table]
   {:pre [(string? table)]}
   ;; Using our SQL compiler here to get portable LIMIT (e.g. `SELECT TOP n ...` for SQL Server/Oracle)
@@ -68,10 +68,10 @@
   SELECT * query."
   [driver ^Connection conn table-schema table-name]
   ;; some DBs (:sqlite) don't actually return the correct metadata for LIMIT 0 queries
-  (let [[sql & params] (i/fallback-metadata-query driver table-schema table-name)]
+  (let [[sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver table-schema table-name)]
     (reify clojure.lang.IReduceInit
       (reduce [_ rf init]
-        (with-open [stmt (common/prepare-statement driver conn sql params)
+        (with-open [stmt (sql-jdbc.common/prepare-statement driver conn sql params)
                     rs   (.executeQuery stmt)]
           (let [metadata (.getMetaData rs)]
             (reduce
@@ -84,18 +84,19 @@
 (defn- jdbc-fields-metadata
   "Reducible metadata about the Fields belonging to a Table, fetching using JDBC DatabaseMetaData methods."
   [driver ^Connection conn db-name-or-nil schema table-name]
-  (common/reducible-results #(.getColumns (.getMetaData conn)
-                                          db-name-or-nil
-                                          (some->> schema (driver/escape-entity-name-for-metadata driver))
-                                          (some->> table-name (driver/escape-entity-name-for-metadata driver))
-                                          nil)
-                            (fn [^ResultSet rs]
-                              #(merge
-                                {:name          (.getString rs "COLUMN_NAME")
-                                 :database-type (.getString rs "TYPE_NAME")}
-                                (when-let [remarks (.getString rs "REMARKS")]
-                                  (when-not (str/blank? remarks)
-                                    {:field-comment remarks}))))))
+  (sql-jdbc.common/reducible-results
+    #(.getColumns (.getMetaData conn)
+                  db-name-or-nil
+                  (some->> schema (driver/escape-entity-name-for-metadata driver))
+                  (some->> table-name (driver/escape-entity-name-for-metadata driver))
+                  nil)
+    (fn [^ResultSet rs]
+      #(merge
+         {:name          (.getString rs "COLUMN_NAME")
+          :database-type (.getString rs "TYPE_NAME")}
+         (when-let [remarks (.getString rs "REMARKS")]
+           (when-not (str/blank? remarks)
+             {:field-comment remarks}))))))
 
 (defn- fields-metadata
   "Returns reducible metadata for the Fields in a `table`."
@@ -148,9 +149,9 @@
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata table]
-  (let [pks (into #{} (common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
-                                                (fn [^ResultSet rs]
-                                                  #(.getString rs "COLUMN_NAME"))))]
+  (let [pks (into #{} (sql-jdbc.common/reducible-results #(.getPrimaryKeys metadata nil nil (:name table))
+                                                         (fn [^ResultSet rs]
+                                                           #(.getString rs "COLUMN_NAME"))))]
     (update table :fields (fn [fields]
                             (set (for [field fields]
                                    (if-not (contains? pks (:name field))
@@ -177,13 +178,13 @@
   [_driver ^Connection conn {^String schema :schema, ^String table-name :name} & [^String db-name-or-nil]]
   (into
    #{}
-   (common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
-                             (fn [^ResultSet rs]
-                               (fn []
-                                 {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
-                                  :dest-table       {:name   (.getString rs "PKTABLE_NAME")
-                                                     :schema (.getString rs "PKTABLE_SCHEM")}
-                                  :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
+   (sql-jdbc.common/reducible-results #(.getImportedKeys (.getMetaData conn) db-name-or-nil schema table-name)
+                                      (fn [^ResultSet rs]
+                                        (fn []
+                                          {:fk-column-name   (.getString rs "FKCOLUMN_NAME")
+                                           :dest-table       {:name   (.getString rs "PKTABLE_NAME")
+                                                              :schema (.getString rs "PKTABLE_SCHEM")}
+                                           :dest-column-name (.getString rs "PKCOLUMN_NAME")})))))
 
 (defn describe-table-fks
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."

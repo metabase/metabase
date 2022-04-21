@@ -10,7 +10,7 @@
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
             [schema.core :as s]
             [toucan.db :as db]))
 

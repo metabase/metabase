@@ -2,26 +2,26 @@
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as i]
-            [metabase.driver.common.parameters.parse :as parse]
-            [metabase.driver.sql.parameters.substitute :as substitute]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.parse :as params.parse]
+            [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.parameters.native :as native]
+            [metabase.query-processor.middleware.parameters.native :as qp.native]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-(defn- optional [& args] (i/->Optional args))
-(defn- param [param-name] (i/->Param param-name))
+(defn- optional [& args] (params/->Optional args))
+(defn- param [param-name] (params/->Param param-name))
 
 (defn- substitute [parsed param->value]
   (driver/with-driver :h2
     (mt/with-everything-store
-      (substitute/substitute parsed param->value))))
+      (sql.params.substitute/substitute parsed param->value))))
 
 (deftest ^:parallel substitute-test
   (testing "normal substitution"
@@ -81,7 +81,7 @@
   "Field filter 'values' returned by the `values` namespace are actualy `FieldFilter` record types that contain
   information about"
   []
-  (i/map->FieldFilter
+  (params/map->FieldFilter
    {:field (Field (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
@@ -96,7 +96,7 @@
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from checkins where 1 = 1" []]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)}))
               "should be replaced with 1 = 1"))))
     (testing "optional"
       (let [query ["select * from checkins " (optional "where " (param "date"))]]
@@ -106,7 +106,7 @@
                  (substitute query {"date" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from checkins" nil]
-                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)})))))))
+                 (substitute query {"date" (assoc (date-field-filter-value) :value params/no-value)})))))))
   (testing "new operators"
     (testing "string operators"
       (let [query ["select * from venues where " (param "param")]]
@@ -164,7 +164,7 @@
                                             :expected ["select * from venues where \"PUBLIC\".\"VENUES\".\"PRICE\" BETWEEN 1 AND 3" ()]}])]
           (testing operator
             (is (= expected
-                   (substitute query {"param" (i/map->FieldFilter
+                   (substitute query {"param" (params/map->FieldFilter
                                                {:field (Field (mt/id :venues field))
                                                 :value {:type  operator
                                                         :value value}})})))))))))
@@ -175,7 +175,7 @@
   (testing "Referenced card query substitution"
     (let [query ["SELECT * FROM " (param "#123")]]
       (is (= ["SELECT * FROM (SELECT 1 `x`)" []]
-             (substitute query {"#123" (i/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
+             (substitute query {"#123" (params/map->ReferencedCardQuery {:card-id 123, :query "SELECT 1 `x`"})}))))))
 
 
 ;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
@@ -184,7 +184,7 @@
   (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (i/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
+             (substitute query {"snippet:symbol_is_A" (params/->ReferencedQuerySnippet 123 "symbol = 'A'")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
@@ -192,7 +192,7 @@
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
                          (qp.test-util/with-everything-store
-                           (#'substitute/substitute (parse/parse sql) (into {} params))))]
+                           (#'sql.params.substitute/substitute (params.parse/parse sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
 (deftest ^:parallel basic-substitution-test
@@ -347,11 +347,11 @@
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
     (qp.test-util/with-everything-store
-      (let [inner' (native/expand-inner (update inner :parameters #(concat parameters %)))]
+      (let [inner' (qp.native/expand-inner (update inner :parameters #(concat parameters %)))]
         (assoc query :native inner')))))
 
 (defn- expand* [query]
-  (-> (expand** (normalize/normalize query))
+  (-> (expand** (mbql.normalize/normalize query))
       :native
       (select-keys [:query :params :template-tags])
       (update :params vec)))
@@ -812,10 +812,10 @@
     (binding [driver/*driver* :h2]
       (is (= ["SELECT * FROM (SELECT * FROM table WHERE x LIKE ?)"
               ["G%"]]
-             (substitute/substitute
-              ["SELECT * FROM " (i/->Param "#1")]
+             (sql.params.substitute/substitute
+              ["SELECT * FROM " (params/->Param "#1")]
               {"#1"
-               (i/map->ReferencedCardQuery
+               (params/map->ReferencedCardQuery
                 {:card-id 1
                  :query   "SELECT * FROM table WHERE x LIKE ?"
                  :params  ["G%"]})}))))))

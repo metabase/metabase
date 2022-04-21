@@ -9,7 +9,7 @@
             [metabase.logger :as logger]
             [metabase.troubleshooting :as troubleshooting]
             [metabase.util.schema :as su]
-            [ring.util.response :as ring.response]))
+            [ring.util.response :as response]))
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
@@ -49,6 +49,6 @@
   (validation/check-has-application-permission :monitoring)
   (let [pool-info (troubleshooting/connection-pool-info)
         headers   {"Content-Disposition" "attachment; filename=\"connection_pool_info.json\""}]
-    (assoc (ring.response/response pool-info) :headers headers, :status 200)))
+    (assoc (response/response pool-info) :headers headers, :status 200)))
 
 (api/define-routes)
