@@ -84,11 +84,18 @@ function MainNavbarView({
     }
   }, [handleCloseNavbar]);
 
+  const isHomePage = window.location.pathname === "/";
+
   return (
     <SidebarContentRoot>
       <div>
         <SidebarSection>
-          <HomePageLink icon="home" onClick={onItemSelect} url="/">
+          <HomePageLink
+            isSelected={isHomePage}
+            icon="home"
+            onClick={onItemSelect}
+            url="/"
+          >
             {t`Home page`}
           </HomePageLink>
         </SidebarSection>
