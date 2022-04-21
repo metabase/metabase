@@ -75,7 +75,7 @@ function MainNavbarView({
   handleCloseNavbar,
   handleLogout,
 }: Props) {
-  const isMiscLinkSelected = selectedItem.type === "unknown";
+  const isNonEntityLinkSelected = selectedItem.type === "non-entity";
   const isCollectionSelected =
     selectedItem.type === "collection" && selectedItem.id !== "users";
 
@@ -93,7 +93,9 @@ function MainNavbarView({
         <SidebarSection>
           <ul>
             <HomePageLink
-              isSelected={selectedItem.type === "homepage"}
+              isSelected={
+                selectedItem.type === "non-entity" && selectedItem.url === "/"
+              }
               icon="home"
               onClick={onItemSelect}
               url="/"
@@ -108,9 +110,7 @@ function MainNavbarView({
             <BookmarkList
               bookmarks={bookmarks}
               selectedItem={
-                !["unknown", "homepage"].includes(selectedItem.type)
-                  ? selectedItem
-                  : undefined
+                selectedItem.type === "non-entity" ? selectedItem : undefined
               }
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
@@ -138,7 +138,8 @@ function MainNavbarView({
                 icon="database"
                 url={BROWSE_URL}
                 isSelected={
-                  isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+                  isNonEntityLinkSelected &&
+                  selectedItem.url.startsWith(BROWSE_URL)
                 }
                 onClick={onItemSelect}
                 data-metabase-event="NavBar;Data Browse"
@@ -150,7 +151,7 @@ function MainNavbarView({
                   icon="add"
                   url={ADD_YOUR_OWN_DATA_URL}
                   isSelected={
-                    isMiscLinkSelected &&
+                    isNonEntityLinkSelected &&
                     selectedItem.url.startsWith(ADD_YOUR_OWN_DATA_URL)
                   }
                   onClick={onItemSelect}

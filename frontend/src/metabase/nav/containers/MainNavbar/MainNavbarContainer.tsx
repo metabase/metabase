@@ -114,7 +114,7 @@ function MainNavbarContainer({
     const { pathname } = location;
     const { slug } = params;
     if (pathname === "/") {
-      return { type: "homepage", url: pathname };
+      return { type: "non-entity", url: pathname };
     }
     if (pathname.startsWith("/collection")) {
       const id = pathname.startsWith("/collection/users")
@@ -128,7 +128,7 @@ function MainNavbarContainer({
     if (pathname.startsWith("/question") || pathname.startsWith("/model")) {
       return { type: "card", id: Urls.extractEntityId(slug) };
     }
-    return { type: "unknown", url: pathname };
+    return { type: "non-entity", url: pathname };
   }, [location, params]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
