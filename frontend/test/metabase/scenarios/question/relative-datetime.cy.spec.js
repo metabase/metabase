@@ -1,6 +1,11 @@
 import moment from "moment";
 import _ from "underscore";
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  sidebar,
+  openOrdersTable,
+} from "__support__/e2e/cypress";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -14,6 +19,25 @@ const STARTING_FROM_UNITS = [
 
 describe("scenarios > question > relative-datetime", () => {
   const now = moment().utc();
+
+  describe("sidebar", () => {
+    it("should go to field selection with one click", () => {
+      restore();
+      cy.signInAsNormalUser();
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Filter").click();
+      sidebar().within(() => {
+        cy.contains("Created At")
+          .first()
+          .click();
+        cy.contains("Specific dates...").should("exist");
+        cy.icon("chevronleft").click();
+        cy.contains("Created At").should("exist");
+        cy.contains("Specific dates...").should("not.exist");
+      });
+    });
+  });
 
   describe("starting from", () => {
     const date = values =>
@@ -84,6 +108,7 @@ describe("scenarios > question > relative-datetime", () => {
   });
 
   it("should go back to shortcuts view", () => {
+    restore();
     cy.signInAsNormalUser();
     openOrdersTable();
 
