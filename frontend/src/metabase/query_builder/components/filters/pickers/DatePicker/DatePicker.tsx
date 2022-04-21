@@ -273,7 +273,8 @@ const DatePicker: React.FC<Props> = props => {
   const Widget = operator && operator.widget;
 
   const onBack = () => {
-    if (showShortcuts) {
+    if (!operator || showShortcuts) {
+      onFilterChange([null, getDateTimeField(filter)]);
       props.onBack?.();
     } else {
       setShowShortcuts(true);
