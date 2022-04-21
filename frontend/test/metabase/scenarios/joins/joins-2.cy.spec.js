@@ -180,7 +180,7 @@ describe("scenarios > question > joined questions", () => {
 
       popover().within(() => {
         enterCustomColumnDetails({
-          formula: "[Question 5 → sum] / [Sum of Rating]",
+          formula: "[Question 5 → Sum of Rating] / [Sum of Rating]",
         });
 
         cy.findByPlaceholderText("Something nice and descriptive").type(
