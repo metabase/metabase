@@ -1,11 +1,11 @@
 import {
   BaseUser,
+  CardId,
   CollectionId,
   CollectionAuthorityLevel,
   DatabaseId,
   UserId,
 } from "metabase-types/api";
-import { CardId } from "metabase-types/types/Card";
 
 export interface ModelCacheRefreshStatus {
   id: number;
