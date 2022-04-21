@@ -42,7 +42,7 @@
   (apply db/select-one (vec (cons User user/admin-or-self-visible-columns)) query-criteria))
 
 (defn- maybe-set-user-permissions-groups! [user-or-id new-groups-or-ids]
-  (when (and (some? new-groups-or-ids)
+  (when (and new-groups-or-ids
              (not (= (user/group-ids user-or-id)
                      (set (map u/the-id new-groups-or-ids)))))
     (api/check-superuser)
@@ -50,7 +50,7 @@
 
 (defn- maybe-set-user-group-memberships!
   [user-or-id new-user-group-memberships & [is-superuser?]]
-  (when (some? new-user-group-memberships)
+  (when new-user-group-memberships
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
     (when (some? is-superuser?)

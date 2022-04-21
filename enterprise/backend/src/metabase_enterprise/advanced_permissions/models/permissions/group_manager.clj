@@ -1,6 +1,6 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.group-manager
   (:require [clojure.data :as data]
-            [clojure.set :refer [subset?]]
+            [clojure.set :as set]
             [metabase.api.common :as api]
             [metabase.models :refer [PermissionsGroupMembership]]
             [metabase.util :as u]
@@ -15,17 +15,17 @@
     (db/select [PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id (u/the-id user-or-id))))
 
 (defn- user-group-memberships->map
-  "Transorm user-group-memberships to a map with keys are group-id and values are membership info.
+  "Transform user-group-memberships to a map in which keys are group-ids and values are maps containing membership info.
 
   [{:id 1, :is_group_manager true}] => {1 {:is_group_manager true}}
 
-  We can diff this map to decide which membership to adds/removes."
+  We can diff this map to decide which membership to add/remove."
   [user-group-memberships]
   (into {} (map (fn [x] [(:id x) (dissoc x :id)]) user-group-memberships)))
 
 (defn set-user-group-memberships!
-  "Update User Groups Memberships when `advanced-permissions` is enabled.
-  It's used to add/remove users from groups and also promote/demote Group Managers."
+  "Update Groups Memberships of a User when `advanced-permissions` is enabled.
+  It can be used to adds/removes a user from groups and promote/demote Group Manager."
   [user-or-id new-user-group-memberships]
   (let [user-id                       (u/the-id user-or-id)
         old-user-group-memberships    (user-group-memberships user-id)
@@ -38,19 +38,18 @@
     (when-not api/*is-superuser?*
       ;; prevent groups manager from update membership of groups that they're not manager of
       (when-not (and api/*is-group-manager?*
-                     (subset? (set (concat to-remove-group-ids to-add-group-ids))
-                              (db/select-field :group_id PermissionsGroupMembership
-                                               :user_id api/*current-user-id* :is_group_manager true)))
+                     (set/subset? (set (concat to-remove-group-ids to-add-group-ids))
+                                  (db/select-field :group_id PermissionsGroupMembership
+                                                   :user_id api/*current-user-id* :is_group_manager true)))
         (throw (ex-info (tru "Not allowed to edit group memberships")
                         {:status-code 403}))))
-    (when (seq (concat to-remove-group-ids to-add-group-ids))
-      (db/transaction
-       (when (seq to-remove-group-ids)
-         (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
-       (when (seq to-add-group-ids)
-         ;; do multilple single insert because insert-many! does not call post-insert! hook
-         (doseq [group-id to-add-group-ids]
-           (db/insert! PermissionsGroupMembership
-                       {:user_id          user-id
-                        :group_id         group-id
-                        :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))})))))))
+    (db/transaction
+     (when (seq to-remove-group-ids)
+       (db/delete! PermissionsGroupMembership :user_id user-id, :group_id [:in to-remove-group-ids]))
+     (when (seq to-add-group-ids)
+       ;; do multiple single inserts because insert-many! does not call post-insert! hook
+       (doseq [group-id to-add-group-ids]
+         (db/insert! PermissionsGroupMembership
+                     {:user_id          user-id
+                      :group_id         group-id
+                      :is_group_manager (:is_group_manager (new-group-id->membership-info group-id))}))))))
