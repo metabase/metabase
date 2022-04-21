@@ -89,7 +89,7 @@ function MainNavbarView({
     <SidebarContentRoot>
       <div>
         <SidebarSection>
-          <HomePageLink icon="home" url="/">
+          <HomePageLink icon="home" onClick={onItemSelect} url="/">
             {t`Home page`}
           </HomePageLink>
         </SidebarSection>
