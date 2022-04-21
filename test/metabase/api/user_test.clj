@@ -341,21 +341,24 @@
             email     (mt/random-email)]
         (mt/with-model-cleanup [User]
           (mt/with-fake-inbox
-            (is (= (merge @user-defaults
-                          (merge
-                           @user-defaults
-                           {:email            email
-                            :first_name       user-name
-                            :last_name        user-name
-                            :common_name      (str user-name " " user-name)
-                            :group_ids        [(u/the-id (perms-group/all-users))]
-                            :login_attributes {:test "value"}}))
-                   (mt/boolean-ids-and-timestamps
-                    (mt/user-http-request :crowberto :post 200 "user"
-                                          {:first_name       user-name
-                                           :last_name        user-name
-                                           :email            email
-                                           :login_attributes {:test "value"}}))))))))
+            (let [resp (mt/user-http-request :crowberto :post 200 "user"
+                                             {:first_name       user-name
+                                              :last_name        user-name
+                                              :email            email
+                                              :login_attributes {:test "value"}})]
+              (is (= (merge @user-defaults
+                            (merge
+                             @user-defaults
+                             {:email                  email
+                              :first_name             user-name
+                              :last_name              user-name
+                              :common_name            (str user-name " " user-name)
+                              :login_attributes       {:test "value"}}))
+                     (-> resp
+                         mt/boolean-ids-and-timestamps
+                         (dissoc :user_group_memberships))))
+              (is (= [{:id (:id (perms-group/all-users))}]
+                     (:user_group_memberships resp))))))))
 
     (testing "Check that non-superusers are denied access"
       (is (= "You don't have permissions to do that."
@@ -409,10 +412,11 @@
                       PermissionsGroup [group-2 {:name "Group 2"}]]
         (with-temp-user-email [email]
           (mt/user-http-request :crowberto :post 200 "user"
-                                {:first_name "Cam"
-                                 :last_name  "Era"
-                                 :email      email
-                                 :group_ids  (map u/the-id [(perms-group/all-users) group-1 group-2])})
+                                {:first_name             "Cam"
+                                 :last_name              "Era"
+                                 :email                  email
+                                 :user_group_memberships (group-or-ids->user-group-memberships
+                                                          [(perms-group/all-users) group-1 group-2])})
           (is (= #{"All Users" "Group 1" "Group 2"}
                  (user-test/user-group-names (User :email email)))))))
 
@@ -422,10 +426,10 @@
       (mt/with-temp PermissionsGroup [group {:name "Group"}]
         (with-temp-user-email [email]
           (mt/user-http-request :crowberto :post 400 "user"
-                                {:first_name "Cam"
-                                 :last_name  "Era"
-                                 :email      email
-                                 :group_ids  [(u/the-id group)]})
+                                {:first_name             "Cam"
+                                 :last_name              "Era"
+                                 :email                  email
+                                 :user_group_memberships (group-or-ids->user-group-memberships [group])})
           (is (= false
                  (db/exists? User :%lower.email (u/lower-case-en email)))))))))
 
@@ -441,10 +445,11 @@
                   "group in group_ids")
       (with-temp-user-email [email]
         (mt/user-http-request :crowberto :post 200 "user"
-                              {:first_name "Cam"
-                               :last_name  "Era"
-                               :email      email
-                               :group_ids  (map u/the-id [(perms-group/all-users) (perms-group/admin)])})
+                              {:first_name             "Cam"
+                               :last_name              "Era"
+                               :email                  email
+                               :user_group_memberships (group-or-ids->user-group-memberships
+                                                        [(perms-group/all-users) (perms-group/admin)])})
         (is (= {:is-superuser? true, :pgm-exists? true}
                (superuser-and-admin-pgm-info email)))))
 

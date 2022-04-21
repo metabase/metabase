@@ -49,7 +49,7 @@
     (user/set-permissions-groups! user-or-id new-groups-or-ids)))
 
 (defn- maybe-set-user-group-memberships!
-  [user-or-id new-user-group-memberships is-superuser?]
+  [user-or-id new-user-group-memberships & [is-superuser?]]
   (when (some? new-user-group-memberships)
     ;; if someone passed in both `:is_superuser` and `:group_ids`, make sure the whether the admin group is in group_ids
     ;; agrees with is_superuser -- don't want to have ambiguous behavior
@@ -233,12 +233,12 @@
 
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
-  [:as {{:keys [first_name last_name email group_ids login_attributes] :as body} :body}]
-  {first_name       su/NonBlankString
-   last_name        su/NonBlankString
-   email            su/Email
-   group_ids        (s/maybe [su/IntGreaterThanZero])
-   login_attributes (s/maybe user/LoginAttributes)}
+  [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
+  {first_name              su/NonBlankString
+   last_name               su/NonBlankString
+   email                   su/Email
+   user_group_memberships (s/maybe [user/UserGroupMembership])
+   login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
   (api/checkp (not (db/exists? User :%lower.email (u/lower-case-en email)))
     "email" (tru "Email address already in use."))
@@ -248,11 +248,11 @@
                                    :non-nil [:first_name :last_name :email :password :login_attributes])
                                  @api/*current-user*
                                  false))]
-      (maybe-set-user-permissions-groups! new-user-id group_ids)
+      (maybe-set-user-group-memberships! new-user-id user_group_memberships)
       (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id new-user-id
                                                                            :source          "admin"})
       (-> (fetch-user :id new-user-id)
-          (hydrate :group_ids)))))
+          (hydrate :user_group_memberships)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
