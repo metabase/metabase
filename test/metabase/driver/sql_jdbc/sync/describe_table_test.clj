@@ -75,6 +75,13 @@
     (is (= java.time.LocalDateTime (#'sql-jdbc.describe-table/type-by-parsing-string "2017-01-13T17:09:42.411")))
     (is (= java.lang.Long (#'sql-jdbc.describe-table/type-by-parsing-string 11111)))))
 
+(deftest row->types-test
+  (testing "array rows ignored properly in JSON row->types (#21752)"
+    (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
+          obj-row   {:zlob {"blob" 1323}}]
+      (is (= {} (#'sql-jdbc.describe-table/row->types arr-row)))
+      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row))))))
+
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
     (let [row       {:bob {:dobbs 123 :cobbs "boop"}}
