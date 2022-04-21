@@ -415,7 +415,7 @@ function clickButton(name) {
     .click();
 }
 
-export function pinItem(item) {
+function pinItem(item) {
   cy.findAllByText(item)
     .closest("tr")
     .within(() => {
