@@ -6,10 +6,9 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.db.connection :as mdb.connection]
-            [metabase.util.files :as u.files]
-            [potemkin :as p])
+            [metabase.util.files :as u.files])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource
-           javax.sql.DataSource))
+           java.util.concurrent.locks.ReentrantReadWriteLock))
 
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
 
@@ -40,39 +39,13 @@
 
 ;;;; RESTORE
 
-;; A DataSource wrapping another DataSource with a `lock` that we can lock to prevent anyone from getting a Connection.
-;; We'll use this to shut down access to the application DB during the restore process.
-(p/defrecord+ LockableDataSource [^DataSource data-source ^Object lock]
-  DataSource
-  (getConnection [_]
-    (locking lock
-      (.getConnection data-source)))
-
-  (getConnection [_ user password]
-    (locking lock
-      (.getConnection data-source user password))))
-
-(defn- lockable-data-source? [data-source]
-  (instance? LockableDataSource data-source))
-
-(defn- lockable-data-source ^DataSource [data-source]
-    (if (lockable-data-source? data-source)
-      data-source
-      (->LockableDataSource data-source (Object.))))
-
 (defn- reset-app-db-connection-pool!
   "Immediately destroy all open connections in the app DB connection pool."
-  ([]
-   (reset-app-db-connection-pool! (:data-source mdb.connection/*application-db*)))
-  ([data-source]
-   (cond
-     (lockable-data-source? data-source)
-     (recur (:data-source data-source))
-
-     (instance? PoolBackedDataSource data-source)
-     (do
+  []
+  (let [{:keys [data-source]} mdb.connection/*application-db*]
+     (when (instance? PoolBackedDataSource data-source)
        (log/info "Destroying application database connection pool")
-       (.hardReset ^PoolBackedDataSource data-source)))))
+       (.hardReset ^PoolBackedDataSource data-source))))
 
 (defn- restore-app-db-from-snapshot!
   "Drop all objects in the application DB, then reload everything from the SQL dump at `snapshot-path`."
@@ -90,21 +63,21 @@
   caches using it as a key (including things using [[mdb.connection/memoize-for-application-db]]) such as the Settings
   cache."
   []
-  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! (var-get #'mdb.connection/application-db-counter) inc)))
+  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! mdb.connection/application-db-counter inc)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 mdb.connection/*application-db*)
-  ;; make sure the app DB has a lockable data source
-  (when-not (lockable-data-source? (:data-source mdb.connection/*application-db*))
-    (alter-var-root #'mdb.connection/*application-db* update :data-source lockable-data-source))
-  (let [path (snapshot-path-for-name snapshot-name)
-        ;; now get the lock for the app DB to prevent anyone else from opening connections until we finish the process
-        lock (get-in mdb.connection/*application-db* [:data-source :lock])]
-    (assert lock)
-    (locking lock
+  (let [path                         (snapshot-path-for-name snapshot-name)
+        ^ReentrantReadWriteLock lock (:lock mdb.connection/*application-db*)]
+    ;; acquire the application DB WRITE LOCK which will prevent any other threads from getting any new connections until
+    ;; we release it.
+    (try
+      (.. lock writeLock lock)
       (reset-app-db-connection-pool!)
       (restore-app-db-from-snapshot! path)
-      (increment-app-db-unique-indentifier!)))
+      (increment-app-db-unique-indentifier!)
+      (finally
+        (.. lock writeLock unlock))))
   :ok)
 
 (api/defendpoint POST "/restore/:name"
