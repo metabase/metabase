@@ -1,4 +1,10 @@
-import { updateParametersWidgetStickiness } from "./stickyParameters";
+import {
+  MAXIMUM_PARAMETERS_FOR_STICKINESS,
+  updateParametersWidgetStickiness,
+} from "./stickyParameters";
+
+const parametersListShort = Array(MAXIMUM_PARAMETERS_FOR_STICKINESS);
+const parametersListLong = Array(MAXIMUM_PARAMETERS_FOR_STICKINESS * 2);
 
 function mockMainElementScroll(scrollTop) {
   const fakeMainElement = { scrollTop };
@@ -25,6 +31,28 @@ it("initializes parametersWidgetOffsetTop", () => {
   });
 });
 
+it("should not make the filters sticky", () => {
+  const offsetTop = 100;
+  const setState = jest.fn();
+
+  mockMainElementScroll(offsetTop + 1);
+
+  const dashboard = {
+    parametersWidgetRef: { offsetTop },
+    parametersAndCardsContainerRef: { style: {} },
+    state: {
+      parametersList: parametersListLong,
+    },
+    setState,
+  };
+
+  updateParametersWidgetStickiness(dashboard);
+
+  expect(setState).toHaveBeenCalledWith({
+    isParametersWidgetSticky: false,
+  });
+});
+
 it("makes filters sticky with enough scrolling down", () => {
   const offsetTop = 100;
   const setState = jest.fn();
@@ -34,7 +62,9 @@ it("makes filters sticky with enough scrolling down", () => {
   const dashboard = {
     parametersWidgetRef: { offsetTop },
     parametersAndCardsContainerRef: { style: {} },
-    state: {},
+    state: {
+      parametersList: parametersListShort,
+    },
     setState,
   };
 
@@ -54,7 +84,9 @@ it("makes filters unsticky with enough scrolling up", () => {
   const dashboard = {
     parametersWidgetRef: { offsetTop },
     parametersAndCardsContainerRef: { style: {} },
-    state: {},
+    state: {
+      parametersList: parametersListShort,
+    },
     setState,
   };
 
@@ -74,7 +106,11 @@ it("keeps filters sticky with enough scrolling down and already sticky", () => {
   const dashboard = {
     parametersWidgetRef: { offsetTop },
     parametersAndCardsContainerRef: { style: {} },
-    state: { isParametersWidgetSticky: true, parametersWidgetOffsetTop: 100 },
+    state: {
+      isParametersWidgetSticky: true,
+      parametersWidgetOffsetTop: 100,
+      parametersList: parametersListShort,
+    },
     setState,
   };
 
@@ -92,7 +128,11 @@ it("keeps filters not sticky with enough scrolling up and already not sticky", (
   const dashboard = {
     parametersWidgetRef: { offsetTop },
     parametersAndCardsContainerRef: { style: {} },
-    state: { isParametersWidgetSticky: false, parametersWidgetOffsetTop: 100 },
+    state: {
+      isParametersWidgetSticky: false,
+      parametersWidgetOffsetTop: 100,
+      parametersList: parametersListShort,
+    },
     setState,
   };
 
