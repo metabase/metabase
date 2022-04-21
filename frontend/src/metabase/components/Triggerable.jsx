@@ -156,7 +156,6 @@ export default ComposedComponent =>
             },
           )}
           aria-disabled={this.props.disabled}
-          disabled={this.props.disabled}
           style={triggerStyle}
         >
           {typeof triggerElement === "function"
