@@ -4,15 +4,8 @@ export type SelectedEntityItem = {
 };
 
 export type SelectedNonEntityItem = {
-  type: "unknown";
+  type: "homepage" | "unknown";
   url: string;
 };
 
-type HomepageItem = {
-  type: "homepage";
-};
-
-export type SelectedItem =
-  | SelectedEntityItem
-  | SelectedNonEntityItem
-  | HomepageItem;
+export type SelectedItem = SelectedEntityItem | SelectedNonEntityItem;
