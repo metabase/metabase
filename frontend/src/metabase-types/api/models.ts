@@ -1,20 +1,27 @@
-import { BaseUser, CollectionId, UserId } from "metabase-types/api";
+import {
+  BaseUser,
+  CardId,
+  CollectionId,
+  CollectionAuthorityLevel,
+  DatabaseId,
+  UserId,
+} from "metabase-types/api";
 
-export interface ModelCacheRefreshJob {
+export interface ModelCacheRefreshStatus {
   id: number;
   state: "refreshing" | "persisted" | "error";
   error: string | null;
   active: boolean;
 
-  card_id: number;
+  card_id: CardId;
   card_name: string;
 
   collection_id: CollectionId;
   collection_name: string;
-  collection_authority_level: "official" | null;
+  collection_authority_level: CollectionAuthorityLevel;
 
   columns: string[];
-  database_id: number;
+  database_id: DatabaseId;
   database_name: string;
   schema_name: string;
   table_name: string;

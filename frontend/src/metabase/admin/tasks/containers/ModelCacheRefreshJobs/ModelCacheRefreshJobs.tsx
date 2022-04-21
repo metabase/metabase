@@ -15,7 +15,8 @@ import * as Urls from "metabase/lib/urls";
 
 import { usePagination } from "metabase/hooks/use-pagination";
 
-import { ModelCacheRefreshJob } from "./types";
+import { ModelCacheRefreshStatus } from "metabase-types/api";
+
 import {
   ErrorBox,
   IconButtonContainer,
@@ -24,7 +25,7 @@ import {
 } from "./ModelCacheRefreshJobs.styled";
 
 type JobTableItemProps = {
-  job: ModelCacheRefreshJob;
+  job: ModelCacheRefreshStatus;
   onRefresh: () => void;
 };
 
@@ -86,11 +87,11 @@ const PAGE_SIZE = 20;
 
 type Props = {
   children: JSX.Element;
-  onRefresh: (job: ModelCacheRefreshJob) => void;
+  onRefresh: (job: ModelCacheRefreshStatus) => void;
 };
 
 type PersistedModelsListLoaderProps = {
-  persistedModels: ModelCacheRefreshJob[];
+  persistedModels: ModelCacheRefreshStatus[];
   metadata: {
     total: number;
     limit: number | null;
@@ -99,7 +100,7 @@ type PersistedModelsListLoaderProps = {
 };
 
 const mapDispatchToProps = {
-  onRefresh: (job: ModelCacheRefreshJob) =>
+  onRefresh: (job: ModelCacheRefreshStatus) =>
     PersistedModels.objectActions.refreshCache(job),
 };
 
