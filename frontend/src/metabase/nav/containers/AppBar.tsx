@@ -82,7 +82,7 @@ function AppBar({
       <RowLeft isSearchActive={isSearchActive}>
         <HomepageLink handleClick={onLogoClick} />
         <SidebarButtonContainer>
-          <Tooltip tooltip={sidebarButtonTooltip}>
+          <Tooltip tooltip={sidebarButtonTooltip} isEnabled={!isSmallScreen()}>
             <SidebarButton
               isSidebarOpen={isSidebarOpen}
               onClick={onToggleSidebarClick}
