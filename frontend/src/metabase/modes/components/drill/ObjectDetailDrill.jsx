@@ -38,6 +38,11 @@ function getActionForFKColumn({ targetField, objectId }) {
   ];
 }
 
+function getFKTargetField(question, column) {
+  const fkField = question.metadata().field(column.id);
+  return fkField?.target;
+}
+
 export default ({ question, clicked }) => {
   if (
     !clicked?.column ||
@@ -49,14 +54,6 @@ export default ({ question, clicked }) => {
 
   const { column, value: objectId, extraData } = clicked;
   const isDashboard = !!extraData?.dashboard;
-
-  let field = question.metadata().field(column.id);
-  if (isFK(column)) {
-    field = field.target;
-  }
-  if (!field) {
-    return [];
-  }
 
   const actionObject = {
     name: "object-detail",
@@ -76,8 +73,12 @@ export default ({ question, clicked }) => {
     });
     actionObject[actionKey] = action;
   } else {
+    const targetField = getFKTargetField(question, column);
+    if (!targetField) {
+      return [];
+    }
     const [actionKey, action] = getActionForFKColumn({
-      targetField: field,
+      targetField,
       objectId,
     });
     actionObject[actionKey] = action;
