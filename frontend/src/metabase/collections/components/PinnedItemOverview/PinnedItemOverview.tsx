@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { t } from "ttag";
 
-import { Collection } from "metabase-types/api";
+import { BookmarksType, Collection } from "metabase-types/api";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
@@ -20,6 +20,9 @@ import {
 } from "./PinnedItemOverview.styled";
 
 type Props = {
+  bookmarks?: BookmarksType;
+  createBookmark: (id: string, collection: string) => void;
+  deleteBookmark: (id: string, collection: string) => void;
   items: Item[];
   collection: Collection;
   metadata: Metadata;
@@ -28,6 +31,9 @@ type Props = {
 };
 
 function PinnedItemOverview({
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
   items,
   collection,
   metadata,
@@ -61,6 +67,9 @@ function PinnedItemOverview({
               <ItemDragSource item={item} collection={collection}>
                 <div>
                   <CollectionCardVisualization
+                    bookmarks={bookmarks}
+                    createBookmark={createBookmark}
+                    deleteBookmark={deleteBookmark}
                     item={item}
                     collection={collection}
                     metadata={metadata}
@@ -93,6 +102,9 @@ function PinnedItemOverview({
               <ItemDragSource item={item} collection={collection}>
                 <div>
                   <PinnedItemCard
+                    bookmarks={bookmarks}
+                    createBookmark={createBookmark}
+                    deleteBookmark={deleteBookmark}
                     item={item}
                     collection={collection}
                     onCopy={onCopy}
@@ -133,6 +145,9 @@ function PinnedItemOverview({
                 <ItemDragSource item={item} collection={collection}>
                   <div>
                     <PinnedItemCard
+                      bookmarks={bookmarks}
+                      createBookmark={createBookmark}
+                      deleteBookmark={deleteBookmark}
                       item={item}
                       collection={collection}
                       onCopy={onCopy}
