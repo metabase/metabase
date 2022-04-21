@@ -22,7 +22,7 @@
   [{:keys [persisted-info-id card-id]} limit offset]
   (let [instance-id-str  (public-settings/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)]
-    (-> (cond-> {:select    [:p.id :p.database_id :p.columns
+    (-> (cond-> {:select    [:p.id :p.database_id :p.definition
                              :p.active :p.state :p.error
                              :p.refresh_begin :p.refresh_end
                              :p.table_name :p.creator_id
