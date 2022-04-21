@@ -408,15 +408,15 @@
    are eligible for FieldValues."
   [id]
   (let [table (api/write-check (Table id))]
-   ;; Override *current-user* so that permission checks are not enforced during sync. If a user has data model perms
-   ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
-   ;; return any actual field values from this API. (#21764)
-   (mw.session/with-current-user nil
-    ;; async so as not to block the UI
-    (sync.concurrent/submit-task
-     (fn []
-       (sync.field-values/update-field-values-for-table! table)))
-    {:status :success})))
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      ;; async so as not to block the UI
+      (sync.concurrent/submit-task
+       (fn []
+         (sync.field-values/update-field-values-for-table! table))))
+    {:status :success}))
 
 (api/defendpoint POST "/:id/discard_values"
   "Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If

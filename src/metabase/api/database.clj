@@ -758,15 +758,14 @@
   [id]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (Database id))]
-    ;; Override *current-user* so that permission checks are not enforced during sync. If a user has DB detail perms
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
-    (mw.session/with-current-user nil
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
       (if *rescan-values-async*
         (future (field-values/update-field-values! db))
         (field-values/update-field-values! db))))
   {:status :ok})
-
 
 ;; "Discard saved field values" action in db UI
 (defn- database->field-values-ids [database-or-id]
