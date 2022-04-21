@@ -22,7 +22,6 @@ const PersistedModels = createEntity({
 
   api: {
     get: ({ id, type }, ...args) => {
-      console.log({ id, type });
       return type === "byModelId"
         ? PersistedModelsApi.getForModel({ id }, ...args)
         : PersistedModelSchema.get({ id }, ...args);
