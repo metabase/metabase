@@ -107,9 +107,17 @@
    [:like [:%lower.email] [(wildcard-query query)]]])
 
 (defn- user-visible-columns
-  "Columns of user table visible to current caller of API"
+  "Columns of user table visible to current caller of API."
   []
-  (if api/*is-superuser?* user/admin-or-self-visible-columns user/non-admin-or-self-visible-columns))
+  (cond
+   api/*is-superuser?*
+   user/admin-or-self-visible-columns
+
+   api/*is-group-manager?*
+   user/group-manager-visible-columns
+
+   :else
+   user/non-admin-or-self-visible-columns))
 
 (defn- user-clauses
   "Honeysql clauses for filtering on users

@@ -123,7 +123,11 @@
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
   other Users at all? I honestly would prefer they couldn't, but we need to give them a list of emails to power
   Pulses."
-  [:core_user.id :email :first_name :last_name])
+  [:id :email :first_name :last_name])
+
+(def group-manager-visible-columns
+  "Sequence of columns Group Managers can see when fetching a list of Users.."
+  (into non-admin-or-self-visible-columns [:is_superuser :last_login]))
 
 (u/strict-extend (class User)
   models/IModel

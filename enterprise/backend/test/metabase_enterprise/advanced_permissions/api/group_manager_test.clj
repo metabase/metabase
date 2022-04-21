@@ -1,9 +1,10 @@
 (ns metabase-enterprise.advanced-permissions.api.group-manager-test
   "Permisisons tests for API that needs to be enforced by Group Manager permisisons."
-  (:require [clojure.set :refer [subset?]]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
+            [clojure.set :refer [subset?]]
             [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
             [metabase.models :refer [PermissionsGroup PermissionsGroupMembership User]]
+            [metabase.models.user :as user]
             [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
@@ -192,7 +193,11 @@
               (db/update-where! PermissionsGroupMembership {:user_id  (:id user)
                                                             :group_id (:id group)}
                                 :is_group_manager true)
-              (get-users user 200))))))))
+              (is (subset? (set user/group-manager-visible-columns)
+                           (-> (:data (get-users user 200))
+                               first
+                               keys
+                               set))))))))))
 
 (deftest get-user-api-test
   (testing "GET /api/user/:id"
@@ -286,12 +291,12 @@
                            (db/select-one-field :first_name User :id (:id user))))))
 
                 (testing "Can add/remove user to groups they're manager of"
-                  (is (= [{:id               (:id (group/all-users))
+                  (is (= [{:id               (:id (perms-group/all-users))
                            :is_group_manager false}
                           {:id               (:id group)
                            :is_group_manager true}]
                          (:user_group_memberships (add-user-to-group user 200 group))))
-                  (is (= [{:id               (:id (group/all-users))
+                  (is (= [{:id               (:id (perms-group/all-users))
                            :is_group_manager false}]
                          (:user_group_memberships (remove-user-from-group user 200 group)))))
 
