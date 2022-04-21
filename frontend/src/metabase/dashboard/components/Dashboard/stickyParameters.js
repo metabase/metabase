@@ -1,5 +1,7 @@
 import { getMainElement } from "metabase/lib/dom";
 
+const MAXIMUM_PARAMETERS_FOR_STICKINESS = 6;
+
 export const updateParametersWidgetStickiness = dashboard => {
   initializeWidgetOffsetTop(dashboard);
 
@@ -34,11 +36,14 @@ const checkIfShouldToggleStickiness = (dashboard, shouldBeSticky) => {
 };
 
 const checkIfParametersWidgetShouldBeSticky = dashboard => {
+  const isBelowMaximumParameters =
+    dashboard.state.parametersList &&
+    dashboard.state.parametersList.length <= MAXIMUM_PARAMETERS_FOR_STICKINESS;
   const offsetTop =
     dashboard.state.parametersWidgetOffsetTop ||
     dashboard.parametersWidgetRef.offsetTop;
 
-  return getMainElement().scrollTop >= offsetTop;
+  return isBelowMaximumParameters && getMainElement().scrollTop >= offsetTop;
 };
 
 const updateParametersAndCardsContainerStyle = (dashboard, shouldBeSticky) => {

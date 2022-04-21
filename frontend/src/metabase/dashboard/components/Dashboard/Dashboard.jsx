@@ -31,6 +31,7 @@ export default class Dashboard extends Component {
   state = {
     error: null,
     isParametersWidgetSticky: false,
+    parametersList: null,
   };
 
   static propTypes = {
@@ -98,10 +99,26 @@ export default class Dashboard extends Component {
     this.parametersAndCardsContainerRef = React.createRef();
   }
 
+  static getDerivedStateFromProps(props, state) {
+    const parametersList = getValuePopulatedParameters(
+      props.parameters,
+      props.parameterValues,
+    );
+    if (!_.isEqual(parametersList, state.parametersList)) {
+      return { parametersList };
+    }
+
+    return null;
+  }
+
   throttleParameterWidgetStickiness = _.throttle(
-    () => updateParametersWidgetStickiness(this),
+    () => this._onThrottle(),
     SCROLL_THROTTLE_INTERVAL,
   );
+
+  _onThrottle() {
+    updateParametersWidgetStickiness(this);
+  }
 
   // NOTE: all of these lifecycle methods should be replaced with DashboardData HoC in container
   componentDidMount() {
@@ -208,21 +225,20 @@ export default class Dashboard extends Component {
       parameters,
       isNavbarOpen,
       showAddQuestionSidebar,
-      parameterValues,
       editingParameter,
       setParameterValue,
       setParameterIndex,
       setEditingParameter,
     } = this.props;
 
-    const { error, isParametersWidgetSticky } = this.state;
+    const { error, isParametersWidgetSticky, parametersList } = this.state;
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        parameters={parametersList}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
