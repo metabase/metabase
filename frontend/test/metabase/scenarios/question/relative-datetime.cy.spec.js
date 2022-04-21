@@ -105,6 +105,26 @@ describe("scenarios > question > relative-datetime", () => {
       cy.button("Add filter").should("be.enabled");
     });
   });
+
+  it("should go back to shortcuts view", () => {
+    cy.signInAsNormalUser();
+    openOrdersTable();
+
+    cy.findByTextEnsureVisible("Created At").click();
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates...").click();
+      cy.icon("chevronleft")
+        .first()
+        .click();
+      cy.findByText("Specific dates...").should("exist");
+      cy.icon("chevronleft").click();
+      cy.findByText("Specific dates...").should("not.exist");
+      cy.findByText("Created At").click();
+      cy.findByText("Specific dates...").should("exist");
+      cy.findByText("Between").should("not.exist");
+    });
+  });
 });
 
 const nativeSQL = values => {

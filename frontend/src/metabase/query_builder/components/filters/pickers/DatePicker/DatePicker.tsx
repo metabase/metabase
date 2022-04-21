@@ -274,6 +274,7 @@ const DatePicker: React.FC<Props> = props => {
 
   const onBack = () => {
     if (!operator || showShortcuts) {
+      onFilterChange([null, getDateTimeField(filter)]);
       props.onBack?.();
     } else {
       setShowShortcuts(true);
