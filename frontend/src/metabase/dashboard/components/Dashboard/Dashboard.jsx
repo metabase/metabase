@@ -112,7 +112,7 @@ export default class Dashboard extends Component {
   }
 
   throttleParameterWidgetStickiness = _.throttle(
-    () => updateParametersWidgetStickiness(),
+    () => updateParametersWidgetStickiness(this),
     SCROLL_THROTTLE_INTERVAL,
   );
 
