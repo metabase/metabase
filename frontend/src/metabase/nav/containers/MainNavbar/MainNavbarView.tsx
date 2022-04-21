@@ -91,7 +91,7 @@ function MainNavbarView({
         <SidebarSection>
           <ul>
             <HomePageLink
-              isSelected={isNonEntityLinkSelected}
+              isSelected={isNonEntityLinkSelected && selectedItem.url === "/"}
               icon="home"
               onClick={onItemSelect}
               url="/"
