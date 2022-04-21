@@ -179,7 +179,7 @@
 (defn- cmd->var [command-name]
   (ns-resolve 'metabase.cmd (symbol command-name)))
 
-(defn arg-list-count-ok? [arg-list arg-count]
+(defn- arg-list-count-ok? [arg-list arg-count]
   (if (some #{'&} arg-list)
     ;; subtract 1 for the & and 1 for the symbol after &
     ;; e.g. [a b & c] => 2
