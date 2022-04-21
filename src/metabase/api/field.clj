@@ -280,7 +280,12 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (field-values/create-or-update-field-values! (api/write-check (Field id)))
+  (let [field (api/write-check (Field id))]
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (field-values/create-or-update-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
