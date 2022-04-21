@@ -190,9 +190,11 @@
         arg-count-matches (mapv #(arg-list-count-ok? % (count args)) arg-lists)]
     (if (some true? arg-count-matches)
       [true]
-      [false (str "the '" command-name "' command requires one of the following set of arguments: "
+      [false (str "The '" command-name "' command requires "
+                  (when (> 1 (count arg-lists)) "one of ")
+                  "the following arguments: "
                   (str/join " | " (map pr-str arg-lists))
-                  ", however was given: " (pr-str args) ".")])))
+                  ", but received: " (pr-str (vec args)) ".")])))
 
 ;;; ------------------------------------------------ Running Commands ------------------------------------------------
 
@@ -201,7 +203,7 @@
   [command-name args]
   (cond
     (not (seq command-name))
-    ["no command given."]
+    ["No command given."]
 
     (nil? (:command (meta (cmd->var command-name))))
     [(str "Unrecognized command: '" command-name "'")]

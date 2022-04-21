@@ -3,9 +3,9 @@
             [clojure.test :as t :refer [deftest is]]))
 
 (deftest error-message-test
-  (is (= ["no command given."] (#'cmd/cmd->fn nil [])))
-  (is (= ["'a-command-that-does-not-exist' is not a command."] (#'cmd/cmd->fn "a-command-that-does-not-exist" [])))
-  (is (= ["the 'rotate-encryption-key' command requires one of the following set of arguments: [new-key], however was given: []."]
+  (is (= ["No command given."] (#'cmd/cmd->fn nil [])))
+  (is (= ["Unrecognized command: 'a-command-that-does-not-exist'"] (#'cmd/cmd->fn "a-command-that-does-not-exist" [])))
+  (is (= ["The 'rotate-encryption-key' command requires the following set of arguments: [new-key], but received: []."]
          (#'cmd/cmd->fn "rotate-encryption-key" [])))
   (let [[error? the-fxn] (#'cmd/cmd->fn "rotate-encryption-key" [:some-arg])]
     (is (nil? error?))
