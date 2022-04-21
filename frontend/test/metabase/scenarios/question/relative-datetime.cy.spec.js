@@ -22,6 +22,7 @@ describe("scenarios > question > relative-datetime", () => {
 
   describe("sidebar", () => {
     it("should go to field selection with one click", () => {
+      restore();
       cy.signInAsNormalUser();
       openOrdersTable();
 
@@ -107,6 +108,7 @@ describe("scenarios > question > relative-datetime", () => {
   });
 
   it("should go back to shortcuts view", () => {
+    restore();
     cy.signInAsNormalUser();
     openOrdersTable();
 
