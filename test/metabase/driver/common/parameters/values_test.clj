@@ -13,7 +13,8 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import clojure.lang.ExceptionInfo))
+  (:import clojure.lang.ExceptionInfo
+           metabase.driver.common.parameters.ReferencedCardQuery))
 
 (deftest variable-value-test
   (mt/with-everything-store
@@ -552,3 +553,24 @@
       (testing "of numbers (#20845)"
         (is (= 1
                (#'params.values/value->number [1])))))))
+
+(deftest handle-referenced-card-parameter-mixed-with-other-parameters-test
+  (testing "Should be able to handle for Card ref params regardless of whether other params are passed in (#21246)\n"
+    (mt/dataset sample-dataset
+      (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query products)}]
+        (let [param-name    (format "#%d" card-id)
+              template-tags {param-name {:type         :card
+                                         :card-id      card-id
+                                         :display-name param-name
+                                         :id           "__source__"
+                                         :name         param-name}}]
+          (testing "With no parameters passed in"
+            (is (schema= {(s/eq param-name) ReferencedCardQuery}
+                         (params.values/query->params-map {:template-tags template-tags}))))
+          (testing "WITH parameters passed in"
+            (let [parameters [{:type   :date/all-options
+                               :value  "2022-04-20"
+                               :target [:dimension [:template-tag "created_at"]]}]]
+              (is (schema= {(s/eq param-name) ReferencedCardQuery}
+                           (params.values/query->params-map {:template-tags template-tags
+                                                             :parameters    parameters}))))))))))

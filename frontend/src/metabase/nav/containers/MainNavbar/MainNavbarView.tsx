@@ -1,8 +1,7 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
+import { BookmarksType, Collection, User } from "metabase-types/api";
 
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
@@ -47,6 +46,7 @@ type Props = {
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
   handleCloseNavbar: () => void;
+  handleLogout: () => void;
   reorderBookmarks: ({
     newIndex,
     oldIndex,
@@ -69,8 +69,9 @@ function MainNavbarView({
   hasOwnDatabase,
   selectedItem,
   hasDataAccess,
-  handleCloseNavbar,
   reorderBookmarks,
+  handleCloseNavbar,
+  handleLogout,
 }: Props) {
   const isMiscLinkSelected = selectedItem.type === "unknown";
   const isCollectionSelected =
@@ -144,7 +145,11 @@ function MainNavbarView({
       </div>
       {!IFRAMED && (
         <ProfileLinkContainer isOpen={isOpen}>
-          <ProfileLink user={currentUser} handleCloseNavbar={onItemSelect} />
+          <ProfileLink
+            user={currentUser}
+            handleCloseNavbar={onItemSelect}
+            handleLogout={handleLogout}
+          />
         </ProfileLinkContainer>
       )}
     </SidebarContentRoot>
