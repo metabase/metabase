@@ -117,6 +117,10 @@ export const CloseSearchButton = styled.button`
   color: ${color("text-light")};
 
   cursor: pointer;
+
+  &:hover {
+    color: ${color("text-medium")};
+  }
 `;
 
 export const SearchResultsFloatingContainer = styled.div`
