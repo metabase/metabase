@@ -446,7 +446,6 @@ export default class TableInteractive extends Component {
 
   onKeyDown = event => {
     const detailEl = this.detailShortcutRef.current;
-    console.log(detailEl.classList);
     const visibleDetailButton =
       !!detailEl && Array.from(detailEl.classList).includes("show") && detailEl;
     const canViewRowDetail = !!this.state.IDColumn && !!visibleDetailButton;
