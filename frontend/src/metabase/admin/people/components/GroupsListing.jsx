@@ -92,11 +92,21 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
         >
           {t`Edit Name`}
         </li>
-        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer text-error">
-          <ModalWithTrigger triggerElement={t`Remove Group`}>
-            <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
-          </ModalWithTrigger>
-        </li>
+        <ModalWithTrigger
+          as="li"
+          triggerClasses={[
+            "pt1",
+            "pb2",
+            "px2",
+            "bg-brand-hover",
+            "text-white-hover",
+            "cursor-pointer",
+            "text-error",
+          ]}
+          triggerElement={t`Remove Group`}
+        >
+          <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
+        </ModalWithTrigger>
       </ul>
     </PopoverWithTrigger>
   );
