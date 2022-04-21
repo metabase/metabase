@@ -96,8 +96,8 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean (and (ldap-enabled)
-                                   (ldap-host)
+  :getter     (fn [] (boolean (and (ldap-host)
+                                   (ldap-password)
                                    (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]

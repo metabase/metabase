@@ -109,34 +109,34 @@ export default class SettingsBatchForm extends Component {
   }
 
   validateForm() {
-    const { elements, enabledKey } = this.props;
+    const { elements } = this.props;
     const { formData } = this.state;
 
     let valid = true;
     const validationErrors = {};
 
     // Validate form only if LDAP is enabled
-    if (!enabledKey || formData[enabledKey]) {
-      elements.forEach(function(element) {
-        // test for required elements
-        if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
-          valid = false;
-        }
+    //if (!enabledKey || formData[enabledKey]) {
+    elements.forEach(function(element) {
+      // test for required elements
+      if (element.required && MetabaseUtils.isEmpty(formData[element.key])) {
+        valid = false;
+      }
 
-        if (element.validations) {
-          element.validations.forEach(function(validation) {
-            validationErrors[element.key] = this.validateElement(
-              validation,
-              formData[element.key],
-              element,
-            );
-            if (validationErrors[element.key]) {
-              valid = false;
-            }
-          }, this);
-        }
-      }, this);
-    }
+      if (element.validations) {
+        element.validations.forEach(function(validation) {
+          validationErrors[element.key] = this.validateElement(
+            validation,
+            formData[element.key],
+            element,
+          );
+          if (validationErrors[element.key]) {
+            valid = false;
+          }
+        }, this);
+      }
+    }, this);
+    //}
 
     if (
       this.state.valid !== valid ||

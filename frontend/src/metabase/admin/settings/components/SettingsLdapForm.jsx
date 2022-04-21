@@ -22,7 +22,7 @@ export default class SettingsLdapForm extends React.Component {
           {
             title: t`Server Settings`,
             settings: [
-              "ldap-enabled",
+              //"ldap-enabled",
               "ldap-host",
               "ldap-port",
               "ldap-security",

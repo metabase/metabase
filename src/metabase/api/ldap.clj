@@ -102,14 +102,11 @@
   (let [ldap-settings (-> settings
                           (select-keys (keys mb-settings->ldap-details))
                           (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
-                                              (Long/parseLong ldap-port)))
+                                              (Long/parseLong ldap-port))
+                                 :ldap-enabled true)
                           (update :ldap-password update-password-if-needed))
         ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)
-        results       (if-not (:ldap-enabled settings)
-                        ;; when disabled just respond with a success message
-                        {:status :SUCCESS}
-                        ;; otherwise validate settings
-                        (ldap/test-ldap-connection ldap-details))]
+        results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
       ;; test succeeded, save our settings
       (setting/set-many! ldap-settings)
