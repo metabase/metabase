@@ -32,21 +32,29 @@ export const LogoLink = styled(Link)`
   left: 0;
   padding: ${space(1)};
   padding-left: ${space(2)};
-  margin-left: ${space(1)};
+  margin-left: ${space(2)};
   position: absolute;
   transition: opacity 0.3s;
 
   &:hover {
     background-color: ${color("bg-light")};
   }
+
+  ${breakpointMaxSmall} {
+    margin-left: ${space(1)};
+  }
 `;
 
 export const SidebarButtonContainer = styled.div`
-  left: 15px;
+  left: 23px;
   opacity: 0;
   position: absolute;
   top: 4px;
   transition: opacity 0.3s;
+
+  ${breakpointMaxSmall} {
+    left: 5px;
+  }
 `;
 
 export interface RowLeftProps {
