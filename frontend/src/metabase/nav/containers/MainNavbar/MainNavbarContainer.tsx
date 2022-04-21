@@ -114,7 +114,7 @@ function MainNavbarContainer({
     const { pathname } = location;
     const { slug } = params;
     if (pathname === "/") {
-      return { type: "homepage" };
+      return { type: "homepage", url: pathname };
     }
     if (pathname.startsWith("/collection")) {
       const id = pathname.startsWith("/collection/users")

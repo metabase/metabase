@@ -108,7 +108,9 @@ function MainNavbarView({
             <BookmarkList
               bookmarks={bookmarks}
               selectedItem={
-                selectedItem.type !== "unknown" ? selectedItem : undefined
+                !["unknown", "homepage"].includes(selectedItem.type)
+                  ? selectedItem
+                  : undefined
               }
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
