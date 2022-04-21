@@ -18,7 +18,7 @@ describe("issue 21830", () => {
   it("should hide card actions when the card is loading (metabase#21830)", () => {
     visitDashboard(1);
     editDashboard();
-    showDashboardCardActions(0);
+    showDashboardCardActions();
 
     getDashboardCard().within(() => {
       cy.icon("close").should("be.visible");
