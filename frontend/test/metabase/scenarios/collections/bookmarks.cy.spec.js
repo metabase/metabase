@@ -54,8 +54,30 @@ describe("Bookmarks in a collection page", () => {
     });
   });
 
-  it("can add/remove bookmark from Question in collection", () => {
+  it("can add/remove bookmark from unpinned Question in collection", () => {
     addThenRemoveBookmarkTo("Orders");
+  });
+
+  it("can add/remove bookmark from pinned Question in collection", () => {
+    const name = "Orders";
+
+    cy.visit("/collection/root");
+
+    pin(name);
+
+    cy.findByText(/Rows/);
+
+    cy.findByText(name)
+      .closest("a")
+      .find(".Icon-ellipsis")
+      .click({ force: true });
+
+    cy.findByText("Bookmark").click();
+
+    navigationSidebar().within(() => {
+      getSectionTitle(/Bookmarks/);
+      cy.findByText(name);
+    });
   });
 
   it("can add/remove bookmark from Dashboard in collection", () => {
@@ -150,6 +172,14 @@ function openEllipsisMenuFor(name) {
 function bookmarkThenArchive(name) {
   addBookmarkTo(name);
   archive(name);
+}
+
+function pin(name) {
+  cy.get("td")
+    .contains(name)
+    .closest("tr")
+    .find(".Icon-pin")
+    .click();
 }
 
 function archive(name) {
