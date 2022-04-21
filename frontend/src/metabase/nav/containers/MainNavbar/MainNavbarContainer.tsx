@@ -113,9 +113,6 @@ function MainNavbarContainer({
   const selectedItem = useMemo<SelectedItem>(() => {
     const { pathname } = location;
     const { slug } = params;
-    if (pathname === "/") {
-      return { type: "non-entity", url: pathname };
-    }
     if (pathname.startsWith("/collection")) {
       const id = pathname.startsWith("/collection/users")
         ? "users"

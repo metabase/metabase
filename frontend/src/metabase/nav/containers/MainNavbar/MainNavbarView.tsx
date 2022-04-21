@@ -91,14 +91,12 @@ function MainNavbarView({
         <SidebarSection>
           <ul>
             <HomePageLink
-              isSelected={
-                selectedItem.type === "non-entity" && selectedItem.url === "/"
-              }
+              isSelected={isNonEntityLinkSelected}
               icon="home"
               onClick={onItemSelect}
               url="/"
             >
-              {t`Home page`}
+              {t`Home`}
             </HomePageLink>
           </ul>
         </SidebarSection>
@@ -108,7 +106,7 @@ function MainNavbarView({
             <BookmarkList
               bookmarks={bookmarks}
               selectedItem={
-                selectedItem.type === "non-entity" ? selectedItem : undefined
+                selectedItem.type !== "non-entity" ? selectedItem : undefined
               }
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}

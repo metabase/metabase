@@ -19,7 +19,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import Bookmarks from "metabase/entities/bookmarks";
 import * as Urls from "metabase/lib/urls";
 
-import { SelectedItem } from "../types";
+import { SelectedEntityItem } from "../types";
 import { SidebarHeading } from "../MainNavbar.styled";
 import { DragIcon, SidebarBookmarkItem } from "./BookmarkList.styled";
 
@@ -30,7 +30,7 @@ const mapDispatchToProps = {
 
 interface CollectionSidebarBookmarksProps {
   bookmarks: BookmarksType;
-  selectedItem?: SelectedItem;
+  selectedItem?: SelectedEntityItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
   reorderBookmarks: ({
@@ -46,7 +46,7 @@ interface BookmarkItemProps {
   bookmark: Bookmark;
   index: number;
   isSorting: boolean;
-  selectedItem?: SelectedItem;
+  selectedItem?: SelectedEntityItem;
   onSelect: () => void;
   onDeleteBookmark: (bookmark: Bookmark) => void;
 }
