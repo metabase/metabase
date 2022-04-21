@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { t } from "ttag";
 import moment from "moment";
 import { connect } from "react-redux";
 
@@ -35,7 +35,7 @@ function getStatusMessage(job: ModelCacheRefreshStatus) {
     return t`Refreshing model cache`;
   }
   const lastRefreshTime = moment(job.refresh_end).fromNow();
-  return jt`Model last cached ${lastRefreshTime}`;
+  return t`Model last cached ${lastRefreshTime}`;
 }
 
 const mapDispatchToProps = {
@@ -68,7 +68,7 @@ function ModelCacheSection({ model, onRefresh }: Props) {
               </StatusContainer>
               {isError && (
                 <LastRefreshTimeLabel>
-                  {jt`Last attempt ${lastRefreshTime}`}
+                  {t`Last attempt ${lastRefreshTime}`}
                 </LastRefreshTimeLabel>
               )}
             </div>
