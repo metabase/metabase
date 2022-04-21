@@ -13,7 +13,6 @@ export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
   ${breakpointMinMedium} {
     width: ${({ wide }) => (wide ? "880px" : "568px")};
   }
-  min-height: 480px;
   max-height: 95vh;
   width: 95vw;
 `;
@@ -33,7 +32,7 @@ export const ObjectDetailsTable = styled.div`
   flex: 1;
   padding: 2rem;
   ${breakpointMinMedium} {
-    max-height: calc(100vh - 12rem);
+    max-height: calc(80vh - 4rem);
   }
 `;
 
@@ -44,7 +43,7 @@ export const ObjectRelationships = styled.div`
   background-color: ${colors["bg-light"]};
   ${breakpointMinMedium} {
     flex: 0 0 33.3333%;
-    max-height: calc(100vh - 12rem);
+    max-height: calc(80vh - 4rem);
   }
 `;
 
