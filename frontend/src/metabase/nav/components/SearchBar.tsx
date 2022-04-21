@@ -1,4 +1,10 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import React, {
+  MouseEvent,
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 import { Location, LocationDescriptorObject } from "history";
 
@@ -16,7 +22,7 @@ import RecentsList from "./RecentsList";
 import {
   SearchInputContainer,
   SearchIcon,
-  ClearIconButton,
+  CloseSearchButton,
   SearchInput,
   SearchResultsFloatingContainer,
   SearchResultsContainer,
@@ -138,6 +144,11 @@ function SearchBar({
 
   const hasSearchText = searchText.trim().length > 0;
 
+  const handleClickOnClose = (e: MouseEvent) => {
+    e.stopPropagation();
+    setInactive();
+  };
+
   return (
     <div ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
@@ -152,9 +163,9 @@ function SearchBar({
           ref={searchInput}
         />
         {isSmallScreen() && isActive && (
-          <ClearIconButton onClick={onClear}>
+          <CloseSearchButton onClick={handleClickOnClose}>
             <Icon name="close" />
-          </ClearIconButton>
+          </CloseSearchButton>
         )}
       </SearchInputContainer>
       {isActive && MetabaseSettings.searchTypeaheadEnabled() && (

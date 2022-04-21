@@ -106,7 +106,7 @@ export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
   }
 `;
 
-export const ClearIconButton = styled.button`
+export const CloseSearchButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
