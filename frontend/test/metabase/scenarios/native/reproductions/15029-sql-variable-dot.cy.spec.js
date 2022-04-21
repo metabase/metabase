@@ -16,10 +16,6 @@ describe("issue 15029", () => {
 
     cy.findAllByText("Variable name")
       .parent()
-      .as("variableField");
-
-    cy.get("@variableField")
-      .first()
       .findByText("number.of.stars");
   });
 });
