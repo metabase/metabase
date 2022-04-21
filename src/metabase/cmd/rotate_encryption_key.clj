@@ -2,10 +2,10 @@
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
             [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models :refer [Database Secret Setting]]
-            [metabase.models.setting.cache :as cache]
-            [metabase.util.encryption :as encrypt]
+            [metabase.models.setting.cache :as setting.cache]
+            [metabase.util.encryption :as encryption]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -15,13 +15,13 @@
   (mdb/setup-db!)
   (let [make-encrypt-fn   (fn [maybe-encrypt-fn]
                             (if to-key
-                              (partial maybe-encrypt-fn (encrypt/validate-and-hash-secret-key to-key))
+                              (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))
                               identity))
-        encrypt-str-fn    (make-encrypt-fn encrypt/maybe-encrypt)
-        encrypt-bytes-fn  (make-encrypt-fn encrypt/maybe-encrypt-bytes)]
-    (jdbc/with-db-transaction [t-conn {:datasource (mdb.conn/data-source)}]
+        encrypt-str-fn    (make-encrypt-fn encryption/maybe-encrypt)
+        encrypt-bytes-fn  (make-encrypt-fn encryption/maybe-encrypt-bytes)]
+    (jdbc/with-db-transaction [t-conn {:datasource (mdb.connection/data-source)}]
       (doseq [[id details] (db/select-id->field :details Database)]
-        (when (encrypt/possibly-encrypted-string? details)
+        (when (encryption/possibly-encrypted-string? details)
           (throw (ex-info (trs "Can't decrypt app db with MB_ENCRYPTION_SECRET_KEY") {:database-id id})))
         (jdbc/update! t-conn
                       :metabase_database
@@ -29,7 +29,7 @@
                       ["metabase_database.id = ?" id]))
       (doseq [[key value] (db/select-field->field :key :value Setting)]
         (if (= key "settings-last-updated")
-          (cache/update-settings-last-updated!)
+          (setting.cache/update-settings-last-updated!)
           (jdbc/update! t-conn
                         :setting
                         {:value (encrypt-str-fn value)}
@@ -39,7 +39,7 @@
       ;; a secret value through the regular database save API path; instead, ALL secret values in the app DB (regardless
       ;; of whether they are the "current version" or not), should be updated with the new key
       (doseq [[id value] (db/select-id->field :value Secret)]
-        (when (encrypt/possibly-encrypted-string? value)
+        (when (encryption/possibly-encrypted-string? value)
           (throw (ex-info (trs "Can't decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (jdbc/update! t-conn
           :secret

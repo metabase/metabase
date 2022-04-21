@@ -8,7 +8,7 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -464,7 +464,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (db.spec/spec :postgres it)
+                (mdb.spec/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 

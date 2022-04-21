@@ -5,7 +5,7 @@
             [java-time :as t]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.streaming.common :as common]
-            [metabase.query-processor.streaming.interface :as i]
+            [metabase.query-processor.streaming.interface :as qp.si]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
             [metabase.util :as u]
@@ -234,9 +234,9 @@
 ;;; |                                             XLSX export logic                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod i/stream-options :xlsx
+(defmethod qp.si/stream-options :xlsx
   ([_]
-   (i/stream-options :xlsx "query_result"))
+   (qp.si/stream-options :xlsx "query_result"))
   ([_ filename-prefix]
    {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     :write-keepalive-newlines? false
@@ -458,11 +458,11 @@
     (.setAutoFilter ^SXSSFSheet sheet (new CellRangeAddress 0 0 0 (dec col-count)))
     (.createFreezePane ^SXSSFSheet sheet 0 1)))
 
-(defmethod i/streaming-results-writer :xlsx
+(defmethod qp.si/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook            (SXSSFWorkbook.)
         sheet               (spreadsheet/add-sheet! workbook (tru "Query result"))]
-    (reify i/StreamingResultsWriter
+    (reify qp.si/StreamingResultsWriter
       (begin! [_ {{:keys [ordered-cols]} :data} {col-settings ::mb.viz/column-settings}]
         (doseq [i (range (count ordered-cols))]
           (.trackColumnForAutoSizing ^SXSSFSheet sheet i))

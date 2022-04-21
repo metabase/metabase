@@ -8,9 +8,9 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.mongo.execute :as execute]
-            [metabase.driver.mongo.parameters :as parameters]
-            [metabase.driver.mongo.query-processor :as qp]
+            [metabase.driver.mongo.execute :as mongo.execute]
+            [metabase.driver.mongo.parameters :as mongo.params]
+            [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
@@ -226,16 +226,16 @@
 
 (defmethod driver/mbql->native :mongo
   [_ query]
-  (qp/mbql->native query))
+  (mongo.qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
   [_ query context respond]
   (with-mongo-connection [_ (qp.store/database)]
-    (execute/execute-reducible-query query context respond)))
+    (mongo.execute/execute-reducible-query query context respond)))
 
 (defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]
-  (parameters/substitute-native-parameters driver inner-query))
+  (mongo.params/substitute-native-parameters driver inner-query))
 
 ;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
 ;; for the rest of the types, we'll have to fake it

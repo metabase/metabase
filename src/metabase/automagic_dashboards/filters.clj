@@ -1,5 +1,5 @@
 (ns metabase.automagic-dashboards.filters
-  (:require [metabase.mbql.normalize :as normalize]
+  (:require [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field :refer [Field]]
@@ -200,6 +200,6 @@
     (if (seq existing-filters)
       ;; since the filters are programatically generated they won't have passed thru normalization, so make sure we
       ;; normalize them before passing them to `combine-filter-clauses`, which validates its input
-      (apply mbql.u/combine-filter-clauses (map (partial normalize/normalize-fragment [:query :filter])
+      (apply mbql.u/combine-filter-clauses (map (partial mbql.normalize/normalize-fragment [:query :filter])
                                                 (cons refinement existing-filters)))
       refinement)))

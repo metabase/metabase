@@ -4,9 +4,9 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.api.query-description :as qd]
+            [metabase.api.query-description :as api.qd]
             [metabase.events :as events]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.interface :as mi]
             [metabase.models.metric :as metric :refer [Metric]]
             [metabase.models.revision :as revision]
@@ -49,7 +49,7 @@
       (let [table (Table (:table_id metric))]
         (assoc metric
                :query_description
-               (qd/generate-query-description table (:definition metric)))))))
+               (api.qd/generate-query-description table (:definition metric)))))))
 
 (api/defendpoint GET "/:id"
   "Fetch `Metric` with ID."
@@ -81,7 +81,7 @@
         clean-body (u/select-keys-when body
                      :present #{:description :caveats :how_is_this_calculated :points_of_interest}
                      :non-nil #{:archived :definition :name :show_in_getting_started})
-        new-def    (->> clean-body :definition (normalize/normalize-fragment []))
+        new-def    (->> clean-body :definition (mbql.normalize/normalize-fragment []))
         new-body   (merge
                      (dissoc clean-body :revision_message)
                      (when new-def {:definition new-def}))

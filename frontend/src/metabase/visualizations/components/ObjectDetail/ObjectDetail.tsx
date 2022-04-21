@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "ttag";
-import cx from "classnames";
+import { t } from "ttag";
 
 import Question from "metabase-lib/lib/Question";
 import { Table } from "metabase-types/types/Table";
@@ -9,8 +8,8 @@ import { ForeignKey } from "metabase-types/api/foreignKey";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { OnVisualizationClickType } from "./types";
 
-import DirectionalButton from "metabase/components/DirectionalButton";
-import Icon from "metabase/components/Icon";
+import Modal from "metabase/components/Modal";
+import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePrevious } from "metabase/hooks/use-previous";
@@ -21,6 +20,7 @@ import {
   followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 } from "metabase/query_builder/actions";
 import {
   getQuestion,
@@ -37,6 +37,12 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { getObjectName, getIdValue } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
+import {
+  ObjectDetailModal,
+  ObjectDetailBodyWrapper,
+  CloseButton,
+  ErrorWrapper,
+} from "./ObjectDetail.styled";
 
 const mapStateToProps = (state: unknown) => ({
   question: getQuestion(state),
@@ -57,6 +63,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   followForeignKey: (fk: ForeignKey) => dispatch(followForeignKey(fk)),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
+  closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
 export interface ObjectDetailProps {
@@ -79,6 +86,7 @@ export interface ObjectDetailProps {
   followForeignKey: (fk: ForeignKey) => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
+  closeObjectDetail: () => void;
 }
 
 export function ObjectDetailFn({
@@ -99,6 +107,7 @@ export function ObjectDetailFn({
   followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const prevData = usePrevious(data);
@@ -148,11 +157,15 @@ export function ObjectDetailFn({
   ]);
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "ArrowLeft") {
-      viewPreviousObjectDetail();
-    }
-    if (event.key === "ArrowRight") {
-      viewNextObjectDetail();
+    const capturedKeys: { [key: string]: () => void } = {
+      ArrowUp: viewPreviousObjectDetail,
+      ArrowDown: viewNextObjectDetail,
+      Escape: closeObjectDetail,
+    };
+
+    if (capturedKeys[event.key]) {
+      event.preventDefault();
+      capturedKeys[event.key]();
     }
   };
 
@@ -160,48 +173,52 @@ export function ObjectDetailFn({
     return null;
   }
 
-  if (hasNotFoundError) {
-    return <NotFound />;
-  }
-
   const canZoom = !!zoomedRow;
   const objectName = getObjectName({ table, question });
 
+  const hasRelationships = tableForeignKeys && !!tableForeignKeys.length;
+
   return (
-    <ObjectDetailWrapper>
-      <ObjectDetailHeader
-        canZoom={canZoom}
-        objectName={objectName}
-        objectId={getIdValue({ data, zoomedRowID })}
-        canZoomPreviousRow={canZoomPreviousRow}
-        canZoomNextRow={canZoomNextRow}
-        viewPreviousObjectDetail={viewPreviousObjectDetail}
-        viewNextObjectDetail={viewNextObjectDetail}
-      />
-      <ObjectDetailBody
-        data={data}
-        zoomedRow={zoomedRow}
-        settings={settings}
-        onVisualizationClick={onVisualizationClick}
-        visualizationIsClickable={visualizationIsClickable}
-        tableForeignKeys={tableForeignKeys}
-        tableForeignKeyReferences={tableForeignKeyReferences}
-        followForeignKey={followForeignKey}
-      />
-    </ObjectDetailWrapper>
+    <Modal
+      isOpen
+      full={false}
+      onClose={closeObjectDetail}
+      className={""} // need an empty className to override the Modal default width
+    >
+      <ObjectDetailModal wide={hasRelationships}>
+        {hasNotFoundError ? (
+          <ErrorWrapper>
+            <NotFound />
+          </ErrorWrapper>
+        ) : (
+          <div className="ObjectDetail" data-testid="object-detail">
+            <ObjectDetailHeader
+              canZoom={canZoom}
+              objectName={objectName}
+              objectId={getIdValue({ data, zoomedRowID })}
+              canZoomPreviousRow={canZoomPreviousRow}
+              canZoomNextRow={canZoomNextRow}
+              viewPreviousObjectDetail={viewPreviousObjectDetail}
+              viewNextObjectDetail={viewNextObjectDetail}
+              closeObjectDetail={closeObjectDetail}
+            />
+            <ObjectDetailBody
+              data={data}
+              objectName={objectName}
+              zoomedRow={zoomedRow}
+              settings={settings}
+              onVisualizationClick={onVisualizationClick}
+              visualizationIsClickable={visualizationIsClickable}
+              tableForeignKeys={tableForeignKeys}
+              tableForeignKeyReferences={tableForeignKeyReferences}
+              followForeignKey={followForeignKey}
+            />
+          </div>
+        )}
+      </ObjectDetailModal>
+    </Modal>
   );
 }
-
-export const ObjectDetailWrapper = ({
-  children,
-}: {
-  children: JSX.Element | JSX.Element[];
-}) => (
-  <div className="scroll-y pt2 px4">
-    <div className="ObjectDetail bordered rounded">{children}</div>
-  </div>
-);
-
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
@@ -210,6 +227,7 @@ export interface ObjectDetailHeaderProps {
   canZoomNextRow: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
+  closeObjectDetail: () => void;
 }
 
 export function ObjectDetailHeader({
@@ -220,69 +238,60 @@ export function ObjectDetailHeader({
   canZoomNextRow,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
+  closeObjectDetail,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
     <div className="Grid border-bottom relative">
-      <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
-        <div className="text-brand text-bold">
-          <span>{objectName}</span>
-          <h1>{objectId}</h1>
+      <div className="Grid-cell">
+        <h1 className="p3">
+          {objectName} {objectId}
+        </h1>
+      </div>
+      <div className="flex align-center">
+        <div className="flex p2">
+          {!!canZoom && (
+            <>
+              <Button
+                data-testid="view-previous-object-detail"
+                onlyIcon
+                borderless
+                className="mr1"
+                disabled={!canZoomPreviousRow}
+                onClick={viewPreviousObjectDetail}
+                icon="chevronup"
+                iconSize={20}
+              />
+              <Button
+                data-testid="view-next-object-detail"
+                onlyIcon
+                borderless
+                disabled={!canZoomNextRow}
+                onClick={viewNextObjectDetail}
+                icon="chevrondown"
+                iconSize={20}
+              />
+            </>
+          )}
+          <CloseButton>
+            <Button
+              data-testId="object-detail-close-button"
+              onlyIcon
+              borderless
+              disabled={!canZoomNextRow}
+              onClick={closeObjectDetail}
+              icon="close"
+              iconSize={20}
+            />
+          </CloseButton>
         </div>
       </div>
-      <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-        <div className="p4 flex align-center text-bold text-medium">
-          <Icon name="connections" size={17} />
-          <div className="ml2">
-            {jt`This ${(
-              <span className="text-dark" key={objectName}>
-                {objectName}
-              </span>
-            )} is connected to:`}
-          </div>
-        </div>
-      </div>
-
-      {canZoom && (
-        <div
-          className={cx(
-            "absolute left cursor-pointer text-brand-hover lg-ml2",
-            { disabled: !canZoomPreviousRow },
-          )}
-          aria-disabled={!canZoomPreviousRow}
-          style={{
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-          data-testid="view-previous-object-detail"
-        >
-          <DirectionalButton
-            direction="left"
-            onClick={viewPreviousObjectDetail}
-          />
-        </div>
-      )}
-      {canZoom && (
-        <div
-          className={cx(
-            "absolute right cursor-pointer text-brand-hover lg-ml2",
-            { disabled: !canZoomNextRow },
-          )}
-          aria-disabled={!canZoomNextRow}
-          style={{
-            top: "50%",
-            transform: "translate(50%, -50%)",
-          }}
-          data-testid="view-next-object-detail"
-        >
-          <DirectionalButton direction="right" onClick={viewNextObjectDetail} />
-        </div>
-      )}
     </div>
   );
 }
 
 export interface ObjectDetailBodyProps {
   data: DatasetData;
+  objectName: string;
   zoomedRow: unknown[] | undefined;
   settings: unknown;
   onVisualizationClick: OnVisualizationClickType;
@@ -296,6 +305,7 @@ export interface ObjectDetailBodyProps {
 
 export function ObjectDetailBody({
   data,
+  objectName,
   zoomedRow,
   settings,
   onVisualizationClick,
@@ -305,27 +315,21 @@ export function ObjectDetailBody({
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
-    <div className="Grid">
-      <div
-        className="Grid-cell p4"
-        style={{ marginLeft: "2.4rem", fontSize: "1rem" }}
-      >
-        <DetailsTable
-          data={data}
-          zoomedRow={zoomedRow}
-          settings={settings}
-          onVisualizationClick={onVisualizationClick}
-          visualizationIsClickable={visualizationIsClickable}
-        />
-      </div>
-      <div className="Grid-cell Cell--1of3 bg-alt">
-        <Relationships
-          tableForeignKeys={tableForeignKeys}
-          tableForeignKeyReferences={tableForeignKeyReferences}
-          foreignKeyClicked={followForeignKey}
-        />
-      </div>
-    </div>
+    <ObjectDetailBodyWrapper>
+      <DetailsTable
+        data={data}
+        zoomedRow={zoomedRow}
+        settings={settings}
+        onVisualizationClick={onVisualizationClick}
+        visualizationIsClickable={visualizationIsClickable}
+      />
+      <Relationships
+        objectName={objectName}
+        tableForeignKeys={tableForeignKeys}
+        tableForeignKeyReferences={tableForeignKeyReferences}
+        foreignKeyClicked={followForeignKey}
+      />
+    </ObjectDetailBodyWrapper>
   );
 }
 

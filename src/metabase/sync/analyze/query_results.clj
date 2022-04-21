@@ -7,8 +7,8 @@
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.predicates :as mbql.preds]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.sync.analyze.classifiers.name :as classify-name]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.sync.analyze.classifiers.name :as classifiers.name]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.analyze.fingerprint.insights :as insights]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
@@ -61,7 +61,7 @@
      ;; If we already know the semantic type, becouse it is stored, don't classify again, but try to refine semantic
      ;; type set upstream for aggregation cols (which come back as :type/Number).
      (case original-value
-       (nil :type/Number) (classify-name/infer-semantic-type col)
+       (nil :type/Number) (classifiers.name/infer-semantic-type col)
        original-value))))
 
 (s/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
@@ -89,10 +89,10 @@
                    col)))]
     (redux/post-complete
      (redux/juxt
-      (apply f/col-wise (for [{:keys [fingerprint], :as metadata} cols]
+      (apply fingerprinters/col-wise (for [{:keys [fingerprint], :as metadata} cols]
                           (if-not fingerprint
-                            (f/fingerprinter metadata)
-                            (f/constant-fingerprinter fingerprint))))
+                            (fingerprinters/fingerprinter metadata)
+                            (fingerprinters/constant-fingerprinter fingerprint))))
       (insights/insights cols))
      (fn [[fingerprints insights]]
        {:metadata (map (fn [fingerprint metadata]

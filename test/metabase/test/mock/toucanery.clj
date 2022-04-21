@@ -3,7 +3,7 @@
   to serve as a representation of a Mongo database."
   (:require [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.test.mock.util :as mock-util]))
+            [metabase.test.mock.util :as mock.util]))
 
 (def toucanery-tables
   {"transactions" {:name   "transactions"
@@ -88,81 +88,81 @@
 
 (defmethod driver/execute-reducible-query ::toucanery
   [_ query _ respond]
-  (mock-util/mock-execute-reducible-query query respond))
+  (mock.util/mock-execute-reducible-query query respond))
 
 (def toucanery-tables-and-fields
-  [(merge mock-util/table-defaults
+  [(merge mock.util/table-defaults
           {:name         "employees"
-           :fields       [(merge mock-util/field-defaults
+           :fields       [(merge mock.util/field-defaults
                                  {:name          "name"
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :semantic_type :type/Name})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
                                   :base_type     :type/Integer
                                   :semantic_type :type/PK})]
            :display_name "Employees"})
-   (merge mock-util/table-defaults
+   (merge mock.util/table-defaults
           {:name         "transactions"
-           :fields       [(merge mock-util/field-defaults
+           :fields       [(merge mock.util/field-defaults
                                  {:name          "ts"
                                   :display_name  "Ts"
                                   :database_type "BIGINT"
                                   :base_type     :type/BigInteger
                                   :effective_type :type/DateTime
                                   :coercion_strategy :Coercion/UNIXMilliSeconds->DateTime})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "id"
                                   :display_name  "ID"
                                   :database_type "SERIAL"
                                   :base_type     :type/Integer})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "buyer"
                                   :display_name  "Buyer"
                                   :database_type "OBJECT"
                                   :base_type     :type/Dictionary})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "cc"
                                   :display_name  "Cc"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "name"
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true
                                   :semantic_type :type/Name})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "age"
                                   :display_name  "Age"
                                   :database_type "INT"
                                   :base_type     :type/Integer
                                   :parent_id     true})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "details"
                                   :display_name  "Details"
                                   :database_type "OBJECT"
                                   :base_type     :type/Dictionary
                                   :parent_id     true})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "name"
                                   :display_name  "Name"
                                   :database_type "VARCHAR"
                                   :base_type     :type/Text
                                   :parent_id     true
                                   :semantic_type :type/Name})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "toucan"
                                   :display_name  "Toucan"
                                   :database_type "OBJECT"
                                   :base_type     :type/Dictionary})
-                          (merge mock-util/field-defaults
+                          (merge mock.util/field-defaults
                                  {:name          "weight"
                                   :display_name  "Weight"
                                   :database_type "DECIMAL"

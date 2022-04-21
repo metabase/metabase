@@ -12,10 +12,10 @@
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor.context :as context]
+            [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
@@ -238,12 +238,12 @@
    context
    respond]
   (let [sql     (str "-- "
-                     (qputil/query->remark :presto outer-query) "\n"
+                     (qp.util/query->remark :presto outer-query) "\n"
                      (binding [presto-common/*param-splice-style* :paranoid]
                        (unprepare/unprepare driver (cons sql params))))
         details (merge (:details (qp.store/database))
                        settings)]
-    (execute-presto-query details sql (context/canceled-chan context) respond)))
+    (execute-presto-query details sql (qp.context/canceled-chan context) respond)))
 
 (defmethod driver/humanize-connection-error-message :presto
   [_ message]

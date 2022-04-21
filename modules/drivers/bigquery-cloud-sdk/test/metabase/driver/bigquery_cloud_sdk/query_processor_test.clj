@@ -17,7 +17,7 @@
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
             [metabase.test.util :as tu]
-            [metabase.test.util.timezone :as tu.tz]
+            [metabase.test.util.timezone :as test.tz]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
@@ -153,7 +153,7 @@
         "A UTC date is returned, we should read/return it as UTC")
 
     (is (= "2018-08-31T00:00:00-05:00"
-           (tu.tz/with-system-timezone-id "America/Chicago"
+           (test.tz/with-system-timezone-id "America/Chicago"
              (tt/with-temp* [Database [db {:engine  :bigquery-cloud-sdk
                                            :details (assoc (:details (mt/db))
                                                            :use-jvm-timezone true)}]]
@@ -163,7 +163,7 @@
              "the correct date is compared"))
 
     (is (= "2018-08-31T00:00:00+07:00"
-           (tu.tz/with-system-timezone-id "Asia/Jakarta"
+           (test.tz/with-system-timezone-id "Asia/Jakarta"
              (tt/with-temp* [Database [db {:engine  :bigquery-cloud-sdk
                                            :details (assoc (:details (mt/db))
                                                            :use-jvm-timezone true)}]]

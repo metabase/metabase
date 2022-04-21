@@ -7,7 +7,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.segment :refer [Segment]]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [toucan.db :as db]))
 
 (defn- get-table-description

@@ -2,7 +2,7 @@
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.driver :as driver]
@@ -303,14 +303,14 @@
       ;; we can still use the "unoptimized" version of the breakout for the SELECT... e.g.
       ;;
       ;;    SELECT DateFromParts(year(field), month(field), 1)
-      (apply h/merge-select new-hsql (->> breakout-fields
-                                          (remove (set fields-fields))
-                                          (mapv (fn [field-clause]
-                                                  (sql.qp/as driver field-clause unique-name-fn)))))
+      (apply hh/merge-select new-hsql (->> breakout-fields
+                                           (remove (set fields-fields))
+                                           (mapv (fn [field-clause]
+                                                   (sql.qp/as driver field-clause unique-name-fn)))))
       ;; For the GROUP BY, we replace the unoptimized fields with the optimized ones, e.g.
       ;;
       ;;    GROUP BY year(field), month(field)
-      (apply h/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
+      (apply hh/group new-hsql (mapv (partial sql.qp/->honeysql driver) optimized)))))
 
 (defn- optimize-order-by-subclauses
   "Optimize `:order-by` `subclauses` using [[optimized-temporal-buckets]], if possible."

@@ -177,8 +177,8 @@
             [medley.core :as m]
             [metabase.api.common :refer [*current-user-id*]]
             [metabase.config :as config]
-            [metabase.models.interface :as i]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.interface :as mi]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
             [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
@@ -186,7 +186,7 @@
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.regex :as u.regex]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -342,7 +342,7 @@
 (defn- assert-not-admin-group
   "Check to make sure the `:group_id` for `permissions` entry isn't the admin group."
   [{:keys [group_id]}]
-  (when (and (= group_id (:id (group/admin)))
+  (when (and (= group_id (:id (perms-group/admin)))
              (not *allow-admin-permissions-changes*))
     (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
              {:status-code 400}))))
@@ -485,12 +485,12 @@
   "Returns the permission path required to edit the table specified by the provided args, or a field in the table.
   If Enterprise Edition code is available, and a valid :advanced-permissions token is present, returns the data model
   permissions path for the table. Otherwise, defaults to the root path ('/'), thus restricting writes to admins."
-  [db-id schema table-id]
+  [& path-components]
   (let [f (u/ignore-exceptions
            (classloader/require 'metabase-enterprise.advanced-permissions.models.permissions)
            (resolve 'metabase-enterprise.advanced-permissions.models.permissions/data-model-write-perms-path))]
     (if (and f (premium-features/enable-advanced-permissions?))
-      (f db-id schema table-id)
+      (apply f path-components)
       "/")))
 
 (s/defn db-details-write-perms-path :- Path
@@ -592,12 +592,12 @@
   "Implementation of `IObjectPermissions` for objects that have a `collection_id`, and thus, a parent Collection.
    Using this will mean the current User is allowed to read or write these objects if they are allowed to read or
   write their parent Collection."
-  (merge i/IObjectPermissionsDefaults
+  (merge mi/IObjectPermissionsDefaults
          ;; TODO - we use these same partial implementations of `can-read?` and `can-write?` all over the place for
          ;; different models. Consider making them a mixin of some sort. (I was going to do this but I couldn't come
          ;; up with a good name for the Mixin. - Cam)
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set-for-parent-collection}))
 
 

@@ -9,14 +9,14 @@ export const ViewSidebarAside = styled.aside`
   position: relative;
   width: 0;
 
-  ${({ side }) =>
+  ${({ isOpen, side }) =>
     side === "left"
       ? css`
-          border-right: 1px solid ${color("border")};
+          border-right: ${isOpen ? `1px solid ${color("border")}` : "none"};
           left: 0;
         `
       : css`
-          border-left: 1px solid ${color("border")};
+          border-left: ${isOpen ? `1px solid ${color("border")}` : "none"};
           right: 0;
         `}
 
