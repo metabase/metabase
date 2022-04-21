@@ -101,6 +101,9 @@ describe("scenarios > x-rays", () => {
         expect(xhr.response.statusCode).not.to.eq(500);
       });
 
+      cy.wait("@dataset");
+      cy.findByTextEnsureVisible("A look at the number of 15655");
+
       cy.findByRole("heading", { name: /^A closer look at the number of/ });
       cy.get(".DashCard");
     });
