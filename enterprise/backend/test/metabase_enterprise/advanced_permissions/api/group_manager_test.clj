@@ -291,14 +291,14 @@
                            (db/select-one-field :first_name User :id (:id user))))))
 
                 (testing "Can add/remove user to groups they're manager of"
-                  (is (= [{:id               (:id (perms-group/all-users))
-                           :is_group_manager false}
-                          {:id               (:id group)
-                           :is_group_manager true}]
-                         (:user_group_memberships (add-user-to-group user 200 group))))
-                  (is (= [{:id               (:id (perms-group/all-users))
-                           :is_group_manager false}]
-                         (:user_group_memberships (remove-user-from-group user 200 group)))))
+                  (is (= (set [{:id               (:id (perms-group/all-users))
+                                :is_group_manager false}
+                               {:id               (:id group)
+                                :is_group_manager true}])
+                         (set (:user_group_memberships (add-user-to-group user 200 group)))))
+                  (is (= (set [{:id               (:id (perms-group/all-users))
+                                :is_group_manager false}])
+                         (set (:user_group_memberships (remove-user-from-group user 200 group))))))
 
                 (testing "Can't remove users from group they're not manager of"
                   (mt/with-temp PermissionsGroup [random-group]
