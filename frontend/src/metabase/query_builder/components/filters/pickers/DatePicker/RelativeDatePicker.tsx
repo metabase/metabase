@@ -237,6 +237,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
           visible={optionsVisible}
           placement={"bottom-start"}
           content={optionsContent}
+          onClose={() => setOptionsVisible(false)}
         >
           <MoreButton
             icon="ellipsis"
