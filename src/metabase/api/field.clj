@@ -13,7 +13,6 @@
             [metabase.query-processor :as qp]
             [metabase.related :as related]
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
-            [metabase.server.middleware.session :as mw.session]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
             [metabase.types :as types]

@@ -13,7 +13,6 @@
             [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.related :as related]
-            [metabase.server.middleware.session :as mw.session]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
             [metabase.sync.field-values :as sync.field-values]

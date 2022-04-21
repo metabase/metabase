@@ -25,7 +25,6 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
-            [metabase.server.middleware.session :as mw.session]
             [metabase.sync.analyze :as analyze]
             [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
