@@ -395,10 +395,6 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableMetadata,
   ) => {
-    if (question && question.query().readOnly()) {
-      return false;
-    }
-
     // When viewing a model, its dataset_query is swapped with a clean query using the dataset as a source table
     // (it's necessary for datasets to behave like tables opened in simple mode)
     // We need to escape the isDirty check as it will always be true in this case,
@@ -408,12 +404,18 @@ export const getIsResultDirty = createSelector(
       return false;
     }
 
+    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
+    if (hasParametersChange) {
+      return true;
+    }
+
+    if (question && question.query().readOnly()) {
+      return false;
+    }
+
     lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return (
-      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-      !Utils.equals(lastParameters, nextParameters)
-    );
+    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
   },
 );
 
