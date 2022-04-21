@@ -203,6 +203,9 @@ function CollectionContent({
                 )}
               />
               <PinnedItemOverview
+                bookmarks={bookmarks}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
                 items={pinnedItems}
                 collection={collection}
                 metadata={metadata}
