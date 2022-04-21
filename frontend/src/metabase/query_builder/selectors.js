@@ -497,15 +497,8 @@ export const getMode = createSelector(
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults, isZoomingRow],
-  (mode, results, isZoomingSingleRow) => {
-    if (isZoomingSingleRow) {
-      return true;
-    }
-    // It handles filtering by a manually set PK column that is not unique
-    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
-    return mode?.name() === "object" && !hasMultipleRows;
-  },
+  [getMode, isZoomingRow],
+  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
 export const getIsDirty = createSelector(
