@@ -1,4 +1,4 @@
-(ns metabase-enterprise.advanced-permissions.models.permisisons.group-manager-test
+(ns metabase-enterprise.advanced-permissions.models.permissions.group-manager-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.advanced-permissions.models.permissions.group-manager :as gm]
             [metabase.models.permissions-group :as perms-group]
