@@ -19,6 +19,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
+import { isPositiveInteger } from "metabase/lib/number";
 
 import { t } from "ttag";
 import cx from "classnames";
@@ -111,7 +112,7 @@ export default class TableSimple extends Component {
         const col = cols[sortColumn];
         // for strings we should be case insensitive
         if (typeof value === "string") {
-          if (isID(col)) {
+          if (isID(col) && isPositiveInteger(value)) {
             value = parseInt(value, 10);
           } else {
             value = value.toLowerCase();
