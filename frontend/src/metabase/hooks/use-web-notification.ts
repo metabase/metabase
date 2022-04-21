@@ -7,10 +7,31 @@ export function useWebNotification() {
   }, []);
 
   const showNotification = useCallback((title: string, body: string) => {
-    new Notification(title, {
+    const notification = new Notification(title, {
       body,
       icon: "app/assets/img/favicon-32x32.png",
     });
+
+    const closeNotification = (e: Event) => {
+      e.preventDefault();
+      notification.close();
+    };
+
+    notification.addEventListener("click", e => {
+      e.preventDefault();
+      window.focus();
+    });
+
+    window.addEventListener("beforeunload", closeNotification);
+
+    document.addEventListener(
+      "visibilitychange",
+      e => {
+        closeNotification(e);
+        window.removeEventListener("beforeunload", closeNotification);
+      },
+      { once: true },
+    );
   }, []);
 
   return [requestPermission, showNotification];

@@ -314,7 +314,7 @@ const loadingDashCards = handleActions(
       next: state => ({
         ...state,
         loadingIds: state.dashcardIds,
-        loadingStatus: "running",
+        loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
         startTime:
           state.dashcardIds.length > 0 &&
           // check that performance is defined just in case
