@@ -23,10 +23,9 @@ export const ObjectDetailBodyWrapper = styled.div`
   overflow-y: auto;
   ${breakpointMinMedium} {
     display: flex;
-    max-height: auto;
-    min-height: calc(480px - 4rem);
+    height: calc(80vh - 4rem);
   }
-  max-height: calc(100vh - 8rem);
+  height: calc(100vh - 8rem);
 `;
 
 export const ObjectDetailsTable = styled.div`
