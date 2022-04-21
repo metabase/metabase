@@ -1177,3 +1177,24 @@
                  :mongo []
                  [[0]])
                (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest june-31st-test
+  (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072)"
+    ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
+    ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
+    ;; `:relative-datetime` expression and do this directly in MBQL.
+    (mt/test-drivers (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers))
+      (doseq [[n unit] [[3 :month]
+                        [1 :quarter]]]
+        (testing (format "%d %s" n unit)
+          (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime #t "2022-03-31" :day])
+                june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                checkins     (sql.qp/->honeysql driver/*driver* (db/select-one 'Table :id (mt/id :checkins)))
+                honeysql     {:select [[june-31 :june_31]]
+                              :from   [checkins]}
+                honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                query        (mt/native-query {:query sql, :params args})]
+            (mt/with-native-query-testing-context query
+              (is (= ["2022-06-30T00:00:00Z"]
+                     (mt/first-row (qp/process-query query)))))))))))

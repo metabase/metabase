@@ -226,18 +226,26 @@
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defmethod sql.qp/add-interval-honeysql-form :oracle
-  [_ hsql-form amount unit]
-  (hx/+
-   (hx/->timestamp hsql-form)
-   (case unit
-     :second  (num-to-ds-interval :second amount)
-     :minute  (num-to-ds-interval :minute amount)
-     :hour    (num-to-ds-interval :hour   amount)
-     :day     (num-to-ds-interval :day    amount)
-     :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
-     :month   (num-to-ym-interval :month  amount)
-     :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
-     :year    (num-to-ym-interval :year   amount))))
+  [driver hsql-form amount unit]
+  (let [hsql-form (hx/->timestamp hsql-form)]
+    ;; use add_months() for months since Oracle will barf if you try to do something like 2022-03-31 + 3 months since
+    ;; June 31st doesn't exist. add_months() can figure it out tho.
+    (condp = unit
+      :quarter
+      (recur driver hsql-form (* 3 amount) :month)
+
+      :month
+      (hsql/call :add_months hsql-form amount)
+
+      (hx/+
+       hsql-form
+       (case unit
+         :second (num-to-ds-interval :second amount)
+         :minute (num-to-ds-interval :minute amount)
+         :hour   (num-to-ds-interval :hour   amount)
+         :day    (num-to-ds-interval :day    amount)
+         :week   (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
+         :year   (num-to-ym-interval :year   amount))))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
   [_ _ field-or-value]
