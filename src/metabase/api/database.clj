@@ -754,16 +754,25 @@
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
+(def ^:dynamic *rescan-values-async*
+  "Boolean indicating whether the rescan_values job should be done async or not. Defaults to `true`. Should only be rebound
+  in tests to force the scan to block."
+  true)
+
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (Database id))]
-    (future
-      (field-values/update-field-values! db)))
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (if *rescan-values-async*
+        (future (field-values/update-field-values! db))
+        (field-values/update-field-values! db))))
   {:status :ok})
-
 
 ;; "Discard saved field values" action in db UI
 (defn- database->field-values-ids [database-or-id]
