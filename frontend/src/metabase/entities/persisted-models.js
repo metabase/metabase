@@ -6,12 +6,9 @@ import { CardApi, PersistedModelsApi } from "metabase/services";
 const REFRESH_CACHE = "metabase/entities/persistedModels/REFRESH_CACHE";
 
 const getPersistedModelInfoByModelId = createSelector(
-  [
-    state => Object.values(state.entities.persistedModels),
-    (state, props) => props.entityId,
-  ],
+  [state => state.entities.persistedModels, (state, props) => props.entityId],
   (persistedModels, modelId) =>
-    persistedModels.find(info => info.card_id === modelId),
+    Object.values(persistedModels).find(info => info.card_id === modelId),
 );
 
 const PersistedModels = createEntity({
