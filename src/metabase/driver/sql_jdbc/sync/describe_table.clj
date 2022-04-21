@@ -221,7 +221,9 @@
       member-type)))
 
 (defn- row->types [row]
-  (into {} (for [[field-name field-val] row]
+  (into {} (for [[field-name field-val] row
+                 ;; That is, don't look at the row at all if the top-level JSON entity is an array
+                 :when (map? field-val)]
              (let [flat-row (flattened-row field-name field-val)]
                (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 
