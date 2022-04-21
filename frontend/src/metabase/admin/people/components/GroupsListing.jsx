@@ -87,7 +87,7 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
     >
       <ul className="UserActionsSelect">
         <li
-          className="pt2 pb2 px2 bg-brand-hover text-white-hover cursor-pointer"
+          className="py1 px2 bg-brand-hover text-white-hover cursor-pointer"
           onClick={onEditGroupClicked.bind(null, group)}
         >
           {t`Edit Name`}
@@ -95,8 +95,7 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
         <ModalWithTrigger
           as="li"
           triggerClasses={[
-            "pt2",
-            "pb2",
+            "py1",
             "px2",
             "bg-brand-hover",
             "text-white-hover",
