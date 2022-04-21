@@ -1,4 +1,4 @@
-import { User } from "metabase-types/types/User";
+import { User } from "metabase-types/api";
 import { AdminState } from "./admin";
 import { EntitiesState } from "./entities";
 import { FormState } from "./forms";
