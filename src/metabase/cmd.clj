@@ -181,7 +181,8 @@
 
 (defn arg-list-count-ok? [arg-list arg-count]
   (if (some #{'&} arg-list)
-    ;; minus 1 for the & and 1 for the symbol after &
+    ;; subtract 1 for the & and 1 for the symbol after &
+    ;; e.g. [a b & c] => 2
     (>= arg-count (- (count arg-list) 2))
     (= arg-count (count arg-list))))
 
