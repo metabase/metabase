@@ -6,10 +6,10 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.db.connection :as mdb.connection]
-            [metabase.task :as task]
-            [metabase.util.files :as u.files])
+            [metabase.util.files :as u.files]
+            [potemkin :as p])
   (:import com.mchange.v2.c3p0.PoolBackedDataSource
-           metabase.db.connection.ApplicationDB))
+           javax.sql.DataSource))
 
 ;; EVERYTHING BELOW IS FOR H2 ONLY.
 
@@ -40,64 +40,65 @@
 
 ;;;; RESTORE
 
-(defn- kill-app-db-connection-pool!
+;; A DataSource wrapping another DataSource with a `lock` that we can lock to prevent anyone from getting a Connection.
+;; We'll use this to shut down access to the application DB during the restore process.
+(p/defrecord+ LockableDataSource [^DataSource data-source ^Object lock]
+  DataSource
+  (getConnection [_]
+    (locking lock
+      (.getConnection data-source)))
+
+  (getConnection [_ user password]
+    (locking lock
+      (.getConnection data-source user password))))
+
+(defn- lockable-data-source? [data-source]
+  (instance? LockableDataSource data-source))
+
+(defn- lockable-data-source ^DataSource [data-source]
+    (if (lockable-data-source? data-source)
+      data-source
+      (->LockableDataSource data-source (Object.))))
+
+(defn- reset-app-db-connection-pool!
   "Immediately destroy all open connections in the app DB connection pool."
-  [{:keys [data-source]}]
-  (when (instance? PoolBackedDataSource data-source)
-    (log/info "Destroying application database connection pool")
-    (.hardReset ^PoolBackedDataSource data-source)))
+  []
+  (let [{:keys [data-source]} mdb.connection/*application-db*]
+    (when (instance? PoolBackedDataSource data-source)
+      (log/info "Destroying application database connection pool")
+      (.hardReset ^PoolBackedDataSource data-source))))
 
 (defn- restore-app-db-from-snapshot!
   "Drop all objects in the application DB, then reload everything from the SQL dump at `snapshot-path`."
-  [^ApplicationDB app-db ^String snapshot-path]
-  (assert-h2 app-db)
+  [^String snapshot-path]
   (log/infof "Restoring snapshot from %s" snapshot-path)
   (api/check-404 (.exists (java.io.File. snapshot-path)))
-  (with-open [conn (.getConnection app-db)]
+  (with-open [conn (.getConnection mdb.connection/*application-db*)]
     (doseq [sql-args [["SET LOCK_TIMEOUT 180000"]
                       ["DROP ALL OBJECTS"]
                       ["RUNSCRIPT FROM ?" snapshot-path]]]
       (jdbc/execute! {:connection conn} sql-args))))
 
-(defn- increment-app-db-unique-indentifier
+(defn- increment-app-db-unique-indentifier!
   "Increment the [[mdb.connection/unique-identifier]] for the Metabase application DB. This effectively flushes all
   caches using it as a key (including things using [[mdb.connection/memoize-for-application-db]]) such as the Settings
   cache."
-  [app-db]
-  (let [new-id (swap! (var-get #'mdb.connection/application-db-counter) inc)]
-    (log/infof "Incrementing application DB unique counter %d -> %d (to flush caches)"
-               (:id app-db)
-               new-id)
-    (assoc app-db :id new-id)))
-
-(defn- dummy-app-db
-  "Placeholder app DB value of [[mdb.connection/*application-db*]] used during the restore process. Throw an Exception
-  if anyone attempts to use it."
   []
-  (mdb.connection/application-db
-   :h2
-   (reify javax.sql.DataSource
-     (getConnection [_]
-       (throw (UnsupportedOperationException. "You cannot access the application DB during a snapshot restore!"))))))
+  (alter-var-root #'mdb.connection/*application-db* assoc :id (swap! (var-get #'mdb.connection/application-db-counter) inc)))
 
 (defn- restore-snapshot! [snapshot-name]
   (assert-h2 mdb.connection/*application-db*)
-  (let [path   (snapshot-path-for-name snapshot-name)
-        app-db mdb.connection/*application-db*]
-    (try
-      (log/info "Stopping task scheduler")
-      (task/stop-scheduler!)
-      (log/info "Temporarily setting *application-db* to no-op dummy app DB")
-      ;; set the app DB to `nil` so nobody else can access it.
-      (alter-var-root #'mdb.connection/*application-db* (constantly (dummy-app-db)))
-      (kill-app-db-connection-pool! app-db)
-      (restore-app-db-from-snapshot! app-db path)
-      (finally
-        (let [app-db (increment-app-db-unique-indentifier app-db)]
-          (log/info "Restoring *application-db*")
-          (alter-var-root #'mdb.connection/*application-db* (constantly app-db)))
-        (log/info "Restarting task scheduler")
-        (task/start-scheduler!))))
+  ;; make sure the app DB has a lockable data source
+  (when-not (lockable-data-source? (:data-source mdb.connection/*application-db*))
+    (alter-var-root #'mdb.connection/*application-db* update :data-source lockable-data-source))
+  (let [path (snapshot-path-for-name snapshot-name)
+        ;; now get the lock for the app DB to prevent anyone else from opening connections until we finish the process
+        lock (get-in mdb.connection/*application-db* [:data-source :lock])]
+    (assert lock)
+    (locking lock
+      (reset-app-db-connection-pool!)
+      (restore-app-db-from-snapshot! path)
+      (increment-app-db-unique-indentifier!)))
   :ok)
 
 (api/defendpoint POST "/restore/:name"
