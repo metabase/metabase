@@ -56,18 +56,21 @@
 (s/defn to-clause :- mbql.s/Filter
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [{param-type :type [a b :as param-value] :value [_ field :as _target] :target :as _param}]
+  [{param-type :type [a b :as param-value] :value [_ field :as _target] :target options :options :as _param}]
   (verify-type-and-arity field param-type param-value)
   (let [field' (params/wrap-field-id-if-needed field)]
     (condp = (operator-arity param-type)
       :binary
-      [(keyword (name param-type)) field' a b]
+      (cond-> [(keyword (name param-type)) field' a b]
+        (boolean options) (conj options))
 
       :unary
-      [(keyword (name param-type)) field' a]
+      (cond-> [(keyword (name param-type)) field' a]
+        (boolean options) (conj options))
 
       :variadic
-      (into [(keyword (name param-type)) field'] param-value)
+      (cond-> (into [(keyword (name param-type)) field'] param-value)
+        (boolean options) (conj options))
 
       (throw (ex-info (format "Unrecognized operator: %s" param-type)
                       {:param-type param-type

@@ -687,12 +687,21 @@
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body} :body}]
   {parameters (s/maybe [ParameterWithID])}
-  (m/mapply qp.dashboard/run-query-for-dashcard-async
-            (merge
-             body
-             {:dashboard-id dashboard-id
-              :card-id      card-id
-              :dashcard-id  dashcard-id})))
+  (let [param-xf (fn [{param-type :type :as p}]
+                   (if (boolean (#{:string/contains
+                                   :string/does-not-contain
+                                   :string/starts-with
+                                   :string/ends-with} (keyword param-type)))
+                     (assoc p :options {:case-sensitive false})
+                     p))
+        params (mapv param-xf parameters)]
+    (m/mapply qp.dashboard/run-query-for-dashcard-async
+              (merge
+               body
+               {:parameters params
+                :dashboard-id dashboard-id
+                :card-id      card-id
+                :dashcard-id  dashcard-id}))))
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
