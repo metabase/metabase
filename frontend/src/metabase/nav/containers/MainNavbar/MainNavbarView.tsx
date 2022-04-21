@@ -91,14 +91,16 @@ function MainNavbarView({
     <SidebarContentRoot>
       <div>
         <SidebarSection>
-          <HomePageLink
-            isSelected={isHomePage}
-            icon="home"
-            onClick={onItemSelect}
-            url="/"
-          >
-            {t`Home page`}
-          </HomePageLink>
+          <ul>
+            <HomePageLink
+              isSelected={selectedItem.type === "homepage"}
+              icon="home"
+              onClick={onItemSelect}
+              url="/"
+            >
+              {t`Home page`}
+            </HomePageLink>
+          </ul>
         </SidebarSection>
 
         {bookmarks.length > 0 && (
