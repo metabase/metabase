@@ -252,7 +252,7 @@
 (defn details->connection-spec-for-testing-connection
   "Return an appropriate JDBC connection spec to test whether a set of connection details is valid (i.e., implementing
   `can-connect?`)."
-  [driver {:keys [port] :as details}]
+  [driver details]
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))]
