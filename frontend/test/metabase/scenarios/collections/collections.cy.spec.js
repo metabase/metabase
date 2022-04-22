@@ -317,6 +317,20 @@ describe("scenarios > collection defaults", () => {
           bulkSelectDeselectWorkflow();
         });
 
+        it("should clean up selection when opening another collection (metabase#16491)", () => {
+          cy.request("PUT", "/api/card/1", {
+            collection_id: 1,
+          });
+          cy.visit("/collection/root");
+          cy.findByText("Your personal collection").click();
+
+          selectItemUsingCheckbox("Orders");
+          cy.findByText("1 item selected").should("be.visible");
+
+          cy.findByText("Our analytics").click();
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
+        });
+
         function bulkSelectDeselectWorkflow() {
           cy.visit("/collection/root");
           selectItemUsingCheckbox("Orders");

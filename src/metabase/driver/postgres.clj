@@ -21,6 +21,7 @@
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -295,7 +296,7 @@
           (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name _opts :as clause]]
+  [driver [_ id-or-name opts :as clause]]
   (let [stored-field (when (integer? id-or-name)
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
@@ -305,11 +306,57 @@
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
 
-      (some? nfc-path)
-      (json-query identifier stored-field)
+      (field/json-field? stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (json-query identifier stored-field))
 
       :else
       identifier)))
+
+;; Postgres is not happy with JSON fields which are in group-bys or order-bys
+;; being described twice instead of using the alias.
+;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
+;; The alias names in JSON fields are unique wrt nfc path"
+(defmethod sql.qp/apply-top-level-clause
+  [:postgres :breakout]
+  [driver clause honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  (let [stored-field-ids (map second breakout-fields)
+        stored-fields    (map #(when (integer? %) (qp.store/field %)) stored-field-ids)
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                  driver clause honeysql-form)
+        qualified        (parent-method query)
+        unqualified      (parent-method (update query
+                                                :breakout
+                                                sql.qp/rewrite-fields-to-force-using-column-aliases))]
+    (if (some field/json-field? stored-fields)
+      (merge qualified
+             (select-keys unqualified #{:group-by}))
+      qualified)))
+
+(defn- order-by-is-json-field?
+  [clause]
+  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
+        stored-field-id (-> clause (second) (second))
+        stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
+                          (qp.store/field stored-field-id))]
+    (and
+      (some? stored-field)
+      (field/json-field? stored-field))))
+
+(defmethod sql.qp/->honeysql [:postgres :desc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
+
+(defmethod sql.qp/->honeysql [:postgres :asc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]

@@ -168,7 +168,7 @@ function dispatchUIEvent(element, eventName) {
 
 // logic for determining the bounding shapes for showing tooltips for a given point.
 // Wikipedia has a good explanation here: https://en.wikipedia.org/wiki/Voronoi_diagram
-function onRenderVoronoiHover(chart) {
+function onRenderVoronoiHover(chart, { hasDrills }) {
   const parent = chart.svg().select("svg > g");
   const dots = chart.svg().selectAll(".sub .dc-tooltip .dot")[0];
   const axis = chart.svg().select(".axis.x");
@@ -215,6 +215,7 @@ function onRenderVoronoiHover(chart) {
   parent
     .append("svg:g")
     .classed("voronoi", true)
+    .classed("voronoi-drill", hasDrills)
     .selectAll("path")
     .data(voronoi(vertices), d => d && d.join(","))
     .enter()
@@ -425,6 +426,7 @@ function onRender(
     yAxisSplit,
     isStacked,
     isTimeseries,
+    hasDrills,
     formatYValue,
     onGoalHover,
     onHoverChange,
@@ -439,7 +441,7 @@ function onRender(
   onRenderSetDotStyle(chart);
   onRenderSetLineWidth(chart);
   onRenderEnableDots(chart);
-  onRenderVoronoiHover(chart);
+  onRenderVoronoiHover(chart, { hasDrills });
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
   onRenderValueLabels(chart, { formatYValue, xInterval, yAxisSplit, datas });
   onRenderHideDisabledLabels(chart);
