@@ -334,24 +334,28 @@
              (select-keys unqualified #{:group-by}))
       qualified)))
 
+(defn- order-by-is-json-field?
+  [clause]
+  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
+        stored-field-id (-> clause (second) (second))
+        stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
+                          (qp.store/field stored-field-id))]
+    (and
+      (some? stored-field)
+      (field/json-field? stored-field))))
+
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
-  (let [stored-field-id (second (second clause))
-        stored-field    (when (integer? stored-field-id)
-                          (qp.store/field stored-field-id))
-        new-clause      (if (field/json-field? stored-field)
-                          (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                          clause)]
+  (let [new-clause (if (order-by-is-json-field? clause)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
     ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
-  (let [stored-field-id (second (second clause))
-        stored-field    (when (integer? stored-field-id)
-                          (qp.store/field stored-field-id))
-        new-clause      (if (field/json-field? stored-field)
-                          (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                          clause)]
+  (let [new-clause (if (order-by-is-json-field? clause)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
