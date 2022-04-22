@@ -1,6 +1,14 @@
 import styled from "@emotion/styled";
 
+export const CenteredLayout = styled.div`
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
 export const CollectionRoot = styled.div`
+  width: 100%;
   padding-top: 1rem;
 `;
 

@@ -29,6 +29,7 @@ import { usePrevious } from "metabase/hooks/use-previous";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import {
+  CenteredLayout,
   CollectionEmptyContent,
   CollectionMain,
   CollectionRoot,
@@ -179,7 +180,11 @@ function CollectionContent({
   };
 
   if (isRoot && !collection.can_write) {
-    return <Unauthorized />;
+    return (
+      <CenteredLayout>
+        <Unauthorized />
+      </CenteredLayout>
+    );
   }
 
   return (
