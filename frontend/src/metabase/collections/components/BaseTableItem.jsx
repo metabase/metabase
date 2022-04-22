@@ -111,6 +111,7 @@ export function BaseTableItem({
             pinned={isPinned}
             selectable={canSelect}
             selected={isSelected}
+            disabled={!canSelect}
             onToggleSelected={handleSelectionToggled}
             showCheckbox={isHoveringOverRow}
           />
