@@ -98,7 +98,7 @@
 
 (defn- disable-persisting
   "Disables persistence.
-  - update all [[PersistedInfo]] rows to be inactive and deleteable
+  - update all [[PersistedInfo]] rows to be inactive and deletable
   - remove `:persist-models-enabled` from relevant [[Database]] options
   - schedule a task to [[metabase.driver.ddl.interface/unpersist]] each table"
   []

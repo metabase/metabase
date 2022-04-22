@@ -43,7 +43,7 @@
      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
 (defn- refresh-with-state! [refresher database persisted-info]
-  (when-not (= "deleteable" (:state persisted-info))
+  (when-not (= "deletable" (:state persisted-info))
     (let [card (Card (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
@@ -82,26 +82,33 @@
                              :duration     (.toMillis (t/duration start-time end-time))
                              :task_details task-details})))
 
-(defn- prune-deleteable-persists!
+(defn- prune-deletables!
+  "Seam for tests to pass in specific deletables to drop."
+  [refresher deletables]
+  (when (seq deletables)
+    (let [db-id->db    (u/key-by :id (db/select Database :id
+                                                [:in (map :database_id deletables)]))
+          unpersist-fn (fn []
+                         (reduce (fn [stats persisted-info]
+                                   (let [database (-> persisted-info :database_id db-id->db)]
+                                     (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                     (try
+                                       (unpersist! refresher database persisted-info)
+                                       (db/delete! PersistedInfo :id (:id persisted-info))
+                                       (update stats :success inc)
+                                       (catch Exception e
+                                         (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                         (update stats :error inc)))))
+                                 {:success 0, :error 0}
+                                 deletables))]
+      (saving-task-history "unpersist-tables" nil unpersist-fn))) )
+
+(defn- prune-all-deletable!
+  "Prunes all deletable PersistInfos, should not be called from tests as
+   it will orphan cache tables if refresher is replaced."
   [refresher]
-  (let [deleteable (db/select PersistedInfo :state "deleteable")]
-    (when (seq deleteable)
-      (let [db-id->db    (u/key-by :id (db/select Database :id
-                                                  [:in (map :database_id deleteable)]))
-            unpersist-fn (fn []
-                           (reduce (fn [stats persisted-info]
-                                     (let [database (-> persisted-info :database_id db-id->db)]
-                                       (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
-                                       (try
-                                         (unpersist! refresher database persisted-info)
-                                         (db/delete! PersistedInfo :id (:id persisted-info))
-                                         (update stats :success inc)
-                                         (catch Exception e
-                                           (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
-                                           (update stats :error inc)))))
-                                   {:success 0, :error 0}
-                                   deleteable))]
-        (saving-task-history "unpersist-tables" nil unpersist-fn)))))
+  (let [deletables (db/select PersistedInfo :state "deletable")]
+    (prune-deletables! refresher deletables)))
 
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
@@ -158,7 +165,7 @@
 
 (defn- prune-job-fn!
   [_job-context]
-  (prune-deleteable-persists! dispatching-refresher))
+  (prune-all-deletable! dispatching-refresher))
 
 (jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} PersistenceRefresh
   [job-context]

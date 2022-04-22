@@ -63,10 +63,10 @@
   "Hydrate a card :is_persisted for the frontend."
   {:hydrate :persisted}
   [card]
-  (db/exists? PersistedInfo :card_id (:id card) :state [:not= "deleteable"]))
+  (db/exists? PersistedInfo :card_id (:id card) :state [:not= "deletable"]))
 
 (defn mark-for-deletion [conditions-map]
-  (db/update-where! PersistedInfo conditions-map :active false, :state "deleteable", :state_change_at :%now))
+  (db/update-where! PersistedInfo conditions-map :active false, :state "deletable", :state_change_at :%now))
 
 (defn make-ready [user-id card]
   (let [slug (-> card :name slug-name)
@@ -86,7 +86,7 @@
                                                     :state_change_at :%now
                                                     :creator_id      user-id})
 
-                         (= "deleteable" (:state existing-persisted-info))
+                         (= "deletable" (:state existing-persisted-info))
                          (do
                            (db/update! PersistedInfo (u/the-id existing-persisted-info)
                                        :active false, :state "creating", :state_change_at :%now)

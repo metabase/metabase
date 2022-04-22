@@ -118,19 +118,19 @@
                                        :db_id (u/the-id db)
                                        :task "persist-refresh"
                                        {:order-by [[:id :desc]]}))))))
-    (testing "Deletes any in a deleteable state"
+    (testing "Deletes any in a deletable state"
       (mt/with-temp* [Database [db {:options {:persist-models-enabled true}}]
                       Card     [model3 {:dataset true :database_id (u/the-id db)}]
-                      PersistedInfo [deleteable {:card_id (u/the-id model3) :database_id (u/the-id db)
-                                                 :state "deleteable"}]]
+                      PersistedInfo [deletable {:card_id (u/the-id model3) :database_id (u/the-id db)
+                                                :state "deletable"}]]
         (let [called-on (atom #{})
               test-refresher (reify pr/Refresher
                                (refresh! [_ _ _ _])
                                (unpersist! [_ _database persisted-info]
                                  (swap! called-on conj (u/the-id persisted-info))))]
-          (#'pr/prune-deleteable-persists! test-refresher)
-          ;; don't assert equality if there are any deleteable in the app db
-          (is (contains? @called-on (u/the-id deleteable)))
+          (#'pr/prune-deletables! test-refresher [deletable])
+          ;; don't assert equality if there are any deletable in the app db
+          (is (contains? @called-on (u/the-id deletable)))
           (is (partial= {:task "unpersist-tables"
                          :task_details {:success 1 :error 0}}
                         (db/select-one TaskHistory
