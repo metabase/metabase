@@ -19,18 +19,14 @@ const sceneStyles = css`
   background-position: bottom;
 `;
 
-const gradientStyles = css`
-  background: linear-gradient(
-    to bottom,
-    ${color("white")},
-    ${alpha("brand", 0.2)}
-  );
+const colorStyles = css`
+  background-color: ${color("bg-light")};
 `;
 
 export const LayoutRoot = styled.div<LayoutProps>`
   min-height: 100%;
   padding: 1rem;
-  ${props => (props.showScene ? sceneStyles : gradientStyles)};
+  ${props => (props.showScene ? sceneStyles : colorStyles)};
 
   ${breakpointMinMedium} {
     padding: 3rem 4rem;
