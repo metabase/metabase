@@ -176,9 +176,9 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className="link no-decoration"
+          className="link no-decoration flex align-center"
         >
-          <span className="text-white inline-block">
+          <span className="text-white">
             <UserAvatar
               background={color}
               user={{ first_name: getGroupNameLocalized(group) }}

@@ -98,23 +98,25 @@ export function PermissionsTable({
         </thead>
         <tbody>
           {entities.map(entity => {
+            const entityName = (
+              <span className="flex align-center">
+                <Ellipsified>{entity.name}</Ellipsified>
+                {entity.hint && (
+                  <Tooltip tooltip={entity.hint}>
+                    <HintIcon />
+                  </Tooltip>
+                )}
+              </span>
+            );
             return (
               <PermissionsTableRow key={entity.id}>
                 <PermissionsTableCell>
                   {entity.canSelect ? (
                     <EntityNameLink onClick={() => onSelect(entity)}>
-                      <Ellipsified>{entity.name}</Ellipsified>
+                      {entityName}
                     </EntityNameLink>
                   ) : (
-                    <EntityName>
-                      <Ellipsified>{entity.name}</Ellipsified>
-                    </EntityName>
-                  )}
-
-                  {entity.hint && (
-                    <Tooltip tooltip={entity.hint}>
-                      <HintIcon />
-                    </Tooltip>
+                    <EntityName>{entityName}</EntityName>
                   )}
                 </PermissionsTableCell>
 
