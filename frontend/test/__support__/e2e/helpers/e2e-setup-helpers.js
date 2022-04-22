@@ -9,5 +9,6 @@ export function restore(name = "default") {
     url: `/api/testing/restore/${name}`,
     retryOnStatusCodeFailure: true,
     failOnStatusCode: true,
+    timeout: 12000,
   });
 }
