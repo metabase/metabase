@@ -98,7 +98,6 @@ function MainNavbarContainer({
     if (bookmarks?.length !== orderedBookmarks?.length) {
       setOrderedBookmarks(bookmarks as any);
     }
-    console.log("🚀", { bookmarks, orderedBookmarks });
   }, [orderedBookmarks, bookmarks]);
 
   useEffect(() => {
@@ -212,7 +211,7 @@ function MainNavbarContainer({
 
 export default _.compose(
   Bookmarks.loadList({
-    loadingAndErrorWrapper: false,
+    selectorName: "getOrderedList",
   }),
   Collections.load({
     id: ROOT_COLLECTION.id,

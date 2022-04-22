@@ -22,6 +22,12 @@ const Bookmarks = createEntity({
       return BookmarkApi[type].delete({ id });
     },
   },
+  selectors: {
+    getOrderedList: ({ entities }, { entityQuery }) => {
+      const ids = entities.bookmarks_list?.null?.list || [];
+      return ids.map(id => entities.bookmarks[id]);
+    },
+  },
   objectSelectors: {
     getIcon,
   },
