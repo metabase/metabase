@@ -1,7 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.models :refer [Card]]
+            [metabase.models.card :refer [Card]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
@@ -10,8 +10,8 @@
             [metabase.pulse.render.style :as style]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
-            [toucan.db :as db]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (def ^:dynamic *include-buttons*
   "Should the rendered pulse include buttons? (default: `false`)"
