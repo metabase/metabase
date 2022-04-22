@@ -21,6 +21,7 @@ describe("issue 21830", () => {
       },
       req => {
         req.on("response", res => {
+          // throttle the response to simulate a mobile 3G connection
           res.setThrottle(100);
         });
       },
@@ -29,7 +30,7 @@ describe("issue 21830", () => {
     cy.visit("/dashboard/1");
     cy.wait("@getDashboard");
 
-    // It's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
+    // it's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
     editDashboard();
     showDashboardCardActions();
 
