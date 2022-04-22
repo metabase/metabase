@@ -30,7 +30,7 @@ export function issue16938() {
         .click();
 
       cy.findByTestId("object-detail").within(() => {
-        cy.findByText(`Order ${ORDER_ID}`);
+        cy.get("h1").should("have.text", String(ORDER_ID));
       });
     });
   });
