@@ -19,7 +19,7 @@ import {
   getHasOwnDatabase,
   getHasDataAccess,
 } from "metabase/new_query/selectors";
-import { getUser } from "metabase/selectors/user";
+import { getUser, getBookmarks } from "metabase/selectors/user";
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
@@ -40,6 +40,7 @@ function mapStateToProps(state: unknown) {
     currentUser: getUser(state),
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
+    // bookmarks: getBookmarks(state),
   };
 }
 
@@ -213,7 +214,6 @@ function MainNavbarContainer({
 export default _.compose(
   Bookmarks.loadList({
     loadingAndErrorWrapper: false,
-    reload: true,
   }),
   Collections.load({
     id: ROOT_COLLECTION.id,

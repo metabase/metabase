@@ -28,3 +28,7 @@ export const getUserPersonalCollectionId = createSelector(
   [getUser],
   user => (user && user.personal_collection_id) || null,
 );
+
+export const getBookmarks = state => {
+  return state.entities.bookmarks;
+};
