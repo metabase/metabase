@@ -19,6 +19,7 @@ import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
 
+import { Unauthorized } from "metabase/containers/ErrorPages";
 import ItemsDragLayer from "metabase/containers/dnd/ItemsDragLayer";
 import PaginationControls from "metabase/components/PaginationControls";
 
@@ -176,6 +177,10 @@ function CollectionContent({
     sort_column: "name",
     sort_direction: "asc",
   };
+
+  if (isRoot && !collection.can_write) {
+    return <Unauthorized />;
+  }
 
   return (
     <Search.ListLoader
