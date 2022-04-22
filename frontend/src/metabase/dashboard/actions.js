@@ -5,7 +5,7 @@ import _ from "underscore";
 import { t } from "ttag";
 
 import { createAction, createThunkAction } from "metabase/lib/redux";
-import { defer, delay } from "metabase/lib/promise";
+import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
 import Question from "metabase-lib/lib/Question";
@@ -544,8 +544,6 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     // If the dataset_query was filtered then we don't have permisison to view this card, so
     // shortcircuit and return a fake 403
     if (!card.dataset_query) {
-      // introduce delay to avoid setting this request complete before it was set to pending
-      await delay(1);
       return {
         dashcard_id: dashcard.id,
         card_id: card.id,
