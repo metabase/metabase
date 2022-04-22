@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -53,7 +53,7 @@ jobs:
       fail-fast: false
       matrix:
         java-version: [11]
-        edition: [oss, ee]
+        edition: [ee]
         folder:
           # - "admin"
           # - "binning"
