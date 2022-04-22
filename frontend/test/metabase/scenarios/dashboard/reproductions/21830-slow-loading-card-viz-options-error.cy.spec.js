@@ -1,12 +1,13 @@
 import {
-  restore,
   editDashboard,
+  getDashboardCard,
+  restore,
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
 
 describe.skip("issue 21830", () => {
   beforeEach(() => {
-    restore("postgres-12");
+    restore();
     cy.signInAsAdmin();
   });
 
@@ -31,10 +32,10 @@ describe.skip("issue 21830", () => {
     editDashboard();
     showDashboardCardActions();
 
-    cy.icon("palette").click({ force: true });
-
-    cy.wait("@dashcardQuery");
-
-    cy.get(".Modal");
+    getDashboardCard().within(() => {
+      cy.icon("close").should("be.visible");
+      cy.icon("click").should("not.exist");
+      cy.icon("palette").should("not.exist");
+    });
   });
 });
