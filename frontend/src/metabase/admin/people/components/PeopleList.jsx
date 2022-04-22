@@ -1,5 +1,4 @@
 import React, { useEffect } from "react";
-import { bindActionCreators } from "redux";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
@@ -32,18 +31,24 @@ const mapStateToProps = state => ({
   membershipsByUser: getMembershipsByUser(state),
 });
 
-const mapDispatchToProps = dispatch => ({
-  dispatch,
-  ...bindActionCreators(
-    {
-      createMembership,
-      deleteMembership,
-      updateMembership,
-      loadMemberships,
-    },
-    dispatch,
-  ),
-});
+const mapDispatchToProps = {
+  createMembership,
+  deleteMembership,
+  updateMembership,
+  loadMemberships,
+  confirmDeleteMembershipAction: async (membershipId, userMemberships, view) =>
+    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+      membershipId,
+      userMemberships,
+      view,
+    ),
+  confirmUpdateMembershipAction: async (membership, userMemberships, view) =>
+    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+      membership,
+      userMemberships,
+      view,
+    ),
+};
 
 const PeopleList = ({
   currentUser,
@@ -57,9 +62,10 @@ const PeopleList = ({
   createMembership,
   deleteMembership,
   updateMembership,
+  confirmDeleteMembershipAction,
+  confirmUpdateMembershipAction,
   reloadUsers,
   reloadGroups,
-  dispatch,
   onNextPage,
   onPreviousPage,
 }) => {
@@ -125,12 +131,10 @@ const PeopleList = ({
     show({
       ...confirmation,
       onConfirm: async () => {
-        await dispatch(
-          PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
-            updatedMembership,
-            membershipsByUser[currentUser.id],
-            "people",
-          ),
+        await confirmUpdateMembershipAction(
+          updatedMembership,
+          membershipsByUser[currentUser.id],
+          "people",
         );
         reloadGroups();
       },
@@ -157,12 +161,10 @@ const PeopleList = ({
     show({
       ...confirmation,
       onConfirm: async () => {
-        await dispatch(
-          PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
-            membershipId,
-            membershipsByUser[currentUser.id],
-            "people",
-          ),
+        await confirmDeleteMembershipAction(
+          membershipId,
+          membershipsByUser[currentUser.id],
+          "people",
         );
         reloadGroups();
       },
@@ -266,9 +268,10 @@ PeopleList.propTypes = {
   createMembership: PropTypes.func.isRequired,
   deleteMembership: PropTypes.func.isRequired,
   updateMembership: PropTypes.func.isRequired,
+  confirmDeleteMembershipAction: PropTypes.func.isRequired,
+  confirmUpdateMembershipAction: PropTypes.func.isRequired,
   onNextPage: PropTypes.func,
   onPreviousPage: PropTypes.func,
-  dispatch: PropTypes.func.isRequired,
   reloadUsers: PropTypes.func.isRequired,
   reloadGroups: PropTypes.func.isRequired,
   metadata: PropTypes.shape({

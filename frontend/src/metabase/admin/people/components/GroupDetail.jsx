@@ -1,6 +1,5 @@
 /* eslint-disable react/prop-types */
 import React, { useEffect, useState } from "react";
-import { bindActionCreators } from "redux";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
@@ -54,18 +53,22 @@ const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
 });
 
-const mapDispatchToProps = dispatch => ({
-  dispatch,
-  ...bindActionCreators(
-    {
-      createMembership,
-      deleteMembership,
-      updateMembership,
-      loadMemberships,
-    },
-    dispatch,
-  ),
-});
+const mapDispatchToProps = {
+  createMembership,
+  deleteMembership,
+  updateMembership,
+  loadMemberships,
+  confirmDeleteMembershipAction: (membershipId, userMemberships) =>
+    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+      membershipId,
+      userMemberships,
+    ),
+  confirmUpdateMembershipAction: (membership, userMemberships) =>
+    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+      membership,
+      userMemberships,
+    ),
+};
 
 const GroupDetail = ({
   currentUser,
@@ -77,7 +80,8 @@ const GroupDetail = ({
   updateMembership,
   deleteMembership,
   loadMemberships,
-  dispatch,
+  confirmDeleteMembershipAction,
+  confirmUpdateMembershipAction,
 }) => {
   const { modalContent, show } = useConfirmation();
   const [addUserVisible, setAddUserVisible] = useState(false);
@@ -121,14 +125,11 @@ const GroupDetail = ({
 
     show({
       ...confirmation,
-      onConfirm: async () => {
-        dispatch(
-          PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
-            membership,
-            membershipsByUser[currentUser.id],
-          ),
-        );
-      },
+      onConfirm: () =>
+        confirmUpdateMembershipAction(
+          membership,
+          membershipsByUser[currentUser.id],
+        ),
     });
   };
 
@@ -145,14 +146,11 @@ const GroupDetail = ({
 
     show({
       ...confirmation,
-      onConfirm: async () => {
-        dispatch(
-          PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
-            membershipId,
-            membershipsByUser[currentUser.id],
-          ),
-        );
-      },
+      onConfirm: () =>
+        confirmDeleteMembershipAction(
+          membershipId,
+          membershipsByUser[currentUser.id],
+        ),
     });
   };
 
