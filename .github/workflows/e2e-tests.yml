@@ -61,6 +61,7 @@ jobs:
         folder:
           - "binning"
           - "dashboard-filters"
+          - "dashboard-filters-sql"
           - "downloads"
           - "moderation"
     services:
