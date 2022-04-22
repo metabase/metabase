@@ -100,7 +100,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.signInAsNormalUser();
       });
 
-      it("allows accessing tools, audit, and troubleshooting for non-admins", () => {
+      it.skip("allows accessing tools, audit, and troubleshooting for non-admins", () => {
         cy.visit("/");
         cy.intercept("POST", "/api/dataset").as("dataset");
         cy.icon("gear").click();
