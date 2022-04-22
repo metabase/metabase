@@ -1,4 +1,4 @@
-import { assocIn, dissoc } from "icepick";
+import { dissoc } from "icepick";
 
 import { createEntity } from "metabase/lib/entities";
 import Collections from "metabase/entities/collections";
@@ -65,13 +65,13 @@ const Bookmarks = createEntity({
       return dissoc(state, key);
     }
 
-    if (type === "metabase/qb/API_UPDATE_QUESTION") {
-      const { id, query_type } = payload;
-      const entityType = query_type === "query" ? "card" : query_type;
+    // if (type === "metabase/qb/API_UPDATE_QUESTION") {
+    //   const { id, query_type } = payload;
+    //   const entityType = query_type === "query" ? "card" : query_type;
 
-      const key = entityType + "-" + id;
-      return assocIn(state, [key, "name"], payload.name);
-    }
+    //   const key = entityType + "-" + id;
+    //   return assocIn(state, [key, "name"], payload.name);
+    // }
 
     if (type === "bookmarks/REORDER") {
       console.log("🚀", { bookmarks });
