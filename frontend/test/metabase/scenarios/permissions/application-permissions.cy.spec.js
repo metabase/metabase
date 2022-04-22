@@ -102,6 +102,7 @@ describeEE("scenarios > admin > permissions > application", () => {
 
       it("allows accessing tools, audit, and troubleshooting for non-admins", () => {
         cy.visit("/");
+        cy.intercept("POST", "/api/dataset").as("dataset");
         cy.icon("gear").click();
 
         cy.findByText("Admin settings").click();
@@ -115,7 +116,8 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.findByText("Audit").click();
         cy.url().should("include", "/admin/audit/members/overview");
         cy.findByText("All members").click();
-        cy.findByText("Bobby Tables");
+        cy.wait("@dataset");
+        cy.findByTextEnsureVisible("Bobby Tables");
 
         // Troubleshooting smoke test
         cy.findByText("Troubleshooting").click();
