@@ -8,5 +8,6 @@ export function restore(name = "default") {
     method: "POST",
     url: `/api/testing/restore/${name}`,
     retryOnStatusCodeFailure: true,
+    failOnStatusCode: true,
   });
 }
