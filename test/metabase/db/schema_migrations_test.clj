@@ -575,3 +575,27 @@
         (is (= #{"All Users"} (get-perms "/general/subscription/")))
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
+
+(deftest grant-all-users-root-snippets-collection-readwrite-perms-test
+  (testing "Migration v43.00-061: create a Root Snippets Collection entry for All Users"
+    (letfn [(all-users-group-id []
+              (-> (db/query {:select [:id], :from [PermissionsGroup],
+                             :where [:= :name perms-group/all-users-group-name]})
+                  first
+                  :id))
+            (get-perms [object] (map :name (db/query {:select    [:pg.name]
+                                                      :from      [[Permissions :p]]
+                                                      :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                                      :where     [:= :p.object object]})))]
+      (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
+        (is (= [] (get-perms "/general/subscription/")))
+        (migrate!)
+        (is (= ["All Users"] (get-perms "/collection/namespace/snippets/root/"))))
+
+      (testing "entry already exists: don't create an entry"
+        (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
+          (db/execute! {:insert-into Permissions
+                        :values      [{:object   "/collection/namespace/snippets/root/"
+                                       :group_id (all-users-group-id)}]})
+          (migrate!)
+          (is (= ["All Users"] (get-perms "/collection/namespace/snippets/root/"))))))))
