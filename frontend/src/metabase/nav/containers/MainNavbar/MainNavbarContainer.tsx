@@ -163,13 +163,17 @@ function MainNavbarContainer({
     preparedCollections.push(...userPersonalCollections);
     preparedCollections.push(...nonPersonalOrArchivedCollections);
 
-    const root: CollectionTreeItem = {
-      ...rootCollection,
-      icon: getCollectionIcon(rootCollection),
-      children: [],
-    };
+    const tree = buildCollectionTree(preparedCollections);
 
-    return [root, ...buildCollectionTree(preparedCollections)];
+    if (rootCollection.can_write) {
+      tree.unshift({
+        ...rootCollection,
+        icon: getCollectionIcon(rootCollection),
+        children: [],
+      });
+    }
+
+    return tree;
   }, [rootCollection, collections, currentUser]);
 
   const reorderBookmarks = useCallback(
