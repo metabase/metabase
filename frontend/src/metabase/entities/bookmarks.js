@@ -24,8 +24,10 @@ const Bookmarks = createEntity({
   },
   selectors: {
     getOrderedList: ({ entities }, { entityQuery }) => {
-      const ids = entities.bookmarks_list?.null?.list || [];
-      return ids.map(id => entities.bookmarks[id]);
+      const ids = entities.bookmarks_list?.null?.list;
+      return entities.bookmarks_list && ids
+        ? ids.map(id => entities.bookmarks[id]).filter(Boolean)
+        : [];
     },
   },
   objectSelectors: {
@@ -33,8 +35,6 @@ const Bookmarks = createEntity({
   },
   actions: {
     reorder: (bookmarks, oldIndex, newIndex) => async dispatch => {
-      console.log("🚀", { bookmarks, oldIndex, newIndex });
-      // dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
       const element = bookmarks[oldIndex];
 
       bookmarks.splice(oldIndex, 1);

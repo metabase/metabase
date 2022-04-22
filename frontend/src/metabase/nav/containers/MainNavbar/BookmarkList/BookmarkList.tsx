@@ -105,12 +105,7 @@ const BookmarkList = ({
   onDeleteBookmark,
   reorderBookmarks,
 }: CollectionSidebarBookmarksProps) => {
-  const [orderedBookmarks, setOrderedBookmarks] = useState(bookmarks);
   const [isSorting, setIsSorting] = useState(false);
-
-  useEffect(() => {
-    setOrderedBookmarks(bookmarks);
-  }, [bookmarks]);
 
   const onToggleBookmarks = useCallback(isVisible => {
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
@@ -131,6 +126,8 @@ const BookmarkList = ({
     reorderBookmarks({ newIndex, oldIndex });
   };
 
+  // console.log("🚀", "Hi hi hi hi", { bookmarks });
+
   return (
     <CollapseSection
       header={<SidebarHeading>{t`Bookmarks`}</SidebarHeading>}
@@ -147,7 +144,7 @@ const BookmarkList = ({
         lockAxis="y"
         helperClass="sorting"
       >
-        {orderedBookmarks.map((bookmark, index) => (
+        {bookmarks.map((bookmark, index) => (
           <BookmarkItem
             bookmark={bookmark}
             isSorting={isSorting}
