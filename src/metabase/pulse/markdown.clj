@@ -204,10 +204,11 @@
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 
-(defn- ^:private strip-tag [content tag]
+(defn- ^:private strip-tag
   "Given the value from the :content field of a Markdown AST node, and a keyword representing a tag type, converts all
   instances of the tag in the content to `:default` tags. This is used to suppress rendering of nested bold and italic
   tags, which Slack doesn't support."
+  [content tag]
   (walk/postwalk
    (fn [node]
      (if (and (map? node) (= (:tag node) tag))
