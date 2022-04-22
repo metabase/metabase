@@ -398,7 +398,9 @@ function ViewTitleHeaderRightSide(props) {
     onCollapseFilters,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const isReadOnlyQuery = question.query().readOnly();
+  const query = question.query();
+  const isReadOnlyQuery = query.readOnly();
+  const canEditQuery = !isReadOnlyQuery;
   const canRunAdhocQueries = !isReadOnlyQuery;
   const hasExploreResultsLink =
     isNative &&
@@ -406,12 +408,15 @@ function ViewTitleHeaderRightSide(props) {
     canRunAdhocQueries &&
     MetabaseSettings.get("enable-nested-queries");
 
+  const isNewQuery = !query.hasData();
+  const hasSaveButton = !isDataset && !!isDirty && (isNewQuery || canEditQuery);
+
   return (
     <div
       className="ml-auto flex align-center"
       data-testid="qb-header-action-panel"
     >
-      {!!isDirty && !isDataset && !isReadOnlyQuery && (
+      {hasSaveButton && (
         <SaveButton
           disabled={!question.canRun()}
           data-metabase-event={
