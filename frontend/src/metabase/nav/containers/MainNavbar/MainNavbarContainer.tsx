@@ -28,7 +28,12 @@ import * as Urls from "metabase/lib/urls";
 
 import { SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
-import { NavRoot, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import {
+  Sidebar,
+  NavRoot,
+  LoadingContainer,
+  LoadingTitle,
+} from "./MainNavbar.styled";
 
 function mapStateToProps(state: unknown) {
   return {
@@ -173,28 +178,32 @@ function MainNavbarContainer({
   };
 
   return (
-    <NavRoot isOpen={isOpen}>
-      {allFetched && rootCollection ? (
-        <MainNavbarView
-          {...props}
-          bookmarks={orderedBookmarks.length > 0 ? orderedBookmarks : bookmarks}
-          isOpen={isOpen}
-          currentUser={currentUser}
-          collections={collectionTree}
-          hasOwnDatabase={hasOwnDatabase}
-          selectedItem={selectedItem}
-          hasDataAccess={hasDataAccess}
-          reorderBookmarks={reorderBookmarks}
-          handleCloseNavbar={closeNavbar}
-          handleLogout={logout}
-        />
-      ) : (
-        <LoadingContainer>
-          <LoadingSpinner />
-          <LoadingTitle>{t`Loading…`}</LoadingTitle>
-        </LoadingContainer>
-      )}
-    </NavRoot>
+    <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+      <NavRoot isOpen={isOpen}>
+        {allFetched && rootCollection ? (
+          <MainNavbarView
+            {...props}
+            bookmarks={
+              orderedBookmarks.length > 0 ? orderedBookmarks : bookmarks
+            }
+            isOpen={isOpen}
+            currentUser={currentUser}
+            collections={collectionTree}
+            hasOwnDatabase={hasOwnDatabase}
+            selectedItem={selectedItem}
+            hasDataAccess={hasDataAccess}
+            reorderBookmarks={reorderBookmarks}
+            handleCloseNavbar={closeNavbar}
+            handleLogout={logout}
+          />
+        ) : (
+          <LoadingContainer>
+            <LoadingSpinner />
+            <LoadingTitle>{t`Loading…`}</LoadingTitle>
+          </LoadingContainer>
+        )}
+      </NavRoot>
+    </Sidebar>
   );
 }
 
