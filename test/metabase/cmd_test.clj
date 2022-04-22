@@ -1,6 +1,6 @@
 (ns metabase.cmd-test
-  (:require [metabase.cmd :as cmd]
-            [clojure.test :as t :refer [deftest is]]))
+  (:require [clojure.test :as t :refer [deftest is]]
+            [metabase.cmd :as cmd]))
 
 (deftest error-message-test
   (is (= ["No command given."] (#'cmd/cmd->fn nil [])))
