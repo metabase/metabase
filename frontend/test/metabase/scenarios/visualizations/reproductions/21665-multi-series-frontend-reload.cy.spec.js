@@ -30,7 +30,7 @@ describe("issue 21665", () => {
         "GET",
         `/api/dashboard/${id}`,
         cy.spy().as("dashboardLoaded"),
-      );
+      ).as("getDashboard");
 
       cy.wrap(id).as("dashboardId");
 

@@ -24,3 +24,4 @@ import "./audit_app";
 import "./license";
 import "./feature_level_permissions";
 import "./application_permissions";
+import "./group_managers";

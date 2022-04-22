@@ -1,4 +1,5 @@
 import {
+  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_APPLICATION_PERMISSIONS,
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
@@ -8,14 +9,14 @@ import getRoutes from "./routes";
 import { t } from "ttag";
 import { canManageSubscriptions } from "./selectors";
 import applicationPermissionsReducer from "./reducer";
-import { NAV_PERMISSION_GUARD } from "metabase/nav/utils";
-import { canAccessMonitoringItems, canAccessSettings } from "./utils";
+import {
+  monitoringPermissionAllowedPathGetter,
+  settingsPermissionAllowedPathGetter,
+} from "./utils";
 
 if (hasPremiumFeature("advanced_permissions")) {
-  NAV_PERMISSION_GUARD["audit"] = canAccessMonitoringItems;
-  NAV_PERMISSION_GUARD["tools"] = canAccessMonitoringItems;
-  NAV_PERMISSION_GUARD["troubleshooting"] = canAccessMonitoringItems;
-  NAV_PERMISSION_GUARD["settings"] = canAccessSettings;
+  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(monitoringPermissionAllowedPathGetter);
+  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS.push(settingsPermissionAllowedPathGetter);
 
   PLUGIN_APPLICATION_PERMISSIONS.getRoutes = getRoutes;
   PLUGIN_APPLICATION_PERMISSIONS.tabs = [

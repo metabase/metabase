@@ -221,7 +221,9 @@
       member-type)))
 
 (defn- row->types [row]
-  (into {} (for [[field-name field-val] row]
+  (into {} (for [[field-name field-val] row
+                 ;; We put top-level array row type semantics on JSON roadmap but skip for now
+                 :when (map? field-val)]
              (let [flat-row (flattened-row field-name field-val)]
                (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 

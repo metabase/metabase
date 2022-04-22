@@ -449,16 +449,12 @@ export const ICON_PATHS: Record<string, any> = {
   shield:
     "M27.922 5.804c-5.157 0-10.667-3.294-13.46-5.804C10.69 3.16 6.118 5.333 1.57 5.804.314 5.804 0 7.029 0 7.529 0 16.314 2.04 29.333 14.62 32 27.52 29.172 29.73 11.892 28.856 7.059c-.144-.797-.677-1.255-.934-1.255z",
   sidebar_closed: {
-    svg: `
-    <svg width="32" height="32" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path fill-rule="evenodd" clip-rule="evenodd" d="M23.167 6H8a4 4 0 0 0-4 4v13a4 4 0 0 0 4 4h15.167a4 4 0 0 0 4-4V10a4 4 0 0 0-4-4ZM6 10a2 2 0 0 1 2-2h2v17H8a2 2 0 0 1-2-2V10Zm6 15h11.167a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H12v17Z" fill="#509EE3"/>
-</svg>
-
-    `,
+    svg:
+      '<path fill-rule="evenodd" clip-rule="evenodd" d="M23.167 6H8a4 4 0 0 0-4 4v13a4 4 0 0 0 4 4h15.167a4 4 0 0 0 4-4V10a4 4 0 0 0-4-4ZM6 10a2 2 0 0 1 2-2h2v17H8a2 2 0 0 1-2-2V10Zm6 15h11.167a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H12v17Z" />',
   },
   sidebar_open: {
-    svg: `
-      <path fill-rule="evenodd" clip-rule="evenodd" d="M23.167 6H8a4 4 0 0 0-4 4v13a4 4 0 0 0 4 4h15.167a4 4 0 0 0 4-4V10a4 4 0 0 0-4-4ZM6 10a2 2 0 0 1 2-2h5v17H8a2 2 0 0 1-2-2V10Zm9 15h8.167a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H15v17Z" fill="#509EE3"/><path opacity=".34" fill="#509EE3" d="M6 8h7v17H6z"/>`,
+    svg:
+      '<path fill-rule="evenodd" clip-rule="evenodd" d="M23.167 6H8a4 4 0 0 0-4 4v13a4 4 0 0 0 4 4h15.167a4 4 0 0 0 4-4V10a4 4 0 0 0-4-4ZM6 10a2 2 0 0 1 2-2h5v17H8a2 2 0 0 1-2-2V10Zm9 15h8.167a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2H15v17Z" /><path opacity=".34" d="M6 8h7v17H6z"/>',
   },
   slack_colorized: {
     img: "app/assets/img/slack.png",

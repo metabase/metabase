@@ -1,9 +1,12 @@
-/* eslint-disable react/prop-types */
 import { drillDownForDimensions } from "metabase/modes/lib/actions";
 
 import { t } from "ttag";
 
-export default ({ question, clicked, settings }) => {
+export default ({ question, clicked }) => {
+  if (!question.query().isEditable()) {
+    return [];
+  }
+
   const dimensions = (clicked && clicked.dimensions) || [];
   const drilldown = drillDownForDimensions(dimensions, question.metadata());
   if (!drilldown) {
