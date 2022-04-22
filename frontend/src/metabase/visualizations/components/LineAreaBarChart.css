@@ -196,8 +196,11 @@
 }
 
 .LineAreaBarChart .dc-chart .voronoi {
-  cursor: pointer;
   fill: transparent;
+}
+
+.LineAreaBarChart .dc-chart .voronoi-drill {
+  cursor: pointer;
 }
 
 /* we put the brush behind everything so this isn't necessary
