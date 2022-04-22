@@ -34,6 +34,16 @@
     (is (= "*_both_*" (mrkdwn "**_both_**")))
     (is (= "_*both*_" (mrkdwn "___both___"))))
 
+  (testing "Nested bold or italic only render the top-level syntax"
+    (is (= "*bold extra bold*"           (mrkdwn "**bold **extra bold****")))
+    (is (= "*bold extra extra bold*"     (mrkdwn "**bold **extra **extra bold******")))
+    (is (= "*bold extra bold*"           (mrkdwn "__bold __extra bold____")))
+    (is (= "*bold extra extra bold*"     (mrkdwn "__bold __extra __extra bold______")))
+    (is (= "_italic extra italic_"       (mrkdwn "*italic *extra italic**")))
+    (is (= "_italic extra extra italic_" (mrkdwn "*italic *extra *extra italic***")))
+    (is (= "_italic extra italic_"       (mrkdwn "_italic _extra italic__")))
+    (is (= "_italic extra extra italic_" (mrkdwn "_italic _extra _extra italic___"))))
+
   (testing "Lines are correctly split or joined"
     (is (= "foo bar"  (mrkdwn "foo\nbar")))
     (is (= "foo\nbar" (mrkdwn "foo\n\nbar")))

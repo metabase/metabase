@@ -2,6 +2,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [metabase.public-settings :as public-settings])
   (:import [com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock
             HardLineBreak Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
@@ -203,8 +204,19 @@
         (.. (URI. site-url) (resolve uri) toString)
         uri))))
 
+(defn- ^:private strip-tag [content tag]
+  "Given the value from the :content field of a Markdown AST node, and a keyword representing a tag type, converts all
+  instances of the tag in the content to `:default` tags. This is used to suppress rendering of nested bold and italic
+  tags, which Slack doesn't support."
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (= (:tag node) tag))
+        (assoc node :tag :default)
+        node))
+   content))
+
 (defmulti ast->slack
-  "Takes an AST representing Markdown input, and converts it to a mrkdwn string that will render nicely in Slack.
+  "Takes an AST representing Markdown input, and converts it to a string that will render nicely in Slack.
 
   Some of the differences to Markdown include:
   * All headers are just rendered as bold text.
@@ -270,11 +282,11 @@
 
 (defmethod ast->slack :bold
   [{content :content}]
-  ["*" (resolved-content content) "*"])
+  ["*" (resolved-content (strip-tag content :bold)) "*"])
 
 (defmethod ast->slack :italic
   [{content :content}]
-  ["_" (resolved-content content) "_"])
+  ["_" (resolved-content (strip-tag content :italic)) "_"])
 
 (defmethod ast->slack :code
   [{content :content}]
