@@ -5,13 +5,14 @@ import {
   showDashboardCardActions,
 } from "__support__/e2e/cypress";
 
-describe.skip("issue 21830", () => {
+describe("issue 21830", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
   it("slow loading card visualization options click shouldn't lead to error (metabase#21830)", () => {
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept(
       {
         method: "POST",
@@ -20,15 +21,15 @@ describe.skip("issue 21830", () => {
       },
       req => {
         req.on("response", res => {
-          // Throttle the response to 500 Kbps to simulate a mobile 3G connection
-          res.setThrottle(500);
+          res.setThrottle(100);
         });
       },
-    ).as("dashcardQuery");
+    ).as("getCardQuery");
 
     cy.visit("/dashboard/1");
+    cy.wait("@getDashboard");
 
-    // It's crucial that we try to click on this icon BEFORE we wait for the `dashcardQuery` response!
+    // It's crucial that we try to click on this icon BEFORE we wait for the `getCardQuery` response!
     editDashboard();
     showDashboardCardActions();
 
@@ -36,6 +37,14 @@ describe.skip("issue 21830", () => {
       cy.icon("close").should("be.visible");
       cy.icon("click").should("not.exist");
       cy.icon("palette").should("not.exist");
+    });
+
+    cy.wait("@getCardQuery");
+
+    getDashboardCard().within(() => {
+      cy.icon("close").should("be.visible");
+      cy.icon("click").should("be.visible");
+      cy.icon("palette").should("be.visible");
     });
   });
 });
