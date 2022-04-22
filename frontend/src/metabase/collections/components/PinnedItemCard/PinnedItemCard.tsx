@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 
-import { Collection } from "metabase-types/api";
-
+import { BookmarksType, Collection } from "metabase-types/api";
 import Tooltip from "metabase/components/Tooltip";
 import { Item } from "metabase/collections/utils";
 
@@ -18,6 +17,9 @@ import {
 } from "./PinnedItemCard.styled";
 
 type Props = {
+  bookmarks?: BookmarksType;
+  createBookmark: (id: string, collection: string) => void;
+  deleteBookmark: (id: string, collection: string) => void;
   className?: string;
   item: Item;
   collection: Collection;
@@ -36,6 +38,9 @@ function getDefaultDescription(model: string) {
 }
 
 function PinnedItemCard({
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
   className,
   item,
   collection,
@@ -67,6 +72,9 @@ function PinnedItemCard({
           <Header>
             <ItemIcon name={icon} />
             <HoverMenu
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
               item={item}
               collection={collection}
               onCopy={onCopy}

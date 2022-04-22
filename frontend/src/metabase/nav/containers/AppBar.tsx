@@ -20,7 +20,9 @@ import {
   SearchBarContainer,
   SearchBarContent,
   RowLeft,
+  RowMiddle,
   RowRight,
+  SidebarButtonContainer,
 } from "./AppBar.styled";
 
 type Props = {
@@ -31,6 +33,14 @@ type Props = {
   handleCloseSidebar: () => void;
   onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
 };
+
+function HomepageLink({ handleClick }: { handleClick: () => void }) {
+  return (
+    <LogoLink to="/" onClick={handleClick} data-metabase-event="Navbar;Logo">
+      <LogoIcon size={24} />
+    </LogoLink>
+  );
+}
 
 function AppBar({
   isSidebarOpen,
@@ -69,23 +79,22 @@ function AppBar({
 
   return (
     <AppBarRoot>
-      <RowLeft>
-        <LogoLink
-          to="/"
-          onClick={onLogoClick}
-          data-metabase-event="Navbar;Logo"
-        >
-          <LogoIcon size={24} />
-        </LogoLink>
-        {!isSearchActive && (
-          <Tooltip tooltip={sidebarButtonTooltip}>
+      <RowLeft isSearchActive={isSearchActive}>
+        <HomepageLink handleClick={onLogoClick} />
+        <SidebarButtonContainer>
+          <Tooltip tooltip={sidebarButtonTooltip} isEnabled={!isSmallScreen()}>
             <SidebarButton
               isSidebarOpen={isSidebarOpen}
               onClick={onToggleSidebarClick}
             />
           </Tooltip>
-        )}
+        </SidebarButtonContainer>
       </RowLeft>
+      {!isSearchActive && (
+        <RowMiddle>
+          <HomepageLink handleClick={onLogoClick} />
+        </RowMiddle>
+      )}
       <RowRight>
         <SearchBarContainer>
           <SearchBarContent>

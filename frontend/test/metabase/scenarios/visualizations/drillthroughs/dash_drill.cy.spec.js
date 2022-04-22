@@ -92,16 +92,6 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
         }).then(({ body: { id: CARD_ID } }) => {
           cy.createDashboard({ name: DASHBOARD_NAME }).then(
             ({ body: { id: DASHBOARD_ID } }) => {
-              // Prepare to wait for this specific XHR:
-              // We need to do this because Cypress sees the string that is "card title" before card is fully rendered.
-              // That string then gets detached from DOM just prior to this XHR and gets re-rendered again inside a new DOM element.
-              // Cypress was complaining it cannot click on a detached element.
-
-              cy.intercept(
-                "POST",
-                `/api/dashboard/${DASHBOARD_ID}/dashcard/*/card/${CARD_ID}/query`,
-              ).as("dashCardQuery");
-
               // Add previously created question to the new dashboard
               cy.request("POST", `/api/dashboard/${DASHBOARD_ID}/cards`, {
                 cardId: CARD_ID,
@@ -112,8 +102,12 @@ describe("scenarios > visualizations > drillthroughs > dash_drill", () => {
               visitDashboard(DASHBOARD_ID);
               cy.findByText(DASHBOARD_NAME);
 
-              cy.wait("@dashCardQuery"); // wait for the title to be re-rendered before we can click on it
+              cy.intercept("POST", `/api/card/${CARD_ID}/query`).as(
+                "cardQuery",
+              );
+
               cy.findByText(CARD_NAME).click();
+              cy.wait("@cardQuery");
             },
           );
         });

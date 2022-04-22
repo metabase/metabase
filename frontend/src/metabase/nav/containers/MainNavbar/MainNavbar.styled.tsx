@@ -107,6 +107,10 @@ export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   color: ${color("text-light")};
 `;
 
+export const HomePageLink = styled(SidebarLink)`
+  padding-left: 12px;
+`;
+
 export const BrowseLink = styled(SidebarLink)`
   padding-left: 14px;
 `;

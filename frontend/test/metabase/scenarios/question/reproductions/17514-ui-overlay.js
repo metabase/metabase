@@ -93,7 +93,6 @@ export function issue17514() {
         closeModal();
 
         saveDashboard();
-        cy.wait("@getDashboard");
 
         filterWidget().click();
         setAdHocFilter({ timeBucket: "years" });

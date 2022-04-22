@@ -128,28 +128,29 @@ export default class Text extends Component {
           )}
         </div>
       );
-    } else {
-      return (
-        <div
-          className={cx(className, styles.Text, {
-            /* if the card is not showing a background we should adjust the left
-             * padding to help align the titles with the wrapper */
-            pl0: !settings["dashcard.background"],
-            "Text--single-row": isSingleRow,
-          })}
-        >
-          <ReactMarkdown
-            remarkPlugins={REMARK_PLUGINS}
-            className={cx(
-              "full flex-full flex flex-column text-card-markdown",
-              styles["text-card-markdown"],
-              getSettingsStyle(settings),
-            )}
-          >
-            {settings.text}
-          </ReactMarkdown>
-        </div>
-      );
     }
+
+    return (
+      <div
+        className={cx(className, styles.Text, {
+          // if the card is not showing a background
+          // we should adjust the left padding
+          // to help align the titles with the wrapper
+          pl0: !settings["dashcard.background"],
+          "Text--single-row": isSingleRow,
+        })}
+      >
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          className={cx(
+            "full flex-full flex flex-column text-card-markdown",
+            styles["text-card-markdown"],
+            getSettingsStyle(settings),
+          )}
+        >
+          {settings.text}
+        </ReactMarkdown>
+      </div>
+    );
   }
 }

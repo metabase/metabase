@@ -189,8 +189,7 @@
                       [:user.is_superuser :is-superuser?]
                       [:user.locale :user-locale]]
           :from      [[Session :session]]
-          :left-join [[User :user] [:= :session.user_id :user.id]
-                      ]
+          :left-join [[User :user] [:= :session.user_id :user.id]]
           :where     [:and
                       [:= :user.is_active true]
                       [:= :session.id (hsql/raw "?")]
