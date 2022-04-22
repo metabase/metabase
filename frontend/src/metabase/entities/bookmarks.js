@@ -55,9 +55,10 @@ const Bookmarks = createEntity({
       const key = "dashboard-" + payload?.object?.id;
       return dissoc(state, key);
     }
-    if (type === Questions.actionTypes.UPDATE) {
+
+    if (type === Dashboards.actionTypes.UPDATE) {
       const { id, name } = payload?.object;
-      const key = "card-" + id;
+      const key = "dashboard-" + id;
 
       if (name !== state[key].name) {
         return assocIn(state, [key, "name"], name);
