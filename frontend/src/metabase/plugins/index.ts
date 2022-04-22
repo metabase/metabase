@@ -65,7 +65,7 @@ export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 export const PLUGIN_SELECTORS = {
   getHasCustomLogo: (state: State) => false,
   getHasCustomColors: (state: State) => false,
-  getHasCustomBrand: (state: State) => false,
+  getHasCustomBranding: (state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS = {};

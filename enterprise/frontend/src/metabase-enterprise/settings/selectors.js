@@ -21,7 +21,7 @@ export const getHasCustomLogo = createSelector(
   logoUrl => logoUrl !== DEFAULT_LOGO_URL,
 );
 
-export const getHasCustomBrand = createSelector(
+export const getHasCustomBranding = createSelector(
   [getHasCustomLogo, getHasCustomColors],
   (hasCustomLogo, hasCustomColors) => hasCustomLogo || hasCustomColors,
 );

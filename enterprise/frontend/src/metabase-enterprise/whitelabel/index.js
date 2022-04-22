@@ -10,7 +10,7 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getHasCustomBrand,
+  getHasCustomBranding,
   getHasCustomColors,
   getHasCustomLogo,
 } from "metabase-enterprise/settings/selectors";
@@ -78,4 +78,4 @@ if (hasPremiumFeature("whitelabel")) {
 // these selectors control whitelabeling UI
 PLUGIN_SELECTORS.getHasCustomLogo = getHasCustomLogo;
 PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
-PLUGIN_SELECTORS.getHasCustomBrand = getHasCustomBrand;
+PLUGIN_SELECTORS.getHasCustomBranding = getHasCustomBranding;
