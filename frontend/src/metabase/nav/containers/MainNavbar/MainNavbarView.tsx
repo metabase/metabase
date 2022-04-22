@@ -49,6 +49,7 @@ type Props = {
   selectedItem: SelectedItem;
   handleCloseNavbar: () => void;
   handleLogout: () => void;
+  handleCreateNewCollection: () => void;
   reorderBookmarks: ({
     newIndex,
     oldIndex,
@@ -72,6 +73,7 @@ function MainNavbarView({
   selectedItem,
   hasDataAccess,
   reorderBookmarks,
+  handleCreateNewCollection,
   handleCloseNavbar,
   handleLogout,
 }: Props) {
@@ -115,7 +117,10 @@ function MainNavbarView({
         )}
 
         <SidebarSection>
-          <CollectionSectionHeading currentUser={currentUser} />
+          <CollectionSectionHeading
+            currentUser={currentUser}
+            handleCreateNewCollection={handleCreateNewCollection}
+          />
           <Tree
             data={collections}
             selectedId={isCollectionSelected ? selectedItem.id : undefined}
@@ -175,29 +180,44 @@ function MainNavbarView({
 
 interface CollectionSectionHeadingProps {
   currentUser: User;
+  handleCreateNewCollection: () => void;
 }
 
 function CollectionSectionHeading({
   currentUser,
+  handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ onClose }) => (
+    ({ closePopover }) => (
       <CollectionMenuList>
+        <SidebarLink
+          icon="add"
+          onClick={() => {
+            closePopover();
+            handleCreateNewCollection();
+          }}
+        >
+          {t`New collection`}
+        </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
             icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
             url={OTHER_USERS_COLLECTIONS_URL}
-            onClick={onClose}
+            onClick={closePopover}
           >
             {t`Other users' personal collections`}
           </SidebarLink>
         )}
-        <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
+        <SidebarLink
+          icon="view_archive"
+          url={ARCHIVE_URL}
+          onClick={closePopover}
+        >
           {t`View archive`}
         </SidebarLink>
       </CollectionMenuList>
     ),
-    [currentUser],
+    [currentUser, handleCreateNewCollection],
   );
 
   return (
