@@ -197,7 +197,7 @@ export const ObjectDetailWrapper = ({
 }: {
   children: JSX.Element | JSX.Element[];
 }) => (
-  <div className="scroll-y pt2 px4">
+  <div className="scroll-y pt2 px4" data-testid="object-detail">
     <div className="ObjectDetail bordered rounded">{children}</div>
   </div>
 );
