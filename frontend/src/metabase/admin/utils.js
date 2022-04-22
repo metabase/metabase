@@ -1,14 +1,14 @@
 import { connect } from "react-redux";
 import { UserAuthWrapper } from "redux-auth-wrapper";
 import { routerActions, replace } from "react-router-redux";
-import { canAccessPath } from "metabase/nav/utils";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 import { getUser } from "metabase/selectors/user";
 
 export const createAdminRouteGuard = (routeKey, Component) => {
   const Wrapper = UserAuthWrapper({
-    predicate: currentUser => canAccessPath(routeKey, currentUser),
+    predicate: paths => paths?.find(path => path.key === routeKey) != null,
     failureRedirectPath: "/unauthorized",
-    authSelector: state => state.currentUser,
+    authSelector: getAdminPaths,
     allowRedirectBack: false,
     wrapperDisplayName: `CanAccess(${routeKey})`,
     redirectAction: routerActions.replace,

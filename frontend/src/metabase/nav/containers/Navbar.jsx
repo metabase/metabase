@@ -12,6 +12,7 @@ import { AdminNavbar } from "../components/AdminNavbar";
 
 import { getPath, getContext, getUser } from "../selectors";
 import { getHasDataAccess } from "metabase/new_query/selectors";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 import Database from "metabase/entities/databases";
 
 const mapStateToProps = (state, props) => ({
@@ -19,6 +20,7 @@ const mapStateToProps = (state, props) => ({
   context: getContext(state, props),
   user: getUser(state),
   hasDataAccess: getHasDataAccess(state),
+  adminPaths: getAdminPaths(state),
 });
 
 import { Sidebar } from "./Navbar.styled";

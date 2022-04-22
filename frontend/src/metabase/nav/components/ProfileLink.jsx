@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { connect } from "react-redux";
 import _ from "underscore";
 
 import { capitalize } from "metabase/lib/formatting";
 import { color } from "metabase/lib/colors";
-import { canAccessAdmin } from "metabase/nav/utils";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -13,9 +13,15 @@ import Modal from "metabase/components/Modal";
 
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 
 // generate the proper set of list items for the current user
 // based on whether they're an admin or not
+const mapStateToProps = state => ({
+  adminItems: getAdminPaths(state),
+});
+
+@connect(mapStateToProps)
 export default class ProfileLink extends Component {
   state = {
     dropdownOpen: false,
@@ -24,6 +30,7 @@ export default class ProfileLink extends Component {
   static propTypes = {
     user: PropTypes.object.isRequired,
     handleCloseNavbar: PropTypes.func.isRequired,
+    adminItems: PropTypes.array,
   };
 
   openModal = modalName => {
@@ -36,9 +43,9 @@ export default class ProfileLink extends Component {
 
   generateOptionsForUser = () => {
     const { tag } = MetabaseSettings.get("version");
-    const { user, handleCloseNavbar } = this.props;
+    const { user, handleCloseNavbar, adminItems } = this.props;
     const isAdmin = user.is_superuser;
-    const showAdminSettingsItem = canAccessAdmin(user);
+    const showAdminSettingsItem = adminItems?.length > 0;
 
     return [
       {
