@@ -189,8 +189,9 @@ export default class DashCard extends Component {
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
             <DashCardActionButtons
               series={series}
-              hasError={!!errorMessage}
+              isLoading={loading}
               isVirtualDashCard={isVirtualDashCard(dashcard)}
+              hasError={!!errorMessage}
               onRemove={onRemove}
               onAddSeries={onAddSeries}
               onReplaceAllVisualizationSettings={
@@ -310,6 +311,7 @@ const DashboardCardActionsPanel = styled.div`
 
 const DashCardActionButtons = ({
   series,
+  isLoading,
   isVirtualDashCard,
   hasError,
   onRemove,
@@ -332,7 +334,7 @@ const DashCardActionButtons = ({
     );
   }
 
-  if (!hasError) {
+  if (!isLoading && !hasError) {
     if (
       onReplaceAllVisualizationSettings &&
       !getVisualizationRaw(series).visualization.disableSettingsConfig

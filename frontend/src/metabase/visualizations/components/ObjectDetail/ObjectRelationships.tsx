@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import cx from "classnames";
 import { inflect } from "inflection";
 
@@ -11,7 +11,10 @@ import Icon from "metabase/components/Icon";
 
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
 
+import { ObjectRelationships } from "./ObjectDetail.styled";
+
 export interface RelationshipsProps {
+  objectName: string;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
     [key: number]: { status: number; value: number };
@@ -20,16 +23,13 @@ export interface RelationshipsProps {
 }
 
 export function Relationships({
+  objectName,
   tableForeignKeys,
   tableForeignKeyReferences,
   foreignKeyClicked,
 }: RelationshipsProps): JSX.Element | null {
-  if (!tableForeignKeys) {
+  if (!tableForeignKeys || !tableForeignKeys?.length) {
     return null;
-  }
-
-  if (tableForeignKeys.length < 1) {
-    return <p className="my4 text-centered">{t`No relationships found.`}</p>;
   }
 
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
@@ -39,17 +39,27 @@ export function Relationships({
   );
 
   return (
-    <ul className="px4">
-      {sortedForeignTables.map(fk => (
-        <Relationship
-          key={`${fk.origin_id}-${fk.destination_id}`}
-          fk={fk}
-          fkCountInfo={tableForeignKeyReferences?.[fk.origin.id]}
-          fkCount={fkCountsByTable?.[fk.origin.table.id] || 0}
-          foreignKeyClicked={foreignKeyClicked}
-        />
-      ))}
-    </ul>
+    <ObjectRelationships>
+      <div className="text-bold text-medium">
+        {jt`This ${(
+          <span className="text-dark" key={objectName}>
+            {objectName}
+          </span>
+        )} is connected to:`}
+      </div>
+
+      <ul>
+        {sortedForeignTables.map(fk => (
+          <Relationship
+            key={`${fk.origin_id}-${fk.destination_id}`}
+            fk={fk}
+            fkCountInfo={tableForeignKeyReferences?.[fk.origin.id]}
+            fkCount={fkCountsByTable?.[fk.origin.table.id] || 0}
+            foreignKeyClicked={foreignKeyClicked}
+          />
+        ))}
+      </ul>
+    </ObjectRelationships>
   );
 }
 

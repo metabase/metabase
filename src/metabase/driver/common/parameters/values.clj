@@ -119,7 +119,7 @@
     :value (field-filter-value tag params)}))
 
 (s/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
+  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -128,8 +128,10 @@
                                   {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
       (params/map->ReferencedCardQuery
-       (merge {:card-id card-id}
-              (qp/compile (assoc query :parameters params, :info {:card-id card-id}))))
+       (let [query (assoc query :info {:card-id card-id})]
+         (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
+         (merge {:card-id card-id}
+                (qp/compile query))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -320,7 +322,7 @@
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
-  (log/tracef "Building params map out of tags\n%s\nand params\n%s" (u/pprint-to-str tags) (u/pprint-to-str params))
+  (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
                    :let    [v (value-for-tag tag params)]

@@ -1,10 +1,17 @@
-import React, { useMemo } from "react";
-import { connect } from "react-redux";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import { LocationDescriptor } from "history";
 
-import Icon from "metabase/components/Icon";
+import Modal from "metabase/components/Modal";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
+import { Collection } from "metabase-types/api";
 import { State } from "metabase-types/store";
+
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 
 import { closeNavbar } from "metabase/redux/app";
 import * as Urls from "metabase/lib/urls";
@@ -16,8 +23,10 @@ import {
 
 import { Menu, StyledButton, Title } from "./NewButton.styled";
 
-const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
-const MODAL_NEW_COLLECTION = "MODAL_NEW_COLLECTION";
+type NewButtonModal = "MODAL_NEW_DASHBOARD" | "MODAL_NEW_COLLECTION" | null;
+
+const MODAL_NEW_DASHBOARD: NewButtonModal = "MODAL_NEW_DASHBOARD";
+const MODAL_NEW_COLLECTION: NewButtonModal = "MODAL_NEW_COLLECTION";
 
 interface NewButtonStateProps {
   hasDataAccess: boolean;
@@ -26,17 +35,11 @@ interface NewButtonStateProps {
 }
 
 interface NewButtonDispatchProps {
+  onChangeLocation: (nextLocation: LocationDescriptor) => void;
   closeNavbar: () => void;
 }
 
-interface NewButtonOwnProps {
-  setModal: (modalName: string) => void;
-}
-
-interface NewButtonProps
-  extends NewButtonOwnProps,
-    NewButtonStateProps,
-    NewButtonDispatchProps {}
+interface NewButtonProps extends NewButtonStateProps, NewButtonDispatchProps {}
 
 const mapStateToProps: (state: State) => NewButtonStateProps = state => ({
   hasDataAccess: getHasDataAccess(state),
@@ -45,6 +48,7 @@ const mapStateToProps: (state: State) => NewButtonStateProps = state => ({
 });
 
 const mapDispatchToProps = {
+  onChangeLocation: push,
   closeNavbar,
 };
 
@@ -52,9 +56,31 @@ function NewButton({
   hasDataAccess,
   hasNativeWrite,
   hasDbWithJsonEngine,
-  setModal,
+  onChangeLocation,
   closeNavbar,
 }: NewButtonProps) {
+  const [modal, setModal] = useState<NewButtonModal>(null);
+
+  const closeModal = useCallback(() => setModal(null), []);
+
+  const renderModalContent = useCallback(() => {
+    if (modal === MODAL_NEW_COLLECTION) {
+      return (
+        <CollectionCreate
+          onClose={closeModal}
+          onSaved={(collection: Collection) => {
+            closeModal();
+            onChangeLocation(Urls.collection(collection));
+          }}
+        />
+      );
+    }
+    if (modal === MODAL_NEW_DASHBOARD) {
+      return <CreateDashboardModal onClose={closeModal} />;
+    }
+    return null;
+  }, [modal, closeModal, onChangeLocation]);
+
   const menuItems = useMemo(() => {
     const items = [];
 
@@ -109,28 +135,28 @@ function NewButton({
   ]);
 
   return (
-    <Menu
-      trigger={
-        <StyledButton
-          primary
-          icon="add"
-          iconSize={14}
-          data-metabase-event="NavBar;Create Menu Click"
-        >
-          <Title>{t`New`}</Title>
-        </StyledButton>
-      }
-      items={menuItems}
-    />
+    <>
+      <Menu
+        trigger={
+          <StyledButton
+            primary
+            icon="add"
+            iconSize={14}
+            data-metabase-event="NavBar;Create Menu Click"
+          >
+            <Title>{t`New`}</Title>
+          </StyledButton>
+        }
+        items={menuItems}
+      />
+      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+    </>
   );
 }
 
-export default connect<
-  NewButtonStateProps,
-  NewButtonDispatchProps,
-  NewButtonOwnProps,
-  State
->(
-  mapStateToProps,
-  mapDispatchToProps,
+export default _.compose(
+  connect<NewButtonStateProps, NewButtonDispatchProps, unknown, State>(
+    mapStateToProps,
+    mapDispatchToProps,
+  ),
 )(NewButton);

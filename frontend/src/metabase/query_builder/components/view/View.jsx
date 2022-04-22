@@ -297,17 +297,40 @@ export default class View extends React.Component {
     );
   };
 
+  renderNativeQueryEditor = () => {
+    const { question, query, card, height, isDirty } = this.props;
+
+    // Normally, when users open native models,
+    // they open an ad-hoc GUI question using the model as a data source
+    // (using the `/dataset` endpoint instead of the `/card/:id/query`)
+    // However, users without data permission open a real model as they can't use the `/dataset` endpoint
+    // So the model is opened as an underlying native question and the query editor becomes visible
+    // This check makes it hide the editor in this particular case
+    // More details: https://github.com/metabase/metabase/pull/20161
+    if (question.isDataset() && !query.isEditable()) {
+      return null;
+    }
+
+    return (
+      <NativeQueryEditorContainer>
+        <NativeQueryEditor
+          {...this.props}
+          viewHeight={height}
+          isOpen={!card.dataset_query.native.query || isDirty}
+          datasetQuery={card && card.dataset_query}
+        />
+      </NativeQueryEditorContainer>
+    );
+  };
+
   renderMain = ({ leftSidebar, rightSidebar }) => {
     const {
       query,
-      card,
       mode,
       parameters,
-      isDirty,
       isLiveResizable,
       isPreviewable,
       isPreviewing,
-      height,
       setParameterValue,
       setIsPreviewing,
     } = this.props;
@@ -334,14 +357,7 @@ export default class View extends React.Component {
     return (
       <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
         {isNative ? (
-          <NativeQueryEditorContainer>
-            <NativeQueryEditor
-              {...this.props}
-              viewHeight={height}
-              isOpen={!card.dataset_query.native.query || isDirty}
-              datasetQuery={card && card.dataset_query}
-            />
-          </NativeQueryEditorContainer>
+          this.renderNativeQueryEditor()
         ) : (
           <StyledSyncedParametersList
             parameters={parameters}
