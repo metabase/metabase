@@ -39,13 +39,13 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
-      state[`card-${payload?.object?.id}`] = undefined;
-      return state;
+      const key = "card-" + payload?.object?.id;
+      return assocIn(state, [key], undefined);
     }
 
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
-      state[`dashboard-${payload?.object?.id}`] = undefined;
-      return state;
+      const key = "dashboard-" + payload?.object?.id;
+      return assocIn(state, [key], undefined);
     }
 
     if (type === "metabase/qb/API_UPDATE_QUESTION") {
