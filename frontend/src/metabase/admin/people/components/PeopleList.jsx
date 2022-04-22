@@ -138,7 +138,7 @@ export default class PeopleList extends Component {
             {hasUsers &&
               users.map(user => (
                 <tr key={user.id}>
-                  <td>
+                  <td className="flex align-center">
                     <span className="text-white inline-block">
                       <UserAvatar
                         bg={
