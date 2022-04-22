@@ -19,7 +19,7 @@ import {
   getHasOwnDatabase,
   getHasDataAccess,
 } from "metabase/new_query/selectors";
-import { getUser, getBookmarks } from "metabase/selectors/user";
+import { getUser } from "metabase/selectors/user";
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
@@ -40,7 +40,6 @@ function mapStateToProps(state: unknown) {
     currentUser: getUser(state),
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
-    // bookmarks: getBookmarks(state),
   };
 }
 

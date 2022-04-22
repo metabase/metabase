@@ -1,3 +1,5 @@
+import { assocIn } from "icepick";
+
 import { createEntity } from "metabase/lib/entities";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -50,9 +52,8 @@ const Bookmarks = createEntity({
       const { id, query_type } = payload;
       const entityType = query_type === "query" ? "card" : query_type;
 
-      state[entityType + "-" + id].name = payload.name;
-      console.log("🚀", { state });
-      return state;
+      const key = entityType + "-" + id;
+      return assocIn(state, [key, "name"], payload.name);
     }
 
     return state;
