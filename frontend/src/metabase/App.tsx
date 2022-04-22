@@ -30,7 +30,7 @@ import { AppErrorDescriptor, State } from "metabase-types/store";
 import { AppContentContainer, AppContent } from "./App.styled";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
-  if (status === 403) {
+  if (status === 403 || data?.error_code === "unauthorized") {
     return <Unauthorized />;
   }
   if (status === 404 || data?.error_code === "not-found") {
