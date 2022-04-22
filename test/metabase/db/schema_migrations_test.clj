@@ -588,7 +588,7 @@
                                                       :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                                                       :where     [:= :p.object object]})))]
       (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
-        (is (= [] (get-perms "/general/subscription/")))
+        (is (= [] (get-perms "/collection/namespace/snippets/root/")))
         (migrate!)
         (is (= ["All Users"] (get-perms "/collection/namespace/snippets/root/"))))
 
