@@ -9,6 +9,7 @@
             [medley.core :as m]
             [metabase.api.card :as api.card]
             [metabase.api.pivots :as api.pivots]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
@@ -23,6 +24,7 @@
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.server.middleware.util :as mw.util]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt]
             [metabase.test.data.users :as test.users]
             [metabase.util :as u]
@@ -1901,7 +1903,58 @@
             (is (= ["MS" "Organic" "Gizmo" 0 16 42] (nth rows 445)))
             (is (= [nil nil nil 7 18760 69540] (last rows)))))))))
 
-(deftest dataset-card
+(defn- col-key
+  "Return the key for the ::mb.viz/column-settings map."
+  [id-or-string]
+  {(if (string? id-or-string) ::mb.viz/column-name ::mb.viz/field-id) id-or-string})
+
+(def base-settings-map
+  "A normed viz settings map with no ::mb.viz/column-settings"
+  {:table.pivot_column "foo"
+   :table.cell_column  "PRICE"})
+
+(deftest renames-from-viz-test
+  (testing "Gets a map of identifier to new title"
+    (is (= {1 "foo", "col-2" "bar"}
+           (#'api.card/renames-from-viz (assoc base-settings-map
+                                               ::mb.viz/column-settings
+                                               {(col-key 1)       {::mb.viz/column-title "foo"
+                                                                   ::mb.viz/show-mini-bar true}
+                                                (col-key "col-2") {::mb.viz/column-title "bar"}}))))
+    (is (nil? (#'api.card/renames-from-viz ::mb.viz/column-settings)))))
+
+(deftest prune-column-names-test
+  (testing "Removes column names and collapses when appropriate"
+    (is (= base-settings-map
+           (#'api.card/prune-column-names
+            (assoc base-settings-map ::mb.viz/column-settings
+                   {(col-key 1)     {::mb.viz/column-title "title1"}
+                    (col-key "col") {::mb.viz/column-title "title2"}
+                    (col-key 3)     {::mb.viz/column-title "title2"}})))))
+  (testing "Leaves other column settings"
+    (is (= (assoc base-settings-map ::mb.viz/column-settings {(col-key "col") {::mb.viz/show-mini-bar true}})
+           (#'api.card/prune-column-names
+            (assoc base-settings-map ::mb.viz/column-settings
+                   {(col-key 1)     {::mb.viz/column-title "title1"}
+                    (col-key "col") {::mb.viz/column-title "title2"
+                                     ::mb.viz/show-mini-bar true}
+                    (col-key 3)     {::mb.viz/column-title "title2"}})))))
+  (testing "If there are only column settings"
+    (is (= {::mb.viz/column-settings {(col-key "col") {::mb.viz/show-mini-bar true}}}
+           (#'api.card/prune-column-names
+            {::mb.viz/column-settings
+             {(col-key 1)     {::mb.viz/column-title "title1"}
+              (col-key "col") {::mb.viz/column-title "title2"
+                               ::mb.viz/show-mini-bar true}
+              (col-key 3)     {::mb.viz/column-title "title2"}}})))
+    (is (= {}
+           (#'api.card/prune-column-names
+            {::mb.viz/column-settings
+             {(col-key 1)     {::mb.viz/column-title "title1"}
+              (col-key "col") {::mb.viz/column-title "title2"}
+              (col-key 3)     {::mb.viz/column-title "title2"}}})))))
+
+(deftest dataset-card-test
   (testing "Setting a question to a dataset makes it viz type table"
     (mt/with-temp Card [card {:display       :bar
                               :dataset_query (mbql-count-query)}]
@@ -1909,6 +1962,46 @@
              (-> (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
                                        (assoc card :dataset true))
                  (select-keys [:display :dataset]))))))
+  (testing "When creating database, it copies viz setting names into metadata (#20624)"
+    (testing "With aggregation fields"
+      (mt/with-temp Card [card {:dataset_query (mbql-count-query)
+                                :visualization_settings (mb.viz/norm->db
+                                                         {::mb.viz/column-settings
+                                                          {(col-key "count") {::mb.viz/column-title "renamed count"}}})}]
+        (let [dataset (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                            (assoc card :dataset true))]
+          (is (= ["renamed count"]
+                 (->> dataset :result_metadata (map :display_name))))
+          (is (= {} (:visualization_settings dataset))))))
+    (testing "With mbql fields"
+      (mt/with-temp Card [card {:dataset_query {:database (mt/id)
+                                                :type :query
+                                                :query {:source-table (mt/id :venues)
+                                                        :fields [[:field (mt/id :venues :id)]
+                                                                 [:field (mt/id :venues :name)]
+                                                                 [:field (mt/id :venues :price)]]}}
+                                :visualization_settings (mb.viz/norm->db
+                                                         {::mb.viz/column-settings
+                                                          {(col-key (mt/id :venues :id)) {::mb.viz/column-title "renamed id"}
+                                                           (col-key (mt/id :venues :name)) {::mb.viz/column-title "renamed name"}
+                                                           (col-key (mt/id :venues :price)) {::mb.viz/column-title "renamed price"}}})}]
+        (let [dataset (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                            (assoc card :dataset true))]
+          (is (= ["renamed id" "renamed name" "renamed price"]
+                 (->> dataset :result_metadata (map :display_name))))
+          (is (= {} (:visualization_settings dataset))))))
+    (testing "With native fields"
+      (mt/with-temp Card [card {:dataset_query (mt/native-query {:query "SELECT id, name, price from VENUES;"})
+                                :visualization_settings (mb.viz/norm->db
+                                                         {::mb.viz/column-settings
+                                                          {(col-key "ID") {::mb.viz/column-title "renamed id"}
+                                                           (col-key "NAME") {::mb.viz/column-title "renamed name"}
+                                                           (col-key "PRICE") {::mb.viz/column-title "renamed price"}}})}]
+        (let [dataset (mt/user-http-request :crowberto :put 202 (str "card/" (u/the-id card))
+                                            (assoc card :dataset true))]
+          (is (= ["renamed id" "renamed name" "renamed price"]
+                 (->> dataset :result_metadata (map :display_name))))
+          (is (= {} (:visualization_settings dataset)))))))
   (testing "Cards preserve their edited metadata"
     (letfn [(query! [card-id] (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id)))
             (only-user-edits [col] (select-keys col [:name :description :display_name :semantic_type]))
@@ -1987,11 +2080,11 @@
           (mt/with-model-cleanup [Card]
             (let [{metadata :result_metadata
                    card-id  :id :as card} (mt/user-http-request
-                                           :rasta :post 202
-                                           "card"
-                                           (assoc (card-with-name-and-query "card-name"
-                                                                            query)
-                                                  :dataset true))]
+                   :rasta :post 202
+                   "card"
+                   (assoc (card-with-name-and-query "card-name"
+                                                    query)
+                          :dataset true))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
                      (->> (mt/user-http-request
@@ -2014,7 +2107,7 @@
                           (db/select-one-field :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           {:dataset_query query})
-                          :result_metadata (map :display_name))))))))))))
+                       (->> (mt/user-http-request
+                             :rasta :put 202 (str "card/" card-id)
+                             {:dataset_query query})
+                            :result_metadata (map :display_name))))))))))))

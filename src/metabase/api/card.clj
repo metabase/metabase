@@ -33,6 +33,7 @@
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
+            [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -513,6 +514,53 @@
                    :collection [:moderation_reviews :moderator_details])
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
+(defn- renames-from-viz
+  "Look for renames in visualization_settings on a card. Takes the \"db form\" type of visualization settings and
+  returns a map of field-ref key to new name. The field-ref key is the idea
+  of [[metabase.query-processor.util/field-ref->key]] just using the first two elements of the field ref. But
+  unfortunately viz settings treat [:expression \"foo\"] and [:field \"foo\"] the same so using this has to just case
+  on field-id or field-name and not the field ref.
+
+  Eg:
+  (renames-from-viz-settings
+   {:table.pivot_column \"adjective\",
+    :table.cell_column \"PRICE\",
+    :column_settings {\"[\\\"ref\\\",[\\\"field\\\",26,null]]\" {:column_title \"Category-customized\"}
+                      \"[\\\"ref\\\",[\\\"expression\\\",\\\"adjective\\\"]]\" {:column_title \"adjective-customized\"}}})
+  ->
+
+  {[:field 26] \"Category-customized\",
+   [:field \"adjective-customized\"] \"adjective-customized\"} ;; note this is field and not expression here."
+  [normed-viz]
+  (not-empty
+   (reduce-kv (fn [m {::mb.viz/keys [field-id column-name] :as _k} {new-name ::mb.viz/column-title :as _v}]
+                (if (and (or field-id column-name) new-name)
+                  (assoc m (or field-id column-name) new-name)
+                  m))
+              {}
+              (::mb.viz/column-settings normed-viz))))
+
+(defn- prune-column-names
+  "Remove column titles from visualization_settings."
+  [normed-viz]
+  (let [col-settings (::mb.viz/column-settings normed-viz)
+        updated-cols (reduce (fn [cols k] (m/dissoc-in cols [k ::mb.viz/column-title]))
+                             col-settings
+                             (keys col-settings))]
+    (cond-> (dissoc normed-viz ::mb.viz/column-settings)
+      (not-empty updated-cols) (assoc ::mb.viz/column-settings updated-cols))))
+
+(defn- update-display-names [remaps metadata]
+  (when metadata
+    (reduce (fn [md col]
+              (let [[_ identifier] (:field_ref col)
+                    rename (or (get remaps identifier)
+                               ;; aggregations are field_ref'd by index so fall back to name
+                               (get remaps (:name col)))]
+                (conj md (if rename (assoc col :display_name rename) col))))
+            []
+            metadata)))
+
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
@@ -533,7 +581,13 @@
    result_metadata        (s/maybe qr/ResultsMetadata)
    cache_ttl              (s/maybe su/IntGreaterThanZero)}
   (let [card-before-update (hydrate (api/write-check Card id)
-                                    [:moderation_reviews :moderator_details])]
+                                    [:moderation_reviews :moderator_details])
+        model-edge?        (and (not (:dataset card-before-update)) dataset)
+        col-remaps         (when model-edge?
+                             (some-> (or visualization_settings
+                                         (:visualization_settings card-before-update))
+                                     mb.viz/db->norm
+                                     renames-from-viz))]
     ;; Do various permissions checks
     (collection/check-allowed-to-change-collection card-before-update card-updates)
     (check-allowed-to-modify-query                 card-before-update card-updates)
@@ -554,7 +608,11 @@
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
-          (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
+          (let [metadata (cond->> (a/<! result-metadata-chan)
+                           col-remaps (update-display-names col-remaps))
+                card-updates (-> card-updates
+                                 (assoc :result_metadata metadata)
+                                 (update :visualization_settings (comp mb.viz/norm->db prune-column-names mb.viz/db->norm)))]
             (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
           (finally
             (a/close! result-metadata-chan))))
