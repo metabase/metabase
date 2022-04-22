@@ -1,5 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
+import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
 
 export const MembershipSelectContainer = styled.ul`
@@ -29,7 +30,7 @@ export const MembershipSelectItem = styled.li<MembershipSelectItemProps>`
         color: ${color("white")};
         background-color: ${color("accent7")};
 
-        .Icon {
+        ${Icon.Root} {
           color: ${color("white")} !important;
         }
       }
