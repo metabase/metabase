@@ -9,7 +9,6 @@
             [medley.core :as m]
             [metabase.api.card :as api.card]
             [metabase.api.pivots :as api.pivots]
-            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
