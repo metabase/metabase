@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
@@ -146,10 +147,13 @@
                       (when semantic-type
                         {:semantic-type semantic-type})
                       (when (and
-                              (is-a? semantic-type :type/json-shit-whatever)
-                              (fucking thing does nfcs))
-                        {:hidden shit})))
-   (fields-metadata driver conn table db-name-or-nil)))
+                              (isa? semantic-type :type/SerializedJSON)
+                              (driver/database-supports?
+                                driver
+                                :nested-field-columns
+                                (table/database table)))
+                        {:visibility_type :details-only})))
+                  (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
