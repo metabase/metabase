@@ -125,7 +125,7 @@ function MainNavbarContainer({
     if (pathname.startsWith("/question") || pathname.startsWith("/model")) {
       return { type: "card", id: Urls.extractEntityId(slug) };
     }
-    return { type: "unknown", url: pathname };
+    return { type: "non-entity", url: pathname };
   }, [location, params]);
 
   const collectionTree = useMemo<CollectionTreeItem[]>(() => {
