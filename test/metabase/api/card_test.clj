@@ -1982,8 +1982,8 @@
                             :type     :native
                             :native   (mt/compile q)})
           update-card!  (fn [card]
-                          (->> (mt/user-http-request
-                                :rasta :put 202 (str "card/" (u/the-id card)) card)))]
+                          (mt/user-http-request :rasta :put 202
+                                                (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
