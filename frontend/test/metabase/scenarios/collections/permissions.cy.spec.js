@@ -400,6 +400,17 @@ describe("collection permissions", () => {
 
     cy.findByTestId("select-button").findByText("Our analytics");
   });
+
+  it("shouldn't list 'Our analytics' if a user has no access to it (metabase#20716)", () => {
+    cy.signIn("none");
+    cy.visit("/collection/root");
+
+    cy.get("main").findByText(/Sorry, you don’t have permission to see that/i);
+    navigationSidebar().within(() => {
+      cy.findByText("Our analytics").should("not.exist");
+      cy.findByText("Your personal collection");
+    });
+  });
 });
 
 function openEllipsisMenuFor(item, index = 0) {
