@@ -1,4 +1,4 @@
-import { dissoc } from "icepick";
+import { assocIn, dissoc } from "icepick";
 import { createEntity } from "metabase/lib/entities";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -42,9 +42,26 @@ const Bookmarks = createEntity({
       return dissoc(state, key);
     }
 
+    if (type === Questions.actionTypes.UPDATE) {
+      const { id, name } = payload?.object;
+      const key = "card-" + id;
+
+      if (name !== state[key].name) {
+        return assocIn(state, [key, "name"], name);
+      }
+    }
+
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
       const key = "dashboard-" + payload?.object?.id;
       return dissoc(state, key);
+    }
+    if (type === Questions.actionTypes.UPDATE) {
+      const { id, name } = payload?.object;
+      const key = "card-" + id;
+
+      if (name !== state[key].name) {
+        return assocIn(state, [key, "name"], name);
+      }
     }
 
     return state;

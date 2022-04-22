@@ -9,7 +9,7 @@ import { IconProps } from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { BookmarksType, Collection, User } from "metabase-types/api";
+import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import Bookmarks from "metabase/entities/bookmarks";
@@ -108,6 +108,11 @@ function MainNavbarContainer({
   useEffect(() => {
     if (bookmarks?.length !== orderedBookmarks?.length) {
       setOrderedBookmarks(bookmarks as any);
+    } else {
+      // Here we could iterate bookmarks,
+      // get orderedBookmarks with the same id
+      // check if their names are the same.
+      // If they are not, update the orderedBookmark name.
     }
   }, [orderedBookmarks, bookmarks]);
 
