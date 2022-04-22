@@ -58,7 +58,7 @@ const formatItems = items =>
   });
 
 const EmtpyLoginHistory = () => (
-  <div className="p5 text-centered">
+  <div className="text-centered">
     <img src={NoResults} className="mb2" />
     <Text color="medium">{t`No logins`}</Text>
   </div>
