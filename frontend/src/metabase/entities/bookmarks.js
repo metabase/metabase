@@ -1,4 +1,4 @@
-import { assocIn } from "icepick";
+import { assocIn, dissoc } from "icepick";
 
 import { createEntity } from "metabase/lib/entities";
 import Collections from "metabase/entities/collections";
@@ -57,12 +57,12 @@ const Bookmarks = createEntity({
   reducer: (state = {}, { type, payload, error, bookmarks }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
       const key = "card-" + payload?.object?.id;
-      return assocIn(state, [key], undefined);
+      return dissoc(state, key);
     }
 
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
       const key = "dashboard-" + payload?.object?.id;
-      return assocIn(state, [key], undefined);
+      return dissoc(state, key);
     }
 
     if (type === "metabase/qb/API_UPDATE_QUESTION") {
