@@ -152,8 +152,8 @@
                                 driver
                                 :nested-field-columns
                                 (table/database table)))
-                        {:visibility_type :details-only})))
-                  (fields-metadata driver conn table db-name-or-nil)))
+                        {:visibility-type :details-only})))))
+   (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
