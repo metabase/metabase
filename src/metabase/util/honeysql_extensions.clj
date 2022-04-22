@@ -263,7 +263,7 @@
     expr
     (cast desired-type expr)))
 
-(defn math-operator [operator]
+(defn- math-operator [operator]
   (fn [& args]
     (let [arg-db-type (some (fn [arg]
                               (-> arg type-info type-info->db-type))

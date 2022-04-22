@@ -27,7 +27,6 @@
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.test :as mt]
-            [metabase.test.data.sql :as sql.tx]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
