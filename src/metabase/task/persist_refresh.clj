@@ -48,7 +48,8 @@
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
           _ (db/update! PersistedInfo (u/the-id persisted-info)
-                        :definition definition
+                        :definition definition,
+                        :query_hash (persisted-info/query-hash (:dataset_query card))
                         :active false,
                         :refresh_begin :%now,
                         :refresh_end nil,

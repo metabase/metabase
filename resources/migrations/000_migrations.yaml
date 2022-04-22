@@ -11386,6 +11386,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  remarks: Hash of the query persisted
+                  name: query_hash
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
                   remarks: Indicating whether the persisted table is active and can be swapped
                   name: active
                   type: boolean

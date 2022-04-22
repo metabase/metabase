@@ -1,6 +1,8 @@
 (ns metabase.models.persisted-info
-  (:require [clojure.string :as str]
+  (:require [buddy.core.codecs :as codecs]
+            [clojure.string :as str]
             [metabase.models.interface :as i]
+            [metabase.query-processor.util :as qputil]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -31,6 +33,11 @@
   [metadata :- Metadata table-name]
   {:table-name        table-name
    :field-definitions (mapv field-metadata->field-defintion metadata)})
+
+(defn query-hash
+  "Base64 string of the hash of a query."
+  [query]
+  (String. ^bytes (codecs/bytes->b64 (qputil/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*
   "Allow persisted substitution. When refreshing, set this to nil to ensure that all undelrying queries are used to
