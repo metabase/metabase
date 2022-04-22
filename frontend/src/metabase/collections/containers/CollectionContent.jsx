@@ -24,6 +24,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { usePrevious } from "metabase/hooks/use-previous";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import {
@@ -82,12 +83,19 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+  const previousCollection = usePrevious(collection);
 
   useOnMount(() => {
     if (!isSmallScreen()) {
       openNavbar();
     }
   });
+
+  useEffect(() => {
+    if (previousCollection && previousCollection.id !== collection.id) {
+      clear();
+    }
+  }, [previousCollection, collection, clear]);
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
