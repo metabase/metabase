@@ -161,6 +161,7 @@
 
    PersistedInfo
    (fn [_] {:question_slug (random-name)
+            :query_hash    (random-hash)
             :definition    {:table-name (random-name)
                             :field-definitions (repeatedly
                                                  4
