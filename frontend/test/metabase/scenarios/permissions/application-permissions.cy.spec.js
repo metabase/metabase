@@ -116,7 +116,7 @@ describeEE("scenarios > admin > permissions > application", () => {
         cy.findByText("Audit").click();
         cy.url().should("include", "/admin/audit/members/overview");
         cy.findByText("All members").click();
-        cy.wait("@dataset");
+        cy.wait("@dataset", { responseTimeout: 8000 });
         cy.findByTextEnsureVisible("Bobby Tables");
 
         // Troubleshooting smoke test
