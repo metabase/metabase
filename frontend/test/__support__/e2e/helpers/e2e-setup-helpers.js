@@ -7,7 +7,7 @@ export function restore(name = "default") {
   cy.request({
     method: "POST",
     url: `/api/testing/restore/${name}`,
-    timeout: 18000,
+    timeout: 40000,
     retryOnStatusCodeFailure: true,
     failOnStatusCode: true,
   });
