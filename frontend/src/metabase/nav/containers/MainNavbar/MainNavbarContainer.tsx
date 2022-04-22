@@ -93,9 +93,12 @@ function MainNavbarContainer({
   const [orderedBookmarks, setOrderedBookmarks] = useState([]);
 
   useEffect(() => {
+    // A bookmark has been added or removed
+    // let's reorder them
     if (bookmarks?.length !== orderedBookmarks?.length) {
       setOrderedBookmarks(bookmarks as any);
     }
+    console.log("🚀", { bookmarks, orderedBookmarks });
   }, [orderedBookmarks, bookmarks]);
 
   useEffect(() => {
@@ -210,6 +213,7 @@ function MainNavbarContainer({
 export default _.compose(
   Bookmarks.loadList({
     loadingAndErrorWrapper: false,
+    reload: true,
   }),
   Collections.load({
     id: ROOT_COLLECTION.id,

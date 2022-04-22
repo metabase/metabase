@@ -46,6 +46,15 @@ const Bookmarks = createEntity({
       return state;
     }
 
+    if (type === "metabase/qb/API_UPDATE_QUESTION") {
+      const { id, query_type } = payload;
+      const entityType = query_type === "query" ? "card" : query_type;
+
+      state[entityType + "-" + id].name = payload.name;
+      console.log("🚀", { state });
+      return state;
+    }
+
     return state;
   },
 });
