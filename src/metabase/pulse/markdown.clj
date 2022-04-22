@@ -317,6 +317,8 @@
         resolved-content (resolved-content content)]
     (if resolved-uri
       ["<" resolved-uri "|" resolved-content ">"]
+      ;; If this was parsed as a link-ref but has no reference, assume it was just a pair of square brackets and
+      ;; restore them. This is a known discrepency between flexmark-java and Markdown rendering on the frontend.
       ["[" resolved-content "]"])))
 
 (defmethod ast->slack :auto-link
@@ -330,10 +332,12 @@
 (defmethod ast->slack :list-item
   [{content :content}]
   (let [resolved-content (resolved-content content)
-        indented-lines   (->> (rest resolved-content) resolved-content-string str/split-lines)
-        indented-content (->> indented-lines
-                             (map #(str "    " %))
-                             (str/join "\n"))]
+        ;; list items might have nested lists or other elements, which should have their indentation level increased
+        indented-content (->> (rest resolved-content)
+                              resolved-content-string
+                              str/split-lines
+                              (map #(str "    " %))
+                              (str/join "\n"))]
     (if-not (str/blank? indented-content)
       [(first resolved-content) indented-content "\n"]
       resolved-content)))
@@ -350,6 +354,7 @@
 
 (defmethod ast->slack :image
   [{{:keys [src alt]} :attrs}]
+  ;; Replace images with text that links to source, including alt text if available
   (if (str/blank? alt)
     ["<" src "|[Image]>"]
     ["<" src "|[Image: " alt "]>"]))
