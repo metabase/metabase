@@ -934,6 +934,7 @@ export default function lineAreaBar(element, props) {
     xInterval: xAxisProps.xInterval,
     isStacked: isStacked(parent.settings, datas),
     isTimeseries: isTimeseries(parent.settings),
+    hasDrills: typeof props.onChangeCardAndRun === "function",
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
     onGoalHover,
     onHoverChange,
