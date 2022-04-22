@@ -63,7 +63,8 @@ export function BaseTableItem({
   }, [item, onToggleSelected]);
 
   const renderRow = useCallback(() => {
-    const canSelect = typeof onToggleSelected === "function";
+    const canSelect =
+      collection.can_write && typeof onToggleSelected === "function";
 
     const lastEditInfo = item["last-edit-info"];
 
