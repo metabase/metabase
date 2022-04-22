@@ -21,10 +21,12 @@
 (defsetting ldap-host
   (deferred-tru "Server hostname."))
 
+(def ^:private ldap-default-port 389)
+
 (defsetting ldap-port
   (deferred-tru "Server port, usually 389 or 636 if SSL is used.")
   :type :integer
-  :default 389)
+  :default ldap-default-port)
 
 (defsetting ldap-security
   (deferred-tru "Use SSL, TLS or plain text.")
@@ -102,9 +104,10 @@
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   (let [security (keyword security)
-        port     (if (string? port)
-                   (Integer/parseInt port)
-                   port)]
+        port     (cond
+                   (string? port) (Integer/parseInt port)
+                   (nil? port)    ldap-default-port
+                   :else          port)]
     ;; Connecting via IPv6 requires us to use this form for :host, otherwise
     ;; clj-ldap will find the first : and treat it as an IPv4 and port number
     {:host      {:address host

@@ -101,8 +101,10 @@
   (validation/check-has-application-permission :setting)
   (let [ldap-settings (-> settings
                           (select-keys (keys mb-settings->ldap-details))
-                          (assoc :ldap-port (when-let [^String ldap-port (not-empty (str (:ldap-port settings)))]
-                                              (Long/parseLong ldap-port))
+                          (assoc :ldap-port (let [port (:ldap-port settings)]
+                                              (if (and (string? port) (not-empty port))
+                                                (Long/parseLong port)
+                                                port))
                                  :ldap-enabled true)
                           (update :ldap-password update-password-if-needed))
         ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)

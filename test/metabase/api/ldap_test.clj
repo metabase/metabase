@@ -11,7 +11,11 @@
   []
   (-> (ldap.test/get-ldap-details)
       (set/rename-keys (set/map-invert @#'api.ldap/mb-settings->ldap-details))
-      (assoc :ldap-enabled true)))
+      #_(assoc :ldap-enabled true)))
+
+(comment
+  (ldap.test/with-ldap-server (Integer. (ldap.test/get-ldap-port)))
+  )
 
 (deftest ldap-settings-test
   (testing "PUT /api/ldap/settings"
@@ -23,19 +27,18 @@
         (mt/user-http-request :crowberto :put 500 "ldap/settings"
                               (assoc (ldap-test-details) :ldap-password "wrong-password")))
 
-      (testing "Invalid LDAP settings can be saved if LDAP is disabled"
-        (mt/user-http-request :crowberto :put 200 "ldap/settings"
-                              (assoc (ldap-test-details) :ldap-password "wrong-password" :ldap-enabled false)))
+      (testing "Invalid LDAP settings cannot be saved"
+        (mt/user-http-request :crowberto :put 500 "ldap/settings"
+                              (assoc (ldap-test-details) :ldap-password "wrong-password"))
+        (mt/user-http-request :crowberto :put 500 "ldap/settings"
+                              (assoc (ldap-test-details) :ldap-user-base nil))
+        (mt/user-http-request :crowberto :put 500 "ldap/settings"
+                              (update (ldap-test-details) :ldap-port dec)))
 
       (testing "Valid LDAP settings can still be saved if port is a integer (#18936)"
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
                               (assoc (ldap-test-details)
                                      :ldap-port (Integer. (ldap.test/get-ldap-port)))))
-
-      (testing "LDAP port is saved as default value if passed as an empty string (#18936)"
-        (mt/user-http-request :crowberto :put 200 "ldap/settings"
-                              (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false))
-        (is (= 389 (ldap/ldap-port))))
 
       (testing "Could update with obfuscated password"
         (mt/user-http-request :crowberto :put 200 "ldap/settings"
