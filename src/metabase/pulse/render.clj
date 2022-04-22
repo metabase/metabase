@@ -1,6 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
+            [metabase.models :refer [Card]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
@@ -9,6 +10,7 @@
             [metabase.pulse.render.style :as style]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.urls :as urls]
+            [toucan.db :as db]
             [schema.core :as s]))
 
 (def ^:dynamic *include-buttons*
@@ -50,7 +52,8 @@
 (s/defn ^:private make-description-if-needed :- (s/maybe common/RenderedPulseCard)
   [dashcard]
   (when *include-description*
-    (when-let [description (-> dashcard :visualization_settings :card.description)]
+    (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
+                               (db/select-one-field :description Card :id (:card_id dashcard)))]
       {:attachments {}
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
