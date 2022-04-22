@@ -304,7 +304,6 @@
           (jdbc/execute! spec [insert]))
         (mt/with-temp* [Database [database    {:engine :postgres, :details details}]
                         Table    [table       {:db_id (u/the-id database) :name "json_alias_test"}]
-                        Field    [dummy-field {}]
                         Field    [field       {:table_id (u/the-id table)
                                                :nfc_path [:bob
                                                           "injection' OR 1=1--' AND released = 1"

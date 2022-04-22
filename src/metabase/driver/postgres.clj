@@ -337,7 +337,7 @@
 (defmethod sql.qp/->honeysql [:postgres :desc]
   [driver clause]
   (let [stored-field-id (second (second clause))
-        stored-field    (when (and (integer? stored-field-id) (> 0 stored-field-id))
+        stored-field    (when (integer? stored-field-id)
                           (qp.store/field stored-field-id))
         new-clause      (if (field/json-field? stored-field)
                           (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
@@ -347,7 +347,7 @@
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
   (let [stored-field-id (second (second clause))
-        stored-field    (when (and (integer? stored-field-id) (> 0 stored-field-id))
+        stored-field    (when (integer? stored-field-id)
                           (qp.store/field stored-field-id))
         new-clause      (if (field/json-field? stored-field)
                           (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
