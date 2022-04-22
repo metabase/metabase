@@ -228,7 +228,7 @@ spec:
           - name: MB_API_KEY
             valueFrom:
               secretKeyRef:
-                name: {{ include "metabase.fullname" . }}-configs
+                name: {{ include "metabase.fullname" . }}-secrets
                 key: MB_API_KEY
           {{- end }}
           {{- if .Values.config.application.favicon_url }}
