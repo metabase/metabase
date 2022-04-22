@@ -119,19 +119,15 @@ function App({
   return (
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
-        {errorPage ? (
-          getErrorComponent(errorPage)
-        ) : (
-          <>
-            {hasAppBar && <AppBar />}
-            <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
-              {hasNavbar && <Navbar />}
-              <AppContent>{children}</AppContent>
-              <UndoListing />
-              <StatusListing />
-            </AppContentContainer>
-          </>
-        )}
+        {hasAppBar && <AppBar />}
+        <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
+          {hasNavbar && <Navbar />}
+          <AppContent>
+            {errorPage ? getErrorComponent(errorPage) : children}
+          </AppContent>
+          <UndoListing />
+          <StatusListing />
+        </AppContentContainer>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     </ErrorBoundary>
