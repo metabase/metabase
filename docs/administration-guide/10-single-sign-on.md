@@ -79,8 +79,8 @@ As you can see below, if you have an **Accounting** group in both your LDAP serv
 #### Notes on group mapping
 
 - The Administrator group works like any other group.
-- Updates to a person's group membership based on LDAP mappings are not instantaneous; they changes will take effect only after people log back in.
-- People are only ever add to or removed from mapped groups; the sync has no effect on groups in your Metabase that don't have an LDAP mapping.
+- Updates to a person's group membership based on LDAP mappings are not instantaneous; the changes will take effect only after people log back in.
+- People are only ever added to or removed from mapped groups; the sync has no effect on groups in your Metabase that don't have an LDAP mapping.
 
 ## LDAP advanced features
 
