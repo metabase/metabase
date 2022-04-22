@@ -9,7 +9,7 @@ export const MAX_SERIES = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
-const SPLIT_AXIS_MAX_DEPTH = 10;
+const SPLIT_AXIS_MAX_DEPTH = 8;
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
 // are able to avoid circular dependency errors in e2e tests
