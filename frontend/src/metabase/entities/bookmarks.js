@@ -32,18 +32,29 @@ const Bookmarks = createEntity({
     getIcon,
   },
   actions: {
-    reorder: bookmarks => {
-      const bookmarksForOrdering = bookmarks.map(({ type, item_id }) => ({
-        type,
-        item_id,
-      }));
+    reorder: (bookmarks, oldIndex, newIndex) => async dispatch => {
+      console.log("🚀", { bookmarks, oldIndex, newIndex });
+      // dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+      const element = bookmarks[oldIndex];
+
+      bookmarks.splice(oldIndex, 1);
+      bookmarks.splice(newIndex, 0, element);
+
+      dispatch({ type: "bookmarks/REORDER", bookmarks });
+
+      const bookmarksWithFieldsForWebservice = bookmarks.map(
+        ({ type, item_id }) => ({
+          type,
+          item_id,
+        }),
+      );
       BookmarkApi.reorder(
-        { orderings: { orderings: bookmarksForOrdering } },
+        { orderings: { orderings: bookmarksWithFieldsForWebservice } },
         { bodyParamName: "orderings" },
       );
     },
   },
-  reducer: (state = {}, { type, payload, error }) => {
+  reducer: (state = {}, { type, payload, error, bookmarks }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
       const key = "card-" + payload?.object?.id;
       return assocIn(state, [key], undefined);
@@ -60,6 +71,12 @@ const Bookmarks = createEntity({
 
       const key = entityType + "-" + id;
       return assocIn(state, [key, "name"], payload.name);
+    }
+
+    if (type === "bookmarks/REORDER") {
+      console.log("🚀", { bookmarks });
+      return bookmarks;
+      // return { ...state };
     }
 
     return state;
