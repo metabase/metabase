@@ -11,7 +11,7 @@ const getApplicationColors = state =>
   state.settings.values["application-colors"] ||
   state.settings.values.application_colors;
 
-const getHasCustomColors = createSelector(
+export const getHasCustomColors = createSelector(
   [getApplicationColors],
   applicationColors => Object.keys(applicationColors || {}).length > 0,
 );

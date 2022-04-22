@@ -23,8 +23,10 @@ import { connect } from "react-redux";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 
 export const withLogoBackground = ComposedComponent => {
-  const mapStateToProps = (state, props) => ({
-    bgClassName: PLUGIN_SELECTORS.getLogoBackgroundClass(state, props),
+  const mapStateToProps = state => ({
+    bgClassName: PLUGIN_SELECTORS.getHasCustomLogo(state)
+      ? "bg-brand"
+      : "bg-white",
   });
   return connect(mapStateToProps)(
     class extends Component {

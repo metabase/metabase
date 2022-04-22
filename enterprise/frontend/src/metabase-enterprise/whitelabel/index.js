@@ -10,7 +10,7 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getIsWhitelabeled,
+  getHasCustomColors,
   getHasCustomLogo,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
@@ -75,7 +75,5 @@ if (hasPremiumFeature("whitelabel")) {
 }
 
 // these selectors control whitelabeling UI
-PLUGIN_SELECTORS.getShowBrandLogo = state => !getIsWhitelabeled(state);
-PLUGIN_SELECTORS.getShowBrandScene = state => !getIsWhitelabeled(state);
-PLUGIN_SELECTORS.getLogoBackgroundClass = state =>
-  getHasCustomLogo(state) ? "bg-brand" : "bg-white";
+PLUGIN_SELECTORS.getHasCustomColors = state => getHasCustomColors(state);
+PLUGIN_SELECTORS.getHasCustomLogo = state => getHasCustomLogo(state);
