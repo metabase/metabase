@@ -40,7 +40,7 @@ const PeopleListRow = ({
 
   return (
     <tr key={user.id}>
-      <td>
+      <td className="flex align-center">
         <span className="text-white inline-block">
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}
