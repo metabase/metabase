@@ -4,5 +4,9 @@ export function snapshot(name) {
 
 export function restore(name = "default") {
   cy.log("Restore Data Set");
-  cy.request("POST", `/api/testing/restore/${name}`);
+  cy.request({
+    method: "POST",
+    url: `/api/testing/restore/${name}`,
+    retryOnStatusCodeFailure: true,
+  });
 }
