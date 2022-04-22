@@ -6,9 +6,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const SidebarIcon = styled(Icon)`
-  &:hover {
-    color: ${color("brand")};
-  }
+  color: ${color("brand")};
 `;
 
 export const SidebarButtonRoot = styled.button`
