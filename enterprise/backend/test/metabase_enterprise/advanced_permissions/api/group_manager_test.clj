@@ -197,7 +197,32 @@
                            (-> (:data (get-users user 200))
                                first
                                keys
-                               set))))))))))
+                               set)))))))))
+
+  (testing "GET /api/user?group_id=:group_id"
+    (testing "should sort by admins -> group managers -> normal users when filter by group_id"
+    (mt/with-temp* [User                       [user-a {:first_name "A"
+                                                        :last_name  "A"}]
+                    User                       [user-b {:first_name "B"
+                                                        :last_name  "B"}]
+                    User                       [user-c {:first_name "C"
+                                                        :last_name  "C"
+                                                        :is_superuser true}]
+                    PermissionsGroup           [group]
+                    PermissionsGroupMembership [_ {:user_id (:id user-a)
+                                                   :group_id (:id group)
+                                                   :is_group_manager false}]
+                    PermissionsGroupMembership [_ {:user_id  (:id user-b)
+                                                   :group_id (:id group)
+                                                   :is_group_manager true}]
+                    PermissionsGroupMembership [_ {:user_id  (:id user-c)
+                                                   :group_id (:id group)
+                                                   :is_group_manager false}]]
+      (is (= ["C" "B" "A"]
+             (->> (mt/user-http-request :crowberto :get 200 (format "/user?limit=25&offset=0&group_id=%d" (:id group)))
+                  :data
+                  (map :first_name))))))))
+
 
 (deftest get-user-api-test
   (testing "GET /api/user/:id"

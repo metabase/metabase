@@ -162,9 +162,10 @@
     {:data   (cond-> (db/select
                        (vec (cons User (user-visible-columns)))
                        (cond-> (user-clauses status query group_id include_deactivated)
-                            true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
-                            (some? mw.offset-paging/*limit*)  (hh/limit mw.offset-paging/*limit*)
-                            (some? mw.offset-paging/*offset*) (hh/offset mw.offset-paging/*offset*)))
+                         (some? group_id) (hh/merge-order-by [:core_user.is_superuser :desc] [:is_group_manager :desc])
+                         true (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
+                         (some? mw.offset-paging/*limit*)  (hh/limit mw.offset-paging/*limit*)
+                         (some? mw.offset-paging/*offset*) (hh/offset mw.offset-paging/*offset*)))
                ;; For admins also include the IDs of Users' Personal Collections
                api/*is-superuser?*
                (hydrate :personal_collection_id)
@@ -175,7 +176,6 @@
      :total  (db/count User (user-clauses status query group_id include_deactivated))
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
-
 
 (defn- maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
