@@ -109,12 +109,13 @@
 
 (defn- expand-parser-groups
   [group-label group-value]
-  (case group-label
-    :unit (conj (seq (get operations-by-date-unit group-value))
-                [group-label group-value])
-    :int-value [[group-label (Integer/parseInt group-value)]]
-    (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
-    [[group-label group-value]]))
+  (when group-value
+    (case group-label
+      :unit (conj (seq (get operations-by-date-unit group-value))
+                  [group-label group-value])
+      (:int-value :int-value-1) [[group-label (Integer/parseInt group-value)]]
+      (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
+      [[group-label group-value]])))
 
 (s/defn ^:private regex->parser :- (s/pred fn?)
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
@@ -122,7 +123,7 @@
   names:
 
       :unit – finds a matching date unit and merges date unit operations to the result
-      :int-value – converts the group value to integer
+      :int-value, :int-value-1 – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
   [regex :- java.util.regex.Pattern group-labels]
   (fn [param-value]
@@ -135,7 +136,7 @@
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
 (def ^:private relative-temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
-(def ^:private include-current-regex         #"(~?)")
+(def ^:private relative-offset-regex         (re-pattern (format "(|~|~([0-9]+)%ss)" relative-temporal-units-regex)))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
@@ -157,23 +158,37 @@
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
-                           [:int-value :unit :include-current?])
-    :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (let [dt-res (maybe-reduce-resolution unit dt)]
+   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex #"s" relative-offset-regex))
+                           [:int-value :unit :relative-offset :int-value-1 :unit-1])
+    :range  (fn [{:keys [unit int-value unit-range to-period relative-offset unit-1 int-value-1]} dt]
+              (let [dt-off (cond-> dt
+                             unit-1 (t/minus ((get-in operations-by-date-unit [unit-1 :to-period]) int-value-1)))
+                    dt-res (maybe-reduce-resolution unit dt-off)]
                 (unit-range (t/minus dt-res (to-period int-value))
-                            (t/minus dt-res (to-period (if (seq include-current?) 0 1))))))
-    :filter (fn [{:keys [unit int-value include-current?]} field-clause]
-              [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq include-current?))}])}
+                            (t/minus dt-res (to-period (if (seq relative-offset) 0 1))))))
+    :filter (fn [{:keys [unit int-value relative-offset unit-1 int-value-1]} field-clause]
+              (if unit-1
+                [:between
+                 [:+ field-clause [:interval int-value-1 (keyword unit-1)]]
+                 [:relative-datetime (- int-value) (keyword unit)]
+                 [:relative-datetime 0 (keyword unit)]]
+                [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq relative-offset))}]))}
 
-   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex #"s" include-current-regex))
-                           [:int-value :unit :include-current?])
-    :range  (fn [{:keys [unit int-value unit-range to-period include-current?]} dt]
-              (let [dt-res (maybe-reduce-resolution unit dt)]
-                (unit-range (t/plus dt-res (to-period (if (seq include-current?) 0 1)))
+   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex #"s" relative-offset-regex))
+                           [:int-value :unit :relative-offset :int-value-1 :unit-1])
+    :range  (fn [{:keys [unit int-value unit-range to-period relative-offset unit-1 int-value-1]} dt]
+              (let [dt-off (cond-> dt
+                             unit-1 (t/plus ((get-in operations-by-date-unit [unit-1 :to-period]) int-value-1)))
+                    dt-res (maybe-reduce-resolution unit dt-off)]
+                (unit-range (t/plus dt-res (to-period (if (seq relative-offset) 0 1)))
                             (t/plus dt-res (to-period int-value)))))
-    :filter (fn [{:keys [unit int-value include-current?]} field-clause]
-              [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq include-current?))}])}
+    :filter (fn [{:keys [unit int-value relative-offset unit-1 int-value-1]} field-clause]
+              (if unit-1
+                [:between
+                 [:+ field-clause [:interval (- int-value-1) (keyword unit-1)]]
+                 [:relative-datetime 0 (keyword unit)]
+                 [:relative-datetime int-value (keyword unit)]]
+                [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq relative-offset))}]))}
 
    {:parser (regex->parser (re-pattern (str #"last" relative-temporal-units-regex))
                            [:unit])

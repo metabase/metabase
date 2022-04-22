@@ -61,7 +61,19 @@
            (params.dates/date-string->filter "next3days~" [:field "field" {:base-type :type/DateTime}]))))
   (testing "quarters (#21083)"
     (is (= [:time-interval [:field "field" {:base-type :type/DateTime}] -30 :quarter {:include-current false}]
-           (params.dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}])))))
+           (params.dates/date-string->filter "past30quarters" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "relative (past) with starting from "
+    (is (= [:between
+            [:+ [:field "field" {:base-type :type/DateTime}] [:interval 3 :year]]
+            [:relative-datetime -3 :day]
+            [:relative-datetime 0 :day]]
+           (params.dates/date-string->filter "past3days~3years" [:field "field" {:base-type :type/DateTime}]))))
+  (testing "relative (next) with starting from"
+    (is (= [:between
+            [:+ [:field "field" {:base-type :type/DateTime}] [:interval -13 :month]]
+            [:relative-datetime 0 :hour]
+            [:relative-datetime 7 :hour]]
+           (params.dates/date-string->filter "next7hours~13months" [:field "field" {:base-type :type/DateTime}])))))
 
 (deftest date-string->range-test
   (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
@@ -112,7 +124,9 @@
                                            "lastmonth"  {:end "2016-05-31", :start "2016-05-01"}
                                            "lastyear"   {:end "2015-12-31", :start "2015-01-01"}}
              "relative (today/yesterday)" {"yesterday" {:end "2016-06-06", :start "2016-06-06"}
-                                           "today"     {:end "2016-06-07", :start "2016-06-07"}}}]
+                                           "today"     {:end "2016-06-07", :start "2016-06-07"}}
+             "relative (past) with starting from" {"past3days~3years" {:end "2013-06-07", :start "2013-06-04"}}
+             "relative (next) with starting from" {"next7hours~13months" {:end "2017-07-07T19:00:00", :start "2017-07-07T12:00:00"}}}]
       (testing group
         (doseq [[s inclusive-range]   s->expected
                 [options range-xform] (letfn [(adjust [m k amount]
