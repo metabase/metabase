@@ -5,7 +5,11 @@ import React, {
   useRef,
   useState,
 } from "react";
+import _ from "underscore";
 import { t } from "ttag";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
 
 import Icon from "metabase/components/Icon";
@@ -32,11 +36,23 @@ const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
 type SearchAwareLocation = Location<{ q?: string }>;
 
-type Props = {
+type RouterProps = {
   location: SearchAwareLocation;
+};
+
+type DispatchProps = {
+  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
+};
+
+type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
+};
+
+type Props = RouterProps & DispatchProps & OwnProps;
+
+const mapDispatchToProps = {
+  onChangeLocation: push,
 };
 
 function isSearchPageLocation(location: Location) {
@@ -181,4 +197,7 @@ function SearchBar({
     </div>
   );
 }
-export default SearchBar;
+export default _.compose(
+  withRouter,
+  connect(null, mapDispatchToProps),
+)(SearchBar);

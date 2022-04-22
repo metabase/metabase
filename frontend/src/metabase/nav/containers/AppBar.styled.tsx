@@ -57,11 +57,11 @@ export const SidebarButtonContainer = styled.div`
   }
 `;
 
-export interface RowLeftProps {
+export interface LeftContainerProps {
   isSearchActive: boolean;
 }
 
-export const RowLeft = styled.div<RowLeftProps>`
+export const LeftContainer = styled.div<LeftContainerProps>`
   display: flex;
   height: 100%;
   flex-direction: row;
@@ -93,7 +93,7 @@ export const RowLeft = styled.div<RowLeftProps>`
   }
 `;
 
-export const RowMiddle = styled.div`
+export const MiddleContainer = styled.div`
   display: none;
   justify-content: center;
   width: 80px;
@@ -109,7 +109,7 @@ export const RowMiddle = styled.div`
   }
 `;
 
-export const RowRight = styled.div`
+export const RightContainer = styled.div`
   display: flex;
   height: 100%;
   flex-direction: row;
