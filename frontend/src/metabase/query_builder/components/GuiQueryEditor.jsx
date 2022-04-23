@@ -140,7 +140,6 @@ export default class GuiQueryEditor extends React.Component {
                 query.filter(filter).update(setDatasetQuery)
               }
               onClose={() => this.filterPopover.current.close()}
-              showCustom={false}
             />
           </PopoverWithTrigger>
         </div>
