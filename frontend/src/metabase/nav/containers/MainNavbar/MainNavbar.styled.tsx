@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -10,6 +11,45 @@ import {
   space,
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
+
+const openSidebarCSS = css`
+  width: ${NAV_SIDEBAR_WIDTH};
+
+  border-right: 1px solid ${color("border")};
+
+  ${breakpointMaxSmall} {
+    width: 90vw;
+  }
+`;
+
+export const Sidebar = styled.aside<{ isOpen: boolean }>`
+  width: 0;
+  height: 100%;
+
+  position: relative;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0.5rem 0;
+  background-color: ${color("nav")};
+
+  overflow: auto;
+  overflow-x: hidden;
+  z-index: 4;
+
+  transition: width 0.2s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  ${props => props.isOpen && openSidebarCSS};
+
+  ${breakpointMaxSmall} {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+`;
 
 export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
@@ -105,6 +145,10 @@ export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};
+`;
+
+export const HomePageLink = styled(SidebarLink)`
+  padding-left: 12px;
 `;
 
 export const BrowseLink = styled(SidebarLink)`

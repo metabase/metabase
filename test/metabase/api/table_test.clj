@@ -283,6 +283,13 @@
                :pk_field        (table/pk-field-id table)})
              (dissoc (mt/user-http-request :crowberto :get 200 (format "table/%d" (u/the-id table)))
                      :updated_at))))
+    (testing "Can update description, caveat, points of interest to be empty (#11097)"
+      (doseq [property [:caveats :points_of_interest :description]]
+        (mt/with-temp Table [table]
+          (is (= ""
+                 (get (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                            {property ""})
+                      property))))))
 
     (testing "A table can only be updated by a superuser"
       (mt/with-temp Table [table]

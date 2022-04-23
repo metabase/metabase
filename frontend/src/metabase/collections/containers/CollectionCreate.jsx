@@ -2,7 +2,9 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { getValues } from "redux-form";
+import { withRouter } from "react-router";
 import { goBack } from "react-router-redux";
+import _ from "underscore";
 
 import Collection from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -26,8 +28,7 @@ const mapDispatchToProps = {
   goBack,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class CollectionCreate extends Component {
+class CollectionCreate extends Component {
   handleClose = () => {
     const { goBack, onClose } = this.props;
     return onClose ? onClose() : goBack();
@@ -55,3 +56,8 @@ export default class CollectionCreate extends Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(CollectionCreate);

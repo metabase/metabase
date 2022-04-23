@@ -2,6 +2,7 @@ import { State } from "metabase-types/store";
 import { createMockUser } from "metabase-types/api/mocks";
 import {
   createMockAdminState,
+  createMockAppState,
   createMockSettingsState,
   createMockEntitiesState,
   createMockSetupState,
@@ -9,8 +10,9 @@ import {
 } from "metabase-types/store/mocks";
 
 export const createMockState = (opts?: Partial<State>): State => ({
-  currentUser: createMockUser(),
   admin: createMockAdminState(),
+  app: createMockAppState(),
+  currentUser: createMockUser(),
   entities: createMockEntitiesState(),
   form: createMockFormState(),
   settings: createMockSettingsState(),

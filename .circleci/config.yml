@@ -1252,7 +1252,6 @@ workflows:
               folder:
                 [
                   "admin",
-                  "binning",
                   "collections",
                   "custom-column",
                   "dashboard",

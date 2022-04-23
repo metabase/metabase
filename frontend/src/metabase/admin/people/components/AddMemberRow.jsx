@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
@@ -7,31 +7,44 @@ import TippyPopover from "metabase/components/Popover/TippyPopover";
 import UserAvatar from "metabase/components/UserAvatar";
 import { color } from "metabase/lib/colors";
 import Typeahead from "metabase/hoc/Typeahead";
-
-import { AddRow } from "../AddRow";
+import { AddRow } from "./AddRow";
 
 AddMemberRow.propTypes = {
   users: PropTypes.array.isRequired,
-  text: PropTypes.string.isRequired,
-  selectedUsers: PropTypes.array.isRequired,
+  excludeIds: PropTypes.object,
   onCancel: PropTypes.func.isRequired,
   onDone: PropTypes.func.isRequired,
-  onTextChange: PropTypes.func.isRequired,
-  onSuggestionAccepted: PropTypes.func.isRequired,
-  onRemoveUserFromSelection: PropTypes.func.isRequired,
 };
 
-export default function AddMemberRow({
-  users,
-  text,
-  selectedUsers,
-  onCancel,
-  onDone,
-  onTextChange,
-  onSuggestionAccepted,
-  onRemoveUserFromSelection,
-}) {
+export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
   const rowRef = useRef(null);
+  const [text, setText] = useState("");
+  const [selectedUsersById, setSelectedUsersById] = useState(new Map());
+
+  const handleRemoveUser = user => {
+    const newSelectedUsersById = new Map(selectedUsersById);
+    newSelectedUsersById.delete(user.id);
+    setSelectedUsersById(newSelectedUsersById);
+  };
+
+  const handleAddUser = user => {
+    const newSelectedUsersById = new Map(selectedUsersById);
+    newSelectedUsersById.set(user.id, user);
+    setSelectedUsersById(newSelectedUsersById);
+    setText("");
+  };
+
+  const handleDone = () => {
+    onDone(Array.from(selectedUsersById.keys()));
+  };
+
+  const availableToSelectUsers = useMemo(
+    () =>
+      users.filter(
+        user => !selectedUsersById.has(user.id) && !excludeIds.has(user.id),
+      ),
+    [selectedUsersById, excludeIds, users],
+  );
 
   return (
     <tr>
@@ -39,13 +52,13 @@ export default function AddMemberRow({
         <AddRow
           ref={rowRef}
           value={text}
-          isValid={!!selectedUsers.length}
+          isValid={selectedUsersById.size > 0}
           placeholder="Julie McMemberson"
-          onChange={e => onTextChange(e.target.value)}
-          onDone={onDone}
+          onChange={e => setText(e.target.value)}
+          onDone={handleDone}
           onCancel={onCancel}
         >
-          {selectedUsers.map(user => (
+          {Array.from(selectedUsersById.values()).map(user => (
             <div
               key={user.id}
               className="bg-medium p1 px2 mr1 rounded flex align-center"
@@ -54,14 +67,14 @@ export default function AddMemberRow({
               <Icon
                 className="pl1 cursor-pointer text-slate text-medium-hover"
                 name="close"
-                onClick={() => onRemoveUserFromSelection(user)}
+                onClick={() => handleRemoveUser(user)}
               />
             </div>
           ))}
           <AddMemberTypeaheadPopover
             value={text}
-            options={Object.values(users)}
-            onSuggestionAccepted={onSuggestionAccepted}
+            options={availableToSelectUsers}
+            onSuggestionAccepted={handleAddUser}
             target={rowRef}
           />
         </AddRow>
