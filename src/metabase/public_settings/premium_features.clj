@@ -250,7 +250,7 @@
 (defn- in-ee?
   "Is the current namespace an Enterprise Edition namespace?"
   []
-  (str/starts-with? (name (ns-name *ns*)) "metabase-enterprise"))
+  (str/starts-with? (ns-name *ns*) "metabase-enterprise"))
 
 (def ^:private valid-options #{:feature :fallback})
 
