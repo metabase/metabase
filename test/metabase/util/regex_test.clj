@@ -7,5 +7,6 @@
     (is (instance? java.util.regex.Pattern regex))
     (is (= (str #"^(?:(?:Cam)|(?:can))(?:\s+)?\d+")
            (str regex)))
-    (is (= (str #"^2022-(?:(?:06-30)|(?:07-01))(?:(?:(?:T)|(?:\s))00:00:00(?:Z)?)?")
-           (str (u.regex/rx #"^2022-" (or "06-30" "07-01") (opt (or "T" #"\s") "00:00:00" (opt "Z"))))))))
+    (testing "`opt` with multiple args should work (#21971)"
+      (is (= (str #"^2022-(?:(?:06-30)|(?:07-01))(?:(?:(?:T)|(?:\s))00:00:00(?:Z)?)?")
+             (str (u.regex/rx #"^2022-" (or "06-30" "07-01") (opt (or "T" #"\s") "00:00:00" (opt "Z")))))))))

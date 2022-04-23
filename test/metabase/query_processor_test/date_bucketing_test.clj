@@ -1181,7 +1181,7 @@
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
 (deftest june-31st-test
-  (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072)"
+  (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
     ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
     ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
     ;; `:relative-datetime` expression and do this directly in MBQL.
