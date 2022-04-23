@@ -11,17 +11,21 @@ export const PermissionsTableRoot = styled.table`
 
 export const PermissionsTableCell = styled.td`
   vertical-align: center;
-  padding: 0.625rem 2rem;
+  padding: 0.625rem 1rem;
   box-sizing: border-box;
   min-height: 40px;
+  overflow: hidden;
 
   &:first-of-type {
-    min-width: 300px;
+    width: 1%;
+    white-space: nowrap;
+    max-width: 300px;
     background: white;
     left: 0;
     top: 0;
     position: sticky;
     padding-left: 0;
+    padding-right: 1.5rem;
 
     &:after {
       position: absolute;
