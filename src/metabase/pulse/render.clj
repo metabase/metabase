@@ -51,7 +51,7 @@
   [dashcard card]
   (when *include-description*
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
-                               ( :description card))]
+                               (:description card))]
       {:attachments {}
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
