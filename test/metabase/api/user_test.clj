@@ -5,7 +5,7 @@
             [metabase.models :refer [Card Collection Dashboard LoginHistory
                                      PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.collection :as collection]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.user-test :as user-test]
             [metabase.server.middleware.util :as middleware.u]
             [metabase.test :as mt]
@@ -101,20 +101,20 @@
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge @user-defaults))
@@ -129,13 +129,13 @@
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}]
                   (map (partial merge @user-defaults))
                   (map #(dissoc % :is_qbnewb :last_login)))
-             (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (group/admin))) :data)
+             (->> ((mt/user-http-request :crowberto :get 200 "user" :group_id (u/the-id (perms-group/admin))) :data)
                   (filter mt/test-user?)
                   group-ids->sets
                   mt/boolean-ids-and-timestamps
@@ -157,27 +157,27 @@
                     :first_name             "Trash"
                     :last_name              "Bird"
                     :is_active              false
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Trash Bird"}
                    {:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge @user-defaults))
@@ -191,27 +191,27 @@
                     :first_name             "Trash"
                     :last_name              "Bird"
                     :is_active              false
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Trash Bird"}
                    {:email                  "crowberto@metabase.com"
                     :first_name             "Crowberto"
                     :last_name              "Corv"
                     :is_superuser           true
-                    :group_ids              #{(u/the-id (group/all-users))
-                                              (u/the-id (group/admin))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))
+                                              (u/the-id (perms-group/admin))}
                     :personal_collection_id true
                     :common_name            "Crowberto Corv"}
                    {:email                  "lucky@metabase.com"
                     :first_name             "Lucky"
                     :last_name              "Pigeon"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Lucky Pigeon"}
                    {:email                  "rasta@metabase.com"
                     :first_name             "Rasta"
                     :last_name              "Toucan"
-                    :group_ids              #{(u/the-id (group/all-users))}
+                    :group_ids              #{(u/the-id (perms-group/all-users))}
                     :personal_collection_id true
                     :common_name            "Rasta Toucan"}]
                   (map (partial merge @user-defaults))
@@ -261,7 +261,7 @@
                      :last_name                  "Toucan"
                      :common_name                "Rasta Toucan"
                      :first_login                "2021-03-18T19:52:41.808482Z"
-                     :group_ids                  [(u/the-id (group/all-users))]
+                     :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard false
                      :is_installer               (= 1 (mt/user->id :rasta))
@@ -279,7 +279,7 @@
                      :first_name                 "Rasta"
                      :last_name                  "Toucan"
                      :common_name                "Rasta Toucan"
-                     :group_ids                  [(u/the-id (group/all-users))]
+                     :group_ids                  [(u/the-id (perms-group/all-users))]
                      :personal_collection_id     true
                      :has_question_and_dashboard true
                      :is_installer               (= 1 (mt/user->id :rasta))
@@ -437,7 +437,7 @@
   {:is-superuser? (db/select-one-field :is_superuser User :%lower.email (u/lower-case-en email))
    :pgm-exists?   (db/exists? PermissionsGroupMembership
                     :user_id  (db/select-one-id User :%lower.email (u/lower-case-en email))
-                    :group_id (u/the-id (group/admin)))})
+                    :group_id (u/the-id (perms-group/admin)))})
 
 (deftest create-user-add-to-admin-group-test
   (testing "POST /api/user"
@@ -910,7 +910,7 @@
       (testing "shouldn't be allowed to set someone else's status"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403
-                                     (format "user/%d/modal/endpoint"
+                                     (format "user/%d/modal/%s"
                                              (mt/user->id :trashbird)
                                              endpoint))))))))
 
