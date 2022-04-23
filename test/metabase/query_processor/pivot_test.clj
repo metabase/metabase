@@ -317,4 +317,4 @@
                 ["Widget" 0 54]
                 [nil 1 200]]
                (mt/rows
-                (qp.pivot/run-pivot-query query))))))))
+                (pivot/run-pivot-query query))))))))
