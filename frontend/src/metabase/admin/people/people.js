@@ -44,8 +44,7 @@ export const createMembership = createAction(
     return {
       user_id: userId,
       group_id: groupId,
-      membership_id: _.findWhere(groupMemberships, { user_id: userId })
-        .membership_id,
+      membership: _.findWhere(groupMemberships, { user_id: userId }),
     };
   },
 );
@@ -80,15 +79,19 @@ const memberships = handleActions(
       next: (state, { payload: memberships }) => memberships,
     },
     [CREATE_MEMBERSHIP]: {
-      next: (state, { payload: membership }) =>
-        assoc(state, membership.membership_id, membership),
+      next: (state, { payload: { group_id, user_id, membership } }) =>
+        assoc(state, membership.membership_id, {
+          group_id,
+          user_id,
+          membership_id: membership.membership_id,
+        }),
     },
     [UPDATE_MEMBERSHIP]: {
       next: (state, { payload: membership }) =>
         assoc(state, membership.membership_id, membership),
     },
     [DELETE_MEMBERSHIP]: {
-      next: (state, { payload: membershipId }) => dissoc(state, membershipId),
+      next: (state, { payload }) => dissoc(state, payload.membershipId),
     },
   },
   {},
