@@ -7,9 +7,10 @@ import { withRouter } from "react-router";
 import Database from "metabase/entities/databases";
 import { getIsNavbarOpen } from "metabase/redux/app";
 import { getUser } from "metabase/selectors/user";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 
 import { User } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import { AdminPath, State } from "metabase-types/store";
 
 import { AdminNavbar } from "../components/AdminNavbar";
 import MainNavbar from "./MainNavbar";
@@ -19,14 +20,16 @@ type NavbarProps = {
   user: User;
   location: Location;
   params: Record<string, unknown>;
+  adminPaths: AdminPath[];
 };
 
 const mapStateToProps = (state: State) => ({
   isOpen: getIsNavbarOpen(state),
   user: getUser(state),
+  adminPaths: getAdminPaths(state),
 });
 
-function Navbar({ isOpen, user, location, params }: NavbarProps) {
+function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
   const isAdminApp = useMemo(() => location.pathname.startsWith("/admin/"), [
     location.pathname,
   ]);
@@ -36,7 +39,7 @@ function Navbar({ isOpen, user, location, params }: NavbarProps) {
   }
 
   return isAdminApp ? (
-    <AdminNavbar user={user} path={location.pathname} />
+    <AdminNavbar user={user} path={location.pathname} adminPaths={adminPaths} />
   ) : (
     <MainNavbar isOpen={isOpen} location={location} params={params} />
   );

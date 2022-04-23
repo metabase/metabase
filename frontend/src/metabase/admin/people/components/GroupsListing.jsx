@@ -85,14 +85,14 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
       className="block"
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
-      <ul className="UserActionsSelect">
+      <ul className="UserActionsSelect py1">
         <li
-          className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer"
+          className="p2 bg-brand-hover text-white-hover cursor-pointer"
           onClick={onEditGroupClicked.bind(null, group)}
         >
           {t`Edit Name`}
         </li>
-        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer text-error">
+        <li className="p2 bg-brand-hover text-white-hover cursor-pointer text-error">
           <ModalWithTrigger triggerElement={t`Remove Group`}>
             <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
           </ModalWithTrigger>
@@ -151,8 +151,6 @@ function GroupRow({
   group,
   groupBeingEdited,
   index,
-  showGroupDetail,
-  showAddGroupRow,
   onEditGroupClicked,
   onDeleteGroupClicked,
   onEditGroupTextChange,
@@ -356,13 +354,13 @@ export default class GroupsListing extends Component {
   }
 
   render() {
-    const { groups } = this.props;
+    const { groups, isAdmin } = this.props;
     const { alertMessage } = this.state;
 
     return (
       <AdminPaneLayout
         title={t`Groups`}
-        buttonText={t`Create a group`}
+        buttonText={isAdmin ? t`Create a group` : null}
         buttonAction={
           this.state.showAddGroupRow
             ? null
