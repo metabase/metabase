@@ -11,8 +11,7 @@ describeEE("scenarios > question > snippets", () => {
     restore();
   });
 
-  // Please uncomment "normal" user when #21581 gets fixed
-  ["admin" /*"normal"*/].forEach(user => {
+  ["admin", "normal"].forEach(user => {
     it(`${user} user can create a snippet (metabase#21581)`, () => {
       cy.intercept("POST", "/api/native-query-snippet").as("snippetCreated");
 
@@ -139,6 +138,7 @@ describeEE("scenarios > question > snippets", () => {
       cy.findAllByRole("option")
         .contains("View")
         .click();
+      cy.findByText("Revoke access").click();
       cy.button("Save").click();
 
       cy.wait("@updatePermissions");
