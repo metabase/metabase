@@ -302,12 +302,11 @@
   ee-registry
   (atom {}))
 
-(defn- register-mapping!
+(defn register-mapping!
   "Adds mapping from EE->OSS fn to the `ee-registry`."
-  [fn-name ee-ns args body]
-  (let [ee-parts  [ee-ns fn-name]
-        oss-fn    (eval `(fn ~args ~@body))]
-    (swap! ee-registry assoc ee-parts oss-fn)))
+  [fn-name ee-ns f]
+  (let [ee-parts  [ee-ns fn-name]]
+    (swap! ee-registry assoc ee-parts f)))
 
 (defn missing-premium-token-exception
   "The default exception to throw when an EE function is called, but a required premium feature is not present."
@@ -322,29 +321,31 @@
 
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
-  [{:keys [fn-name docstr args body result-schema options]}]
-  (let [{:keys [feature fallback]} options]
-    `(if ~(or (= feature :none)
-              (if (or (not feature) (= feature :any))
-                `(enable-enhancements?)
-                `(has-feature? ~feature)))
+  [{:keys [fn-name docstr args body result-schema arg->schema options]}]
+  `(defn ~fn-name ~docstr ~args
+     ~@(validate-args arg->schema)
+     ~(let [{:keys [feature fallback]} options]
+        `(if ~(or (= feature :none)
+                  (if (or (not feature) (= feature :any))
+                    `(enable-enhancements?)
+                    `(has-feature? ~feature)))
 
-       ~(if result-schema
-          `(s/validate ~result-schema (do ~@body))
-          `(do ~@body))
+           ~(if result-schema
+              `(s/validate ~result-schema (do ~@body))
+              `(do ~@body))
 
-       ~(cond
-          (= fallback :error)
-          `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
+           ~(cond
+              (= fallback :error)
+              `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
 
-          (or (symbol? fallback) (seq? fallback))
-          `(apply ~fallback ~args)
+              (or (symbol? fallback) (seq? fallback))
+              `(apply ~fallback ~args)
 
-          ;; :oss and default case
-          :else
-          `(apply (get @ee-registry [(symbol ~(str (ns-name *ns*)))
-                                     (symbol ~(str fn-name))])
-                  ~args)))))
+              ;; :oss and default case
+              :else
+              `(apply (get @ee-registry [(symbol ~(str (ns-name *ns*)))
+                                         (symbol ~(str fn-name))])
+                      ~args))))))
 
 (def resolve-ee
   "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
@@ -358,14 +359,17 @@
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name ee-ns docstr args body result-schema]}]
-  (register-mapping! fn-name ee-ns args body)
-  `(if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
-     (apply ee-fn# ~args)
-     (let [result# (do ~@body)]
-       (if ~result-schema
-         (s/validate ~result-schema result#)
-         result#))))
+  [{:keys [fn-name ee-ns docstr args body arg->schema result-schema]}]
+  `(do
+    (register-mapping! '~fn-name '~ee-ns (fn ~args ~@body))
+    (defn ~fn-name ~docstr ~args
+      ~@(validate-args arg->schema)
+       (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
+         (apply ee-fn# ~args)
+         (let [result# (do ~@body)]
+           (if ~result-schema
+             (s/validate ~result-schema result#)
+             result#))))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -402,8 +406,6 @@
     (when-not (:docstr defenterprise-args)
       (log/warn (u/format-color 'red "Warning: enterprise function %s/%s does not have a docstring. Go add one."
                   (ns-name *ns*) fn-name)))
-    `(defn ~fn-name ~docstr ~args
-       ~@(validate-args (:arg->schema defenterprise-args))
-       ~(if (in-ee?)
-          `(defenterprise-ee ~defenterprise-args)
-          `(defenterprise-oss ~defenterprise-args)))))
+    (if (in-ee?)
+      `(defenterprise-ee ~defenterprise-args)
+      `(defenterprise-oss ~defenterprise-args))))
