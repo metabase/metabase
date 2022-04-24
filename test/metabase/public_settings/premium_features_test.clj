@@ -8,7 +8,6 @@
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [schema.core :as s]
             [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
@@ -87,13 +86,6 @@
   [username]
   (format "Hi %s, you're an OSS customer!" (name username)))
 
-(defenterprise greeting-with-schema :- s/Keyword
-  "Returns a greeting for a user."
-  metabase-enterprise.util-test
-  [username]
-  {username s/Keyword}
-  (format "Hi %s, you're an OSS customer!" (name username)))
-
 (defenterprise greeting-with-valid-token
   "Returns a non-special greeting for OSS users, and EE users who don't have a valid premium token"
   metabase-enterprise.util-test
@@ -137,16 +129,6 @@
         (with-redefs [clojure.core/ns-resolve (fn [_ _] (constantly "This should not be printed!"))]
           (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                  (greeting :rasta)))))
-
-
-     (testing "If a schema map for args is present, schemas are validated"
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                             #"Value does not match schema"
-                             (greeting-with-schema "rasta")))
-
-       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                             #"Value does not match schema"
-                             (greeting-with-schema :rasta))))
 
      (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
        (with-premium-features #{:some-feature}

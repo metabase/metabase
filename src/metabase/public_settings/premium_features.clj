@@ -13,7 +13,8 @@
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [clojure.spec.alpha :as spec]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
@@ -266,35 +267,16 @@
         [(merge options-map {option-name option-value})
          other-args]))))
 
-(defn- parse-result-schema
-  "Detects the schema for the return value of an enterprise function, indicated with the keyword :-, and returns
-  [schema remaining-args] if it exists. Else returns [nil args]."
-  [args]
-  (let [[schema-indicator [schema & more]] (u/optional #{:-} args)]
-    (if schema-indicator
-      [schema more]
-      [nil args])))
-
 (defn- parse-defenterprise-args
-  [defenterprise-args]
-  (let [[result-schema more]    (parse-result-schema defenterprise-args)
-        [docstr more]           (u/optional string? more)
+  [args]
+  (let [[docstr more]           (u/optional string? args)
         [ee-ns more]            (u/optional symbol? more)
-        [options [args & more]] (parse-defenterprise-options more)
-        [arg->schema body]      (u/optional (every-pred map? #(every? symbol? (keys %))) more)]
+        [options [args & body]] (parse-defenterprise-options more)]
     {:ee-ns         ee-ns
      :docstr        docstr
      :options       options
      :args          args
-     :arg->schema   arg->schema
-     :result-schema result-schema
      :body          body}))
-
-(defn validate-args
-  "Generate a series of s/validate calls for the arg and schema pairs in `arg->schema`."
-  [arg->schema]
-  (for [[arg schema] arg->schema]
-    `(s/validate ~schema ~arg)))
 
 (defonce ^{:doc "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as
                 their OSS equivalents. These fns are called when the EE function must fallback to the OSS behavior due
@@ -321,19 +303,14 @@
 
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
-  [{:keys [fn-name docstr args body result-schema arg->schema options]}]
+  [{:keys [fn-name docstr args body options]}]
   `(defn ~fn-name ~docstr ~args
-     ~@(validate-args arg->schema)
      ~(let [{:keys [feature fallback]} options]
         `(if ~(or (= feature :none)
                   (if (or (not feature) (= feature :any))
                     `(enable-enhancements?)
                     `(has-feature? ~feature)))
-
-           ~(if result-schema
-              `(s/validate ~result-schema (do ~@body))
-              `(do ~@body))
-
+           (do ~@body)
            ~(cond
               (= fallback :error)
               `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
@@ -359,17 +336,13 @@
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name ee-ns docstr args body arg->schema result-schema]}]
+  [{:keys [fn-name ee-ns docstr args body]}]
   `(do
     (register-mapping! '~fn-name '~ee-ns (fn ~args ~@body))
     (defn ~fn-name ~docstr ~args
-      ~@(validate-args arg->schema)
        (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
          (apply ee-fn# ~args)
-         (let [result# (do ~@body)]
-           (if ~result-schema
-             (s/validate ~result-schema result#)
-             result#))))))
+         (do ~@body)))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -400,7 +373,7 @@
   causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [{:keys [docstr args arg->schema result-schema]
+  (let [{:keys [docstr args]
          :as defenterprise-args} (-> (parse-defenterprise-args defenterprise-args)
                                      (assoc :fn-name fn-name))]
     (when-not (:docstr defenterprise-args)
