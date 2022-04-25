@@ -61,7 +61,6 @@ jobs:
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "dashboard-filters-sql"
           - "downloads"
           - "embedding"
           - "joins"
