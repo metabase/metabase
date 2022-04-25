@@ -78,11 +78,11 @@
     (t/with-clock (t/mock-clock #t "2016-06-07T12:13:55Z")
       (testing "hours"
         (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :hour}]
+                [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
                 "2016-06-07T00:00:00Z"]
                (params.dates/date-string->filter "exclude-hours-0" [:field "field" {:base-type :type/DateTime}])))
         (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :hour}]
+                [:field "field" {:base-type :type/DateTime, :temporal-unit :hour-of-day}]
                 "2016-06-07T00:00:00Z"
                 "2016-06-07T23:00:00Z"]
                (params.dates/date-string->filter "exclude-hours-0-23" [:field "field" {:base-type :type/DateTime}])))
@@ -92,11 +92,11 @@
                (params.dates/date-string->filter "exclude-hours-24-3" [:field "field" {:base-type :type/DateTime}]))))
       (testing "quarters"
         (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter}]
+                [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter-of-year}]
                 "2016-01-01"]
                (params.dates/date-string->filter "exclude-quarters-1" [:field "field" {:base-type :type/DateTime}])))
         (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter}]
+                [:field "field" {:base-type :type/DateTime, :temporal-unit :quarter-of-year}]
                 "2016-04-01"
                 "2016-07-01"
                 "2016-10-01"]
@@ -105,7 +105,7 @@
                (params.dates/date-string->filter "exclude-quarters-Q1" [:field "field" {:base-type :type/DateTime}]))))
       (testing "days"
         (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :day}]
+                [:field "field" {:base-type :type/DateTime, :temporal-unit :day-of-week}]
                 "2016-06-10"
                 "2016-06-07"]
                (params.dates/date-string->filter "exclude-days-Fri-Tue" [:field "field" {:base-type :type/DateTime}])))
@@ -113,7 +113,7 @@
                (params.dates/date-string->filter "exclude-days-Friday" [:field "field" {:base-type :type/DateTime}]))))
       (testing "months"
         (is (= [:!=
-                [:field "field" {:base-type :type/DateTime, :temporal-unit :month}]
+                [:field "field" {:base-type :type/DateTime, :temporal-unit :month-of-year}]
                 "2016-12-01"
                 "2016-04-01"
                 "2016-09-01"]

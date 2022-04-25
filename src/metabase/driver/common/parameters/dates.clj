@@ -253,6 +253,12 @@
                  (format "%s-%02d-01" year (inc (* 3 (dec quarter)))))
       nil)))
 
+(def ^:private excluded-temporal-unit
+  {:hour    :hour-of-day
+   :day     :day-of-week
+   :month   :month-of-year
+   :quarter :quarter-of-year})
+
 (def ^:private absolute-date-string-decoders
   ;; year and month
   [{:parser (regex->parser #"([0-9]{4}-[0-9]{2})" [:date])
@@ -299,7 +305,7 @@
                     exclusions (map (partial excluded-datetime unit (t/local-date))
                                     (str/split exclusions #"-"))]
                 (when (and (seq exclusions) (every? some? exclusions))
-                  (into [:!= (mbql.u/with-temporal-unit field-clause unit)] exclusions))))}])
+                  (into [:!= (mbql.u/with-temporal-unit field-clause (excluded-temporal-unit unit))] exclusions))))}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
