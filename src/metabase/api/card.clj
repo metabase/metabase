@@ -13,8 +13,6 @@
             [metabase.api.timeline :as api.timeline]
             [metabase.async.util :as async.u]
             [metabase.driver :as driver]
-            [metabase.driver.ddl.concurrent :as ddl.concurrent]
-            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]

@@ -72,10 +72,14 @@
   [card]
   (db/exists? PersistedInfo :card_id (:id card) :state [:not= "deletable"]))
 
-(defn mark-for-deletion [conditions-map]
+(defn mark-for-deletion
+  "Marks PersistedInfo as `deletable`, these will at some point be cleaned up by the PersistPrune task."
+  [conditions-map]
   (db/update-where! PersistedInfo conditions-map :active false, :state "deletable", :state_change_at :%now))
 
-(defn make-ready [user-id card]
+(defn make-ready
+  "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
+  [user-id card]
   (let [slug (-> card :name slug-name)
         {:keys [database_id]} card
         card-id (u/the-id card)

@@ -18,7 +18,7 @@
             [toucan.db :as db])
   (:import [org.quartz ObjectAlreadyExistsException Trigger]))
 
-(defn job-context->job-type
+(defn- job-context->job-type
   [job-context]
   (select-keys (qc/from-job-data job-context) ["db-id" "persisted-id" "type"]))
 
@@ -294,7 +294,9 @@
          ;; other errors?
          )))
 
-(defn job-info-by-db-id []
+(defn job-info-by-db-id
+  "Fetch all database-ids that have a refresh job scheduled."
+  []
   (some->> refresh-job-key
            task/job-info
            :triggers
@@ -325,11 +327,21 @@
     (doseq [db dbs-with-persistence]
       (schedule-persistence-for-database db interval-hours))))
 
-(defn enable-persisting []
+(defn enable-persisting
+  "Enable persisting
+   - The prune job is scheduled anew.
+   - Refresh jobs are added when persist is enabled on a db."
+  []
   (unschedule-all-refresh-triggers prune-job-key)
   (task/add-trigger! prune-scheduled-trigger))
 
-(defn disable-persisting []
+(defn disable-persisting
+  "Disable persisting
+   - All PersistedInfo are marked for deletion.
+   - Refresh job triggers are removed.
+   - Prune scheduled job trigger is removed.
+   - The prune job is triggered to run immediately. "
+  []
   (persisted-info/mark-for-deletion {})
   (unschedule-all-refresh-triggers refresh-job-key)
   (task/delete-trigger! prune-scheduled-trigger-key)
