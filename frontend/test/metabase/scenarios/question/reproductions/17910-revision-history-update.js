@@ -27,7 +27,7 @@ export function issue17910() {
       cy.findByText("History").click();
       cy.findByTestId("saved-question-history-list")
         .children()
-        .should("to.have.length", 2);
+        .should("have.length", 2);
     });
   });
 }

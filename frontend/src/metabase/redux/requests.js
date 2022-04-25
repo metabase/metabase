@@ -78,10 +78,17 @@ function requestStateReducerRecursive(state, action) {
   }
 }
 
+const isBulkInvalidation = statePath => {
+  // Bulk invalidations only have a statePath with a length of 2
+  return statePath.length <= 2;
+};
+
 export default (state = {}, action) => {
   if (action && action.payload && action.payload.statePath) {
     const statePath = action.payload.statePath;
-    if (statePath.length > 2 || getIn(state, statePath)) {
+    const hasStateToUpdate = !!getIn(state, statePath);
+
+    if (hasStateToUpdate || !isBulkInvalidation(statePath)) {
       state = updateIn(state, action.payload.statePath, subState =>
         requestStateReducerRecursive(subState, action),
       );
