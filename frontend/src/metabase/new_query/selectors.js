@@ -4,7 +4,9 @@
  */
 
 import { createSelector } from "reselect";
+import _ from "underscore";
 
+import Bookmarks from "metabase/entities/bookmarks";
 import { getDatabases } from "metabase/selectors/metadata";
 import { getEngineNativeType } from "metabase/lib/engine";
 
@@ -42,4 +44,9 @@ export const getHasDbWithJsonEngine = createSelector(
   [getDatabaseList],
   databases =>
     databases.some(db => db.native_permissions === "write" && isJsonEngine(db)),
+);
+
+export const getOrderedBookmarks = createSelector(
+  [Bookmarks.selectors.getList],
+  bookmarks => _.sortBy(bookmarks, bookmark => bookmark.order),
 );
