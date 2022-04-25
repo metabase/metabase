@@ -1,3 +1,4 @@
+import { dissoc } from "icepick";
 import { createEntity } from "metabase/lib/entities";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -37,13 +38,13 @@ const Bookmarks = createEntity({
   },
   reducer: (state = {}, { type, payload, error }) => {
     if (type === Questions.actionTypes.UPDATE && payload?.object?.archived) {
-      state[`card-${payload?.object?.id}`] = undefined;
-      return state;
+      const key = "card-" + payload?.object?.id;
+      return dissoc(state, key);
     }
 
     if (type === Dashboards.actionTypes.UPDATE && payload?.object?.archived) {
-      state[`dashboard-${payload?.object?.id}`] = undefined;
-      return state;
+      const key = "dashboard-" + payload?.object?.id;
+      return dissoc(state, key);
     }
 
     return state;

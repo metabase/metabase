@@ -180,7 +180,7 @@ describe("scenarios > question > joined questions", () => {
 
       popover().within(() => {
         enterCustomColumnDetails({
-          formula: "[Question 5 → sum] / [Sum of Rating]",
+          formula: "[Question 5 → Sum of Rating] / [Sum of Rating]",
         });
 
         cy.findByPlaceholderText("Something nice and descriptive").type(
@@ -405,7 +405,10 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+      const XRAY_DATASETS = 11; // enough to load most questions
+
       cy.intercept("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
+      cy.intercept("POST", "/api/dataset").as("postDataset");
 
       visitQuestionAdhoc({
         dataset_query: {
@@ -442,13 +445,19 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("X-ray").click();
 
       cy.wait("@xray").then(xhr => {
+        for (let c = 0; c < XRAY_DATASETS; ++c) {
+          cy.wait("@postDataset");
+        }
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.status).not.to.eq(500);
       });
+
+      // Metric title
+      cy.findByTextEnsureVisible(
+        "How this metric is distributed across different numbers",
+      );
       // Main title
       cy.contains(/^A closer look at/);
-      // Metric title
-      cy.findByText("How this metric is distributed across different numbers");
       // Make sure at least one card is rendered
       cy.get(".DashCard");
     });

@@ -303,3 +303,18 @@
                                result))
                   (is (= (mt/rows (qp.pivot/run-pivot-query query))
                          (mt/rows result))))))))))))
+
+(deftest pivot-with-order-by-test
+  (testing "Pivot queries should work if there is an `:order-by` clause (#17198)"
+    (mt/dataset sample-dataset
+      (let [query (mt/mbql-query products
+                    {:breakout    [$category]
+                     :aggregation [[:count]]
+                     :order-by    [[:asc $category]]})]
+        (is (= [["Doohickey" 0 42]
+                ["Gadget" 0 53]
+                ["Gizmo" 0 51]
+                ["Widget" 0 54]
+                [nil 1 200]]
+               (mt/rows
+                (qp.pivot/run-pivot-query query))))))))

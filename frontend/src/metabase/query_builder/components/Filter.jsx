@@ -11,6 +11,10 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "ttag";
 
+import { color } from "metabase/lib/colors";
+
+import ViewPill from "metabase/query_builder/components/view/ViewPill";
+
 const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   const items = [field, operator, ...values];
   // insert an "and" at the end if multiple values
@@ -32,7 +36,9 @@ const DEFAULT_FILTER_RENDERER = ({ field, operator, values }) => {
   );
 };
 
-export const OperatorFilter = ({
+const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
+
+export const SimpleOperatorFilter = ({
   filter,
   metadata,
   maxDisplayValues,
@@ -80,10 +86,24 @@ export const OperatorFilter = ({
   });
 };
 
+export const ComplexOperatorFilter = ({ index, filter, removeFilter }) => {
+  return (
+    <FilterPill onRemove={() => removeFilter(index)}>
+      {filter.displayName()}
+    </FilterPill>
+  );
+};
+
+export const OperatorFilter = ({ filter, ...props }) =>
+  filter.displayName ? (
+    <ComplexOperatorFilter filter={filter} {...props} />
+  ) : (
+    <SimpleOperatorFilter filter={filter} {...props} />
+  );
+
 export const SegmentFilter = ({
   filter,
   metadata,
-  maxDisplayValues,
   children = DEFAULT_FILTER_RENDERER,
 }) => {
   const segment = metadata.segment(filter[1]);

@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { connect } from "react-redux";
-
+import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import {
@@ -11,12 +11,19 @@ import {
   getGroupNameLocalized,
 } from "metabase/lib/groups";
 
-import { t, ngettext, msgid } from "ttag";
+import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import Alert from "metabase/components/Alert";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
-
-import GroupMembersTable from "./group-members/GroupMembersTable";
-import { deleteMembership, createMembership } from "../people";
+import { getGroupMembersips, getMembershipsByUser } from "../selectors";
+import { getUser } from "metabase/selectors/user";
+import GroupMembersTable from "./GroupMembersTable";
+import {
+  createMembership,
+  deleteMembership,
+  updateMembership,
+  loadMemberships,
+} from "../people";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 
 const GroupDescription = ({ group }) =>
   isDefaultGroup(group) ? (
@@ -40,133 +47,148 @@ const GroupDescription = ({ group }) =>
     </div>
   ) : null;
 
+const mapStateToProps = (state, props) => ({
+  groupMemberships: getGroupMembersips(state, props),
+  membershipsByUser: getMembershipsByUser(state),
+  currentUser: getUser(state),
+});
+
+const mapDispatchToProps = {
+  createMembership,
+  deleteMembership,
+  updateMembership,
+  loadMemberships,
+  confirmDeleteMembershipAction: (membershipId, userMemberships) =>
+    PLUGIN_GROUP_MANAGERS.confirmDeleteMembershipAction(
+      membershipId,
+      userMemberships,
+    ),
+  confirmUpdateMembershipAction: (membership, userMemberships) =>
+    PLUGIN_GROUP_MANAGERS.confirmUpdateMembershipAction(
+      membership,
+      userMemberships,
+    ),
+};
+
 const GroupDetail = ({
   currentUser,
   group,
   users,
-  deleteMembership,
+  membershipsByUser,
+  groupMemberships,
   createMembership,
+  updateMembership,
+  deleteMembership,
+  loadMemberships,
+  confirmDeleteMembershipAction,
+  confirmUpdateMembershipAction,
 }) => {
+  const { modalContent, show } = useConfirmation();
   const [addUserVisible, setAddUserVisible] = useState(false);
-  const [text, setText] = useState("");
-  const [selectedUsers, setSelectedUsers] = useState([]);
-  const [alertMessage, setAlertMessage] = useState(false);
+  const [alertMessage, setAlertMessage] = useState(null);
 
-  const { members } = group;
+  useEffect(() => {
+    loadMemberships();
+  }, [loadMemberships]);
 
-  const filteredUsers = useMemo(() => {
-    const usedUsers = new Set([
-      ...members.map(u => u.user_id),
-      ...selectedUsers.map(u => u.id),
-    ]);
+  const alert = alertMessage => setAlertMessage(alertMessage);
 
-    return Object.values(users).filter(user => !usedUsers.has(user.id));
-  }, [members, selectedUsers, users]);
+  const onAddUsersClicked = () => setAddUserVisible(true);
 
-  const title = useMemo(
-    () => (
-      <React.Fragment>
-        {getGroupNameLocalized(group)}
-        <span className="text-light ml1">
-          {ngettext(
-            msgid`${members.length} member`,
-            `${members.length} members`,
-            members.length,
-          )}
-        </span>
-      </React.Fragment>
-    ),
-    [group, members],
-  );
+  const onAddUserCanceled = () => setAddUserVisible(false);
 
-  const handleRemoveUserClicked = useCallback(
-    async user => {
-      try {
-        const membership = members.find(m => m.user_id === user.id);
-        await deleteMembership({
-          membershipId: membership.membership_id,
-          groupId: group.id,
-        });
-      } catch (error) {
-        console.error("Error deleting PermissionsMembership:", error);
-        setAlertMessage(error && typeof error.data ? error.data : error);
-      }
-    },
-    [members, deleteMembership, group.id],
-  );
-
-  const handleAddUserDone = useCallback(async () => {
+  const onAddUserDone = async userIds => {
+    setAddUserVisible(false);
     try {
       await Promise.all(
-        selectedUsers.map(async user => {
+        userIds.map(async userId => {
           await createMembership({
             groupId: group.id,
-            userId: user.id,
+            userId,
           });
         }),
       );
-      setAddUserVisible(false);
-      setText("");
-      setSelectedUsers([]);
     } catch (error) {
-      setAlertMessage(error && typeof error.data ? error.data : error);
+      alert(error && typeof error.data ? error.data : error);
     }
-  }, [selectedUsers, createMembership, group.id]);
+  };
 
-  const handleAddUserCanceled = useCallback(() => {
-    setAddUserVisible(false);
-    setText("");
-    setSelectedUsers([]);
-  }, []);
+  const handleChange = async membership => {
+    const confirmation = PLUGIN_GROUP_MANAGERS.getChangeMembershipConfirmation(
+      currentUser,
+      membership,
+    );
 
-  const handleUserSuggestionAccepted = useCallback(user => {
-    setSelectedUsers(u => [...u, user]);
-    setText("");
-  }, []);
+    if (!confirmation) {
+      return await updateMembership(membership);
+    }
 
-  const handleRemoveUserFromSelection = useCallback(user => {
-    setSelectedUsers(users => users.filter(u => u.id !== user.id));
-  }, []);
+    show({
+      ...confirmation,
+      onConfirm: () =>
+        confirmUpdateMembershipAction(
+          membership,
+          membershipsByUser[currentUser.id],
+        ),
+    });
+  };
 
-  const dismissAlert = useCallback(() => {
-    setAlertMessage(null);
-  }, []);
+  const handleRemove = async membershipId => {
+    const confirmation = PLUGIN_GROUP_MANAGERS.getRemoveMembershipConfirmation(
+      currentUser,
+      membershipsByUser[currentUser.id],
+      membershipId,
+    );
 
-  const userCanEditMemberships = useMemo(() => {
-    return canEditMembership(group) ? () => setAddUserVisible(true) : null;
-  }, [group]);
+    if (!confirmation) {
+      return await deleteMembership(membershipId);
+    }
+
+    show({
+      ...confirmation,
+      onConfirm: () =>
+        confirmDeleteMembershipAction(
+          membershipId,
+          membershipsByUser[currentUser.id],
+        ),
+    });
+  };
 
   return (
     <AdminPaneLayout
-      title={title}
+      title={
+        <React.Fragment>
+          {getGroupNameLocalized(group ?? {})}
+          <span className="text-light ml1">
+            {ngettext(
+              msgid`${groupMemberships.length} member`,
+              `${groupMemberships.length} members`,
+              groupMemberships.length,
+            )}
+          </span>
+        </React.Fragment>
+      }
       buttonText={t`Add members`}
-      buttonAction={userCanEditMemberships}
+      buttonAction={canEditMembership(group) ? onAddUsersClicked : null}
       buttonDisabled={addUserVisible}
     >
       <GroupDescription group={group} />
       <GroupMembersTable
+        groupMemberships={groupMemberships}
+        membershipsByUser={membershipsByUser}
         currentUser={currentUser}
         group={group}
-        members={members}
-        users={filteredUsers}
+        users={users}
         showAddUser={addUserVisible}
-        text={text || ""}
-        selectedUsers={selectedUsers}
-        onAddUserCancel={handleAddUserCanceled}
-        onAddUserDone={handleAddUserDone}
-        onAddUserTextChange={setText}
-        onUserSuggestionAccepted={handleUserSuggestionAccepted}
-        onRemoveUserFromSelection={handleRemoveUserFromSelection}
-        onRemoveUserClicked={handleRemoveUserClicked}
+        onAddUserCancel={onAddUserCanceled}
+        onAddUserDone={onAddUserDone}
+        onMembershipRemove={handleRemove}
+        onMembershipUpdate={handleChange}
       />
-      <Alert message={alertMessage} onClose={dismissAlert} />
+      <Alert message={alertMessage} onClose={() => alert(null)} />
+      {modalContent}
     </AdminPaneLayout>
   );
 };
 
-export default _.compose(
-  connect(null, {
-    deleteMembership,
-    createMembership,
-  }),
-)(GroupDetail);
+export default connect(mapStateToProps, mapDispatchToProps)(GroupDetail);

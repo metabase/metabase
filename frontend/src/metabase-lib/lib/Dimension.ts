@@ -807,6 +807,13 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
+    if (
+      this._fieldInstance &&
+      this._fieldInstance._comesFromEndpoint === true
+    ) {
+      return this._fieldInstance;
+    }
+
     const question = this.query()?.question();
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
     const fieldMetadata = question
@@ -915,6 +922,9 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
+      this._fieldInstance && {
+        _fieldInstance: this._fieldInstance,
+      },
     );
   }
 
@@ -1025,7 +1035,7 @@ export class FieldDimension extends Dimension {
   }
 
   _dimensionForOption(option): FieldDimension {
-    const dimension = option.mbql
+    let dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
       : this;
 
@@ -1036,6 +1046,15 @@ export class FieldDimension extends Dimension {
         option,
       );
       return null;
+    }
+
+    // Field literal's sub-dimensions sometimes don't have a specified base-type
+    // This can break a query, so here we need to ensure it mirrors the parent dimension
+    if (this.getOption("base-type") && !dimension.getOption("base-type")) {
+      dimension = dimension.withOption(
+        "base-type",
+        this.getOption("base-type"),
+      );
     }
 
     const additionalProperties = {

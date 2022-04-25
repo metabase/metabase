@@ -201,7 +201,7 @@
                     PermissionsGroupMembership [{id :id} {:group_id (:id group)
                                                           :user_id  (:id user)}]]
       (testing "This API is for EE only"
-        (is (= "Group Manager is only enabled if you have a premium token with the advanced permissions feature."
+        (is (= "The group manager permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (mt/user-http-request :crowberto :put 402 (format "permissions/membership/%d" id) {:is_group_manager false})))))))
 
 (deftest delete-group-membership-test
