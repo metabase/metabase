@@ -4,7 +4,7 @@ import { Database, DatabaseId } from "metabase-types/types/Database";
 import { Table, TableId } from "metabase-types/types/Table";
 import { Field, FieldId } from "metabase-types/types/Field";
 import { Segment, SegmentId } from "metabase-types/types/Segment";
-import { Metric, MetricId } from "metabase-types/types/Metric";
+import { IMetric, MetricId } from "metabase-types/api";
 
 export type Metadata = {
   databases: { [id: DatabaseId]: DatabaseMetadata };
@@ -43,7 +43,7 @@ export type SegmentMetadata = Segment & {
   table: TableMetadata;
 };
 
-export type MetricMetadata = Metric & {
+export type MetricMetadata = IMetric & {
   table: TableMetadata;
 };
 
