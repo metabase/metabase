@@ -27,11 +27,17 @@ Timeline.propTypes = {
     }),
   ),
   renderFooter: PropTypes.func,
+  "data-testid": PropTypes.string,
 };
 
 export default Timeline;
 
-function Timeline({ className, items = [], renderFooter }) {
+function Timeline({
+  className,
+  items = [],
+  renderFooter,
+  "data-testid": dataTestId,
+}) {
   const iconSize = 16;
   const halfIconSize = iconSize / 2;
 
@@ -51,6 +57,7 @@ function Timeline({ className, items = [], renderFooter }) {
       leftShift={halfIconSize}
       bottomShift={halfIconSize}
       className={className}
+      data-testid={dataTestId}
     >
       {sortedFormattedItems.map((item, index) => {
         const {
