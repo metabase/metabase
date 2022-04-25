@@ -284,9 +284,17 @@
         (let [oss-fn (get @ee-registry [ee-ns fn-name])]
           (apply oss-fn args))))))
 
+(defn validate-ee-args
+  "Throws an exception if the required :feature option is not present."
+  [{feature :feature :as options}]
+  (when-not feature
+    (throw (ex-info (trs "The :feature option is required when using defenterprise in an EE namespace!")
+                    {:options options}))))
+
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr options fn-tail]}]
+  (validate-ee-args options)
   `(def
      ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
      (dynamic-ee-fn '~fn-name '~(ns-name *ns*) (fn ~@fn-tail) ~options)))
@@ -302,9 +310,25 @@
                    (ns-resolve (symbol ee-ns) (symbol fn-name)))]
        (fn [& args] (apply f args))))))
 
+(defn- oss-options-error
+  [option options]
+  (ex-info (trs "{0} option for defenterprise should not be set in an OSS namespace! Set it on the EE function instead." option)
+           {:options options}))
+
+(defn validate-oss-args
+  "Throws exceptions if EE options are provided, or if an EE namespace is not provided."
+  [ee-ns {:keys [feature options] :as options}]
+  (when-not ee-ns
+    (throw (Exception. (str (trs "An EE namespace must be provided when using defenterprise in an OSS namespace!")
+                            " "
+                            (trs "Add it immediately before the argument list.")))))
+  (when feature (throw (oss-options-error :feature options)))
+  (when options (throw (oss-options-error :fallback options))))
+
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name docstr ee-ns fn-tail]}]
+  [{:keys [fn-name docstr ee-ns fn-tail options]}]
+  (validate-oss-args ee-ns options)
   `(do
      (register-mapping! '~fn-name '~ee-ns (fn ~@fn-tail))
      (def
@@ -352,21 +376,22 @@
 
   A keyword representing a premium feature which must be present for the EE implementation to be used. Use `:any` to
   require a valid premium token with at least one feature, but no specific feature. Use `:none` to always run the
-  EE implementation if available, regardless of token. (Default: `:any`)
+  EE implementation if available, regardless of token.
 
   ###### `:fallback`
 
-  A keyword or function representing the fallback mechanism which should be used if the instance does not have the
-  premium feature defined by the :feature option. If a function is provided, it will be called with the same args
-  as the EE function. Valid keyword options are `:error`, which causes an exception to be thrown, or `:oss`, which
+  An optional keyword or function representing the fallback mechanism which should be used if the instance does not
+  have the premium feature defined by the :feature option. If a function is provided, it will be called with the same
+  args as the EE function. Valid keyword options are `:error`, which causes an exception to be thrown, or `:oss`, which
   causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
   (let [args (-> (spec/conform ::defenterprise-args defenterprise-args)
                  (assoc :fn-name fn-name))]
     (when-not (:docstr args)
-      (log/warn (u/format-color 'red "Warning: enterprise function %s/%s does not have a docstring. Go add one."
-                  (ns-name *ns*) fn-name)))
+      (throw (Exception. (tru "Enterprise function {0}/{1} does not have a docstring. Go add one!"
+                              (ns-name *ns*)
+                              fn-name))))
     (if (in-ee?)
       `(defenterprise-ee ~args)
       `(defenterprise-oss ~args))))
