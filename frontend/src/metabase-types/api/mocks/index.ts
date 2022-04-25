@@ -7,3 +7,4 @@ export * from "./timeline";
 export * from "./settings";
 export * from "./user";
 export * from "./metric";
+export * from "./segment";
