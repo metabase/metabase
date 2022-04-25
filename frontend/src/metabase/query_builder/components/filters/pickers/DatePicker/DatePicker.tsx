@@ -232,8 +232,6 @@ type Props = {
   operators?: DateOperator[];
 
   hideTimeSelectors?: boolean;
-  disableStartingFrom?: boolean;
-  hideExcludeOperators?: boolean;
   hideEmptinessOperators?: boolean;
   disableOperatorSelection?: boolean;
 
@@ -257,15 +255,8 @@ const DatePicker: React.FC<Props> = props => {
     onCommit,
     children,
     hideTimeSelectors,
-    hideExcludeOperators,
+    operators = DATE_OPERATORS,
   } = props;
-  const operators = React.useMemo(() => {
-    let ops = props.operators || DATE_OPERATORS;
-    if (props.hideExcludeOperators) {
-      ops = ops.filter(op => op.name !== "exclude");
-    }
-    return ops;
-  }, [props.operators, props.hideExcludeOperators]);
 
   const operator = getOperator(props.filter, operators);
   const [showShortcuts, setShowShortcuts] = React.useState(
@@ -294,7 +285,6 @@ const DatePicker: React.FC<Props> = props => {
             setShowShortcuts(false);
             onFilterChange(filter);
           }}
-          hideExcludeOperators={hideExcludeOperators}
           onCommit={onCommit}
           filter={filter}
           onBack={enableBackButton ? onBack : undefined}

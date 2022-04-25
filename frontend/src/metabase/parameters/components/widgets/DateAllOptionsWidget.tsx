@@ -140,8 +140,6 @@ const DateAllOptionsWidget = ({
         onFilterChange={setFilter}
         onCommit={commitAndClose}
         hideTimeSelectors
-        disableStartingFrom
-        hideExcludeOperators
         hideEmptinessOperators
         disableOperatorSelection={disableOperatorSelection}
       >
