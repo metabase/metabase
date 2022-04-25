@@ -1,5 +1,5 @@
 import { handleActions, createAction } from "redux-actions";
-import { updateIn, assoc } from "icepick";
+import { updateIn, assoc, getIn } from "icepick";
 
 export const setRequestLoading = createAction(
   "metabase/requests/SET_REQUEST_LOADING",
@@ -80,9 +80,12 @@ function requestStateReducerRecursive(state, action) {
 
 export default (state = {}, action) => {
   if (action && action.payload && action.payload.statePath) {
-    state = updateIn(state, action.payload.statePath, subState =>
-      requestStateReducerRecursive(subState, action),
-    );
+    const statePath = action.payload.statePath;
+    if (statePath.length > 2 || getIn(state, statePath)) {
+      state = updateIn(state, action.payload.statePath, subState =>
+        requestStateReducerRecursive(subState, action),
+      );
+    }
   }
   return state;
 };
