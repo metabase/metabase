@@ -317,13 +317,13 @@
 
 (defn validate-oss-args
   "Throws exceptions if EE options are provided, or if an EE namespace is not provided."
-  [ee-ns {:keys [feature options] :as options}]
+  [ee-ns {:keys [feature fallback] :as options}]
   (when-not ee-ns
     (throw (Exception. (str (trs "An EE namespace must be provided when using defenterprise in an OSS namespace!")
                             " "
                             (trs "Add it immediately before the argument list.")))))
   (when feature (throw (oss-options-error :feature options)))
-  (when options (throw (oss-options-error :fallback options))))
+  (when fallback (throw (oss-options-error :fallback options))))
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
