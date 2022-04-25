@@ -35,14 +35,14 @@ const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
   previous: getFilterValueSerializer((value, unit, options = {}) => {
     if (options.startingFrom) {
       const [fromValue, fromUnit] = options.startingFrom;
-      return `past${-value}${unit}s~${fromValue}${fromUnit}s`;
+      return `past${-value}${unit}s-from-${fromValue}${fromUnit}s`;
     }
     return `past${-value}${unit}s${options["include-current"] ? "~" : ""}`;
   }),
   next: getFilterValueSerializer((value, unit, options = {}) => {
     if (options.startingFrom) {
       const [fromValue, fromUnit] = options.startingFrom;
-      return `next${value}${unit}s~${-fromValue}${fromUnit}s`;
+      return `next${value}${unit}s-from-${-fromValue}${fromUnit}s`;
     }
     return `next${value}${unit}s${options["include-current"] ? "~" : ""}`;
   }),
@@ -61,7 +61,7 @@ const serializersByOperatorName: Record<string, (...args: any[]) => string> = {
       .getOptions()
       .flat()
       .filter(({ test }) => !!_.find(values, (value: string) => test(value)));
-    return `${operator.name}~${options
+    return `exclude-${operator.name}-${options
       .map(({ serialized }) => serialized)
       .join("-")}`;
   },

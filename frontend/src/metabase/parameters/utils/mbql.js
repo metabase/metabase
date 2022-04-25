@@ -25,7 +25,7 @@ const withTemporalUnit = (fieldRef, unit) => {
 
 const timeParameterValueDeserializers = [
   {
-    testRegex: /^(days|months|quarters|hours)~([a-zA-Z0-9\-]+)$/,
+    testRegex: /^exclude-(days|months|quarters|hours)-([a-zA-Z0-9\-]+)$/,
     deserialize: (matches, fieldRef) => {
       const unit = EXCLUDE_UNITS[matches[0]];
       const options = EXCLUDE_OPTIONS[unit]().flat();
@@ -42,7 +42,7 @@ const timeParameterValueDeserializers = [
     },
   },
   {
-    testRegex: /^past([0-9]+)([a-z]+)s~([0-9]+)([a-z]+)s$/,
+    testRegex: /^past([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$/,
     deserialize: (matches, fieldRef) => {
       const base = [
         "time-interval",
@@ -61,7 +61,7 @@ const timeParameterValueDeserializers = [
       ),
   },
   {
-    testRegex: /^next([0-9]+)([a-z]+)s~([0-9]+)([a-z]+)s$/,
+    testRegex: /^next([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$/,
     deserialize: (matches, fieldRef) => {
       const base = [
         "time-interval",
