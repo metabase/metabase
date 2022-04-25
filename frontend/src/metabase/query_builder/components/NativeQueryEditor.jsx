@@ -427,9 +427,9 @@ export default class NativeQueryEditor extends Component {
       </div>
     );
 
-    const canSaveSnippets = !!snippetCollections
-      .map(sc => sc.can_write)
-      .find(x => x);
+    const canSaveSnippets = snippetCollections.some(
+      collection => collection.can_write,
+    );
 
     return (
       <div className="NativeQueryEditor bg-light full">
