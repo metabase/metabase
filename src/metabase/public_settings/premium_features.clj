@@ -265,17 +265,6 @@
   (let [ee-parts  [ee-ns fn-name]]
     (swap! ee-registry assoc ee-parts f)))
 
-(defn missing-premium-token-exception
-  "The default exception to throw when an EE function is called, but a required premium feature is not present."
-  [fn-name feature]
-  (let [message (if (= feature :any)
-                  (trs "The {0} function requires a valid premium token"
-                       fn-name)
-                  (trs "The {0} function requires a valid premium token with the {1} feature"
-                       fn-name
-                       (name feature)))]
-    (ex-info message {:status-code 402})))
-
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr options fn-tail]}]
@@ -303,9 +292,10 @@
   `classloader/require` and `ns-resolve`."
   (memoize
    (fn [ee-ns fn-name]
-     (u/ignore-exceptions
-      (classloader/require (symbol ee-ns))
-      (ns-resolve (symbol ee-ns) (symbol fn-name))))))
+     (if-let [f (u/ignore-exceptions
+                 (classloader/require (symbol ee-ns))
+                 (ns-resolve (symbol ee-ns) (symbol fn-name)))]
+       (fn [& args] (apply f args))))))
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
@@ -315,7 +305,7 @@
      (def
        ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
        (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
-         (fn [& ~'args] (apply ee-fn# ~'args))
+         ee-fn#
          (fn ~@fn-tail)))))
 
 (defn- options-conformer
