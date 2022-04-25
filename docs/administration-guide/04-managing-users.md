@@ -45,6 +45,7 @@ To determine [who has access to what](05-setting-permissions.md), you’ll need 
 - Create one or more groups.
 - Choose which level of access that group has to different databases, collections, and so on.
 - Then add people to those groups.
+- (Optional) promote people to [group managers](#group-manager).
 
 To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click on **Groups** from the side menu.
 
@@ -80,7 +81,13 @@ To remove a group, click the X icon to the right of a group in the list to remov
 
 #### Adding people to groups
 
-Adding people to groups allows you to assign [data access](05-setting-permissions.md) and [collection permissions](06-collections.md) to them. To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to.
+Adding people to groups allows you to assign 
+
+- [Data access](05-setting-permissions.md),
+- [Collection permissions](06-collections.md),
+- [Application permissions](application-permissions.md).
+
+To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to. You can also add people from the group's page.
 
 ### Group managers
 
@@ -90,10 +97,10 @@ Adding people to groups allows you to assign [data access](05-setting-permission
 
 Group managers can:
 
-- Rename their group.
+- Add or remove people from their group (that is, people who already have accounts in your Metabase).
 - View all people in the **Admin settings** > **People** tab.
 - Promote other people to group manager, or demote them from group manager to member.
-- Add or remove people from their group (that is, people who already have accounts in your Metabase).
+- Rename their group.
 
 Group managers are not admins, so their powers are limited. They cannot create new groups or invite new people to your Metabase.
 
