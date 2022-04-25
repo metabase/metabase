@@ -10,12 +10,7 @@
 (defn ldap-test-details
   []
   (-> (ldap.test/get-ldap-details)
-      (set/rename-keys (set/map-invert @#'api.ldap/mb-settings->ldap-details))
-      #_(assoc :ldap-enabled true)))
-
-(comment
-  (ldap.test/with-ldap-server (Integer. (ldap.test/get-ldap-port)))
-  )
+      (set/rename-keys (set/map-invert @#'api.ldap/mb-settings->ldap-details))))
 
 (deftest ldap-settings-test
   (testing "PUT /api/ldap/settings"
@@ -47,4 +42,17 @@
       (testing "Requires superusers"
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 "ldap/settings"
-                                     (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false))))))))
+                                     (assoc (ldap-test-details) :ldap-port "" :ldap-enabled false)))))
+
+      (testing "Changing the settings does not automatically enable a disabled LDAP config"
+        (is (ldap/ldap-configured?))
+        (is (ldap/ldap-enabled))
+        (mt/user-http-request :crowberto :post 200 "ldap/enable" :enabled false)
+        (is (ldap/ldap-configured?))
+        (is (not (ldap/ldap-enabled)))
+        (mt/user-http-request :crowberto :put 200 "ldap/settings" (ldap-test-details))
+        (is (ldap/ldap-configured?))
+        (is (not (ldap/ldap-enabled)))
+        (mt/user-http-request :crowberto :post 200 "ldap/enable" :enabled true)
+        (is (ldap/ldap-configured?))
+        (is (ldap/ldap-enabled))))))

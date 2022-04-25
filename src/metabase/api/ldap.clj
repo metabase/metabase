@@ -96,17 +96,14 @@
 
 (api/defendpoint PUT "/settings"
   "Update LDAP related settings. You must be a superuser to do this."
-  [:as {settings :body}]
+  [:as {{port :ldap-port :as settings} :body}]
   {settings su/Map}
   (validation/check-has-application-permission :setting)
-  (let [ldap-settings (-> settings
-                          (select-keys (keys mb-settings->ldap-details))
-                          (assoc :ldap-port (let [port (:ldap-port settings)]
-                                              (if (and (string? port) (not-empty port))
-                                                (Long/parseLong port)
-                                                port))
-                                 :ldap-enabled true)
-                          (update :ldap-password update-password-if-needed))
+  (let [ldap-settings (cond-> settings
+                        true                          (select-keys (keys mb-settings->ldap-details))
+                        (and (string? port)
+                             (not-empty port))        (update :ldap-port #(Long/parseLong %))
+                        true                          (update :ldap-password update-password-if-needed))
         ldap-details  (set/rename-keys ldap-settings mb-settings->ldap-details)
         results       (ldap/test-ldap-connection ldap-details)]
     (if (= :SUCCESS (:status results))
@@ -116,5 +113,18 @@
       {:status 500
        :body   (humanize-error-messages results)})))
 
+(api/defendpoint POST "/enable"
+  "Toggle LDAP authentication on and off, by passing `?enabled=true` or `?enabled=false`.
+  You must be a superuser to do this.
+  LDAP can only be enabled if there is a valid configuration already stored; see `/ldap/settings`."
+  [enabled]
+  {enabled su/BooleanString}
+  (validation/check-has-application-permission :setting)
+  ;; To enable LDAP the configuration must already be saved and validated.
+  (if (some-> enabled str (Boolean/parseBoolean))
+    (if (ldap/ldap-configured?)
+      (ldap/ldap-enabled true)
+      {:status 400 :body {:errors {:ldap-not-configured "No valid LDAP configuration"}}})
+    (ldap/ldap-enabled false)))
 
 (api/define-routes)
