@@ -38,6 +38,9 @@ function QuestionDetailsSidebarPanel({
       }
     : undefined;
 
+  const hasSecondarySection =
+    (isDataset && canWrite) || (!isDataset && PLUGIN_MODERATION.isEnabled());
+
   return (
     <Container>
       <SidebarPaddedContent>
@@ -53,18 +56,20 @@ function QuestionDetailsSidebarPanel({
           description={description}
           onEdit={onDescriptionEdit}
         />
-        <BorderedSectionContainer>
-          {isDataset && canWrite && (
-            <DatasetManagementSection dataset={question} />
-          )}
-          {!isDataset && (
-            <ModerationSectionContainer>
-              <PLUGIN_MODERATION.QuestionModerationSection
-                question={question}
-              />
-            </ModerationSectionContainer>
-          )}
-        </BorderedSectionContainer>
+        {hasSecondarySection && (
+          <BorderedSectionContainer>
+            {isDataset && canWrite && (
+              <DatasetManagementSection dataset={question} />
+            )}
+            {!isDataset && (
+              <ModerationSectionContainer>
+                <PLUGIN_MODERATION.QuestionModerationSection
+                  question={question}
+                />
+              </ModerationSectionContainer>
+            )}
+          </BorderedSectionContainer>
+        )}
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
     </Container>
