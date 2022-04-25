@@ -4,8 +4,8 @@ In addition to our [Officially supported drivers](./administration-guide/01-mana
 
 We have two types of third-party drivers:
 
-- Partner drivers
-- Community drivers
+- [Partner drivers](#partner-drivers)
+- [Community drivers](#community-drivers)
 
 ## How to use a third-party driver
 

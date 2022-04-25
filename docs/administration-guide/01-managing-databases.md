@@ -24,9 +24,9 @@ Although connection details differ database to database, in general you'll need 
 
 Metabase supports many different databases and data sources, with different levels of support.
 
-- [Official](#officially-supported-databases)
-- [Partner](#partner)
-- [Community](#community)
+- [Official](#officially-supported-databases) (this page)
+- [Partner](../developers-guide-drivers.md)
+- [Community](../developers-guide-drivers.md)
 
 ### Officially supported databases
 
@@ -47,16 +47,6 @@ The following database have official drivers maintained by the Metabase team. Cu
 - SQL Server
 - SQLite
 - [Vertica](databases/vertica.md)
-
-### Partner drivers
-
-Partner drivers are drivers developed and supported by Metabase partners. Metabase doesn't provide support for partner drivers, but these partner drivers are held to a higher standard than our community drivers. The partners that maintain the driver have also committed to providing support for the driver.
-
-See [Partner and community drivers](../developers-guide-drivers.md).
-
-### Community drivers
-
-Our [Community Drivers](../developers-guide-drivers.md) page lists drivers that are built by people who want to contribute to the Metabase ecosystem.
 
 ## Connecting to databases hosted by a cloud provider
 
