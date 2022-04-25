@@ -2,7 +2,7 @@ export interface AppErrorDescriptor {
   status: number;
   data?: {
     error_code: string;
-    message: string;
+    message?: string;
   };
   context?: string;
 }
