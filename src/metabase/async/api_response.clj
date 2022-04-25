@@ -202,7 +202,15 @@
 
   java.lang.Boolean
   (write-body-to-stream [bool response output-stream]
-    (ring.protocols/write-body-to-stream (str bool) response output-stream)))
+    (ring.protocols/write-body-to-stream (str bool) response output-stream))
+
+  clojure.lang.Keyword
+  (write-body-to-stream [kkey response output-stream]
+    (ring.protocols/write-body-to-stream
+     (if-let  [key-ns (namespace kkey)]
+       (str key-ns "/" (name kkey))
+       (name kkey))
+     response output-stream)))
 
 ;; `defendpoint-async` responses
 (extend-protocol Sendable
