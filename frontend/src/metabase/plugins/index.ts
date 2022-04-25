@@ -66,9 +66,9 @@ export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getShowBrandLogo: (state: State) => true,
-  getShowBrandScene: (state: State) => true,
-  getLogoBackgroundClass: (state: State) => "bg-white",
+  getHasCustomLogo: (state: State) => false,
+  getHasCustomColors: (state: State) => false,
+  getHasCustomBranding: (state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
