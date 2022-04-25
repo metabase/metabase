@@ -311,11 +311,12 @@
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
   [{:keys [fn-name docstr ee-ns fn-tail]}]
   `(do
-    (register-mapping! '~fn-name '~ee-ns (fn ~@fn-tail))
-    (def ~fn-name
-      (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
-        (fn [& ~'args] (apply ee-fn# ~'args))
-        (fn ~@fn-tail)))))
+     (register-mapping! '~fn-name '~ee-ns (fn ~@fn-tail))
+     (def
+       ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
+       (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
+         (fn [& ~'args] (apply ee-fn# ~'args))
+         (fn ~@fn-tail)))))
 
 (defn- options-conformer
   [conformed-options]
