@@ -549,23 +549,17 @@ export class UnconnectedDataSelector extends Component {
 
   // for steps where there's a single option sometimes we want to automatically select it
   // if `useOnlyAvailable*` prop is provided
-  skipSteps() {
+  async skipSteps() {
     const { activeStep } = this.state;
-    if (
-      activeStep === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase &&
-      this.props.selectedDatabaseId == null
-    ) {
+
+    if (activeStep === DATABASE_STEP && this.props.useOnlyAvailableDatabase) {
       const databases = this.getDatabases();
       if (databases && databases.length === 1) {
         this.onChangeDatabase(databases[0]);
       }
     }
-    if (
-      activeStep === SCHEMA_STEP &&
-      this.props.useOnlyAvailableSchema &&
-      this.props.selectedSchemaId == null
-    ) {
+
+    if (activeStep === SCHEMA_STEP && this.props.useOnlyAvailableSchema) {
       const { schemas } = this.state;
       if (schemas && schemas.length === 1) {
         this.onChangeSchema(schemas[0]);
@@ -595,7 +589,26 @@ export class UnconnectedDataSelector extends Component {
     // move to previous step
     index -= 1;
 
-    // possibly skip another step backwards
+    // Database: possibly skip another step backwards
+    console.log(
+      DATABASE_STEP,
+      this.props.useOnlyAvailableDatabase,
+      this.state.databases,
+    );
+    if (
+      steps[index] === DATABASE_STEP &&
+      this.props.useOnlyAvailableDatabase &&
+      this.state.databases.length === 1
+    ) {
+      index -= 1;
+    }
+
+    // Schema: possibly skip another step backwards
+    console.log(
+      SCHEMA_STEP,
+      this.props.useOnlyAvailableSchema,
+      this.state.schemas,
+    );
     if (
       steps[index] === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
