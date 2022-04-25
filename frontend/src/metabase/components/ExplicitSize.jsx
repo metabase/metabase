@@ -97,15 +97,19 @@ export default ({ selector, wrapped } = {}) => ComposedComponent =>
 
     // if _currentElement's dimensions change too frequently this function
     // can freeze the application
-    _updateSize = _.debounce(() => {
-      const element = this._getElement();
-      if (element) {
-        const { width, height } = element.getBoundingClientRect();
-        if (this.state.width !== width || this.state.height !== height) {
-          this.setState({ width, height });
+    _updateSize = _.debounce(
+      () => {
+        const element = this._getElement();
+        if (element) {
+          const { width, height } = element.getBoundingClientRect();
+          if (this.state.width !== width || this.state.height !== height) {
+            this.setState({ width, height });
+          }
         }
-      }
-    }, debounceDuration);
+      },
+      debounceDuration,
+      true,
+    );
 
     render() {
       if (wrapped) {
