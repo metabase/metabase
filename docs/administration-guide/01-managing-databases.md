@@ -2,9 +2,6 @@
 
 - [Adding a database connection](#adding-a-database-connection)
 - [Databases](#databases)
-  - [Officially supported databases](#officially-supported-databases)
-  - [Partner drivers](#partner-drivers)
-  - [Community drivers](#community-drivers)
 - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
 - [Errors when connecting to your database](#errors-when-connecting-to-your-database)
 - [Database connection options](#database-connection-options)
