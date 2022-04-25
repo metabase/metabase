@@ -5,12 +5,11 @@
             [metabase.config :as config]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise
-                                                                                    defenterprise-schema]]
+            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise defenterprise-schema]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [toucan.util.test :as tt]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.util.test :as tt]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
