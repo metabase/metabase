@@ -17,8 +17,6 @@ export const PermissionsTableCell = styled.td`
   overflow: hidden;
 
   &:first-of-type {
-    width: 1%;
-    white-space: nowrap;
     max-width: 300px;
     background: white;
     left: 0;
