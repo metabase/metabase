@@ -2,8 +2,8 @@ import moment from "moment";
 import _ from "underscore";
 import {
   restore,
-  sidebar,
   popover,
+  sidebar,
   openOrdersTable,
 } from "__support__/e2e/cypress";
 
@@ -22,6 +22,7 @@ describe("scenarios > question > relative-datetime", () => {
 
   describe("sidebar", () => {
     it("should go to field selection with one click", () => {
+      restore();
       cy.signInAsNormalUser();
       openOrdersTable();
 
@@ -103,6 +104,27 @@ describe("scenarios > question > relative-datetime", () => {
         .type(2)
         .blur();
       cy.button("Add filter").should("be.enabled");
+    });
+  });
+
+  it("should go back to shortcuts view", () => {
+    restore();
+    cy.signInAsNormalUser();
+    openOrdersTable();
+
+    cy.findByTextEnsureVisible("Created At").click();
+    popover().within(() => {
+      cy.findByText("Filter by this column").click();
+      cy.findByText("Specific dates...").click();
+      cy.icon("chevronleft")
+        .first()
+        .click();
+      cy.findByText("Specific dates...").should("exist");
+      cy.icon("chevronleft").click();
+      cy.findByText("Specific dates...").should("not.exist");
+      cy.findByText("Created At").click();
+      cy.findByText("Specific dates...").should("exist");
+      cy.findByText("Between").should("not.exist");
     });
   });
 });

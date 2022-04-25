@@ -5,7 +5,6 @@ import {
   isCompatibleAggregationOperatorForField,
 } from "metabase/lib/schema_metadata";
 import { t } from "ttag";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 const AGGREGATIONS = {
   sum: {
@@ -28,13 +27,11 @@ const AGGREGATIONS = {
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
   if (!column || value !== undefined) {
-    // TODO Atte Keinänen 7/21/17: Does it slow down the drill-through option calculations remarkably
-    // that I removed the `isSummable` condition from here and use `isCompatibleAggregator` method below instead?
     return [];
   }
 
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
+  if (!question.isStructured() || !query.isEditable()) {
     return [];
   }
 

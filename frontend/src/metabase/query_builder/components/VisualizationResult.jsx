@@ -93,11 +93,12 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
+      const hasDrills = this.props.query.isEditable();
       return (
         <Visualization
           className={className}
           rawSeries={rawSeries}
-          onChangeCardAndRun={navigateToNewCardInsideQB}
+          onChangeCardAndRun={hasDrills ? navigateToNewCardInsideQB : undefined}
           isEditing={true}
           isQueryBuilder={true}
           queryBuilderMode={queryBuilderMode}
