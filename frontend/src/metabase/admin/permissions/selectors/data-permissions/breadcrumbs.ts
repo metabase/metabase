@@ -47,11 +47,11 @@ export const getDatabasesEditorBreadcrumbs = (
   }
 
   const schema = database.schema(schemaName);
-  const schemaItem = {
+  const schemaItem = schema && {
     id: schema.name,
     text: schema.name,
   };
-  return [groupItem, databaseItem, schemaItem];
+  return [groupItem, databaseItem, schemaItem].filter(Boolean);
 };
 
 export const getGroupsDataEditorBreadcrumbs = (
@@ -80,7 +80,7 @@ export const getGroupsDataEditorBreadcrumbs = (
   }
 
   const schema = database.schema(schemaName);
-  const schemaItem = {
+  const schemaItem = schema && {
     id: schema.id,
     text: schema.name,
     url: getDatabaseFocusPermissionsUrl(getSchemaEntityId(schema)),
@@ -93,8 +93,7 @@ export const getGroupsDataEditorBreadcrumbs = (
   }
 
   const table = metadata.table(tableId);
-
-  const tableItem = {
+  const tableItem = table && {
     id: table.id,
     text: table.display_name,
   };
