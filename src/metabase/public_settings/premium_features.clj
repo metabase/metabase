@@ -270,7 +270,7 @@
   [fn-name ee-ns ee-impl {:keys [feature fallback]}]
   (fn [& args]
     (if (or (= feature :none)
-            (if (or (not feature) (= feature :any))
+            (if (= feature :any)
               (enable-enhancements?)
               (has-feature? feature)))
       (apply ee-impl args)
