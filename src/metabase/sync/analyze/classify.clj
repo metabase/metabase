@@ -20,10 +20,10 @@
             [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
-            [metabase.sync.analyze.classifiers.category :as category]
-            [metabase.sync.analyze.classifiers.name :as name]
-            [metabase.sync.analyze.classifiers.no-preview-display :as no-preview-display]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as text-fingerprint]
+            [metabase.sync.analyze.classifiers.category :as classifiers.category]
+            [metabase.sync.analyze.classifiers.name :as classifiers.name]
+            [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
             [metabase.sync.interface :as i]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -69,10 +69,10 @@
 
   A classifier may see the original field (before any classifiers were run) in the metadata of the field at
   `:sync.classify/original`."
-  [name/infer-and-assoc-semantic-type
-   category/infer-is-category-or-list
-   no-preview-display/infer-no-preview-display
-   text-fingerprint/infer-semantic-type])
+  [classifiers.name/infer-and-assoc-semantic-type
+   classifiers.category/infer-is-category-or-list
+   classifiers.no-preview-display/infer-no-preview-display
+   classifiers.text-fingerprint/infer-semantic-type])
 
 (s/defn run-classifiers :- i/FieldInstance
   "Run all the available `classifiers` against `field` and `fingerprint`, and return the resulting `field` with
@@ -130,7 +130,7 @@
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
-                        (name/infer-entity-type table))]
+                        (classifiers.name/infer-entity-type table))]
     (if (instance? Exception updated-table)
       table
       (save-model-updates! table updated-table))))

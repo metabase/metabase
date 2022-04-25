@@ -130,7 +130,12 @@ export default class SettingsEditorApp extends Component {
   };
 
   renderSettingsPane() {
-    const { activeSection, settingValues } = this.props;
+    const { activeSection, settings, settingValues } = this.props;
+    const isLoading = settings.length === 0;
+
+    if (isLoading) {
+      return null;
+    }
 
     if (!activeSection) {
       return <NotFound />;

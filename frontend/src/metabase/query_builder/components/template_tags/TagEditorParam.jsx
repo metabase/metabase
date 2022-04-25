@@ -111,12 +111,12 @@ export default class TagEditorParam extends Component {
 
   render() {
     const { tag, database, databases, metadata, parameter } = this.props;
-    let widgetOptions = [],
-      table,
-      fieldMetadataLoaded = false;
+    let widgetOptions = [];
+    let field = null;
+    let table = null;
+    let fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      const field = metadata.field(tag.dimension[1]);
-
+      field = metadata.field(tag.dimension[1]);
       if (field) {
         widgetOptions = getParameterOptionsForField(field);
         table = field.table;
@@ -168,8 +168,11 @@ export default class TagEditorParam extends Component {
                 {() => (
                   <SchemaTableAndFieldDataSelector
                     databases={databases}
-                    selectedDatabaseId={database ? database.id : null}
-                    selectedTableId={table ? table.id : null}
+                    selectedDatabase={database || null}
+                    selectedDatabaseId={database?.id || null}
+                    selectedTable={table || null}
+                    selectedTableId={table?.id || null}
+                    selectedField={field || null}
                     selectedFieldId={
                       hasSelectedDimensionField ? tag.dimension[1] : null
                     }

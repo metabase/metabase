@@ -10,7 +10,7 @@
              [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -48,7 +48,7 @@
 (defn- check-one [condition code message]
   (when-not condition
     (let [[message info] (if (and (map? message)
-                                  (not (ui18n/localized-string? message)))
+                                  (not (i18n/localized-string? message)))
                            [(:message message) message]
                            [message])]
       (throw (ex-info (str message) (assoc info :status-code code)))))

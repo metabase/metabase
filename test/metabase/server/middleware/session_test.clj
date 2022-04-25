@@ -13,7 +13,7 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.util.i18n :as i18n]
-            [ring.mock.request :as mock]
+            [ring.mock.request :as ring.mock]
             [toucan.db :as db])
   (:import clojure.lang.ExceptionInfo
            java.util.UUID))
@@ -168,7 +168,7 @@
 (deftest no-session-id-in-request-test
   (testing "no session-id in the request"
     (is (= nil
-           (-> (wrapped-handler (mock/request :get "/anyurl"))
+           (-> (wrapped-handler (ring.mock/request :get "/anyurl"))
                :metabase-session-id)))))
 
 (deftest header-test
@@ -176,14 +176,14 @@
     (is (= "foobar"
            (:metabase-session-id
             (wrapped-handler
-             (mock/header (mock/request :get "/anyurl") session-header "foobar")))))))
+             (ring.mock/header (ring.mock/request :get "/anyurl") session-header "foobar")))))))
 
 (deftest cookie-test
   (testing "extract session-id from cookie"
     (is (= "cookie-session"
            (:metabase-session-id
             (wrapped-handler
-             (assoc (mock/request :get "/anyurl")
+             (assoc (ring.mock/request :get "/anyurl")
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
 (deftest both-header-and-cookie-test
@@ -191,12 +191,12 @@
     (is (= "cookie-session"
            (:metabase-session-id
             (wrapped-handler
-             (assoc (mock/header (mock/request :get "/anyurl") session-header "foobar")
+             (assoc (ring.mock/header (ring.mock/request :get "/anyurl") session-header "foobar")
                     :cookies {session-cookie {:value "cookie-session"}})))))))
 
 (deftest anti-csrf-headers-test
   (testing "`wrap-session-id` should handle anti-csrf headers they way we'd expect"
-    (let [request (-> (mock/request :get "/anyurl")
+    (let [request (-> (ring.mock/request :get "/anyurl")
                       (assoc :cookies {embedded-session-cookie {:value (str test-uuid)}})
                       (assoc-in [:headers anti-csrf-token-header] test-anti-csrf-token))]
       (is (= {:anti-csrf-token     "84482ddf1bb178186ed9e1c0b1e05a2d"
@@ -320,7 +320,7 @@
 (defn- request-with-user-id
   "Creates a mock Ring request with the given user-id applied"
   [user-id]
-  (-> (mock/request :get "/anyurl")
+  (-> (ring.mock/request :get "/anyurl")
       (assoc :metabase-user-id user-id)))
 
 (deftest add-user-id-key-test

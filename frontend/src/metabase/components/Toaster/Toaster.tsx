@@ -1,12 +1,12 @@
 import React, { useState, useEffect, HTMLAttributes } from "react";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
 
 import {
   ToasterContainer,
   ToasterMessage,
   ToasterButton,
+  ToasterDismiss,
 } from "./Toaster.styled";
 
 export interface ToasterProps extends HTMLAttributes<HTMLAnchorElement> {
@@ -48,8 +48,12 @@ const Toaster = ({
   return render ? (
     <ToasterContainer show={open} fixed={fixed} className={className}>
       <ToasterMessage>{message}</ToasterMessage>
-      <ToasterButton onClick={onConfirm}>{confirmText}</ToasterButton>
-      <Icon name="close" color={color("bg-dark")} onClick={onDismiss} />
+      <ToasterButton onClick={onConfirm} aria-label="Confirm">
+        {confirmText}
+      </ToasterButton>
+      <ToasterDismiss onClick={onDismiss} aria-label="Close">
+        <Icon name="close" />
+      </ToasterDismiss>
     </ToasterContainer>
   ) : null;
 };

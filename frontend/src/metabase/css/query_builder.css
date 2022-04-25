@@ -77,13 +77,11 @@
   display: flex;
   overflow-y: hidden;
   white-space: nowrap;
-  min-height: 55px;
 }
 
 .Query-filter {
   display: flex;
   flex-shrink: 0;
-  font-size: 0.75em;
   border: 2px solid transparent;
   border-radius: var(--default-border-radius);
 }

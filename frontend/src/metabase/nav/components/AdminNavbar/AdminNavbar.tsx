@@ -13,16 +13,18 @@ import {
   AdminNavbarRoot,
 } from "./AdminNavbar.styled";
 import { User } from "metabase-types/api";
-import { getAllowedMenuItems } from "metabase/nav/utils";
+import { AdminPath } from "metabase-types/store";
 
 interface AdminNavbarProps {
   path: string;
   user: User;
+  adminPaths: AdminPath[];
 }
 
-export const AdminNavbar = ({ path: currentPath, user }: AdminNavbarProps) => {
-  const allowedMenuItems = getAllowedMenuItems(user);
-
+export const AdminNavbar = ({
+  path: currentPath,
+  adminPaths,
+}: AdminNavbarProps) => {
   return (
     <AdminNavbarRoot className="Nav">
       <AdminLogoLink to="/admin" data-metabase-event={"Navbar;Logo"}>
@@ -33,7 +35,7 @@ export const AdminNavbar = ({ path: currentPath, user }: AdminNavbarProps) => {
       </AdminLogoLink>
 
       <AdminNavbarItems>
-        {allowedMenuItems.map(({ name, key, path }) => (
+        {adminPaths.map(({ name, key, path }) => (
           <AdminNavItem
             name={name}
             path={path}

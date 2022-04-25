@@ -293,7 +293,7 @@ export default class DashboardHeader extends Component {
           className={extraButtonClassNames}
           onClick={this.handleToggleBookmark}
         >
-          {isBookmarked ? t`Remove bookmark` : t`Bookmark`}
+          {isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
         </div>,
       );
 

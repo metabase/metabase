@@ -20,7 +20,7 @@
             [metabase.server.request.util :as request.u]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [deferred-trs tru]]
-            [ring.util.response :as resp]
+            [ring.util.response :as response]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.UUID))
@@ -43,7 +43,7 @@
 (def ^:private ^String anti-csrf-token-header           "x-metabase-anti-csrf-token")
 
 (defn- clear-cookie [response cookie-name]
-  (resp/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
+  (response/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
 
 (defn- wrap-body-if-needed
   "You can't add a cookie (by setting the `:cookies` key of a response) if the response is an unwrapped JSON response;
@@ -103,7 +103,7 @@
        (str (deferred-trs "Session cookie's SameSite is configured to \"None\", but site is served over an insecure connection. Some browsers will reject cookies under these conditions.")
             " "
             "https://www.chromestatus.com/feature/5633521622188032")))
-    (resp/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
+    (response/set-cookie response metabase-session-cookie (str session-uuid) cookie-options)))
 
 (s/defmethod set-session-cookie :full-app-embed
   [request response {session-uuid :id, anti-csrf-token :anti_csrf_token} :- {:id       (s/cond-pre UUID u/uuid-regex)
@@ -120,7 +120,7 @@
                           {:same-site :none
                            :secure    true}))]
     (-> response
-        (resp/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
+        (response/set-cookie metabase-embedded-session-cookie (str session-uuid) cookie-options)
         (assoc-in [:headers anti-csrf-token-header] anti-csrf-token))))
 
 
@@ -189,8 +189,7 @@
                       [:user.is_superuser :is-superuser?]
                       [:user.locale :user-locale]]
           :from      [[Session :session]]
-          :left-join [[User :user] [:= :session.user_id :user.id]
-                      ]
+          :left-join [[User :user] [:= :session.user_id :user.id]]
           :where     [:and
                       [:= :user.is_active true]
                       [:= :session.id (hsql/raw "?")]

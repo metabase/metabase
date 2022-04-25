@@ -17,7 +17,7 @@
    [metabase.driver :as driver]
    [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions-group :as group]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :refer [User]]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
@@ -322,7 +322,8 @@
     (doseq [existing-entry? [true false]]
       (testing (format "Existing root entry? %s" (pr-str existing-entry?))
         (impl/test-migrations "v43.00-006" [migrate!]
-          (let [[{admin-group-id :id}] (db/query {:select [:id], :from [PermissionsGroup], :where [:= :name group/admin-group-name]})]
+          (let [[{admin-group-id :id}] (db/query {:select [:id], :from [PermissionsGroup],
+                                                  :where [:= :name perms-group/admin-group-name]})]
             (is (integer? admin-group-id))
             (when existing-entry?
               (db/execute! {:insert-into Permissions
@@ -356,7 +357,7 @@
                  (db/query {:select    [:p.object]
                             :from      [[Permissions :p]]
                             :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                            :where     [:= :pg.name group/all-users-group-name]}))))))))
+                            :where     [:= :pg.name perms-group/all-users-group-name]}))))))))
 
 (deftest migrate-legacy-site-url-setting-test
   (testing "Migration v43.00-008: migrate legacy `-site-url` Setting to `site-url`; remove trailing slashes (#4123, #4188, #20402)"
@@ -486,7 +487,8 @@
 (deftest grant-all-users-root-collection-readwrite-perms-test
   (testing "Migration v43.00-020: create a Root Collection entry for All Users"
     (letfn [(all-users-group-id []
-              (let [[{id :id}] (db/query {:select [:id], :from [PermissionsGroup], :where [:= :name group/all-users-group-name]})]
+              (let [[{id :id}] (db/query {:select [:id], :from [PermissionsGroup],
+                                          :where [:= :name perms-group/all-users-group-name]})]
                 (is (integer? id))
                 id))
             (all-user-perms []
@@ -551,7 +553,7 @@
              (db/query {:select    [:p.object]
                         :from      [[Permissions :p]]
                         :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                        :where     [:= :pg.name group/all-users-group-name]}))))))
+                        :where     [:= :pg.name perms-group/all-users-group-name]}))))))
 
 (deftest grant-subscription-permission-tests
   (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
@@ -562,3 +564,14 @@
                                           :from      [[Permissions :p]]
                                           :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                                           :where     [:= :p.object "/general/subscription/"]}))))))))
+
+(deftest grant-subscription-permission-tests
+  (testing "Migration v43.00-057: Rename general permissios to application permissions"
+    (impl/test-migrations ["v43.00-057" "v43.00-058"] [migrate!]
+      (letfn [(get-perms [object] (set (map :name (db/query {:select    [:pg.name]
+                                                             :from      [[Permissions :p]]
+                                                             :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                                             :where     [:= :p.object object]}))))]
+        (is (= #{"All Users"} (get-perms "/general/subscription/")))
+        (migrate!)
+        (is (= #{"All Users"} (get-perms "/application/subscription/")))))))

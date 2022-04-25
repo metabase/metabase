@@ -35,7 +35,6 @@ export default class FilterSidebar extends React.Component {
         <FilterPopover
           isTopLevel
           isSidebar
-          className="mx2 pt1"
           fieldPickerTitle={t`Filter by`}
           query={question.query()}
           // fires every time the filter is changed:
@@ -43,6 +42,7 @@ export default class FilterSidebar extends React.Component {
           // fires when a segment or "add" button is clicked:
           onChangeFilter={filter => this.handleCommit(filter)}
           noCommitButton
+          primaryColor={color("filter")}
         />
       </SidebarContent>
     );

@@ -10,7 +10,7 @@
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters :as params]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
@@ -50,7 +50,7 @@
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre i/SingleValue MultipleValues su/Map))
+  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/Map))
            "Valid param value(s)"))
 
 (s/defn ^:private params-with-target
@@ -102,15 +102,15 @@
                 (every? :default matching-params))
        (normalize-params matching-params))
      ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
-     ;; otherwise return [[i/no-value]] to signify that
+     ;; otherwise return [[params/no-value]] to signify that
      (if (:required tag)
        (throw (missing-required-param-exception (:display-name tag)))
-       i/no-value))))
+       params/no-value))))
 
 (s/defmethod parse-tag :dimension :- (s/maybe FieldFilter)
   [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
    params                             :- (s/maybe [mbql.s/Parameter])]
-  (i/map->FieldFilter
+  (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
              (qp.store/fetch-and-store-fields! #{field-id})
              (or (qp.store/field field-id)
@@ -119,7 +119,7 @@
     :value (field-filter-value tag params)}))
 
 (s/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
+  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -127,9 +127,11 @@
                   (throw (ex-info (tru "Card {0} not found." card-id)
                                   {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
-      (i/map->ReferencedCardQuery
-       (merge {:card-id card-id}
-              (qp/compile (assoc query :parameters params, :info {:card-id card-id}))))
+      (params/map->ReferencedCardQuery
+       (let [query (assoc query :info {:card-id card-id})]
+         (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
+         (merge {:card-id card-id}
+                (qp/compile query))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -151,7 +153,7 @@
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
-    (i/map->ReferencedQuerySnippet
+    (params/map->ReferencedQuerySnippet
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
@@ -176,7 +178,7 @@
         (:default matching-param)
         (if (:required tag)
           (throw (missing-required-param-exception (:display-name tag)))
-          i/no-value))))
+          params/no-value))))
 
 (defmethod parse-tag :number
   [tag params]
@@ -218,7 +220,7 @@
     (vector? value)
     (let [values (mapv value->number value)]
       (if (next values)
-        (i/map->CommaSeparatedNumbers {:numbers values})
+        (params/map->CommaSeparatedNumbers {:numbers values})
         (first values)))
     ;; if the value is a string, then split it by commas in the string. Usually there should be none.
     ;; Parse each part as a number.
@@ -227,7 +229,7 @@
                   (parse-number part))]
       (if (> (count parts) 1)
         ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
-        (i/map->CommaSeparatedNumbers {:numbers parts})
+        (params/map->CommaSeparatedNumbers {:numbers parts})
         ;; otherwise just return the single number
         (first parts)))))
 
@@ -273,14 +275,14 @@
   base type Fields as UUIDs."
   [param-type :- mbql.s/TemplateTagType value]
   (cond
-   (= value i/no-value)
+   (= value params/no-value)
    value
 
    (= param-type :number)
    (value->number value)
 
    (= param-type :date)
-   (i/map->Date {:s value})
+   (params/map->Date {:s value})
 
    ;; Field Filters
    (and (= param-type :dimension)
@@ -288,7 +290,7 @@
    (update-in value [:value :value] value->number)
 
    (sequential? value)
-   (i/map->MultipleValues {:values (for [v value]
+   (params/map->MultipleValues {:values (for [v value]
                                      (parse-value-for-type param-type v))})
 
    ;; Field Filters with "special" base types
@@ -320,7 +322,7 @@
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
-  (log/tracef "Building params map out of tags\n%s\nand params\n%s" (u/pprint-to-str tags) (u/pprint-to-str params))
+  (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
                    :let    [v (value-for-tag tag params)]

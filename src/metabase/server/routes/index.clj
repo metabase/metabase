@@ -6,13 +6,13 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [hiccup.util :as h.util]
+            hiccup.util
             [metabase.core.initialization-status :as init-status]
             [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
             [metabase.util.embed :as embed]
             [metabase.util.i18n :as i18n :refer [trs]]
-            [ring.util.response :as resp]
+            [ring.util.response :as response]
             [stencil.core :as stencil])
   (:import java.io.FileNotFoundException))
 
@@ -77,10 +77,11 @@
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
       :localizationJSON   (escape-script (load-localization))
-      :favicon            (h.util/escape-html (public-settings/application-favicon-url))
-      :applicationName    (h.util/escape-html (public-settings/application-name))
-      :uri                (h.util/escape-html uri)
-      :baseHref           (h.util/escape-html (base-href))
+      :language           (hiccup.util/escape-html (public-settings/site-locale))
+      :favicon            (hiccup.util/escape-html (public-settings/application-favicon-url))
+      :applicationName    (hiccup.util/escape-html (public-settings/application-name))
+      :uri                (hiccup.util/escape-html uri)
+      :baseHref           (hiccup.util/escape-html (base-href))
       :embedCode          (when embeddable? (embed/head uri))
       :enableGoogleAuth   (boolean google-auth-client-id)
       :enableAnonTracking (boolean anon-tracking-enabled)})))
@@ -94,10 +95,10 @@
   "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
   [entrypoint-name embeddable? {:keys [uri]} respond _raise]
   (respond
-    (-> (resp/response (if (init-status/complete?)
-                         (load-entrypoint-template entrypoint-name embeddable? uri)
-                         (load-init-template)))
-        (resp/content-type "text/html; charset=utf-8"))))
+    (-> (response/response (if (init-status/complete?)
+                             (load-entrypoint-template entrypoint-name embeddable? uri)
+                             (load-init-template)))
+        (response/content-type "text/html; charset=utf-8"))))
 
 (def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
 (def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))

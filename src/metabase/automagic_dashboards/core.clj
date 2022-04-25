@@ -3,7 +3,7 @@
    heuristics."
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
-            [clojure.math.combinatorics :as combo]
+            [clojure.math.combinatorics :as math.combo]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
@@ -17,7 +17,7 @@
             [metabase.automagic-dashboards.rules :as rules]
             [metabase.automagic-dashboards.visualization-macros :as visualization]
             [metabase.driver :as driver]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :as card :refer [Card]]
@@ -33,7 +33,7 @@
             [metabase.sync.analyze.classify :as classify]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
             [schema.core :as s]
@@ -295,7 +295,7 @@
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
-  (let [reference (normalize/normalize
+  (let [reference (mbql.normalize/normalize
                    (cond
                      link               [:field id {:source-field link}]
                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
@@ -519,7 +519,7 @@
                  (assoc :filter (apply
                                  vector
                                  :and
-                                 (map (comp (partial normalize/normalize-fragment [:query :filter])
+                                 (map (comp (partial mbql.normalize/normalize-fragment [:query :filter])
                                             :filter)
                                       filters)))
 
@@ -576,7 +576,7 @@
   [x context bindings]
   (-> (walk/postwalk
        (fn [form]
-         (if (ui18n/localized-string? form)
+         (if (i18n/localized-string? form)
            (let [s     (str form)
                  new-s (fill-templates :string context bindings s)]
              (if (not= new-s s)
@@ -627,7 +627,7 @@
     (->> used-dimensions
          (map (some-fn #(get-in (:dimensions context) [% :matches])
                        (comp #(filter-tables % (:tables context)) rules/->entity)))
-         (apply combo/cartesian-product)
+         (apply math.combo/cartesian-product)
          (map (partial zipmap used-dimensions))
          (filter (fn [bindings]
                    (->> dimensions
@@ -1099,7 +1099,7 @@
 
 (defn- field-reference->field
   [root field-reference]
-  (let [normalized-field-reference (normalize/normalize field-reference)
+  (let [normalized-field-reference (mbql.normalize/normalize field-reference)
         temporal-unit              (mbql.u/match-one normalized-field-reference
                                      [:field _ (opts :guard :temporal-unit)]
                                      (:temporal-unit opts))]
@@ -1216,7 +1216,7 @@
 (defmethod automagic-analysis (type Query)
   [query {:keys [cell-query] :as opts}]
   (let [root     (->root query)
-        cell-query (when cell-query (normalize/normalize-fragment [:query :filter] cell-query))
+        cell-query (when cell-query (mbql.normalize/normalize-fragment [:query :filter] cell-query))
         opts       (cond-> opts
                      cell-query (assoc :cell-query cell-query))
         cell-url (format "%sadhoc/%s/cell/%s" public-endpoint

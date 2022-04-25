@@ -96,6 +96,7 @@ export default function QuickFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
     !question.isStructured() ||
+    !query.isEditable() ||
     !clicked?.column ||
     clicked.value === undefined
   ) {

@@ -1,10 +1,10 @@
 (ns metabase-enterprise.enhancements.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
   (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as settings.premium-features]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util.schema :as su]
             [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
@@ -13,7 +13,7 @@
 (s/defn ^:private has-parent-collection-perms?
   [snippet       :- {:collection_id (s/maybe su/IntGreaterThanZero), s/Keyword s/Any}
    read-or-write :- (s/enum :read :write)]
-  (i/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
+  (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
 
 (def ^:private ee-impl*
   (reify
@@ -46,7 +46,7 @@
   "EE implementation of NativeQuerySnippet permissions. Uses Collection permissions instead allowing anyone to view or
   edit all Snippets. (Only when a valid Enterprise Edition token is present. Otherwise, this forwards method
   invocations to the default impl)."
-  (ee-strategy-impl/reify-ee-strategy-impl #'settings.premium-features/enable-enhancements? ee-impl* snippet.perms/default-impl
+  (ee-strategy-impl/reify-ee-strategy-impl #'premium-features/enable-enhancements? ee-impl* snippet.perms/default-impl
     snippet.perms/PermissionsImpl))
 
 (snippet.perms/set-impl! ee-impl)

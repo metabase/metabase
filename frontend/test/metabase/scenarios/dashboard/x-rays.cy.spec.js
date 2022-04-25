@@ -26,6 +26,8 @@ describe("scenarios > x-rays", () => {
     cy.signInAsAdmin();
   });
 
+  const XRAY_DATASETS = 11; // enough to load most questions
+
   it.skip("should work on questions with explicit joins (metabase#13112)", () => {
     const PRODUCTS_ALIAS = "Products";
 
@@ -90,6 +92,9 @@ describe("scenarios > x-rays", () => {
       visualize();
       summarize();
       getDimensionByName({ name: "SOURCE" }).click();
+
+      cy.intercept("POST", "/api/dataset").as("postDataset");
+
       cy.button("Done").click();
       cy.get(".bar")
         .first()
@@ -97,9 +102,14 @@ describe("scenarios > x-rays", () => {
       cy.findByText(action).click();
 
       cy.wait("@xray").then(xhr => {
+        for (let c = 0; c < XRAY_DATASETS; ++c) {
+          cy.wait("@postDataset");
+        }
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.response.statusCode).not.to.eq(500);
       });
+
+      cy.findByTextEnsureVisible("A look at the number of 15655");
 
       cy.findByRole("heading", { name: /^A closer look at the number of/ });
       cy.get(".DashCard");

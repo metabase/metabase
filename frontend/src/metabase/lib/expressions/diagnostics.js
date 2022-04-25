@@ -7,7 +7,11 @@ import {
   parseMetric,
   parseSegment,
 } from "metabase/lib/expressions";
-import { resolve } from "metabase/lib/expressions/resolver";
+import {
+  LOGICAL_OPS,
+  COMPARISON_OPS,
+  resolve,
+} from "metabase/lib/expressions/resolver";
 import {
   parse,
   lexify,
@@ -107,7 +111,7 @@ function prattCompiler(source, startRule, query) {
       if (!segment) {
         throw new ResolverError(t`Unknown Segment: ${name}`, node);
       }
-      return ["segment", segment.id];
+      return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
       // fallback
       const dimension = parseDimension(name, options);
@@ -120,7 +124,7 @@ function prattCompiler(source, startRule, query) {
 
   // COMPILE
   try {
-    compile(root, {
+    const expression = compile(root, {
       passes: [
         adjustOptions,
         useShorthands,
@@ -129,6 +133,15 @@ function prattCompiler(source, startRule, query) {
       ],
       getMBQLName,
     });
+    const isBoolean =
+      COMPARISON_OPS.includes(expression[0]) ||
+      LOGICAL_OPS.includes(expression[0]);
+    if (startRule === "expression" && isBoolean) {
+      throw new ResolverError(
+        t`Custom columns do not support boolean expressions`,
+        expression.node,
+      );
+    }
   } catch (err) {
     console.warn("compile error", err);
     return err;

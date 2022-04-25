@@ -4,10 +4,10 @@ import { OPERATOR as OP } from "metabase/lib/expressions/tokenizer";
 import { ResolverError } from "metabase/lib/expressions/pratt/types";
 import { getMBQLName, MBQL_CLAUSES } from "metabase/lib/expressions";
 
-const FIELD_MARKERS = ["dimension", "segment", "metric"];
-const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
-const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
-const COMPARISON_OPS = [
+export const FIELD_MARKERS = ["dimension", "segment", "metric"];
+export const LOGICAL_OPS = [OP.Not, OP.And, OP.Or];
+export const NUMBER_OPS = [OP.Plus, OP.Minus, OP.Star, OP.Slash];
+export const COMPARISON_OPS = [
   OP.Equal,
   OP.NotEqual,
   OP.GreaterThan,
@@ -48,6 +48,9 @@ const isCompatible = (a, b) => {
   if (a === "aggregation" && b === "number") {
     return true;
   }
+  if (a === "number" && b === "aggregation") {
+    return true;
+  }
   return false;
 };
 
@@ -79,6 +82,8 @@ export function resolve(expression, type = "expression", fn = undefined) {
       operandType = "boolean";
     } else if (NUMBER_OPS.includes(op)) {
       operandType = type === "aggregation" ? type : "number";
+    } else if (op === "true" || op === "false") {
+      operandType = "expression";
     } else if (COMPARISON_OPS.includes(op)) {
       operandType = "expression";
       const [firstOperand] = operands;
@@ -161,7 +166,12 @@ export function resolve(expression, type = "expression", fn = undefined) {
       return resolve(operand, args[i], fn);
     });
     return [op, ...resolvedOperands];
-  } else if (!isCompatible(type, typeof expression)) {
+  } else if (
+    !isCompatible(
+      type,
+      typeof expression === "boolean" ? "expression" : typeof expression,
+    )
+  ) {
     throw new Error(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
     );

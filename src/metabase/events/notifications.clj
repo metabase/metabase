@@ -1,5 +1,5 @@
 (ns metabase.events.notifications
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
             [metabase.email.messages :as messages]
@@ -22,7 +22,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for notifications events."}
   notifications-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ------------------------------------------------ Event Processing ------------------------------------------------

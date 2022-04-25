@@ -6,6 +6,9 @@ import { isObscured } from "metabase/lib/dom";
 import Tooltip from "./Tooltip";
 
 import cx from "classnames";
+import styled from "@emotion/styled";
+
+const Trigger = styled.a``;
 
 // higher order component that takes a component which takes props "isOpen" and optionally "onClose"
 // and returns a component that renders a <a> element "trigger", and tracks whether that component is open or not
@@ -30,6 +33,7 @@ export default ComposedComponent =>
     }
 
     static defaultProps = {
+      as: "a",
       closeOnObscuredTrigger: false,
     };
 
@@ -101,6 +105,7 @@ export default ComposedComponent =>
 
     render() {
       const {
+        as,
         triggerId,
         triggerClasses,
         triggerStyle,
@@ -133,7 +138,8 @@ export default ComposedComponent =>
       }
 
       return (
-        <a
+        <Trigger
+          as={as}
           id={triggerId}
           ref={this.trigger}
           onClick={event => {
@@ -167,7 +173,7 @@ export default ComposedComponent =>
           >
             {children}
           </ComposedComponent>
-        </a>
+        </Trigger>
       );
     }
   };

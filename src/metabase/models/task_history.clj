@@ -2,7 +2,7 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
@@ -34,17 +34,17 @@
   Otherwise it requires superusers."
   [_task _read-or-write]
   #{(if (premium-features/enable-advanced-permissions?)
-      (perms/general-perms-path :monitoring)
+      (perms/application-perms-path :monitoring)
       "/")})
 
 (u/strict-extend (class TaskHistory)
   models/IModel
   (merge models/IModelDefaults
          {:types (constantly {:task_details :json})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 (s/defn all

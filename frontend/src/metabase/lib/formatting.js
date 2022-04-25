@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 import {
+  isBoolean,
   isCoordinate,
   isDate,
   isDateWithoutTime,
@@ -207,7 +208,10 @@ function formatNumberScientific(value, options) {
   if (options.maximumFractionDigits) {
     value = d3.round(value, options.maximumFractionDigits);
   }
-  const exp = value.toExponential(options.minimumFractionDigits);
+  const exp = replaceNumberSeparators(
+    value.toExponential(options.minimumFractionDigits),
+    options?.number_separators,
+  );
   if (options.jsx) {
     const [m, n] = exp.split("e");
     return (
@@ -419,6 +423,17 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 }
 
 export function formatDateTimeWithUnit(value, unit, options = {}) {
+  if (options.isExclude && unit === "hour-of-day") {
+    return moment(value)
+      .utc()
+      .format("h A");
+  } else if (options.isExclude && unit === "day-of-week") {
+    const date = moment(value);
+    if (date.isValid()) {
+      return date.utc().format("dddd");
+    }
+  }
+
   const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
@@ -731,6 +746,9 @@ export function formatValueRaw(value, options = {}) {
 
   if (value === NULL_NUMERIC_VALUE) {
     return NULL_DISPLAY_VALUE;
+  } else if (value === null && isBoolean(column)) {
+    // Custom expressions returning the False literal return null
+    return JSON.stringify(false);
   } else if (value == null) {
     return null;
   } else if (
@@ -792,6 +810,8 @@ export function formatValueRaw(value, options = {}) {
     } else {
       return formatNumber(value, options);
     }
+  } else if (typeof value === "boolean" && isBoolean(column)) {
+    return JSON.stringify(value);
   } else if (typeof value === "object") {
     // no extra whitespace for table cells
     return JSON.stringify(value);

@@ -1252,17 +1252,12 @@ workflows:
               folder:
                 [
                   "admin",
-                  "binning",
                   "collections",
                   "custom-column",
                   "dashboard",
-                  "dashboard-filters",
-                  "dashboard-filters-sql",
-                  "downloads",
                   "embedding",
                   "joins",
                   "models",
-                  "moderation",
                   "native",
                   "native-filters",
                   "onboarding",

@@ -492,6 +492,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         ]
           .filter(n => n)
           .join(": "),
+        originalCardName: card.name,
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],
       },
@@ -535,6 +536,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         card: {
           ...card,
           name: name,
+          originalCardName: card.name,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
           // EXCEPT for dashboard multiseries, so check seriesIndex == 0
