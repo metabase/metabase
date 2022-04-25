@@ -115,20 +115,17 @@ const BookmarkList = ({
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
   }, []);
 
-  const handleSortStart = () => {
+  const handleSortStart = useCallback(() => {
     setIsSorting(true);
-  };
+  }, []);
 
-  const handleSortEnd = ({
-    newIndex,
-    oldIndex,
-  }: {
-    newIndex: number;
-    oldIndex: number;
-  }) => {
-    setIsSorting(false);
-    reorderBookmarks({ newIndex, oldIndex });
-  };
+  const handleSortEnd = useCallback(
+    ({ newIndex, oldIndex }) => {
+      setIsSorting(false);
+      reorderBookmarks({ newIndex, oldIndex });
+    },
+    [reorderBookmarks],
+  );
 
   return (
     <CollapseSection
