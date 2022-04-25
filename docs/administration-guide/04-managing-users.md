@@ -78,9 +78,31 @@ Click into a group and then click `Add members` to add people to that group. Cli
 
 To remove a group, click the X icon to the right of a group in the list to remove it (remember, you can’t remove the special default groups).
 
-### Adding people to groups
+#### Adding people to groups
 
 Adding people to groups allows you to assign [data access](05-setting-permissions.md) and [collection permissions](06-collections.md) to them. To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to.
+
+### Group managers
+
+**Group managers** can manage other people within their group.
+
+Group managers can:
+
+- Rename their group.
+- View all people in the people tab.
+- Promote other people to manager, or demote them from manager to member.
+- Add or remove people from their group (that is, people who already have accounts in your Metabase).
+
+Group managers are not admins, so their powers are limited. They cannot create new groups or invite new people to your Metabase.
+
+#### Promoting/demoting group managers
+
+To promote someone to become a group manager:
+
+1. Click on the **Gear** icon at the bottom of the navigation sidebar.
+2. Go to **Admin settings** > **People** > **Groups**.
+3. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
+4. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
 
 ### Grouping strategies
 
