@@ -46,7 +46,8 @@ import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
-import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
+import { Unauthorized } from "metabase/containers/ErrorPages";
+import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 
 // Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
@@ -391,6 +392,6 @@ export const getRoutes = store => (
 
     {/* MISC */}
     <Route path="/unauthorized" component={Unauthorized} />
-    <Route path="/*" component={NotFound} />
+    <Route path="/*" component={NotFoundFallbackPage} />
   </Route>
 );

@@ -30,7 +30,7 @@ import { AppErrorDescriptor, State } from "metabase-types/store";
 import { AppContentContainer, AppContent } from "./App.styled";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
-  if (status === 403) {
+  if (status === 403 || data?.error_code === "unauthorized") {
     return <Unauthorized />;
   }
   if (status === 404 || data?.error_code === "not-found") {
@@ -119,19 +119,15 @@ function App({
   return (
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
-        {errorPage ? (
-          getErrorComponent(errorPage)
-        ) : (
-          <>
-            {hasAppBar && <AppBar />}
-            <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
-              {hasNavbar && <Navbar />}
-              <AppContent>{children}</AppContent>
-              <UndoListing />
-              <StatusListing />
-            </AppContentContainer>
-          </>
-        )}
+        {hasAppBar && <AppBar />}
+        <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
+          {hasNavbar && <Navbar />}
+          <AppContent>
+            {errorPage ? getErrorComponent(errorPage) : children}
+          </AppContent>
+          <UndoListing />
+          <StatusListing />
+        </AppContentContainer>
         <AppErrorCard errorInfo={errorInfo} />
       </ScrollToTop>
     </ErrorBoundary>
