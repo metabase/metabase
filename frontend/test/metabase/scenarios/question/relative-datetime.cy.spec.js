@@ -125,7 +125,7 @@ describe("scenarios > question > relative-datetime", () => {
       });
     });
 
-    it("current filters should work", () => {
+    it("current filters should work (metabase#21977)", () => {
       openOrdersTable();
 
       cy.intercept("POST", "/api/dataset").as("dataset");
