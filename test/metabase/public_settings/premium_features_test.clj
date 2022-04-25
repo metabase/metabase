@@ -98,12 +98,6 @@
   [username]
   (format "Hi %s, you're not extra special :(" (name username)))
 
-(defenterprise special-greeting-or-error
-  "Returns a non-special greeting for OSS users."
-  metabase-enterprise.util-test
-  [username]
-  (format "Hi %s, you're not extra special :(" (name username)))
-
 (defenterprise special-greeting-or-custom
   "Returns a non-special greeting for OSS users."
   metabase-enterprise.util-test
@@ -147,16 +141,6 @@
        (with-premium-features #{}
          (is (= "Hi rasta, you're not extra special :("
                 (special-greeting :rasta)))))
-
-     (testing "when :fallback = :error, a generic exception is thrown when the required token is not present"
-       (with-premium-features #{:special-greeting}
-         (is (= "Hi rasta, you're an extra special EE customer!"
-                (special-greeting-or-error :rasta))))
-
-       (with-premium-features #{}
-         (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                               missing-feature-error-msg
-                               (special-greeting-or-error :rasta)))))
 
      (testing "when :fallback is a function, it is run when the required token is not present"
        (with-premium-features #{:special-greeting}

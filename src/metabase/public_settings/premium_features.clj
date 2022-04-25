@@ -253,31 +253,6 @@
   []
   (str/starts-with? (ns-name *ns*) "metabase-enterprise"))
 
-(def ^:private valid-options #{:feature :fallback})
-
-(defn- parse-defenterprise-options
-  "Parses a list of args to defenterprise for keyword options and their corresponding values. Option keywords can be in
-  any order, but must be members of the `valid-options` set. Returns an [options-map other-args] pair."
-  [args]
-  (let [[option-name more] (u/optional valid-options args)]
-    (if-not option-name
-      [nil more]
-      (let [[option-value & other-options] more
-            [options-map other-args]      (parse-defenterprise-options other-options)]
-        [(merge options-map {option-name option-value})
-         other-args]))))
-
-(defn- parse-defenterprise-args
-  [args]
-  (let [[docstr more]           (u/optional string? args)
-        [ee-ns more]            (u/optional symbol? more)
-        [options [args & body]] (parse-defenterprise-options more)]
-    {:ee-ns         ee-ns
-     :docstr        docstr
-     :options       options
-     :args          args
-     :body          body}))
-
 (defonce ^{:doc "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as
                 their OSS equivalents. These fns are called when the EE function must fallback to the OSS behavior due
                 to absence of a feature flag."}
@@ -303,26 +278,24 @@
 
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
-  [{:keys [fn-name docstr args body options]}]
-  `(defn ~fn-name ~docstr ~args
-     ~(let [{:keys [feature fallback]} options]
-        `(if ~(or (= feature :none)
-                  (if (or (not feature) (= feature :any))
-                    `(enable-enhancements?)
-                    `(has-feature? ~feature)))
-           (do ~@body)
-           ~(cond
-              (= fallback :error)
-              `(throw (missing-premium-token-exception ~(str fn-name) ~feature))
+  [{:keys [fn-name docstr options fn-tail]}]
+  `(def ~fn-name
+     (fn [& ~'args]
+       ~(let [{:keys [feature fallback]} options]
+          `(if ~(or (= feature :none)
+                    (if (or (not feature) (= feature :any))
+                      `(enable-enhancements?)
+                      `(has-feature? ~feature)))
+             (apply (fn ~@fn-tail) ~'args)
+             ~(cond
+                (or (symbol? fallback) (seq? fallback))
+                `(apply ~fallback ~'args)
 
-              (or (symbol? fallback) (seq? fallback))
-              `(apply ~fallback ~args)
-
-              ;; :oss and default case
-              :else
-              `(apply (get @ee-registry [(symbol ~(str (ns-name *ns*)))
-                                         (symbol ~(str fn-name))])
-                      ~args))))))
+                ;; :oss and default case
+                :else
+                `(apply (get @ee-registry [(symbol ~(str (ns-name *ns*)))
+                                           (symbol ~(str fn-name))])
+                        ~'args)))))))
 
 (def resolve-ee
   "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
@@ -336,13 +309,33 @@
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name ee-ns docstr args body]}]
+  [{:keys [fn-name docstr ee-ns fn-tail]}]
   `(do
-    (register-mapping! '~fn-name '~ee-ns (fn ~args ~@body))
-    (defn ~fn-name ~docstr ~args
-       (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
-         (apply ee-fn# ~args)
-         (do ~@body)))))
+    (register-mapping! '~fn-name '~ee-ns (fn ~@fn-tail))
+    (def ~fn-name
+      (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
+        (fn [& ~'args] (apply ee-fn# ~'args))
+        (fn ~@fn-tail)))))
+
+(defn- options-conformer
+  [conformed-options]
+  (into {}
+        (map #(-> % second vals vec)
+             conformed-options)))
+
+(spec/def ::defenterprise-options
+  (spec/&
+   (spec/*
+    (spec/alt
+     :feature  (spec/cat :k #{:feature}  :v keyword?)
+     :fallback (spec/cat :k #{:fallback} :v #(or (#{:oss} %) (symbol? %)))))
+   (spec/conformer options-conformer)))
+
+(spec/def ::defenterprise-args
+  (spec/cat :docstr  (spec/? string?)
+            :ee-ns   (spec/? symbol?)
+            :options (spec/? ::defenterprise-options)
+            :fn-tail (spec/* any?)))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -373,12 +366,11 @@
   causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [{:keys [docstr args]
-         :as defenterprise-args} (-> (parse-defenterprise-args defenterprise-args)
-                                     (assoc :fn-name fn-name))]
-    (when-not (:docstr defenterprise-args)
+  (let [args (-> (spec/conform ::defenterprise-args defenterprise-args)
+                 (assoc :fn-name fn-name))]
+    (when-not (:docstr args)
       (log/warn (u/format-color 'red "Warning: enterprise function %s/%s does not have a docstring. Go add one."
                   (ns-name *ns*) fn-name)))
     (if (in-ee?)
-      `(defenterprise-ee ~defenterprise-args)
-      `(defenterprise-oss ~defenterprise-args))))
+      `(defenterprise-ee ~args)
+      `(defenterprise-oss ~args))))

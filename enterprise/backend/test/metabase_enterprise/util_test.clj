@@ -1,6 +1,5 @@
 (ns metabase-enterprise.util-test
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]
-            [schema.core :as s]))
+  (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro                                                  |
@@ -25,14 +24,6 @@
   "Returns an extra special greeting for a user if the instance has a :special-greeting feature token. Else,
   returns the default (OSS) greeting."
   :feature :special-greeting
-  [username]
-  (format "Hi %s, you're an extra special EE customer!" (name username)))
-
-(defenterprise special-greeting-or-error
-  "Returns an extra special greeting for a user if the instance has a :special-greeting feature token. Else,
-  throws an exception."
-  :feature  :special-greeting
-  :fallback :error
   [username]
   (format "Hi %s, you're an extra special EE customer!" (name username)))
 
