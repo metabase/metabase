@@ -96,9 +96,9 @@
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)
    field_order             (s/maybe FieldOrder)}
   (first (update-tables! [id] body)))
@@ -111,9 +111,9 @@
    display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)}
   (update-tables! ids body))
 

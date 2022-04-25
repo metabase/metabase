@@ -1,4 +1,9 @@
-import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openPeopleTable,
+  openProductsTable,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -78,18 +83,33 @@ describe("scenarios > question > object details", () => {
     });
   });
 
-  it("should show orders/reviews connected to a product", () => {
-    cy.visit("/browse/1");
-    cy.contains("Products").click();
-    // click on product #1's id
-    cy.contains(/^1$/).click();
-    // check that the correct counts of related tables appear
-    cy.contains("Orders")
-      .parent()
-      .contains("93");
-    cy.contains("Reviews")
-      .parent()
-      .contains("8");
+  it("should allow to browse linked entities by FKs (metabase#21757)", () => {
+    const PRODUCT_ID = 7;
+    const EXPECTED_LINKED_ORDERS_COUNT = 92;
+    const EXPECTED_LINKED_REVIEWS_COUNT = 8;
+    openProductsTable();
+
+    getFirstTableColumn()
+      .eq(7)
+      .should("contain", PRODUCT_ID)
+      .click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByTestId("fk-relation-reviews").findByText(
+        EXPECTED_LINKED_REVIEWS_COUNT,
+      );
+
+      cy.findByTestId("fk-relation-orders")
+        .findByText(EXPECTED_LINKED_ORDERS_COUNT)
+        .click();
+    });
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      `Product ID is ${PRODUCT_ID}`,
+    );
+    cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {

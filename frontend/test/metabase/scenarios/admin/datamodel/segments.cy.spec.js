@@ -21,7 +21,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       );
     });
 
-    it.skip("should have 'Custom expression' in a filter list (metabase#13069)", () => {
+    it("should have 'Custom expression' in a filter list (metabase#13069)", () => {
       cy.visit("/admin/datamodel/segments");
       cy.findByText("New segment").click();
       cy.findByText("Select a table").click();

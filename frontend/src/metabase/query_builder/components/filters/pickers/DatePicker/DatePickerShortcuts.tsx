@@ -125,7 +125,7 @@ const MISC_OPTIONS: Option[] = [
   },
   {
     displayName: t`Relative dates...`,
-    init: filter => ["time-interval", getDateTimeField(filter[1]), null],
+    init: filter => ["time-interval", getDateTimeField(filter[1]), -30, "day"],
   },
 ];
 

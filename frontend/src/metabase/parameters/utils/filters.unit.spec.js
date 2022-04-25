@@ -71,6 +71,7 @@ describe("parameters/utils/field-filters", () => {
           type: "category",
           field: () => ({
             ...field,
+            isString: () => true,
             isCategory: () => true,
           }),
         },
@@ -81,6 +82,7 @@ describe("parameters/utils/field-filters", () => {
           type: "category",
           field: () => ({
             ...field,
+            isString: () => true,
             isCategory: () => true,
           }),
         },

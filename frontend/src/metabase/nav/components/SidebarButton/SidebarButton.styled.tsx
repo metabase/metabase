@@ -6,13 +6,11 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const SidebarIcon = styled(Icon)`
-  &:hover {
-    cursor: pointer;
-    color: ${color("brand")};
-  }
+  color: ${color("brand")};
 `;
 
-export const SidebarButtonRoot = styled.div`
+export const SidebarButtonRoot = styled.button`
   margin-left: ${space(1)};
   margin-top: ${space(1)};
+  cursor: pointer;
 `;
