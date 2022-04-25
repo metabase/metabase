@@ -7,7 +7,7 @@ import { issue14957 } from "./reproductions/14957-unable-to-save-question-before
 import { issue15714 } from "./reproductions/15714-cc-postgres-percentile-accepts-two-params";
 import { issue15876 } from "./reproductions/15876-postgres-cast-time";
 import { issue16621 } from "./reproductions/16621-create-multiple-filters-with-same-value";
-import { issue16938 } from "./reproductions/16938-nesed-native-query-pk-drill.cy.spec";
+import { issue16938 } from "./reproductions/16938-nested-native-query-pk-drill";
 import { issue17512 } from "./reproductions/17512";
 import { issue17514 } from "./reproductions/17514-ui-overlay";
 import { issue17963 } from "./reproductions/17963-mongo-filter-expression-compare-two-fields";
