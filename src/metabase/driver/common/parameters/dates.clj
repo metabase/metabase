@@ -1,6 +1,7 @@
 (ns metabase.driver.common.parameters.dates
   "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
-  (:require [java-time :as t]
+  (:require [clojure.string :as str]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -135,8 +136,8 @@
 ;; 2) Range decoder which takes the parser output and produces a date range relative to the given datetime
 ;; 3) Filter decoder which takes the parser output and produces a mbql clause for a given mbql field reference
 
-(def ^:private relative-temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
-(def ^:private relative-offset-regex         (re-pattern (format "(|~|~([0-9]+)%ss)" relative-temporal-units-regex)))
+(def ^:private temporal-units-regex #"(millisecond|second|minute|hour|day|week|month|quarter|year)")
+(def ^:private relative-offset-regex (re-pattern (format "(|~|~([0-9]+)%ss)" temporal-units-regex)))
 
 (def ^:private relative-date-string-decoders
   [{:parser #(= % "today")
@@ -158,7 +159,7 @@
    ;; adding a tilde (~) at the end of a past<n><unit> filter means we should include the current day/etc.
    ;; e.g. past30days  = past 30 days, not including partial data for today ({:include-current false})
    ;;      past30days~ = past 30 days, *including* partial data for today   ({:include-current true})
-   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" relative-temporal-units-regex #"s" relative-offset-regex))
+   {:parser (regex->parser (re-pattern (str #"past([0-9]+)" temporal-units-regex #"s" relative-offset-regex))
                            [:int-value :unit :relative-offset :int-value-1 :unit-1])
     :range  (fn [{:keys [unit int-value unit-range to-period relative-offset unit-1 int-value-1]} dt]
               (let [dt-off (cond-> dt
@@ -174,7 +175,7 @@
                  [:relative-datetime 0 (keyword unit)]]
                 [:time-interval field-clause (- int-value) (keyword unit) {:include-current (boolean (seq relative-offset))}]))}
 
-   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" relative-temporal-units-regex #"s" relative-offset-regex))
+   {:parser (regex->parser (re-pattern (str #"next([0-9]+)" temporal-units-regex #"s" relative-offset-regex))
                            [:int-value :unit :relative-offset :int-value-1 :unit-1])
     :range  (fn [{:keys [unit int-value unit-range to-period relative-offset unit-1 int-value-1]} dt]
               (let [dt-off (cond-> dt
@@ -190,7 +191,7 @@
                  [:relative-datetime int-value (keyword unit)]]
                 [:time-interval field-clause int-value (keyword unit) {:include-current (boolean (seq relative-offset))}]))}
 
-   {:parser (regex->parser (re-pattern (str #"last" relative-temporal-units-regex))
+   {:parser (regex->parser (re-pattern (str #"last" temporal-units-regex))
                            [:unit])
     :range  (fn [{:keys [unit unit-range to-period]} dt]
               (let [last-unit (t/minus (maybe-reduce-resolution unit dt) (to-period 1))]
@@ -198,7 +199,7 @@
     :filter (fn [{:keys [unit]} field-clause]
               [:time-interval field-clause :last (keyword unit)])}
 
-   {:parser (regex->parser (re-pattern (str #"this" relative-temporal-units-regex))
+   {:parser (regex->parser (re-pattern (str #"this" temporal-units-regex))
                            [:unit])
     :range  (fn [{:keys [unit unit-range]} dt]
               (let [dt-adj (maybe-reduce-resolution unit dt)]
@@ -213,6 +214,40 @@
 (defn- range->filter
   [{:keys [start end]} field-clause]
   [:between (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date start) (->iso-8601-date end)])
+
+(def ^:private short-day->day
+  {"Mon" :monday
+   "Tue" :tuesday
+   "Wed" :wednesday
+   "Thu" :thursday
+   "Fri" :friday
+   "Sat" :saturday
+   "Sun" :sunday})
+
+(def ^:private short-month->month
+  (into {}
+        (map-indexed (fn [i m] [m (inc i)]))
+        ["Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"]))
+
+(defn- parse-int-in-range [s min-val max-val]
+  (try
+    (let [i (Integer/parseInt s)]
+      (when (<= min-val i max-val)
+        i))
+    (catch NumberFormatException _)))
+
+(defn- excluded-datetime [unit date exclusion]
+  (let [year (t/year date)]
+    (case unit
+      :hour (when-let [hour (parse-int-in-range exclusion 0 23)]
+              (format "%sT%02d:00:00Z" date hour))
+      :day (when-let [day (short-day->day exclusion)]
+             (str (t/adjust date :next-or-same-day-of-week day)))
+      :month (when-let [month (short-month->month exclusion)]
+               (format "%s-%02d-01" year month))
+      :quarter (when-let [quarter (parse-int-in-range exclusion 1 4)]
+                 (format "%s-%02d-01" year (inc (* 3 (dec quarter)))))
+      nil)))
 
 (def ^:private absolute-date-string-decoders
   ;; year and month
@@ -252,7 +287,15 @@
     :range  (fn [{:keys [date]} _]
               {:start date})
     :filter (fn [{:keys [date]} field-clause]
-              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}])
+              [:> (mbql.u/with-temporal-unit field-clause :day) (->iso-8601-date date)])}
+   ;; exclusions
+   {:parser (regex->parser (re-pattern (str temporal-units-regex #"s~([-\p{Alnum}]+)")) [:unit :exclusions])
+    :filter (fn [{:keys [unit exclusions]} field-clause]
+              (let [unit (keyword unit)
+                    exclusions (map (partial excluded-datetime unit (t/local-date))
+                                    (str/split exclusions #"-"))]
+                (when (and (seq exclusions) (every? some? exclusions))
+                  (into [:!= (mbql.u/with-temporal-unit field-clause unit)] exclusions))))}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
@@ -263,7 +306,7 @@
   dox for [[date-string->range]] for more details."
   [decoders, decoder-type :- (s/enum :range :filter), decoder-param, date-string :- s/Str]
   (some (fn [{parser :parser, parser-result-decoder decoder-type}]
-          (when-let [parser-result (parser date-string)]
+          (when-let [parser-result (and parser-result-decoder (parser date-string))]
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 
