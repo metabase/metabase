@@ -84,6 +84,8 @@ Adding people to groups allows you to assign [data access](05-setting-permission
 
 ### Group managers
 
+{% include plans-blockquote.html feature="Group managers" %}
+
 **Group managers** can manage other people within their group.
 
 Group managers can:
