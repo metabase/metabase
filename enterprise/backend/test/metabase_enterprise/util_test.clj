@@ -1,5 +1,6 @@
 (ns metabase-enterprise.util-test
-  (:require [metabase.public-settings.premium-features :refer [defenterprise]]))
+  (:require [metabase.public-settings.premium-features :refer [defenterprise defenterprise-schema]]
+            [schema.core :as s]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Defenterprise Macro                                                  |
@@ -39,3 +40,21 @@
   :fallback special-greeting-fallback
   [username]
   (format "Hi %s, you're an extra special EE customer!" (name username)))
+
+(defenterprise-schema greeting-with-schema :- s/Str
+  "Returns a greeting for a user, with schemas for the argument and return value."
+  :feature :none
+  [username :- s/Keyword]
+  (format "Hi %s, the schema was valid, and you're running the Enterprise Edition of Metabase!" (name username)))
+
+(defenterprise-schema greeting-with-invalid-oss-return-schema :- s/Str
+  "Returns a greeting for a user."
+  :feature :none
+  [username :- s/Keyword]
+  (format "Hi %s, the schema was valid, and you're running the Enterprise Edition of Metabase!" (name username)))
+
+(defenterprise-schema greeting-with-invalid-ee-return-schema :- s/Keyword
+  "Returns a greeting for a user."
+  :feature :custom-feature
+  [username :- s/Keyword]
+  (format "Hi %s, the schema was valid, and you're running the Enterprise Edition of Metabase!" (name username)))

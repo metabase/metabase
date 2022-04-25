@@ -293,11 +293,16 @@
 
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
-  [{:keys [fn-name docstr options fn-tail]}]
+  [{:keys [fn-name docstr fn-tail options schema? return-schema]}]
   (validate-ee-args options)
   `(def
      ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
-     (dynamic-ee-fn '~fn-name '~(ns-name *ns*) (fn ~@fn-tail) ~options)))
+     (dynamic-ee-fn '~fn-name
+                    '~(ns-name *ns*)
+                    ~(if schema?
+                       `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                       `(fn ~(symbol (str fn-name)) ~@fn-tail))
+                    ~options)))
 
 (def resolve-ee
   "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
@@ -327,15 +332,20 @@
 
 (defmacro defenterprise-oss
   "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name docstr ee-ns fn-tail options]}]
+  [{:keys [fn-name docstr ee-ns fn-tail options schema? return-schema]}]
   (validate-oss-args ee-ns options)
-  `(do
-     (register-mapping! '~fn-name '~ee-ns (fn ~@fn-tail))
+  `(let [oss-fn# ~(if schema? `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                              `(fn ~(symbol (str fn-name)) ~@fn-tail))]
+     (register-mapping! '~fn-name '~ee-ns oss-fn#)
      (def
        ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
        (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
          ee-fn#
-         (fn ~@fn-tail)))))
+         oss-fn#))))
+
+(defn- docstr-exception
+  [fn-name]
+  (Exception. (tru "Enterprise function {0}/{1} does not have a docstring. Go add one!" (ns-name *ns*) fn-name)))
 
 (defn- options-conformer
   [conformed-options]
@@ -356,6 +366,27 @@
             :ee-ns   (spec/? symbol?)
             :options (spec/? ::defenterprise-options)
             :fn-tail (spec/* any?)))
+
+(spec/def ::defenterprise-schema-args
+  (spec/cat :return-schema      (spec/? (spec/cat :- #{:-}
+                                                  :schema any?))
+            :defenterprise-args (spec/? ::defenterprise-args)))
+
+(defmacro defenterprise-schema
+  "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
+  the same as when using `schema/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
+  usage details."
+  [fn-name & defenterprise-args]
+  {:pre [(symbol? fn-name)]}
+  (let [schema-args (spec/conform ::defenterprise-schema-args defenterprise-args)
+        args        (-> (:defenterprise-args schema-args)
+                        (assoc :schema? true)
+                        (assoc :return-schema (-> schema-args :return-schema :schema))
+                        (assoc :fn-name fn-name))]
+    (when-not (:docstr args) (throw (docstr-exception fn-name)))
+    (if (in-ee?)
+      `(defenterprise-ee ~args)
+      `(defenterprise-oss ~args))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -388,10 +419,7 @@
   {:pre [(symbol? fn-name)]}
   (let [args (-> (spec/conform ::defenterprise-args defenterprise-args)
                  (assoc :fn-name fn-name))]
-    (when-not (:docstr args)
-      (throw (Exception. (tru "Enterprise function {0}/{1} does not have a docstring. Go add one!"
-                              (ns-name *ns*)
-                              fn-name))))
+    (when-not (:docstr args) (throw (docstr-exception fn-name)))
     (if (in-ee?)
       `(defenterprise-ee ~args)
       `(defenterprise-oss ~args))))

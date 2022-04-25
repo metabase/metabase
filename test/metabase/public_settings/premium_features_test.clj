@@ -5,10 +5,12 @@
             [metabase.config :as config]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
-            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise
+                                                                                    defenterprise-schema]]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [schema.core :as s]))
 
 (defn do-with-premium-features [features f]
   (let [features (set (map name features))]
@@ -107,7 +109,7 @@
 (def ^:private missing-feature-error-msg
   #"The special-greeting-or-error function requires a valid premium token with the special-greeting feature")
 
-(deftest defenterprise-oss-test
+(deftest defenterprise-test
   (when-not config/ee-available?
    (testing "When EE code is not available, a call to a defenterprise function calls the OSS version"
      (is (= "Hi rasta, you're an OSS customer!"
@@ -150,3 +152,63 @@
        (with-premium-features #{}
          (is (= "Hi rasta, you're an EE customer but not extra special."
                 (special-greeting-or-custom :rasta))))))))
+
+(defenterprise-schema greeting-with-schema :- s/Str
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username :- s/Keyword]
+  (format "Hi %s, the argument was valid" (name username)))
+
+(defenterprise-schema greeting-with-invalid-oss-return-schema :- s/Keyword
+  "Returns a greeting for a user. The OSS implementation has an invalid return schema"
+  metabase-enterprise.util-test
+  [username :- s/Keyword]
+  (format "Hi %s, the return value was valid" (name username)))
+
+(defenterprise-schema greeting-with-invalid-ee-return-schema :- s/Str
+  "Returns a greeting for a user."
+  metabase-enterprise.util-test
+  [username :- s/Keyword]
+  (format "Hi %s, the return value was valid" (name username)))
+
+(defenterprise greeting-with-only-ee-schema
+  "Returns a greeting for a user. Only EE version is defined with defenterprise-schema."
+  metabase-enterprise.util-test
+  [username]
+  (format "Hi %s, you're an OSS customer!"))
+
+(deftest defenterprise-schema-test
+  (when-not config/ee-available?
+    (testing "Argument schemas are validated for OSS implementations"
+      (is (= "Hi rasta, the argument was valid" (greeting-with-schema :rasta)))
+
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Input to greeting-with-schema does not match schema"
+                            (greeting-with-schema "rasta"))))
+
+   (testing "Return schemas are validated for OSS implementations"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Output of greeting-with-invalid-oss-return-schema does not match schema"
+                            (greeting-with-invalid-oss-return-schema :rasta)))))
+
+  (when config/ee-available?
+    (testing "Argument schemas are validated for EE implementations"
+      (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
+             (greeting-with-schema :rasta)))
+
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Input to greeting-with-schema does not match schema"
+                            (greeting-with-schema "rasta"))))
+
+    (testing "Only EE schema is validated if EE implementation is called"
+      (is (= "Hi rasta, the schema was valid, and you're running the Enterprise Edition of Metabase!"
+             (greeting-with-invalid-oss-return-schema :rasta)))
+
+      (with-premium-features #{:custom-feature}
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                              #"Output of greeting-with-invalid-ee-return-schema does not match schema"
+                              (greeting-with-invalid-ee-return-schema :rasta)))))
+
+    (testing "EE schema is not validated if OSS fallback is called"
+      (is (= "Hi rasta, the return value was valid"
+             (greeting-with-invalid-ee-return-schema :rasta))))))
