@@ -13261,10 +13261,8 @@ msgstr "Начать с"
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:23
 msgid "{0} row"
 msgid_plural "{0} rows"
-msgstr[0] "строка"
-msgstr[1] "строк"
-msgstr[2] "строк"
-msgstr[3] "строки"
+msgstr[0] "{0} строка"
+msgstr[1] "{0} строки"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionRowCount.jsx:29
 msgid "Show all rows"
