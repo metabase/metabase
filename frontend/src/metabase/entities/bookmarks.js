@@ -1,5 +1,6 @@
 import { assoc, dissoc } from "icepick";
 import _ from "underscore";
+import { createSelector } from "reselect";
 import { createEntity } from "metabase/lib/entities";
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -56,10 +57,14 @@ const Bookmarks = createEntity({
     }
 
     if (type === Bookmarks.actionTypes.REORDER) {
-      return _.chain(payload)
-        .map((bookmark, index) => assoc(bookmark, "order", index))
-        .indexBy(payload => payload.id)
-        .value();
+      const indexes = payload.reduce((indexes, bookmark, index) => {
+        indexes[bookmark.id] = index;
+        return indexes;
+      }, {});
+
+      return _.mapObject(state, bookmark =>
+        assoc(bookmark, "index", indexes[bookmark.id]),
+      );
     }
 
     return state;
@@ -80,5 +85,10 @@ function getIcon(bookmark) {
   const bookmarkEntity = getEntityFor(bookmark.type);
   return bookmarkEntity.objectSelectors.getIcon(bookmark);
 }
+
+export const getOrderedBookmarks = createSelector(
+  [Bookmarks.selectors.getList],
+  bookmarks => _.sortBy(bookmarks, bookmark => bookmark.index),
+);
 
 export default Bookmarks;

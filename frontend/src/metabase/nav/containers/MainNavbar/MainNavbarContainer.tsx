@@ -12,7 +12,7 @@ import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
-import Bookmarks from "metabase/entities/bookmarks";
+import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
@@ -23,7 +23,6 @@ import { logout } from "metabase/auth/actions";
 import {
   getHasOwnDatabase,
   getHasDataAccess,
-  getOrderedBookmarks,
 } from "metabase/new_query/selectors";
 import { getUser } from "metabase/selectors/user";
 import {
