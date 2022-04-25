@@ -190,7 +190,7 @@ describe("scenarios > question > nested", () => {
       .contains("Auto binned");
   });
 
-  it.skip("should show all filter options for a nested question (metabase#13186)", () => {
+  it("should show all filter options for a nested question (metabase#13186)", () => {
     const nativeQuestionDetails = {
       name: "13816_Q1",
       native: {
