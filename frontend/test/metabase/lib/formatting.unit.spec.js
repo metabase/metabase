@@ -123,6 +123,19 @@ describe("formatting", () => {
         expect(formatNumber(123456.78, options)).toEqual("1.2e+5");
         expect(formatNumber(-123456.78, options)).toEqual("-1.2e+5");
       });
+      it("should obey custom separators in scientific notiation", () => {
+        const options = {
+          compact: true,
+          number_style: "scientific",
+          number_separators: ",.",
+        };
+        expect(formatNumber(0, options)).toEqual("0,0e+0");
+        expect(formatNumber(0.0001, options)).toEqual("1,0e-4");
+        expect(formatNumber(0.01, options)).toEqual("1,0e-2");
+        expect(formatNumber(0.5, options)).toEqual("5,0e-1");
+        expect(formatNumber(123456.78, options)).toEqual("1,2e+5");
+        expect(formatNumber(-123456.78, options)).toEqual("-1,2e+5");
+      });
       it("should format currency values", () => {
         const options = {
           compact: true,

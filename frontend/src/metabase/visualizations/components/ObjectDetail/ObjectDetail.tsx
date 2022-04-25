@@ -167,6 +167,9 @@ export function ObjectDetailFn({
       event.preventDefault();
       capturedKeys[event.key]();
     }
+    if (event.key === "Escape") {
+      closeObjectDetail();
+    }
   };
 
   if (!data) {

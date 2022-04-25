@@ -12,10 +12,12 @@ import _ from "underscore";
 import { assoc, dissoc } from "icepick";
 
 import Users from "metabase/entities/users";
+
 import {
   LOAD_MEMBERSHIPS,
   CREATE_MEMBERSHIP,
   DELETE_MEMBERSHIP,
+  UPDATE_MEMBERSHIP,
   CLEAR_TEMPORARY_PASSWORD,
 } from "./events";
 
@@ -48,10 +50,22 @@ export const createMembership = createAction(
 );
 export const deleteMembership = createAction(
   DELETE_MEMBERSHIP,
-  async ({ membershipId, groupId }) => {
+  async membershipId => {
     await PermissionsApi.deleteMembership({ id: membershipId });
     MetabaseAnalytics.trackStructEvent("People Groups", "Membership Deleted");
-    return { membershipId, groupId };
+    return { membershipId };
+  },
+);
+
+export const updateMembership = createAction(
+  UPDATE_MEMBERSHIP,
+  async membership => {
+    await PermissionsApi.updateMembership({
+      ...membership,
+      id: membership.membership_id,
+    });
+    MetabaseAnalytics.trackStructEvent("People Groups", "Membership Updated");
+    return membership;
   },
 );
 
@@ -71,6 +85,10 @@ const memberships = handleActions(
           user_id,
           membership_id: membership.membership_id,
         }),
+    },
+    [UPDATE_MEMBERSHIP]: {
+      next: (state, { payload: membership }) =>
+        assoc(state, membership.membership_id, membership),
     },
     [DELETE_MEMBERSHIP]: {
       next: (state, { payload }) => dissoc(state, payload.membershipId),

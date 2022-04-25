@@ -1,13 +1,25 @@
 import { t } from "ttag";
 import { PermissionSubject } from "metabase/admin/permissions/types";
+import { AdminPathKey } from "metabase-types/store";
 import { UserWithFeaturePermissions } from "./types/user";
 
-export const canAccessDataModel = (user?: UserWithFeaturePermissions) =>
+const canAccessDataModel = (user?: UserWithFeaturePermissions) =>
   user?.permissions?.can_access_data_model ?? false;
 
-export const canAccessDatabaseManagement = (
+const canAccessDatabaseManagement = (user?: UserWithFeaturePermissions) =>
+  user?.permissions?.can_access_db_details ?? false;
+
+export const dataModelPermissionAllowedPathGetter = (
   user?: UserWithFeaturePermissions,
-) => user?.permissions?.can_access_db_details ?? false;
+): AdminPathKey[] => {
+  return canAccessDataModel(user) ? ["data-model"] : [];
+};
+
+export const databaseManagementPermissionAllowedPathGetter = (
+  user?: UserWithFeaturePermissions,
+): AdminPathKey[] => {
+  return canAccessDatabaseManagement(user) ? ["databases"] : [];
+};
 
 export const getDataColumns = (subject: PermissionSubject) => {
   const allSubjectsColumns = [

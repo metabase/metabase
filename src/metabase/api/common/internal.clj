@@ -279,9 +279,4 @@
   (wrap-response-if-needed [m]
     (if (and (:status m) (contains? m :body))
       m
-      {:status 200, :body m}))
-
-  ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
-  Boolean
-  (wrap-response-if-needed [_]
-    (throw (Exception. (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
+      {:status 200, :body m})))
