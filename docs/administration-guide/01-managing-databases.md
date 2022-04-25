@@ -27,7 +27,7 @@ Metabase supports many different databases and data sources, with different leve
 
 ### Officially supported databases
 
-The following database have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support. 
+The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support. 
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
