@@ -1,9 +1,8 @@
-import { IMetric } from "metabase-types/api";
+import { IMetric, ISegment } from "metabase-types/api";
 
 import { ISO8601Time } from ".";
 
 import { Field } from "./Field";
-import { Segment } from "./Segment";
 import { DatabaseId } from "./Database";
 import { ForeignKey } from "../api/foreignKey";
 
@@ -28,7 +27,7 @@ export type Table = {
   // entity_type:          null // unused?
 
   fields: Field[];
-  segments: Segment[];
+  segments: ISegment[];
   metrics: IMetric[];
 
   rows: number;

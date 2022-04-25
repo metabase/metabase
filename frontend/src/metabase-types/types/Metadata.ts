@@ -3,8 +3,7 @@
 import { Database, DatabaseId } from "metabase-types/types/Database";
 import { Table, TableId } from "metabase-types/types/Table";
 import { Field, FieldId } from "metabase-types/types/Field";
-import { Segment, SegmentId } from "metabase-types/types/Segment";
-import { IMetric, MetricId } from "metabase-types/api";
+import { IMetric, MetricId, ISegment, SegmentId } from "metabase-types/api";
 
 export type Metadata = {
   databases: { [id: DatabaseId]: DatabaseMetadata };
@@ -39,7 +38,7 @@ export type FieldMetadata = Field & {
   filter_operators_lookup: { [key: FilterOperatorName]: FilterOperator };
 };
 
-export type SegmentMetadata = Segment & {
+export type SegmentMetadata = ISegment & {
   table: TableMetadata;
 };
 

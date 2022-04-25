@@ -1,7 +1,6 @@
-import { MetricId } from "metabase-types/api";
+import { MetricId, SegmentId } from "metabase-types/api";
 import { TableId } from "./Table";
 import { FieldId, BaseType } from "./Field";
-import { SegmentId } from "./Segment";
 import { ParameterType } from "./Parameter";
 
 export type ExpressionName = string;
