@@ -1,28 +1,19 @@
 import Metric, {
-  IMetric,
   HydratedMetricProperties,
 } from "metabase-lib/lib/metadata/Metric";
-
-import { PRODUCTS } from "__support__/sample_database_fixture";
+import { IMetric } from "metabase-types/api";
+import { createMockMetric } from "metabase-types/api/mocks";
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
 
 export function createMockMetricInstance(
   metricProps?: Partial<IMetric>,
   hydratedProps?: Partial<HydratedMetricProperties>,
 ): Metric {
-  const metric = new Metric({
-    name: "Avg of Product Rating",
-    id: 1,
-    table_id: PRODUCTS.id,
-    archived: false,
-    description: "This is an average",
-    definition: {
-      "source-table": PRODUCTS.id,
-      aggregation: [["avg", ["field", PRODUCTS.RATING.id, null]]],
-    },
-    ...metricProps,
-  });
+  const metric = createMockMetric(metricProps);
+  const instance = new Metric(metric);
 
-  metric.table = PRODUCTS;
+  instance.table = PRODUCTS;
+  instance.metadata = metadata;
 
-  return Object.assign(metric, hydratedProps);
+  return Object.assign(instance, hydratedProps);
 }

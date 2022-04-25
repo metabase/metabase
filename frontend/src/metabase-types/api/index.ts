@@ -13,3 +13,4 @@ export * from "./user";
 export * from "./group";
 export * from "./permissions";
 export * from "./dataset";
+export * from "./metric";

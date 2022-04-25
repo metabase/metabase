@@ -1,3 +1,4 @@
+import { IMetric, MetricId } from "metabase-types/api";
 import {
   StructuredQuery as StructuredQueryType,
   MetricAgg,
@@ -8,27 +9,22 @@ import StructuredQuery from "../queries/StructuredQuery";
 import Table from "./Table";
 import Metadata from "./Metadata";
 
-export interface IMetric {
-  name: string;
-  id: number | string;
-  table_id: number;
-  archived: boolean;
-  description: string;
-  definition: StructuredQueryType;
-}
-
 export type HydratedMetricProperties = {
   table: Table;
   metadata: Metadata;
 };
 
-export default class Metric {
+export default class Metric implements IMetric {
   name: string;
   id: number | string;
   table_id: number;
+  database_id: number;
   archived: boolean;
   description: string;
   definition: StructuredQueryType;
+  creator_id: number;
+  created_at: string;
+  updated_at: string;
 
   table: Table | null;
   metadata: Metadata | null;
@@ -39,9 +35,13 @@ export default class Metric {
     this.name = metric.name;
     this.id = metric.id;
     this.table_id = metric.table_id;
+    this.database_id = metric.database_id;
     this.archived = metric.archived;
     this.description = metric.description;
     this.definition = metric.definition;
+    this.creator_id = metric.creator_id;
+    this.created_at = metric.created_at;
+    this.updated_at = metric.updated_at;
 
     // these properties are hydrated after instantiation in metabase/selectors/metadata
     this.table = null;
