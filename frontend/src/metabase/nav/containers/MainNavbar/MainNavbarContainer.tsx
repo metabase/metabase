@@ -45,12 +45,12 @@ import {
 
 type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 
-function mapStateToProps(state: State, props: unknown) {
+function mapStateToProps(state: State) {
   return {
     currentUser: getUser(state),
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
-    bookmarks: getOrderedBookmarks(state, props),
+    bookmarks: getOrderedBookmarks(state),
   };
 }
 

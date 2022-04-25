@@ -56,8 +56,10 @@ const Bookmarks = createEntity({
     }
 
     if (type === Bookmarks.actionTypes.REORDER) {
-      let order = 0;
-      return _.mapObject(state, bookmark => assoc(bookmark, "order", order++));
+      return _.chain(payload)
+        .map((bookmark, index) => assoc(bookmark, "order", index))
+        .indexBy(payload => payload.id)
+        .value();
     }
 
     return state;
