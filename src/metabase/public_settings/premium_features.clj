@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]
+            [schema.core :as schema]
             [toucan.db :as db]))
 
 (def ^:private ValidToken
@@ -48,16 +48,16 @@
 (def ^:private ^:const fetch-token-status-timeout-ms 10000) ; 10 seconds
 
 (def ^:private TokenStatus
-  {:valid                          s/Bool
-   :status                         su/NonBlankString
-   (s/optional-key :error-details) (s/maybe su/NonBlankString)
-   (s/optional-key :features)      [su/NonBlankString]
-   (s/optional-key :trial)         s/Bool
-   (s/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
+  {:valid                               schema/Bool
+   :status                              su/NonBlankString
+   (schema/optional-key :error-details) (schema/maybe su/NonBlankString)
+   (schema/optional-key :features)      [su/NonBlankString]
+   (schema/optional-key :trial)         schema/Bool
+   (schema/optional-key :valid_thru)    su/NonBlankString ; ISO 8601 timestamp
    ;; don't explode in the future if we add more to the response! lol
-   s/Any                           s/Any})
+   schema/Any                           schema/Any})
 
-(s/defn ^:private fetch-token-status* :- TokenStatus
+(schema/defn ^:private fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- ValidToken]
   ;; attempt to query the metastore API about the status of this token. If the request doesn't complete in a
@@ -97,7 +97,7 @@
    fetch-token-status*
    :ttl/threshold (* 1000 60 5)))
 
-(s/defn ^:private valid-token->features* :- #{su/NonBlankString}
+(schema/defn ^:private valid-token->features* :- #{su/NonBlankString}
   [token :- ValidToken]
   (let [{:keys [valid status features error-details]} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
@@ -129,7 +129,7 @@
     ;; validate the new value if we're not unsetting it
     (try
       (when (seq new-value)
-        (when (s/check ValidToken new-value)
+        (when (schema/check ValidToken new-value)
           (throw (ex-info (tru "Token format is invalid.")
                    {:status-code 400, :error-details "Token should be 64 hexadecimal characters."})))
         (valid-token->features new-value)
@@ -141,7 +141,7 @@
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
 
-(s/defn ^:private token-features :- #{su/NonBlankString}
+(schema/defn ^:private token-features :- #{su/NonBlankString}
   "Get the features associated with the system's premium features token."
   []
   (try
