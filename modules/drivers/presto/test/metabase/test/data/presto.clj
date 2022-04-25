@@ -3,7 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
@@ -81,10 +81,10 @@
 (defn- insert-sql [driver {:keys [database-name]} {:keys [table-name], :as tabledef} rows]
   (let [field-definitions (cons {:field-name "id"} (:field-definitions tabledef))
         columns           (map (comp keyword :field-name) field-definitions)
-        [query & params]  (-> (apply h/columns columns)
-                              (h/insert-into (apply hsql/qualify
-                                                    (sql.tx/qualified-name-components driver database-name table-name)))
-                              (h/values rows)
+        [query & params]  (-> (apply hh/columns columns)
+                              (hh/insert-into (apply hsql/qualify
+                                                     (sql.tx/qualified-name-components driver database-name table-name)))
+                              (hh/values rows)
                               (hsql/format :allow-dashed-names? true, :quoting :ansi))]
     (log/tracef "Inserting Presto rows")
     (doseq [row rows]

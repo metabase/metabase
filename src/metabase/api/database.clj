@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
-            [metabase.api.table :as table-api]
+            [metabase.api.table :as api.table]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
@@ -29,12 +29,12 @@
             [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.sync.analyze :as analyze]
-            [metabase.sync.field-values :as sync-field-values]
+            [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
+            [metabase.util.cron :as u.cron]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -170,7 +170,7 @@
    Builder.)"
   [question-type & {:keys [include-fields?]}]
   (for [card (source-query-cards question-type)]
-    (table-api/card->virtual-table card :include-fields? include-fields?)))
+    (api.table/card->virtual-table card :include-fields? include-fields?)))
 
 (defn- saved-cards-virtual-db-metadata [question-type & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
@@ -189,24 +189,47 @@
       (and (source-query-cards-exist? :card) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- filter-databases-by-data-model-perms
+  "Filters the provided list of databases by data model perms, returning only the databases for which the current user
+  can fully or partially edit the data model. If the user also has block permissions for any databases, returns only the
+  name and ID of these databases, removing all other fields."
   [dbs]
-  (if-let [f (u/ignore-exceptions
-              (classloader/require 'metabase-enterprise.advanced-permissions.common)
-              (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
-    (f dbs)
-    dbs))
+  (let [filtered-dbs
+        (if-let [f (u/ignore-exceptions
+                    (classloader/require 'metabase-enterprise.advanced-permissions.common)
+                    (resolve 'metabase-enterprise.advanced-permissions.common/filter-databases-by-data-model-perms))]
+          (f dbs)
+          dbs)]
+    (map
+     (fn [db] (if (mi/can-read? db)
+                db
+                (select-keys db [:id :name :tables])))
+     filtered-dbs)))
+
+(defn- check-db-data-model-perms
+  [db include-editable-data-model?]
+  (if include-editable-data-model?
+    (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
+      (when (seq filtered-dbs)
+        (first filtered-dbs)))
+    db))
 
 (defn- dbs-list [& {:keys [include-tables?
                            include-saved-questions-db?
                            include-saved-questions-tables?
-                           exclude-uneditable-data-model?
+                           include-editable-data-model?
                            exclude-uneditable-details?]}]
-  (let [dbs (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]}))
+  (let [dbs (db/select Database {:order-by [:%lower.name :%lower.engine]})
+        dbs (if include-editable-data-model?
+              ;; Since users can have *data model* perms even if they have no *data* perms for a DB, we don't filter by
+              ;; read permissions here if `include-editable-data-model?` is true. Instead, we only return ID, name
+              ;; and tables for DBs for which the user has no data perms, to avoid exposing unecessary DB metadata.
+              dbs
+              (filter mi/can-read? dbs))
         dbs (if exclude-uneditable-details? (filter mi/can-write? dbs) dbs)]
     (cond-> (add-native-perms-info dbs)
-      include-tables?                add-tables
-      exclude-uneditable-data-model? filter-databases-by-data-model-perms
-      include-saved-questions-db?    (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
+      include-tables?              add-tables
+      include-editable-data-model? filter-databases-by-data-model-perms
+      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
   "Schema for matching the include parameter of the GET / endpoint"
@@ -228,18 +251,18 @@
     use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
     questions virtual DB). Prefer using `include` and `saved` instead.
 
-  * `exclude_uneditable_data_model` will only include DBs for which the current user has data model editing
+  * `include_editable_data_model` will only include DBs for which the current user has data model editing
     permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled."
-  [include_tables include_cards include saved exclude_uneditable_data_model exclude_uneditable_details]
+  [include_tables include_cards include saved include_editable_data_model exclude_uneditable_details]
   {include_tables                (s/maybe su/BooleanString)
    include_cards                 (s/maybe su/BooleanString)
    include                       FetchAllIncludeValues
    saved                         (s/maybe su/BooleanString)
-   exclude_uneditable_data_model (s/maybe su/BooleanString)
+   include_editable_data_model   (s/maybe su/BooleanString)
    exclude_uneditable_details    (s/maybe su/BooleanString)}
   (when (and config/is-dev?
              (or include_tables include_cards))
@@ -259,7 +282,7 @@
         db-list-res                     (or (dbs-list :include-tables?                 include-tables?
                                                       :include-saved-questions-db?     include-saved-questions-db?
                                                       :include-saved-questions-tables? include-saved-questions-tables?
-                                                      :exclude-uneditable-data-model?  (Boolean/parseBoolean exclude_uneditable_data_model)
+                                                      :include-editable-data-model?    (Boolean/parseBoolean include_editable_data_model)
                                                       :exclude-uneditable-details?     (Boolean/parseBoolean exclude_uneditable_details))
                                             [])]
     {:data  db-list-res
@@ -269,8 +292,8 @@
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
 (s/defn ^:private expanded-schedules [db :- DatabaseInstance]
-  {:cache_field_values (cron-util/cron-string->schedule-map (:cache_field_values_schedule db))
-   :metadata_sync      (cron-util/cron-string->schedule-map (:metadata_sync_schedule db))})
+  {:cache_field_values (u.cron/cron-string->schedule-map (:cache_field_values_schedule db))
+   :metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))})
 
 (defn- add-expanded-schedules
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
@@ -299,17 +322,23 @@
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-  belonging to this database, or the Tables and Fields, respectively.  If the requestor is an admin, then certain
-  inferred secret values will also be included in the returned details (see
-  [[metabase.models.secret/admin-expand-db-details-inferred-secret-values]] for full details)."
-  [id include]
-  {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (cond-> (-> (api/read-check Database id)
-              add-expanded-schedules
-              (get-database-hydrate-include include))
+  belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
+  (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
+  returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
-    api/*is-superuser?* ; for admins, expand inferred secret values in db-details
-    secret/admin-expand-db-details-inferred-secret-values))
+  Passing include_editable_data_model will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
+  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
+  and tables, with no additional metadata."
+  [id include include_editable_data_model]
+  {include (s/maybe (s/enum "tables" "tables.fields"))}
+  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)]
+    (cond-> (api/check-404 (Database id))
+      (not include-editable-data-model?) api/read-check
+      true                               add-expanded-schedules
+      true                               (get-database-hydrate-include include)
+      mi/can-write?                      secret/expand-db-details-inferred-secret-values
+      include-editable-data-model?       (check-db-data-model-perms include-editable-data-model?))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
@@ -332,8 +361,10 @@
     (f tables)
     tables))
 
-(defn- db-metadata [id include-hidden? exclude-uneditable?]
-  (-> (api/read-check Database id)
+(defn- db-metadata [id include-hidden? include-editable-data-model?]
+  (-> (if include-editable-data-model?
+        (api/check-404 (Database id))
+        (api/read-check Database id))
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (if include-hidden?
                         identity
@@ -348,38 +379,42 @@
                               (update :segments (partial filter mi/can-read?))
                               (update :metrics  (partial filter mi/can-read?))))))
       (update :tables (fn [tables]
-                        (if exclude-uneditable?
+                        (if include-editable-data-model?
                           (filter-tables-by-data-model-perms tables)
-                          tables)))))
+                          tables)))
+      (check-db-data-model-perms include-editable-data-model?)))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
-  Passing exclude_uneditable=true will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present."
-  [id include_hidden exclude_uneditable]
-  {include_hidden     (s/maybe su/BooleanString)
-   exclude_uneditable (s/maybe su/BooleanString)}
+
+  Passing include_editable_data_model will only return tables for which the current user has data model editing
+  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
+  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
+  and tables, with no additional metadata."
+  [id include_hidden include_editable_data_model]
+  {include_hidden              (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
   (db-metadata id
                (Boolean/parseBoolean include_hidden)
-               (Boolean/parseBoolean exclude_uneditable)))
+               (Boolean/parseBoolean include_editable_data_model)))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id prefix limit]
+(defn- autocomplete-tables [db-id search-string limit]
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
-                     [:like :%lower.name (str (str/lower-case prefix) "%")]
+                     [:like :%lower.name (str/lower-case search-string)]
                      [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
-(defn- autocomplete-fields [db-id prefix limit]
+(defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (str (str/lower-case prefix) "%")]
+    :%lower.metabase_field.name     [:like (str/lower-case search-string)]
     :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
@@ -401,10 +436,12 @@
                          (when semantic_type
                            (str " " semantic_type)))]))))
 
-(defn- autocomplete-suggestions [db-id prefix]
+(defn- autocomplete-suggestions
+  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
+  [db-id match-string]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id prefix limit))
-        fields (readable-fields-only (autocomplete-fields db-id prefix limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
+        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
@@ -414,12 +451,18 @@
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
-  Fields are returned in the format `[field_name \"table_name base_type semantic_type\"]`"
-  [id prefix]
-  {prefix su/NonBlankString}
+  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
+  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
+  [id prefix search]
   (api/read-check Database id)
   (try
-    (autocomplete-suggestions id prefix)
+    (cond
+      search
+      (autocomplete-suggestions id (str "%" search "%"))
+      prefix
+      (autocomplete-suggestions id (str prefix "%"))
+      :else
+      (ex-info "must include prefix or search" {}))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
@@ -755,16 +798,25 @@
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
+(def ^:dynamic *rescan-values-async*
+  "Boolean indicating whether the rescan_values job should be done async or not. Defaults to `true`. Should only be rebound
+  in tests to force the scan to block."
+  true)
+
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (Database id))]
-    (future
-      (sync-field-values/update-field-values! db)))
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (if *rescan-values-async*
+        (future (field-values/update-field-values! db))
+        (field-values/update-field-values! db))))
   {:status :ok})
-
 
 ;; "Discard saved field values" action in db UI
 (defn- database->field-values-ids [database-or-id]
@@ -794,8 +846,11 @@
   "Does the current user have permissions to know the schema with `schema-name` exists? (Do they have permissions to see
   at least some of its tables?)"
   [database-id schema-name]
-  (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
-                                      (perms/data-perms-path database-id schema-name)))
+  (or
+   (perms/set-has-partial-permissions? @api/*current-user-permissions-set*
+                                       (perms/data-perms-path database-id schema-name))
+   (perms/set-has-full-permissions? @api/*current-user-permissions-set*
+                                    (perms/data-model-write-perms-path database-id schema-name))))
 
 (api/defendpoint GET "/:id/schemas"
   "Returns a list of all the schemas found for the database `id`"
@@ -864,10 +919,10 @@
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :card
-          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
+          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                       [:= :collection_id nil]
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
-         (map table-api/card->virtual-table))))
+         (map api.table/card->virtual-table))))
 
 (api/defendpoint GET ["/:virtual-db/datasets/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
@@ -876,10 +931,10 @@
   (when (public-settings/enable-nested-queries)
     (->> (source-query-cards
           :dataset
-          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
+          :additional-constraints [(if (= schema (api.table/root-collection-schema-name))
                                       [:= :collection_id nil]
                                       [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
-         (map table-api/card->virtual-table))))
+         (map api.table/card->virtual-table))))
 
 (api/defendpoint GET "/db-ids-with-deprecated-drivers"
   "Return a list of database IDs using currently deprecated drivers."

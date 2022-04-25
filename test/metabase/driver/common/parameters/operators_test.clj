@@ -1,57 +1,57 @@
 (ns metabase.driver.common.parameters.operators-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.common.parameters.operators :as ops]
+            [metabase.driver.common.parameters.operators :as params.ops]
             [metabase.query-processor.error-type :as qp.error-type]
             [schema.core :as s]))
 
 (deftest ^:parallel to-clause-test
   (testing "number operations"
-    (is (= (ops/to-clause {:type :number/=
-                           :target [:dimension
-                                    [:field
-                                     26
-                                     {:source-field 5}]]
-                           :value [3]})
+    (is (= (params.ops/to-clause {:type :number/=
+                                  :target [:dimension
+                                           [:field
+                                            26
+                                            {:source-field 5}]]
+                                  :value [3]})
            [:= [:field 26 {:source-field 5}] 3]))
-    (is (= (ops/to-clause {:type :number/between
-                           :target [:dimension
-                                    [:field
-                                     26
-                                     {:source-field 5}]]
-                           :value [3 9]})
+    (is (= (params.ops/to-clause {:type :number/between
+                                  :target [:dimension
+                                           [:field
+                                            26
+                                            {:source-field 5}]]
+                                  :value [3 9]})
            [:between [:field 26 {:source-field 5}] 3 9]))
     (testing "equality is variadic"
       (is (= [:= [:field 26 {:source-field 5}] 3 4 5]
-             (ops/to-clause {:type :number/=
-                             :target [:dimension
-                                      [:field
-                                       26
-                                       {:source-field 5}]]
-                             :value [3 4 5]})))))
+             (params.ops/to-clause {:type :number/=
+                                    :target [:dimension
+                                             [:field
+                                              26
+                                              {:source-field 5}]]
+                                    :value [3 4 5]})))))
   (testing "string operations"
-    (is (= (ops/to-clause {:type :string/starts-with
-                           :target [:dimension
-                                    [:field
-                                     26
-                                     {:source-field 5}]]
-                           :value ["foo"]})
+    (is (= (params.ops/to-clause {:type :string/starts-with
+                                  :target [:dimension
+                                           [:field
+                                            26
+                                            {:source-field 5}]]
+                                  :value ["foo"]})
            [:starts-with [:field 26 {:source-field 5}] "foo"]))
-    (is (= (ops/to-clause {:type :string/does-not-contain
-                           :target [:dimension
-                                    [:field
-                                     26
-                                     {:source-field 5}]]
-                           :value ["foo"]})
+    (is (= (params.ops/to-clause {:type :string/does-not-contain
+                                  :target [:dimension
+                                           [:field
+                                            26
+                                            {:source-field 5}]]
+                                  :value ["foo"]})
            [:does-not-contain [:field 26 {:source-field 5}] "foo"])))
   (testing "arity errors"
     (letfn [(f [op values]
               (try
-                (let [result (ops/to-clause {:type   op
-                                             :target [:dimension
-                                                      [:field
-                                                       26
-                                                       {:source-field 5}]]
-                                             :value  values})]
+                (let [result (params.ops/to-clause {:type   op
+                                                    :target [:dimension
+                                                             [:field
+                                                              26
+                                                              {:source-field 5}]]
+                                                    :value  values})]
                   (is (not result) "Did not throw"))
                 (catch Exception e
                   (ex-data e))))]

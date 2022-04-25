@@ -139,7 +139,7 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
       </Route>
 
       {/* PEOPLE */}
-      <Route path="people" component={IsAdmin}>
+      <Route path="people" component={createAdminRouteGuard("people")}>
         <Route title={t`People`} component={AdminPeopleApp}>
           <IndexRoute component={PeopleListingApp} />
 

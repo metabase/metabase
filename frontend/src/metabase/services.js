@@ -28,6 +28,7 @@ export const BookmarkApi = {
     create: POST("/api/bookmark/dashboard/:id"),
     delete: DELETE("/api/bookmark/dashboard/:id"),
   },
+  reorder: PUT("/api/bookmark/ordering"),
 };
 
 // only available with token loaded
@@ -260,7 +261,7 @@ export const MetabaseApi = {
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),
   db_autocomplete_suggestions: GET(
-    "/api/database/:dbId/autocomplete_suggestions?prefix=:prefix",
+    "/api/database/:dbId/autocomplete_suggestions?search=:prefix",
   ),
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
@@ -421,6 +422,7 @@ export const PermissionsApi = {
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
+  updateMembership: PUT("/api/permissions/membership/:id"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
 };

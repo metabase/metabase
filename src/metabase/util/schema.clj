@@ -9,7 +9,7 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-tru]]
-            [metabase.util.password :as password]
+            [metabase.util.password :as u.password]
             [schema.core :as s]
             [schema.macros :as s.macros]
             [schema.utils :as s.utils]))
@@ -281,7 +281,7 @@
 
 (def ValidPassword
   "Schema for a valid password of sufficient complexity which is not found on a common password list."
-  (with-api-error-message (s/constrained s/Str password/is-valid?)
+  (with-api-error-message (s/constrained s/Str u.password/is-valid?)
     (deferred-tru "password is too common.")))
 
 (def IntString

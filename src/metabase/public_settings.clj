@@ -11,7 +11,7 @@
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
-            [metabase.util.password :as password]
+            [metabase.util.password :as u.password]
             [toucan.db :as db])
   (:import java.util.UUID))
 
@@ -386,7 +386,7 @@
   "Current password complexity requirements"
   :visibility :public
   :setter     :none
-  :getter     password/active-password-complexity)
+  :getter     u.password/active-password-complexity)
 
 (defsetting session-cookies
   (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")

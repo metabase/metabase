@@ -26,7 +26,7 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.driver.ddl.interface :as ddl.i]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -168,7 +168,7 @@
                 (u/pprint-to-str 'yellow source-query))
      (cond-> {:source-query    source-query
               :database        database-id
-              :source-metadata (cond-> (seq (map normalize/normalize-source-metadata result-metadata))
+              :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
                                  persisted? sub-cached-field-refs)}
        dataset? (assoc :source-query/dataset? dataset?)))))
 

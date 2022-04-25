@@ -6,6 +6,7 @@ export interface EngineSource {
   type?: "official" | "community" | "partner";
   contact?: EngineSourceContact;
 }
+
 export interface Engine {
   "driver-name": string;
   "superseded-by": string | undefined;
@@ -16,7 +17,10 @@ export interface Version {
   tag: string;
 }
 
+export type LocaleData = [string, string];
+
 export interface Settings {
+  "available-locales": LocaleData[] | undefined;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   engines: Record<string, Engine>;

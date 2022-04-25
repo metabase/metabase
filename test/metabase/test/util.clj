@@ -17,12 +17,13 @@
                                      Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.setting :as setting]
             [metabase.models.setting.cache :as setting.cache]
+            [metabase.models.timeline :as timeline]
             [metabase.plugins.classloader :as classloader]
             [metabase.task :as task]
-            [metabase.test-runner.assert-exprs :as assert-exprs]
+            [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [metabase.test.data :as data]
             [metabase.test.fixtures :as fixtures]
@@ -32,7 +33,7 @@
             [metabase.util.files :as u.files]
             [potemkin :as p]
             [toucan.db :as db]
-            [toucan.models :as t.models]
+            [toucan.models :as models]
             [toucan.util.test :as tt])
   (:import [java.io File FileInputStream]
            java.net.ServerSocket
@@ -41,7 +42,7 @@
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
 (comment tu.log/keep-me
-         assert-exprs/keep-me)
+         test-runner.assert-exprs/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -224,11 +225,13 @@
    (fn [_]
      {:name       "Timeline of bird squawks"
       :default    false
+      :icon       timeline/DefaultIcon
       :creator_id (rasta-id)})
 
    TimelineEvent
    (fn [_]
      {:name         "default timeline event"
+      :icon         timeline/DefaultIcon
       :timestamp    (t/zoned-date-time)
       :timezone     "US/Pacific"
       :time_matters true
@@ -689,7 +692,7 @@
                                          @(requiring-resolve 'metabase.test.data.users/usernames)))]])
 
 (defn do-with-model-cleanup [models f]
-  {:pre [(sequential? models) (every? t.models/model? models)]}
+  {:pre [(sequential? models) (every? models/model? models)]}
   (test-runner.parallel/assert-test-is-not-parallel "with-model-cleanup")
   (initialize/initialize-if-needed! :db)
   (let [model->old-max-id (into {} (for [model models]
@@ -822,7 +825,7 @@
      (fn []
        (db/delete! Permissions
          :object [:in #{(perms/collection-read-path collection) (perms/collection-readwrite-path collection)}]
-         :group_id [:not= (u/the-id (group/admin))])
+         :group_id [:not= (u/the-id (perms-group/admin))])
        (f)))
     ;; if this is the default namespace Root Collection, then double-check to make sure all non-admin groups get
     ;; perms for it at the end. This is here mostly for legacy reasons; we can remove this but it will require
@@ -830,7 +833,7 @@
     (finally
       (when (and (:metabase.models.collection.root/is-root? collection)
                  (not (:namespace collection)))
-        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (group/admin))])]
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/the-id (perms-group/admin))])]
           (when-not (db/exists? Permissions :group_id group-id, :object "/collection/root/")
             (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 

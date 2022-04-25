@@ -132,6 +132,29 @@ describe("metabase/lib/expressions/recursive-parser", () => {
     expect(filter("NOT contains(B,C)")).toEqual(["does-not-contain", B, C]);
   });
 
+  it("should parse booleans", () => {
+    expect(process("Canceled = true")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      true,
+    ]);
+    expect(process("Canceled = True")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      true,
+    ]);
+    expect(process("Canceled = false")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      false,
+    ]);
+    expect(process("Canceled = False")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      false,
+    ]);
+  });
+
   it("should parse comparisons", () => {
     expect(process("round(3.14) = 3")).toEqual(["=", ["round", 3.14], 3]);
     expect(process("Tax != 0")).toEqual(["!=", ["dimension", "Tax"], 0]);
@@ -176,6 +199,20 @@ describe("metabase/lib/expressions/recursive-parser", () => {
     // mixed them in some arithmetic
     expect(aggregation("COUNT/B")).toEqual(["/", ["count"], ["metric", "B"]]);
     expect(aggregation("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
+  });
+
+  it("should handle aggregation with another function", () => {
+    const type = "aggregation";
+    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+
+    const A = ["dimension", "A"];
+    const B = ["dimension", "B"];
+
+    expect(aggregation("floor(Sum(A))")).toEqual(["floor", ["sum", A]]);
+    expect(aggregation("round(Distinct(B)/2)")).toEqual([
+      "round",
+      ["/", ["distinct", B], 2],
+    ]);
   });
 
   it("should prioritize existing metrics over functions", () => {

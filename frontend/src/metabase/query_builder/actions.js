@@ -1631,6 +1631,8 @@ export const viewPreviousObjectDetail = () => {
   };
 };
 
+export const closeObjectDetail = () => dispatch => dispatch(resetRowZoom());
+
 export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
 

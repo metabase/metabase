@@ -3,7 +3,7 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
@@ -57,11 +57,11 @@
   (merge models/IModelDefaults
          {:types      (constantly {:details :json, :topic :keyword})
           :pre-insert pre-insert})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?  (partial can-? i/can-read?)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?  (partial can-? mi/can-read?)
           ;; TODO - when do people *write* activities?
-          :can-write? (partial can-? i/can-write?)}))
+          :can-write? (partial can-? mi/can-write?)}))
 
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------

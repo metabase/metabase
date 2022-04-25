@@ -208,6 +208,8 @@ export function createEntity(def) {
     return entity.actionDecorators[action] || (_ => _);
   }
 
+  // `objectActions` are for actions that accept an entity as their first argument,
+  // and they are bound to instances when `wrapped: true` is passed to `EntityListLoader`
   entity.objectActions = {
     fetch: compose(
       withAction(FETCH_ACTION),
@@ -391,7 +393,7 @@ export function createEntity(def) {
   const getObject = createCachedSelector(
     [getEntities, getEntityId],
     (entities, entityId) => denormalize(entityId, entity.schema, entities),
-  )((state, { entityId }) =>
+  )((state, { entityId } = {}) =>
     typeof entityId === "object" ? JSON.stringify(entityId) : entityId,
   ); // must stringify objects
 
@@ -420,15 +422,17 @@ export function createEntity(def) {
     entities => entities && entities.metadata,
   );
 
-  const getList = createSelector(
-    [state => state, getEntityIds],
+  const getList = createCachedSelector(
+    [getEntities, getEntityIds],
     // delegate to getObject
-    (state, entityIds) =>
+    (entities, entityIds) =>
       entityIds &&
       entityIds
-        .map(entityId => entity.selectors.getObject(state, { entityId }))
-        .filter(e => e != null), // deleted entities might remain in lists
-  );
+        .map(entityId => entity.selectors.getObject({ entities }, { entityId }))
+        .filter(e => e != null), // deleted entities might remain in lists,
+  )((state, { entityQuery } = {}) => {
+    return entityQuery ? JSON.stringify(entityQuery) : "";
+  });
 
   // REQUEST STATE SELECTORS
 

@@ -9,13 +9,13 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.sync.field-values :as sync-field-values]
+            [metabase.sync.field-values :as sync.field-values]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -96,9 +96,9 @@
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)
    field_order             (s/maybe FieldOrder)}
   (first (update-tables! [id] body)))
@@ -111,9 +111,9 @@
    display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)}
   (update-tables! ids body))
 
@@ -264,7 +264,7 @@
           (fn [fields]
             (for [{:keys [values] :as field} fields]
               (if (seq values)
-                (update field :values fv/field-values->pairs)
+                (update field :values field-values/field-values->pairs)
                 field)))))
 
 (defn fetch-query-metadata
@@ -406,12 +406,15 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (let [table (Table id)]
-    (api/write-check table)
-    ;; async so as not to block the UI
-    (sync.concurrent/submit-task
-      (fn []
-        (sync-field-values/update-field-values-for-table! table)))
+  (let [table (api/write-check (Table id))]
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      ;; async so as not to block the UI
+      (sync.concurrent/submit-task
+       (fn []
+         (sync.field-values/update-field-values-for-table! table))))
     {:status :success}))
 
 (api/defendpoint POST "/:id/discard_values"

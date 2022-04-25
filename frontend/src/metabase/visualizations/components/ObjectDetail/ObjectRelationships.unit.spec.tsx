@@ -5,21 +5,23 @@ import { Relationships } from "./ObjectRelationships";
 import testForeignKeys from "__support__/testForeignKeys";
 
 describe("Object Relationships", () => {
-  it("renders empty message if no foreign keys are provided", () => {
-    render(
+  it("renders null if no foreign keys are provided", () => {
+    const { container } = render(
       <Relationships
+        objectName="Large Sandstone Socks"
         tableForeignKeys={[]}
         tableForeignKeyReferences={{}}
         foreignKeyClicked={() => null}
       />,
     );
 
-    screen.getByText(/No relationships found/i);
+    expect(container.childElementCount).toEqual(0);
   });
 
   it("renders a list of relationships", () => {
     render(
       <Relationships
+        objectName="Large Sandstone Socks"
         tableForeignKeys={testForeignKeys as any[]}
         tableForeignKeyReferences={{
           13: { status: 1, value: 771 },
@@ -29,6 +31,7 @@ describe("Object Relationships", () => {
       />,
     );
 
+    screen.getByText(/Large Sandstone Socks/i);
     screen.getByText("771");
     screen.getByText(/Orders/i);
     screen.getByText("881");

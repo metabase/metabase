@@ -5,6 +5,7 @@ import { updateIn } from "icepick";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import DriverWarning from "metabase/containers/DriverWarning";
+import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
@@ -15,7 +16,6 @@ import {
   StepButton,
 } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
-import { DatabaseInfo, InviteInfo, UserInfo } from "../../types";
 
 export interface DatabaseStepProps {
   user?: UserInfo;

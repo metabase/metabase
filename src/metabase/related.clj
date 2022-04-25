@@ -3,7 +3,7 @@
   (:require [clojure.set :as set]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -32,7 +32,7 @@
 
 (defn- collect-context-bearing-forms
   [form]
-  (let [form (normalize/normalize-fragment [:query :filter] form)]
+  (let [form (mbql.normalize/normalize-fragment [:query :filter] form)]
     (into #{}
           (comp (remove (s/checker ContextBearingForm))
                 (map #(update % 0 qp.util/normalize-token)))

@@ -29,7 +29,7 @@ describe("scenarios > dashboard > bookmarks", () => {
       cy.icon("ellipsis").click();
     });
 
-    cy.findByText("Remove bookmark").click();
+    cy.findByText("Remove from bookmarks").click();
 
     navigationSidebar().within(() => {
       cy.findByText("Orders in a dashboard").should("not.exist");

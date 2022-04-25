@@ -291,6 +291,36 @@
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
                (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
 
+(deftest json-alias-test
+  (mt/test-driver :postgres
+    (testing "json breakouts and order bys have alias coercion"
+      (drop-if-exists-and-create-db! "json-alias-test")
+      (let [details   (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
+            spec      (sql-jdbc.conn/connection-details->spec :postgres details)
+            json-part (json/generate-string {:bob :dobbs})
+            insert    (str "CREATE TABLE json_alias_test (json_part JSON NOT NULL);"
+                         (format "INSERT INTO json_alias_test (json_part) VALUES ('%s');" json-part))]
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [insert]))
+        (mt/with-temp* [Database [database    {:engine :postgres, :details details}]
+                        Table    [table       {:db_id (u/the-id database) :name "json_alias_test"}]
+                        Field    [field       {:table_id (u/the-id table)
+                                               :nfc_path [:bob
+                                                          "injection' OR 1=1--' AND released = 1"
+                                                          (keyword "injection' OR 1=1--' AND released = 1")],
+                                               :name     "json_alias_test"}]]
+          (let [compile-res (qp/compile
+                              {:database (u/the-id database)
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field (u/the-id field) nil]]}})]
+            (is (= (str "SELECT (\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  "
+                        "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
+                        "GROUP BY \"json_alias_test\" ORDER BY \"json_alias_test\" ASC")
+                   (:query compile-res)))
+            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))))))))
+
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "describes json columns and gives types for ones with coherent schemas only"

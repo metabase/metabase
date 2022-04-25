@@ -5,8 +5,8 @@
             [medley.core :as m]
             [metabase.email.messages :as messages]
             [metabase.models :refer [Card Pulse PulseCard PulseChannel PulseChannelRecipient]]
-            [metabase.models.pulse :as models.pulse]
-            [metabase.pulse :as pulse]
+            [metabase.models.pulse :as pulse]
+            metabase.pulse
             [metabase.pulse.test-util :as pulse.tu]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -43,7 +43,7 @@
         (with-redefs [messages/render-pulse-email (fn [_ _ _ [{:keys [result]}]]
                                                     [{:result result}])]
           (mt/with-test-user nil
-            (pulse/send-pulse! pulse)))
+            (metabase.pulse/send-pulse! pulse)))
         (let [results @mt/inbox]
           (is (= {"rasta@metabase.com" [{:from    "metamailman@metabase.com"
                                          :to      ["rasta@metabase.com"]
@@ -143,7 +143,7 @@
                                                                 :pulse_channel_id pc-id}]]
             (mt/with-fake-inbox
               (mt/with-test-user nil
-                (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id)))
+                (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id)))
               (let [email-results                           @mt/inbox
                     [{html :content} {_icon :attachment} {attachment :content}] (get-in email-results ["rasta@metabase.com" 0 :body])]
                 (testing "email"

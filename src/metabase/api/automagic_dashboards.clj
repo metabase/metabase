@@ -17,7 +17,7 @@
             [metabase.models.segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
             [metabase.transforms.dashboard :as transform.dashboard]
-            [metabase.transforms.materialize :as transform.materialize]
+            [metabase.transforms.materialize :as tf.materialize]
             [metabase.util.i18n :refer [deferred-tru]]
             [metabase.util.schema :as su]
             [ring.util.codec :as codec]
@@ -84,7 +84,7 @@
    "field"     (comp api/read-check Field ensure-int)
    "transform" (fn [transform-name]
                  (->> transform-name
-                      transform.materialize/get-collection
+                      tf.materialize/get-collection
                       Collection
                       api/read-check)
                  transform-name)})

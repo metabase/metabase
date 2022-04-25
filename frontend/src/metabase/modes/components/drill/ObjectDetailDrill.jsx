@@ -38,27 +38,13 @@ function getActionForFKColumn({ targetField, objectId }) {
   ];
 }
 
-export default ({ question, clicked }) => {
-  if (
-    !clicked?.column ||
-    clicked?.value === undefined ||
-    !(isFK(clicked.column) || isPK(clicked.column))
-  ) {
-    return [];
-  }
+function getFKTargetField(question, column) {
+  const fkField = question.metadata().field(column.id);
+  return fkField?.target;
+}
 
-  const { column, value: objectId, extraData } = clicked;
-  const isDashboard = !!extraData?.dashboard;
-
-  let field = question.metadata().field(column.id);
-  if (isFK(column)) {
-    field = field.target;
-  }
-  if (!field) {
-    return [];
-  }
-
-  const actionObject = {
+function getBaseActionObject() {
+  return {
     name: "object-detail",
     section: "details",
     title: t`View details`,
@@ -66,22 +52,49 @@ export default ({ question, clicked }) => {
     icon: "document",
     default: true,
   };
+}
 
-  if (isPK(column)) {
-    const [actionKey, action] = getActionForPKColumn({
-      question,
-      column,
-      objectId,
-      isDashboard,
-    });
-    actionObject[actionKey] = action;
-  } else {
-    const [actionKey, action] = getActionForFKColumn({
-      targetField: field,
-      objectId,
-    });
-    actionObject[actionKey] = action;
+function getPKAction({ question, column, objectId, isDashboard }) {
+  const actionObject = getBaseActionObject();
+  const [actionKey, action] = getActionForPKColumn({
+    question,
+    column,
+    objectId,
+    isDashboard,
+  });
+  actionObject[actionKey] = action;
+  return actionObject;
+}
+
+function getFKAction({ question, column, objectId }) {
+  const actionObject = getBaseActionObject();
+  const targetField = getFKTargetField(question, column);
+  if (!targetField) {
+    return;
+  }
+  const [actionKey, action] = getActionForFKColumn({
+    targetField,
+    objectId,
+  });
+  actionObject[actionKey] = action;
+  return actionObject;
+}
+
+export default ({ question, clicked }) => {
+  if (
+    !clicked?.column ||
+    clicked?.value === undefined ||
+    !(isFK(clicked.column) || isPK(clicked.column)) ||
+    !question.query().isEditable()
+  ) {
+    return [];
   }
 
-  return [actionObject];
+  const { column, value: objectId, extraData } = clicked;
+  const isDashboard = !!extraData?.dashboard;
+
+  const params = { question, column, objectId, isDashboard };
+
+  const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
+  return actionObject ? [actionObject] : [];
 };

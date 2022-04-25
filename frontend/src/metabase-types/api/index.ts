@@ -5,6 +5,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./table";
+export * from "./field";
 export * from "./timeline";
 export * from "./settings";
 export * from "./slack";

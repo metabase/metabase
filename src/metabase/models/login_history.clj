@@ -1,7 +1,7 @@
 (ns metabase.models.login-history
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.email.messages :as email.messages]
+            [metabase.email.messages :as messages]
             [metabase.models.setting :refer [defsetting]]
             [metabase.server.request.util :as request.u]
             [metabase.util.date-2 :as u.date]
@@ -74,7 +74,7 @@
       ;; off thread for both IP lookup and email sending. Either one could block and slow down user login (#16169)
       (try
         (let [[info] (human-friendly-infos [login-history])]
-          (email.messages/send-login-from-new-device-email! info))
+          (messages/send-login-from-new-device-email! info))
         (catch Throwable e
           (log/error e (trs "Error sending ''login from new device'' notification email")))))))
 

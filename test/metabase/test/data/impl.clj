@@ -9,12 +9,12 @@
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.plugins.classloader :as classloader]
             [metabase.sync :as sync]
-            [metabase.sync.util :as sync.u]
+            [metabase.sync.util :as sync-util]
             [metabase.test.data.dataset-definitions :as defs]
             [metabase.test.data.impl.verify :as verify]
             [metabase.test.data.interface :as tx]
             [metabase.test.initialize :as initialize]
-            [metabase.test.util.timezone :as tu.tz]
+            [metabase.test.util.timezone :as test.tz]
             [metabase.util :as u]
             [potemkin :as p]
             [toucan.db :as db]))
@@ -93,7 +93,7 @@
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
     (u/with-timeout create-database-timeout-ms
-      (tu.tz/with-system-timezone-id "UTC"
+      (test.tz/with-system-timezone-id "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
@@ -110,7 +110,7 @@
             (u/profile (format "%s %s Database %s (reference H2 duration: %s)"
                                (if quick-sync? "QUICK sync" "Sync") driver database-name reference-duration)
               ;; only do "quick sync" for non `test-data` datasets, because it can take literally MINUTES on CI.
-              (binding [sync.u/*log-exceptions-and-continue?* false]
+              (binding [sync-util/*log-exceptions-and-continue?* false]
                 (sync/sync-database! db (when quick-sync? {:scan :schema})))
               ;; add extra metadata for fields
               (try

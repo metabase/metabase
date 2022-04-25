@@ -6,14 +6,15 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.format :as hformat]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
-            [metabase.models :refer [Activity BookmarkOrdering Card CardBookmark
+            [metabase.models :refer [Activity ApplicationPermissionsRevision BookmarkOrdering Card CardBookmark
                                      Collection CollectionBookmark CollectionPermissionGraphRevision
                                      Dashboard DashboardBookmark DashboardCard DashboardCardSeries
                                      Database Dependency Dimension Field FieldValues
-                                     GeneralPermissionsRevision LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
+                                     LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
+
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision PersistedInfo Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
                                      Timeline TimelineEvent User ViewLog]]
@@ -79,7 +80,7 @@
    Permissions
    PermissionsRevision
    PersistedInfo
-   GeneralPermissionsRevision
+   ApplicationPermissionsRevision
    Dimension
    NativeQuerySnippet
    LoginHistory
@@ -99,7 +100,7 @@
   ;;
   ;; 2) Need to wrap the column names in quotes because Postgres automatically lowercases unquoted identifiers
   (let [source-keys (keys (first objs))
-        quote-style (mdb.conn/quoting-style target-db-type)
+        quote-style (mdb.connection/quoting-style target-db-type)
         quote-fn    (get @#'hformat/quote-fns quote-style)
         _           (assert (fn? quote-fn) (str "No function for quote style: " quote-style))
         dest-keys   (for [k source-keys]

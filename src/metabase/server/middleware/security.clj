@@ -8,7 +8,7 @@
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))
 

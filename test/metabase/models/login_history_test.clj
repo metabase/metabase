@@ -4,6 +4,7 @@
             [java-time :as t]
             [metabase.models :refer [LoginHistory User]]
             [metabase.models.login-history :as login-history]
+            [metabase.public-settings :as public-settings]
             [metabase.server.request.util :as request.u]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -35,7 +36,7 @@
                  (#'login-history/first-login-ever? history-1))))))))))
 
 (deftest send-email-on-first-login-from-new-device-test
-  (testing "User should get an email the first time they log in from a new device (#14313, #15603)"
+  (testing "User should get an email the first time they log in from a new device (#14313, #15603, #17495)"
     (mt/with-temp User [{user-id :id, email :email, first-name :first_name}]
       (let [device              (str (java.util.UUID/randomUUID))
             original-maybe-send (var-get #'login-history/maybe-send-login-from-new-device-email)]
@@ -67,12 +68,15 @@
                                                   :content s/Str}
                                                  "HTML body")]}]}
                              @mt/inbox))
-                (let [message (-> @mt/inbox (get email) first :body first :content)]
+                (let [message (-> @mt/inbox (get email) first :body first :content)
+                      site-url (public-settings/site-url)]
                   (testing (format "\nMessage = %s" (pr-str message))
                     (is (string? message))
                     (when (string? message)
-                      (doseq [expected-str ["We've noticed a new login on your Metabase account."
-                                            "We noticed a login on your Metabase account from a new device."
+                      (doseq [expected-str [(format "We've noticed a new login on your <a href=\"%s\">Metabase</a> account."
+                                                    site-url)
+                                            (format "We noticed a login on your <a href=\"%s\">Metabase</a> account from a new device."
+                                                    site-url)
                                             "Browser (Chrome/Windows) - San Francisco, California, United States"
                                             ;; `format-human-readable` has slightly different output on different JVMs
                                             (u.date/format-human-readable #t "2021-04-02T15:52:00-07:00[US/Pacific]")]]

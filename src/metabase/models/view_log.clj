@@ -1,6 +1,6 @@
 (ns metabase.models.view-log
   "The ViewLog is used to log an event where a given User views a given object such as a Table or Card (Question)."
-  (:require [metabase.models.interface :as i]
+  (:require [metabase.models.interface :as mi]
             [metabase.util :as u]
             [toucan.models :as models]))
 
@@ -15,7 +15,7 @@
   (merge models/IModelDefaults
          {:pre-insert pre-insert
           :types      (constantly {:metadata :json})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
          {:can-read?  (constantly true)
           :can-write? (constantly true)}))

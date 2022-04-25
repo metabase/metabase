@@ -3,12 +3,12 @@
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.collection :as collection]
             [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
@@ -16,10 +16,10 @@
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.util :as qputil]
-            [metabase.server.middleware.session :as session]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]
             [toucan.models :as models]))
 
@@ -147,7 +147,7 @@
     :else
     (do
       (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (session/with-current-user nil
+      (let [inferred-metadata (not-empty (mw.session/with-current-user nil
                                            (classloader/require 'metabase.query-processor)
                                            (u/ignore-exceptions
                                              ((resolve 'metabase.query-processor/query->expected-cols) query))))]
@@ -159,7 +159,7 @@
   forth.)"
   [{query :dataset_query, id :id}]      ; don't use `u/the-id` here so that we can use this with `pre-insert` too
   (loop [query query, ids-already-seen #{id}]
-    (let [source-card-id (qputil/query->source-card-id query)]
+    (let [source-card-id (qp.util/query->source-card-id query)]
       (cond
         (not source-card-id)
         :ok
@@ -177,7 +177,7 @@
 
 (defn- maybe-normalize-query [card]
   (cond-> card
-    (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
+    (seq (:dataset_query card)) (update :dataset_query mbql.normalize/normalize)))
 
 (defn- check-field-filter-fields-are-from-correct-database
   "Check that all native query Field filter parameters reference Fields belonging to the Database the query points
@@ -273,11 +273,11 @@
 (defn- result-metadata-out
   "Transform the Card result metadata as it comes out of the DB. Convert columns to keywords where appropriate."
   [metadata]
-  (when-let [metadata (not-empty (i/json-out-with-keywordization metadata))]
-    (seq (map normalize/normalize-source-metadata metadata))))
+  (when-let [metadata (not-empty (mi/json-out-with-keywordization metadata))]
+    (seq (map mbql.normalize/normalize-source-metadata metadata))))
 
 (models/add-type! ::result-metadata
-  :in i/json-in
+  :in mi/json-in
   :out result-metadata-out)
 
 (u/strict-extend (class Card)
@@ -300,7 +300,7 @@
           :post-select    public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
   ;; You can read/write a Card if you can read/write its parent Collection
-  i/IObjectPermissions
+  mi/IObjectPermissions
   perms/IObjectPermissionsForParentCollection
 
   revision/IRevisioned

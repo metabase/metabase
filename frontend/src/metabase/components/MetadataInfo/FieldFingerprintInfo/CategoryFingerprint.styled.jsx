@@ -61,3 +61,14 @@ export const FadeAndSlide = styled.div`
   transform: ${({ visible }) =>
     visible ? "translateY(0)" : "translateY(100%)"};
 `;
+
+export const Li = styled.li`
+  padding: 0.3em 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 1px solid ${color("border")};
+
+  &:last-child {
+    border-bottom: none;
+  }
+`;

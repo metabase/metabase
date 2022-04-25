@@ -52,12 +52,13 @@
 
 (defn qualify-and-quote
   "Qualify names and combine into a single, quoted string. By default, this passes the results of
-  `qualified-name-components` to `tx/format-name` and then to `sql.u/quote-name`.
+  [[qualified-name-components]] to [[metabase.test.data.interface/format-name]] and then
+  to [[metabase.driver.sql.util/quote-name]].
 
     (qualify-and-quote [driver \"my-db\" \"my-table\"]) -> \"my-db\".\"dbo\".\"my-table\"
 
   You should only use this function in places where you are working directly with SQL. For HoneySQL forms, use
-  `hx/identifier` instead."
+  [[metabase.util.honeysql-extensions/identifier]] instead."
   {:arglists '([driver db-name] [driver db-name table-name] [driver db-name table-name field-name]), :style/indent 1}
   [driver & names]
   (let [identifier-type (condp = (count names)

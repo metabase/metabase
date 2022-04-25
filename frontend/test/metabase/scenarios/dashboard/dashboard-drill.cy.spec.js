@@ -17,6 +17,7 @@ const {
   PRODUCTS_ID,
   REVIEWS,
   REVIEWS_ID,
+  PEOPLE,
 } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > dashboard drill", () => {
@@ -674,8 +675,8 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.wait("@cardQuery").then(xhr => {
       expect(xhr.response.body.error).to.not.exist;
     });
-    cy.findByText("37.65");
-    cy.findByText("No relationships found.");
+    cy.findByTestId("object-detail");
+    cy.findAllByText("37.65");
   });
 
   it("should display correct tooltip value for multiple series charts on dashboard (metabase#15612)", () => {
@@ -919,7 +920,10 @@ function createDashboard(
                 {
                   parameter_id: "e8f79be9",
                   card_id: questionId,
-                  target: ["dimension", ["field", 22, { "source-field": 11 }]],
+                  target: [
+                    "dimension",
+                    ["field", PEOPLE.NAME, { "source-field": ORDERS.USER_ID }],
+                  ],
                 },
               ],
               visualization_settings,

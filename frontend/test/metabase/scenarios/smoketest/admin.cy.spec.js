@@ -107,8 +107,8 @@ describe("metabase-smoketest > admin", () => {
         .last()
         .click();
       cy.get("input[type='text']").type("{selectall}{del}5");
-      cy.findByText("Days").click();
-      cy.findByText("Years").click();
+      cy.findByText("days").click();
+      cy.findByText("years").click();
       sidebar()
         .findByText("Add filter")
         .click();

@@ -1,4 +1,4 @@
-import { PLUGIN_GENERAL_PERMISSIONS } from "metabase/plugins";
+import { PLUGIN_APPLICATION_PERMISSIONS } from "metabase/plugins";
 import { createSelector } from "reselect";
 
 export const getUser = state => state.currentUser;
@@ -13,7 +13,8 @@ export const getUserIsAdmin = createSelector(
 export const canManageSubscriptions = createSelector(
   [
     getUserIsAdmin,
-    state => PLUGIN_GENERAL_PERMISSIONS.selectors.canManageSubscriptions(state),
+    state =>
+      PLUGIN_APPLICATION_PERMISSIONS.selectors.canManageSubscriptions(state),
   ],
   (isAdmin, canManageSubscriptions) => isAdmin || canManageSubscriptions,
 );

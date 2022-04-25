@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -45,7 +45,7 @@
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
-                             :error      error-type/invalid-query
+                             :error      qp.error-type/invalid-query
                              :joins      joins
                              :candidates candidate-tables}))))))))
 

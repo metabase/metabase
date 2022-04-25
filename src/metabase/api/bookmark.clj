@@ -6,7 +6,7 @@
   identifier for using in the API."
   (:require [compojure.core :refer [DELETE GET POST]]
             [metabase.api.common :as api]
-            [metabase.models.bookmark :as bookmarks
+            [metabase.models.bookmark :as bookmark
              :refer [CardBookmark CollectionBookmark DashboardBookmark]]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
@@ -35,7 +35,7 @@
   []
   ;; already sorted by created_at in query. Can optionally use user sort preferences here and not in the function
   ;; below
-  (bookmarks/bookmarks-for-user api/*current-user-id*))
+  (bookmark/bookmarks-for-user api/*current-user-id*))
 
 (api/defendpoint POST "/:model/:id"
   "Create a new bookmark for user."
@@ -65,7 +65,7 @@
   "Sets the order of bookmarks for user."
   [:as {{:keys [orderings]} :body}]
   {orderings BookmarkOrderings}
-  (bookmarks/save-ordering api/*current-user-id* orderings)
+  (bookmark/save-ordering api/*current-user-id* orderings)
   api/generic-204-no-content)
 
 (api/define-routes)

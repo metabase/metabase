@@ -1,6 +1,6 @@
 (ns metabase.models.native-query-snippet
   (:require [metabase.models.collection :as collection]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -42,9 +42,9 @@
     :pre-insert pre-insert
     :pre-update pre-update})
 
-  i/IObjectPermissions
+  mi/IObjectPermissions
   (merge
-   i/IObjectPermissionsDefaults
+   mi/IObjectPermissionsDefaults
    {:can-read?   snippet.perms/can-read?
     :can-write?  snippet.perms/can-write?
     :can-create? snippet.perms/can-create?
