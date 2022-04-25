@@ -9,32 +9,44 @@ We have two types of third-party drivers:
 
 ## How to use a third-party driver
 
-To use a Partner or Community driver:
+### Self-hosted
+
+To use a Partner or Community driver on a self-hosted Metabase:
 
 1. Download the latest jar file from the driver's repository (see the repo's Releases section for the JAR files).
 2. Copy the JAR file into the plugins directory in your Metabase directory (the directory where you run the Metabase JAR).
 
 You can change the location of the plugins directory by setting the environment variable `MB_PLUGINS_DIR`.
 
+### Metabase Cloud
+
+Partner drivers, like officially supported drivers, are available out-of-the-box on Metabase cloud. No action needed.
+
+Community drivers are not supported on Metabase Cloud.
+
 ## Partner drivers
+
+Partner drivers are available both on Metabase Cloud and on self-hosted Metabases.
 
 To qualify as a partner driver, the driver must:
 
-- Be available for use on Metabase Cloud (in addition to self-hosting)
-- Have a permissive license
-- Pass the Metabase test suite
-- Survive a code review by the Metabase developers
 - Have a sponsor (usually the database's vendor) who has committed to maintaining the driver for future releases.
-
-If all goes well, and we see people using the driver, we'll consider supporting it as an official driver. But to be clear: partner drivers will not always eventually become officially supported drivers.
+- Pass the Metabase test suite and a code review by our team.
+- Have a permissive license.
 
 Current partner drivers:
 
 - [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
 
+Partner drivers are available to Cloud customers out-of-the-box.
+
+If you have interest in becoming a partner, please fill the [partner form](https://www.metabase.com/partners/join/) and we will get in touch.
+
 ## Community drivers
 
-Anyone can build a community driver. These are the currently known third-party database drivers for Metabase. 
+> Note: Metabase Cloud doesn't support community drivers
+
+Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
 
 You install these drivers at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
 
