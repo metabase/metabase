@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.core.memoize :as memoize]
+            [clojure.spec.alpha :as spec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [environ.core :refer [env]]
@@ -13,8 +14,7 @@
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]
-            [clojure.spec.alpha :as spec]))
+            [toucan.db :as db]))
 
 (def ^:private ValidToken
   "Schema for a valid premium token. Must be 64 lower-case hex characters."
