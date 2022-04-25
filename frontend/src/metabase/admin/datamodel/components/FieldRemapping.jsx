@@ -260,15 +260,13 @@ export default class FieldRemapping extends React.Component {
 
   render() {
     const { field, table, fields, fieldsError } = this.props;
-    const isFieldsAccessRestricted = fieldsError?.status === 403;
-
-    console.log(">>isFieldsAccessRestricted", isFieldsAccessRestricted);
-
     const {
       isChoosingInitialFkTarget,
       hasChanged,
       dismissedInitialFkTargetPopover,
     } = this.state;
+
+    const isFieldsAccessRestricted = fieldsError?.status === 403;
 
     const mappingType = this.getMappingTypeForField(field);
     const isFKMapping = mappingType === MAP_OPTIONS.foreign;
