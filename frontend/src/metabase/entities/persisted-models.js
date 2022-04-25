@@ -43,6 +43,8 @@ const PersistedModels = createEntity({
         [payload.id]: {
           ...state[payload.id],
           state: "refreshing",
+          refresh_begin: new Date().toUTCString(),
+          refresh_end: null,
         },
       };
     }
