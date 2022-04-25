@@ -132,7 +132,7 @@
                 :attachment-name "image.png"
                 :channel-id      channel-id
                 :fallback        card-name}
-               (let [mrkdwn (markdown/process-markdown (:text card-result) :mrkdwn)]
+               (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"

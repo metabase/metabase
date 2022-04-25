@@ -18,33 +18,3 @@ export const withBackground = className => ComposedComponent => {
     }
   };
 };
-
-import { connect } from "react-redux";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
-
-export const withLogoBackground = ComposedComponent => {
-  const mapStateToProps = state => ({
-    bgClassName: PLUGIN_SELECTORS.getHasCustomLogo(state)
-      ? "bg-brand"
-      : "bg-white",
-  });
-  return connect(mapStateToProps)(
-    class extends Component {
-      static displayName = "BackgroundApplicator";
-
-      UNSAFE_componentWillMount() {
-        document.body.classList.add(this.props.bgClassName);
-      }
-
-      componentWillUnmount() {
-        document.body.classList.remove(this.props.bgClassName);
-      }
-
-      render() {
-        // eslint-disable-next-line no-unused-vars
-        const { bgClassName, ...props } = this.props;
-        return <ComposedComponent {...props} />;
-      }
-    },
-  );
-};

@@ -16,7 +16,6 @@ import App from "metabase/App.tsx";
 import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
-import AuthApp from "metabase/auth/containers/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
@@ -82,7 +81,6 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { canAccessAdmin } from "metabase/nav/utils";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
@@ -90,6 +88,7 @@ import CollectionLanding from "metabase/components/CollectionLanding/CollectionL
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -126,10 +125,9 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 });
 
 const UserCanAccessSettings = UserAuthWrapper({
-  predicate: currentUser =>
-    currentUser?.is_superuser || canAccessAdmin(currentUser),
+  predicate: adminItems => adminItems?.length > 0,
   failureRedirectPath: "/unauthorized",
-  authSelector: state => state.currentUser,
+  authSelector: getAdminPaths,
   allowRedirectBack: false,
   wrapperDisplayName: "UserCanAccessSettings",
   redirectAction: routerActions.replace,
@@ -185,7 +183,7 @@ export const getRoutes = store => (
       }}
     >
       {/* AUTH */}
-      <Route path="/auth" component={AuthApp}>
+      <Route path="/auth">
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />
