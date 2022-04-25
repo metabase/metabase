@@ -8,7 +8,6 @@ import "./sortable.css";
 import {
   SortableContainer,
   SortableElement,
-  SortableHandle,
 } from "metabase/components/sortable";
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
