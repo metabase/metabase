@@ -7,7 +7,7 @@ import Questions from "metabase/entities/questions";
 import { BookmarkSchema } from "metabase/schema";
 import { BookmarkApi } from "metabase/services";
 
-const REORDER_ACTION = `metabase/entities/entities/REORDER_ACTION`;
+const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 
 const Bookmarks = createEntity({
   name: "bookmarks",
@@ -25,7 +25,7 @@ const Bookmarks = createEntity({
     },
   },
   actionTypes: {
-    REORDER_ACTION,
+    REORDER: REORDER_ACTION,
   },
   actions: {
     reorder: bookmarks => {
