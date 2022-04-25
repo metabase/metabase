@@ -296,7 +296,7 @@
   [{:keys [fn-name docstr fn-tail options schema? return-schema]}]
   (validate-ee-args options)
   `(def
-     ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
+     ~(vary-meta fn-name assoc :arglists ''([& args]))
      (dynamic-ee-fn '~fn-name
                     '~(ns-name *ns*)
                     ~(if schema?
@@ -311,8 +311,8 @@
   (memoize
    (fn [ee-ns fn-name]
      (when-let [f (u/ignore-exceptions
-                   (classloader/require (symbol ee-ns))
-                   (ns-resolve (symbol ee-ns) (symbol fn-name)))]
+                   (classloader/require ee-ns)
+                   (ns-resolve ee-ns fn-name))]
        (fn [& args] (apply f args))))))
 
 (defn- oss-options-error
@@ -338,8 +338,8 @@
                               `(fn ~(symbol (str fn-name)) ~@fn-tail))]
      (register-mapping! '~fn-name '~ee-ns oss-fn#)
      (def
-       ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
-       (if-let [ee-fn# (resolve-ee ~(str ee-ns) ~(str fn-name))]
+       ~(vary-meta fn-name assoc :arglists ''([& args]))
+       (if-let [ee-fn# (resolve-ee '~ee-ns '~fn-name)]
          ee-fn#
          oss-fn#))))
 
