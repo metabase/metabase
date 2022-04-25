@@ -90,15 +90,22 @@ describe("scenarios > question > object details", () => {
     openProductsTable();
 
     getFirstTableColumn()
-      .eq(7)
-      .should("contain", PRODUCT_ID)
+      .eq(5)
+      .should("contain", 5)
       .click();
 
     cy.findByTestId("object-detail").within(() => {
+      cy.findByTestId("fk-relation-orders").findByText(97);
+      cy.findByTestId("fk-relation-reviews").findByText(4);
+      cy.findByTestId("view-next-object-detail").click();
+
+      cy.findByTestId("fk-relation-orders").findByText(88);
+      cy.findByTestId("fk-relation-reviews").findByText(5);
+      cy.findByTestId("view-next-object-detail").click();
+
       cy.findByTestId("fk-relation-reviews").findByText(
         EXPECTED_LINKED_REVIEWS_COUNT,
       );
-
       cy.findByTestId("fk-relation-orders")
         .findByText(EXPECTED_LINKED_ORDERS_COUNT)
         .click();
