@@ -16,6 +16,7 @@ export const DragIcon = styled(Icon)`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  cursor: grab;
 `;
 
 export const SidebarBookmarkItem = styled(SidebarLink)<SidebarBookmarkItem>`

@@ -116,11 +116,13 @@ const BookmarkList = ({
   }, []);
 
   const handleSortStart = useCallback(() => {
+    document.body.classList.add("grabbing");
     setIsSorting(true);
   }, []);
 
   const handleSortEnd = useCallback(
     ({ newIndex, oldIndex }) => {
+      document.body.classList.remove("grabbing");
       setIsSorting(false);
       reorderBookmarks({ newIndex, oldIndex });
     },
