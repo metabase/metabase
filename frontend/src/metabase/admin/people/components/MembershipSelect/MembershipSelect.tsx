@@ -100,8 +100,8 @@ export const MembershipSelect = ({
   return (
     <PopoverWithTrigger triggerElement={triggerElement}>
       <MembershipSelectContainer>
-        {groupSections.map(section => (
-          <>
+        {groupSections.map((section, index) => (
+          <React.Fragment key={index}>
             {section.header && (
               <MembershipSelectHeader>{section.header}</MembershipSelectHeader>
             )}
@@ -140,7 +140,7 @@ export const MembershipSelect = ({
                 </MembershipSelectItem>
               );
             })}
-          </>
+          </React.Fragment>
         ))}
       </MembershipSelectContainer>
     </PopoverWithTrigger>
