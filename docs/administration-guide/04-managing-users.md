@@ -91,8 +91,8 @@ Adding people to groups allows you to assign [data access](05-setting-permission
 Group managers can:
 
 - Rename their group.
-- View all people in the people tab.
-- Promote other people to manager, or demote them from manager to member.
+- View all people in the **Admin settings** > **People** tab.
+- Promote other people to group manager, or demote them from group manager to member.
 - Add or remove people from their group (that is, people who already have accounts in your Metabase).
 
 Group managers are not admins, so their powers are limited. They cannot create new groups or invite new people to your Metabase.
