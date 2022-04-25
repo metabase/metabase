@@ -78,7 +78,7 @@ export const logout = createThunkAction(LOGOUT, () => {
     trackLogout();
 
     dispatch(push("/auth/login"));
-    window.location.reload();
+    window.location.reload(); // clears redux state and browser caches
   };
 });
 
