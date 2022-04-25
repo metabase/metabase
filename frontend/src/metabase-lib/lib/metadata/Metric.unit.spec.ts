@@ -1,5 +1,3 @@
-import { makeMetadata } from "__support__/sample_database_fixture";
-
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Table from "metabase-lib/lib/metadata/Table";
 
