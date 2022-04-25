@@ -262,29 +262,34 @@
 (defn register-mapping!
   "Adds mapping from EE->OSS fn to the `ee-registry`."
   [fn-name ee-ns f]
-  (let [ee-parts  [ee-ns fn-name]]
+  (let [ee-parts [ee-ns fn-name]]
     (swap! ee-registry assoc ee-parts f)))
+
+(defn dynamic-ee-fn
+  "Returns the EE implementation of a function to use, given the provided values for `feature` and `fallback`."
+  [fn-name ee-ns ee-impl {:keys [feature fallback]}]
+  (fn [& args]
+    (if (or (= feature :none)
+            (if (or (not feature) (= feature :any))
+              (enable-enhancements?)
+              (has-feature? feature)))
+      (apply ee-impl args)
+      (cond
+        (fn? fallback)
+        (do
+          (apply fallback args))
+
+        ;; :oss and default case
+        :else
+        (let [oss-fn (get @ee-registry [ee-ns fn-name])]
+          (apply oss-fn args))))))
 
 (defmacro defenterprise-ee
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr options fn-tail]}]
-  `(def ~fn-name
-     (fn [& ~'args]
-       ~(let [{:keys [feature fallback]} options]
-          `(if ~(or (= feature :none)
-                    (if (or (not feature) (= feature :any))
-                      `(enable-enhancements?)
-                      `(has-feature? ~feature)))
-             (apply (fn ~@fn-tail) ~'args)
-             ~(cond
-                (or (symbol? fallback) (seq? fallback))
-                `(apply ~fallback ~'args)
-
-                ;; :oss and default case
-                :else
-                `(apply (get @ee-registry [(symbol ~(str (ns-name *ns*)))
-                                           (symbol ~(str fn-name))])
-                        ~'args)))))))
+  `(def
+     ~(vary-meta (symbol (name fn-name)) assoc :arglists ''([& args]))
+     (dynamic-ee-fn '~fn-name '~(ns-name *ns*) (fn ~@fn-tail) ~options)))
 
 (def resolve-ee
   "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
@@ -292,9 +297,9 @@
   `classloader/require` and `ns-resolve`."
   (memoize
    (fn [ee-ns fn-name]
-     (if-let [f (u/ignore-exceptions
-                 (classloader/require (symbol ee-ns))
-                 (ns-resolve (symbol ee-ns) (symbol fn-name)))]
+     (when-let [f (u/ignore-exceptions
+                   (classloader/require (symbol ee-ns))
+                   (ns-resolve (symbol ee-ns) (symbol fn-name)))]
        (fn [& args] (apply f args))))))
 
 (defmacro defenterprise-oss
