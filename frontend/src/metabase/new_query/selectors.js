@@ -4,6 +4,7 @@
  */
 
 import { createSelector } from "reselect";
+
 import { getDatabases } from "metabase/selectors/metadata";
 import { getEngineNativeType } from "metabase/lib/engine";
 
