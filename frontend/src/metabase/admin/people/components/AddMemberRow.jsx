@@ -48,7 +48,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
 
   return (
     <tr>
-      <td colSpan="3" style={{ padding: 0 }}>
+      <td colSpan="4" style={{ padding: 0 }}>
         <AddRow
           ref={rowRef}
           value={text}
