@@ -276,8 +276,7 @@
       (apply ee-impl args)
       (cond
         (fn? fallback)
-        (do
-          (apply fallback args))
+        (apply fallback args)
 
         ;; :oss and default case
         :else
@@ -295,14 +294,15 @@
   "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
   [{:keys [fn-name docstr fn-tail options schema? return-schema]}]
   (validate-ee-args options)
-  `(def
-     ~(vary-meta fn-name assoc :arglists ''([& args]))
-     (dynamic-ee-fn '~fn-name
-                    '~(ns-name *ns*)
-                    ~(if schema?
-                       `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
-                       `(fn ~(symbol (str fn-name)) ~@fn-tail))
-                    ~options)))
+  `(let [ee-fn# ~(if schema?
+                   `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                   `(fn ~(symbol (str fn-name)) ~@fn-tail))]
+    (def
+      ~(vary-meta fn-name assoc :arglists ''([& args]))
+      (dynamic-ee-fn '~fn-name
+                     '~(ns-name *ns*)
+                     ee-fn#
+                     ~options))))
 
 (def resolve-ee
   "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
@@ -313,9 +313,7 @@
                           (classloader/require ee-ns)
                           (ns-resolve ee-ns fn-name))]
               (fn [& args] (apply f args))))]
-    (if config/is-dev?
-      f
-      (memoize f))))
+    (memoize f)))
 
 (defn- oss-options-error
   [option options]
