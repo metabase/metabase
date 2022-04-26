@@ -394,6 +394,31 @@ describe("scenarios > question > notebook", () => {
     cy.findByText("ID").should("not.exist");
   });
 
+  it("should treat max/min on a name as a string filter (metabase#21973)", () => {
+    startNewQuestion();
+    cy.contains("Sample Database").click();
+    cy.contains("People").click();
+    cy.contains("Pick the metric").click();
+    popover().within(() => {
+      cy.findByText("Maximum of ...").click();
+      cy.findByText("Name").click();
+    });
+    cy.findByText("Pick a column to group by").click();
+    popover().within(() => {
+      cy.findByText("Source").click();
+    });
+
+    cy.get(".Icon-filter").click();
+    popover().within(() => {
+      cy.findByText("Max of Name").click();
+    });
+
+    cy.findByText("Is").click();
+    cy.findByText("Starts with").click();
+
+    cy.findByText("Case sensitive").click();
+  });
+
   // flaky test
   it.skip("should show an info popover when hovering over a field picker option for a table", () => {
     startNewQuestion();
