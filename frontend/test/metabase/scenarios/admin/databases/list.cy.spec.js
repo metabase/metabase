@@ -64,7 +64,8 @@ describe("scenarios > admin > databases > list", () => {
     cy.url().should("match", /\/admin\/databases\/\d+$/);
   });
 
-  it("should display a deprecated database warning", () => {
+  // Adding test on Quarantine to understand a bit better some H2 Lock issue.
+  it.skip("should display a deprecated database warning", () => {
     cy.intercept("/api/database*", req => {
       req.reply(res => {
         res.body.data = res.body.data.map(database => ({
