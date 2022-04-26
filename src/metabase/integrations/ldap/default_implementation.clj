@@ -5,10 +5,9 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.user :as user :refer [User]]
-            [metabase.public-settings.premium-features :refer [defenterprise]]
+            [metabase.public-settings.premium-features :refer [defenterprise-schema]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [metabase.public-settings.premium-features :refer [defenterprise-schema]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
