@@ -1510,36 +1510,30 @@ export const resetRowZoom = () => dispatch => {
   dispatch(updateUrl());
 };
 
-// We use this for two things:
-// - counting the rows with this as an FK (loadObjectDetailFKReferences)
-// - following those links to a new card that's filtered (followForeignKey)
-function getFilterForFK({ cols, rows }, fk) {
+function getFilterForFK(zoomedObjectId, fk) {
   const field = new FieldDimension(fk.origin.id);
-  const colIndex = cols.findIndex(c => c.id === fk.destination.id);
-  const objectValue = rows[0][colIndex];
-  return ["=", field.mbql(), objectValue];
+  return ["=", field.mbql(), zoomedObjectId];
 }
 
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
 export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
   return async (dispatch, getState) => {
-    // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const {
-      qb: { card },
-    } = getState();
-    const queryResult = getFirstQueryResult(getState());
+    const state = getState();
+
+    const card = getCard(state);
+    const queryResult = getFirstQueryResult(state);
+    const zoomedObjectId = getZoomedObjectId(state);
 
     if (!queryResult || !fk) {
       return false;
     }
 
-    // action is on an FK column
     const newCard = startNewCard("query", card.dataset_query.database);
 
     newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-    newCard.dataset_query.query.filter = getFilterForFK(queryResult.data, fk);
+    newCard.dataset_query.query.filter = getFilterForFK(zoomedObjectId, fk);
 
-    // run it
+    dispatch(resetRowZoom());
     dispatch(setCardAndRun(newCard));
   };
 });
@@ -1551,19 +1545,21 @@ export const loadObjectDetailFKReferences = createThunkAction(
   () => {
     return async (dispatch, getState) => {
       dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
-      // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-      const {
-        qb: { card },
-      } = getState();
-      const queryResult = getFirstQueryResult(getState());
-      const tableForeignKeys = getTableForeignKeys(getState());
+
+      const state = getState();
+
+      const card = getCard(state);
+      const queryResult = getFirstQueryResult(state);
+      const tableForeignKeys = getTableForeignKeys(state);
+      const zoomedObjectId = getZoomedObjectId(state);
 
       async function getFKCount(card, queryResult, fk) {
         const fkQuery = Q_DEPRECATED.createQuery("query");
+
         fkQuery.database = card.dataset_query.database;
         fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];
-        fkQuery.query.filter = getFilterForFK(queryResult.data, fk);
+        fkQuery.query.filter = getFilterForFK(zoomedObjectId, fk);
 
         const info = { status: 0, value: null };
 
@@ -1578,8 +1574,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
           } else {
             info["value"] = "Unknown";
           }
-        } catch (error) {
-          console.error("error getting fk count", error, fkQuery);
         } finally {
           info["status"] = 1;
         }
