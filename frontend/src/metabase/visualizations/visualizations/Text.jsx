@@ -94,13 +94,23 @@ export default class Text extends Component {
   preventDragging = e => e.stopPropagation();
 
   render() {
-    const { className, gridSize, settings, isEditing } = this.props;
+    const {
+      className,
+      gridSize,
+      settings,
+      isEditing,
+      isPreviewing,
+    } = this.props;
     const isSingleRow = gridSize && gridSize.height === 1;
 
     if (isEditing) {
       return (
-        <div className={cx(className, styles.Text)}>
-          {this.props.isPreviewing ? (
+        <div
+          className={cx(className, styles.Text, {
+            [styles.padded]: !isPreviewing,
+          })}
+        >
+          {isPreviewing ? (
             <ReactMarkdown
               remarkPlugins={REMARK_PLUGINS}
               className={cx(
