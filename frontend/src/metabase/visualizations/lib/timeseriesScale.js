@@ -97,7 +97,7 @@ function ticksForRange([start, end], { count, timezone, interval, shiftDays }) {
   const intervalMod = tick.get(interval);
   tick.set(interval, intervalMod - (intervalMod % count));
 
-  while (!tick.isAfter(end)) {
+  while (!tick.isAfter(end) && ticks.length < count) {
     if (!tick.isBefore(start)) {
       ticks.push(tick);
     }
