@@ -207,7 +207,6 @@ export const getDatabasesPermissionEditor = createSelector(
     } else if (groupId != null) {
       entities = metadata
         .databasesList({ savedQuestions: false })
-        .sort((a, b) => a.name.localeCompare(b.name))
         .map(database => {
           const entityId = getDatabaseEntityId(database);
           return {
