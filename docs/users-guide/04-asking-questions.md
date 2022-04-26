@@ -61,9 +61,9 @@ Broadly speaking, there are three types of columns, each with their own set of f
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
-- **Date** columns give you a lots of options to filter by specific date ranges, relative date ranges, and more.
+  - **Date** columns give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 
-You can add subsequent filter steps after every summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
+You can add subsequent filter steps after each summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
