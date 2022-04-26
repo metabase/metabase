@@ -31,7 +31,7 @@ msgstr "Selecciona un tipus de base de dades"
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:241
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.jsx:35
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:461
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:145
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:181
 #: frontend/src/metabase/components/ActionButton.jsx:30
@@ -40,7 +40,7 @@ msgstr "Selecciona un tipus de base de dades"
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:149
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:75
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:423
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:429
 #: frontend/src/metabase/reference/components/EditHeader.jsx:53
 #: frontend/src/metabase/reference/components/EditHeader.jsx:68
 msgid "Save"
@@ -403,11 +403,11 @@ msgstr "Èxit"
 msgid "Preview"
 msgstr "Vista prèvia"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:100
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:103
 msgid "No column description yet"
 msgstr "No hi ha una descripció de la columna"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:128
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:145
 msgid "Select a field visibility"
 msgstr "Selecciona la visiblitat del camp"
 
@@ -416,7 +416,7 @@ msgstr "Selecciona la visiblitat del camp"
 msgid "No special type"
 msgstr "Sense cap tipus especial"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:183
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:201
 #: frontend/src/metabase/lib/core.js:324
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
@@ -431,7 +431,7 @@ msgstr "Altres"
 msgid "Select a special type"
 msgstr "Seleccioneu un tipus especial"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:253
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/FKTargetPicker.tsx:90
 #: frontend/src/metabase/reference/components/Field.jsx:91
 msgid "Select a target"
@@ -456,7 +456,7 @@ msgstr "Columna"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList/ColumnsList.jsx:109
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable/MetadataTable.tsx:102
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:269
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:276
 msgid "Visibility"
 msgstr "Visibilitat"
 
@@ -627,35 +627,35 @@ msgstr " Historial"
 msgid "Revision History for"
 msgstr "Historial de versions per a"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:208
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:213
 msgid "{0} – Field Settings"
 msgstr "{0} - Configuració dels camps"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:270
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:277
 msgid "Where this field will appear throughout Metabase"
 msgstr "On es mostrarà aquest camp a Metabase"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:322
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:329
 msgid "Filtering on this field"
 msgstr "Filtrant per aquest camp"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:323
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:330
 msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
 msgstr "Quan aquest camp s'utilitza en un filtre, quins valors ha de poder introduir l'usuari?"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:444
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:452
 msgid "No description for this field yet"
 msgstr "No existeix cap descripció per aquest camp"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:418
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:439
 msgid "Original value"
 msgstr "Valor original"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:419
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
 msgid "Mapped value"
 msgstr "Valor assignat"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:462
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:483
 msgid "Enter value"
 msgstr "Introduïu valor"
 
@@ -672,31 +672,31 @@ msgid "Custom mapping"
 msgstr "Assignació personalitzada"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:56
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:164
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:176
 msgid "Unrecognized mapping type"
 msgstr "Tipus d'assignació no reconeguda"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:92
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:104
 msgid "Current field isn't a foreign key or FK target table metadata is missing"
 msgstr "El camp actual no es una clau forana o fan falten les metadades de la clau forana a la taula de destí"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:202
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:214
 msgid "The selected field isn't a foreign key"
 msgstr "El camp seleccionat no és una clau forana"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:339
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:346
 msgid "Display values"
 msgstr "Mostra els valors"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:340
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:347
 msgid "Choose to show the original value from the database, or have this field display associated or custom information."
 msgstr "Escull si vols mostrar el valor original de la base de dades o mostrar informació associada o personalitzada"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:290
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:305
 msgid "Choose a field"
 msgstr "Tria un camp"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:311
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:326
 msgid "Please select a column to use for display."
 msgstr "Seleccioneu una columna per mostrar"
 
@@ -704,16 +704,16 @@ msgstr "Seleccioneu una columna per mostrar"
 msgid "Tip:"
 msgstr "Consell:"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:472
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:493
 msgid "You might want to update the field name to make sure it still makes sense based on your remapping choices."
 msgstr "És possible que vulgueu actualitzar el nom del camp per assegurar-vos que encara tinguin sentit en funció de les opcions d'assignació."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:364
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:90
 msgid "Cached field values"
 msgstr "Valors del camp a la memòria cau"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:357
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:365
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
 msgstr "Metabase pot escanejar els valors d'aquest camp per habilitar els filtres de casella de verificació per als quadres de comandament i preguntes."
 
@@ -869,11 +869,11 @@ msgstr "Això apareixerà l'historial de versions d'aquest segment per ajudar a 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:76
 #: frontend/src/metabase/admin/routes.jsx:162
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:237
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:106
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:131
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:76
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:247
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
 msgid "Settings"
 msgstr "Configuració"
 
@@ -929,7 +929,7 @@ msgstr "Aquest és un grup especial els membres del qual poden veure tota la inf
 msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
 msgstr "Per assegurar que sempre pots accedir a Metabase hi ha d'haver com a mínim un usuari en aquest grup."
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
 msgid "Members"
 msgstr "Membres"
 
@@ -956,8 +956,8 @@ msgstr "Administrador"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:17
 #: frontend/src/metabase/lib/revisions/components.jsx:50
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:203
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:260
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:202
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:259
 #: frontend/src/metabase/query_builder/components/filters/pickers/DefaultPicker.jsx:212
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:312
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:500
@@ -1012,11 +1012,11 @@ msgstr "No"
 msgid "Edit Name"
 msgstr "Edita el nom"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:96
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:98
 msgid "Remove Group"
 msgstr "Elimina el grup"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:139
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:141
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:43
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:42
 #: frontend/src/metabase/components/HeaderModal.jsx:44
@@ -1033,13 +1033,13 @@ msgid "Done"
 msgstr "Fet"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:76
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:271
 msgid "Group name"
 msgstr "Nom del grup"
 
 #: frontend/src/metabase/admin/people/components/GroupSelect.jsx:68
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:362
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:364
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx:35
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:193
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
@@ -1050,11 +1050,11 @@ msgstr "Nom del grup"
 msgid "Groups"
 msgstr "Groups"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:363
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:365
 msgid "Create a group"
 msgstr "Crea un grup"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:369
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:371
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "El grups es poden utilitzar per controlar l'accés dels teus usuaris a les dades. Afegeix usuaris als grups i després ves a la secció de Permisos per controlar l'accés de cada grup. Els grups Administradors i Tots els usuaris són grups especials que no es poden eliminar."
 
@@ -1592,7 +1592,7 @@ msgstr "Elimina"
 #: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:130
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:193
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:205
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:208
 msgid "Select…"
 msgstr "Selecciona..."
 
@@ -1792,7 +1792,7 @@ msgstr "No es coneix la configuració {0}"
 msgid "Setup"
 msgstr "Configuració"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:186
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
 #: frontend/src/metabase/admin/settings/selectors.js:61
 msgid "General"
 msgstr "General"
@@ -2232,7 +2232,7 @@ msgstr "Desarxiva aquest {0}"
 #: frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:45
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:39
-#: frontend/src/metabase/reference/databases/DatabaseList.jsx:45
+#: frontend/src/metabase/reference/databases/DatabaseList.jsx:55
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:38
 msgid "Our data"
 msgstr "Les nostres dades"
@@ -2449,8 +2449,8 @@ msgstr "{0} per anar a la consola si encara no ho has fet"
 msgid "How would you like to refer to this database?"
 msgstr "Com t'agradaria referir-te a aquesta base de dades?"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:152
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:153
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:203
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:148
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:74
@@ -3251,7 +3251,7 @@ msgid "received the latest data from"
 msgstr "ha rebut les darreres dades de"
 
 #: frontend/src/metabase/home/components/Activity.jsx:257
-#: frontend/src/metabase/lib/query_time.js:211
+#: frontend/src/metabase/lib/query_time.js:212
 #: frontend/src/metabase/lib/revisions/revisions.js:74
 #: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:27
 #: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
@@ -3390,7 +3390,7 @@ msgid "Unarchive"
 msgstr "Desarxivar"
 
 #: frontend/src/metabase/home/containers/ActivityApp.jsx:56
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:66
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:62
 msgid "Activity"
 msgstr "Activitat"
 
@@ -3680,20 +3680,20 @@ msgstr "Diferent"
 msgid "StandardDeviation"
 msgstr "DesviacióEstàndard"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:96
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:103
 #: frontend/src/metabase/lib/schema_metadata.js:627
 #: frontend/src/metabase/visualizations/lib/utils.js:143
 msgid "Average"
 msgstr "Mitjana"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:97
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/lib/schema_metadata.js:672
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:496
 msgid "Min"
 msgstr "Mínim"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:98
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/lib/schema_metadata.js:681
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:504
@@ -3753,7 +3753,7 @@ msgstr "Sobre què vols cercar?"
 #: frontend/src/metabase/lib/query/description.js:264
 #: frontend/src/metabase/lib/schema_metadata.js:600
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:60
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:212
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:211
 msgid "Raw data"
 msgstr "Dades en cru"
 
@@ -3870,7 +3870,7 @@ msgstr "No és"
 #: frontend/src/metabase/lib/schema_metadata.js:470
 #: frontend/src/metabase/lib/schema_metadata.js:476
 #: frontend/src/metabase/lib/schema_metadata.js:495
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:206
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:136
 msgid "Is empty"
 msgstr "Està buit"
 
@@ -3911,7 +3911,7 @@ msgstr "Menor que"
 #: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/lib/schema_metadata.js:489
 #: frontend/src/metabase/parameters/constants.js:18
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:175
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:176
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:250
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:98
 msgid "Between"
@@ -3956,14 +3956,14 @@ msgid "Ends with"
 msgstr "Acaba amb"
 
 #: frontend/src/metabase/lib/schema_metadata.js:467
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:189
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:190
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:229
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:76
 msgid "Before"
 msgstr "Abans"
 
 #: frontend/src/metabase/lib/schema_metadata.js:468
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:205
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:206
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:236
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:87
 msgid "After"
@@ -4227,11 +4227,12 @@ msgstr "Categoria"
 
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.jsx:41
 #: frontend/src/metabase/account/routes.jsx:14
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:53
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:49
 msgid "Account settings"
 msgstr "Configuració del compte"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:52
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Sortir de l'administració"
 
@@ -4239,18 +4240,18 @@ msgstr "Sortir de l'administració"
 msgid "Logs"
 msgstr "Registres"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:73
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:69
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:82
 msgid "Help"
 msgstr "Ajuda"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:84
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:80
 msgid "About Metabase"
 msgstr "Sobre Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:86
 msgid "Sign out"
 msgstr "Sortir"
 
@@ -4258,15 +4259,15 @@ msgstr "Sortir"
 msgid "Thanks for using"
 msgstr "Gràcies per utilitzar"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:129
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:131
 msgid "You're on version"
 msgstr "Esteu utilitzant la versió"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:132
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:134
 msgid "Built on"
 msgstr "Construïda el"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:152
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
 msgid "is a Trademark of"
 msgstr "és una marca registrada de"
 
@@ -4274,7 +4275,7 @@ msgstr "és una marca registrada de"
 msgid "and is built with care in San Francisco, CA"
 msgstr "i s'ha desenvolupat amb amor a San Francisco, California"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:33
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Administració de Metabase"
 
@@ -4343,15 +4344,15 @@ msgstr "Per a preguntes més complicades podeu escriure la vostra pròpia consul
 msgid "Select a default value…"
 msgstr "Seleccioneu un valor per defecte..."
 
-#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:108
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:152
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 msgid "Update filter"
 msgstr "Actualitzar el fitlre"
 
-#: frontend/src/metabase/lib/query_time.js:143
-#: frontend/src/metabase/lib/query_time.js:154
+#: frontend/src/metabase/lib/query_time.js:144
+#: frontend/src/metabase/lib/query_time.js:155
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:10
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:145
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:33
@@ -4360,7 +4361,7 @@ msgstr "Actualitzar el fitlre"
 msgid "Today"
 msgstr "Avui"
 
-#: frontend/src/metabase/lib/query_time.js:149
+#: frontend/src/metabase/lib/query_time.js:150
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:15
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:43
@@ -4377,24 +4378,24 @@ msgstr "Els darrers 7 dies"
 msgid "Past 30 days"
 msgstr "El darrers 30 dies"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1702
-#: frontend/src/metabase/lib/query_time.js:229
+#: frontend/src/metabase-lib/lib/Dimension.ts:1721
+#: frontend/src/metabase/lib/query_time.js:230
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Week"
 msgstr "Setmana"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1708
-#: frontend/src/metabase/lib/query_time.js:231
+#: frontend/src/metabase-lib/lib/Dimension.ts:1727
+#: frontend/src/metabase/lib/query_time.js:232
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Month"
 msgstr "Mes"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1720
-#: frontend/src/metabase/lib/query_time.js:235
+#: frontend/src/metabase-lib/lib/Dimension.ts:1739
+#: frontend/src/metabase/lib/query_time.js:236
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4447,6 +4448,7 @@ msgstr "Introduïu un valor predeterminat..."
 
 #: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:49
 #: frontend/src/metabase/containers/Form.jsx:230
+#: frontend/src/metabase/containers/Form.jsx:239
 #: frontend/src/metabase/public/components/PublicError.jsx:13
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:127
 msgid "An error occurred"
@@ -5207,7 +5209,7 @@ msgstr "Camp desconegut"
 msgid "field"
 msgstr "camp"
 
-#: frontend/src/metabase/query_builder/components/Filter.jsx:91
+#: frontend/src/metabase/query_builder/components/Filter.jsx:111
 msgid "Matches"
 msgstr "Coincidències"
 
@@ -5217,7 +5219,7 @@ msgstr "Coincidències"
 msgid "Add filters to narrow your answer"
 msgstr "Afegeix filtres per perfilar la teva resposta"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:254
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:253
 msgid "Add a grouping"
 msgstr "Afegeix una agrupació"
 
@@ -5225,9 +5227,9 @@ msgstr "Afegeix una agrupació"
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:60
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:19
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:136
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:285
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:284
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:39
-#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:72
+#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:75
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:116
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:91
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:137
@@ -5243,17 +5245,17 @@ msgstr "Afegeix una agrupació"
 msgid "Data"
 msgstr "Dades"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:312
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:311
 msgid "Filtered by"
 msgstr "Filtrat per"
 
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.js:11
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:100
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:329
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:328
 msgid "View"
 msgstr "Mostra"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:346
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:345
 msgid "Grouped By"
 msgstr "Agrupat per"
 
@@ -5261,7 +5263,7 @@ msgstr "Agrupat per"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx:69
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:53
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:28
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:212
 msgid "None"
 msgstr "Cap"
 
@@ -5466,15 +5468,15 @@ msgstr "Hi ha hagut un problema amb la teva pregunta"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "La majoria de vegades això està causat per una selecció no vàlida o un valor d'entrada incorrecte. Revisa les teves entrades i tornar a executar la consulta."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:60
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "Aquesta pot ser la resposta que esteu cercant. Si no és així intenteu eliminar o canviar els filtres per a que sigui menys específic."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:74
 msgid "You can also {0} when there are some results."
 msgstr "També pots {0} quan hi hagi alguns resultats."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
 msgid "get an alert"
 msgstr "rebre una alterta"
 
@@ -5482,7 +5484,7 @@ msgstr "rebre una alterta"
 msgid "Back to last run"
 msgstr "Tornar a la darrera execució"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:233
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:227
 msgid "Visualization"
 msgstr "Visualització"
 
@@ -5597,7 +5599,7 @@ msgstr "Pensa que això és com escriure una fórmula en un full de càlcul: Pot
 #: frontend/src/metabase/entities/databases/forms.js:149
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorHelpText.tsx:66
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:227
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:230
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:405
 msgid "Learn more"
 msgstr "Aprendre'n més"
@@ -5682,12 +5684,12 @@ msgstr "Element"
 msgid "Previous"
 msgstr "Anterior"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:143
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:144
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:217
 msgid "Current"
 msgstr "Actual"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:197
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:198
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:243
 #: frontend/src/metabase/visualizations/lib/settings/column.js:229
 #: frontend/src/metabase/visualizations/lib/settings/series.js:81
@@ -5699,7 +5701,7 @@ msgid "Enter desired number"
 msgstr "Introdueix el nombre desitjat"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:61
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:40
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:42
 msgid "Empty"
 msgstr "Buit"
 
@@ -5799,15 +5801,15 @@ msgstr "Filtre de camp"
 msgid "Field to map to"
 msgstr "Camp per mapejar a"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:191
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:194
 msgid "Filter widget type"
 msgstr "Tipus de filtre"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:250
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:253
 msgid "Required?"
 msgstr "Obligatori?"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:261
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:264
 msgid "Default filter widget value"
 msgstr "Valor per defecte del camp de filtre"
 
@@ -6731,7 +6733,7 @@ msgstr "Mapa de pin"
 msgid "Unset"
 msgstr "Desmarcar"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:126
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:135
 msgid "Rows {0}-{1} of {2}"
 msgstr "Files {0}-{1} de {2}"
 
@@ -6747,7 +6749,7 @@ msgstr "No s'ha pogut trobar la visualització"
 msgid "Could not display this chart with this data."
 msgstr "No s'ha pogut mostrar el gràfic amb aquesta informació."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:59
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "No results!"
 msgstr "Sense resultats!"
@@ -7316,19 +7318,19 @@ msgstr "Zoom màxim"
 msgid "No relationships found."
 msgstr "No s'han trobat relacions."
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:86
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:96
 msgid "via {0}"
 msgstr "mitjançant {0}"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:236
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:44
 msgid "This {0} is connected to:"
 msgstr "{0} està connectada a:"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:333
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:352
 msgid "Object Detail"
 msgstr "Detall de l'objecte"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:336
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:355
 msgid "object"
 msgstr "objecte"
 
@@ -7438,45 +7440,45 @@ msgstr "Pivota la taula"
 msgid "Visible fields"
 msgstr "Camps visibles"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:121
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:131
 msgid "Write here, and use Markdown if you'd like"
 msgstr "Escriu aquí, i utilitza Markdown si ho desitges"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:57
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:57
 msgid "Vertical Alignment"
 msgstr "Alineació vertical"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:61
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:61
 msgid "Top"
 msgstr "A dalt"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:62
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:62
 msgid "Middle"
 msgstr "Al mig"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:63
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:63
 msgid "Bottom"
 msgstr "A baix"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:70
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:70
 msgid "Horizontal Alignment"
 msgstr "Alineació horitzontal"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:118
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:74
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:74
 msgid "Left"
 msgstr "Esquerra"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:75
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:75
 msgid "Center"
 msgstr "Centre"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:119
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:76
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:76
 msgid "Right"
 msgstr "Dreta"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:83
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:83
 msgid "Show background"
 msgstr "Mostra el fons"
 
@@ -7598,7 +7600,6 @@ msgstr "La incrustació no està habilitada"
 msgid "The object has been archived."
 msgstr "L'objecte ha estat arxivat."
 
-#: src/metabase/api/common/internal.clj
 #: target/classes/metabase/api/common/internal.clj
 msgid "Attempted to return a boolean as an API response. This is not allowed!"
 msgstr "S'ha intentat retornar una booleà en una resposta de la API. Això no està permès!"
@@ -7740,7 +7741,7 @@ msgstr "Tens moltes preguntes desades a {0}? Crea col·leccions per gestionar-le
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:231
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:102
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/public/components/LogoBadge.jsx:18
 #: frontend/src/metabase/routes-public.jsx:13
 #: frontend/src/metabase/routes.jsx:153 src/metabase/api/setup.clj
@@ -7769,7 +7770,7 @@ msgstr "Manté a tothom a la mateia pàgina creant conjunts de filtres que podra
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Ha aparegut la taula \"{0}\". Sincrontizant"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1642 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1661 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Auto bin"
 msgstr "Agrupació automàtica"
@@ -7778,102 +7779,102 @@ msgstr "Agrupació automàtica"
 msgid "Don''t bin"
 msgstr "Sense agrupació"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1696
-#: frontend/src/metabase/lib/query_time.js:227 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1715
+#: frontend/src/metabase/lib/query_time.js:228 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr "Dia"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1684
-#: frontend/src/metabase/lib/query_time.js:223 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1703
+#: frontend/src/metabase/lib/query_time.js:224 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr "Minut"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1690
-#: frontend/src/metabase/lib/query_time.js:225 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1709
+#: frontend/src/metabase/lib/query_time.js:226 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr "Hora"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1714
-#: frontend/src/metabase/lib/query_time.js:233 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1733
+#: frontend/src/metabase/lib/query_time.js:234 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter"
 msgstr "Trimestre"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1726 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1745 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "Minut de la hora"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1732 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1751 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour of Day"
 msgstr "Hora del dia"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1738 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1757 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Week"
 msgstr "Dia de la setmana"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1744 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1763 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Month"
 msgstr "Dia del mes"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1750 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1769 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Year"
 msgstr "Dia del any"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1756 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1775 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Week of Year"
 msgstr "Setmana del any"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1762 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1781 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Month of Year"
 msgstr "Més del any"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1768 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1787 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter of Year"
 msgstr "Trimestre del any"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1650 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1669 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "10 bins"
 msgstr "10 agrupacions"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1678 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "50 bins"
 msgstr "50 agrupacions"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1668 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1687 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "100 bins"
 msgstr "100 agrupacions"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1777 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1796 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 0.1 degrees"
 msgstr "Agrupa cada 0.1 graus"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1786 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1805 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 1 degree"
 msgstr "Agrupa cada grau"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1795 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1814 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 10 degrees"
 msgstr "Agrupa cada 10 graus"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1804 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1823 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 20 degrees"
 msgstr "Agrupa cada 20 graus"
@@ -9753,9 +9754,9 @@ msgstr "Compartir"
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:132
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:65
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:71
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:56
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:69
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:56
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:82
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
@@ -9774,7 +9775,7 @@ msgstr "Visualitza"
 msgid "Axes"
 msgstr "Eixos"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:196
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:91
 #: frontend/src/metabase/visualizations/lib/settings/column.js:45
@@ -9839,15 +9840,15 @@ msgstr "Utilitza la zona horària de la màquina virtual de Java (JVM)"
 msgid "We're currently analyzing the tables and fields to help you explore your data."
 msgstr "Estem analitzant les taules i els camps per ajudar-te a explorar les teves dades"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:471
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:492
 msgid "Tip: "
 msgstr "Consell: "
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:231
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:247
 msgid "Select a currency type"
 msgstr "Selecciona un tipus de moneda"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:281
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:288
 msgid "Field Type"
 msgstr "Tipo de camp"
 
@@ -10220,7 +10221,7 @@ msgstr "setmana"
 msgid "month"
 msgstr "mes"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:113
+#: frontend/src/metabase/lib/query_time.js:652
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "quarter"
@@ -11945,94 +11946,94 @@ msgstr "Duplica {0}"
 msgid "Duplicate"
 msgstr "Duplica"
 
-#: frontend/src/metabase/lib/query_time.js:146
+#: frontend/src/metabase/lib/query_time.js:147
 msgid "Tomorrow"
 msgstr "Demà"
 
-#: frontend/src/metabase/lib/query_time.js:160
-#: frontend/src/metabase/lib/query_time.js:174
+#: frontend/src/metabase/lib/query_time.js:161
+#: frontend/src/metabase/lib/query_time.js:175
 msgid "This {0}"
 msgstr "Aquest {0}"
 
-#: frontend/src/metabase/lib/query_time.js:163
+#: frontend/src/metabase/lib/query_time.js:164
 msgid "Next {0}"
 msgstr "Següent {0}"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:167
 #: src/metabase/pulse/render/datetime.clj
 #: target/classes/metabase/pulse/render/datetime.clj
 msgid "Previous {0}"
 msgstr "{0} anterior"
 
-#: frontend/src/metabase/lib/query_time.js:170
+#: frontend/src/metabase/lib/query_time.js:171
 msgid "Previous {0} {1}"
 msgstr "Anterior {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:173
 msgid "Next {0} {1}"
 msgstr "Seguents {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:202
+#: frontend/src/metabase/lib/query_time.js:203
 msgid "Now"
 msgstr "Ara"
 
-#: frontend/src/metabase/lib/query_time.js:205
+#: frontend/src/metabase/lib/query_time.js:206
 msgid "{0} {1} ago"
 msgstr "fa {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:206
+#: frontend/src/metabase/lib/query_time.js:207
 msgid "{0} {1} from now"
 msgstr "{0} {1} desde ara"
 
-#: frontend/src/metabase/lib/query_time.js:221
+#: frontend/src/metabase/lib/query_time.js:222
 msgid "Default period"
 msgid_plural "Default periods"
 msgstr[0] "Període per defecte"
 msgstr[1] "Períodes per defecte"
 
-#: frontend/src/metabase/lib/query_time.js:237
+#: frontend/src/metabase/lib/query_time.js:238
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
 msgstr[0] "Minut de l'hora"
 msgstr[1] "Minuts de l'hora"
 
-#: frontend/src/metabase/lib/query_time.js:239
+#: frontend/src/metabase/lib/query_time.js:240
 msgid "Hour of day"
 msgid_plural "Hours of day"
 msgstr[0] "Hora del dia"
 msgstr[1] "Hores del dia"
 
-#: frontend/src/metabase/lib/query_time.js:241
+#: frontend/src/metabase/lib/query_time.js:242
 msgid "Day of week"
 msgid_plural "Days of week"
 msgstr[0] "Dia de la setmana"
 msgstr[1] "Dies de la setmana"
 
-#: frontend/src/metabase/lib/query_time.js:243
+#: frontend/src/metabase/lib/query_time.js:244
 msgid "Day of month"
 msgid_plural "Days of month"
 msgstr[0] "Dia del mes"
 msgstr[1] "Dies del mes"
 
-#: frontend/src/metabase/lib/query_time.js:245
+#: frontend/src/metabase/lib/query_time.js:246
 msgid "Day of year"
 msgid_plural "Days of year"
 msgstr[0] "Dia de l'any"
 msgstr[1] "Dies de l'any"
 
-#: frontend/src/metabase/lib/query_time.js:247
+#: frontend/src/metabase/lib/query_time.js:248
 msgid "Week of year"
 msgid_plural "Weeks of year"
 msgstr[0] "Setmana de l'any"
 msgstr[1] "Setmanes de l'any"
 
-#: frontend/src/metabase/lib/query_time.js:249
+#: frontend/src/metabase/lib/query_time.js:250
 msgid "Month of year"
 msgid_plural "Months of year"
 msgstr[0] "Mes del any"
 msgstr[1] "Mesos de l'any"
 
-#: frontend/src/metabase/lib/query_time.js:251
+#: frontend/src/metabase/lib/query_time.js:252
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
 msgstr[0] "Trimestre del any"
@@ -12040,7 +12041,7 @@ msgstr[1] "Trimestres de l'any"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:304
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue.jsx:9
-#: frontend/src/metabase/query_builder/components/Filter.jsx:56
+#: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
 msgid_plural "{0} selections"
 msgstr[0] "{0} seleccionat"
@@ -12749,7 +12750,7 @@ msgstr "El correu electrònic es obligatori"
 msgid "Items you archive will appear here."
 msgstr "Els ítems que arxivis es mostraran aquí"
 
-#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:27
+#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:28
 #: frontend/src/metabase/components/MetadataInfo/TableInfo/TableInfo.tsx:106
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"
@@ -13103,7 +13104,7 @@ msgstr "Mostra el màxim"
 msgid "Get Preview"
 msgstr "Mostra una previsualització"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:85
 msgid "Back to previous results"
 msgstr "Torna als resultats anteriors"
 
@@ -13805,7 +13806,7 @@ msgstr "Error en determinar les columnes esperades de la consulta"
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "Excepció no controlada, s'esperava un middleware `catch-exceptions` que la controlés."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:125
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:129
 msgid "Diagnostic Info"
 msgstr "Informació de diagnòstic"
 
@@ -13945,7 +13946,7 @@ msgstr "Aquí és on apareixeran els teus resultats"
 msgid "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question."
 msgstr "No fareu cap canvi permanent a les preguntes desades si no feu clic a \"Desa\" i seleccioneu l'opció de sobreescriure la pregunta original."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:218
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:221
 msgid "There aren't any filter widgets for this type of field yet."
 msgstr "Encara no hi ha cap tipus de giny de cerca per a aquest tipus de camp."
 
@@ -14317,15 +14318,15 @@ msgstr "Publica al fòrum de suport de metabase"
 msgid "A community forum for all things Metabase"
 msgstr "Un fòrum comunitari per a temes relacionats amb Metabase"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:117
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:121
 msgid "File a bug report"
 msgstr "Obriu una incidencia"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:118
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:122
 msgid "Create a GitHub issue (includes the diagnostic info below)"
 msgstr "Creeu una incidència a GitHub (inclou la informació de diagnòstic de sota)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:126
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:130
 msgid "Please include these details in support requests. Thank you!"
 msgstr "SI us plau, afegiu aquest detalls a les vostres peticions de suport. Gràcies!"
 
@@ -14947,7 +14948,7 @@ msgstr "ha de ser una adreça de correu electrònic vàlida"
 msgid "must be {0} characters or less"
 msgstr "Ha de tenir {0} caràcters o menys"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:126
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Thanks for using Metabase!"
 msgstr "Gràcies per utilitzar Metabase!"
 
@@ -14976,7 +14977,7 @@ msgstr "Seleccioneu una pregunta desada"
 msgid "Pick a different question"
 msgstr "Seleccioneu una pregunta diferent."
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:235
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:228
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:68
 msgid "Loading…"
 msgstr "Carregant..."
@@ -15005,7 +15006,7 @@ msgstr "Seleccionant el tipus \"Filtre de camp\" per a una variable us permet en
 msgid "Variable name"
 msgstr "Nom de la variable"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:236
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:239
 msgid "Filter widget label"
 msgstr "Etiqueta per al giny de filtre"
 
@@ -17695,7 +17696,7 @@ msgstr "Heu de {0} primer."
 msgid "First, you'll have to {0}."
 msgstr "Primer, heu de {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:124
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:133
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Files {0}-{1} de les primeres {2}"
 
@@ -18291,7 +18292,7 @@ msgstr "Configuració de prova - només es mostra en dev (1)"
 msgid "Test setting - this only shows up in dev (2)"
 msgstr "Configuració de prova - només es mostra en dev (2)"
 
-#: test/metabase/models/setting_test.clj
+#: test/metabase/api/setting_test.clj test/metabase/models/setting_test.clj
 msgid "Test setting - this only shows up in dev (3)"
 msgstr "Configuració de prova - només es mostra en dev (3)"
 
@@ -18591,24 +18592,24 @@ msgstr "Eliminar la base de dades {0}?"
 msgid "Restoring the sample dataset..."
 msgstr "Restaurant les dades de mostra..."
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:182
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:200
 msgid "No semantic type"
 msgstr "Sense tipus semàntic"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:211
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:227
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:77
 msgid "Select a semantic type"
 msgstr "Escollir el tipus semàntic"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:293
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:300
 msgid "Cast to a specific data type"
 msgstr "Convertir a un tipus de date específic"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:296
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:303
 msgid "Select a conversion"
 msgstr "Escollir una conversió"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:311
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:318
 msgid "Don't cast"
 msgstr "No convertir"
 
@@ -18643,11 +18644,11 @@ msgstr "La columna a comprovar."
 msgid "Checks if a column is empty"
 msgstr "Comprova si una columna està buida"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:101
+#: frontend/src/metabase/lib/expressions/resolver.js:104
 msgid "CASE expects 2 arguments or more"
 msgstr "CASE espera 2 arguments o més"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:149
+#: frontend/src/metabase/lib/expressions/resolver.js:152
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "La funció {0} espera {1} argument"
@@ -18744,6 +18745,7 @@ msgid_plural "and {0} others"
 msgstr[0] "i {0} altre"
 msgstr[1] "i {0} altres"
 
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:100
 #: frontend/src/metabase/sharing/components/PulsesListSidebar.jsx:159
 msgid "{0} selections"
 msgstr "{0} seleccions"
@@ -19055,15 +19057,15 @@ msgstr "Canvia això només si saps el que fas!"
 msgid "Replace underscores and dashes with spaces"
 msgstr "Substituir guions baixos i guionets per espais"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:128
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
 msgid "Advanced Details (click to download)"
 msgstr "Detalls avançats (feu clic per descarregar)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:131
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:135
 msgid "Connection Pool Details"
 msgstr "Detalls del grup de connexions"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:136
 msgid "Information about active and idle connections for all pools"
 msgstr "Informació sobre connexions actives i aturades de tots els grups"
 
@@ -19202,7 +19204,7 @@ msgstr "S'esperaven {0} parèntesis d'obertura"
 msgid "Expecting an opening parenthesis after function {0}"
 msgstr "S'esperava un parèntesi d'obertura després de la funció {0}"
 
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:513
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:519
 msgid "Explore results"
 msgstr "Explorar els resultats"
 
@@ -19992,7 +19994,7 @@ msgstr "Cercar una col·lecció"
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:74
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:210
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/group-sidebar.ts:44
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:331
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
 msgid "Search for a group"
 msgstr "Cercar un grup"
 
@@ -20011,7 +20013,7 @@ msgstr "Editar els detalls del quadre de comandament"
 msgid "More options"
 msgstr "Més opcions"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:89
+#: frontend/src/metabase/lib/expressions/resolver.js:92
 msgid "Expecting field but found {0}"
 msgstr "S'esperava un camp però s'ha trobat {0}"
 
@@ -20240,20 +20242,20 @@ msgid "Search for a table"
 msgstr "Cercar una taula"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:155
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
 msgid "Data access"
 msgstr "Accés a les dades"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:156
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:274
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
 msgid "Native query editing"
 msgstr "Edició nativa de preguntes"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:322
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:321
 msgid "The Administrators group is special, and always has Unrestricted access."
 msgstr "El grup d'Administradors és especial i sempre té accés sense restriccions."
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:329
 msgid "Permissions for"
 msgstr "Permisos per a"
 
@@ -20269,11 +20271,11 @@ msgstr "Nom de l'esquema"
 msgid "Search for a schema"
 msgstr "Cercar un esquema"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:230
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:229
 msgid "Permissions for the "
 msgstr "Permisos per a la "
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:237
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:236
 msgid "{0} person"
 msgid_plural "{0} people"
 msgstr[0] "{0} persona"
@@ -20374,19 +20376,19 @@ msgstr "Recurs Javascript no trobat: {0}"
 msgid "Found new version for DB: {0}"
 msgstr "S'ha trobat una versió nova de la BD: {0}"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:60
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:56
 msgid "Admin settings"
 msgstr "Preferències d'admnistració"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:156
 msgid "and is built with care by a team from all across this pale blue dot."
 msgstr "i està desenvolupat amb cura per un equip d'arreu d'aquest pàl·lid punt blau (perdó per la traducció matussera del gran Sagan)."
 
-#: frontend/src/metabase/query_builder/actions.js:1666
+#: frontend/src/metabase/query_builder/actions.js:1675
 msgid "This is a model now."
 msgstr "Això és un model ara."
 
-#: frontend/src/metabase/query_builder/actions.js:1679
+#: frontend/src/metabase/query_builder/actions.js:1688
 msgid "This is a question now."
 msgstr "Això és una pregunta ara."
 
@@ -20549,13 +20551,13 @@ msgstr "Llicència"
 msgid "New…"
 msgstr "Nou…"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:85
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:83
 msgid "{0} distinct value"
 msgid_plural "{0} distinct values"
 msgstr[0] "{0} valor diferent"
 msgstr[1] "{0} valors diferents"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:94
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:92
 msgid "Getting distinct values..."
 msgstr "Obtenint els valors diferents..."
 
@@ -20630,15 +20632,15 @@ msgstr "Segment desconegut: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Camp desconegut: {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:130
+#: frontend/src/metabase/lib/expressions/resolver.js:133
 msgid "Unknown function {0}"
 msgstr "Funció desconeguda: {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:135
+#: frontend/src/metabase/lib/expressions/resolver.js:138
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "S'esperava {0} però s'ha trobat la funció {1} retornant {2}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:173
+#: frontend/src/metabase/lib/expressions/resolver.js:176
 msgid "Expecting {0} but found {1}"
 msgstr "S'esperava {0} però s'ho trobat {1}"
 
@@ -20868,15 +20870,15 @@ msgstr "Restaurant la base de dades de mostra..."
 msgid "Bring the sample database back"
 msgstr "Restaura la base de dades de mostra"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:51
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:58
 msgid "Timezone"
 msgstr "Fus horari"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:55
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:62
 msgid "Earliest date"
 msgstr "Data més antiga"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:59
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:66
 msgid "Latest date"
 msgstr "Data més recent"
 
@@ -20920,11 +20922,11 @@ msgstr "Tipus de columna"
 msgid "This column should appear in…"
 msgstr "Aquesta columna hauria d'aparèixer a…"
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:29
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:31
 msgid "Run selection"
 msgstr "Executar selecció"
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:33
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:36
 msgid "Save as snippet"
 msgstr "Desar com a tros de codi"
 
@@ -20941,7 +20943,7 @@ msgid "Edit model"
 msgstr "Editar el model"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:161
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:193
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:196
 msgid "(required)"
 msgstr "(necessari)"
 
@@ -22197,15 +22199,15 @@ msgstr "Consulteu els nostres documents per obtenir instruccions pas a pas sobre
 msgid "You've updated your password."
 msgstr "Heu actualitzat la vostra contrasenya."
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:32
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
 msgid "A question"
 msgstr "Una pregunta"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:33
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:35
 msgid "A dashboard"
 msgstr "Un quadre de comandament"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:36
 msgid "A model"
 msgstr "Un model"
 
@@ -22213,15 +22215,15 @@ msgstr "Un model"
 msgid "Save your questions, dashboards, and models in collections — and pin them to feature them at the top."
 msgstr "Desa les teves preguntes, taulers de comandament i models a les col·leccions i fixa'ls per mostrar-los a la part superior."
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:117
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:129
 msgid "Useful data"
 msgstr "Dades útils"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:120
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:132
 msgid "Start new explorations here"
 msgstr "Comenceu noves exploracions aquí"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:121
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:133
 msgid "Start new explorations about {0} here"
 msgstr "Comenceu noves exploracions sobre {0} aquí"
 
@@ -22306,16 +22308,16 @@ msgstr "Gestionar la base de dades"
 msgid "Unbinned"
 msgstr "No en contenidors"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1547
+#: frontend/src/metabase-lib/lib/Dimension.ts:1566
 msgid "Invalid template tag \"{0}\""
 msgstr "Etiqueta de plantilla invàlida \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1552
+#: frontend/src/metabase-lib/lib/Dimension.ts:1571
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "La variable \"{0}\" s'ha de mapejar a un camp."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1677
-#: frontend/src/metabase-lib/lib/Dimension.ts:1813
+#: frontend/src/metabase-lib/lib/Dimension.ts:1696
+#: frontend/src/metabase-lib/lib/Dimension.ts:1832
 msgid "Don't bin"
 msgstr "No posi en contenidors"
 
@@ -22558,14 +22560,14 @@ msgstr "Eliminar un favorit"
 msgid "Bookmarks"
 msgstr "Favorits"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:120
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:121
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 msgid "Past"
 msgstr "Passat"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:213
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:133
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:156
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:131
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:86
 msgid "Exclude..."
 msgstr "Excloure..."
 
@@ -22736,32 +22738,32 @@ msgstr "Dates específiques..."
 msgid "Relative dates..."
 msgstr "Dates relatives..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:56
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:57
 msgid "Days of the week..."
 msgstr "Dies de la setmana..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:80
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:64
 msgid "Months of the year..."
 msgstr "Mesos de l'any..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:104
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:71
 msgid "Quarters of the year..."
 msgstr "Trimestres de l'any..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:129
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:78
 msgid "Hours of the day..."
 msgstr "Hores del dia..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:471
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:215
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:145
 msgid "Is not empty"
 msgstr "No està buit"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select none..."
 msgstr "No en seleccionis cap..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select all..."
 msgstr "Escollir tots..."
 
@@ -22776,11 +22778,11 @@ msgstr "Ara mateix, això és {0}"
 msgid "Right now, this is {0} - {1}"
 msgstr "Ara mateix, això és {0} - {1}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:190
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:187
 msgid "Starting from..."
 msgstr "Començant des de..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:252
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:248
 msgid "Starting from"
 msgstr "Començant des de"
 
@@ -22792,15 +22794,15 @@ msgstr "0/{0} carregats"
 msgid "Your dashboard is ready"
 msgstr "El teu quadre de comandament està llest"
 
-#: frontend/src/metabase/query_builder/actions.js:1372
+#: frontend/src/metabase/query_builder/actions.js:1379
 msgid "Doing Science..."
 msgstr "Fent sciència..."
 
-#: frontend/src/metabase/query_builder/actions.js:1374
+#: frontend/src/metabase/query_builder/actions.js:1381
 msgid "Still Here..."
 msgstr "Aquí encara..."
 
-#: frontend/src/metabase/query_builder/actions.js:1431
+#: frontend/src/metabase/query_builder/actions.js:1438
 msgid "Your question is ready!"
 msgstr "La teva pregunta està llesta!"
 
@@ -22808,11 +22810,11 @@ msgstr "La teva pregunta està llesta!"
 msgid "You can customize filter values for each subscription with paid plans."
 msgstr "Pots configurar valors de filtre per a cada subscripció a plans de pagament."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:112
 msgid "Get Help"
 msgstr "Obtenir ajuda"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:113
 msgid "Resources and support"
 msgstr "Recursos i suport"
 
@@ -22886,47 +22888,47 @@ msgstr "Línia de temps"
 msgid "Excludes"
 msgstr "Exclou"
 
-#: frontend/src/metabase/lib/query_time.js:130
+#: frontend/src/metabase/lib/query_time.js:131
 msgid "{0}, starting {1} {2}"
 msgstr "{0}, començant {1} {2}"
 
-#: frontend/src/metabase/lib/query_time.js:362
+#: frontend/src/metabase/lib/query_time.js:363
 msgid "minute {0}"
 msgid_plural "minutes {0}"
 msgstr[0] "minut {0}"
 msgstr[1] "minuts {0}"
 
-#: frontend/src/metabase/lib/query_time.js:364
+#: frontend/src/metabase/lib/query_time.js:365
 msgid "hour {0}"
 msgid_plural "hours {0}"
 msgstr[0] "hora {0}"
 msgstr[1] "hores {0}"
 
-#: frontend/src/metabase/lib/query_time.js:366
+#: frontend/src/metabase/lib/query_time.js:367
 msgid "day {0}"
 msgid_plural "days {0}"
 msgstr[0] "dia {0}"
 msgstr[1] "dies {0}"
 
-#: frontend/src/metabase/lib/query_time.js:368
+#: frontend/src/metabase/lib/query_time.js:369
 msgid "week {0}"
 msgid_plural "weeks {0}"
 msgstr[0] "setmana {0}"
 msgstr[1] "setmanes {0}"
 
-#: frontend/src/metabase/lib/query_time.js:370
+#: frontend/src/metabase/lib/query_time.js:371
 msgid "month {0}"
 msgid_plural "months {0}"
 msgstr[0] "mes {0}"
 msgstr[1] "mesos {0}"
 
-#: frontend/src/metabase/lib/query_time.js:372
+#: frontend/src/metabase/lib/query_time.js:373
 msgid "quarter {0}"
 msgid_plural "quarters {0}"
 msgstr[0] "trimestre {0}"
 msgstr[1] "trimestres {0}"
 
-#: frontend/src/metabase/lib/query_time.js:374
+#: frontend/src/metabase/lib/query_time.js:375
 msgid "year {0}"
 msgid_plural "years {0}"
 msgstr[0] "any {0}"
@@ -22964,11 +22966,11 @@ msgstr "{0} ha estat carregat."
 msgid "Would you like to be notified when this question is done loading?"
 msgstr "Vols que se't notifiqui quan aquesta pregunta s'hagi carregat?"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:281
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:275
 msgid "Switch to data"
 msgstr "Canviar a les dades"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:286
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:280
 msgid "Switch to visualization"
 msgstr "Canviar a la visualització"
 
@@ -23138,4 +23140,32 @@ msgstr "Ja no podreu gestionar els usuaris d'aquest grup."
 #: enterprise/backend/src/metabase_enterprise/advanced_permissions/models/permissions/group_manager.clj
 msgid "Not allowed to edit group memberships"
 msgstr "No es permet editar les pertinences a grups"
+
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:215
+msgid "Exclude"
+msgstr "Excloure"
+
+#: frontend/src/metabase/account/login-history/components/LoginHistory/LoginHistory.jsx:68
+msgid "No logins"
+msgstr "Sense inicis de sessió"
+
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:335
+msgid "You need unrestricted data access on this table to map custom display values."
+msgstr "Necessiteu accés sense restriccions a les dades d'aquesta taula per mapar valors de visualització personalitzats."
+
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1062
+msgid "View Details"
+msgstr "Veure detalls"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:122
+msgid "Field access denied"
+msgstr "Accés al camp denegat"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
+msgid "No key available"
+msgstr "No hi ha cap clau disponible"
+
+#: src/metabase/cmd/rotate_encryption_key.clj
+msgid "Connected to"
+msgstr "Connectat a"
 

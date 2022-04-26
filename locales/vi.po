@@ -31,7 +31,7 @@ msgstr "Chọn kiểu cơ sở dữ liệu"
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:241
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.jsx:35
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:461
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:145
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:181
 #: frontend/src/metabase/components/ActionButton.jsx:30
@@ -40,7 +40,7 @@ msgstr "Chọn kiểu cơ sở dữ liệu"
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:149
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:75
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:423
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:429
 #: frontend/src/metabase/reference/components/EditHeader.jsx:53
 #: frontend/src/metabase/reference/components/EditHeader.jsx:68
 msgid "Save"
@@ -404,11 +404,11 @@ msgstr "Thành công"
 msgid "Preview"
 msgstr "Xem trước"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:100
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:103
 msgid "No column description yet"
 msgstr "Chưa có cột mô tả"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:128
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:145
 msgid "Select a field visibility"
 msgstr "Chọn một trường hiển thị"
 
@@ -417,7 +417,7 @@ msgstr "Chọn một trường hiển thị"
 msgid "No special type"
 msgstr "Không có kiểu đặc biệt"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:183
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:201
 #: frontend/src/metabase/lib/core.js:324
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
@@ -432,7 +432,7 @@ msgstr "Khác"
 msgid "Select a special type"
 msgstr "Chọn một kiểu đặc biệt"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:253
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/FKTargetPicker.tsx:90
 #: frontend/src/metabase/reference/components/Field.jsx:91
 msgid "Select a target"
@@ -457,7 +457,7 @@ msgstr "Cột"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList/ColumnsList.jsx:109
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable/MetadataTable.tsx:102
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:269
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:276
 msgid "Visibility"
 msgstr "Hiển thị"
 
@@ -625,35 +625,35 @@ msgstr " Lịch sử"
 msgid "Revision History for"
 msgstr "Lịch sử thay đổi cho"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:208
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:213
 msgid "{0} – Field Settings"
 msgstr "{0} - Cài đặt trường"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:270
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:277
 msgid "Where this field will appear throughout Metabase"
 msgstr "Trường này sẽ xuất hiện trên khắp Metabase"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:322
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:329
 msgid "Filtering on this field"
 msgstr "Lọc trên trường này"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:323
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:330
 msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
 msgstr "Khi trường này được sử dụng trong bộ lọc, mọi người nên sử dụng gì để nhập giá trị họ muốn lọc?"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:444
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:452
 msgid "No description for this field yet"
 msgstr "Chưa có mô tả cho trường này"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:418
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:439
 msgid "Original value"
 msgstr "Giá trị gốc"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:419
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
 msgid "Mapped value"
 msgstr "Giá trị đã được ánh xạ"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:462
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:483
 msgid "Enter value"
 msgstr "Nhập giá trị"
 
@@ -670,31 +670,31 @@ msgid "Custom mapping"
 msgstr "Tuỳ chỉnh ánh xạ"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:56
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:164
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:176
 msgid "Unrecognized mapping type"
 msgstr "Không nhận diện được kiểu ảnh xạ"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:92
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:104
 msgid "Current field isn't a foreign key or FK target table metadata is missing"
 msgstr "Trường hiện tại không phải khoá ngoài hoặc thiếu bảng đích của khoá ngoài"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:202
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:214
 msgid "The selected field isn't a foreign key"
 msgstr "Trường đã chọn không phải khoá ngoài"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:339
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:346
 msgid "Display values"
 msgstr "Các giá trị hiển thị"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:340
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:347
 msgid "Choose to show the original value from the database, or have this field display associated or custom information."
 msgstr "Chọn hiển thị giá trị gốc từ cơ sở dữ liệu hoặc hiển thị trường này liên quan hoặc thông tin tùy chỉnh."
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:290
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:305
 msgid "Choose a field"
 msgstr "Chọn một trường"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:311
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:326
 msgid "Please select a column to use for display."
 msgstr "Vui lòng chọn một cột để hiển thị."
 
@@ -702,16 +702,16 @@ msgstr "Vui lòng chọn một cột để hiển thị."
 msgid "Tip:"
 msgstr "Mẹo:"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:472
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:493
 msgid "You might want to update the field name to make sure it still makes sense based on your remapping choices."
 msgstr "Bạn có thể muốn cập nhật tên trường để đảm bảo nó vẫn có ý nghĩa dựa trên các lựa chọn ánh xạ lại của bạn."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:364
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:90
 msgid "Cached field values"
 msgstr "Giá trị trường lưu trữ"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:357
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:365
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
 msgstr "Metabase có thể quét các giá trị cho trường này để bật các bộ lọc hộp kiểm trong bảng điều khiển và câu hỏi."
 
@@ -867,11 +867,11 @@ msgstr "Điều này sẽ hiển thị trong lịch sử sửa đổi cho phân 
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:76
 #: frontend/src/metabase/admin/routes.jsx:162
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:237
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:106
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:131
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:76
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:247
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
 msgid "Settings"
 msgstr "Cài đặt"
 
@@ -927,7 +927,7 @@ msgstr "Đây là một nhóm đặc biệt mà các thành viên có thể nhì
 msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
 msgstr "Để đảm bảo bạn không bị khóa khỏi Metabase, luôn phải có ít nhất một người dùng trong nhóm này."
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
 msgid "Members"
 msgstr "Các thành viên"
 
@@ -954,8 +954,8 @@ msgstr "Quản trị viên"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:17
 #: frontend/src/metabase/lib/revisions/components.jsx:50
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:203
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:260
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:202
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:259
 #: frontend/src/metabase/query_builder/components/filters/pickers/DefaultPicker.jsx:212
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:312
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:500
@@ -1010,11 +1010,11 @@ msgstr "Không"
 msgid "Edit Name"
 msgstr "Sửa tên"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:96
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:98
 msgid "Remove Group"
 msgstr "Xoá nhóm"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:139
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:141
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:43
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:42
 #: frontend/src/metabase/components/HeaderModal.jsx:44
@@ -1031,13 +1031,13 @@ msgid "Done"
 msgstr "Xong"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:76
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:271
 msgid "Group name"
 msgstr "Tên nhóm"
 
 #: frontend/src/metabase/admin/people/components/GroupSelect.jsx:68
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:362
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:364
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx:35
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:193
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
@@ -1048,11 +1048,11 @@ msgstr "Tên nhóm"
 msgid "Groups"
 msgstr "Các nhóm"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:363
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:365
 msgid "Create a group"
 msgstr "Tạo một nhóm"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:369
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:371
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Bạn có thể sử dụng các nhóm để kiểm soát quyền truy cập của người dùng vào dữ liệu của bạn. Đặt người dùng theo nhóm và sau đó chuyển đến phần Quyền để kiểm soát quyền truy cập của từng nhóm. Các nhóm Quản trị viên và Tất cả Người dùng là các nhóm mặc định đặc biệt không thể xóa được."
 
@@ -1589,7 +1589,7 @@ msgstr "Xoá"
 #: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:130
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:193
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:205
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:208
 msgid "Select…"
 msgstr "Chọn..."
 
@@ -1789,7 +1789,7 @@ msgstr "Cài đặt {0} không xác định"
 msgid "Setup"
 msgstr "Thiết lập"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:186
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
 #: frontend/src/metabase/admin/settings/selectors.js:61
 msgid "General"
 msgstr "Tổng quan"
@@ -2229,7 +2229,7 @@ msgstr "Bỏ lưu trữ {0} này"
 #: frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:45
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:39
-#: frontend/src/metabase/reference/databases/DatabaseList.jsx:45
+#: frontend/src/metabase/reference/databases/DatabaseList.jsx:55
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:38
 msgid "Our data"
 msgstr "Dữ liệu của chúng ta"
@@ -2444,8 +2444,8 @@ msgstr "{0} để đi tới bảng điều khiển nếu bạn chưa làm thế.
 msgid "How would you like to refer to this database?"
 msgstr "Bạn muốn tham khảo cơ sở dữ liệu này như thế nào?"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:152
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:153
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:203
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:148
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:74
@@ -3246,7 +3246,7 @@ msgid "received the latest data from"
 msgstr "Đã nhận dữ liệu mới nhất từ"
 
 #: frontend/src/metabase/home/components/Activity.jsx:257
-#: frontend/src/metabase/lib/query_time.js:211
+#: frontend/src/metabase/lib/query_time.js:212
 #: frontend/src/metabase/lib/revisions/revisions.js:74
 #: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:27
 #: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
@@ -3385,7 +3385,7 @@ msgid "Unarchive"
 msgstr "Bỏ lưu trữ"
 
 #: frontend/src/metabase/home/containers/ActivityApp.jsx:56
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:66
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:62
 msgid "Activity"
 msgstr "Hoạt động"
 
@@ -3675,20 +3675,20 @@ msgstr "Phân biệt"
 msgid "StandardDeviation"
 msgstr "Độ lệch chuẩn"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:96
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:103
 #: frontend/src/metabase/lib/schema_metadata.js:627
 #: frontend/src/metabase/visualizations/lib/utils.js:143
 msgid "Average"
 msgstr "Trung bình"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:97
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/lib/schema_metadata.js:672
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:496
 msgid "Min"
 msgstr "Nhỏ nhất"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:98
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/lib/schema_metadata.js:681
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:504
@@ -3746,7 +3746,7 @@ msgstr "Bạn muốn tìm cái gì?"
 #: frontend/src/metabase/lib/query/description.js:264
 #: frontend/src/metabase/lib/schema_metadata.js:600
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:60
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:212
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:211
 msgid "Raw data"
 msgstr "Dữ liệu gốc"
 
@@ -3863,7 +3863,7 @@ msgstr "Không là"
 #: frontend/src/metabase/lib/schema_metadata.js:470
 #: frontend/src/metabase/lib/schema_metadata.js:476
 #: frontend/src/metabase/lib/schema_metadata.js:495
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:206
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:136
 msgid "Is empty"
 msgstr "Trống"
 
@@ -3904,7 +3904,7 @@ msgstr "Ít hơn"
 #: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/lib/schema_metadata.js:489
 #: frontend/src/metabase/parameters/constants.js:18
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:175
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:176
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:250
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:98
 msgid "Between"
@@ -3949,14 +3949,14 @@ msgid "Ends with"
 msgstr "Kết thúc với"
 
 #: frontend/src/metabase/lib/schema_metadata.js:467
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:189
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:190
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:229
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:76
 msgid "Before"
 msgstr "Trước"
 
 #: frontend/src/metabase/lib/schema_metadata.js:468
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:205
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:206
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:236
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:87
 msgid "After"
@@ -4220,11 +4220,12 @@ msgstr "Ngành, loại, mẫu, đánh giá,..."
 
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.jsx:41
 #: frontend/src/metabase/account/routes.jsx:14
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:53
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:49
 msgid "Account settings"
 msgstr "Cài đặt tài khoản"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:52
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Thoát người quản lý"
 
@@ -4232,18 +4233,18 @@ msgstr "Thoát người quản lý"
 msgid "Logs"
 msgstr "Nhật kí"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:73
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:69
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:82
 msgid "Help"
 msgstr "Trợ giúp"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:84
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:80
 msgid "About Metabase"
 msgstr "Về Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:86
 msgid "Sign out"
 msgstr "Thoát ra"
 
@@ -4251,15 +4252,15 @@ msgstr "Thoát ra"
 msgid "Thanks for using"
 msgstr "Cảm ơn vì đã sử dụng"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:129
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:131
 msgid "You're on version"
 msgstr "Bạn đang ở phiên bản"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:132
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:134
 msgid "Built on"
 msgstr "đã xây dựng trên"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:152
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
 msgid "is a Trademark of"
 msgstr "là nhãn hiệu của"
 
@@ -4267,7 +4268,7 @@ msgstr "là nhãn hiệu của"
 msgid "and is built with care in San Francisco, CA"
 msgstr "và được xây dựng cẩn thận ở San Francisco, CA"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:33
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Quản trị viên Metabase"
 
@@ -4336,15 +4337,15 @@ msgstr "Với nhiều câu hỏi phức tạp hơn, bạn có thể viết SQL h
 msgid "Select a default value…"
 msgstr "Chọn một giá trị mặc định..."
 
-#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:108
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:152
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 msgid "Update filter"
 msgstr "Cập nhật bộ lọc"
 
-#: frontend/src/metabase/lib/query_time.js:143
-#: frontend/src/metabase/lib/query_time.js:154
+#: frontend/src/metabase/lib/query_time.js:144
+#: frontend/src/metabase/lib/query_time.js:155
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:10
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:145
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:33
@@ -4353,7 +4354,7 @@ msgstr "Cập nhật bộ lọc"
 msgid "Today"
 msgstr "Hôm nay"
 
-#: frontend/src/metabase/lib/query_time.js:149
+#: frontend/src/metabase/lib/query_time.js:150
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:15
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:43
@@ -4370,24 +4371,24 @@ msgstr "7 ngày vừa qua"
 msgid "Past 30 days"
 msgstr "30 ngày vừa qua"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1702
-#: frontend/src/metabase/lib/query_time.js:229
+#: frontend/src/metabase-lib/lib/Dimension.ts:1721
+#: frontend/src/metabase/lib/query_time.js:230
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Week"
 msgstr "tuần"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1708
-#: frontend/src/metabase/lib/query_time.js:231
+#: frontend/src/metabase-lib/lib/Dimension.ts:1727
+#: frontend/src/metabase/lib/query_time.js:232
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Month"
 msgstr "tháng"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1720
-#: frontend/src/metabase/lib/query_time.js:235
+#: frontend/src/metabase-lib/lib/Dimension.ts:1739
+#: frontend/src/metabase/lib/query_time.js:236
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4440,6 +4441,7 @@ msgstr "Nhập một giá trị mặc định..."
 
 #: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:49
 #: frontend/src/metabase/containers/Form.jsx:230
+#: frontend/src/metabase/containers/Form.jsx:239
 #: frontend/src/metabase/public/components/PublicError.jsx:13
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:127
 msgid "An error occurred"
@@ -5198,7 +5200,7 @@ msgstr "Trường không xác định"
 msgid "field"
 msgstr "trường"
 
-#: frontend/src/metabase/query_builder/components/Filter.jsx:91
+#: frontend/src/metabase/query_builder/components/Filter.jsx:111
 msgid "Matches"
 msgstr "Những sự kết hợp"
 
@@ -5208,7 +5210,7 @@ msgstr "Những sự kết hợp"
 msgid "Add filters to narrow your answer"
 msgstr "Thêm bộ lọc để thu hẹp câu trả lời của bạn"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:254
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:253
 msgid "Add a grouping"
 msgstr "Thêm một nhóm"
 
@@ -5216,9 +5218,9 @@ msgstr "Thêm một nhóm"
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:60
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:19
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:136
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:285
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:284
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:39
-#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:72
+#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:75
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:116
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:91
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:137
@@ -5234,17 +5236,17 @@ msgstr "Thêm một nhóm"
 msgid "Data"
 msgstr "Dữ liệu"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:312
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:311
 msgid "Filtered by"
 msgstr "Lọc bởi"
 
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.js:11
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:100
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:329
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:328
 msgid "View"
 msgstr "Xem"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:346
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:345
 msgid "Grouped By"
 msgstr "Được nhóm bởi"
 
@@ -5252,7 +5254,7 @@ msgstr "Được nhóm bởi"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx:69
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:53
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:28
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:212
 msgid "None"
 msgstr "Không"
 
@@ -5456,15 +5458,15 @@ msgstr "Có một vấn đề với câu hỏi của bạn"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "Hầu hết thời gian này là do lựa chọn không hợp lệ hoặc giá trị đầu vào xấu. Kiểm tra lại đầu vào của bạn và thử lại truy vấn của bạn."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:60
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "Đây có thể là câu trả lời mà bạn đang tìm kiếm. Nếu không, hãy thử loại bỏ hoặc thay đổi các bộ lọc của bạn để làm cho chúng ít cụ thể hơn."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:74
 msgid "You can also {0} when there are some results."
 msgstr "Bạn cũng có thể {0} khi có một số kết quả."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
 msgid "get an alert"
 msgstr "nhận một thông báo"
 
@@ -5472,7 +5474,7 @@ msgstr "nhận một thông báo"
 msgid "Back to last run"
 msgstr "Quay lại lần chạy trước"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:233
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:227
 msgid "Visualization"
 msgstr "Hình ảnh hóa"
 
@@ -5587,7 +5589,7 @@ msgstr "Hãy nghĩ về điều này giống như viết một công thức tron
 #: frontend/src/metabase/entities/databases/forms.js:149
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorHelpText.tsx:66
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:227
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:230
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:405
 msgid "Learn more"
 msgstr "Tìm hiểu thêm"
@@ -5672,12 +5674,12 @@ msgstr "mục"
 msgid "Previous"
 msgstr "Trước"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:143
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:144
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:217
 msgid "Current"
 msgstr "Hiện tại"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:197
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:198
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:243
 #: frontend/src/metabase/visualizations/lib/settings/column.js:229
 #: frontend/src/metabase/visualizations/lib/settings/series.js:81
@@ -5689,7 +5691,7 @@ msgid "Enter desired number"
 msgstr "Nhập số mong muốn"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:61
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:40
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:42
 msgid "Empty"
 msgstr "Rỗng"
 
@@ -5789,15 +5791,15 @@ msgstr "Bộ lọc trường"
 msgid "Field to map to"
 msgstr "Trường để ánh xạ tới"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:191
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:194
 msgid "Filter widget type"
 msgstr "Loại bộ lọc"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:250
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:253
 msgid "Required?"
 msgstr "Cần thiết?"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:261
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:264
 msgid "Default filter widget value"
 msgstr "Giá trị widget bộ lọc mặc định"
 
@@ -6721,7 +6723,7 @@ msgstr "Gắn bản đồ"
 msgid "Unset"
 msgstr "Không đặt"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:126
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:135
 msgid "Rows {0}-{1} of {2}"
 msgstr "Hàng {0} - {1} trong số {2}"
 
@@ -6737,7 +6739,7 @@ msgstr "Không thể tìm thấy trực quan"
 msgid "Could not display this chart with this data."
 msgstr "Không thể hiển thị biểu đồ này với dữ liệu này"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:59
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "No results!"
 msgstr "Không có kết quả"
@@ -7305,19 +7307,19 @@ msgstr "Thu phóng tối đa"
 msgid "No relationships found."
 msgstr "Không tìm thấy quan hệ"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:86
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:96
 msgid "via {0}"
 msgstr "thông qua {0}"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:236
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:44
 msgid "This {0} is connected to:"
 msgstr " {0} này được liên kết đến:"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:333
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:352
 msgid "Object Detail"
 msgstr "Chi tiết đối tượng"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:336
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:355
 msgid "object"
 msgstr "đối tượng"
 
@@ -7427,46 +7429,46 @@ msgstr "Xoay bảng"
 msgid "Visible fields"
 msgstr "Các trường nhìn thấy được"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:121
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:131
 #, fuzzy
 msgid "Write here, and use Markdown if you'd like"
 msgstr "Viết ở đây và sử dụng Markdown nếu bạn muốn"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:57
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:57
 msgid "Vertical Alignment"
 msgstr "Căn dọc"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:61
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:61
 msgid "Top"
 msgstr "Đầu"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:62
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:62
 msgid "Middle"
 msgstr "Giữa"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:63
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:63
 msgid "Bottom"
 msgstr "Cuối"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:70
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:70
 msgid "Horizontal Alignment"
 msgstr "Căn ngang"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:118
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:74
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:74
 msgid "Left"
 msgstr "Bên trái"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:75
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:75
 msgid "Center"
 msgstr "Giữa"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:119
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:76
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:76
 msgid "Right"
 msgstr "Phải"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:83
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:83
 msgid "Show background"
 msgstr "Hiển thị nền"
 
@@ -7587,7 +7589,6 @@ msgstr "Embedding is not enabled."
 msgid "The object has been archived."
 msgstr "Đối tượng đã được lưu trữ"
 
-#: src/metabase/api/common/internal.clj
 #: target/classes/metabase/api/common/internal.clj
 msgid "Attempted to return a boolean as an API response. This is not allowed!"
 msgstr "Đã cố trả về boolean dưới dạng phản hồi API. Điều này không được phép!"
@@ -7729,7 +7730,7 @@ msgstr "Có rất nhiều câu hỏi được lưu trong {0}? Tạo các bộ s�
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:231
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:102
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/public/components/LogoBadge.jsx:18
 #: frontend/src/metabase/routes-public.jsx:13
 #: frontend/src/metabase/routes.jsx:153 src/metabase/api/setup.clj
@@ -7758,7 +7759,7 @@ msgstr "Giữ tất cả mọi người trên cùng một trang bằng cách t�
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Bảng '' {0} '' hiện có thể nhìn thấy. Tái đồng bộ"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1642 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1661 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Auto bin"
 msgstr "Tự động ngăn"
@@ -7767,104 +7768,104 @@ msgstr "Tự động ngăn"
 msgid "Don''t bin"
 msgstr "Không ngăn"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1696
-#: frontend/src/metabase/lib/query_time.js:227 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1715
+#: frontend/src/metabase/lib/query_time.js:228 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr "ngày"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1684
-#: frontend/src/metabase/lib/query_time.js:223 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1703
+#: frontend/src/metabase/lib/query_time.js:224 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr "Phút"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1690
-#: frontend/src/metabase/lib/query_time.js:225 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1709
+#: frontend/src/metabase/lib/query_time.js:226 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr "giờ"
 
 #. Quý
-#: frontend/src/metabase-lib/lib/Dimension.ts:1714
-#: frontend/src/metabase/lib/query_time.js:233 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1733
+#: frontend/src/metabase/lib/query_time.js:234 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 #, fuzzy
 msgid "Quarter"
 msgstr "Quý"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1726 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1745 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "Phút của giờ"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1732 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1751 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour of Day"
 msgstr "Giờ của ngày"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1738 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1757 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Week"
 msgstr "Ngày của tuần"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1744 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1763 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Month"
 msgstr "Ngày của tháng"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1750 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1769 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Year"
 msgstr "Ngày của năm"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1756 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1775 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Week of Year"
 msgstr "Tuần của năm"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1762 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1781 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Month of Year"
 msgstr "Tháng của năm"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1768 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1787 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter of Year"
 msgstr "Quý của năm"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1650 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1669 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "10 bins"
 msgstr "10 thùng"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1678 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "50 bins"
 msgstr "50 thùng"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1668 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1687 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "100 bins"
 msgstr "100 thùng"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1777 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1796 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 0.1 degrees"
 msgstr "Ngăn mỗi 0.1 độ"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1786 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1805 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 1 degree"
 msgstr "Ngăn mỗi 1 độ"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1795 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1814 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 10 degrees"
 msgstr "Ngăn mỗi 10 độ"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1804 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1823 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 20 degrees"
 msgstr "Ngăn mỗi 20 độ"
@@ -9743,9 +9744,9 @@ msgstr "Chia sẻ"
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:132
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:65
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:71
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:56
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:69
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:56
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:82
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
@@ -9764,7 +9765,7 @@ msgstr "Hiển thị"
 msgid "Axes"
 msgstr "Trục"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:196
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:91
 #: frontend/src/metabase/visualizations/lib/settings/column.js:45
@@ -9830,15 +9831,15 @@ msgstr "Sử dụng múi giờ JVM"
 msgid "We're currently analyzing the tables and fields to help you explore your data."
 msgstr "Chúng tôi hiện đang phân tích các bảng và trường để giúp bạn khám phá dữ liệu của mình. "
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:471
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:492
 msgid "Tip: "
 msgstr "Mẹo"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:231
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:247
 msgid "Select a currency type"
 msgstr "Chọn một loại tiền tệ"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:281
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:288
 msgid "Field Type"
 msgstr "Loại lĩnh vực"
 
@@ -10211,7 +10212,7 @@ msgstr "tuần"
 msgid "month"
 msgstr "tháng"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:113
+#: frontend/src/metabase/lib/query_time.js:652
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "quarter"
@@ -11936,93 +11937,93 @@ msgstr "Tạo bản sao \"{0}\""
 msgid "Duplicate"
 msgstr "Tạo bản sao"
 
-#: frontend/src/metabase/lib/query_time.js:146
+#: frontend/src/metabase/lib/query_time.js:147
 msgid "Tomorrow"
 msgstr "Ngày mai"
 
-#: frontend/src/metabase/lib/query_time.js:160
-#: frontend/src/metabase/lib/query_time.js:174
+#: frontend/src/metabase/lib/query_time.js:161
+#: frontend/src/metabase/lib/query_time.js:175
 msgid "This {0}"
 msgstr "{0} Này"
 
-#: frontend/src/metabase/lib/query_time.js:163
+#: frontend/src/metabase/lib/query_time.js:164
 msgid "Next {0}"
 msgstr "{0} Tiếp theo"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:167
 #: src/metabase/pulse/render/datetime.clj
 #: target/classes/metabase/pulse/render/datetime.clj
 msgid "Previous {0}"
 msgstr "{0} Trước đó"
 
-#: frontend/src/metabase/lib/query_time.js:170
+#: frontend/src/metabase/lib/query_time.js:171
 msgid "Previous {0} {1}"
 msgstr "{0} {1} trước"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:173
 msgid "Next {0} {1}"
 msgstr "{0} {1} tiếp theo"
 
-#: frontend/src/metabase/lib/query_time.js:202
+#: frontend/src/metabase/lib/query_time.js:203
 msgid "Now"
 msgstr "Bây giờ"
 
-#: frontend/src/metabase/lib/query_time.js:205
+#: frontend/src/metabase/lib/query_time.js:206
 msgid "{0} {1} ago"
 msgstr "{0} {1} trước"
 
-#: frontend/src/metabase/lib/query_time.js:206
+#: frontend/src/metabase/lib/query_time.js:207
 msgid "{0} {1} from now"
 msgstr "{0} {1} từ nay"
 
-#: frontend/src/metabase/lib/query_time.js:221
+#: frontend/src/metabase/lib/query_time.js:222
 msgid "Default period"
 msgid_plural "Default periods"
 msgstr[0] "Khoảng mặc định"
 
-#: frontend/src/metabase/lib/query_time.js:237
+#: frontend/src/metabase/lib/query_time.js:238
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
 msgstr[0] "phút mỗi giờ"
 
-#: frontend/src/metabase/lib/query_time.js:239
+#: frontend/src/metabase/lib/query_time.js:240
 msgid "Hour of day"
 msgid_plural "Hours of day"
 msgstr[0] "giờ mỗi ngày"
 
-#: frontend/src/metabase/lib/query_time.js:241
+#: frontend/src/metabase/lib/query_time.js:242
 msgid "Day of week"
 msgid_plural "Days of week"
 msgstr[0] "ngày mỗi tuần"
 
-#: frontend/src/metabase/lib/query_time.js:243
+#: frontend/src/metabase/lib/query_time.js:244
 msgid "Day of month"
 msgid_plural "Days of month"
 msgstr[0] "ngày mỗi tháng"
 
-#: frontend/src/metabase/lib/query_time.js:245
+#: frontend/src/metabase/lib/query_time.js:246
 msgid "Day of year"
 msgid_plural "Days of year"
 msgstr[0] "ngày mỗi năm"
 
-#: frontend/src/metabase/lib/query_time.js:247
+#: frontend/src/metabase/lib/query_time.js:248
 msgid "Week of year"
 msgid_plural "Weeks of year"
 msgstr[0] "tuần mỗi năm"
 
-#: frontend/src/metabase/lib/query_time.js:249
+#: frontend/src/metabase/lib/query_time.js:250
 msgid "Month of year"
 msgid_plural "Months of year"
 msgstr[0] "tháng mỗi năm"
 
-#: frontend/src/metabase/lib/query_time.js:251
+#: frontend/src/metabase/lib/query_time.js:252
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
 msgstr[0] "quý mỗi năm"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:304
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue.jsx:9
-#: frontend/src/metabase/query_builder/components/Filter.jsx:56
+#: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
 msgid_plural "{0} selections"
 msgstr[0] "lựa chọn"
@@ -12730,7 +12731,7 @@ msgstr "Email là bắt buộc"
 msgid "Items you archive will appear here."
 msgstr "Các mục bạn lưu trữ sẽ xuất hiện ở đây."
 
-#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:27
+#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:28
 #: frontend/src/metabase/components/MetadataInfo/TableInfo/TableInfo.tsx:106
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"
@@ -13084,7 +13085,7 @@ msgstr "Hiển thị tối đa"
 msgid "Get Preview"
 msgstr "Xem trước"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:85
 msgid "Back to previous results"
 msgstr "Trở về kết quả trước"
 
@@ -13784,7 +13785,7 @@ msgstr "Lỗi xác định các cột dự kiến cho truy vấn"
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "Ngoại lệ chưa được xử lý, phần mềm trung gian 'bắt ngoại lệ' dự kiến sẽ xử lý nó."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:125
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:129
 msgid "Diagnostic Info"
 msgstr "Thông tin chẩn đoán"
 
@@ -13924,7 +13925,7 @@ msgstr "Đây là nơi kết quả của bạn sẽ xuất hiện"
 msgid "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question."
 msgstr "Bạn sẽ không thực hiện bất kỳ thay đổi vĩnh viễn nào cho câu hỏi đã lưu trừ khi bạn nhấp vào Lưu và chọn thay thế câu hỏi ban đầu."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:218
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:221
 msgid "There aren't any filter widgets for this type of field yet."
 msgstr "Không có bất kỳ widget bộ lọc nào cho loại trường này."
 
@@ -14296,15 +14297,15 @@ msgstr "Đăng trên diễn đàn hỗ trợ Metabase"
 msgid "A community forum for all things Metabase"
 msgstr "Một diễn đàn cộng đồng cho tất cả mọi thứ Metabase"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:117
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:121
 msgid "File a bug report"
 msgstr "Nộp báo cáo lỗi"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:118
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:122
 msgid "Create a GitHub issue (includes the diagnostic info below)"
 msgstr "Tạo sự cố GitHub (bao gồm thông tin chẩn đoán bên dưới)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:126
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:130
 msgid "Please include these details in support requests. Thank you!"
 msgstr "Vui lòng bao gồm các chi tiết này trong các yêu cầu hỗ trợ. Cảm ơn bạn!"
 
@@ -14921,7 +14922,7 @@ msgstr "phải là một địa chỉ email hợp lệ"
 msgid "must be {0} characters or less"
 msgstr "phải có {0} ký tự trở xuống"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:126
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Thanks for using Metabase!"
 msgstr "Cảm ơn đã sử dụng Metabase!"
 
@@ -14950,7 +14951,7 @@ msgstr "Chọn một câu hỏi đã lưu"
 msgid "Pick a different question"
 msgstr "Chọn một câu hỏi khác"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:235
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:228
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:68
 msgid "Loading…"
 msgstr "Đang tải…"
@@ -14979,7 +14980,7 @@ msgstr "Đưa ra một biến loại \"Bộ lọc trường\" cho phép bạn li
 msgid "Variable name"
 msgstr "Tên biến"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:236
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:239
 msgid "Filter widget label"
 msgstr "Lọc nhãn widget"
 
@@ -17666,7 +17667,7 @@ msgstr "Trước tiên, bạn cần phải {0}."
 msgid "First, you'll have to {0}."
 msgstr "Trước tiên, bạn sẽ phải {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:124
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:133
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Hàng {0} - {1} trong số {2} đầu tiên"
 
@@ -18262,7 +18263,7 @@ msgstr "Cài đặt thử nghiệm - điều này chỉ hiển thị trong nhà 
 msgid "Test setting - this only shows up in dev (2)"
 msgstr "Cài đặt thử nghiệm - điều này chỉ hiển thị trong nhà phát triển (2)"
 
-#: test/metabase/models/setting_test.clj
+#: test/metabase/api/setting_test.clj test/metabase/models/setting_test.clj
 msgid "Test setting - this only shows up in dev (3)"
 msgstr "Cài đặt thử nghiệm - điều này chỉ hiển thị trong nhà phát triển (3)"
 
@@ -18562,24 +18563,24 @@ msgstr "Xóa cơ sở dữ liệu {0}?"
 msgid "Restoring the sample dataset..."
 msgstr "Đang khôi phục tập dữ liệu mẫu ..."
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:182
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:200
 msgid "No semantic type"
 msgstr "Không có loại ngữ nghĩa"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:211
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:227
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:77
 msgid "Select a semantic type"
 msgstr "Chọn một loại ngữ nghĩa"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:293
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:300
 msgid "Cast to a specific data type"
 msgstr "Truyền đến một loại dữ liệu cụ thể"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:296
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:303
 msgid "Select a conversion"
 msgstr "Chọn một chuyển đổi"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:311
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:318
 msgid "Don't cast"
 msgstr "Không truyền"
 
@@ -18614,11 +18615,11 @@ msgstr "Các cột để kiểm tra."
 msgid "Checks if a column is empty"
 msgstr "Kiểm tra xem một cột có trống không"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:101
+#: frontend/src/metabase/lib/expressions/resolver.js:104
 msgid "CASE expects 2 arguments or more"
 msgstr "CASE yêu cầu 2 đối số trở lên"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:149
+#: frontend/src/metabase/lib/expressions/resolver.js:152
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "Hàm {0} mong đợi {1} đối số"
@@ -18713,6 +18714,7 @@ msgid "and {0} other"
 msgid_plural "and {0} others"
 msgstr[0] "và {0} khác"
 
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:100
 #: frontend/src/metabase/sharing/components/PulsesListSidebar.jsx:159
 msgid "{0} selections"
 msgstr "{0} lựa chọn"
@@ -19021,15 +19023,15 @@ msgstr "Chỉ thay đổi điều này nếu bạn biết mình đang làm gì!"
 msgid "Replace underscores and dashes with spaces"
 msgstr "Thay thế dấu gạch dưới và dấu gạch ngang bằng dấu cách"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:128
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
 msgid "Advanced Details (click to download)"
 msgstr "Chi tiết nâng cao (bấm để tải xuống)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:131
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:135
 msgid "Connection Pool Details"
 msgstr "Chi tiết nhóm kết nối"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:136
 msgid "Information about active and idle connections for all pools"
 msgstr "Thông tin về các kết nối hoạt động và không hoạt động cho tất cả các nhóm"
 
@@ -19168,7 +19170,7 @@ msgstr "Mong đợi {0} mở ngoặc đơn"
 msgid "Expecting an opening parenthesis after function {0}"
 msgstr "Mong đợi một dấu ngoặc đơn mở sau hàm {0}"
 
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:513
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:519
 msgid "Explore results"
 msgstr "Khám phá kết quả"
 
@@ -19955,7 +19957,7 @@ msgstr "Tìm kiếm một bộ sưu tập"
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:74
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:210
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/group-sidebar.ts:44
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:331
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
 msgid "Search for a group"
 msgstr "Tìm kiếm một nhóm"
 
@@ -19974,7 +19976,7 @@ msgstr "Chỉnh sửa chi tiết trang tổng quan"
 msgid "More options"
 msgstr "Lựa chọn khác"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:89
+#: frontend/src/metabase/lib/expressions/resolver.js:92
 msgid "Expecting field but found {0}"
 msgstr "Đang mong đợi trường nhưng đã tìm thấy {0}"
 
@@ -20203,20 +20205,20 @@ msgid "Search for a table"
 msgstr "Tìm kiếm một bảng"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:155
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
 msgid "Data access"
 msgstr "Truy cập dữ liệu"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:156
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:274
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
 msgid "Native query editing"
 msgstr "Chỉnh sửa truy vấn gốc"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:322
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:321
 msgid "The Administrators group is special, and always has Unrestricted access."
 msgstr "Nhóm quản trị viên là đặc biệt và luôn có quyền truy cập Không hạn chế."
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:329
 msgid "Permissions for"
 msgstr "Quyền cho"
 
@@ -20232,11 +20234,11 @@ msgstr "Tên lược đồ"
 msgid "Search for a schema"
 msgstr "Tìm kiếm một lược đồ"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:230
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:229
 msgid "Permissions for the "
 msgstr "Quyền cho "
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:237
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:236
 msgid "{0} person"
 msgid_plural "{0} people"
 msgstr[0] "{0} người"
@@ -20336,19 +20338,19 @@ msgstr "Không tìm thấy tài nguyên Javascript: {0}"
 msgid "Found new version for DB: {0}"
 msgstr "Đã tìm thấy phiên bản mới cho DB: {0}"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:60
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:56
 msgid "Admin settings"
 msgstr "Cài đặt quản trị viên"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:156
 msgid "and is built with care by a team from all across this pale blue dot."
 msgstr "và được xây dựng một cách cẩn thận bởi một nhóm từ khắp nơi trên chấm xanh nhạt này."
 
-#: frontend/src/metabase/query_builder/actions.js:1666
+#: frontend/src/metabase/query_builder/actions.js:1675
 msgid "This is a model now."
 msgstr "Đây là một mô hình bây giờ."
 
-#: frontend/src/metabase/query_builder/actions.js:1679
+#: frontend/src/metabase/query_builder/actions.js:1688
 msgid "This is a question now."
 msgstr "Đây là một câu hỏi bây giờ."
 
@@ -20511,12 +20513,12 @@ msgstr "Giấy phép"
 msgid "New…"
 msgstr "Mới…"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:85
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:83
 msgid "{0} distinct value"
 msgid_plural "{0} distinct values"
 msgstr[0] "{0} giá trị khác biệt"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:94
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:92
 msgid "Getting distinct values..."
 msgstr "Nhận các giá trị khác biệt ..."
 
@@ -20591,15 +20593,15 @@ msgstr "Phân đoạn không xác định: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Trường không xác định: {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:130
+#: frontend/src/metabase/lib/expressions/resolver.js:133
 msgid "Unknown function {0}"
 msgstr "Chức năng không xác định {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:135
+#: frontend/src/metabase/lib/expressions/resolver.js:138
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "Đang mong đợi {0} nhưng tìm thấy hàm {1} trả về {2}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:173
+#: frontend/src/metabase/lib/expressions/resolver.js:176
 msgid "Expecting {0} but found {1}"
 msgstr "Đang mong đợi {0} nhưng đã tìm thấy {1}"
 
@@ -20829,15 +20831,15 @@ msgstr "Khôi phục cơ sở dữ liệu mẫu ..."
 msgid "Bring the sample database back"
 msgstr "Mang cơ sở dữ liệu mẫu trở lại"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:51
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:58
 msgid "Timezone"
 msgstr "Múi giờ"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:55
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:62
 msgid "Earliest date"
 msgstr "Cuộc hẹn sớm nhất"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:59
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:66
 msgid "Latest date"
 msgstr "Ngày cuối"
 
@@ -20881,11 +20883,11 @@ msgstr "Loại cột"
 msgid "This column should appear in…"
 msgstr "Cột này sẽ xuất hiện trong…"
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:29
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:31
 msgid "Run selection"
 msgstr "Chạy lựa chọn"
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:33
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:36
 msgid "Save as snippet"
 msgstr "Lưu dưới dạng đoạn mã"
 
@@ -20902,7 +20904,7 @@ msgid "Edit model"
 msgstr "Chỉnh sửa mô hình"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:161
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:193
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:196
 msgid "(required)"
 msgstr "(yêu cầu)"
 
@@ -22158,15 +22160,15 @@ msgstr "Xem tài liệu của chúng tôi để biết hướng dẫn từng bư
 msgid "You've updated your password."
 msgstr "Bạn đã cập nhật mật khẩu của mình."
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:32
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
 msgid "A question"
 msgstr "Một câu hỏi"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:33
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:35
 msgid "A dashboard"
 msgstr "Một bảng điều khiển"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:36
 msgid "A model"
 msgstr "Một mô hình"
 
@@ -22174,15 +22176,15 @@ msgstr "Một mô hình"
 msgid "Save your questions, dashboards, and models in collections — and pin them to feature them at the top."
 msgstr "Lưu câu hỏi, trang tổng quan và mô hình của bạn trong bộ sưu tập - và ghim chúng để làm nổi bật chúng ở trên cùng."
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:117
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:129
 msgid "Useful data"
 msgstr "Dữ liệu hữu ích"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:120
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:132
 msgid "Start new explorations here"
 msgstr "Bắt đầu khám phá mới tại đây"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:121
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:133
 msgid "Start new explorations about {0} here"
 msgstr "Bắt đầu khám phá mới về {0} tại đây"
 
@@ -22267,16 +22269,16 @@ msgstr "Quản lý cơ sở dữ liệu"
 msgid "Unbinned"
 msgstr "Đã hủy bỏ thùng rác"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1547
+#: frontend/src/metabase-lib/lib/Dimension.ts:1566
 msgid "Invalid template tag \"{0}\""
 msgstr "Thẻ mẫu không hợp lệ \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1552
+#: frontend/src/metabase-lib/lib/Dimension.ts:1571
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Biến \"{0}\" cần được ánh xạ tới một trường."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1677
-#: frontend/src/metabase-lib/lib/Dimension.ts:1813
+#: frontend/src/metabase-lib/lib/Dimension.ts:1696
+#: frontend/src/metabase-lib/lib/Dimension.ts:1832
 msgid "Don't bin"
 msgstr "Đừng thùng rác"
 
@@ -22519,14 +22521,14 @@ msgstr "Xóa dấu trang"
 msgid "Bookmarks"
 msgstr "Dấu trang"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:120
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:121
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 msgid "Past"
 msgstr "Quá khứ"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:213
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:133
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:156
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:131
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:86
 msgid "Exclude..."
 msgstr "Loại trừ..."
 
@@ -22696,32 +22698,32 @@ msgstr "Ngày cụ thể ..."
 msgid "Relative dates..."
 msgstr "Ngày tương đối ..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:56
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:57
 msgid "Days of the week..."
 msgstr "Các ngày trong tuần ..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:80
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:64
 msgid "Months of the year..."
 msgstr "Các tháng trong năm ..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:104
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:71
 msgid "Quarters of the year..."
 msgstr "Các tháng trong năm ..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:129
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:78
 msgid "Hours of the day..."
 msgstr "Giờ trong ngày ..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:471
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:215
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:145
 msgid "Is not empty"
 msgstr "Không có sản phẩm nào"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select none..."
 msgstr "Không chọn ..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select all..."
 msgstr "Chọn tất cả..."
 
@@ -22736,11 +22738,11 @@ msgstr "Hiện tại, đây là {0}"
 msgid "Right now, this is {0} - {1}"
 msgstr "Hiện tại, đây là {0} - {1}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:190
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:187
 msgid "Starting from..."
 msgstr "Bắt đầu từ..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:252
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:248
 msgid "Starting from"
 msgstr "Bắt đầu từ"
 
@@ -22752,15 +22754,15 @@ msgstr "0 / {0} đã được tải"
 msgid "Your dashboard is ready"
 msgstr "Trang tổng quan của bạn đã sẵn sàng"
 
-#: frontend/src/metabase/query_builder/actions.js:1372
+#: frontend/src/metabase/query_builder/actions.js:1379
 msgid "Doing Science..."
 msgstr "Làm Khoa học ..."
 
-#: frontend/src/metabase/query_builder/actions.js:1374
+#: frontend/src/metabase/query_builder/actions.js:1381
 msgid "Still Here..."
 msgstr "Vẫn ở đây..."
 
-#: frontend/src/metabase/query_builder/actions.js:1431
+#: frontend/src/metabase/query_builder/actions.js:1438
 msgid "Your question is ready!"
 msgstr "Câu hỏi của bạn đã sẵn sàng!"
 
@@ -22768,11 +22770,11 @@ msgstr "Câu hỏi của bạn đã sẵn sàng!"
 msgid "You can customize filter values for each subscription with paid plans."
 msgstr "Bạn có thể tùy chỉnh các giá trị bộ lọc cho từng đăng ký với các gói trả phí."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:112
 msgid "Get Help"
 msgstr "Được giúp đỡ"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:113
 msgid "Resources and support"
 msgstr "Nguồn lực và hỗ trợ"
 
@@ -22846,41 +22848,41 @@ msgstr "Mốc thời gian"
 msgid "Excludes"
 msgstr "Không bao gồm"
 
-#: frontend/src/metabase/lib/query_time.js:130
+#: frontend/src/metabase/lib/query_time.js:131
 msgid "{0}, starting {1} {2}"
 msgstr "{0}, bắt đầu từ {1} {2}"
 
-#: frontend/src/metabase/lib/query_time.js:362
+#: frontend/src/metabase/lib/query_time.js:363
 msgid "minute {0}"
 msgid_plural "minutes {0}"
 msgstr[0] "phút {0}"
 
-#: frontend/src/metabase/lib/query_time.js:364
+#: frontend/src/metabase/lib/query_time.js:365
 msgid "hour {0}"
 msgid_plural "hours {0}"
 msgstr[0] "giờ {0}"
 
-#: frontend/src/metabase/lib/query_time.js:366
+#: frontend/src/metabase/lib/query_time.js:367
 msgid "day {0}"
 msgid_plural "days {0}"
 msgstr[0] "ngày {0}"
 
-#: frontend/src/metabase/lib/query_time.js:368
+#: frontend/src/metabase/lib/query_time.js:369
 msgid "week {0}"
 msgid_plural "weeks {0}"
 msgstr[0] "tuần {0}"
 
-#: frontend/src/metabase/lib/query_time.js:370
+#: frontend/src/metabase/lib/query_time.js:371
 msgid "month {0}"
 msgid_plural "months {0}"
 msgstr[0] "tháng {0}"
 
-#: frontend/src/metabase/lib/query_time.js:372
+#: frontend/src/metabase/lib/query_time.js:373
 msgid "quarter {0}"
 msgid_plural "quarters {0}"
 msgstr[0] "quý {0}"
 
-#: frontend/src/metabase/lib/query_time.js:374
+#: frontend/src/metabase/lib/query_time.js:375
 msgid "year {0}"
 msgid_plural "years {0}"
 msgstr[0] "năm {0}"
@@ -22917,11 +22919,11 @@ msgstr "{0} đã được tải."
 msgid "Would you like to be notified when this question is done loading?"
 msgstr "Bạn có muốn được thông báo khi câu hỏi này được tải xong không?"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:281
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:275
 msgid "Switch to data"
 msgstr "Chuyển sang dữ liệu"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:286
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:280
 msgid "Switch to visualization"
 msgstr "Chuyển sang hình ảnh hóa"
 
@@ -23091,4 +23093,32 @@ msgstr "Bạn sẽ không thể quản lý người dùng của nhóm này nữa
 #: enterprise/backend/src/metabase_enterprise/advanced_permissions/models/permissions/group_manager.clj
 msgid "Not allowed to edit group memberships"
 msgstr "Không được phép chỉnh sửa tư cách thành viên nhóm"
+
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:215
+msgid "Exclude"
+msgstr "Loại trừ"
+
+#: frontend/src/metabase/account/login-history/components/LoginHistory/LoginHistory.jsx:68
+msgid "No logins"
+msgstr "Không có thông tin đăng nhập"
+
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:335
+msgid "You need unrestricted data access on this table to map custom display values."
+msgstr "Bạn cần quyền truy cập dữ liệu không hạn chế trên bảng này để ánh xạ các giá trị hiển thị tùy chỉnh."
+
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1062
+msgid "View Details"
+msgstr "Xem chi tiết"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:122
+msgid "Field access denied"
+msgstr "Quyền truy cập trường bị từ chối"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
+msgid "No key available"
+msgstr "Không có chìa khóa"
+
+#: src/metabase/cmd/rotate_encryption_key.clj
+msgid "Connected to"
+msgstr "Kết nối với"
 
