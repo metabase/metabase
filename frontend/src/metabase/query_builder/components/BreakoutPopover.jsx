@@ -20,12 +20,15 @@ const BreakoutPopover = ({
   if (!table) {
     return null;
   }
+
+  const fieldOptions = breakoutOptions || query.breakoutOptions(breakout);
+
   return (
     <FieldList
       className={cx(className, "text-green")}
       width={width}
       field={breakout}
-      fieldOptions={breakoutOptions || query.breakoutOptions(breakout)}
+      fieldOptions={fieldOptions}
       onFieldChange={field => {
         onChangeBreakout(field);
         if (onClose) {

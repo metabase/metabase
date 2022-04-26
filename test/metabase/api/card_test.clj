@@ -1980,7 +1980,10 @@
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
-                            :native   (mt/compile q)})]
+                            :native   (mt/compile q)})
+          update-card!  (fn [card]
+                          (mt/user-http-request :rasta :put 202
+                                                (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
@@ -1994,19 +1997,16 @@
                                                   :dataset true))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           (assoc card :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
-                                                             metadata)))
+                     (->> (update-card!
+                           (assoc card
+                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))
                           :result_metadata (map :display_name))))
               ;; simulate a user changing the query without rerunning the query
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           (assoc card
-                                  :dataset_query modified-query
-                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
-                                                        metadata)))
+                     (->> (update-card! (assoc card
+                                               :dataset_query modified-query
+                                               :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                                     metadata)))
                           :result_metadata
                           (map (comp str/upper-case :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
@@ -2014,7 +2014,17 @@
                           (db/select-one-field :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           {:dataset_query query})
-                          :result_metadata (map :display_name))))))))))))
+                     (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
+              (testing "Descriptions can be cleared (#20517)"
+                (is (= ["foo" "foo"]
+                       (->> (update-card! (update card
+                                                  :result_metadata (fn [m]
+                                                                     (map #(assoc % :description "foo") m))))
+                            :result_metadata
+                            (map :description))))
+                (is (= ["" ""]
+                       (->> (update-card! (update card
+                                                  :result_metadata (fn [m]
+                                                                     (map #(assoc % :description "") m))))
+                            :result_metadata
+                            (map :description))))))))))))

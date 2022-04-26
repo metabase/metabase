@@ -12,18 +12,20 @@ const xlsx = require("xlsx");
  * @param {function} callback
  */
 export function downloadAndAssert(
-  { fileType, questionId, raw, logResults } = {},
+  { fileType, questionId, raw, logResults, publicUid } = {},
   callback,
 ) {
   const downloadClassName = `.Icon-${fileType}`;
-  const endpoint = getEndpoint(fileType, questionId);
+  const endpoint = getEndpoint(fileType, questionId, publicUid);
+  const isPublicDownload = !!publicUid;
+  const method = isPublicDownload ? "GET" : "POST";
 
   /**
    * Please see the official Cypress example for more details:
    * https://github.com/cypress-io/cypress-example-recipes/blob/master/examples/testing-dom__download/cypress/integration/form-submission-spec.js
    */
 
-  cy.intercept("POST", endpoint, req => {
+  cy.intercept(method, endpoint, req => {
     /**
      * We must redirect in order to avoid Cypress being stuck on waiting for the new page to load.
      * Intetionally redirecting to a non-existing page.
@@ -69,7 +71,18 @@ export function downloadAndAssert(
     });
 }
 
-function getEndpoint(fileType, questionId) {
+export function assertSheetRowsCount(expectedCount) {
+  return sheet => {
+    const range = xlsx.utils.decode_range(sheet["!ref"]);
+    expect(range.e.r).to.eq(expectedCount);
+  };
+}
+
+function getEndpoint(fileType, questionId, publicUid) {
+  if (publicUid) {
+    return `/public/question/${publicUid}.${fileType}**`;
+  }
+
   const questionEndpoint = `/api/card/${questionId}/query/${fileType}`;
   const queryEndpoint = `/api/dataset/${fileType}`;
 

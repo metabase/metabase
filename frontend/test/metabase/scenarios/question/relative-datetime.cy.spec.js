@@ -1,6 +1,11 @@
 import moment from "moment";
 import _ from "underscore";
-import { restore, popover, openOrdersTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  sidebar,
+  popover,
+  openOrdersTable,
+} from "__support__/e2e/cypress";
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -15,14 +20,31 @@ const STARTING_FROM_UNITS = [
 describe("scenarios > question > relative-datetime", () => {
   const now = moment().utc();
 
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  describe("sidebar", () => {
+    it("should go to field selection with one click", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Filter").click();
+      sidebar().within(() => {
+        cy.contains("Created At")
+          .first()
+          .click();
+        cy.contains("Specific dates...").should("exist");
+        cy.icon("chevronleft").click();
+        cy.contains("Created At").should("exist");
+        cy.contains("Specific dates...").should("not.exist");
+      });
+    });
+  });
+
   describe("starting from", () => {
     const date = values =>
       values.reduce((val, [num, unit]) => val.add(num, unit), now.clone());
-
-    beforeEach(() => {
-      restore();
-      cy.signInAsNormalUser();
-    });
 
     STARTING_FROM_UNITS.forEach(unit =>
       it(`should work with Past filters (${unit} ago)`, () => {
@@ -80,6 +102,61 @@ describe("scenarios > question > relative-datetime", () => {
         .type(2)
         .blur();
       cy.button("Add filter").should("be.enabled");
+    });
+  });
+
+  describe("basic functionality", () => {
+    it("should go back to shortcuts view", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Created At").click();
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Specific dates...").click();
+        cy.icon("chevronleft")
+          .first()
+          .click();
+        cy.findByText("Specific dates...").should("exist");
+        cy.icon("chevronleft").click();
+        cy.findByText("Specific dates...").should("not.exist");
+        cy.findByText("Created At").click();
+        cy.findByText("Specific dates...").should("exist");
+        cy.findByText("Between").should("not.exist");
+      });
+    });
+
+    it("current filters should work (metabase#21977)", () => {
+      openOrdersTable();
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByTextEnsureVisible("Created At").click();
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Relative dates...").click();
+        cy.findByText("Current").click();
+        cy.findByText("Year").click();
+      });
+      cy.wait("@dataset");
+
+      cy.findByText("There was a problem with your question").should(
+        "not.exist",
+      );
+      cy.findByText("No results!").should("exist");
+    });
+
+    it("Relative dates should default to past filter (metabase#22027)", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Created At").click();
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Relative dates...").click();
+        cy.findByText("Day").should("not.exist");
+        cy.findByText("Quarter").should("not.exist");
+        cy.findByText("Month").should("not.exist");
+        cy.findByText("Year").should("not.exist");
+        cy.findByText("days").should("exist");
+      });
     });
   });
 });

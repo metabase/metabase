@@ -9,7 +9,7 @@ import { PermissionsSelectOption } from "./PermissionsSelectOption";
 export const PermissionsSelectRoot = styled.div`
   display: flex;
   align-items: center;
-  width: 180px;
+  min-width: 180px;
   cursor: ${props => (props.isDisabled ? "default" : "pointer")};
 `;
 

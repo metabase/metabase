@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
@@ -138,12 +139,20 @@
   (into
    #{}
    (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                  (merge
-                   (u/select-non-nil-keys col [:name :database-type :field-comment])
-                   {:base-type         (database-type->base-type-or-warn driver database-type)
-                    :database-position i}
-                   (when-let [semantic-type (calculated-semantic-type driver column-name database-type)]
-                     {:semantic-type semantic-type}))))
+                  (let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                    (merge
+                      (u/select-non-nil-keys col [:name :database-type :field-comment])
+                      {:base-type         (database-type->base-type-or-warn driver database-type)
+                       :database-position i}
+                      (when semantic-type
+                        {:semantic-type semantic-type})
+                      (when (and
+                              (isa? semantic-type :type/SerializedJSON)
+                              (driver/database-supports?
+                                driver
+                                :nested-field-columns
+                                (table/database table)))
+                        {:visibility-type :details-only})))))
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
@@ -221,7 +230,9 @@
       member-type)))
 
 (defn- row->types [row]
-  (into {} (for [[field-name field-val] row]
+  (into {} (for [[field-name field-val] row
+                 ;; We put top-level array row type semantics on JSON roadmap but skip for now
+                 :when (map? field-val)]
              (let [flat-row (flattened-row field-name field-val)]
                (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 

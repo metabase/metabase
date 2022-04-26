@@ -80,7 +80,7 @@ export function CurrentPicker(props: CurrentPickerProps) {
     className,
     primaryColor,
     onCommit,
-    filter: [operator, field, intervals, unit],
+    filter: [operator, field, _intervals, unit],
   } = props;
   return (
     <div className={className}>
@@ -99,7 +99,7 @@ export function CurrentPicker(props: CurrentPickerProps) {
                 primaryColor={primaryColor}
                 selected={operator && unit === period.toLowerCase()}
                 onClick={() => {
-                  onCommit([operator, field, intervals, period]);
+                  onCommit([operator, field, "current", period]);
                 }}
               >
                 {formatBucketing(period, 1)}
@@ -237,6 +237,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
           visible={optionsVisible}
           placement={"bottom-start"}
           content={optionsContent}
+          onClose={() => setOptionsVisible(false)}
         >
           <MoreButton
             icon="ellipsis"

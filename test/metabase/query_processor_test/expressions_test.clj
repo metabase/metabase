@@ -248,9 +248,9 @@
 
 (defn- robust-dates
   [strs]
-  ;; TIMEZONE FIXME — SQLite shouldn't return strings. And for whatever weird reason it's truncating to date as well?
+  ;; TIMEZONE FIXME — SQLite shouldn't return strings.
   (let [format-fn (if (= driver/*driver* :sqlite)
-                    #(u.date/format-sql (t/local-date-time (t/local-date %) (t/local-time 0)))
+                    #(u.date/format-sql (t/local-date-time %))
                     u.date/format)]
     (for [s strs]
       [(format-fn (u.date/parse s "UTC"))])))

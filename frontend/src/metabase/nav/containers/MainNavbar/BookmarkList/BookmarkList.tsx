@@ -8,7 +8,6 @@ import "./sortable.css";
 import {
   SortableContainer,
   SortableElement,
-  SortableHandle,
 } from "metabase/components/sortable";
 import CollapseSection from "metabase/components/CollapseSection";
 import Icon from "metabase/components/Icon";
@@ -116,20 +115,19 @@ const BookmarkList = ({
     localStorage.setItem("shouldDisplayBookmarks", String(isVisible));
   }, []);
 
-  const handleSortStart = () => {
+  const handleSortStart = useCallback(() => {
+    document.body.classList.add("grabbing");
     setIsSorting(true);
-  };
+  }, []);
 
-  const handleSortEnd = ({
-    newIndex,
-    oldIndex,
-  }: {
-    newIndex: number;
-    oldIndex: number;
-  }) => {
-    setIsSorting(false);
-    reorderBookmarks({ newIndex, oldIndex });
-  };
+  const handleSortEnd = useCallback(
+    ({ newIndex, oldIndex }) => {
+      document.body.classList.remove("grabbing");
+      setIsSorting(false);
+      reorderBookmarks({ newIndex, oldIndex });
+    },
+    [reorderBookmarks],
+  );
 
   return (
     <CollapseSection
@@ -140,7 +138,7 @@ const BookmarkList = ({
       headerClass="mb1"
       onToggle={onToggleBookmarks}
     >
-      <SortableListOfBookmarks
+      <SortableBookmarkList
         distance={9}
         onSortStart={handleSortStart}
         onSortEnd={handleSortEnd}
@@ -158,14 +156,15 @@ const BookmarkList = ({
             onDeleteBookmark={onDeleteBookmark}
           />
         ))}
-      </SortableListOfBookmarks>
+      </SortableBookmarkList>
     </CollapseSection>
   );
 };
 
 const List = ({ children }: { children: JSX.Element[] }) => <ul>{children}</ul>;
 const Item = ({ children }: { children: JSX.Element }) => <>{children}</>;
+
 const SortableBookmarkItem = SortableElement(Item);
-const SortableListOfBookmarks = SortableContainer(List);
+const SortableBookmarkList = SortableContainer(List);
 
 export default connect(null, mapDispatchToProps)(BookmarkList);

@@ -8,10 +8,12 @@ export function selectDashboardFilter(selection, filterName) {
     .click({ force: true });
 }
 
+export function getDashboardCard(index = 0) {
+  return cy.get(".DashCard").eq(index);
+}
+
 export function showDashboardCardActions(index = 0) {
-  cy.get(".DashCard")
-    .eq(index)
-    .realHover();
+  getDashboardCard(index).realHover();
 }
 
 export function editDashboard() {
