@@ -1,12 +1,13 @@
 import { updateParametersWidgetStickiness } from "./stickyParameters";
 
+const offsetTop = 100;
+
 function mockMainElementScroll(scrollTop) {
   const fakeMainElement = { scrollTop };
   document.getElementsByTagName = () => [fakeMainElement];
 }
 
 it("initializes parametersWidgetOffsetTop", () => {
-  const offsetTop = 100;
   const setState = jest.fn();
 
   mockMainElementScroll(0);
@@ -26,7 +27,6 @@ it("initializes parametersWidgetOffsetTop", () => {
 });
 
 it("makes filters sticky with enough scrolling down", () => {
-  const offsetTop = 100;
   const setState = jest.fn();
 
   mockMainElementScroll(offsetTop + 1);
@@ -46,7 +46,6 @@ it("makes filters sticky with enough scrolling down", () => {
 });
 
 it("makes filters unsticky with enough scrolling up", () => {
-  const offsetTop = 100;
   const setState = jest.fn();
 
   mockMainElementScroll(offsetTop - 1);
@@ -66,7 +65,6 @@ it("makes filters unsticky with enough scrolling up", () => {
 });
 
 it("keeps filters sticky with enough scrolling down and already sticky", () => {
-  const offsetTop = 100;
   const setState = jest.fn();
 
   mockMainElementScroll(offsetTop + 1);
@@ -74,7 +72,10 @@ it("keeps filters sticky with enough scrolling down and already sticky", () => {
   const dashboard = {
     parametersWidgetRef: { offsetTop },
     parametersAndCardsContainerRef: { style: {} },
-    state: { isParametersWidgetSticky: true, parametersWidgetOffsetTop: 100 },
+    state: {
+      isParametersWidgetSticky: true,
+      parametersWidgetOffsetTop: offsetTop,
+    },
     setState,
   };
 
@@ -84,7 +85,6 @@ it("keeps filters sticky with enough scrolling down and already sticky", () => {
 });
 
 it("keeps filters not sticky with enough scrolling up and already not sticky", () => {
-  const offsetTop = 100;
   const setState = jest.fn();
 
   mockMainElementScroll(offsetTop - 1);
@@ -92,7 +92,10 @@ it("keeps filters not sticky with enough scrolling up and already not sticky", (
   const dashboard = {
     parametersWidgetRef: { offsetTop },
     parametersAndCardsContainerRef: { style: {} },
-    state: { isParametersWidgetSticky: false, parametersWidgetOffsetTop: 100 },
+    state: {
+      isParametersWidgetSticky: false,
+      parametersWidgetOffsetTop: offsetTop,
+    },
     setState,
   };
 
