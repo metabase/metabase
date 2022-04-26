@@ -48,14 +48,6 @@ const MetadataSchema = ({ table }: MetadataSchemaProps) => {
 
   return (
     <div className="mt3 full">
-      <div className="flex flex-column px1">
-        <div
-          data-testid="table-name-input"
-          className="TableEditor-table-name text-bold"
-        >
-          {table.name}
-        </div>
-      </div>
       <table className="mt2 full">
         <thead className="text-uppercase text-medium py1">
           <tr>

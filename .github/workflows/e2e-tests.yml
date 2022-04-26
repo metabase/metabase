@@ -61,8 +61,8 @@ jobs:
         folder:
           - "binning"
           - "dashboard-filters"
-          - "dashboard-filters-sql"
           - "downloads"
+          - "joins"
           - "moderation"
     services:
       maildev:

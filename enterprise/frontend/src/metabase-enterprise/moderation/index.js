@@ -12,6 +12,7 @@ import {
 
 if (hasPremiumFeature("content_management")) {
   Object.assign(PLUGIN_MODERATION, {
+    isEnabled: () => true,
     QuestionModerationSection,
     ModerationStatusIcon,
     getStatusIconForQuestion,

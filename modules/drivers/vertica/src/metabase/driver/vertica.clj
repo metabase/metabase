@@ -123,7 +123,11 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+  (let [acceptable-types (case unit
+                           (:millisecond :second :minute :hour) #{"time" "timetz" "timestamp" "timestamptz"}
+                           (:day :week :month :quarter :year)   #{"date" "timestamp" "timestamptz"})
+        hsql-form        (hx/cast-unless-type-in "timestamp" acceptable-types hsql-form)]
+    (hx/+ hsql-form (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit))))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.

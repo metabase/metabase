@@ -8,6 +8,7 @@ import { createMemoizedSelector } from "metabase/lib/redux";
 import entityType from "./EntityType";
 import paginationState from "metabase/hoc/PaginationState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { capitalize } from "metabase/lib/formatting";
 
 const propTypes = {
   entityType: PropTypes.string,
@@ -244,6 +245,7 @@ class EntityListLoader extends React.Component {
       // alias the entities name:
       [listName]: list,
       reload: this.reload,
+      [`reload${capitalize(listName)}`]: this.reload,
     });
   };
 

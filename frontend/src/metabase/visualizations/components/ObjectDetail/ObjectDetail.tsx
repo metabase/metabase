@@ -110,6 +110,7 @@ export function ObjectDetailFn({
   closeObjectDetail,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
+  const prevZoomedRowId = usePrevious(zoomedRowID);
   const prevData = usePrevious(data);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
 
@@ -133,6 +134,17 @@ export function ObjectDetailFn({
       window.removeEventListener("keydown", onKeyDown, true);
     };
   });
+
+  useEffect(() => {
+    if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
+      loadObjectDetailFKReferences();
+    }
+  }, [
+    tableForeignKeys,
+    prevZoomedRowId,
+    zoomedRowID,
+    loadObjectDetailFKReferences,
+  ]);
 
   useEffect(() => {
     const queryCompleted = !prevData && data;

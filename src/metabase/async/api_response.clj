@@ -188,7 +188,29 @@
   ManyToManyChannel
   (write-body-to-stream [chan _ ^OutputStream output-stream]
     (log/debug (u/format-color 'green (trs "starting streaming response")))
-    (write-chan-vals-to-writer! (async-keepalive-channel chan) (io/writer output-stream))))
+    (write-chan-vals-to-writer! (async-keepalive-channel chan) (io/writer output-stream)))
+
+  ;; java.lang.Double, java.lang.Long, and java.lang.Boolean will be given a Content-Type of "application/json; charset=utf-8"
+  ;; so they should be strings, and will be parsed into their respective values.
+  java.lang.Double
+  (write-body-to-stream [num response output-stream]
+    (ring.protocols/write-body-to-stream (str num) response output-stream))
+
+  java.lang.Long
+  (write-body-to-stream [num response output-stream]
+    (ring.protocols/write-body-to-stream (str num) response output-stream))
+
+  java.lang.Boolean
+  (write-body-to-stream [bool response output-stream]
+    (ring.protocols/write-body-to-stream (str bool) response output-stream))
+
+  clojure.lang.Keyword
+  (write-body-to-stream [kkey response output-stream]
+    (ring.protocols/write-body-to-stream
+     (if-let  [key-ns (namespace kkey)]
+       (str key-ns "/" (name kkey))
+       (name kkey))
+     response output-stream)))
 
 ;; `defendpoint-async` responses
 (extend-protocol Sendable
