@@ -120,7 +120,7 @@
   ([]
    (classloader/require 'metabase.cmd.driver-methods)
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) false))
-  ([docs]
+  ([_docs]
    (classloader/require 'metabase.cmd.driver-methods)
    ((resolve 'metabase.cmd.driver-methods/print-available-multimethods) true)))
 

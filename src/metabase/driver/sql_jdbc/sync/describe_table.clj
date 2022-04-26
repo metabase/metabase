@@ -250,8 +250,8 @@
   ([acc-field-type-map] acc-field-type-map)
   ([acc-field-type-map second-field-type-map]
    (into {}
-         (for [json-column (set/union (keys second-field-type-map)
-                                      (keys acc-field-type-map))]
+         (for [json-column (set/union (set (keys second-field-type-map))
+                                      (set (keys acc-field-type-map)))]
            (cond
              (or (nil? acc-field-type-map)
                  (nil? (acc-field-type-map json-column))
@@ -330,7 +330,7 @@
   "Default implementation of `describe-nested-field-columns` for SQL JDBC drivers. Goes and queries the table if there are JSON columns for the nested contents."
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
-    (let [map-inner        (fn [f xs] (map #(into {}
+    (let [_map-inner       (fn [f xs] (map #(into {}
                                                   (for [[k v] %]
                                                     [k (f v)])) xs))
           table-fields     (describe-table-fields driver conn table)
