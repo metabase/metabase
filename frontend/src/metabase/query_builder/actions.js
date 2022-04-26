@@ -858,10 +858,12 @@ export const updateCardVisualizationSettings = settings => async (
     return;
   }
 
+  // The check allows users without data permission to resize/rearrange columns
+  const hasWritePermissions = question.query().isEditable();
   await dispatch(
     updateQuestion(question.updateSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
+      run: hasWritePermissions ? "auto" : false,
+      shouldUpdateUrl: hasWritePermissions,
     }),
   );
 };
@@ -871,10 +873,13 @@ export const replaceAllCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+
+  // The check allows users without data permission to resize/rearrange columns
+  const hasWritePermissions = question.query().isEditable();
   await dispatch(
     updateQuestion(question.setSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
+      run: hasWritePermissions ? "auto" : false,
+      shouldUpdateUrl: hasWritePermissions,
     }),
   );
 };
@@ -1049,16 +1054,18 @@ export const navigateToNewCardInsideQB = createThunkAction(
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion,
-  { doNotClearNameAndId = false, run = false, shouldUpdateUrl = false } = {},
+  { run = false, shouldUpdateUrl = false } = {},
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
     const mode = getQueryBuilderMode(getState());
 
+    const shouldConvertIntoAdHoc = newQuestion.query().isEditable();
+
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
-      !doNotClearNameAndId &&
+      shouldConvertIntoAdHoc &&
       !getIsEditing(getState()) &&
       newQuestion.isSaved() &&
       mode !== "dataset"
@@ -1386,11 +1393,11 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
-    const dirty =
-      !originalQuestion ||
-      (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    const isDirty =
+      question.query().isEditable() &&
+      question.isDirtyComparedTo(originalQuestion);
 
-    if (dirty) {
+    if (isDirty) {
       if (question.isNative()) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
