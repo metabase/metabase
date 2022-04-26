@@ -1171,7 +1171,8 @@
                                                :widget-type :string/=      ;; widget-type normalize
                                                :default ["Hudson Borer"]}} ;; default values not keyworded
                        :query "select * from PEOPLE where {{name}}"}
-              :type :native}
+              :type :native
+              :parameters []}
              (mbql.normalize/normalize
               {:database 1
                :native {:template-tags {"name" {:id "1f56330b-3dcb-75a3-8f3d-5c2c2792b749"

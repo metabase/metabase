@@ -792,6 +792,7 @@
   {:native identity
    :query  {:source-query remove-empty-clauses-in-source-query
             :joins        {::sequence remove-empty-clauses-in-join}}
+   :parameters identity
    :viz-settings identity})
 
 (defn- remove-empty-clauses

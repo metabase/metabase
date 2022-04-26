@@ -91,6 +91,18 @@
      (when (and (seq matching-params)
                 (every? :value matching-params))
        (normalize-params matching-params))
+
+     ;; If a FieldFilter has value=nil on *purpose*, return a [[params/no-value]]
+     ;; so that this filter can be substituted with "1 = 1" regardless of whether or not this tag has default value
+     (when (and
+            (seq matching-params)
+            (every? (fn [param]
+                      (and
+                       (contains? param :value)
+                       (nil? (:value param))))
+                    matching-params))
+       params/no-value)
+
      ;; otherwise, attempt to fall back to the default value specified as part of the template tag.
      (when-let [tag-default (:default tag)]
        {:type  (:widget-type tag :dimension) ; widget-type is the actual type of the default value if set
