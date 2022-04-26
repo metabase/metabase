@@ -10,7 +10,8 @@
             [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
 
 (def ^:private EEUserInfo
   (assoc i/UserInfo :attributes (s/maybe {s/Keyword s/Any})))
