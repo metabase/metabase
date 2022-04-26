@@ -28,7 +28,7 @@ describe("parameters/utils/mbql", () => {
       ]);
     });
     it("should parse past30days-from-3years", () => {
-      expect(dateParameterValueToMBQL("past30days~3years", null)).toEqual([
+      expect(dateParameterValueToMBQL("past30days-from-3years", null)).toEqual([
         "between",
         ["+", null, ["interval", 3, "year"]],
         ["relative-datetime", -30, "day"],
@@ -53,7 +53,9 @@ describe("parameters/utils/mbql", () => {
       ]);
     });
     it("should parse next2years-from-3months", () => {
-      expect(dateParameterValueToMBQL("next2years~3months", null)).toEqual([
+      expect(
+        dateParameterValueToMBQL("next2years-from-3months", null),
+      ).toEqual([
         "between",
         ["+", null, ["interval", -3, "month"]],
         ["relative-datetime", 0, "year"],
