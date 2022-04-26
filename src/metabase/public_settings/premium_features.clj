@@ -253,21 +253,23 @@
   []
   (str/starts-with? (ns-name *ns*) "metabase-enterprise"))
 
-; {'ee-fn-name {:feature  :sso
-;               :fallback :oss
-;               :oss      'oss-fn
-;               :ee       'ee-fn}}
-(defonce ^{:doc "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as
-                their OSS equivalents. These fns are called when the EE function must fallback to the OSS behavior due
-                to absence of a feature flag."}
+(defonce
+  ^{:doc "A map from fully-qualified EE function names to maps which include their EE and OSS implementations, as well
+         as any additional options. This information is used to dynamically dispatch a call to the right implementation,
+         depending on the available feature flags.
+
+         For example:
+           {ee-ns/ee-fn-name {:oss      oss-fn
+                              :ee       ee-fn
+                              :feature  :embedding
+                              :fallback :oss}"}
   registry
   (atom {}))
 
 (defn register-mapping!
-  "Adds new values to the `registry`, associated with the provided function."
-  [fn-name ee-ns values]
-  (let [ee-fn-name (symbol (str ee-ns "/" fn-name))]
-    (swap! registry update ee-fn-name merge values)))
+  "Adds new values to the `registry`, associated with the provided function name."
+  [ee-fn-name values]
+  (swap! registry update ee-fn-name merge values))
 
 (defn- check-feature
   [feature]
@@ -277,25 +279,24 @@
         (has-feature? feature))))
 
 (defn dynamic-ee-oss-fn
-  "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
-  available, the function is not found, or any other error occurs. Memoized in production to avoid unecessary repeat
-  calls to `classloader/require` and `ns-resolve`."
-  [ee-ns fn-name]
+  "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
+  availability of EE code and the necessary premium feature. Returns a fn which, when invoked, applies its args to one
+  of the EE implementation, the OSS implementation, or the fallback function."
+  [ee-ns ee-fn-name]
   (fn [& args]
-    (let [ee-fn-name (symbol (str ee-ns "/" fn-name))]
-      (u/ignore-exceptions (classloader/require ee-ns))
-      (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
-        (cond
-          (and ee (check-feature feature))
-          (apply ee args)
+    (u/ignore-exceptions (classloader/require ee-ns))
+    (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
+      (cond
+        (and ee (check-feature feature))
+        (apply ee args)
 
-          (and ee (fn? fallback))
-          (apply fallback args)
+        (and ee (fn? fallback))
+        (apply fallback args)
 
-          :else
-          (apply oss args))))))
+        :else
+        (apply oss args)))))
 
-(defn validate-ee-args
+(defn- validate-ee-args
   "Throws an exception if the required :feature option is not present."
   [{feature :feature :as options}]
   (when-not feature
@@ -303,6 +304,7 @@
                     {:options options}))))
 
 (defn- oss-options-error
+  "The exception to throw when the provided option is not included in the `options` map."
   [option options]
   (ex-info (trs "{0} option for defenterprise should not be set in an OSS namespace! Set it on the EE function instead." option)
            {:options options}))
@@ -318,6 +320,7 @@
   (when fallback (throw (oss-options-error :fallback options))))
 
 (defn- docstr-exception
+  "The exception to throw when defenterprise is used without a docstring."
   [fn-name]
   (Exception. (tru "Enterprise function {0}/{1} does not have a docstring. Go add one!" (ns-name *ns*) fn-name)))
 
@@ -327,16 +330,17 @@
   (when-not docstr (throw (docstr-exception fn-name)))
   (let [oss-or-ee (if (in-ee?) :ee :oss)]
     (case oss-or-ee
-      :ee (validate-ee-args options)
+      :ee  (validate-ee-args options)
       :oss (validate-oss-args '~ee-ns options))
-    `(let [ee-ns# (or '~ee-ns '~(ns-name *ns*))
-           f#     ~(if schema?
-                    `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
-                    `(fn ~(symbol (str fn-name)) ~@fn-tail))]
-        (register-mapping! '~fn-name ee-ns# (merge ~options {~oss-or-ee f#}))
+    `(let [ee-ns#        (or '~ee-ns '~(ns-name *ns*))
+           ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
+           oss-or-ee-fn# ~(if schema?
+                           `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                           `(fn ~(symbol (str fn-name)) ~@fn-tail))]
+        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
         (def
           ~(vary-meta fn-name assoc :arglists ''([& args]))
-          (dynamic-ee-oss-fn ee-ns# '~fn-name)))))
+          (dynamic-ee-oss-fn ee-ns# ee-fn-name#)))))
 
 (defn- options-conformer
   [conformed-options]
@@ -364,16 +368,16 @@
             :defenterprise-args (spec/? ::defenterprise-args)))
 
 (defmacro defenterprise
-  "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
+  "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and
   Enterprise Edition (EE).
 
-  When used in a CE namespace, defines a function that should have a corresponding implementation in an EE namespace
-  (using the same macro). The EE implementation will be used preferentially to the CE implementation if it is available.
+  When used in a OSS namespace, defines a function that should have a corresponding implementation in an EE namespace
+  (using the same macro). The EE implementation will be used preferentially to the OSS implementation if it is available.
   The first argument after the function name should be a symbol of the namespace containing the EE implementation. The
-  corresponding EE function must have the same name as the CE function.
+  corresponding EE function must have the same name as the OSS function.
 
-  When used in an EE namespace, the namespace of the corresponding CE implementation does not need to be included --
-  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an CE namespace.
+  When used in an EE namespace, the namespace of the corresponding OSS implementation does not need to be included --
+  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an OSS namespace.
 
   Two additional options can be defined, when using this macro in an EE namespace. These options should be defined
   immediately before the args list of the function:
@@ -386,16 +390,16 @@
 
   ###### `:fallback`
 
-  An optional keyword or function representing the fallback mechanism which should be used if the instance does not
+  The keyword `:oss`, or a function representing the fallback mechanism which should be used if the instance does not
   have the premium feature defined by the :feature option. If a function is provided, it will be called with the same
-  args as the EE function. Valid keyword options are `:error`, which causes an exception to be thrown, or `:oss`, which
-  causes the CE implementation of the function to be called. (Default: `:oss`)"
+  args as the EE function. If `:oss` is provided, it causes the OSS implementation of the function to be called.
+  (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
   (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
         _           (when (spec/invalid? parsed-args)
                           (throw (ex-info "Failed to parse defenterprise args"
-                                          (spec/explain-data ::defenterprise-schema-args parsed-args))))
+                                          (spec/explain-data ::defenterprise-args parsed-args))))
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
