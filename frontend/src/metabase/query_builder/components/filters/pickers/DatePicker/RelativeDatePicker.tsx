@@ -80,7 +80,7 @@ export function CurrentPicker(props: CurrentPickerProps) {
     className,
     primaryColor,
     onCommit,
-    filter: [operator, field, intervals, unit],
+    filter: [operator, field, _intervals, unit],
   } = props;
   return (
     <div className={className}>
@@ -99,7 +99,7 @@ export function CurrentPicker(props: CurrentPickerProps) {
                 primaryColor={primaryColor}
                 selected={operator && unit === period.toLowerCase()}
                 onClick={() => {
-                  onCommit([operator, field, intervals, period]);
+                  onCommit([operator, field, "current", period]);
                 }}
               >
                 {formatBucketing(period, 1)}
@@ -151,7 +151,6 @@ type Props = {
   offsetFormatter: (value: number) => number;
   primaryColor?: string;
   reverseIconDirection?: boolean;
-  disableStartingFrom?: boolean;
 };
 
 const RelativeDatePicker: React.FC<Props> = props => {
@@ -163,7 +162,6 @@ const RelativeDatePicker: React.FC<Props> = props => {
     className,
     primaryColor,
     reverseIconDirection,
-    disableStartingFrom,
   } = props;
 
   const startingFrom = getStartingFrom(filter);
@@ -178,18 +176,16 @@ const RelativeDatePicker: React.FC<Props> = props => {
 
   const optionsContent = (
     <OptionsContainer>
-      {!disableStartingFrom ? (
-        <OptionButton
-          icon="arrow_left_to_line"
-          reverseIconDirection={reverseIconDirection}
-          onClick={() => {
-            setOptionsVisible(false);
-            onFilterChange(setStartingFrom(filter));
-          }}
-        >
-          {t`Starting from...`}
-        </OptionButton>
-      ) : null}
+      <OptionButton
+        icon="arrow_left_to_line"
+        reverseIconDirection={reverseIconDirection}
+        onClick={() => {
+          setOptionsVisible(false);
+          onFilterChange(setStartingFrom(filter));
+        }}
+      >
+        {t`Starting from...`}
+      </OptionButton>
       <OptionButton
         selected={includeCurrent}
         primaryColor={primaryColor}

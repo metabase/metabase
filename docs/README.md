@@ -84,7 +84,7 @@
 - [Permissions overview](./administration-guide/05-setting-permissions.md)
 - [Data permissions](./administration-guide/data-permissions.md)
 - [Collection permissions](./administration-guide/06-collections.md)
-- [General permissions](./administration-guide/general-permissions.md)
+- [Application permissions](./administration-guide/application-permissions.md)
 - [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.md)
 - [SQL snippets folder permissions](./enterprise-guide/sql-snippets.md)
 

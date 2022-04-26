@@ -1,4 +1,5 @@
 import moment from "moment";
+import _ from "underscore";
 
 import Dimension, {
   FieldDimension,
@@ -8,6 +9,11 @@ import { getParameterSubType, isDateParameter } from "./parameter-type";
 import { getParameterOperatorName } from "./operators";
 import { isDimensionTarget } from "./targets";
 import { hasParameterValue } from "./parameter-values";
+import {
+  setStartingFrom,
+  EXCLUDE_OPTIONS,
+  EXCLUDE_UNITS,
+} from "metabase/lib/query_time";
 
 const withTemporalUnit = (fieldRef, unit) => {
   const dimension =
@@ -19,11 +25,52 @@ const withTemporalUnit = (fieldRef, unit) => {
 
 const timeParameterValueDeserializers = [
   {
+    testRegex: /^exclude-(days|months|quarters|hours)-([a-zA-Z0-9\-]+)$/,
+    deserialize: (matches, fieldRef) => {
+      const unit = EXCLUDE_UNITS[matches[0]];
+      const options = EXCLUDE_OPTIONS[unit]().flat();
+      const values = matches[1].split("-");
+      return [
+        "!=",
+        withTemporalUnit(fieldRef, unit),
+        ...options
+          .filter(
+            ({ serialized }) => !!_.find(values, value => value === serialized),
+          )
+          .map(({ value }) => value),
+      ];
+    },
+  },
+  {
+    testRegex: /^past([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$/,
+    deserialize: (matches, fieldRef) => {
+      const base = [
+        "time-interval",
+        fieldRef,
+        -parseInt(matches[0]),
+        matches[1],
+      ];
+      return setStartingFrom(base, parseInt(matches[2]), matches[3]);
+    },
+  },
+  {
     testRegex: /^past([0-9]+)([a-z]+)s(~)?$/,
     deserialize: (matches, fieldRef) =>
       ["time-interval", fieldRef, -parseInt(matches[0]), matches[1]].concat(
         matches[2] ? [{ "include-current": true }] : [],
       ),
+  },
+  {
+    testRegex: /^next([0-9]+)([a-z]+)s-from-([0-9]+)([a-z]+)s$/,
+    deserialize: (matches, fieldRef) => {
+      const base = [
+        "time-interval",
+        fieldRef,
+        parseInt(matches[0]),
+        matches[1],
+      ];
+      return setStartingFrom(base, -parseInt(matches[2]), matches[3]);
+    },
   },
   {
     testRegex: /^next([0-9]+)([a-z]+)s(~)?$/,

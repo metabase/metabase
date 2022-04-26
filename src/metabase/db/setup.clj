@@ -54,39 +54,37 @@
    data-source :- javax.sql.DataSource
    direction   :- s/Keyword]
   (with-open [conn (.getConnection data-source)]
-    ;; TODO: this try has no catch. We need to make sure the catches are at the right level and possibly remove this
-    ;; outer try?
-    (try
-      (.setAutoCommit conn false)
+    (.setAutoCommit conn false)
       ;; Set up liquibase and let it do its thing
-      (log/info (trs "Setting up Liquibase..."))
-      (liquibase/with-liquibase [liquibase conn]
-        (try
-          (liquibase/consolidate-liquibase-changesets! db-type conn)
-          (log/info (trs "Liquibase is ready."))
-          (case direction
-            :up            (liquibase/migrate-up-if-needed! liquibase)
-            :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
-            :down-one      (liquibase/rollback-one liquibase)
-            :print         (print-migrations-and-quit-if-needed! liquibase)
-            :release-locks (liquibase/force-release-locks! liquibase))
-          ;; Migrations were successful; commit everything and re-enable auto-commit
-          (.commit conn)
-          (.setAutoCommit conn true)
-          :done
-          ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
-          ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
-          ;; clear the lock in that case, so handle that case separately
-          (catch LockException e
-            (.rollback conn)
-            (throw e))
-          ;; If for any reason any part of the migrations fail then rollback all changes
-          (catch Throwable e
-            (.rollback conn)
-            ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
-            ;; operation without releasing the lock first, the real error will get hidden behind a lock error
-            (liquibase/release-lock-if-needed! liquibase)
-            (throw e)))))))
+
+    (log/info (trs "Setting up Liquibase..."))
+    (liquibase/with-liquibase [liquibase conn]
+      (try
+        (liquibase/consolidate-liquibase-changesets! db-type conn)
+        (log/info (trs "Liquibase is ready."))
+        (case direction
+          :up            (liquibase/migrate-up-if-needed! liquibase)
+          :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
+          :down-one      (liquibase/rollback-one liquibase)
+          :print         (print-migrations-and-quit-if-needed! liquibase)
+          :release-locks (liquibase/force-release-locks! liquibase))
+        ;; Migrations were successful; commit everything and re-enable auto-commit
+        (.commit conn)
+        (.setAutoCommit conn true)
+        :done
+        ;; In the Throwable block, we're releasing the lock assuming we have the lock and we failed while in the
+        ;; middle of a migration. It's possible that we failed because we couldn't get the lock. We don't want to
+        ;; clear the lock in that case, so handle that case separately
+        (catch LockException e
+          (.rollback conn)
+          (throw e))
+        ;; If for any reason any part of the migrations fail then rollback all changes
+        (catch Throwable e
+          (.rollback conn)
+          ;; With some failures, it's possible that the lock won't be released. To make this worse, if we retry the
+          ;; operation without releasing the lock first, the real error will get hidden behind a lock error
+          (liquibase/release-lock-if-needed! liquibase)
+          (throw e))))))
 
 (s/defn ^:private verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles

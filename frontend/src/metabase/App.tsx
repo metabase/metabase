@@ -85,7 +85,7 @@ class ErrorBoundary extends React.Component<{
 function App({
   currentUser,
   errorPage,
-  location: { pathname },
+  location: { pathname, hash },
   isEditingDashboard,
   children,
 }: AppProps) {
@@ -110,25 +110,34 @@ function App({
   }, [currentUser, pathname, isEditingDashboard]);
 
   const hasAppBar = useMemo(() => {
-    if (!currentUser || IFRAMED || isAdminApp || isEditingDashboard) {
+    const isFullscreen = hash.includes("fullscreen");
+    if (
+      !currentUser ||
+      IFRAMED ||
+      isAdminApp ||
+      isEditingDashboard ||
+      isFullscreen
+    ) {
       return false;
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  }, [currentUser, pathname, isEditingDashboard, isAdminApp]);
+  }, [currentUser, pathname, isEditingDashboard, isAdminApp, hash]);
 
   return (
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
-        {hasAppBar && <AppBar />}
-        <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
-          {hasNavbar && <Navbar />}
-          <AppContent>
-            {errorPage ? getErrorComponent(errorPage) : children}
-          </AppContent>
-          <UndoListing />
-          <StatusListing />
-        </AppContentContainer>
-        <AppErrorCard errorInfo={errorInfo} />
+        <div className="spread">
+          {hasAppBar && <AppBar />}
+          <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
+            {hasNavbar && <Navbar />}
+            <AppContent>
+              {errorPage ? getErrorComponent(errorPage) : children}
+            </AppContent>
+            <UndoListing />
+            <StatusListing />
+          </AppContentContainer>
+          <AppErrorCard errorInfo={errorInfo} />
+        </div>
       </ScrollToTop>
     </ErrorBoundary>
   );
