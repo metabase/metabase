@@ -11500,7 +11500,6 @@ databaseChangeLog:
             tableName: timeline_event
             columnName: icon
             defaultNullValue: "star"
-
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
