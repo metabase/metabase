@@ -368,16 +368,16 @@
             :defenterprise-args (spec/? ::defenterprise-args)))
 
 (defmacro defenterprise
-  "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
+  "Defines a function that has separate implementations between the Metabase Community Edition (aka OSS) and
   Enterprise Edition (EE).
 
-  When used in a CE namespace, defines a function that should have a corresponding implementation in an EE namespace
-  (using the same macro). The EE implementation will be used preferentially to the CE implementation if it is available.
+  When used in a OSS namespace, defines a function that should have a corresponding implementation in an EE namespace
+  (using the same macro). The EE implementation will be used preferentially to the OSS implementation if it is available.
   The first argument after the function name should be a symbol of the namespace containing the EE implementation. The
-  corresponding EE function must have the same name as the CE function.
+  corresponding EE function must have the same name as the OSS function.
 
-  When used in an EE namespace, the namespace of the corresponding CE implementation does not need to be included --
-  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an CE namespace.
+  When used in an EE namespace, the namespace of the corresponding OSS implementation does not need to be included --
+  it will be inferred automatically, as long as a corresponding [[defenterprise]] call exists in an OSS namespace.
 
   Two additional options can be defined, when using this macro in an EE namespace. These options should be defined
   immediately before the args list of the function:
@@ -390,16 +390,16 @@
 
   ###### `:fallback`
 
-  An optional keyword or function representing the fallback mechanism which should be used if the instance does not
+  The keyword `:oss`, or a function representing the fallback mechanism which should be used if the instance does not
   have the premium feature defined by the :feature option. If a function is provided, it will be called with the same
-  args as the EE function. Valid keyword options are `:error`, which causes an exception to be thrown, or `:oss`, which
-  causes the CE implementation of the function to be called. (Default: `:oss`)"
+  args as the EE function. If `:oss` is provided, it causes the OSS implementation of the function to be called.
+  (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
   (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
         _           (when (spec/invalid? parsed-args)
                           (throw (ex-info "Failed to parse defenterprise args"
-                                          (spec/explain-data ::defenterprise-schema-args parsed-args))))
+                                          (spec/explain-data ::defenterprise-args parsed-args))))
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
