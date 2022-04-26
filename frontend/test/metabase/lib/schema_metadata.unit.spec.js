@@ -9,6 +9,7 @@ import {
   COORDINATE,
   PRIMARY_KEY,
   FOREIGN_KEY,
+  ARRAY,
   foreignKeyCountsByOriginTable,
   isEqualsOperator,
   doesOperatorExist,
@@ -61,6 +62,9 @@ describe("schema_metadata", () => {
     });
     it("should know a bool", () => {
       expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN);
+    });
+    it("should know an array", () => {
+      expect(getFieldType({ base_type: TYPE.Array })).toEqual(ARRAY);
     });
     it("should know a location", () => {
       expect(getFieldType({ semantic_type: TYPE.City })).toEqual(LOCATION);
@@ -213,6 +217,24 @@ describe("schema_metadata", () => {
           semantic_type: TYPE.FK,
         }).map(op => op.name),
       ).toEqual(["=", "!=", "is-null", "not-null", "is-empty", "not-empty"]);
+    });
+    it("should return proper filter operators for type/Array", () => {
+      expect(
+        getFilterOperators({
+          effective_type: TYPE.Array,
+        }).map(op => op.name),
+      ).toEqual([
+        "=",
+        "!=",
+        "contains",
+        "does-not-contain",
+        "is-null",
+        "not-null",
+        "is-empty",
+        "not-empty",
+        "starts-with",
+        "ends-with",
+      ]);
     });
   });
 
