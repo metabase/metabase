@@ -43,7 +43,7 @@ describe("visual tests > dashboard > parameters widget", () => {
   });
 
   // desktop
-  describe("Stickiness on desktop", () => {
+  describe(`Stickiness on desktop (${filters.length} filters)`, () => {
     it("is sticky in view mode", () => {
       cy.findByText("test question");
 
@@ -66,9 +66,9 @@ describe("visual tests > dashboard > parameters widget", () => {
   });
 
   // mobile
-  describe("Stickiness on mobile", () => {
-    // resize window to mobile form factor
-    cy.viewport(480, 800);
+  describe(`Stickiness on mobile (${filters.length} filters)`, () => {
+    // iPhone SE
+    cy.viewport(375, 667);
 
     it("is not sticky in view mode", () => {
       cy.findByText("test question");
