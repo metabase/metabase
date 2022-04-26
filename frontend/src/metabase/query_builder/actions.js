@@ -1393,11 +1393,11 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
-    const dirty =
-      !originalQuestion ||
-      (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    const isDirty =
+      question.query().isEditable() &&
+      question.isDirtyComparedTo(originalQuestion);
 
-    if (dirty) {
+    if (isDirty) {
       if (question.isNative()) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
