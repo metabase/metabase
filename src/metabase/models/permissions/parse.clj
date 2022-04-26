@@ -17,7 +17,7 @@
   db          = <'/db/'> #'\\d+' <'/'> ( native | schemas )?
   native      = <'native/'>
   schemas     = <'schema/'> schema?
-  schema      = #'[^/]*' <'/'> table?
+  schema      = #'(\\\\/|[^/])*' <'/'> table?
   table       = <'table/'> #'\\d+' <'/'> (table-perm <'/'>)?
   table-perm  = ('read'|'query'|'query/segmented')
 
@@ -48,6 +48,10 @@
   [id]
   (if (= id "root") :root (Long/parseUnsignedLong id)))
 
+(defn unescape
+  [s]
+  (clojure.string/replace s "\\/" "/"))
+
 (defn- append-to-all
   "If `path-or-paths` is a single path, append `x` to the end of it. If it's a vector of paths, append `x` to each path."
   [path-or-paths x]
@@ -67,8 +71,8 @@
                                      (into [:db db-id] (path1 db-node)))
     [:schemas]                     [:data :schemas :all]
     [:schemas schema]              (into [:data :schemas] (path1 schema))
-    [:schema schema-name]          [schema-name :all]
-    [:schema schema-name table]    (into [schema-name] (path1 table))
+    [:schema schema-name]          [(unescape schema-name) :all]
+    [:schema schema-name table]    (into [(unescape schema-name)] (path1 table))
     [:table table-id]              [(Long/parseUnsignedLong table-id) :all]
     [:table table-id table-perm]   (into [(Long/parseUnsignedLong table-id)] (path1 table-perm))
     [:table-perm perm]              (case perm
@@ -89,8 +93,8 @@
                                      (into [:db db-id] (path1 db-node)))
     [:dl-schemas]                  [:download :schemas]
     [:dl-schemas schema]           (into [:download :schemas] (path1 schema))
-    [:dl-schema schema-name]       [schema-name]
-    [:dl-schema schema-name table] (into [schema-name] (path1 table))
+    [:dl-schema schema-name]       [(unescape schema-name)]
+    [:dl-schema schema-name table] (into [(unescape schema-name)] (path1 table))
     [:dl-table table-id]           [(Long/parseUnsignedLong table-id)]
     [:dl-native]                   [:download :native]
     ;; collection perms
@@ -110,8 +114,8 @@
                                      [:db db-id :data-model :schemas :all])
     [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
                                      (into [:db db-id :data-model :schemas] (path2 db-node)))
-    [:dm-schema schema-name]       [schema-name :all]
-    [:dm-schema schema-name table] (into [schema-name] (path2 table))
+    [:dm-schema schema-name]       [(unescape schema-name) :all]
+    [:dm-schema schema-name table] (into [(unescape schema-name)] (path2 table))
     [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]
     ;; DB details perms
     [:details db-id]            (let [db-id (Long/parseUnsignedLong db-id)]

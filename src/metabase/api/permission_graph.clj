@@ -23,6 +23,10 @@
   [[_ s]]
   (name s))
 
+(defmethod convert :kw-with-sepereator->str
+  [[_ s]]
+  (.substring (str s) 1))
+
 (defmethod convert :nil->none
   [[_ _]]
   :none)
@@ -42,7 +46,7 @@
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
-(s/def ::schema-name (s/or :kw->str keyword?))
+(s/def ::schema-name (s/or :kw-with-sepereator->str keyword?))
 
 ;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms-granular}}}}} =>
 ;; {:groups {1 {:data {:schemas {"PUBLIC" {1 :all}}}}}}
