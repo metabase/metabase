@@ -447,7 +447,6 @@ export default class View extends React.Component {
       isShowingNewbModal,
       isShowingTimelineSidebar,
       queryBuilderMode,
-      fitClassNames,
       closeQbNewbModal,
       onDismissToast,
       onConfirmToast,
@@ -456,7 +455,7 @@ export default class View extends React.Component {
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
-      return <LoadingAndErrorWrapper className={fitClassNames} loading />;
+      return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
     const isStructured = query instanceof StructuredQuery;
@@ -465,7 +464,7 @@ export default class View extends React.Component {
       isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return <NewQuestionView query={query} fitClassNames={fitClassNames} />;
+      return <NewQuestionView query={query} className="full-height" />;
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
@@ -482,7 +481,7 @@ export default class View extends React.Component {
       : SIDEBAR_SIZES.NORMAL;
 
     return (
-      <div className={fitClassNames}>
+      <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
           {this.renderHeader()}
           <QueryBuilderContentContainer>

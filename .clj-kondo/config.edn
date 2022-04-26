@@ -29,6 +29,12 @@
            :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
                                       {:namespaces ["metabase.*"]}
+                                      metabase.db.data-migrations/data-migrations
+                                      {:namespaces ["metabase.db.data-migrations"]}
+                                      metabase.db.data-migrations/defmigration
+                                      {:namespaces ["metabase.db.data-migrations"]}
+                                      metabase.db.data-migrations/run-migration-if-needed!
+                                      {:namespaces ["metabase.db.data-migrations"]}
                                       metabase.driver/supports?
                                       {:namespaces ["metabase.*"]}
                                       metabase.driver/current-db-time
@@ -78,6 +84,7 @@
                                       schema.core/both
                                       {:namespaces ["metabase.*"]}}}
            :unresolved-var {:exclude [colorize.core]}
+           :unsorted-required-namespaces {:level :warning}
            :consistent-alias {:aliases {buddy.core.hash                                                 buddy-hash
                                         cheshire.generate                                               json.generate
                                         clj-http.client                                                 http

@@ -332,7 +332,7 @@
     (case oss-or-ee
       :ee  (validate-ee-args options)
       :oss (validate-oss-args '~ee-ns options))
-    `(let [ee-ns#        (or '~ee-ns '~(ns-name *ns*))
+    `(let [ee-ns#        '~(or ee-ns (ns-name *ns*))
            ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
            oss-or-ee-fn# ~(if schema?
                            `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)

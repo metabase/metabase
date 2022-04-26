@@ -114,22 +114,34 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingTimelineSidebar: false,
 };
 
-// various ui state options
+function setUIControls(state, changes) {
+  const { queryBuilderMode: currentQBMode, ...currentState } = state;
+  const { queryBuilderMode: nextQBMode, ...nextStateChanges } = changes;
+
+  const isChangingQBMode = nextQBMode && currentQBMode !== nextQBMode;
+  const isOpeningEditingQBMode = isChangingQBMode && nextQBMode !== "view";
+
+  const queryBuilderMode = nextQBMode || currentQBMode;
+  const previousQueryBuilderMode = isChangingQBMode
+    ? currentQBMode
+    : state.previousQueryBuilderMode;
+
+  // Close all the sidebars when entering notebook/dataset QB modes
+  const extraState = isOpeningEditingQBMode ? UI_CONTROLS_SIDEBAR_DEFAULTS : {};
+
+  return {
+    ...currentState,
+    ...extraState,
+    ...nextStateChanges,
+    queryBuilderMode,
+    previousQueryBuilderMode,
+  };
+}
+
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (
-        { queryBuilderMode: currentQBMode, ...state },
-        { payload: { queryBuilderMode: nextQBMode, ...payload } },
-      ) => ({
-        ...state,
-        ...payload,
-        queryBuilderMode: nextQBMode || currentQBMode,
-        previousQueryBuilderMode:
-          nextQBMode && currentQBMode !== nextQBMode
-            ? currentQBMode
-            : state.previousQueryBuilderMode,
-      }),
+      next: (state, { payload }) => setUIControls(state, payload),
     },
 
     [RESET_UI_CONTROLS]: {
@@ -262,12 +274,13 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenQuestionDetails]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingQuestionDetailsSidebar: true,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
+    [onOpenQuestionDetails]: state =>
+      setUIControls(state, {
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        isShowingQuestionDetailsSidebar: true,
+        questionDetailsTimelineDrawerState: undefined,
+        queryBuilderMode: "view",
+      }),
     [onCloseQuestionDetails]: (
       state,
       { payload: { closeOtherSidebars } = {} } = {},
@@ -285,12 +298,13 @@ export const uiControls = handleActions(
         questionDetailsTimelineDrawerState: undefined,
       };
     },
-    [onOpenQuestionHistory]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingQuestionDetailsSidebar: true,
-      questionDetailsTimelineDrawerState: "open",
-    }),
+    [onOpenQuestionHistory]: state =>
+      setUIControls(state, {
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        isShowingQuestionDetailsSidebar: true,
+        questionDetailsTimelineDrawerState: "open",
+        queryBuilderMode: "view",
+      }),
     [onCloseQuestionHistory]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,

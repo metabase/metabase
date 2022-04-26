@@ -62,6 +62,7 @@ jobs:
           - "binning"
           - "dashboard-filters"
           - "downloads"
+          - "joins"
           - "moderation"
     services:
       maildev:
