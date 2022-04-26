@@ -84,15 +84,10 @@ describe("scenarios > question > public", () => {
 
     cy.createNativeQuestion(questionData).then(({ body: { id } }) => {
       enableSharingQuestion(id);
-
       visitQuestion(id);
-      // Make sure metadata fully loaded before we continue
-      cy.wait("@cardQuery");
 
       cy.icon("share").click();
-
       visitPublicURL();
-
       cy.icon("download").click();
 
       cy.url().then(url => {
