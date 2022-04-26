@@ -10,7 +10,11 @@ import { TYPE, isa } from "metabase/lib/types";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 
 import { OnVisualizationClickType } from "./types";
-import { ObjectDetailsTable } from "./ObjectDetail.styled";
+import {
+  ObjectDetailsTable,
+  GridContainer,
+  GridCell,
+} from "./ObjectDetail.styled";
 
 export interface DetailsTableCellProps {
   column: any;
@@ -109,33 +113,37 @@ export function DetailsTable({
 
   return (
     <ObjectDetailsTable>
-      {cols.map((column, columnIndex) => (
-        <div className="Grid Grid--1of2 mb2" key={columnIndex}>
-          <div className="Grid-cell">
-            <DetailsTableCell
-              column={column}
-              value={row[columnIndex]}
-              isColumnName
-              settings={settings}
-              onVisualizationClick={onVisualizationClick}
-              visualizationIsClickable={visualizationIsClickable}
-            />
-          </div>
-          <div
-            style={{ wordWrap: "break-word" }}
-            className="Grid-cell text-bold text-dark"
-          >
-            <DetailsTableCell
-              column={column}
-              value={row[columnIndex]}
-              isColumnName={false}
-              settings={settings}
-              onVisualizationClick={onVisualizationClick}
-              visualizationIsClickable={visualizationIsClickable}
-            />
-          </div>
-        </div>
-      ))}
+      <GridContainer cols={3}>
+        {cols.map((column, columnIndex) => (
+          <>
+            <GridCell>
+              <DetailsTableCell
+                column={column}
+                value={row[columnIndex]}
+                isColumnName
+                settings={settings}
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+              />
+            </GridCell>
+            <GridCell colSpan={2}>
+              <div
+                style={{ wordWrap: "break-word" }}
+                className="text-bold text-dark"
+              >
+                <DetailsTableCell
+                  column={column}
+                  value={row[columnIndex]}
+                  isColumnName={false}
+                  settings={settings}
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                />
+              </div>
+            </GridCell>
+          </>
+        ))}
+      </GridContainer>
     </ObjectDetailsTable>
   );
 }
