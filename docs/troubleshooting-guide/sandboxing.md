@@ -159,7 +159,7 @@ The administrator can [create a new group][groups] to capture precisely who's al
 [column-permissions]: /learn/permissions/data-sandboxing-column-permissions.html
 [data-model]: ../administration-guide/03-metadata-editing.html
 [data-permissions]: /learn/permissions/data-permissions.html
-[groups]: ../administration-guide/05-setting-permissions.html#groups
+[groups]: ../administration-guide/04-managing-users.html#groups
 [jwt-auth]: ../enterprise-guide/authenticating-with-jwt.html
 [permissions]: /learn/permissions/data-permissions.html
 [public-sharing]: ../administration-guide/12-public-links.html
