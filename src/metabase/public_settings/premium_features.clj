@@ -306,14 +306,16 @@
 
 (def resolve-ee
   "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
-  available, the function is not found, or any other error occurs. Memoized to avoid unecessary repeat calls to
-  `classloader/require` and `ns-resolve`."
-  (memoize
-   (fn [ee-ns fn-name]
-     (when-let [f (u/ignore-exceptions
-                   (classloader/require ee-ns)
-                   (ns-resolve ee-ns fn-name))]
-       (fn [& args] (apply f args))))))
+  available, the function is not found, or any other error occurs. Memoized in production to avoid unecessary repeat
+  calls to `classloader/require` and `ns-resolve`."
+  (let [f (fn [ee-ns fn-name]
+            (when-let [f (u/ignore-exceptions
+                          (classloader/require ee-ns)
+                          (ns-resolve ee-ns fn-name))]
+              (fn [& args] (apply f args))))]
+    (if config/is-dev?
+      f
+      (memoize f))))
 
 (defn- oss-options-error
   [option options]
