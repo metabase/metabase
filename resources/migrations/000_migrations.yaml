@@ -11500,6 +11500,17 @@ databaseChangeLog:
             tableName: timeline_event
             columnName: icon
             defaultNullValue: "star"
+
+  - changeSet:
+      id: v43.00-062
+      author: snoe
+      comment: Added 0.43.0 - Unify datatype with revision.timestamp for timezone info (see 17829).
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
