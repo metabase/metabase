@@ -267,8 +267,8 @@
   (atom {}))
 
 (defn register-mapping!
-  "Adds new values to the `registry`, associated with the provided function."
-  [ee-ns ee-fn-name values]
+  "Adds new values to the `registry`, associated with the provided function name."
+  [ee-fn-name values]
   (swap! registry update ee-fn-name merge values))
 
 (defn- check-feature
@@ -279,9 +279,9 @@
         (has-feature? feature))))
 
 (defn dynamic-ee-oss-fn
-  "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
-  available, the function is not found, or any other error occurs. Memoized in production to avoid unecessary repeat
-  calls to `classloader/require` and `ns-resolve`."
+  "Dynamically tries to require an enterprise namespace and determine the correct implementation to call, based on the
+  availability of EE code and the necessary premium feature. Returns a fn which, when invoked, applies its args to one
+  of the EE implementation, the OSS implementation, or the fallback function."
   [ee-ns ee-fn-name]
   (fn [& args]
     (u/ignore-exceptions (classloader/require ee-ns))
@@ -296,7 +296,7 @@
         :else
         (apply oss args)))))
 
-(defn validate-ee-args
+(defn- validate-ee-args
   "Throws an exception if the required :feature option is not present."
   [{feature :feature :as options}]
   (when-not feature
@@ -304,6 +304,7 @@
                     {:options options}))))
 
 (defn- oss-options-error
+  "The exception to throw when the provided option is not included in the `options` map."
   [option options]
   (ex-info (trs "{0} option for defenterprise should not be set in an OSS namespace! Set it on the EE function instead." option)
            {:options options}))
@@ -319,6 +320,7 @@
   (when fallback (throw (oss-options-error :fallback options))))
 
 (defn- docstr-exception
+  "The exception to throw when defenterprise is used without a docstring."
   [fn-name]
   (Exception. (tru "Enterprise function {0}/{1} does not have a docstring. Go add one!" (ns-name *ns*) fn-name)))
 
@@ -335,7 +337,7 @@
            oss-or-ee-fn# ~(if schema?
                            `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
                            `(fn ~(symbol (str fn-name)) ~@fn-tail))]
-        (register-mapping! ee-ns# ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
+        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
         (def
           ~(vary-meta fn-name assoc :arglists ''([& args]))
           (dynamic-ee-oss-fn ee-ns# ee-fn-name#)))))
