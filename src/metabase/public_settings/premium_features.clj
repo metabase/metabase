@@ -339,11 +339,12 @@
   `(let [oss-fn# ~(if schema? `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
                               `(fn ~(symbol (str fn-name)) ~@fn-tail))]
      (register-mapping! '~fn-name '~ee-ns oss-fn#)
-     (def
-       ~(vary-meta fn-name assoc :arglists ''([& args]))
+     (defn
+       ~(vary-meta fn-name assoc :arglists ''([& args#]))
+       [& args#]
        (if-let [ee-fn# (resolve-ee '~ee-ns '~fn-name)]
-         ee-fn#
-         oss-fn#))))
+         (apply ee-fn# args#)
+         (apply oss-fn# args#)))))
 
 (defn- docstr-exception
   [fn-name]
