@@ -74,8 +74,6 @@ const ViewFooter = ({
     return null;
   }
 
-  const hasDataPermission = question.query().isEditable();
-
   return (
     <ViewFooterRoot
       className={cx(className, "text-medium border-top")}
@@ -107,30 +105,26 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          hasDataPermission && (
-            <VizTypeButton
-              key="viz-type"
-              question={question}
-              result={result}
-              active={isShowingChartTypeSidebar}
-              onClick={
-                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-              }
-            />
-          ),
-          hasDataPermission && (
-            <VizSettingsButton
-              key="viz-settings"
-              ml={1}
-              mr={[3, 0]}
-              active={isShowingChartSettingsSidebar}
-              onClick={
-                isShowingChartSettingsSidebar
-                  ? onCloseChartSettings
-                  : onOpenChartSettings
-              }
-            />
-          ),
+          <VizTypeButton
+            key="viz-type"
+            question={question}
+            result={result}
+            active={isShowingChartTypeSidebar}
+            onClick={
+              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+            }
+          />,
+          <VizSettingsButton
+            key="viz-settings"
+            ml={1}
+            mr={[3, 0]}
+            active={isShowingChartSettingsSidebar}
+            onClick={
+              isShowingChartSettingsSidebar
+                ? onCloseChartSettings
+                : onOpenChartSettings
+            }
+          />,
         ]}
         center={
           isVisualized && (
