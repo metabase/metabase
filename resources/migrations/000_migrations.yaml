@@ -11481,6 +11481,27 @@ databaseChangeLog:
               WHERE object LIKE '/general/%';
 
   - changeSet:
+      id: v43.00-059
+      author: adam-james
+      comment: Added 0.43.0 - disallow nil timeline icons
+      changes:
+        - addNotNullConstraint:
+            columnDataType: varchar(128)
+            tableName: timeline
+            columnName: icon
+            defaultNullValue: "star"
+  - changeSet:
+      id: v43.00-060
+      author: adam-james
+      comment: Added 0.43.0 - disallow nil timeline event icons
+      changes:
+        - addNotNullConstraint:
+            columnDataType: varchar(128)
+            tableName: timeline_event
+            columnName: icon
+            defaultNullValue: "star"
+
+  - changeSet:
       id: v43.00-062
       author: snoe
       comment: Added 0.43.0 - Unify datatype with revision.timestamp for timezone info (see 17829).
