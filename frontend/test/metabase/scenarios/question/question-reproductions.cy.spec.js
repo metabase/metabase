@@ -18,6 +18,7 @@ import { issue19742 } from "./reproductions/19742-data-picker-closes-after-hidin
 import { issue20551 } from "./reproductions/20551-filter-starts-with";
 import { issue20627 } from "./reproductions/20627-nested-long-names-wrong-aliases";
 import { issue20683 } from "./reproductions/20683-postgres-current-quarter";
+import { issue17910 } from "./reproductions/17910-revision-history-update";
 
 issue4482();
 issue6239();
@@ -39,3 +40,4 @@ issue19742();
 issue20551();
 issue20627();
 issue20683();
+issue17910();
