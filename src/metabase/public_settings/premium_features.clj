@@ -253,35 +253,48 @@
   []
   (str/starts-with? (ns-name *ns*) "metabase-enterprise"))
 
-(defonce ^{:doc "A map from EE functions (as [namespace function] tuples) to anonymous fns which have the same body as
-                their OSS equivalents. These fns are called when the EE function must fallback to the OSS behavior due
-                to absence of a feature flag."}
-  ee-registry
+(defonce
+  ^{:doc "A map from fully-qualified EE function names to maps which include their EE and OSS implementations, as well
+         as any additional options. This information is used to dynamically dispatch a call to the right implementation,
+         depending on the available feature flags.
+
+         For example:
+           {ee-ns/ee-fn-name {:oss      oss-fn
+                              :ee       ee-fn
+                              :feature  :embedding
+                              :fallback :oss}"}
+  registry
   (atom {}))
 
 (defn register-mapping!
-  "Adds mapping from EE->OSS fn to the `ee-registry`."
-  [fn-name ee-ns f]
-  (let [ee-parts [ee-ns fn-name]]
-    (swap! ee-registry assoc ee-parts f)))
+  "Adds new values to the `registry`, associated with the provided function."
+  [ee-ns ee-fn-name values]
+  (swap! registry update ee-fn-name merge values))
 
-(defn dynamic-ee-fn
-  "Returns the EE implementation of a function to use, given the provided values for `feature` and `fallback`."
-  [fn-name ee-ns ee-impl {:keys [feature fallback]}]
+(defn- check-feature
+  [feature]
+  (or (= feature :none)
+      (if (= feature :any)
+        (enable-enhancements?)
+        (has-feature? feature))))
+
+(defn dynamic-ee-oss-fn
+  "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
+  available, the function is not found, or any other error occurs. Memoized in production to avoid unecessary repeat
+  calls to `classloader/require` and `ns-resolve`."
+  [ee-ns ee-fn-name]
   (fn [& args]
-    (if (or (= feature :none)
-            (if (= feature :any)
-              (enable-enhancements?)
-              (has-feature? feature)))
-      (apply ee-impl args)
+    (u/ignore-exceptions (classloader/require ee-ns))
+    (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
       (cond
-        (fn? fallback)
+        (and ee (check-feature feature))
+        (apply ee args)
+
+        (and ee (fn? fallback))
         (apply fallback args)
 
-        ;; :oss and default case
         :else
-        (let [oss-fn (get @ee-registry [ee-ns fn-name])]
-          (apply oss-fn args))))))
+        (apply oss args)))))
 
 (defn validate-ee-args
   "Throws an exception if the required :feature option is not present."
@@ -289,31 +302,6 @@
   (when-not feature
     (throw (ex-info (trs "The :feature option is required when using defenterprise in an EE namespace!")
                     {:options options}))))
-
-(defmacro defenterprise-ee
-  "Impl macro for `defenterprise` when used in an EE namespace. Don't use this directly."
-  [{:keys [fn-name docstr fn-tail options schema? return-schema]}]
-  (validate-ee-args options)
-  `(let [ee-fn# ~(if schema?
-                   `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
-                   `(fn ~(symbol (str fn-name)) ~@fn-tail))]
-    (def
-      ~(vary-meta fn-name assoc :arglists ''([& args]))
-      (dynamic-ee-fn '~fn-name
-                     '~(ns-name *ns*)
-                     ee-fn#
-                     ~options))))
-
-(def resolve-ee
-  "Tries to require an enterprise namespace and resolve the provided function. Returns `nil` if EE code is not
-  available, the function is not found, or any other error occurs. Memoized in production to avoid unecessary repeat
-  calls to `classloader/require` and `ns-resolve`."
-  (let [f (fn [ee-ns fn-name]
-            (when-let [f (u/ignore-exceptions
-                          (classloader/require ee-ns)
-                          (ns-resolve ee-ns fn-name))]
-              (fn [& args] (apply f args))))]
-    (memoize f)))
 
 (defn- oss-options-error
   [option options]
@@ -330,23 +318,27 @@
   (when feature (throw (oss-options-error :feature options)))
   (when fallback (throw (oss-options-error :fallback options))))
 
-(defmacro defenterprise-oss
-  "Impl macro for `defenterprise` when used in an OSS namespace. Don't use this directly."
-  [{:keys [fn-name docstr ee-ns fn-tail options schema? return-schema]}]
-  (validate-oss-args ee-ns options)
-  `(let [oss-fn# ~(if schema? `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
-                              `(fn ~(symbol (str fn-name)) ~@fn-tail))]
-     (register-mapping! '~fn-name '~ee-ns oss-fn#)
-     (defn
-       ~(vary-meta fn-name assoc :arglists ''([& args#]))
-       [& args#]
-       (if-let [ee-fn# (resolve-ee '~ee-ns '~fn-name)]
-         (apply ee-fn# args#)
-         (apply oss-fn# args#)))))
-
 (defn- docstr-exception
   [fn-name]
   (Exception. (tru "Enterprise function {0}/{1} does not have a docstring. Go add one!" (ns-name *ns*) fn-name)))
+
+(defmacro defenterprise-impl
+  "Impl macro for `defenterprise` and `defenterprise-schema`. Don't use this directly."
+  [{:keys [fn-name docstr ee-ns fn-tail options schema? return-schema]}]
+  (when-not docstr (throw (docstr-exception fn-name)))
+  (let [oss-or-ee (if (in-ee?) :ee :oss)]
+    (case oss-or-ee
+      :ee  (validate-ee-args options)
+      :oss (validate-oss-args '~ee-ns options))
+    `(let [ee-ns#        (or '~ee-ns '~(ns-name *ns*))
+           ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
+           oss-or-ee-fn# ~(if schema?
+                           `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                           `(fn ~(symbol (str fn-name)) ~@fn-tail))]
+        (register-mapping! ee-ns# ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
+        (def
+          ~(vary-meta fn-name assoc :arglists ''([& args]))
+          (dynamic-ee-oss-fn ee-ns# ee-fn-name#)))))
 
 (defn- options-conformer
   [conformed-options]
@@ -372,22 +364,6 @@
   (spec/cat :return-schema      (spec/? (spec/cat :- #{:-}
                                                   :schema any?))
             :defenterprise-args (spec/? ::defenterprise-args)))
-
-(defmacro defenterprise-schema
-  "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
-  the same as when using `schema/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
-  usage details."
-  [fn-name & defenterprise-args]
-  {:pre [(symbol? fn-name)]}
-  (let [schema-args (spec/conform ::defenterprise-schema-args defenterprise-args)
-        args        (-> (:defenterprise-args schema-args)
-                        (assoc :schema? true)
-                        (assoc :return-schema (-> schema-args :return-schema :schema))
-                        (assoc :fn-name fn-name))]
-    (when-not (:docstr args) (throw (docstr-exception fn-name)))
-    (if (in-ee?)
-      `(defenterprise-ee ~args)
-      `(defenterprise-oss ~args))))
 
 (defmacro defenterprise
   "Defines a function that has separate implementations between the Metabase Community Edition (CE, aka OSS) and
@@ -418,9 +394,25 @@
   causes the CE implementation of the function to be called. (Default: `:oss`)"
   [fn-name & defenterprise-args]
   {:pre [(symbol? fn-name)]}
-  (let [args (-> (spec/conform ::defenterprise-args defenterprise-args)
-                 (assoc :fn-name fn-name))]
-    (when-not (:docstr args) (throw (docstr-exception fn-name)))
-    (if (in-ee?)
-      `(defenterprise-ee ~args)
-      `(defenterprise-oss ~args))))
+  (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
+        _           (when (spec/invalid? parsed-args)
+                          (throw (ex-info "Failed to parse defenterprise args"
+                                          (spec/explain-data ::defenterprise-schema-args parsed-args))))
+        args        (assoc parsed-args :fn-name fn-name)]
+    `(defenterprise-impl ~args)))
+
+(defmacro defenterprise-schema
+  "A version of defenterprise which allows for schemas to be defined for the args and return value. Schema syntax is
+  the same as when using `schema/defn`. Otherwise identical to `defenterprise`; see the docstring of that macro for
+  usage details."
+  [fn-name & defenterprise-args]
+  {:pre [(symbol? fn-name)]}
+  (let [parsed-args (spec/conform ::defenterprise-schema-args defenterprise-args)
+        _           (when (spec/invalid? parsed-args)
+                          (throw (ex-info "Failed to parse defenterprise-schema args"
+                                          (spec/explain-data ::defenterprise-schema-args parsed-args))))
+        args        (-> (:defenterprise-args parsed-args)
+                        (assoc :schema? true)
+                        (assoc :return-schema (-> parsed-args :return-schema :schema))
+                        (assoc :fn-name fn-name))]
+    `(defenterprise-impl ~args)))
