@@ -122,7 +122,7 @@ const getFkFieldPlaceholder = (field, idfields) => {
     return t`Field access denied`;
   }
 
-  return hasIdFields ? t`Select a target` : t`No key fields`;
+  return hasIdFields ? t`Select a target` : t`No key available`;
 };
 
 // FieldVisibilityPicker and SemanticTypeSelect are also used in FieldApp
