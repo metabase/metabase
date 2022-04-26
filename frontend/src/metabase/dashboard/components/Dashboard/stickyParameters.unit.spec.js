@@ -7,99 +7,101 @@ function mockMainElementScroll(scrollTop) {
   document.getElementsByTagName = () => [fakeMainElement];
 }
 
-it("initializes parametersWidgetOffsetTop", () => {
-  const setState = jest.fn();
+describe("updateParametersWidgetStickiness", () => {
+  it("initializes parametersWidgetOffsetTop", () => {
+    const setState = jest.fn();
 
-  mockMainElementScroll(0);
+    mockMainElementScroll(0);
 
-  const dashboard = {
-    parametersWidgetRef: { offsetTop },
-    parametersAndCardsContainerRef: { style: {} },
-    state: {},
-    setState,
-  };
+    const dashboard = {
+      parametersWidgetRef: { offsetTop },
+      parametersAndCardsContainerRef: { style: {} },
+      state: {},
+      setState,
+    };
 
-  updateParametersWidgetStickiness(dashboard);
+    updateParametersWidgetStickiness(dashboard);
 
-  expect(setState).toHaveBeenCalledWith({
-    parametersWidgetOffsetTop: offsetTop,
+    expect(setState).toHaveBeenCalledWith({
+      parametersWidgetOffsetTop: offsetTop,
+    });
   });
-});
 
-it("makes filters sticky with enough scrolling down", () => {
-  const setState = jest.fn();
+  it("makes filters sticky with enough scrolling down", () => {
+    const setState = jest.fn();
 
-  mockMainElementScroll(offsetTop + 1);
+    mockMainElementScroll(offsetTop + 1);
 
-  const dashboard = {
-    parametersWidgetRef: { offsetTop },
-    parametersAndCardsContainerRef: { style: {} },
-    state: {},
-    setState,
-  };
+    const dashboard = {
+      parametersWidgetRef: { offsetTop },
+      parametersAndCardsContainerRef: { style: {} },
+      state: {},
+      setState,
+    };
 
-  updateParametersWidgetStickiness(dashboard);
+    updateParametersWidgetStickiness(dashboard);
 
-  expect(setState).toHaveBeenCalledWith({
-    isParametersWidgetSticky: true,
-  });
-});
-
-it("makes filters unsticky with enough scrolling up", () => {
-  const setState = jest.fn();
-
-  mockMainElementScroll(offsetTop - 1);
-
-  const dashboard = {
-    parametersWidgetRef: { offsetTop },
-    parametersAndCardsContainerRef: { style: {} },
-    state: {},
-    setState,
-  };
-
-  updateParametersWidgetStickiness(dashboard);
-
-  expect(setState).toHaveBeenCalledWith({
-    isParametersWidgetSticky: false,
-  });
-});
-
-it("keeps filters sticky with enough scrolling down and already sticky", () => {
-  const setState = jest.fn();
-
-  mockMainElementScroll(offsetTop + 1);
-
-  const dashboard = {
-    parametersWidgetRef: { offsetTop },
-    parametersAndCardsContainerRef: { style: {} },
-    state: {
+    expect(setState).toHaveBeenCalledWith({
       isParametersWidgetSticky: true,
-      parametersWidgetOffsetTop: offsetTop,
-    },
-    setState,
-  };
+    });
+  });
 
-  updateParametersWidgetStickiness(dashboard);
+  it("makes filters unsticky with enough scrolling up", () => {
+    const setState = jest.fn();
 
-  expect(setState).not.toHaveBeenCalled();
-});
+    mockMainElementScroll(offsetTop - 1);
 
-it("keeps filters not sticky with enough scrolling up and already not sticky", () => {
-  const setState = jest.fn();
+    const dashboard = {
+      parametersWidgetRef: { offsetTop },
+      parametersAndCardsContainerRef: { style: {} },
+      state: {},
+      setState,
+    };
 
-  mockMainElementScroll(offsetTop - 1);
+    updateParametersWidgetStickiness(dashboard);
 
-  const dashboard = {
-    parametersWidgetRef: { offsetTop },
-    parametersAndCardsContainerRef: { style: {} },
-    state: {
+    expect(setState).toHaveBeenCalledWith({
       isParametersWidgetSticky: false,
-      parametersWidgetOffsetTop: offsetTop,
-    },
-    setState,
-  };
+    });
+  });
 
-  updateParametersWidgetStickiness(dashboard);
+  it("keeps filters sticky with enough scrolling down and already sticky", () => {
+    const setState = jest.fn();
 
-  expect(setState).not.toHaveBeenCalled();
+    mockMainElementScroll(offsetTop + 1);
+
+    const dashboard = {
+      parametersWidgetRef: { offsetTop },
+      parametersAndCardsContainerRef: { style: {} },
+      state: {
+        isParametersWidgetSticky: true,
+        parametersWidgetOffsetTop: offsetTop,
+      },
+      setState,
+    };
+
+    updateParametersWidgetStickiness(dashboard);
+
+    expect(setState).not.toHaveBeenCalled();
+  });
+
+  it("keeps filters not sticky with enough scrolling up and already not sticky", () => {
+    const setState = jest.fn();
+
+    mockMainElementScroll(offsetTop - 1);
+
+    const dashboard = {
+      parametersWidgetRef: { offsetTop },
+      parametersAndCardsContainerRef: { style: {} },
+      state: {
+        isParametersWidgetSticky: false,
+        parametersWidgetOffsetTop: offsetTop,
+      },
+      setState,
+    };
+
+    updateParametersWidgetStickiness(dashboard);
+
+    expect(setState).not.toHaveBeenCalled();
+  });
 });
