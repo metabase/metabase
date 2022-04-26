@@ -18,6 +18,7 @@ export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
 export const FOREIGN_KEY = "FOREIGN_KEY";
 export const PRIMARY_KEY = "PRIMARY_KEY";
+export const ARRAY = "ARRAY";
 
 // other types used for various purporses
 export const ENTITY = "ENTITY";
@@ -68,6 +69,10 @@ const TYPES = {
   },
   [PRIMARY_KEY]: {
     semantic: [TYPE.PK],
+  },
+  [ARRAY]: {
+    base: [TYPE.Array],
+    effective: [TYPE.Array],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -141,6 +146,7 @@ export function getFieldType(field) {
     STRING,
     STRING_LIKE,
     BOOLEAN,
+    ARRAY,
   ]) {
     if (isFieldType(type, field)) {
       return type;
@@ -544,6 +550,10 @@ export function getFilterOperators(field, table, selected) {
     } else if (isFieldType(STRING_LIKE, field)) {
       type = STRING_LIKE;
     }
+  }
+
+  if (type === ARRAY) {
+    type = STRING;
   }
 
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type]
