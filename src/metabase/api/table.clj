@@ -15,6 +15,7 @@
             [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
+            #_:clj-kondo/ignore
             [metabase.sync.field-values :as sync.field-values]
             [metabase.types :as types]
             [metabase.util :as u]

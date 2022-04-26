@@ -12,7 +12,7 @@
             [clojure.walk :as walk]
             [medley.core :as m]
             [metabase.models.dashboard-card :refer [DashboardCard]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.setting :as setting :refer [Setting]]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -185,7 +185,7 @@
 
 (defn- remove-admin-group-from-mappings-by-setting-key!
   [mapping-setting-key]
-  (let [admin-group-id (:id (group/admin))
+  (let [admin-group-id (:id (perms-group/admin))
         mapping        (try
                         (json/parse-string (raw-setting mapping-setting-key))
                         (catch Exception _e
