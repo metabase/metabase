@@ -292,7 +292,6 @@ export function ObjectDetailHeader({
               data-testId="object-detail-close-button"
               onlyIcon
               borderless
-              disabled={!canZoomNextRow}
               onClick={closeObjectDetail}
               icon="close"
               iconSize={20}
