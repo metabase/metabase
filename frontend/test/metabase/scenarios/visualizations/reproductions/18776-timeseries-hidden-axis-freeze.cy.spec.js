@@ -26,7 +26,7 @@ describe("issue 18776", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not freeze when opening a timeseries chart without X-axis", () => {
+  it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     visitQuestionAdhoc(questionDetails);
     cy.findByText("Visualization").should("be.visible");
   });
