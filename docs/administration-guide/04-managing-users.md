@@ -45,7 +45,7 @@ To determine [who has access to what](05-setting-permissions.md), you’ll need 
 - Create one or more groups.
 - Choose which level of access that group has to different databases, collections, and so on.
 - Then add people to those groups.
-- (Optional) promote people to [group managers](#group-manager).
+- (Optional) promote people to [group managers](#group-managers).
 
 To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click on **Groups** from the side menu.
 
