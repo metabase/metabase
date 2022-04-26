@@ -133,6 +133,7 @@ describe("scenarios > question > relative-datetime", () => {
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.findByText("Relative dates...").click();
+        cy.findByText("Current").click();
         cy.findByText("Year").click();
       });
       cy.wait("@dataset");
@@ -141,6 +142,21 @@ describe("scenarios > question > relative-datetime", () => {
         "not.exist",
       );
       cy.findByText("No results!").should("exist");
+    });
+
+    it("Relative dates should default to past filter (metabase#22027)", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Created At").click();
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Relative dates...").click();
+        cy.findByText("Day").should("not.exist");
+        cy.findByText("Quarter").should("not.exist");
+        cy.findByText("Month").should("not.exist");
+        cy.findByText("Year").should("not.exist");
+        cy.findByText("days").should("exist");
+      });
     });
   });
 });
