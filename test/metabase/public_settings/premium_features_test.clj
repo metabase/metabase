@@ -120,11 +120,6 @@
         (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
                (greeting :rasta))))
 
-      (testing "A second call to the same function doesn't perform EE function resolution again"
-        (with-redefs [clojure.core/ns-resolve (fn [_ _] (constantly "This should not be printed!"))]
-          (is (= "Hi rasta, you're running the Enterprise Edition of Metabase!"
-                 (greeting :rasta)))))
-
      (testing "if :feature = :any or nil, it will check if any feature exists, and fall back to the OSS version by default"
        (with-premium-features #{:some-feature}
          (is (= "Hi rasta, you're an EE customer with a valid token!"
