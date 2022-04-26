@@ -59,8 +59,9 @@
 (defenterprise-schema find-user :- (s/maybe EEUserInfo)
   "Get user information for the supplied username."
   :feature :any
-  [ldap-connection username settings]
-  {username su/NonBlankString}
+  [ldap-connection :- LDAPConnectionPool
+   username        :- su/NonBlankString
+   settings        :- i/LDAPSettings]
   (when-let [result (default-impl/search ldap-connection username settings)]
     (when-let [user-info (default-impl/ldap-search-result->user-info
                           ldap-connection
@@ -72,9 +73,8 @@
 (defenterprise-schema fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :any
-  [user-info settings]
-  {user-info i/UserInfo
-   settings i/LDAPSettings}
+  [user-info :- i/UserInfo
+   settings  :- i/LDAPSettings]
   (let [{:keys [first-name last-name email groups attributes]} user-info
         sync-groups? (:sync-groups? settings)
         user (or (attribute-synced-user user-info)
