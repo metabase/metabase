@@ -241,6 +241,7 @@ describe("scenarios > question > new", () => {
         .eq(1) // first table body cell
         .should("contain", "2") // quantity for order ID#1
         .click();
+      cy.wait("@dataset");
 
       cy.get(
         "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
@@ -258,6 +259,7 @@ describe("scenarios > question > new", () => {
         .eq(1) // first table body cell
         .should("contain", 1)
         .click();
+      cy.wait("@dataset");
 
       cy.log("only one row should appear after filtering by ID");
       cy.get(
