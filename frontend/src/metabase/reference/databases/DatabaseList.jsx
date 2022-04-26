@@ -51,23 +51,30 @@ export default class DatabaseList extends Component {
             Object.keys(entities).length > 0 ? (
               <div className="wrapper">
                 <List>
-                  {Object.values(entities).map(
-                    (entity, index) =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <ListItem
-                            id={entity.id}
-                            index={index}
-                            name={entity.display_name || entity.name}
-                            description={entity.description}
-                            url={`/reference/databases/${entity.id}`}
-                            icon="database"
-                          />
-                        </li>
-                      ),
-                  )}
+                  {Object.values(entities)
+                    .sort((a, b) => {
+                      const compared = a.name.localeCompare(b.name);
+                      return compared !== 0
+                        ? compared
+                        : a.engine.localeCompare(b.engine);
+                    })
+                    .map(
+                      (entity, index) =>
+                        entity &&
+                        entity.id &&
+                        entity.name && (
+                          <li className="relative" key={entity.id}>
+                            <ListItem
+                              id={entity.id}
+                              index={index}
+                              name={entity.display_name || entity.name}
+                              description={entity.description}
+                              url={`/reference/databases/${entity.id}`}
+                              icon="database"
+                            />
+                          </li>
+                        ),
+                    )}
                 </List>
               </div>
             ) : (
