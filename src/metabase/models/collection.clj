@@ -8,7 +8,9 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
+            [medley.core :as m]
+            [metabase.api.common :as api :refer [*current-user-id*
+                                                 *current-user-permissions-set*]]
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as i]
             [metabase.models.permissions :as perms :refer [Permissions]]
@@ -179,11 +181,12 @@
 (defn root-collection-with-ui-details
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
   [collection-namespace]
-  (assoc root-collection
-         :name (case (keyword collection-namespace)
-                 :snippets (tru "Top folder")
-                 (tru "Our analytics"))
-         :id   "root"))
+  (m/assoc-some root-collection
+                :name (case (keyword collection-namespace)
+                        :snippets (tru "Top folder")
+                        (tru "Our analytics"))
+                :namespace collection-namespace
+                :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre

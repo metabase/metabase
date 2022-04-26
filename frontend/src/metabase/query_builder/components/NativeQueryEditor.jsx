@@ -416,6 +416,7 @@ export default class NativeQueryEditor extends Component {
       hasTopBar = true,
       hasEditingSidebar = true,
       resizableBoxProps = {},
+      snippetCollections = [],
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -424,6 +425,10 @@ export default class NativeQueryEditor extends Component {
       <div className="NativeQueryEditorDragHandleWrapper">
         <div className="NativeQueryEditorDragHandle" />
       </div>
+    );
+
+    const canSaveSnippets = snippetCollections.some(
+      collection => collection.can_write,
     );
 
     return (
@@ -483,6 +488,7 @@ export default class NativeQueryEditor extends Component {
             openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
             runQuery={this.runQuery}
             target={() => this.editor.current.querySelector(".ace_selection")}
+            canSaveSnippets={canSaveSnippets}
           />
 
           {this.props.modalSnippet && (
