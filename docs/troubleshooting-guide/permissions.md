@@ -57,7 +57,7 @@ Keep in mind that if a person belongs to another group that does have data acces
 [granular]: ../administration-guide/data-permissions.html#granular-access
 [groups]: ../administration-guide/04-managing-users.html#groups
 [learn-permissions]: /learn/permissions/index.html
-[native-query-editing]: ../administration-guide/data-permissions.html#native-query-editing
+[native-query-editing]: ../administration-guide/data-permissions.html#native-querying
 [no-self-service]: ../administration-guide/data-permissions.html#no-self-service-access
 [sandboxing]: ./sandboxing.html
 [setting-collection-permissions]: ../administration-guide/06-collections.html#setting-permissions-for-collections
