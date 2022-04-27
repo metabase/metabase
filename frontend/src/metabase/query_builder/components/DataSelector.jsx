@@ -554,10 +554,11 @@ export class UnconnectedDataSelector extends Component {
 
     console.log("---> skipSteps:", activeStep);
 
+    console.log(this.props.selectedDatabaseId);
     if (
       activeStep === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase &&
-      !this.props.selectedDatabaseId
+      this.props.useOnlyAvailableDatabase
+      // && !this.props.selectedDatabaseId
     ) {
       const databases = this.getDatabases();
       if (databases && databases.length === 1) {
@@ -565,13 +566,16 @@ export class UnconnectedDataSelector extends Component {
       }
     }
 
+    console.log(this.props.selectedSchemaId);
     if (
       activeStep === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       !this.props.selectedSchemaId
     ) {
       const { schemas } = this.state;
+      console.log("skipSteps:", schemas);
       if (schemas && schemas.length === 1) {
+        console.log("skipSteps:", activeStep);
         await this.onChangeSchema(schemas[0]);
       }
     }
@@ -909,6 +913,8 @@ export class UnconnectedDataSelector extends Component {
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
+
+    console.log("activeStep --->", this.state.activeStep);
 
     switch (this.state.activeStep) {
       case COLLECTION_DATASET_STEP:
