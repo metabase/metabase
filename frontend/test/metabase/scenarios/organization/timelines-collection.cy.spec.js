@@ -7,7 +7,7 @@ import {
   restore,
 } from "__support__/e2e/cypress";
 
-describe("scenarios > collections > timelines", () => {
+describe("scenarios > organization > timelines > collection", () => {
   beforeEach(() => {
     restore();
     cy.intercept("PUT", "/api/collection/*").as("updateCollection");
