@@ -5,6 +5,7 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const webpack = require("webpack");
 
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
@@ -47,13 +48,12 @@ const config = (module.exports = {
   mode: devMode ? "development" : "production",
   context: SRC_PATH,
 
-  // output a bundle for the app JS and a bundle for styles
+  // output a bundle for the app JS
   // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
   entry: {
     "app-main": "./app-main.js",
     "app-public": "./app-public.js",
     "app-embed": "./app-embed.js",
-    styles: "./css/index.css",
   },
 
   // output to "dist"
@@ -160,6 +160,9 @@ const config = (module.exports = {
         },
       },
     },
+    minimizer: [
+      new CssMinimizerPlugin(),
+    ],
   },
 
   plugins: [
@@ -172,7 +175,7 @@ const config = (module.exports = {
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-main"],
+      chunks: ["vendor", "app-main"],
       template: __dirname + "/resources/frontend_client/index_template.html",
       inject: "head",
       // Using default of "defer" creates race-condition when applying whitelabel colors (metabase#18173)
@@ -182,7 +185,7 @@ const config = (module.exports = {
     new HtmlWebpackPlugin({
       filename: "../../public.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-public"],
+      chunks: ["vendor", "app-public"],
       template: __dirname + "/resources/frontend_client/index_template.html",
       inject: "head",
       scriptLoading: "blocking",
@@ -191,7 +194,7 @@ const config = (module.exports = {
     new HtmlWebpackPlugin({
       filename: "../../embed.html",
       chunksSortMode: "manual",
-      chunks: ["vendor", "styles", "app-embed"],
+      chunks: ["vendor", "app-embed"],
       template: __dirname + "/resources/frontend_client/index_template.html",
       inject: "head",
       scriptLoading: "blocking",
