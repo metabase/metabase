@@ -33,8 +33,8 @@ const getSchemaId = (name: string) => `schema:${name}`;
 const getTableId = (id: string | number) => `table:${id}`;
 
 const getDatabasesSidebar = (metadata: Metadata) => {
-  const entities = Object.values(metadata.databases)
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const entities = metadata
+    .databasesList({ savedQuestions: false })
     .map(database => ({
       id: database.id,
       name: database.name,

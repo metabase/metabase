@@ -54,7 +54,9 @@ describe("collection permissions", () => {
                   it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
                     cy.visit("/collection/root");
                     cy.findByText("Orders in a dashboard").click();
-                    cy.icon("add").click();
+                    appBar().within(() => {
+                      cy.icon("add").click();
+                    });
                     popover()
                       .findByText("Dashboard")
                       .click();
@@ -358,6 +360,24 @@ describe("collection permissions", () => {
               cy.findByTestId("select-button").findByText(
                 `${first_name} ${last_name}'s Personal Collection`,
               );
+            });
+
+            it("should not be able to use bulk actions on collection items (metabase#16490)", () => {
+              cy.visit("/collection/root");
+
+              cy.findByText("Orders")
+                .closest("tr")
+                .within(() => {
+                  cy.icon("table").trigger("mouseover");
+                  cy.findByRole("checkbox").should("not.exist");
+                });
+
+              cy.findByText("Orders in a dashboard")
+                .closest("tr")
+                .within(() => {
+                  cy.icon("dashboard").trigger("mouseover");
+                  cy.findByRole("checkbox").should("not.exist");
+                });
             });
 
             ["/", "/collection/root"].forEach(route => {

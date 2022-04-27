@@ -47,6 +47,7 @@ class EntityMenu extends Component {
       className,
       tooltip,
       trigger,
+      targetOffsetY,
     } = this.props;
     const { open, menuItemContent } = this.state;
     return (
@@ -65,7 +66,7 @@ class EntityMenu extends Component {
           hasArrow={false}
           hasBackground={false}
           horizontalAttachments={["left", "right"]}
-          targetOffsetY={20}
+          targetOffsetY={targetOffsetY || 0}
         >
           {/* Note: @kdoh 10/12/17
            * React Motion has a flow type problem with children see

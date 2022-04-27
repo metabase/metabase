@@ -4,7 +4,6 @@ import { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 export function fieldFilterForParameter(parameter) {
   const type = getParameterType(parameter);
-  const subtype = getParameterSubType(parameter);
   switch (type) {
     case "date":
       return field => field.isDate();
@@ -17,11 +16,7 @@ export function fieldFilterForParameter(parameter) {
     case "number":
       return field => field.isNumber() && !field.isCoordinate();
     case "string":
-      return field => {
-        return subtype === "=" || subtype === "!="
-          ? field.isCategory() && !field.isLocation()
-          : field.isString() && !field.isLocation();
-      };
+      return field => field.isString() && !field.isLocation();
   }
 
   return () => false;

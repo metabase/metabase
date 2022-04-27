@@ -8,12 +8,11 @@ import QuestionDataSelector from "../../QuestionDataSelector";
 
 type Props = {
   query: StructuredQuery;
-  fitClassNames: string;
 };
 
-function NewQuestionView({ query, fitClassNames }: Props) {
+function NewQuestionView({ query }: Props) {
   return (
-    <div className={fitClassNames}>
+    <div className="full-height">
       <div className="p4 mx2">
         <QuestionDataSelector
           query={query}

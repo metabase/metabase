@@ -133,7 +133,10 @@ export default class DashCard extends Component {
         card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
     }));
 
-    const loading = !(series.length > 0 && _.every(series, s => s.data));
+    const loading =
+      !(series.length > 0 && _.every(series, s => s.data)) &&
+      !isVirtualDashCard(dashcard);
+
     const expectedDuration = Math.max(
       ...series.map(s => s.card.query_average_duration || 0),
     );
@@ -189,8 +192,9 @@ export default class DashCard extends Component {
           <DashboardCardActionsPanel onMouseDown={this.preventDragging}>
             <DashCardActionButtons
               series={series}
-              hasError={!!errorMessage}
+              isLoading={loading}
               isVirtualDashCard={isVirtualDashCard(dashcard)}
+              hasError={!!errorMessage}
               onRemove={onRemove}
               onAddSeries={onAddSeries}
               onReplaceAllVisualizationSettings={
@@ -310,6 +314,7 @@ const DashboardCardActionsPanel = styled.div`
 
 const DashCardActionButtons = ({
   series,
+  isLoading,
   isVirtualDashCard,
   hasError,
   onRemove,
@@ -332,7 +337,7 @@ const DashCardActionButtons = ({
     );
   }
 
-  if (!hasError) {
+  if (!isLoading && !hasError) {
     if (
       onReplaceAllVisualizationSettings &&
       !getVisualizationRaw(series).visualization.disableSettingsConfig

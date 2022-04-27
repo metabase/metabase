@@ -1,14 +1,13 @@
 # Adding and managing databases
 
-  - [Adding a database connection](#adding-a-database-connection)
-    - [Officially supported databases](#officially-supported-databases)
-    - [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
-    - [Errors when connecting to your database](#errors-when-connecting-to-your-database)
-  - [Database connection options](#database-connection-options)
-  - [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
-  - [Deleting databases](#deleting-databases)
-  - [Troubleshooting](#troubleshooting)
-  - [Further reading](#further-reading)
+- [Adding a database connection](#adding-a-database-connection)
+- [Databases](#databases)
+- [Connecting to databases hosted by a cloud provider](#connecting-to-databases-hosted-by-a-cloud-provider)
+- [Errors when connecting to your database](#errors-when-connecting-to-your-database)
+- [Database connection options](#database-connection-options)
+- [Re-scanning a single table or field](#re-scanning-a-single-table-or-field)
+- [Deleting databases](#deleting-databases)
+- [Troubleshooting](#troubleshooting)
 
 ## Adding a database connection
 
@@ -18,7 +17,17 @@ Once in the Admin section, select the **Databases** tab from the navigation bar 
 
 Although connection details differ database to database, in general you'll need to get connection info from your database admin, usually some combination of hostname (sometimes called endpoint), port, database username and password, and the name of the database.
 
+## Databases
+
+Metabase supports many different databases and data sources, with different levels of support.
+
+- [Official](#officially-supported-databases) (this page)
+- [Partner](../developers-guide-drivers.md)
+- [Community](../developers-guide-drivers.md)
+
 ### Officially supported databases
+
+The following databases have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing/) will get official support. 
 
 - [BigQuery](databases/bigquery.md) (Google Cloud Platform)
 - Druid
@@ -36,15 +45,13 @@ Although connection details differ database to database, in general you'll need 
 - SQLite
 - [Vertica](databases/vertica.md)
 
-Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if someone's built one, or learn how to get started building your own. Note that our hosted offering, [Metabase Cloud](https://www.metabase.com/start/hosted/), doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported databases](#officially-supported-databases) listed above.
-
-### Connecting to databases hosted by a cloud provider
+## Connecting to databases hosted by a cloud provider
 
 For provider-specific connection details, like connecting to a PostgreSQL data warehouse on RDS:
 
 - [AWS's Relational Database Service (RDS)](databases/aws-rds.md)
 
-### Errors when connecting to your database
+## Errors when connecting to your database
 
 Check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md).
 

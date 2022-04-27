@@ -398,19 +398,19 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id prefix limit]
+(defn- autocomplete-tables [db-id search-string limit]
   (db/select [Table :id :db_id :schema :name]
     {:where    [:and [:= :db_id db-id]
                      [:= :active true]
-                     [:like :%lower.name (str (str/lower-case prefix) "%")]
+                     [:like :%lower.name (str/lower-case search-string)]
                      [:= :visibility_type nil]]
      :order-by [[:%lower.name :asc]]
      :limit    limit}))
 
-(defn- autocomplete-fields [db-id prefix limit]
+(defn- autocomplete-fields [db-id search-string limit]
   (db/select [Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
     :metabase_field.active          true
-    :%lower.metabase_field.name     [:like (str (str/lower-case prefix) "%")]
+    :%lower.metabase_field.name     [:like (str/lower-case search-string)]
     :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
     :table.db_id                    db-id
     {:order-by  [[:%lower.metabase_field.name :asc]
@@ -432,10 +432,12 @@
                          (when semantic_type
                            (str " " semantic_type)))]))))
 
-(defn- autocomplete-suggestions [db-id prefix]
+(defn- autocomplete-suggestions
+  "match-string is a string that will be used with ilike. The it will be lowercased by autocomplete-{tables,fields}. "
+  [db-id match-string]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id prefix limit))
-        fields (readable-fields-only (autocomplete-fields db-id prefix limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id match-string limit))
+        fields (readable-fields-only (autocomplete-fields db-id match-string limit))]
     (autocomplete-results tables fields limit)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
@@ -445,12 +447,18 @@
   and `Fields` in this `Database`.
 
   Tables are returned in the format `[table_name \"Table\"]`;
-  Fields are returned in the format `[field_name \"table_name base_type semantic_type\"]`"
-  [id prefix]
-  {prefix su/NonBlankString}
+  When Fields have a semantic_type, they are returned in the format `[field_name \"table_name base_type semantic_type\"]`
+  When Fields lack a semantic_type, they are returned in the format `[field_name \"table_name base_type\"]`"
+  [id prefix search]
   (api/read-check Database id)
   (try
-    (autocomplete-suggestions id prefix)
+    (cond
+      search
+      (autocomplete-suggestions id (str "%" search "%"))
+      prefix
+      (autocomplete-suggestions id (str prefix "%"))
+      :else
+      (ex-info "must include prefix or search" {}))
     (catch Throwable t
       (log/warn "Error with autocomplete: " (.getMessage t)))))
 
@@ -746,16 +754,25 @@
 
 ;; TODO - do we also want an endpoint to manually trigger analysis. Or separate ones for classification/fingerprinting?
 
+(def ^:dynamic *rescan-values-async*
+  "Boolean indicating whether the rescan_values job should be done async or not. Defaults to `true`. Should only be rebound
+  in tests to force the scan to block."
+  true)
+
 ;; Should somehow trigger cached-values/cache-field-values-for-database!
 (api/defendpoint POST "/:id/rescan_values"
   "Trigger a manual scan of the field values for this `Database`."
   [id]
   ;; just wrap this is a future so it happens async
   (let [db (api/write-check (Database id))]
-    (future
-      (sync-field-values/update-field-values! db)))
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (if *rescan-values-async*
+        (future (sync-field-values/update-field-values! db))
+        (sync-field-values/update-field-values! db))))
   {:status :ok})
-
 
 ;; "Discard saved field values" action in db UI
 (defn- database->field-values-ids [database-or-id]
