@@ -295,6 +295,7 @@ export default class Dashboard extends Component {
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
+                    data-testid="dashboard-parameters-widget-container"
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}
