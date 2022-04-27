@@ -87,16 +87,18 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
     >
       <ul className="UserActionsSelect py1">
         <li
-          className="p2 bg-brand-hover text-white-hover cursor-pointer"
+          className="py1 px2 bg-brand-hover text-white-hover cursor-pointer"
           onClick={onEditGroupClicked.bind(null, group)}
         >
           {t`Edit Name`}
         </li>
-        <li className="p2 bg-brand-hover text-white-hover cursor-pointer text-error">
-          <ModalWithTrigger triggerElement={t`Remove Group`}>
-            <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
-          </ModalWithTrigger>
-        </li>
+        <ModalWithTrigger
+          as="li"
+          triggerClasses="py1 px2 bg-brand-hover text-white-hover cursor-pointer text-error"
+          triggerElement={t`Remove Group`}
+        >
+          <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
+        </ModalWithTrigger>
       </ul>
     </PopoverWithTrigger>
   );
