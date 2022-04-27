@@ -204,6 +204,19 @@
   [_]
   :%current_timestamp)
 
+;; TODO So this seems to work, but the query should really have a LIMIT 1 tacked onto the end of it...
+(defmethod sql.qp/->honeysql [:ocient :percentile]
+  [driver [_ field p]]
+  (hsql/raw (format "percentile(%s, %s) over (order by %s)"
+                    (hformat/to-sql (sql.qp/->honeysql driver field))
+                    (hformat/to-sql (sql.qp/->honeysql driver p))
+                    (hformat/to-sql (sql.qp/->honeysql driver field)))))
+
+;; Ocient does not have a median() function, use :percentile
+(defmethod sql.qp/->honeysql [:ocient :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
 (defmethod sql.qp/->honeysql [:ocient :relative-datetime]
   [driver [_ amount unit]]
   (sql.qp/date driver unit (if (zero? amount)
