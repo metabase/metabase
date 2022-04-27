@@ -404,12 +404,18 @@ export const getIsResultDirty = createSelector(
       return false;
     }
 
+    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
+    if (hasParametersChange) {
+      return true;
+    }
+
+    if (question && question.query().readOnly()) {
+      return false;
+    }
+
     lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return (
-      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-      !Utils.equals(lastParameters, nextParameters)
-    );
+    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
   },
 );
 
@@ -523,8 +529,16 @@ export const getQuery = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion],
-  question => question && question.canRun(),
+  [getQuestion, getIsDirty],
+  (question, isDirty) => {
+    if (!question) {
+      return false;
+    }
+    if (!question.isSaved() || isDirty) {
+      return question.canRun() && !question.query().readOnly();
+    }
+    return question.canRun();
+  },
 );
 
 export const getQuestionAlerts = createSelector(
