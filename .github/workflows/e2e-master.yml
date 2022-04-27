@@ -63,6 +63,7 @@ jobs:
           - "dashboard-filters"
           - "downloads"
           - "embedding"
+          - "filters"
           - "joins"
           - "models"
           - "moderation"
