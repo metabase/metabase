@@ -1,6 +1,7 @@
 ## What's wrong with your SQL query?
 
-- [I get an error message][sql-debugging].
+- [I get an error message that mentions part of my SQL query][sql-debugging].
+- [I get an error message that isn't specific to my SQL query][troubleshoot-error-messages].
 - [I don't have an error message, but my query results are incorrect][troubleshoot-sql-logic].
 
 ## Debugging SQL queries
@@ -11,6 +12,7 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
    - [I don’t know where my SQL query is failing][how-to-find-failing-sql-line].
 2. Check the [SQL syntax][troubleshoot-sql-syntax] on the line that is failing in your SQL query.
 3. Check your [query logic][troubleshoot-sql-logic] if the query uses joins, subqueries, or CTEs.
+4. If you get an error message that isn't specific to your SQL query, go to [Troubleshooting error messages][troubleshoot-error-messages].
 
 ### How does SQL debugging work?
 
@@ -46,11 +48,11 @@ What does your error message say?
 
 If you have a different error message, search or ask the [Metabase community][discourse].
 
-#### My column or table name is "not found" or "not recognized".
+#### My column or table name is "not found" or "not recognized"
 
 If your SQL query contains [SQL variables][sql-variable-def] that look like `{% raw %}{{ variable }}{% endraw %}`, go to [Troubleshooting SQL variables][troubleshoot-sql-variables] first.
 
-**Steps:**
+**Steps**
 
 1.  Review the **structure** section of the [reference guide][sql-reference-guide] for your SQL dialect.
 
@@ -58,7 +60,7 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 
       - `SELECT 'column_name'`
       - `SELECT "column_name"`
-      - `SELECT {% raw %}``column_name``{% endraw %}`
+      - ``SELECT `column_name` ``
 
     - Are you using the correct path to columns and tables? For example:
 
@@ -73,13 +75,13 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
       - `SELECT users` will throw an error.
       - `SELECT "users"` will run correctly.
     
-    **Tip: Use Metabase to check for column and table name syntax**
+    - **Tip: Use Metabase to check for column and table name syntax**
 
       1. Create a simple question in the [notebook editor][notebook-editor] using the same columns and tables as your SQL question.
       2. [Convert the question to SQL][how-to-convert-gui-question-to-sql].
       3. Look at how the Metabase-generated SQL query refers to column and table names.
 
-2.  Review the [data reference][data-reference] for the column and tables in your query.
+2.  Review the [data reference][data-reference] for the column and table names in your query.
 
     - If the column or table name doesn't exist in the data reference:
       - Run `SELECT * FROM your_table_name LIMIT 10;` to look for the column or table name to use in your query.
@@ -90,27 +92,25 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
       - If you’re a Metabase admin, you may need to [run a sync][database-syncing] to refresh your data.
 
 3.  If you no longer have an error message, but your query results are incorrect, go to [Troubleshooting SQL logic][troubleshoot-sql-logic].
-4.  If you're still stuck, search or ask the [Metabase community][discourse].
+4.  If you get an error message that isn't specific to your SQL query, go to [Troubleshooting error messages][troubleshoot-error-messages].
+5.  If you're still stuck, search or ask the [Metabase community][discourse].
 
-**Explanation:**
+**Explanation**
 
 You need to make sure that you're using the correct syntax for the SQL dialect used by your database. 
 
-You also need to check that the column and table names in your query match the original names in your database. They can differ for two reasons:
+Your query also needs to use column and table names that match the original names in your database. Metabase uses [display names][column-metadata] that can be updated by your Metabase admin, so the data reference may not match your database schema. It's also possible that a column or table was re-named on the database side, but Metabase hasn’t run a sync to grab the updates.
 
-1. [Columns and tables have _display_ names in Metabase that are set by your Metabase admin][column-metadata].
-2. If a column or table name was updated in your database, but Metabase hasn’t run a sync yet, your database won’t recognize the names from your query.
-
-**Further reading:**
+**Further reading**
 
 - [How Metabase executes SQL queries][how-metabase-executes-queries].
 - [How Metabase syncs with your database][database-syncing].
 
-#### My SQL "function does not exist”.
+#### My SQL "function does not exist”
 
 If your SQL query contains [SQL variables][sql-variable-def] that look like `{% raw %}{{ variable }}{% endraw %}`, go to [Troubleshooting SQL variables][troubleshoot-sql-variables] first.
 
-**Steps:**
+**Steps**
 
 1. Review the data type of the column that you want your function to apply to.
 
@@ -128,20 +128,21 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
    - If you’re a Metabase admin, you can also [cast data types from the Data model page][how-to-cast-data-type].
 
 4. If you no longer have an error message, but your query results are incorrect, go to [Troubleshooting SQL logic][troubleshoot-sql-logic].
-5. If you're still stuck, search or ask the [Metabase community][discourse].
+5. If you get an error message that isn't specific to your SQL query, go to [Troubleshooting error messages][troubleshoot-error-messages].
+6. If you're still stuck, search or ask the [Metabase community][discourse].
 
-**Explanation:**
+**Explanation**
 
 SQL functions are designed to work on specific data types in your database. For example, the [`DATE_TRUNC` function in PostgresSQL](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC) works on columns with `date`, `timestamp`, and `time` typed data in a Postgres database. If you try to use the `DATE_TRUNC` function on a column with a `string` data type in your database, it won’t work. 
 
 Note that Metabase [field types][field-type-def] are not one-to-one with the data types in your database. In this case, the field type gives you enough information about the column data type to troubleshoot the error.
 
-**Further reading:**
+**Further reading**
 
 - [How Metabase executes SQL queries][how-metabase-executes-queries].
 - [Field types documentation][field-type-doc].
 
-## I don’t know which line of my SQL query is failing.
+## I don’t know which line of my SQL query is failing
 
 If your SQL query contains [SQL variables][sql-variable-def] that look like `{% raw %}{{ variable }}{% endraw %}`, go to [Troubleshooting SQL variables][troubleshoot-sql-variables] first.
 
@@ -169,7 +170,7 @@ Highlight lines of your SQL query to:
 - Run the lines with `Cmd + Return` or `Ctrl + Enter`.
 - Comment/uncomment the lines with  `Cmd + /` or `Ctrl + /`.
 
-## I don’t know what SQL dialect to use.
+## I don’t know what SQL dialect to use
 
 The SQL dialect is based on the [database][data-source-list] that stores the tables you want to query. Once you find out what SQL dialect to use, you can follow the [Debugging SQL][sql-debugging] steps.
 
@@ -208,6 +209,7 @@ Search or ask the [Metabase community][discourse].
 [sql-order-execution]: /learn/sql-questions/sql-best-practices.html#the-general-order-of-query-execution
 [sql-reference-guide]: #common-sql-reference-guides
 [sql-variable-def]: /glossary/variable.html#example-variable-in-metabase
+[troubleshoot-error-messages]: ./error-message.html
 [troubleshoot-sql-logic]: ./sql.html#my-sql-query-results-are-incorrect
 [troubleshoot-sql-syntax]: #troubleshooting-sql-syntax-errors
 [troubleshoot-sql-variables]: ./sql.html#my-sql-variables-arent-working
