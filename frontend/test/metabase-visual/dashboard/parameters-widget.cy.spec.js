@@ -1,6 +1,5 @@
 import { restore, visitDashboard } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
-import { MAXIMUM_PARAMETERS_FOR_STICKINESS } from "metabase/dashboard/components/Dashboard/stickyParameters";
 
 const { PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -15,9 +14,9 @@ const filter = {
   type: "category",
 };
 
-const filters = new Array(MAXIMUM_PARAMETERS_FOR_STICKINESS + 1).fill(filter);
+const parameters = new Array(12).fill(filter);
 
-describe("visual tests > dashboard > parameters widget", () => {
+describe(`visual tests > dashboard > parameters widget (${parameters.length} filters)`, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -28,7 +27,7 @@ describe("visual tests > dashboard > parameters widget", () => {
       const { dashboard_id } = card;
 
       cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-        parameters: filters,
+        parameters,
       });
 
       const updatedSize = {
@@ -43,7 +42,7 @@ describe("visual tests > dashboard > parameters widget", () => {
   });
 
   // desktop
-  describe(`Stickiness on desktop (${filters.length} filters)`, () => {
+  describe(`Stickiness on desktop (${parameters.length} filters)`, () => {
     it("is sticky in view mode", () => {
       cy.findByText("test question");
 
@@ -66,12 +65,12 @@ describe("visual tests > dashboard > parameters widget", () => {
   });
 
   // mobile
-  describe(`Stickiness on mobile (${filters.length} filters)`, () => {
-    // iPhone SE
-    cy.viewport(375, 667);
-
+  describe(`Stickiness on mobile (${parameters.length} filters)`, () => {
     it("is not sticky in view mode", () => {
       cy.findByText("test question");
+
+      // iPhone SE
+      cy.viewport(375, 667);
 
       cy.get("main").scrollTo(0, 264);
 
