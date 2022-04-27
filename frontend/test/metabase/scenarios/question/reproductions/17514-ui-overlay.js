@@ -141,12 +141,10 @@ export function issue17514() {
         cy.findByText("Products").click();
 
         visualize();
-        cy.findByTextEnsureVisible("Subtotal");
-        cy.wait("@dataset");
 
         // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
-        cy.findByText("110.93").click();
-        cy.findByText("Filter by this value");
+        cy.findByTextEnsureVisible("Subtotal").click();
+        cy.findByText("Filter by this column");
       });
     });
   });
