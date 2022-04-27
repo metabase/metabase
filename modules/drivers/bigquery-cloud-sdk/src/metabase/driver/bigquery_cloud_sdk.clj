@@ -67,18 +67,15 @@
    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
          inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
          exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)
-         all-dataset-iter (for [^Dataset dataset (.iterateAll datasets)
-                                :let [^DatasetId dataset-id (.. dataset getDatasetId)]]
-                            dataset-id)
-         dataset-iter (for [^DatasetId dataset-id all-dataset-iter
+         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
+                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
                             :when (driver.s/include-schema? inclusion-patterns
                                                             exclusion-patterns
                                                             (.getDataset dataset-id))]
                         dataset-id)]
-     (when (and validate-dataset? (zero? (count dataset-iter)))
+     (when (and (not= filter-type "all") validate-dataset? (zero? (count dataset-iter)))
        (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
-                       {::driver/can-connect-message? true
-                        :datasets (mapv #(.getDataset %) all-dataset-iter)})))
+                       {::driver/can-connect-message? true})))
      (apply concat (for [^DatasetId dataset-id dataset-iter]
                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                          .iterateAll
