@@ -223,17 +223,13 @@ export default class Dashboard extends Component {
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
-    const parametersList = getValuePopulatedParameters(
-      parameters,
-      parameterValues,
-    );
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
     const parametersWidget = (
       <SyncedParametersList
-        parameters={parametersList}
+        parameters={getValuePopulatedParameters(parameters, parameterValues)}
         editingParameter={editingParameter}
         dashboard={dashboard}
         isFullscreen={isFullscreen}
