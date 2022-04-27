@@ -535,6 +535,16 @@ describe("formatting", () => {
         "Sun",
       );
     });
+
+    it("should format days of week with exclude option", () => {
+      const options = {
+        isExclude: true,
+      };
+
+      expect(
+        formatDateTimeWithUnit("2022-04-25", "day-of-week", options),
+      ).toEqual("Monday");
+    });
   });
 
   describe("formatTime", () => {
