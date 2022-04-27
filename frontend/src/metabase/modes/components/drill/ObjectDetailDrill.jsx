@@ -2,6 +2,8 @@ import { t } from "ttag";
 import { isFK, isPK } from "metabase/lib/schema_metadata";
 import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
+import Question from "metabase-lib/lib/Question";
+import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 function hasManyPKColumns(question) {
   return (
@@ -24,17 +26,21 @@ function getActionForPKColumn({ question, column, objectId, isDashboard }) {
   return ["action", () => zoomInRow({ objectId })];
 }
 
-function getActionForFKColumn({ targetField, objectId }) {
-  const databaseId = targetField.table.database.id;
-  const tableId = targetField.table_id;
+function getActionForFKColumn({ field, objectId }) {
   return [
     "url",
-    () =>
-      Urls.newQuestion({
-        databaseId,
-        tableId,
+    () => {
+      const databaseId = field.table.database.id;
+      const tableId = field.table_id;
+      const dimension = new FieldDimension(field.id, null, field.metadata);
+      const question = Question.create({ databaseId, tableId }).filter(
+        "=",
+        dimension.column(),
         objectId,
-      }),
+      );
+
+      return question.getUrl();
+    },
   ];
 }
 
@@ -73,9 +79,10 @@ function getFKAction({ question, column, objectId }) {
     return;
   }
   const [actionKey, action] = getActionForFKColumn({
-    targetField,
+    field: targetField,
     objectId,
   });
+
   actionObject[actionKey] = action;
   return actionObject;
 }
