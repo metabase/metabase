@@ -1000,8 +1000,8 @@
   (memoize/ttl
    ^{::memoize/args-fn (fn [[user-id]]
                          [(mdb.connection/unique-identifier) user-id])}
-   (s/fn user->personal-collection-id* :- su/IntGreaterThanZero
-     [user-id :- su/IntGreaterThanZero]
+   (fn user->personal-collection-id*
+     [user-id]
      (u/the-id (user->personal-collection user-id)))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
