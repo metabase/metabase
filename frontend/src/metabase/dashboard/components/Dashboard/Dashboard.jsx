@@ -282,7 +282,10 @@ export default class Dashboard extends Component {
               />
 
               {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer isEditing={isEditing}>
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  isEditing={isEditing}
+                >
                   {parametersWidget}
                 </ParametersWidgetContainer>
               )}
