@@ -163,12 +163,10 @@
     ds))
 
 (defn set-time-zone-if-supported!
-  "Execute [[set-timezone-sql]], if implemented by driver, to set the session time zone. This way of setting the time zone
-  should be considered deprecated in favor of implementing `connection-with-time-zone` directly."
-  {:deprecated "0.35.0"}
+  "Execute [[set-timezone-sql]], if implemented by driver, to set the session `timezone-id`."
   [driver ^Connection conn ^String timezone-id]
   (when timezone-id
-    (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
+    (when-let [format-string (set-timezone-sql driver)]
       (try
         (let [sql (format format-string (str \' timezone-id \'))]
           (log/debug (trs "Setting {0} database timezone with statement: {1}" driver (pr-str sql)))
