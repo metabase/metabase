@@ -1554,10 +1554,14 @@ export const loadObjectDetailFKReferences = createThunkAction(
       dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
 
       const state = getState();
+      const tableForeignKeys = getTableForeignKeys(state);
+
+      if (!Array.isArray(tableForeignKeys)) {
+        return null;
+      }
 
       const card = getCard(state);
       const queryResult = getFirstQueryResult(state);
-      const tableForeignKeys = getTableForeignKeys(state);
       const zoomedObjectId = getZoomedObjectId(state);
 
       async function getFKCount(card, queryResult, fk) {
