@@ -42,8 +42,6 @@
 
 (sql-jdbc.tx/add-test-extensions! :ocient)
 
-(defmethod driver/supports? [:ocient :foreign-keys] [_ _] (not config/is-test?))
-
 ;; Use the public schema for all tables
 (defonce session-schema (str "public"))
 
@@ -407,7 +405,6 @@
     ;; execute each statement. Notice we're now executing in the `:db` context e.g. executing 
     ;; them for a specific DB rather than on `:server` (no DB in particular)
     (doseq [statement statements]
-      (println (format "EXECUTING [ddl/create-db-tables-ddl-statements] %s" (pr-str statement)))
       (execute-sql! driver :db dbdef statement)))
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions
@@ -456,7 +453,6 @@
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
       (doseq [sql+args statements]
         (let [sql (unprepare/unprepare driver sql+args)]
-          (log/debugf "[insert] %s" (pr-str sql))
           (execute-sql-spec! spec sql)))
       (catch SQLException e
         (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
