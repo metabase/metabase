@@ -86,7 +86,7 @@
                              :type/DateTimeWithTZ "TIMESTAMP"
                              :type/ZonedDateTime  "TIMESTAMP"
                              :type/Decimal        "DECIMAL(16, 4)"
-                             :type/Float          "FLOAT"
+                             :type/Float          "DOUBLE"
                              :type/Integer        "INT"
                              :type/IPAddress      "IPV4"
                              :type/*              "VARCHAR(255)"
