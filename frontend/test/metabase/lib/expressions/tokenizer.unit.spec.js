@@ -97,6 +97,15 @@ describe("metabase/lib/expressions/tokenizer", () => {
     expect(types("[Product.Vendor]")).toEqual([T.Identifier]);
   });
 
+  it("should tokenize booleans", () => {
+    expect(types("true")).toEqual([T.Boolean]);
+    expect(types("True")).toEqual([T.Boolean]);
+    expect(types("TRUE")).toEqual([T.Boolean]);
+    expect(types("false")).toEqual([T.Boolean]);
+    expect(types("False")).toEqual([T.Boolean]);
+    expect(types("FALSE")).toEqual([T.Boolean]);
+  });
+
   it("should catch unterminated bracket", () => {
     expect(errors("[T")[0].message).toEqual("Missing a closing bracket");
   });

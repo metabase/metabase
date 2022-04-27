@@ -34,7 +34,7 @@ export default class FilterWidgetList extends React.Component {
   render() {
     const { query, filters } = this.props;
     return (
-      <div className="Query-filterList scroll-x scroll-show">
+      <div className="Query-filterList ml2 scroll-x scroll-show">
         {filters.map((filter, index) => (
           <FilterWidget
             key={index}

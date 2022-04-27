@@ -7,7 +7,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
@@ -46,15 +46,18 @@
 (defn- pre-delete [{:keys [db_id schema id]}]
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defn- perms-objects-set [table read-or-write]
-  ;; To read (e.g., fetch metadata) a Table you (predictably) have read permissions
+(defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
+  ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
+  ;; permissions for the Table (detailed below). Since a user can have one or the other, we use `i/has-any-permissions?`
+  ;; to check both read and write permission sets in the `can-read?` implementation.
+  ;;
   ;; To write a Table (e.g. update its metadata):
   ;;   * If Enterprise Edition code is available and the :advanced-permissions feature is enabled, you must have
   ;;     data-model permissions for othe table
   ;;   * Else, you must be an admin
   #{(case read-or-write
       :read  (perms/table-read-path table)
-      :write (perms/data-model-write-perms-path (:db_id table) (:schema table) (:id table)))})
+      :write (perms/data-model-write-perms-path db-id schema table-id))})
 
 (u/strict-extend (class Table)
   models/IModel
@@ -66,10 +69,12 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         (mi/has-any-permissions?
+                              (partial mi/current-user-has-full-permissions? :read)
+                              (partial mi/current-user-has-full-permissions? :write))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 

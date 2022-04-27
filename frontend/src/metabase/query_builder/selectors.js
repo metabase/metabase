@@ -38,6 +38,7 @@ import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 export const getUiControls = state => state.qb.uiControls;
+const getQueryStatus = state => state.qb.queryStatus;
 const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
@@ -69,6 +70,8 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
 
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
+export const getIsLoadingComplete = state =>
+  getQueryStatus(state) === "complete";
 
 export const getCard = state => state.qb.card;
 export const getOriginalCard = state => state.qb.originalCard;
@@ -401,12 +404,18 @@ export const getIsResultDirty = createSelector(
       return false;
     }
 
+    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
+    if (hasParametersChange) {
+      return true;
+    }
+
+    if (question && question.query().readOnly()) {
+      return false;
+    }
+
     lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return (
-      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-      !Utils.equals(lastParameters, nextParameters)
-    );
+    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
   },
 );
 
@@ -520,8 +529,16 @@ export const getQuery = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion],
-  question => question && question.canRun(),
+  [getQuestion, getIsDirty],
+  (question, isDirty) => {
+    if (!question) {
+      return false;
+    }
+    if (!question.isSaved() || isDirty) {
+      return question.canRun() && !question.query().readOnly();
+    }
+    return question.canRun();
+  },
 );
 
 export const getQuestionAlerts = createSelector(
@@ -564,9 +581,7 @@ export const getRawSeries = createSelector(
     let display = question && question.display();
     let settings = question && question.settings();
 
-    if (isObjectDetail) {
-      display = "object";
-    } else if (isShowingRawTable) {
+    if (isShowingRawTable) {
       display = "table";
       settings = { "table.pivot": false };
     }

@@ -4,7 +4,7 @@
             [clojure.test :as t]
             [medley.core :as m]
             [metabase.db.connection :as mdb.connection]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models.permissions-group :refer [PermissionsGroup]]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.user :refer [User]]
@@ -99,6 +99,15 @@
       {:pre [(contains? usernames user-name)]}
       (u/the-id (fetch-user user-name))))))
 
+(defn user-descriptor
+  "Returns \"admin\" or \"non-admin\" for a given user.
+  User could be a keyword like `:rasta` or a user object."
+  [user]
+  (cond
+   (keyword user)       (user-descriptor (fetch-user user))
+   (:is_superuser user) "admin"
+   :else                "non-admin"))
+
 (s/defn user->credentials :- {:username (s/pred u/email?), :password s/Str}
   "Return a map with `:username` and `:password` for User with `username`.
 
@@ -125,7 +134,7 @@
   (or (@tokens username)
       (locking tokens
         (or (@tokens username)
-            (u/prog1 (http/authenticate (user->credentials username))
+            (u/prog1 (client/authenticate (user->credentials username))
               (swap! tokens assoc username <>))))
       (throw (Exception. (format "Authentication failed for %s with credentials %s"
                                  username (user->credentials username))))))
@@ -141,7 +150,7 @@
 
 (defn- client-fn [username & args]
   (try
-    (apply http/client (username->token username) args)
+    (apply client/client (username->token username) args)
     (catch ExceptionInfo e
       (let [{:keys [status-code]} (ex-data e)]
         (when-not (= status-code 401)
@@ -191,7 +200,7 @@
                       :set    {:password      (creds/hash-bcrypt user-email)
                                :password_salt ""}
                       :where  [:= :id user-id]})
-        (apply http/client {:username user-email, :password user-email} args)
+        (apply client/client {:username user-email, :password user-email} args)
         (finally
           (db/execute! {:update User
                         :set    old-password-info
@@ -232,6 +241,6 @@
   `(do-with-group-for-user ~group :rasta (fn [~group-binding] ~@body)))
 
 (defmacro with-group-for-user
-  "Like `with-group`, but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
+  "Like [[with-group]], but for any test user (by passing in a test username keyword e.g. `:rasta`) or User ID."
   [[group-binding test-user-name-or-user-id group] & body]
   `(do-with-group-for-user ~group ~test-user-name-or-user-id (fn [~group-binding] ~@body)))

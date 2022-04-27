@@ -7,6 +7,7 @@ import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 
 import _ from "underscore";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
@@ -68,7 +69,13 @@ export const getShallowSegments = getNormalizedSegments;
 export const instantiateDatabase = obj => new Database(obj);
 export const instantiateSchema = obj => new Schema(obj);
 export const instantiateTable = obj => new Table(obj);
-export const instantiateField = obj => new Field(obj);
+// We need a way to distinguish field objects that come from the server
+// vs. those that are created client-side to handle lossy transformations between
+// Field instances and FieldDimension instances.
+// There are scenarios where we are failing to convert FieldDimensions back into Fields,
+// and as a safeguard we instantiate a new Field that is missing most of its properties.
+export const instantiateField = obj =>
+  new Field({ ...obj, _comesFromEndpoint: true });
 export const instantiateSegment = obj => new Segment(obj);
 export const instantiateMetric = obj => new Metric(obj);
 
@@ -93,7 +100,20 @@ export const getMetadata = createSelector(
     meta.metrics = copyObjects(meta, metrics, instantiateMetric);
 
     // database
-    hydrateList(meta.databases, "tables", meta.tables);
+    hydrate(meta.databases, "tables", database => {
+      if (database.tables?.length > 0) {
+        return database.tables
+          .map(tableId => meta.table(tableId))
+          .filter(table => table != null);
+      }
+
+      return Object.values(meta.tables).filter(
+        table =>
+          !isVirtualCardId(table.id) &&
+          table.schema &&
+          table.db_id === database.id,
+      );
+    });
     // schema
     hydrate(meta.schemas, "database", s => meta.database(s.database));
     // table
@@ -149,7 +169,6 @@ export const getMetadata = createSelector(
 
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
-
     return meta;
   },
 );

@@ -6,7 +6,7 @@ import { t, jt } from "ttag";
 import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
-import { ListField } from "metabase/components/ListField";
+import ListField from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 

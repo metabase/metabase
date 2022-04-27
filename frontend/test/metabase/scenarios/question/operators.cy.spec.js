@@ -34,17 +34,22 @@ describe("operators in questions", () => {
       ],
       unexpected: ["Is null", "Not null"],
     },
-    date: {
+    relativeDates: {
+      expected: ["Past", "Next", "Current"],
+      unexpected: ["Is null", "Not null"],
+    },
+    specificDates: {
+      expected: ["Before", "After", "On", "Between"],
+      unexpected: ["Is null", "Not null"],
+    },
+    excludeDates: {
       expected: [
-        "Previous",
-        "Next",
-        "Current",
-        "Before",
-        "After",
-        "On",
-        "Between",
-        "Is Empty",
-        "Not Empty",
+        "Days of the week...",
+        "Months of the year...",
+        "Quarters of the year...",
+        "Hours of the day...",
+        "Is empty",
+        "Is not empty",
       ],
       unexpected: ["Is null", "Not null"],
     },
@@ -93,7 +98,7 @@ describe("operators in questions", () => {
       });
     });
 
-    it("date operators", () => {
+    it("relative date operators", () => {
       startNewQuestion();
       cy.contains("Sample Database").click();
       cy.contains("Products").click();
@@ -101,12 +106,76 @@ describe("operators in questions", () => {
 
       popover().within(() => {
         cy.findByText("Created At").click();
-        cy.findByText("Previous").click();
+        cy.findByText("Relative dates...").click();
+        cy.findByText("Past").click();
       });
 
       popover().within(() => {
-        expected.date.expected.map(e => cy.contains(e).should("exist"));
-        expected.date.unexpected.map(e => cy.contains(e).should("not.exist"));
+        expected.relativeDates.expected.map(e =>
+          cy.contains(e).should("exist"),
+        );
+        expected.specificDates.expected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+        expected.excludeDates.expected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+        expected.relativeDates.unexpected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+      });
+    });
+
+    it("specific date operators", () => {
+      startNewQuestion();
+      cy.contains("Sample Database").click();
+      cy.contains("Products").click();
+      cy.findByText("Add filters to narrow your answer").click();
+
+      popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText("Specific dates...").click();
+        cy.findByText("Between").click();
+      });
+
+      popover().within(() => {
+        expected.specificDates.expected.map(e =>
+          cy.contains(e).should("exist"),
+        );
+        expected.relativeDates.expected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+        expected.excludeDates.expected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+        expected.specificDates.unexpected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+      });
+    });
+
+    it("exclude date operators", () => {
+      startNewQuestion();
+      cy.contains("Sample Database").click();
+      cy.contains("Products").click();
+      cy.findByText("Add filters to narrow your answer").click();
+
+      popover().within(() => {
+        cy.findByText("Created At").click();
+        cy.findByText("Exclude...").click();
+      });
+
+      popover().within(() => {
+        expected.excludeDates.expected.map(e => cy.contains(e).should("exist"));
+        expected.relativeDates.expected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+        expected.specificDates.expected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
+        expected.excludeDates.unexpected.map(e =>
+          cy.contains(e).should("not.exist"),
+        );
       });
     });
 

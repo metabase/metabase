@@ -125,7 +125,7 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
         onToggleBookmark && {
-          title: isBookmarked ? t`Remove bookmark` : t`Bookmark`,
+          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
           icon: "bookmark",
           action: onToggleBookmark,
           event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,

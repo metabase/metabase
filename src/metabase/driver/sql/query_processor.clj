@@ -5,7 +5,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql.query-processor.deprecated :as deprecated]
@@ -15,7 +15,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.middleware.wrap-value-literals :as value-literal]
+            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.query-processor.util.nest-query :as nest-query]
@@ -118,6 +118,7 @@
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+  `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))
 
@@ -589,6 +590,27 @@
       [honeysql-form field-alias]
       honeysql-form)))
 
+;; Certain SQL drivers require that we refer to Fields using the alias we give in the `SELECT` clause in
+;; `ORDER BY` and `GROUP BY` rather than repeating definitions.
+;; BigQuery does this generally, other DB's require this in JSON columns.
+;;
+;; See #17536 and #18742
+
+(defn rewrite-fields-to-force-using-column-aliases
+  "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
+  [form]
+  (mbql.u/replace form
+    [:field id-or-name opts]
+    [:field id-or-name (-> opts
+                           (assoc ::add/source-alias        (::add/desired-alias opts)
+                                  ::add/source-table        ::add/none
+                                  ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
+                                  ::nest-query/outer-select true
+                                  ;; used to indicate that this is a forced alias
+                                  ::forced-alias            true)
+                           ;; don't want to do temporal bucketing or binning inside the order by or breakout either.
+                           ;; That happens inside the `SELECT`
+                           (dissoc :temporal-unit :binning))]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |
@@ -603,7 +625,7 @@
                              (->honeysql driver (hx/identifier
                                                  :field-alias
                                                  (driver/escape-alias driver (annotate/aggregation-name ag))))]))]
-    (reduce h/merge-select honeysql-form honeysql-ags)))
+    (reduce hh/merge-select honeysql-form honeysql-ags)))
 
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
@@ -611,16 +633,16 @@
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (->> breakout-fields
-                                        (remove (set fields-fields))
-                                        (mapv (fn [field-clause]
-                                                (as driver field-clause)))))
-    (apply h/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
+    (apply hh/merge-select new-hsql (->> breakout-fields
+                                         (remove (set fields-fields))
+                                         (mapv (fn [field-clause]
+                                                 (as driver field-clause)))))
+    (apply hh/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
-  (apply h/merge-select honeysql-form (vec (for [field-clause fields]
-                                             (as driver field-clause)))))
+  (apply hh/merge-select honeysql-form (vec (for [field-clause fields]
+                                              (as driver field-clause)))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -692,7 +714,7 @@
 
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
-  (if (nil? (value-literal/unwrap-value-literal value))
+  (if (nil? (qp.wrap-value-literals/unwrap-value-literal value))
     [:not= (->honeysql driver field) (->honeysql driver value)]
     (correct-null-behaviour driver [:not= field value])))
 
@@ -715,7 +737,7 @@
 
 (defmethod apply-top-level-clause [:sql :filter]
   [driver _ honeysql-form {clause :filter}]
-  (h/where honeysql-form (->honeysql driver clause)))
+  (hh/where honeysql-form (->honeysql driver clause)))
 
 
 ;;; -------------------------------------------------- join tables ---------------------------------------------------
@@ -761,10 +783,10 @@
    (->honeysql driver condition)])
 
 (def ^:private join-strategy->merge-fn
-  {:left-join  h/merge-left-join
-   :right-join h/merge-right-join
-   :inner-join h/merge-join
-   :full-join  h/merge-full-join})
+  {:left-join  hh/merge-left-join
+   :right-join hh/merge-right-join
+   :inner-join hh/merge-join
+   :full-join  hh/merge-full-join})
 
 (defmethod apply-top-level-clause [:sql :joins]
   [driver _ honeysql-form {:keys [joins]}]
@@ -787,19 +809,19 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
+  (reduce hh/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :limit]
   [_ _ honeysql-form {value :limit}]
-  (h/limit honeysql-form value))
+  (hh/limit honeysql-form value))
 
 (defmethod apply-top-level-clause [:sql :page]
   [_ _ honeysql-form {{:keys [items page]} :page}]
   (-> honeysql-form
-      (h/limit items)
-      (h/offset (* items (dec page)))))
+      (hh/limit items)
+      (hh/offset (* items (dec page)))))
 
 
 ;;; -------------------------------------------------- source-table --------------------------------------------------
@@ -811,7 +833,7 @@
 
 (defmethod apply-top-level-clause [:sql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
-  (h/from honeysql-form (->honeysql driver (qp.store/table source-table-id))))
+  (hh/from honeysql-form (->honeysql driver (qp.store/table source-table-id))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

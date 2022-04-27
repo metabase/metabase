@@ -14,21 +14,18 @@ function getAxis(chart) {
   return chart.svg().select(".axis.x");
 }
 
-function getBrush(chart) {
-  return chart.svg().select(".brush");
-}
-
 function getScale(chart) {
   return chart.x();
 }
 
-function getEventMapping(events, scale) {
+function getEventMapping({ events, scale, xInterval }) {
   const mapping = new Map();
   let group = [];
   let groupPoint = 0;
 
   events.forEach(event => {
-    const eventPoint = scale(event.timestamp);
+    const eventDate = event.timestamp.clone().startOf(xInterval.interval);
+    const eventPoint = scale(eventDate);
     const groupDistance = eventPoint - groupPoint;
 
     if (!group.length || groupDistance < ICON_SIZE) {
@@ -101,6 +98,21 @@ function hasEventText(events, eventIndex, eventPoints) {
   }
 }
 
+function renderEventBrush({ chart }) {
+  const g = chart.g();
+  const margins = chart.margins();
+  const brush = g.selectAll(".event-brush").data([0]);
+  brush.exit().remove();
+
+  brush
+    .enter()
+    .insert("g", ":first-child")
+    .attr("class", "event-brush")
+    .attr("transform", `translate(${margins.left}, ${margins.top})`);
+
+  return brush;
+}
+
 function renderEventLines({
   chart,
   brush,
@@ -134,7 +146,7 @@ function renderEventTicks({
   onSelectTimelineEvents,
   onDeselectTimelineEvents,
 }) {
-  const eventAxis = axis.selectAll(".event-axis").data([eventGroups]);
+  const eventAxis = axis.selectAll(".event-axis").data([0]);
   const eventLines = brush.selectAll(".event-line").data(eventGroups);
   eventAxis.exit().remove();
 
@@ -209,6 +221,7 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
+    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
@@ -216,40 +229,38 @@ export function renderEvents(
     onDeselectTimelineEvents,
   },
 ) {
-  if (!isTimeseries) {
+  const axis = getAxis(chart);
+
+  if (!axis || !isTimeseries) {
     return;
   }
 
-  const axis = getAxis(chart);
-  const brush = getBrush(chart);
   const scale = getScale(chart);
-  const eventMapping = getEventMapping(events, scale);
+  const eventMapping = getEventMapping({ events, scale, xInterval });
   const eventPoints = getEventPoints(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
 
-  if (brush) {
-    renderEventLines({
-      chart,
-      brush,
-      eventPoints,
-      eventGroups,
-      selectedEventIds,
-    });
-  }
+  const brush = renderEventBrush({ chart, eventGroups });
 
-  if (axis) {
-    renderEventTicks({
-      axis,
-      brush,
-      eventPoints,
-      eventGroups,
-      selectedEventIds,
-      onHoverChange,
-      onOpenTimelines,
-      onSelectTimelineEvents,
-      onDeselectTimelineEvents,
-    });
-  }
+  renderEventLines({
+    chart,
+    brush,
+    eventPoints,
+    eventGroups,
+    selectedEventIds,
+  });
+
+  renderEventTicks({
+    axis,
+    brush,
+    eventPoints,
+    eventGroups,
+    selectedEventIds,
+    onHoverChange,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+  });
 }
 
 export function hasEventAxis({ timelineEvents = [], isTimeseries }) {

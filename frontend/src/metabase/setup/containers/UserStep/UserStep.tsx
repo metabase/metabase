@@ -1,6 +1,6 @@
 import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
-import { State } from "metabase-types/store";
+import { State, UserInfo } from "metabase-types/store";
 import UserStep from "../../components/UserStep";
 import { setUser, validatePassword, setStep } from "../../actions";
 import { trackUserStepCompleted } from "../../analytics";
@@ -10,8 +10,8 @@ import {
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
+  isLocaleLoaded,
 } from "../../selectors";
-import { UserInfo } from "../../types";
 
 const mapStateToProps = (state: State) => ({
   user: getUser(state),
@@ -19,6 +19,7 @@ const mapStateToProps = (state: State) => ({
   isStepActive: isStepActive(state, USER_STEP),
   isStepCompleted: isStepCompleted(state, USER_STEP),
   isSetupCompleted: isSetupCompleted(state),
+  isLocaleLoaded: isLocaleLoaded(state),
 });
 
 const mapDispatchToProps = (dispatch: any) => ({

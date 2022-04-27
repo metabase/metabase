@@ -2,7 +2,7 @@
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require [clojure.string :as str]
             [metabase.db :as mdb]
-            [metabase.db.spec :as dbspec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.database :refer [Database]]
             [metabase.test.data.impl :as data.impl]
@@ -111,7 +111,7 @@
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
   [driver context dbdef]
-  (dbspec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
+  (mdb.spec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
 
 (defmethod load-data/load-data! :h2
   [& args]

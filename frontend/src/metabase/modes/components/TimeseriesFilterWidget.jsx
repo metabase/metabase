@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { t } from "ttag";
-import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
+import DatePicker from "metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
 import Button from "metabase/core/components/Button";

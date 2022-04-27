@@ -39,7 +39,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -61,7 +61,6 @@ jobs:
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "dashboard-filters-sql"
           - "downloads"
           - "embedding"
           - "joins"
@@ -129,7 +128,7 @@ jobs:
 
     - name: Run Cypress tests on ${{ matrix.folder }}
       run: |
-        yarn run test-cypress-no-build \
+        yarn run test-cypress-run \
           --folder ${{ matrix.folder }} \
           --record --key ${{ secrets.CURRENTS_KEY }} \
           --group ${{ matrix.folder }}-${{ matrix.edition }} \

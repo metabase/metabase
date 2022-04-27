@@ -16,6 +16,7 @@ import {
   databases as Databases,
   fields as Fields,
 } from "metabase/entities";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
 const propTypes = {
   databaseId: PropTypes.number,
@@ -56,6 +57,9 @@ const mapDispatchToProps = {
 @connect(mapStateToProps, mapDispatchToProps)
 @Databases.load({
   id: (state, props) => props.databaseId,
+  query: {
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  },
   loadingAndErrorWrapper: false,
 })
 class MetadataEditor extends Component {

@@ -15,6 +15,9 @@ import { ItemLink } from "../PinnedItemCard/PinnedItemCard.styled";
 import { HoverMenu, VizCard } from "./CollectionCardVisualization.styled";
 
 const propTypes = {
+  bookmarks: PropTypes.array,
+  createBookmark: PropTypes.func.isRequired,
+  deleteBookmark: PropTypes.func.isRequired,
   item: PropTypes.object.isRequired,
   collection: PropTypes.object.isRequired,
   metadata: PropTypes.object.isRequired,
@@ -23,6 +26,9 @@ const propTypes = {
 };
 
 function CollectionCardVisualization({
+  bookmarks,
+  createBookmark,
+  deleteBookmark,
   item,
   collection,
   metadata,
@@ -35,6 +41,9 @@ function CollectionCardVisualization({
     <ItemLink to={item.getUrl()}>
       <VizCard flat>
         <HoverMenu
+          bookmarks={bookmarks}
+          createBookmark={createBookmark}
+          deleteBookmark={deleteBookmark}
           item={item}
           collection={collection}
           onCopy={onCopy}
@@ -47,7 +56,10 @@ function CollectionCardVisualization({
               questionRef.current || new Question(card, metadata);
 
             return (
-              <QuestionResultLoader question={questionRef.current}>
+              <QuestionResultLoader
+                question={questionRef.current}
+                collectionPreview
+              >
                 {({ loading, error, reload, rawSeries, results, result }) => {
                   const shouldShowLoader = loading && results == null;
                   const { errorMessage, errorIcon } = getErrorProps(

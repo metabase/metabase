@@ -79,35 +79,37 @@ function QuestionPicker({
       />
 
       {!debouncedSearchText && (
-        <React.Fragment>
+        <>
           <BreadcrumbsWrapper>
             <Breadcrumbs crumbs={crumbs} />
           </BreadcrumbsWrapper>
 
-          <SelectList>
-            {collections.map(collection => {
-              const icon = getCollectionIcon(collection);
-              const iconColor = isRegularCollection(collection)
-                ? "text-light"
-                : icon.color;
-              return (
-                <SelectList.Item
-                  key={collection.id}
-                  id={collection.id}
-                  name={collection.name}
-                  icon={{
-                    ...icon,
-                    color: iconColor,
-                  }}
-                  rightIcon="chevronright"
-                  onSelect={collectionId =>
-                    setCurrentCollectionId(collectionId)
-                  }
-                />
-              );
-            })}
-          </SelectList>
-        </React.Fragment>
+          {collections.length > 0 && (
+            <SelectList>
+              {collections.map(collection => {
+                const icon = getCollectionIcon(collection);
+                const iconColor = isRegularCollection(collection)
+                  ? "text-light"
+                  : icon.color;
+                return (
+                  <SelectList.Item
+                    key={collection.id}
+                    id={collection.id}
+                    name={collection.name}
+                    icon={{
+                      ...icon,
+                      color: iconColor,
+                    }}
+                    rightIcon="chevronright"
+                    onSelect={collectionId =>
+                      setCurrentCollectionId(collectionId)
+                    }
+                  />
+                );
+              })}
+            </SelectList>
+          )}
+        </>
       )}
 
       <QuestionList

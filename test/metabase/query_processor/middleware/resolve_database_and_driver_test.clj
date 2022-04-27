@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Database]]
             [metabase.models.setting :as setting]
-            [metabase.query-processor.middleware.resolve-database-and-driver :as resolve-db-and-driver]
+            [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]
             [metabase.test :as mt]))
 
 (setting/defsetting resolve-db-test-database-only-setting
@@ -18,7 +18,7 @@
                                                  {:number-of-cans 2}}}]
       (mt/with-db database
         (mt/with-everything-store
-          (let [qp (resolve-db-and-driver/resolve-database-and-driver
+          (let [qp (qp.resolve-database-and-driver/resolve-database-and-driver
                     (fn [query _rff _context]
                       (is (= {:resolve-db-test-database-only-setting {:number-of-cans 2}}
                              setting/*database-local-values*))

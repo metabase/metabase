@@ -9,8 +9,8 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
-            [metabase.api.dataset :as dataset-api]
-            [metabase.api.timeline :as timeline-api]
+            [metabase.api.dataset :as api.dataset]
+            [metabase.api.timeline :as api.timeline]
             [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
@@ -31,7 +31,7 @@
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.util :as u]
@@ -165,7 +165,7 @@
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
   [id include start end]
-  {include (s/maybe timeline-api/Include)
+  {include (s/maybe api.timeline/Include)
    start   (s/maybe su/TemporalString)
    end     (s/maybe su/TemporalString)}
   (let [{:keys [collection_id] :as _card} (api/read-check Card id)]
@@ -215,7 +215,7 @@
                               (map mbql.normalize/normalize-source-metadata metadata)
                               original-metadata)
                   fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
-              (qputil/combine-metadata fresh metadata')))
+              (qp.util/combine-metadata fresh metadata')))
       :else
       ;; compute fresh
       (qp.async/result-metadata-for-query-async query))))
@@ -656,8 +656,9 @@
 
 (api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
-  [card-id :as {{:keys [parameters ignore_cache dashboard_id], :or {ignore_cache false dashboard_id nil}} :body}]
+  [card-id :as {{:keys [parameters ignore_cache dashboard_id collection_preview], :or {ignore_cache false dashboard_id nil}} :body}]
   {ignore_cache (s/maybe s/Bool)
+   collection_preview (s/maybe s/Bool)
    dashboard_id (s/maybe su/IntGreaterThanZero)}
   ;; TODO -- we should probably warn if you pass `dashboard_id`, and tell you to use the new
   ;;
@@ -669,6 +670,7 @@
    :parameters   parameters
    :ignore_cache ignore_cache
    :dashboard-id dashboard_id
+   :context      (if collection_preview :collection :question)
    :middleware   {:process-viz-settings? false}))
 
 (api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
@@ -678,12 +680,12 @@
   is normally used to power 'Download Results' buttons that use HTML `form` actions)."
   [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
-   export-format dataset-api/ExportFormat}
+   export-format api.dataset/ExportFormat}
   (qp.card/run-query-for-card-async
    card-id export-format
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
-   :context     (dataset-api/export-format->context export-format)
+   :context     (api.dataset/export-format->context export-format)
    :middleware  {:process-viz-settings?  true
                  :skip-results-metadata? true
                  :ignore-cached-results? true
@@ -698,7 +700,7 @@
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled."
   [card-id]
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check Card card-id))
   {:uuid (or (db/select-one-field :public_uuid Card :id card-id)
@@ -710,7 +712,7 @@
 (api/defendpoint DELETE "/:card-id/public_link"
   "Delete the publicly-accessible link to this Card."
   [card-id]
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Card :id card-id, :public_uuid [:not= nil])
   (db/update! Card card-id
@@ -721,7 +723,7 @@
 (api/defendpoint GET "/public"
   "Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled."
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (db/select [Card :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -729,7 +731,7 @@
   "Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT."
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
   (db/select [Card :name :id], :enable_embedding true, :archived false))
 

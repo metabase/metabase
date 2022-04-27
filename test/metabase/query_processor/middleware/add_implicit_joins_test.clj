@@ -3,7 +3,7 @@
             [medley.core :as m]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
@@ -44,13 +44,13 @@
                                 :order-by     [[:asc $id]]
                                 :limit        2}}))
              (mt/with-everything-store
-               (#'add-implicit-joins/resolve-implicit-joins (:query query))))))))
+               (#'qp.add-implicit-joins/resolve-implicit-joins (:query query))))))))
 
 (defn- add-implicit-joins [query]
   (driver/with-driver (tx/driver)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (mt/id))
-      (add-implicit-joins/add-implicit-joins query))))
+      (qp.add-implicit-joins/add-implicit-joins query))))
 
 (deftest basic-test
   (testing "make sure `:joins` get added automatically for `:fk->` clauses"
@@ -89,19 +89,19 @@
                 :fields       [$name $category_id->categories.name]}}))))))
 
 (deftest already-has-join?-test
-  (is (#'add-implicit-joins/already-has-join?
+  (is (#'qp.add-implicit-joins/already-has-join?
        {:joins [{:alias "x"}]}
        {:alias "x"}))
-  (is (not (#'add-implicit-joins/already-has-join?
+  (is (not (#'qp.add-implicit-joins/already-has-join?
             {:joins [{:alias "x"}]}
             {:alias "y"})))
-  (is (#'add-implicit-joins/already-has-join?
+  (is (#'qp.add-implicit-joins/already-has-join?
        {:source-query {:joins [{:alias "x"}]}}
        {:alias "x"}))
-  (is (not (#'add-implicit-joins/already-has-join?
+  (is (not (#'qp.add-implicit-joins/already-has-join?
             nil
             {:alias "x"})))
-  (is (not (#'add-implicit-joins/already-has-join?
+  (is (not (#'qp.add-implicit-joins/already-has-join?
             {:joins [{:source-query {:joins [{:alias "x"}]}}]}
             {:alias "x"}))))
 
@@ -382,12 +382,12 @@
                                    [:field 1 {:join-alias "Child 1 Child"}]]}]
     (testing "Join dependencies"
       (is (= #{}
-             (#'add-implicit-joins/join-dependencies parent)))
+             (#'qp.add-implicit-joins/join-dependencies parent)))
       (is (= #{"Parent"}
-             (#'add-implicit-joins/join-dependencies child-1)
-             (#'add-implicit-joins/join-dependencies child-2)))
+             (#'qp.add-implicit-joins/join-dependencies child-1)
+             (#'qp.add-implicit-joins/join-dependencies child-2)))
       (is (= #{"Child 1"}
-             (#'add-implicit-joins/join-dependencies child-1-child))))
+             (#'qp.add-implicit-joins/join-dependencies child-1-child))))
     (testing "Sort by dependency order"
       (let [alias->join (u/key-by :alias [parent child-1 child-2 child-1-child])]
         (doseq [[original expected] {["Parent" "Child 1" "Child 2"]                 ["Parent" "Child 1" "Child 2"]
@@ -406,7 +406,7 @@
                                      ["Child 1 Child" "Parent" "Child 1" "Child 2"] ["Parent" "Child 1" "Child 1 Child" "Child 2"]}]
           (testing (format "Sort %s" original)
             (is (= expected
-                   (mapv :alias (#'add-implicit-joins/topologically-sort-joins (mapv alias->join original)))))))))))
+                   (mapv :alias (#'qp.add-implicit-joins/topologically-sort-joins (mapv alias->join original)))))))))))
 
 (deftest mix-implicit-and-explicit-joins-test
   (testing "Test that adding implicit joins still works correctly if the query also contains explicit joins"

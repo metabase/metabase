@@ -1,8 +1,8 @@
 (ns metabase.driver.common
   "Shared definitions and helper functions for use across different drivers."
-  (:require [clj-time.coerce :as tcoerce]
+  (:require [clj-time.coerce :as time.coerce]
             [clj-time.core :as time]
-            [clj-time.format :as tformat]
+            [clj-time.format :as time.format]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver :as driver]
@@ -270,7 +270,7 @@
 (extend-protocol ParseDateTimeString
   DateTimeFormatter
   (parse [formatter date-time-str]
-    (tformat/parse formatter date-time-str)))
+    (time.format/parse formatter date-time-str)))
 
 ;; Java's SimpleDateFormat is more flexible on what it accepts for a time zone identifier. As an example, CEST is not
 ;; recognized by Joda's DateTimeFormatter but is recognized by Java's SimpleDateFormat. This defrecord is used to
@@ -283,13 +283,13 @@
     (let [sdf         (SimpleDateFormat. format-str)
           parsed-date (.parse sdf date-time-str)
           joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
-      (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
+      (time/to-time-zone (time.coerce/from-date parsed-date) joda-tz))))
 
 (defn ^:deprecated create-db-time-formatters
   "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
   JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
-  [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
+  [(.withOffsetParsed ^DateTimeFormatter (time.format/formatter date-format-str))
    (ThreadSafeSimpleDateFormat. date-format-str)])
 
 (defn- ^:deprecated first-successful-parse
@@ -435,16 +435,17 @@
 (def ^:private ^clojure.lang.PersistentVector days-of-week
   [:monday :tuesday :wednesday :thursday :friday :saturday :sunday])
 
-(defn start-of-week->int
-  "Returns the int value for the current :start-of-week setting value, which ranges from 0 (:monday) to 6 (:sunday).
-  If the :start-of-week setting does not have a value, then `nil` is returned."
+(s/defn start-of-week->int :- (s/pred (fn [n] (and (integer? n) (<= 0 n 6)))
+                                      "Start of week integer")
+  "Returns the int value for the current [[metabase.public-settings/start-of-week]] Setting value, which ranges from
+  `0` (`:monday`) to `6` (`:sunday`). This is guaranteed to return a value."
   {:added "0.42.0"}
   []
-  (when-let [v (setting/get-value-of-type :keyword :start-of-week)]
-    (.indexOf days-of-week v)))
+  (.indexOf days-of-week (setting/get-value-of-type :keyword :start-of-week)))
 
 (s/defn start-of-week-offset :- s/Int
-  "Return the offset for start of week to have the week start on `setting/start-of-week` given  `driver`."
+  "Return the offset for start of week to have the week start on [[metabase.public-settings/start-of-week]] given
+  `driver`."
   [driver]
   (let [db-start-of-week     (.indexOf days-of-week (driver/db-start-of-week driver))
         target-start-of-week (start-of-week->int)

@@ -93,10 +93,9 @@ export function issue17514() {
         closeModal();
 
         saveDashboard();
-        cy.wait("@getDashboard");
 
         filterWidget().click();
-        setAdHocFilter({ timeBucket: "Years" });
+        setAdHocFilter({ timeBucket: "years" });
 
         cy.location("search").should("eq", "?date_filter=past30years");
         cy.wait("@cardQuery");

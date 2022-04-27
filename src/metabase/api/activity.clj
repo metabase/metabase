@@ -111,20 +111,25 @@
         (not= model "table")
         (merge {:left-join [Collection [:= (db/qualify Collection :id) :collection_id]]}))))
 
+(defn- select-items! [model ids]
+  (when (seq ids)
+    (for [model (hydrate (models-query model ids) :moderation_reviews)
+          :let [reviews (:moderation_reviews model)
+                status  (->> reviews
+                             (filter :most_recent)
+                             first
+                             :status)]]
+      (assoc model :moderated_status status))))
+
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
   [views]
-  (letfn [(select-items! [model ids]
-            (when (seq ids)
-              (-> (models-query model ids)
-                  (hydrate :moderation_reviews))))
-          (by-id [models] (m/index-by :id models))]
-    (into {} (map (fn [[model models]]
-                    [model (->> models
-                                (map :model_id)
-                                (select-items! model)
-                                (by-id))]))
-          (group-by :model views))))
+  (into {} (map (fn [[model models]]
+                  [model (->> models
+                              (map :model_id)
+                              (select-items! model)
+                              (m/index-by :id))]))
+        (group-by :model views)))
 
 (defn- views-and-runs
   "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
@@ -138,23 +143,23 @@
   from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
   query results for dashboard and table views."
   [views-limit card-runs-limit all-users?]
-  (let [dashboard-and-table-views (db/select [ViewLog :user_id :model :model_id
+  (let [dashboard-and-table-views (db/select [ViewLog :%min.view_log.user_id :model :model_id
                                               [:%count.* :cnt] [:%max.timestamp :max_ts]]
-                                    {:group-by  [(db/qualify ViewLog :user_id) :model :model_id]
+                                    {:group-by  [:model :model_id]
                                      :where     [:and
                                                  (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
                                                  [:in :model #{"dashboard" "table"}]
                                                  [:= :bm.id nil]]
-                                     :order-by  [[:max_ts :desc]]
+                                     :order-by  [[:max_ts :desc] [:model :desc]]
                                      :limit     views-limit
                                      :left-join [[DashboardBookmark :bm]
                                                  [:and
-                                                  [:not [:= :model "table"]]
+                                                  [:= :model "dashboard"]
                                                   [:= :bm.user_id *current-user-id*]
                                                   [:= :model_id :bm.dashboard_id]]]})
-        card-runs                 (->> (db/select [QueryExecution [:executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
+        card-runs                 (->> (db/select [QueryExecution [:%min.executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
                                                    [:%count.* :cnt] [:%max.started_at :max_ts]]
-                                         {:group-by [:executor_id (db/qualify QueryExecution :card_id) :context]
+                                         {:group-by [(db/qualify QueryExecution :card_id) :context]
                                           :where    [:and
                                                      (when-not all-users? [:= :executor_id *current-user-id*])
                                                      [:= :context (hx/literal :question)]
@@ -200,13 +205,9 @@
      (#{"official"} authority_level))))
 
 (defn- verified?
-  "Return true if the item is verified, false otherwise. Assumes that `:moderation_reviews` is hydrated.
-  Assumes that moderation reviews are ordered so that the most recent is the first. This is the case
-  from the hydration function for moderation_reviews."
-  [{:keys [moderation_reviews]}]
-  (boolean
-   (when moderation_reviews
-     (-> moderation_reviews first :status #{"verified"}))))
+  "Return true if the item is verified, false otherwise. Assumes that `:moderated_status` is hydrated."
+  [{:keys [moderated_status]}]
+  (= moderated_status "verified"))
 
 (defn- score-items
   [items]
@@ -232,6 +233,14 @@
                       (* (/ cnt max-count) views-wt)]]
           (assoc item :score (double (reduce + scores))))))))
 
+(def ^:private model-precedence ["dashboard" "card" "dataset" "table"])
+
+(defn- order-items
+  [items]
+  (when (seq items)
+      (let [groups (group-by :model items)]
+        (mapcat #(get groups %) model-precedence))))
+
 (defendpoint GET "/popular_items"
   "Get the list of 5 popular things for the current user. Query takes 8 and limits to 5 so that if it
   finds anything archived, deleted, etc it can hopefully still get 5."
@@ -256,6 +265,7 @@
     (->> scored-views
          (sort-by :score)
          reverse
+         order-items
          (take 5)
          (map #(dissoc % :score)))))
 

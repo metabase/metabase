@@ -8,15 +8,16 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [medley.core :as m]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.collection.root :as collection.root]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.public-settings.premium-features :as settings.premium-features]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
@@ -181,11 +182,12 @@
 (defn root-collection-with-ui-details
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
   [collection-namespace]
-  (assoc root-collection
-         :name (case (keyword collection-namespace)
-                 :snippets (tru "Top folder")
-                 (tru "Our analytics"))
-         :id   "root"))
+  (m/assoc-some root-collection
+                :name (case (keyword collection-namespace)
+                        :snippets (tru "Top folder")
+                        (tru "Our analytics"))
+                :namespace collection-namespace
+                :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre
@@ -365,7 +367,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     []
-    (filter i/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
 
 (s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
   "Get the immediate parent `collection` id, if set."
@@ -866,7 +868,7 @@
     ;;
     ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (settings.premium-features/enable-enhancements?)))
+             (not (premium-features/enable-enhancements?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
@@ -884,10 +886,10 @@
           :post-insert    post-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 

@@ -298,22 +298,26 @@ const loadingDashCards = handleActions(
     [INITIALIZE]: {
       next: state => ({
         ...state,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       }),
     },
     [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dashcardIds: Object.values(payload.entities.dashcard || {})
+      next: (state, { payload }) => {
+        const cardIds = Object.values(payload.entities.dashcard || {})
           .filter(dc => !isVirtualDashCard(dc))
-          .map(dc => dc.id),
-        isLoadingComplete: false,
-      }),
+          .map(dc => dc.id);
+        return {
+          ...state,
+          dashcardIds: cardIds,
+          loadingIds: cardIds,
+          loadingStatus: "idle",
+        };
+      },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: state => ({
         ...state,
-        loadingIds: state.dashcardIds,
+        loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
         startTime:
           state.dashcardIds.length > 0 &&
           // check that performance is defined just in case
@@ -329,7 +333,7 @@ const loadingDashCards = handleActions(
           ...state,
           loadingIds,
           ...(loadingIds.length === 0
-            ? { startTime: null, isLoadingComplete: true }
+            ? { startTime: null, loadingStatus: "complete" }
             : {}),
         };
       },
@@ -340,16 +344,14 @@ const loadingDashCards = handleActions(
         return {
           ...state,
           loadingIds,
-          ...(loadingIds.length === 0
-            ? { startTime: null, isLoadingComplete: true }
-            : {}),
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
         };
       },
     },
     [RESET]: {
       next: state => ({
         ...state,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       }),
     },
   },
@@ -357,7 +359,7 @@ const loadingDashCards = handleActions(
     dashcardIds: [],
     loadingIds: [],
     startTime: null,
-    isLoadingComplete: false,
+    loadingStatus: "idle",
   },
 );
 

@@ -1,8 +1,10 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Header from "metabase/components/Header";
@@ -14,7 +16,7 @@ import { getDashboardActions } from "metabase/dashboard/components/DashboardActi
 import { DashboardHeaderButton } from "./DashboardHeader.styled";
 
 import ParametersPopover from "metabase/dashboard/components/ParametersPopover";
-import Popover from "metabase/components/Popover";
+import TippyPopover from "metabase/components/Popover/TippyPopover";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { getIsBookmarked } from "metabase/dashboard/selectors";
 
@@ -31,6 +33,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   createBookmark: id => Bookmark.actions.create({ id, type: "dashboard" }),
   deleteBookmark: id => Bookmark.actions.delete({ id, type: "dashboard" }),
+  onChangeLocation: push,
 };
 
 @Bookmark.loadList()
@@ -70,6 +73,8 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
 
     onSharingClick: PropTypes.func.isRequired,
+
+    onChangeLocation: PropTypes.func.isRequired,
   };
 
   handleEdit(dashboard) {
@@ -213,28 +218,33 @@ export default class DashboardHeader extends Component {
       // Parameters
       buttons.push(
         <span key="add-a-filter">
-          <Tooltip tooltip={t`Add a filter`}>
-            <a
-              key="parameters"
-              className={cx("text-brand-hover", {
-                "text-brand": isAddParameterPopoverOpen,
-              })}
-              onClick={showAddParameterPopover}
-            >
-              <DashboardHeaderButton>
-                <Icon name="filter" />
-              </DashboardHeaderButton>
-            </a>
-          </Tooltip>
-
-          {isAddParameterPopoverOpen && (
-            <Popover onClose={hideAddParameterPopover}>
+          <TippyPopover
+            placement="bottom-start"
+            onClose={hideAddParameterPopover}
+            visible={isAddParameterPopoverOpen}
+            content={
               <ParametersPopover
                 onAddParameter={addParameter}
                 onClose={hideAddParameterPopover}
               />
-            </Popover>
-          )}
+            }
+          >
+            <div>
+              <Tooltip tooltip={t`Add a filter`}>
+                <a
+                  key="parameters"
+                  className={cx("text-brand-hover", {
+                    "text-brand": isAddParameterPopoverOpen,
+                  })}
+                  onClick={showAddParameterPopover}
+                >
+                  <DashboardHeaderButton>
+                    <Icon name="filter" />
+                  </DashboardHeaderButton>
+                </a>
+              </Tooltip>
+            </div>
+          </TippyPopover>
         </span>,
       );
 
@@ -288,7 +298,7 @@ export default class DashboardHeader extends Component {
           className={extraButtonClassNames}
           onClick={this.handleToggleBookmark}
         >
-          {isBookmarked ? t`Remove bookmark` : t`Bookmark`}
+          {isBookmarked ? t`Remove from bookmarks` : t`Bookmark`}
         </div>,
       );
 
@@ -364,7 +374,7 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    const { dashboard } = this.props;
+    const { dashboard, location, onChangeLocation } = this.props;
 
     return (
       <Header
@@ -380,6 +390,9 @@ export default class DashboardHeader extends Component {
         editingTitle={t`You're editing this dashboard.`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}
+        onLastEditInfoClick={() =>
+          onChangeLocation(`${location.pathname}/history`)
+        }
       />
     );
   }

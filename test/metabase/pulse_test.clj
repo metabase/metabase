@@ -5,14 +5,14 @@
             [medley.core :as m]
             [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
-            [metabase.models.pulse :as models.pulse]
-            [metabase.pulse :as pulse]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.pulse :as pulse]
+            metabase.pulse
             [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as render.body]
+            [metabase.pulse.render.body :as body]
             [metabase.pulse.test-util :refer :all]
             [metabase.pulse.util :as pu]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.test :as mt]
             [metabase.util :as u]
             [schema.core :as s]
@@ -34,7 +34,7 @@
   (mt/email-to :rasta {:subject subject
                        :body email-body}))
 
-(defn- do-with-pulse-for-card
+(defn do-with-pulse-for-card
   "Creates a Pulse and other relevant rows for a `card` (using `pulse` and `pulse-card` properties if specified), then
   invokes
 
@@ -63,7 +63,7 @@
         (f pulse))
       (f pulse))))
 
-(defmacro ^:private with-pulse-for-card
+(defmacro with-pulse-for-card
   "e.g.
 
     (with-pulse-for-card [pulse {:card my-card, :pulse pulse-properties, ...}]
@@ -103,7 +103,7 @@
                                :channel    channel-type}]
           (letfn [(thunk* []
                     (f {:card-id card-id, :pulse-id pulse-id}
-                       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))))
+                       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
                       (fixture {:card-id card-id, :pulse-id pulse-id} thunk*)
@@ -196,7 +196,7 @@
 
      :fixture
      (fn [_ thunk]
-       (with-redefs [render.body/attached-results-text (wrap-function @#'render.body/attached-results-text)]
+       (with-redefs [body/attached-results-text (wrap-function @#'body/attached-results-text)]
          (thunk)))
 
      :assert
@@ -232,10 +232,10 @@
                    (thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1
-                   (count (input @#'render.body/attached-results-text)))))
+                   (count (input @#'body/attached-results-text)))))
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
-                   (output @#'render.body/attached-results-text))))))}}
+                   (output @#'body/attached-results-text))))))}}
 
     "11 results results in a CSV being attached and a table being sent"
     {:card (checkins-query-card {:aggregation nil, :limit 11})
@@ -328,8 +328,8 @@
 
       :fixture
       (fn [_ thunk]
-        (with-redefs [constraints/default-query-constraints {:max-results           10000
-                                                             :max-results-bare-rows 30}]
+        (with-redefs [qp.constraints/default-query-constraints {:max-results           10000
+                                                                :max-results-bare-rows 30}]
           (thunk)))
 
       :assert
@@ -660,7 +660,7 @@
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
         (email-test-setup
-         (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
+         (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))
          (is (= (rasta-alert-email "Alert: Test card has reached its goal"
                                    [test-card-result png-attachment png-attachment])
                 (mt/summarize-multipart-email test-card-regex))))))))
@@ -683,7 +683,7 @@
                                                    :channel_type "slack"
                                                    :details      {:channel "#general"}}]]
       (slack-test-setup
-       (let [[slack-data] (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))]
+       (let [[slack-data] (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))]
          (is (= {:channel-id "#general",
                  :attachments
                  [{:blocks
@@ -724,7 +724,7 @@
                              :rendered-info   {:attachments nil
                                                :content     [:div "hi again"]}
                              :channel-id      "FOO"}]
-            processed      (pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
+            processed      (metabase.pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :image_url "http://uploaded/b.png"}]
                processed))
@@ -742,7 +742,7 @@
                                                :content     [:div "hi again"]
                                                :render/text "hi again"}
                              :channel-id      "FOO"}]
-            processed      (pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
+            processed      (metabase.pulse/create-and-upload-slack-attachments! attachments (slack-uploader titles))]
         (is (= [{:title "a", :image_url "http://uploaded/a.png"}
                 {:title "b", :text "hi again"}]
                processed))
@@ -758,7 +758,7 @@
                                        :channel_type "slack"
                                        :details      {:channel "#general"}}]
           (slack-test-setup
-           (let [pulse-data (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+           (let [pulse-data (metabase.pulse/send-pulse! (pulse/retrieve-pulse pulse-id))
                  slack-data (m/find-first #(contains? % :channel-id) pulse-data)
                  email-data (m/find-first #(contains? % :subject) pulse-data)]
              (is (= {:channel-id  "#general"
@@ -800,7 +800,7 @@
                                                                  {:order-by [[:asc $id]]
                                                                   :limit    1})
                                                 :collection_id (:id coll)}]]
-                (perms/revoke-collection-permissions! (group/all-users) coll)
+                (perms/revoke-collection-permissions! (perms-group/all-users) coll)
                 (send-pulse-created-by-user! user-kw card)))]
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (send-pulse-created-by-user!* :crowberto)))

@@ -1,13 +1,13 @@
 (ns metabase.test.util.i18n
   (:require [clojure.test :as t]
             [metabase.util.i18n :as i18n]
-            [metabase.util.i18n.impl :as impl]))
+            [metabase.util.i18n.impl :as i18n.impl]))
 
 (defn do-with-mock-i18n-bundles [bundles thunk]
   (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))
     (let [locale->bundle (into {} (for [[locale-name bundle] bundles]
                                     [(i18n/locale locale-name) bundle]))]
-      (with-redefs [impl/translations (comp locale->bundle i18n/locale)]
+      (with-redefs [i18n.impl/translations (comp locale->bundle i18n/locale)]
         (thunk)))))
 
 (defmacro with-mock-i18n-bundles

@@ -3,7 +3,7 @@
   (:require [clojure.core.async :as a]
             [dev.debug-qp :as debug-qp]
             [honeysql.core :as hsql]
-            [metabase.api.common :as api-common]
+            [metabase.api.common :as api]
             [metabase.core :as mbc]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
@@ -89,7 +89,7 @@
 
 (defmacro with-permissions
   [permissions & body]
-  `(binding [api-common/*current-user-permissions-set* (delay ~permissions)]
+  `(binding [api/*current-user-permissions-set* (delay ~permissions)]
      ~@body))
 
 (defn query-jdbc-db

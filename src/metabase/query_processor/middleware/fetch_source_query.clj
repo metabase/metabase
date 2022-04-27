@@ -25,7 +25,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -128,7 +128,7 @@
                (u/pprint-to-str 'yellow source-query))
     (cond-> {:source-query    source-query
              :database        database-id
-             :source-metadata (seq (map normalize/normalize-source-metadata result-metadata))}
+             :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
       dataset? (assoc :source-query/dataset? dataset?))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero

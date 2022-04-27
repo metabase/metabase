@@ -1,14 +1,14 @@
 (ns metabase.api.segment-test
   "Tests for /api/segment endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :refer [Revision]]
             [metabase.models.segment :as segment :refer [Segment]]
             [metabase.models.table :refer [Table]]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -33,11 +33,11 @@
 ;; authentication test on every single individual endpoint
 
 (deftest authentication-test
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :get 401 "segment")))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :get 401 "segment")))
 
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :put 401 "segment/13"))))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :put 401 "segment/13"))))
 
 ;; ## POST /api/segment
 
@@ -231,7 +231,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
-        (perms/revoke-data-perms! (group/all-users) db)
+        (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "segment/" (u/the-id segment)))))))))
 
@@ -266,7 +266,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table   {:db_id (u/the-id db)}]
                       Segment  [segment {:table_id (u/the-id table)}]]
-        (perms/revoke-data-perms! (group/all-users) db)
+        (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "segment/%d/revisions" (u/the-id segment)))))))))
 

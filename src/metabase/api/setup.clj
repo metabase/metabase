@@ -4,7 +4,7 @@
             [metabase.analytics.snowplow :as snowplow]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
-            [metabase.api.database :as database-api :refer [DBEngineString]]
+            [metabase.api.database :as api.database :refer [DBEngineString]]
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.email :as email]
@@ -15,7 +15,7 @@
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.segment :refer [Segment]]
             [metabase.models.session :refer [Session]]
@@ -31,7 +31,7 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
-            [toucan.models :as t.models])
+            [toucan.models :as models])
   (:import java.util.UUID))
 
 (def ^:private SetupToken
@@ -67,7 +67,7 @@
                         :id      session-id
                         :user_id user-id)
                       ;; HACK -- Toucan doesn't seem to work correctly with models with string IDs
-                      (t.models/post-insert (Session (str session-id))))]
+                      (models/post-insert (Session (str session-id))))]
       ;; return user ID, session ID, and the Session object itself
       {:session-id session-id, :user-id user-id, :session session})))
 
@@ -76,7 +76,7 @@
     (if-not (email/email-configured?)
       (log/error (trs "Could not invite user because email is not configured."))
       (u/prog1 (user/create-and-invite-user! user invitor true)
-        (user/set-permissions-groups! <> [(group/all-users) (group/admin)])
+        (user/set-permissions-groups! <> [(perms-group/all-users) (perms-group/admin)])
         (snowplow/track-event! ::snowplow/invite-sent api/*current-user-id* {:invited-user-id (u/the-id <>)
                                                                              :source          "setup"})))))
 
@@ -176,7 +176,7 @@
         invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
                                                              {:errors {field m}}
                                                              {:message m})})
-        error-or-nil     (database-api/test-database-connection engine details :invalid-response-handler invalid-response)]
+        error-or-nil     (api.database/test-database-connection engine details :invalid-response-handler invalid-response)]
     (when error-or-nil
       (snowplow/track-event! ::snowplow/database-connection-failed
                              nil
@@ -301,7 +301,7 @@
 (api/defendpoint GET "/admin_checklist"
   "Return various \"admin checklist\" steps and whether they've been completed. You must be a superuser to see this!"
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (admin-checklist))
 
 ;; User defaults endpoint

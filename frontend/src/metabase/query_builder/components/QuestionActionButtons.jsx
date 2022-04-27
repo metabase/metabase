@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
@@ -16,7 +16,7 @@ import { getNestedQueriesEnabled } from "metabase/selectors/settings";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
-import { Container } from "./QuestionActionButtons.styled";
+import { BookmarkButton, Container } from "./QuestionActionButtons.styled";
 
 export const EDIT_TESTID = "edit-details-button";
 export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
@@ -50,6 +50,13 @@ function QuestionActionButtons({
   isBookmarked,
   toggleBookmark,
 }) {
+  const [animation, setAnimation] = useState(null);
+
+  const handleClickBookmark = () => {
+    toggleBookmark();
+    setAnimation(isBookmarked ? "shrink" : "expand");
+  };
+
   const isDataset = question.isDataset();
 
   const duplicateTooltip = isDataset
@@ -63,6 +70,7 @@ function QuestionActionButtons({
     checkDatabaseSupportsModels(question.query().database());
 
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
+  const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
   return (
     <Container data-testid="question-action-buttons">
@@ -135,12 +143,14 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
-      <Tooltip tooltip={t`Bookmark`}>
-        <Button
+      <Tooltip tooltip={bookmarkTooltip}>
+        <BookmarkButton
           onlyIcon
+          animation={animation}
           icon="bookmark"
           iconSize={ICON_SIZE}
-          onClick={toggleBookmark}
+          isBookmarked={isBookmarked}
+          onClick={handleClickBookmark}
           color={bookmarkButtonColor}
         />
       </Tooltip>

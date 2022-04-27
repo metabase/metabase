@@ -111,6 +111,11 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(() => filter(["<", "XYZ", B])).not.toThrow();
     });
 
+    it("should allow a boolean literal", () => {
+      // [B] = True
+      expect(() => filter(["=", B, true])).not.toThrow();
+    });
+
     it("should work on functions with optional flag", () => {
       const flag = { "include-current": true };
       expect(() => filter(["time-interval", A, 3, "day", flag])).not.toThrow();

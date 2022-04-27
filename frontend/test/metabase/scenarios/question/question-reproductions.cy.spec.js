@@ -7,6 +7,7 @@ import { issue14957 } from "./reproductions/14957-unable-to-save-question-before
 import { issue15714 } from "./reproductions/15714-cc-postgres-percentile-accepts-two-params";
 import { issue15876 } from "./reproductions/15876-postgres-cast-time";
 import { issue16621 } from "./reproductions/16621-create-multiple-filters-with-same-value";
+import { issue16938 } from "./reproductions/16938-nested-native-query-pk-drill";
 import { issue17512 } from "./reproductions/17512";
 import { issue17514 } from "./reproductions/17514-ui-overlay";
 import { issue17963 } from "./reproductions/17963-mongo-filter-expression-compare-two-fields";
@@ -17,6 +18,7 @@ import { issue19742 } from "./reproductions/19742-data-picker-closes-after-hidin
 import { issue20551 } from "./reproductions/20551-filter-starts-with";
 import { issue20627 } from "./reproductions/20627-nested-long-names-wrong-aliases";
 import { issue20683 } from "./reproductions/20683-postgres-current-quarter";
+import { issue17910 } from "./reproductions/17910-revision-history-update";
 
 issue4482();
 issue6239();
@@ -27,6 +29,7 @@ issue14957();
 issue15714();
 issue15876();
 issue16621();
+issue16938();
 issue17512();
 issue17514();
 issue17963();
@@ -37,3 +40,4 @@ issue19742();
 issue20551();
 issue20627();
 issue20683();
+issue17910();

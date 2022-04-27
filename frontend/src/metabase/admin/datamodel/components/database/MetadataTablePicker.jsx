@@ -13,7 +13,7 @@ const RELOAD_INTERVAL = 2000;
   query: (state, { databaseId }) => ({
     dbId: databaseId,
     include_hidden: true,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.tableMetadataQueryProps,
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
   }),
   reloadInterval: (state, props, tables = []) => {
     return tables.some(t => isSyncInProgress(t)) ? RELOAD_INTERVAL : 0;

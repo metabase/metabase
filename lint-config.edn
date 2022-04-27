@@ -9,7 +9,8 @@
 ;; `:warn`    => Print a warning but don't fail
 ;; `:warning` => Print a warning and DO fail
 ^:replace
-{:linters {:missing-else-branch          {:level :warning}
+{:linters {:consistent-alias             {:level :warning}
+           :missing-else-branch          {:level :warning}
            :misplaced-docstring          {:level :warning}
            :missing-body-in-when         {:level :warning}
            :missing-docstring            {:level :warning}

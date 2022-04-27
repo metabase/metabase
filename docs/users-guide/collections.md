@@ -42,6 +42,8 @@ In each collection, you can pin important or useful dashboards, models, and ques
 
 Any dashboards that are pinned in the main "Our analytics" collection will also show up on the homepage.
 
+If you just want to organize _your_ favorite items, you should [bookmark them](03-basic-exploration.md#bookmarks) (only you can see your bookmarks).
+
 ## Moving items from collection to collection
 
 To move a question, dashboard, or pulse into a collection, or from one collection to another, just click and drag it onto the collection where you want it to go. You can also click on the `…` menu to the right of the question and pick the Move action. If you're trying to move several things at once, click on the items' icons to select them, then click the Move action that pops up at the bottom of the screen.
@@ -57,6 +59,10 @@ Sometimes questions outlive their usefulness and need to be sent to Question Hea
 You can also archive _collections_ if you have curate permissions for the collection you're trying to archive, the collection _it's_ inside of, as well as any and all collections inside of _it_. Archiving a collection archives all of its contents as well.
 
 If you have second thoughts and want to bring an archived item back, you can see all your archived questions from the archive; click the menu icon in the top-right of any collection page to get to the archive. To unarchive a question, hover over it and click the unarchive icon that appears on the far right.
+
+## Events and timelines
+
+You can add events to collections, and organize those events into timelines. See [Events and timelines](events-and-timelines.md).
 
 ## Next: creating dashboards
 

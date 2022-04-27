@@ -15,18 +15,18 @@
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
             [metabase.pulse.render :as render]
-            [metabase.pulse.render.body :as render.body]
+            [metabase.pulse.render.body :as body]
             [metabase.pulse.render.image-bundle :as image-bundle]
             [metabase.pulse.render.js-svg :as js-svg]
-            [metabase.pulse.render.style :as render.style]
+            [metabase.pulse.render.style :as style]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.streaming.interface :as qp.streaming.i]
-            [metabase.query-processor.streaming.xlsx :as xlsx]
+            [metabase.query-processor.streaming.interface :as qp.si]
+            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :as i18n :refer [deferred-trs trs tru]]
-            [metabase.util.urls :as url]
+            [metabase.util.urls :as urls]
             [stencil.core :as stencil]
             [stencil.loader :as stencil-loader]
             [toucan.db :as db])
@@ -60,7 +60,7 @@
 
 (defn- icon-bundle
   [icon-name]
-  (let [color     (render.style/primary-color)
+  (let [color     (style/primary-color)
         png-bytes (js-svg/icon icon-name color)]
     (-> (image-bundle/make-image-bundle :attachment png-bytes)
         (image-bundle/image-bundle->attachment))))
@@ -84,13 +84,13 @@
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
-   :applicationColor          (render.style/primary-color)
+   :applicationColor          (style/primary-color)
    :applicationLogoUrl        (logo-url)
-   :buttonStyle               (button-style (render.style/primary-color))
-   :colorTextLight            render.style/color-text-light
-   :colorTextMedium           render.style/color-text-medium
-   :colorTextDark             render.style/color-text-dark
-   :notificationManagementUrl (url/notification-management-url)
+   :buttonStyle               (button-style (style/primary-color))
+   :colorTextLight            style/color-text-light
+   :colorTextMedium           style/color-text-medium
+   :colorTextDark             style/color-text-dark
+   :notificationManagementUrl (urls/notification-management-url)
    :siteUrl                   (public-settings/site-url)})
 
 (def ^:private notification-context
@@ -212,10 +212,10 @@
 
 (defn- model-name->url-fn [model]
   (case model
-    "Card"      url/card-url
-    "Dashboard" url/dashboard-url
-    "Pulse"     url/pulse-url
-    "Segment"   url/segment-url))
+    "Card"      urls/card-url
+    "Dashboard" urls/dashboard-url
+    "Pulse"     urls/pulse-url
+    "Segment"   urls/segment-url))
 
 (defn- add-url-to-dependency [{:keys [id model], :as obj}]
   (assoc obj :url ((model-name->url-fn model) id)))
@@ -275,7 +275,7 @@
   [{:keys [cards dashboard_id]}]
   (when-let [dashboard-id (or dashboard_id
                               (some :dashboard_id cards))]
-    {:pulseLink (url/dashboard-url dashboard-id)}))
+    {:pulseLink (urls/dashboard-url dashboard-id)}))
 
 (defn- pulse-context [pulse dashboard]
   (merge (common-context)
@@ -284,7 +284,7 @@
           :titleUrl                  (params/dashboard-url (:id dashboard) (params/parameters pulse dashboard))
           :dashboardDescription      (:description dashboard)
           :creator                   (-> pulse :creator :common_name)
-          :sectionStyle              (render.style/style (render.style/section-style))}
+          :sectionStyle              (style/style (style/section-style))}
          (pulse-link-context pulse)))
 
 (defn- create-temp-file
@@ -304,7 +304,7 @@
         (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
-  (let [{:keys [content-type]} (qp.streaming.i/stream-options export-type)]
+  (let [{:keys [content-type]} (qp.si/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s.%s" card-name (name export-type))
@@ -327,20 +327,17 @@
       include-xls?
       (no "it has `:include_xls`")
 
-      (some (complement render.body/show-in-table?) cols)
+      (some (complement body/show-in-table?) cols)
       (yes "some columns are not included in rendered results")
 
       (not= :table (render/detect-pulse-chart-type card nil result-data))
       (no "we've determined it should not be rendered as a table")
 
-      (= (count (take render.body/cols-limit cols)) render.body/cols-limit)
-      (yes "the results have >= %d columns" render.body/cols-limit)
-
-      (= (count (take render.body/rows-limit rows)) render.body/rows-limit)
-      (yes "the results have >= %d rows" render.body/rows-limit)
+      (= (count (take body/rows-limit rows)) body/rows-limit)
+      (yes "the results have >= %d rows" body/rows-limit)
 
       :else
-      (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
+      (no "less than %d rows in results" body/rows-limit))))
 
 (defn- stream-api-results-to-export-format
   "For legacy compatability. Takes QP results in the normal `:api` response format and streams them to a different
@@ -357,21 +354,21 @@
   (driver/with-driver (driver.u/database->driver database-id)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! database-id)
-      (binding [xlsx/*parse-temporal-string-values* true]
-        (let [w                           (qp.streaming.i/streaming-results-writer export-format os)
+      (binding [qp.xlsx/*parse-temporal-string-values* true]
+        (let [w                           (qp.si/streaming-results-writer export-format os)
               cols                        (-> results :data :cols)
               viz-settings                (-> results :data :viz-settings)
               [ordered-cols output-order] (qp.streaming/order-cols cols viz-settings)
               viz-settings'               (assoc viz-settings :output-order output-order)]
-          (qp.streaming.i/begin! w
-                                 (assoc-in results [:data :ordered-cols] ordered-cols)
-                                 viz-settings')
+          (qp.si/begin! w
+                        (assoc-in results [:data :ordered-cols] ordered-cols)
+                        viz-settings')
           (dorun
            (map-indexed
             (fn [i row]
-              (qp.streaming.i/write-row! w row i ordered-cols viz-settings'))
+              (qp.si/write-row! w row i ordered-cols viz-settings'))
             rows))
-          (qp.streaming.i/finish! w results))))))
+          (qp.si/finish! w results))))))
 
 (defn- result-attachment
   [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
@@ -402,39 +399,39 @@
         cells   (map
                  (fn [filter]
                    [:td {:class "filter-cell"
-                         :style (render.style/style {:width "50%"
-                                                     :padding "0px"
-                                                     :vertical-align "baseline"})}
+                         :style (style/style {:width "50%"
+                                              :padding "0px"
+                                              :vertical-align "baseline"})}
                     [:table {:cellpadding "0"
                              :cellspacing "0"
                              :width "100%"
                              :height "100%"}
                      [:tr
                       [:td
-                       {:style (render.style/style {:color render.style/color-text-medium
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 4px 4px 0"
-                                                    :vertical-align "baseline"})}
+                       {:style (style/style {:color style/color-text-medium
+                                             :min-width "100px"
+                                             :width "50%"
+                                             :padding "4px 4px 4px 0"
+                                             :vertical-align "baseline"})}
                        (:name filter)]
                       [:td
-                       {:style (render.style/style {:color render.style/color-text-dark
-                                                    :min-width "100px"
-                                                    :width "50%"
-                                                    :padding "4px 16px 4px 8px"
-                                                    :vertical-align "baseline"})}
+                       {:style (style/style {:color style/color-text-dark
+                                             :min-width "100px"
+                                             :width "50%"
+                                             :padding "4px 16px 4px 8px"
+                                             :vertical-align "baseline"})}
                        (params/value-string filter)]]]])
                  filters)
         rows    (partition 2 2 nil cells)]
     (html
-     [:table {:style (render.style/style {:table-layout :fixed
-                                          :border-collapse :collapse
-                                          :cellpadding "0"
-                                          :cellspacing "0"
-                                          :width "100%"
-                                          :font-size  "12px"
-                                          :font-weight 700
-                                          :margin-top "8px"})}
+      [:table {:style (style/style {:table-layout :fixed
+                                    :border-collapse :collapse
+                                    :cellpadding "0"
+                                    :cellspacing "0"
+                                    :width "100%"
+                                    :font-size  "12px"
+                                    :font-weight 700
+                                    :margin-top "8px"})}
       (for [row rows]
         [:tr {} row])])))
 
@@ -500,8 +497,8 @@
      (merge (common-context)
             {:emailType                 "alert"
              :questionName              card-name
-             :questionURL               (url/card-url card-id)
-             :sectionStyle              (render.style/section-style)}
+             :questionURL               (urls/card-url card-id)
+             :sectionStyle              (style/section-style)}
             (when alert-condition-map
               {:alertCondition (get alert-condition-map (pulse->alert-condition-kwd alert))})))))
 
@@ -549,7 +546,7 @@
   [alert channel]
   (let [{card-id :id, card-name :name} (first-card alert)]
     {:title         card-name
-     :titleUrl      (url/card-url card-id)
+     :titleUrl      (urls/card-url card-id)
      :alertSchedule (alert-schedule-text channel)
      :creator       (-> alert :creator :common_name)}))
 

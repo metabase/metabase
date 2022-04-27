@@ -3,7 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.timeline :refer [Timeline]]
-            [metabase.models.timeline-event :as te :refer [TimelineEvent]]
+            [metabase.models.timeline-event :as timeline-event :refer [TimelineEvent]]
             [metabase.test :as mt]
             [metabase.util :as u]))
 
@@ -23,7 +23,7 @@
                                         :archived true}]]
       (testing "only unarchived events by default"
         (is (= #{"un-1" "un-2"}
-               (names (te/include-events [tl-a tl-b] {})))))
+               (names (timeline-event/include-events [tl-a tl-b] {})))))
       (testing "all events when specified"
         (is (= #{"un-1" "un-2" "archived-1" "archived-2"}
-               (names (te/include-events [tl-a tl-b] {:events/all? true}))))))))
+               (names (timeline-event/include-events [tl-a tl-b] {:events/all? true}))))))))

@@ -1,4 +1,9 @@
-import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openPeopleTable,
+  openProductsTable,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -34,18 +39,14 @@ describe("scenarios > question > object details", () => {
       .click();
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
-    getPreviousObjectDetailButton().should(
-      "have.attr",
-      "aria-disabled",
-      "true",
-    );
+    getPreviousObjectDetailButton().should("have.attr", "disabled", "disabled");
 
     getNextObjectDetailButton().click();
     assertOrderDetailView({ id: SECOND_ORDER_ID });
 
     getNextObjectDetailButton().click();
     assertOrderDetailView({ id: THIRD_ORDER_ID });
-    getNextObjectDetailButton().should("have.attr", "aria-disabled", "true");
+    getNextObjectDetailButton().should("have.attr", "disabled", "disabled");
 
     getPreviousObjectDetailButton().click();
     assertOrderDetailView({ id: SECOND_ORDER_ID });
@@ -82,18 +83,40 @@ describe("scenarios > question > object details", () => {
     });
   });
 
-  it("should show orders/reviews connected to a product", () => {
-    cy.visit("/browse/1");
-    cy.contains("Products").click();
-    // click on product #1's id
-    cy.contains(/^1$/).click();
-    // check that the correct counts of related tables appear
-    cy.contains("Orders")
-      .parent()
-      .contains("93");
-    cy.contains("Reviews")
-      .parent()
-      .contains("8");
+  it("should allow to browse linked entities by FKs (metabase#21757)", () => {
+    const PRODUCT_ID = 7;
+    const EXPECTED_LINKED_ORDERS_COUNT = 92;
+    const EXPECTED_LINKED_REVIEWS_COUNT = 8;
+    openProductsTable();
+
+    getFirstTableColumn()
+      .eq(5)
+      .should("contain", 5)
+      .click();
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByTestId("fk-relation-orders").findByText(97);
+      cy.findByTestId("fk-relation-reviews").findByText(4);
+      cy.findByTestId("view-next-object-detail").click();
+
+      cy.findByTestId("fk-relation-orders").findByText(88);
+      cy.findByTestId("fk-relation-reviews").findByText(5);
+      cy.findByTestId("view-next-object-detail").click();
+
+      cy.findByTestId("fk-relation-reviews").findByText(
+        EXPECTED_LINKED_REVIEWS_COUNT,
+      );
+      cy.findByTestId("fk-relation-orders")
+        .findByText(EXPECTED_LINKED_ORDERS_COUNT)
+        .click();
+    });
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      `Product ID is ${PRODUCT_ID}`,
+    );
+    cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
@@ -104,10 +127,14 @@ describe("scenarios > question > object details", () => {
       .click();
     cy.url().should("contain", "objectId=2");
 
-    cy.findByText("Domenica Williamson").click();
+    cy.findByTestId("object-detail")
+      .findByText("Domenica Williamson")
+      .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
-    cy.findByText("Searsboro").click();
+    cy.findByTestId("object-detail")
+      .findByText("Searsboro")
+      .click();
   });
 });
 

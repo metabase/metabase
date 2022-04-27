@@ -3,12 +3,32 @@
 import d3 from "d3";
 import moment from "moment";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
 
 import { isNormalized, isStacked, formatNull } from "./renderer_utils";
 import { determineSeriesIndexFromElement } from "./tooltip";
 import { getFriendlyName } from "./utils";
+
+function isDashboardAddedSeries(series, seriesIndex, dashboard) {
+  // the first series by definition can't be an "added" series
+  if (!dashboard || seriesIndex === 0) {
+    return false;
+  }
+
+  const { card: firstCardInSeries } = series[0];
+  const { card: addedSeriesCard } = series[seriesIndex];
+
+  // find the dashcard associated with the first series
+  const dashCard = dashboard.ordered_cards.find(
+    dashCard => dashCard.card_id === firstCardInSeries.id,
+  );
+
+  // evaluate whether the added series exists in its series array
+  // the "series" array on a dashcard is where "added" series are stored
+  return (dashCard?.series || []).some(card => card.id === addedSeriesCard.id);
+}
 
 export function getClickHoverObject(
   d,
@@ -22,6 +42,7 @@ export function getClickHoverObject(
     event,
     element,
     settings,
+    dashboard,
   },
 ) {
   let { cols } = series[seriesIndex].data;
@@ -32,11 +53,16 @@ export function getClickHoverObject(
   const isBar = classList.includes("bar");
   const isSingleSeriesBar = isBar && !isMultiseries;
 
-  function getColumnDisplayName(col) {
-    const title = getIn(settings, ["series_settings", col.name, "title"]);
+  function getColumnDisplayName(col, colVizSettingsKey = col.name) {
+    const colTitle = getIn(settings, [
+      "series_settings",
+      colVizSettingsKey,
+      "title",
+    ]);
+
     // don't replace with series title for breakout multiseries since the series title is shown in the breakout value
-    if (!isBreakoutMultiseries && title) {
-      return title;
+    if (!isBreakoutMultiseries && colTitle) {
+      return colTitle;
     }
 
     return getFriendlyName(col);
@@ -89,6 +115,42 @@ export function getClickHoverObject(
       ([x]) => key === x || (moment.isMoment(key) && key.isSame(x)),
     );
 
+    const isAddedSeriesOnDashcard = isDashboardAddedSeries(
+      series,
+      seriesIndex,
+      dashboard,
+    );
+    const isCardNameTakenFromColumnName = cols.some(
+      col => col.name === card.name,
+    );
+    const isCardNameCombinedWithColumnDisplayName = cols.some(
+      col => card.name === `${card.originalCardName}: ${col.display_name}`,
+    );
+    const colVizSettingsKeys = rawCols.map((rawCol, colIndex) => {
+      // Series that have been added to dashcards as "additional series" can have weird viz settings keys.
+      // Typically the viz settings key is the column name, but to avoid scenarios where the added series
+      // repeats column names, the card name is used OR some combo of the card name and column display_name is used.
+      if (
+        isAddedSeriesOnDashcard &&
+        // Sometimes (bar charts only?), the card name is set to one of the column names (not necessarily the `rawCol` in this function).
+        // In that scenario, we can probably be confident that the viz settings key for the column is the column name.
+        !isCardNameTakenFromColumnName &&
+        // the x axis (first) column uses the column name
+        colIndex >= 1
+      ) {
+        // When there are multiple series in a card, the column name is combined with the card name,
+        // (remember: this `card` object has a `name` property that has been changed in `LineAreaBarChart`),
+        // so we need to reconstruct the viz settings key using the original card name and the column display name
+        if (isCardNameCombinedWithColumnDisplayName) {
+          return `${card.originalCardName}: ${rawCol.display_name}`;
+        } else {
+          return card.originalCardName;
+        }
+      }
+
+      return rawCol.name;
+    });
+
     // try to get rows from _origin
     const rawRows = rows
       .map(row => {
@@ -114,7 +176,7 @@ export function getClickHoverObject(
           };
         }
         return {
-          key: getColumnDisplayName(col),
+          key: getColumnDisplayName(col, colVizSettingsKeys[i]),
           value: formatNull(aggregatedRow[i]),
           col: col,
         };
@@ -222,7 +284,14 @@ function aggregateRows(rows) {
 }
 
 export function setupTooltips(
-  { settings, series, isScalarSeries, onHoverChange, onVisualizationClick },
+  {
+    settings,
+    series,
+    isScalarSeries,
+    onHoverChange,
+    onVisualizationClick,
+    dashboard,
+  },
   datas,
   chart,
   { isBrushing },
@@ -257,6 +326,7 @@ export function setupTooltips(
       event: d3.event,
       element: target,
       settings,
+      dashboard,
     });
   };
 

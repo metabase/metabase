@@ -3,7 +3,7 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
-            [metabase.models.setting.cache :as cache]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
@@ -480,12 +480,12 @@
 (defn clear-settings-last-updated-value-in-db!
   "Deletes the timestamp for the last updated setting from the DB."
   []
-  (db/simple-delete! Setting {:key cache/settings-last-updated-key}))
+  (db/simple-delete! Setting {:key setting.cache/settings-last-updated-key}))
 
 (defn settings-last-updated-value-in-db
   "Fetches the timestamp of the last updated setting."
   []
-  (db/select-one-field :value Setting :key cache/settings-last-updated-key))
+  (db/select-one-field :value Setting :key setting.cache/settings-last-updated-key))
 
 (defsetting uncached-setting
   "A test setting that should *not* be cached."
@@ -539,7 +539,7 @@
     ;; clear out any existing values of `toucan-name`
     (db/simple-delete! setting/Setting {:key "toucan-name"})
     ;; restore the cache
-    (cache/restore-cache-if-needed!)
+    (setting.cache/restore-cache-if-needed!)
     ;; now set a value for the `toucan-name` setting the wrong way
     (db/insert! setting/Setting {:key "toucan-name", :value "Reggae"})
     ;; ok, now try to set the Setting the correct way
@@ -701,12 +701,12 @@
                                            (db/delete! Setting :key (name setting-name))
                                            (when site-wide-value
                                              (db/insert! Setting :key (name setting-name), :value (str site-wide-value)))
-                                           (cache/restore-cache!)
+                                           (setting.cache/restore-cache!)
                                            (try
                                              (thunk)
                                              (finally
                                                (db/delete! Setting :key (name setting-name))
-                                               (cache/restore-cache!)))))
+                                               (setting.cache/restore-cache!)))))
                                        (fn [thunk]
                                          (tu/do-with-temp-env-var-value
                                           (keyword (str "mb-" (name setting-name)))

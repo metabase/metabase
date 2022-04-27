@@ -95,6 +95,10 @@ export default class Smart extends React.Component {
         },
       ],
       rawSeries,
+      gridSize,
+      width,
+      height,
+      totalNumGridCols,
     } = this.props;
 
     const metricIndex = cols.findIndex(col => !isDate(col));
@@ -169,6 +173,12 @@ export default class Smart extends React.Component {
           ref={scalar => (this._scalar = scalar)}
         >
           <ScalarValue
+            isDashboard={isDashboard}
+            gridSize={gridSize}
+            minGridSize={Smart.minSize}
+            width={width}
+            height={height}
+            totalNumGridCols={totalNumGridCols}
             value={formatValue(insight["last-value"], settings.column(column))}
           />
         </span>

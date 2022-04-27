@@ -1,9 +1,12 @@
+export type UserId = number;
+
 export interface User {
-  id: number;
+  id: UserId;
   first_name: string;
   last_name: string;
   common_name: string;
   email: string;
+  locale: string | null;
   google_auth: boolean;
   is_active: boolean;
   is_qbnewb: boolean;

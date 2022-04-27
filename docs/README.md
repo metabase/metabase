@@ -66,6 +66,7 @@
 - [Basic exploration](./users-guide/03-basic-exploration.md)
 - [Sharing and organizing your saved questions](./users-guide/06-sharing-answers.md)
 - [Collections](./users-guide/collections.md)
+- [Events and timelines](./users-guide/events-and-timelines.md)
 
 ## People and groups
 
@@ -83,7 +84,7 @@
 - [Permissions overview](./administration-guide/05-setting-permissions.md)
 - [Data permissions](./administration-guide/data-permissions.md)
 - [Collection permissions](./administration-guide/06-collections.md)
-- [General permissions](./administration-guide/general-permissions.md)
+- [Application permissions](./administration-guide/application-permissions.md)
 - [Sandboxing data based on user attributes](./enterprise-guide/data-sandboxes.md)
 - [SQL snippets folder permissions](./enterprise-guide/sql-snippets.md)
 
