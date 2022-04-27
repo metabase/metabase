@@ -4,6 +4,8 @@
 
 - The `metabase.driver.sql-jdbc.execute/read-column` method, deprecated in 0.35.0, has been removed. Replace all
   implementations of this method with implementations of `metabase.driver.sql-jdbc.execute/read-column-thunk`.
+- `metabase.driver.sql-jdbc.execute/set-timezone-sql` was marked as deprecated in 0.35.0; it is no longer considered
+  deprecated and this designation has been removed.
 
 ## Metabase 0.43.0
 

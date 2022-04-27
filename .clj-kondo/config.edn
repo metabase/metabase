@@ -63,10 +63,6 @@
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.query-processor.middleware.resolve-joins/maybe-resolve-source-table
                                       {:namespaces ["metabase.*"]}
-                                      metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sq
-                                      {:namespaces ["metabase\\.driver.*"]}
-                                      metabase.driver.sql-jdbc.execute.old-impl/set-timezone-sql
-                                      {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.sql.query-processor.deprecated/*table-alias*
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.public-settings.premium-features/enable-enhancements?
@@ -192,7 +188,6 @@
                                         metabase.driver.sql-jdbc.execute                                sql-jdbc.execute
                                         metabase.driver.sql-jdbc.execute.diagnostic                     sql-jdbc.execute.diagnostic
                                         metabase.driver.sql-jdbc.execute.legacy-impl                    sql-jdbc.legacy
-                                        metabase.driver.sql-jdbc.execute.old-impl                       sql-jdbc.execute.old
                                         metabase.driver.sql-jdbc.sync                                   sql-jdbc.sync
                                         metabase.driver.sql-jdbc.sync.common                            sql-jdbc.common
                                         metabase.driver.sql-jdbc.sync.describe-database                 sql-jdbc.describe-database

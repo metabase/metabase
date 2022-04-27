@@ -1,8 +1,7 @@
 (ns metabase.driver.sql-jdbc.execute
   "Code related to actually running a SQL query against a JDBC database and for properly encoding/decoding types going
-  in and out of the database. Some deprecated methods can be found in [[metabase.driver.sql-jdbc.execute.old-impl]],
-  which will be removed in a future release; implementations of methods for JDBC drivers that do not support
-  `java.time` classes can be found in [[metabase.driver.sql-jdbc.execute.legacy-impl]]. "
+  in and out of the database. Implementations of methods for JDBC drivers that do not support `java.time` classes can
+  be found in [[metabase.driver.sql-jdbc.execute.legacy-impl]]. "
   (:require [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -10,7 +9,6 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.models.setting :refer [defsetting]]
             [metabase.query-processor.context :as qp.context]
@@ -21,8 +19,7 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
-            [potemkin :as p])
+            [metabase.util.i18n :refer [trs tru]])
   (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            javax.sql.DataSource))
@@ -35,18 +32,29 @@
   "Fetch a Connection for a `database` with session time zone set to `timezone-id` (if supported by the driver.) The
   default implementation:
 
-  1. Calls util fn `datasource` to get a c3p0 connection pool DataSource
+  1. Calls util fn [[datasource]] to get a c3p0 connection pool DataSource
   2. Calls `.getConnection()` the normal way
-  3. Executes `set-timezone-sql` if implemented by the driver.
+  3. Executes the SQL returned by [[set-timezone-sql]] if that method is implemented by the driver.
 
-  `timezone-id` will be `nil` if a `report-timezone` Setting is not currently set; don't change the session time zone
-  if this is the case.
+  `timezone-id` will be `nil` if a [[metabase.driver/report-timezone]] Setting is not currently set; don't change the
+  session time zone if this is the case.
 
-  For drivers that support session timezones, the default implementation and `set-timezone-sql` should be considered
-  deprecated in favor of implementing `connection-with-timezone` directly. This way you can set the session timezone
-  in the most efficient manner, e.g. only setting it if needed (if there's an easy way for you to check this), or by
-  setting it as a parameter of the connection itself (the default connection pools are automatically flushed when
-  `report-timezone-id` changes).
+  There are two usual ways to set the session timezone if your driver supports them:
+
+  1. Specifying the session timezone based on the value of [[metabase.driver/report-timezone]] as a JDBC connection
+     parameter in the JDBC connection spec returned by [[metabase.driver.sql-jdbc.connection/connection-details->spec]].
+     If the spec returned by this method changes, connection pools associated with it will be flushed automatically.
+     This is the preferred way to set session timezones; if you set them this way, you DO NOT need to implement this
+     method unless you need to do something special with regards to setting the transaction level.
+
+  2. Setting the session timezone manually on the [[java.sql.Connection]] returned by [[datasource]] based on the
+     value of `timezone-id`.
+
+    2a. The default implementation will do this for you by executing SQL if you implement
+        [[set-timezone-sql]].
+
+    2b. You can implement [[connection-with-timezone]] yourself and set the timezone however you wish. Only set it if
+        `timezone-id` is not `nil`!
 
   Custom implementations should set transaction isolation to the least-locking level supported by the driver, and make
   connections read-only (*after* setting timezone, if needed)."
@@ -123,6 +131,18 @@
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
   :hierarchy #'driver/hierarchy)
 
+(defmulti set-timezone-sql
+  "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.
+  The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.` (Timezone ID will come already
+  wrapped in single quotes.)
+
+    \"SET @@session.time_zone = %s;\"
+
+  This method is only called for drivers using the default implementatation of [[connection-with-timezone]]."
+  {:arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  Default Impl                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -139,11 +159,11 @@
   {:added "0.40.0"}
   ^DataSource [driver database]
   (let [ds (datasource database)]
-    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool driver (u/the-id database) ds)
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id database) ds)
     ds))
 
 (defn set-time-zone-if-supported!
-  "Execute `set-timezone-sql`, if implemented by driver, to set the session time zone. This way of setting the time zone
+  "Execute [[set-timezone-sql]], if implemented by driver, to set the session time zone. This way of setting the time zone
   should be considered deprecated in favor of implementing `connection-with-time-zone` directly."
   {:deprecated "0.35.0"}
   [driver ^Connection conn ^String timezone-id]
@@ -488,13 +508,3 @@
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
        (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Convenience Imports from Old Impl                                        |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(p/import-vars
- [sql-jdbc.execute.old
-  ;; interface (set-parameter is imported as well at the top of the namespace)
-  set-timezone-sql])
