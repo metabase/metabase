@@ -1,4 +1,5 @@
 import uiThrottle from "raf-schd";
+import { isCypressActive } from "metabase/env";
 
 type ResizeObserverCallback = (
   entry: ResizeObserverEntry,
@@ -8,13 +9,15 @@ type ResizeObserverCallback = (
 function createResizeObserver() {
   const callbacksMap: Map<unknown, ResizeObserverCallback[]> = new Map();
 
+  function handler(entries: ResizeObserverEntry[], observer: ResizeObserver) {
+    for (let i = 0; i < entries.length; i++) {
+      const entryCallbacks = callbacksMap.get(entries[i].target);
+      entryCallbacks?.forEach(callback => callback(entries[i], observer));
+    }
+  }
+
   const observer = new ResizeObserver(
-    uiThrottle((entries, observer) => {
-      for (let i = 0; i < entries.length; i++) {
-        const entryCallbacks = callbacksMap.get(entries[i].target);
-        entryCallbacks?.forEach(callback => callback(entries[i], observer));
-      }
-    }),
+    isCypressActive ? handler : uiThrottle(handler),
   );
 
   return {
