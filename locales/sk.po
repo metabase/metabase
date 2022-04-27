@@ -31,7 +31,7 @@ msgstr "Vyberte typ databázy"
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:241
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.jsx:35
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:461
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:145
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:181
 #: frontend/src/metabase/components/ActionButton.jsx:30
@@ -40,7 +40,7 @@ msgstr "Vyberte typ databázy"
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:149
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:75
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:423
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:429
 #: frontend/src/metabase/reference/components/EditHeader.jsx:53
 #: frontend/src/metabase/reference/components/EditHeader.jsx:68
 msgid "Save"
@@ -404,11 +404,11 @@ msgstr "Úspešne"
 msgid "Preview"
 msgstr "Náhľad"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:100
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:103
 msgid "No column description yet"
 msgstr "Žiadny popis stĺpca"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:128
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:145
 msgid "Select a field visibility"
 msgstr "Vyberte viditeľnosť poľa"
 
@@ -417,7 +417,7 @@ msgstr "Vyberte viditeľnosť poľa"
 msgid "No special type"
 msgstr "Žiaden špeciálny typ"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:183
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:201
 #: frontend/src/metabase/lib/core.js:324
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
@@ -432,7 +432,7 @@ msgstr "Iné"
 msgid "Select a special type"
 msgstr "Vyberte špeciálny typ"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:253
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/FKTargetPicker.tsx:90
 #: frontend/src/metabase/reference/components/Field.jsx:91
 msgid "Select a target"
@@ -457,7 +457,7 @@ msgstr "Stĺpec"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList/ColumnsList.jsx:109
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable/MetadataTable.tsx:102
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:269
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:276
 msgid "Visibility"
 msgstr "Viditeľnosť"
 
@@ -634,35 +634,35 @@ msgstr " História"
 msgid "Revision History for"
 msgstr "História revízií pre"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:208
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:213
 msgid "{0} – Field Settings"
 msgstr "{0} – Nastavenia poľa"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:270
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:277
 msgid "Where this field will appear throughout Metabase"
 msgstr "Kde sa toto pole objaví v Metabase"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:322
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:329
 msgid "Filtering on this field"
 msgstr "Filtrovanie v tomto poli"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:323
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:330
 msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
 msgstr "Keď sa toto pole použije vo filtri, aký typ hodnoty by ľudia mali používať, ak chcú v tomto poli filtrovať?"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:444
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:452
 msgid "No description for this field yet"
 msgstr "Žiaden popis tohto poľa"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:418
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:439
 msgid "Original value"
 msgstr "Originálna hodnota"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:419
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
 msgid "Mapped value"
 msgstr "Namapovaná hodnota"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:462
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:483
 msgid "Enter value"
 msgstr "Zadajte hodnotu"
 
@@ -679,31 +679,31 @@ msgid "Custom mapping"
 msgstr "Vlastné mapovanie"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:56
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:164
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:176
 msgid "Unrecognized mapping type"
 msgstr "Nerozpoznaný typ mapovania"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:92
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:104
 msgid "Current field isn't a foreign key or FK target table metadata is missing"
 msgstr "Aktuálne pole nie je cudzí kľúč alebo chýbajú metadáta cieľovej tabuľky s cudzím kľúčom"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:202
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:214
 msgid "The selected field isn't a foreign key"
 msgstr "Vybraté pole nie je cudzí kľúč"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:339
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:346
 msgid "Display values"
 msgstr "Zobraziť hodnoty"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:340
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:347
 msgid "Choose to show the original value from the database, or have this field display associated or custom information."
 msgstr "Vyberte, či chcete zobraziť pôvodnú hodnotu z databázy, alebo nechať toto pole zobraziť priradenú alebo vlastnú informáciu."
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:290
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:305
 msgid "Choose a field"
 msgstr "Vyberte pole"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:311
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:326
 msgid "Please select a column to use for display."
 msgstr "Vyberte stĺpec, ktorý chcete použiť na zobrazenie."
 
@@ -711,16 +711,16 @@ msgstr "Vyberte stĺpec, ktorý chcete použiť na zobrazenie."
 msgid "Tip:"
 msgstr "Tip:"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:472
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:493
 msgid "You might want to update the field name to make sure it still makes sense based on your remapping choices."
 msgstr "Možno budete chcieť aktualizovať názov poľa, aby sa ubezpečil, že má stále zmysel na základe vašich možností premapovania."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:364
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:90
 msgid "Cached field values"
 msgstr "Hodnoty poľa vo vyrovnávacej pamäti"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:357
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:365
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
 msgstr "Metabase môže skontrolovať hodnoty tohto poľa a povoliť filtre checkboxov políčok na dashboardoch a otázkach."
 
@@ -876,11 +876,11 @@ msgstr "Toto sa objaví v histórii revízií pre tento segment, aby všetci ved
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:76
 #: frontend/src/metabase/admin/routes.jsx:162
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:237
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:106
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:131
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:76
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:247
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
 msgid "Settings"
 msgstr "Nastavenia"
 
@@ -937,7 +937,7 @@ msgstr "Toto je špeciálna skupina, ktorej členovia môžu vidieť všetko v i
 msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
 msgstr "Aby ste sa uistili, že nemáte prístup k Metabase, v tejto skupine musí byť vždy aspoň jeden používate"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
 msgid "Members"
 msgstr "Členovia"
 
@@ -964,8 +964,8 @@ msgstr "Admin"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:17
 #: frontend/src/metabase/lib/revisions/components.jsx:50
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:203
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:260
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:202
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:259
 #: frontend/src/metabase/query_builder/components/filters/pickers/DefaultPicker.jsx:212
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:312
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:500
@@ -1023,11 +1023,11 @@ msgstr "Nie"
 msgid "Edit Name"
 msgstr "Zmeniť meno"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:96
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:98
 msgid "Remove Group"
 msgstr "Odstrániť skupinu"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:139
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:141
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:43
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:42
 #: frontend/src/metabase/components/HeaderModal.jsx:44
@@ -1044,13 +1044,13 @@ msgid "Done"
 msgstr "Hotovo"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:76
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:271
 msgid "Group name"
 msgstr "Názov skupiny"
 
 #: frontend/src/metabase/admin/people/components/GroupSelect.jsx:68
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:362
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:364
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx:35
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:193
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
@@ -1061,11 +1061,11 @@ msgstr "Názov skupiny"
 msgid "Groups"
 msgstr "Skupiny"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:363
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:365
 msgid "Create a group"
 msgstr "Vytvorte skupinu"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:369
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:371
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Skupiny môžete použiť na riadenie prístupu vašich používateľov k vašim údajom. Dajte používateľov do skupín a potom prejdite do časti Povolenia, kde môžete riadiť prístup každej skupiny. Skupiny Administrators a All Users sú špeciálne predvolené skupiny, ktoré nie je možné odstrániť."
 
@@ -1607,7 +1607,7 @@ msgstr "Odstrániť"
 #: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:130
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:193
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:205
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:208
 msgid "Select…"
 msgstr "Vybrať..."
 
@@ -1809,7 +1809,7 @@ msgstr "Neznáme nastavenie {0}"
 msgid "Setup"
 msgstr "Nastaviť"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:186
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
 #: frontend/src/metabase/admin/settings/selectors.js:61
 msgid "General"
 msgstr "Všeobecné"
@@ -2249,7 +2249,7 @@ msgstr "Vrátiť z archivu {0}"
 #: frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:45
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:39
-#: frontend/src/metabase/reference/databases/DatabaseList.jsx:45
+#: frontend/src/metabase/reference/databases/DatabaseList.jsx:55
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:38
 msgid "Our data"
 msgstr "Vaše data"
@@ -2466,8 +2466,8 @@ msgstr "{0} prejdite na konzolu, ak ste tak ešte neurobili."
 msgid "How would you like to refer to this database?"
 msgstr "Ako by ste chceli odkazovať na túto databázu?"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:152
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:153
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:203
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:148
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:74
@@ -3268,7 +3268,7 @@ msgid "received the latest data from"
 msgstr "boli pridané dáta z"
 
 #: frontend/src/metabase/home/components/Activity.jsx:257
-#: frontend/src/metabase/lib/query_time.js:211
+#: frontend/src/metabase/lib/query_time.js:212
 #: frontend/src/metabase/lib/revisions/revisions.js:74
 #: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:27
 #: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
@@ -3407,7 +3407,7 @@ msgid "Unarchive"
 msgstr "Zrušiť archiváciu"
 
 #: frontend/src/metabase/home/containers/ActivityApp.jsx:56
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:66
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:62
 msgid "Activity"
 msgstr "Aktivity"
 
@@ -3697,20 +3697,20 @@ msgstr "Jednoznačný"
 msgid "StandardDeviation"
 msgstr "Štandardná odchýlka"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:96
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:103
 #: frontend/src/metabase/lib/schema_metadata.js:627
 #: frontend/src/metabase/visualizations/lib/utils.js:143
 msgid "Average"
 msgstr "Priemer"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:97
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/lib/schema_metadata.js:672
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:496
 msgid "Min"
 msgstr "Min"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:98
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/lib/schema_metadata.js:681
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:504
@@ -3774,7 +3774,7 @@ msgstr "Čo chcete zistiť?"
 #: frontend/src/metabase/lib/query/description.js:264
 #: frontend/src/metabase/lib/schema_metadata.js:600
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:60
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:212
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:211
 msgid "Raw data"
 msgstr "Čisté data"
 
@@ -3891,7 +3891,7 @@ msgstr "Nie je"
 #: frontend/src/metabase/lib/schema_metadata.js:470
 #: frontend/src/metabase/lib/schema_metadata.js:476
 #: frontend/src/metabase/lib/schema_metadata.js:495
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:206
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:136
 msgid "Is empty"
 msgstr "Je prázdne"
 
@@ -3932,7 +3932,7 @@ msgstr "Menšie ako"
 #: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/lib/schema_metadata.js:489
 #: frontend/src/metabase/parameters/constants.js:18
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:175
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:176
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:250
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:98
 msgid "Between"
@@ -3977,14 +3977,14 @@ msgid "Ends with"
 msgstr "Končí s"
 
 #: frontend/src/metabase/lib/schema_metadata.js:467
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:189
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:190
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:229
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:76
 msgid "Before"
 msgstr "Pred"
 
 #: frontend/src/metabase/lib/schema_metadata.js:468
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:205
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:206
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:236
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:87
 msgid "After"
@@ -4248,11 +4248,12 @@ msgstr "Kategória, Typ, Model, Hodnotenie, atď."
 
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.jsx:41
 #: frontend/src/metabase/account/routes.jsx:14
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:53
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:49
 msgid "Account settings"
 msgstr "Nastavenia účtu"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:52
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Opustiť admin"
 
@@ -4260,18 +4261,18 @@ msgstr "Opustiť admin"
 msgid "Logs"
 msgstr "Logy"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:73
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:69
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:82
 msgid "Help"
 msgstr "Pomoc"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:84
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:80
 msgid "About Metabase"
 msgstr "O Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:86
 msgid "Sign out"
 msgstr "Odhlásiť sa"
 
@@ -4279,15 +4280,15 @@ msgstr "Odhlásiť sa"
 msgid "Thanks for using"
 msgstr "Ďakujeme za použitie"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:129
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:131
 msgid "You're on version"
 msgstr "Ste vo verzii"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:132
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:134
 msgid "Built on"
 msgstr "Postavený na"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:152
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
 msgid "is a Trademark of"
 msgstr "je ochranná známka spoločnosti"
 
@@ -4295,7 +4296,7 @@ msgstr "je ochranná známka spoločnosti"
 msgid "and is built with care in San Francisco, CA"
 msgstr "a je postavený v San Franciscu v Kalifornii"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:33
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase admin"
 
@@ -4364,15 +4365,15 @@ msgstr "Pre zložitejšie otázky môžete napísať svoj vlastný SQL alebo nat
 msgid "Select a default value…"
 msgstr "Vyberte predvolenú hodnotu ..."
 
-#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:108
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:152
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 msgid "Update filter"
 msgstr "Aktualizovať filter"
 
-#: frontend/src/metabase/lib/query_time.js:143
-#: frontend/src/metabase/lib/query_time.js:154
+#: frontend/src/metabase/lib/query_time.js:144
+#: frontend/src/metabase/lib/query_time.js:155
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:10
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:145
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:33
@@ -4381,7 +4382,7 @@ msgstr "Aktualizovať filter"
 msgid "Today"
 msgstr "Dnes"
 
-#: frontend/src/metabase/lib/query_time.js:149
+#: frontend/src/metabase/lib/query_time.js:150
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:15
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:43
@@ -4398,24 +4399,24 @@ msgstr "Posledných 7 dní"
 msgid "Past 30 days"
 msgstr "Posledných 30 dní"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1702
-#: frontend/src/metabase/lib/query_time.js:229
+#: frontend/src/metabase-lib/lib/Dimension.ts:1721
+#: frontend/src/metabase/lib/query_time.js:230
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Week"
 msgstr "Týždeň"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1708
-#: frontend/src/metabase/lib/query_time.js:231
+#: frontend/src/metabase-lib/lib/Dimension.ts:1727
+#: frontend/src/metabase/lib/query_time.js:232
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Month"
 msgstr "Mesiac"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1720
-#: frontend/src/metabase/lib/query_time.js:235
+#: frontend/src/metabase-lib/lib/Dimension.ts:1739
+#: frontend/src/metabase/lib/query_time.js:236
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4468,6 +4469,7 @@ msgstr "Zadajte prednastavenú hodnotu..."
 
 #: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:49
 #: frontend/src/metabase/containers/Form.jsx:230
+#: frontend/src/metabase/containers/Form.jsx:239
 #: frontend/src/metabase/public/components/PublicError.jsx:13
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:127
 msgid "An error occurred"
@@ -5232,7 +5234,7 @@ msgstr "Neznáme pole"
 msgid "field"
 msgstr "pole"
 
-#: frontend/src/metabase/query_builder/components/Filter.jsx:91
+#: frontend/src/metabase/query_builder/components/Filter.jsx:111
 msgid "Matches"
 msgstr "Zhody"
 
@@ -5242,7 +5244,7 @@ msgstr "Zhody"
 msgid "Add filters to narrow your answer"
 msgstr "Pridajte filtre, aby ste zúžili výber"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:254
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:253
 msgid "Add a grouping"
 msgstr "Pridajte skupinu"
 
@@ -5250,9 +5252,9 @@ msgstr "Pridajte skupinu"
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:60
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:19
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:136
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:285
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:284
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:39
-#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:72
+#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:75
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:116
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:91
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:137
@@ -5268,17 +5270,17 @@ msgstr "Pridajte skupinu"
 msgid "Data"
 msgstr "Data"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:312
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:311
 msgid "Filtered by"
 msgstr "Filtrovať podľa"
 
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.js:11
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:100
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:329
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:328
 msgid "View"
 msgstr "Zobraziť"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:346
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:345
 msgid "Grouped By"
 msgstr "Zoskupiť podľa"
 
@@ -5286,7 +5288,7 @@ msgstr "Zoskupiť podľa"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx:69
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:53
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:28
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:212
 msgid "None"
 msgstr "Žiadne"
 
@@ -5493,15 +5495,15 @@ msgstr "Pri vašej otázke sa vyskytol problém"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "Väčšinu času je to spôsobené neplatným výberom alebo nesprávnou vstupnou hodnotou. Skontrolujte svoje vstupy a skúste znova zadať dopyt."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:60
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "Toto môže byť výsledok, ktorý hľadáte. Ak nie, skúste filtre odstrániť alebo zmeniť tak, aby výsledok presnejší."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:74
 msgid "You can also {0} when there are some results."
 msgstr "Môžete tiež {0}, ak máte nejaké výsledky."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
 msgid "get an alert"
 msgstr "dostať upozornenie"
 
@@ -5509,7 +5511,7 @@ msgstr "dostať upozornenie"
 msgid "Back to last run"
 msgstr "Späť na posledné spustenie"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:233
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:227
 msgid "Visualization"
 msgstr "Vizualizácia"
 
@@ -5624,7 +5626,7 @@ msgstr "Myslite na to, akoby to bolo ako písanie vzorca v tabuľkovom programe:
 #: frontend/src/metabase/entities/databases/forms.js:149
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorHelpText.tsx:66
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:227
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:230
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:405
 msgid "Learn more"
 msgstr "Dozvedieť sa viac"
@@ -5709,12 +5711,12 @@ msgstr "Položka"
 msgid "Previous"
 msgstr "Predchádzajúci"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:143
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:144
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:217
 msgid "Current"
 msgstr "Aktuálny"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:197
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:198
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:243
 #: frontend/src/metabase/visualizations/lib/settings/column.js:229
 #: frontend/src/metabase/visualizations/lib/settings/series.js:81
@@ -5726,7 +5728,7 @@ msgid "Enter desired number"
 msgstr "Zadajte požadované číslo"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:61
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:40
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:42
 msgid "Empty"
 msgstr "Prázdny"
 
@@ -5826,15 +5828,15 @@ msgstr "Pole filtra"
 msgid "Field to map to"
 msgstr "Pole na priradenie do"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:191
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:194
 msgid "Filter widget type"
 msgstr "Typ filtra"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:250
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:253
 msgid "Required?"
 msgstr "Povinné?"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:261
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:264
 msgid "Default filter widget value"
 msgstr "Predvolená hodnota widget filtra"
 
@@ -6759,7 +6761,7 @@ msgstr "Pripnúť mapu"
 msgid "Unset"
 msgstr "Zrušiť"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:126
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:135
 msgid "Rows {0}-{1} of {2}"
 msgstr "Riadky {0} - {1} z {2}"
 
@@ -6775,7 +6777,7 @@ msgstr "Nepodarilo sa nájsť vizualizáciu"
 msgid "Could not display this chart with this data."
 msgstr "Tento graf sa nedal zobraziť s týmito údajmi."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:59
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "No results!"
 msgstr "Žiadne výsledky!"
@@ -7347,19 +7349,19 @@ msgstr "Max. priblíženie"
 msgid "No relationships found."
 msgstr "Nenašli sa žiadne vzťahy."
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:86
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:96
 msgid "via {0}"
 msgstr "prostredníctvom {0}"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:236
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:44
 msgid "This {0} is connected to:"
 msgstr "Toto {0} je spojené s:"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:333
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:352
 msgid "Object Detail"
 msgstr "Detail objektu"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:336
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:355
 msgid "object"
 msgstr "objekt"
 
@@ -7469,45 +7471,45 @@ msgstr "Vedúca tabuľka"
 msgid "Visible fields"
 msgstr "VIditeľné polia"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:121
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:131
 msgid "Write here, and use Markdown if you'd like"
 msgstr "Tu napíšte aké značky chcete použiť"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:57
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:57
 msgid "Vertical Alignment"
 msgstr "Vertikálne zarovnanie"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:61
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:61
 msgid "Top"
 msgstr "Vrchol"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:62
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:62
 msgid "Middle"
 msgstr "Stred"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:63
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:63
 msgid "Bottom"
 msgstr "Spodok"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:70
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:70
 msgid "Horizontal Alignment"
 msgstr "Horizontálne zarovnanie"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:118
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:74
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:74
 msgid "Left"
 msgstr "Vľavo"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:75
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:75
 msgid "Center"
 msgstr "Stred"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:119
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:76
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:76
 msgid "Right"
 msgstr "Vpravo"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:83
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:83
 msgid "Show background"
 msgstr "Zobraziť pozadie"
 
@@ -7631,7 +7633,6 @@ msgstr "Vkladanie nie je povolené."
 msgid "The object has been archived."
 msgstr "Objekt bol archivovaný."
 
-#: src/metabase/api/common/internal.clj
 #: target/classes/metabase/api/common/internal.clj
 msgid "Attempted to return a boolean as an API response. This is not allowed!"
 msgstr "Pokus o vrátenie logického súboru ako odpoveď API. Toto nie je dovolené!"
@@ -7773,7 +7774,7 @@ msgstr "Máte veľa uložených otázok v {0}? Vytvorte kolekcie, ktoré im pom�
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:231
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:102
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/public/components/LogoBadge.jsx:18
 #: frontend/src/metabase/routes-public.jsx:13
 #: frontend/src/metabase/routes.jsx:153 src/metabase/api/setup.clj
@@ -7802,7 +7803,7 @@ msgstr "Vytvorte zovšeobecnené sady filtrov, ktoré môže ktokoľvek použiť
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Tabuľka ''{0}'' je teraz viditeľná. Opakujte synchronizáciu."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1642 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1661 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Auto bin"
 msgstr "Automatickyy presunúť do zoskupenia"
@@ -7811,102 +7812,102 @@ msgstr "Automatickyy presunúť do zoskupenia"
 msgid "Don''t bin"
 msgstr "Nepresúvať do zoskupenia"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1696
-#: frontend/src/metabase/lib/query_time.js:227 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1715
+#: frontend/src/metabase/lib/query_time.js:228 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr "Deň"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1684
-#: frontend/src/metabase/lib/query_time.js:223 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1703
+#: frontend/src/metabase/lib/query_time.js:224 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr "Minúta"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1690
-#: frontend/src/metabase/lib/query_time.js:225 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1709
+#: frontend/src/metabase/lib/query_time.js:226 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr "Hodina"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1714
-#: frontend/src/metabase/lib/query_time.js:233 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1733
+#: frontend/src/metabase/lib/query_time.js:234 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter"
 msgstr "Štvrtina"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1726 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1745 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "Minúta hodiny"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1732 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1751 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour of Day"
 msgstr "Hodina dňa"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1738 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1757 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Week"
 msgstr "Deň v týždni"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1744 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1763 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Month"
 msgstr "Deň v mesiaci"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1750 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1769 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Year"
 msgstr "Deň v roku"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1756 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1775 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Week of Year"
 msgstr "Týždeň v roku"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1762 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1781 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Month of Year"
 msgstr "Mesiac v roku"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1768 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1787 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter of Year"
 msgstr "Štvrťrok"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1650 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1669 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "10 bins"
 msgstr "10 zásobníkov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1678 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "50 bins"
 msgstr "50 zásobníkov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1668 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1687 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "100 bins"
 msgstr "100 zásobníkov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1777 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1796 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 0.1 degrees"
 msgstr "Zásobník každých 0,1 stupňa"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1786 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1805 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 1 degree"
 msgstr "Zásobník každých 1 stupeň"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1795 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1814 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 10 degrees"
 msgstr "Zásobník každých 10 stupňov"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1804 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1823 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 20 degrees"
 msgstr "Zásobník každých 20 stupňov"
@@ -9788,9 +9789,9 @@ msgstr "Zdieľanie"
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:132
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:65
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:71
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:56
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:69
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:56
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:82
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
@@ -9809,7 +9810,7 @@ msgstr "Zobraziť"
 msgid "Axes"
 msgstr "Osi"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:196
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:91
 #: frontend/src/metabase/visualizations/lib/settings/column.js:45
@@ -9874,15 +9875,15 @@ msgstr "Použite časové pásmo JVM"
 msgid "We're currently analyzing the tables and fields to help you explore your data."
 msgstr "Momentálne analyzujeme tabuľky a polia, ktoré vám pomôžu preskúmať vaše údaje."
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:471
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:492
 msgid "Tip: "
 msgstr "Tip: "
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:231
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:247
 msgid "Select a currency type"
 msgstr "Vyberte typ meny"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:281
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:288
 msgid "Field Type"
 msgstr "Typ poľa"
 
@@ -10255,7 +10256,7 @@ msgstr "týždeň"
 msgid "month"
 msgstr "mesiac"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:113
+#: frontend/src/metabase/lib/query_time.js:652
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "quarter"
@@ -11980,46 +11981,46 @@ msgstr "Duplikát \"{0}\""
 msgid "Duplicate"
 msgstr "Duplikát"
 
-#: frontend/src/metabase/lib/query_time.js:146
+#: frontend/src/metabase/lib/query_time.js:147
 msgid "Tomorrow"
 msgstr "Zajtra"
 
-#: frontend/src/metabase/lib/query_time.js:160
-#: frontend/src/metabase/lib/query_time.js:174
+#: frontend/src/metabase/lib/query_time.js:161
+#: frontend/src/metabase/lib/query_time.js:175
 msgid "This {0}"
 msgstr "Toto {0}"
 
-#: frontend/src/metabase/lib/query_time.js:163
+#: frontend/src/metabase/lib/query_time.js:164
 msgid "Next {0}"
 msgstr "Ďalších {0}"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:167
 #: src/metabase/pulse/render/datetime.clj
 #: target/classes/metabase/pulse/render/datetime.clj
 msgid "Previous {0}"
 msgstr "Predchádzajúce {0}"
 
-#: frontend/src/metabase/lib/query_time.js:170
+#: frontend/src/metabase/lib/query_time.js:171
 msgid "Previous {0} {1}"
 msgstr "Predchádzajúce {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:173
 msgid "Next {0} {1}"
 msgstr "Ďalších {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:202
+#: frontend/src/metabase/lib/query_time.js:203
 msgid "Now"
 msgstr "Teraz"
 
-#: frontend/src/metabase/lib/query_time.js:205
+#: frontend/src/metabase/lib/query_time.js:206
 msgid "{0} {1} ago"
 msgstr "Pred {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:206
+#: frontend/src/metabase/lib/query_time.js:207
 msgid "{0} {1} from now"
 msgstr "{0} {1} odteraz"
 
-#: frontend/src/metabase/lib/query_time.js:221
+#: frontend/src/metabase/lib/query_time.js:222
 msgid "Default period"
 msgid_plural "Default periods"
 msgstr[0] "Predvolené obdobie"
@@ -12027,7 +12028,7 @@ msgstr[1] "Predvolené obdobia"
 msgstr[2] "Predvolených období"
 msgstr[3] "Predvolených období"
 
-#: frontend/src/metabase/lib/query_time.js:237
+#: frontend/src/metabase/lib/query_time.js:238
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
 msgstr[0] "Minúta z hodiny"
@@ -12035,7 +12036,7 @@ msgstr[1] "Minúty z hodiny"
 msgstr[2] "Minút z hodiny"
 msgstr[3] "Minút z hodiny"
 
-#: frontend/src/metabase/lib/query_time.js:239
+#: frontend/src/metabase/lib/query_time.js:240
 msgid "Hour of day"
 msgid_plural "Hours of day"
 msgstr[0] "Hodina z dňa"
@@ -12043,7 +12044,7 @@ msgstr[1] "Hodiny z dňa"
 msgstr[2] "Hodín z dňa"
 msgstr[3] "Hodín z dňa"
 
-#: frontend/src/metabase/lib/query_time.js:241
+#: frontend/src/metabase/lib/query_time.js:242
 msgid "Day of week"
 msgid_plural "Days of week"
 msgstr[0] "Deň z týždňa"
@@ -12051,7 +12052,7 @@ msgstr[1] "Dni z týždňa"
 msgstr[2] "Dní z týždňa"
 msgstr[3] "Dní z týždňa"
 
-#: frontend/src/metabase/lib/query_time.js:243
+#: frontend/src/metabase/lib/query_time.js:244
 msgid "Day of month"
 msgid_plural "Days of month"
 msgstr[0] "Deň z mesiaca"
@@ -12059,7 +12060,7 @@ msgstr[1] "Dni z mesiaca"
 msgstr[2] "Dní z mesiaca"
 msgstr[3] "Dní z mesiaca"
 
-#: frontend/src/metabase/lib/query_time.js:245
+#: frontend/src/metabase/lib/query_time.js:246
 msgid "Day of year"
 msgid_plural "Days of year"
 msgstr[0] "Deň z roku"
@@ -12067,7 +12068,7 @@ msgstr[1] "Dni z roku"
 msgstr[2] "Dní z roku"
 msgstr[3] "Dní z roku"
 
-#: frontend/src/metabase/lib/query_time.js:247
+#: frontend/src/metabase/lib/query_time.js:248
 msgid "Week of year"
 msgid_plural "Weeks of year"
 msgstr[0] "Týždeň z roku"
@@ -12075,7 +12076,7 @@ msgstr[1] "Týždne z roku"
 msgstr[2] "Týždňov z roku"
 msgstr[3] "Týždňov z roku"
 
-#: frontend/src/metabase/lib/query_time.js:249
+#: frontend/src/metabase/lib/query_time.js:250
 msgid "Month of year"
 msgid_plural "Months of year"
 msgstr[0] "Mesiac z roku"
@@ -12083,7 +12084,7 @@ msgstr[1] "Mesiace z roku"
 msgstr[2] "Mesiacov z roku"
 msgstr[3] "Mesiacov z roku"
 
-#: frontend/src/metabase/lib/query_time.js:251
+#: frontend/src/metabase/lib/query_time.js:252
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
 msgstr[0] "Kvartál z roku"
@@ -12093,7 +12094,7 @@ msgstr[3] "Kvartálov z roku"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:304
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue.jsx:9
-#: frontend/src/metabase/query_builder/components/Filter.jsx:56
+#: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
 msgid_plural "{0} selections"
 msgstr[0] "{0} vybraný"
@@ -12804,7 +12805,7 @@ msgstr "Vyžaduje sa email"
 msgid "Items you archive will appear here."
 msgstr "Tu sa zobrazia položky, ktoré archivujete."
 
-#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:27
+#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:28
 #: frontend/src/metabase/components/MetadataInfo/TableInfo/TableInfo.tsx:106
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"
@@ -13160,7 +13161,7 @@ msgstr "Zobraziť maximum"
 msgid "Get Preview"
 msgstr "Získajte ukážku"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:85
 msgid "Back to previous results"
 msgstr "Späť na predchádzajúce výsledky"
 
@@ -13865,7 +13866,7 @@ msgstr "Chyba pri určovaní očakávaných stĺpcov pre dopyt"
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "Neošetřená výnimka, očakávaný middleware `catch-exceptions`, ktorý to zvládne."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:125
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:129
 msgid "Diagnostic Info"
 msgstr "Diagnostické informácie"
 
@@ -14005,7 +14006,7 @@ msgstr "Tu sa zobrazia vaše výsledky"
 msgid "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question."
 msgstr "Na uloženej otázke nebudete môcť robiť žiadne trvalé zmeny, pokiaľ nekliknete na tlačidlo Uložiť a nevyberiete pôvodnú otázku."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:218
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:221
 msgid "There aren't any filter widgets for this type of field yet."
 msgstr "Pre tento typ poľa zatiaľ neexistujú žiadne miniaplikácie filtra."
 
@@ -14377,15 +14378,15 @@ msgstr "Príspevok na fóre podpory Metabase"
 msgid "A community forum for all things Metabase"
 msgstr "Komunitné fórum pre Metabase"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:117
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:121
 msgid "File a bug report"
 msgstr "Odošlite hlásenie o chybe"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:118
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:122
 msgid "Create a GitHub issue (includes the diagnostic info below)"
 msgstr "Vytvorte GitHub issue (obsahuje diagnostické informácie nižšie)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:126
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:130
 msgid "Please include these details in support requests. Thank you!"
 msgstr "Tieto podrobnosti zahrňte do žiadostí o podporu. Ďakujem!"
 
@@ -15017,7 +15018,7 @@ msgstr "musí byť platná emailová adresa"
 msgid "must be {0} characters or less"
 msgstr "musí obsahovať {0} znakov alebo menej"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:126
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Thanks for using Metabase!"
 msgstr "Ďakujeme, že používate Metabase!"
 
@@ -15046,7 +15047,7 @@ msgstr "Vyberte uloženú otázku"
 msgid "Pick a different question"
 msgstr "Vyberte inú otázku"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:235
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:228
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:68
 msgid "Loading…"
 msgstr "Načítava…"
@@ -15075,7 +15076,7 @@ msgstr "Poskytnutím premennej typu „Filter Poľa“ môžete prepojiť otázk
 msgid "Variable name"
 msgstr "Názov premennej"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:236
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:239
 msgid "Filter widget label"
 msgstr "Filtrovať popis miniaplikácie"
 
@@ -17774,7 +17775,7 @@ msgstr "Najskôr budete musieť {0}."
 msgid "First, you'll have to {0}."
 msgstr "Najprv budete musieť {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:124
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:133
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Riadky {0} - {1} z prvých {2}"
 
@@ -18370,7 +18371,7 @@ msgstr "Testovacie nastavenie - toto sa zobrazí iba v dev (1)"
 msgid "Test setting - this only shows up in dev (2)"
 msgstr "Testovacie nastavenie - zobrazí sa iba v dev (2)"
 
-#: test/metabase/models/setting_test.clj
+#: test/metabase/api/setting_test.clj test/metabase/models/setting_test.clj
 msgid "Test setting - this only shows up in dev (3)"
 msgstr "Testovacie nastavenie - zobrazí sa iba v dev (3)"
 
@@ -18670,24 +18671,24 @@ msgstr "Vymazať databázu {0}?"
 msgid "Restoring the sample dataset..."
 msgstr "Obnovenie vzorového súboru údajov..."
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:182
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:200
 msgid "No semantic type"
 msgstr "Žiadny sémantický typ"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:211
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:227
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:77
 msgid "Select a semantic type"
 msgstr "Vyberte sémantický typ"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:293
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:300
 msgid "Cast to a specific data type"
 msgstr "Cast na konkrétny dátový typ"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:296
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:303
 msgid "Select a conversion"
 msgstr "Vyberte konverziu"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:311
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:318
 msgid "Don't cast"
 msgstr "Neodlievajte"
 
@@ -18722,11 +18723,11 @@ msgstr "Stĺpec na kontrolu."
 msgid "Checks if a column is empty"
 msgstr "Kontroluje, či je stĺpec prázdny"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:101
+#: frontend/src/metabase/lib/expressions/resolver.js:104
 msgid "CASE expects 2 arguments or more"
 msgstr "CASE očakáva 2 alebo viac argumentov"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:149
+#: frontend/src/metabase/lib/expressions/resolver.js:152
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "Funkcia {0} očakáva argument {1}"
@@ -18827,6 +18828,7 @@ msgstr[1] "a {0} ostatné"
 msgstr[2] "a {0} ostatné"
 msgstr[3] "a {0} ostatné"
 
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:100
 #: frontend/src/metabase/sharing/components/PulsesListSidebar.jsx:159
 msgid "{0} selections"
 msgstr "{0} výbery"
@@ -19144,15 +19146,15 @@ msgstr "Zmeňte to, len ak viete, čo robíte!"
 msgid "Replace underscores and dashes with spaces"
 msgstr "Nahradiť podčiarkovníky a pomlčky medzerami"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:128
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
 msgid "Advanced Details (click to download)"
 msgstr "Rozšírené informácie (kliknite na tlačidlo pre stiahnutie)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:131
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:135
 msgid "Connection Pool Details"
 msgstr "Podrobnosti o fonde pripojení"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:136
 msgid "Information about active and idle connections for all pools"
 msgstr "Informácie o aktívnych a neaktívnych pripojeniach pre všetky bazény"
 
@@ -19291,7 +19293,7 @@ msgstr "Očakávanie otváracích zátvoriek {0}"
 msgid "Expecting an opening parenthesis after function {0}"
 msgstr "Očakávanie úvodnej zátvorky za funkciou {0}"
 
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:513
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:519
 msgid "Explore results"
 msgstr "Preskúmať výsledky"
 
@@ -20087,7 +20089,7 @@ msgstr "Vyhľadávanie kolekcie"
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:74
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:210
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/group-sidebar.ts:44
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:331
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
 msgid "Search for a group"
 msgstr "Vyhľadanie skupiny"
 
@@ -20106,7 +20108,7 @@ msgstr "Úprava podrobností palubnej dosky"
 msgid "More options"
 msgstr "Ďalšie možnosti"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:89
+#: frontend/src/metabase/lib/expressions/resolver.js:92
 msgid "Expecting field but found {0}"
 msgstr "Očakával som pole, ale našiel som {0}"
 
@@ -20335,20 +20337,20 @@ msgid "Search for a table"
 msgstr "Vyhľadanie tabuľky"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:155
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
 msgid "Data access"
 msgstr "Prístup k údajom"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:156
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:274
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
 msgid "Native query editing"
 msgstr "Vlastná úprava dotazov"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:322
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:321
 msgid "The Administrators group is special, and always has Unrestricted access."
 msgstr "Skupina Administrators je špeciálna a má vždy neobmedzený prístup."
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:329
 msgid "Permissions for"
 msgstr "Oprávnenia pre"
 
@@ -20364,11 +20366,11 @@ msgstr "Názov schémy"
 msgid "Search for a schema"
 msgstr "Vyhľadanie schémy"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:230
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:229
 msgid "Permissions for the "
 msgstr "Oprávnenia pre "
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:237
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:236
 msgid "{0} person"
 msgid_plural "{0} people"
 msgstr[0] "{0} osoba"
@@ -20471,19 +20473,19 @@ msgstr "Javascriptový zdroj nebol nájdený: {0}"
 msgid "Found new version for DB: {0}"
 msgstr "Nájdená nová verzia pre DB: {0}"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:60
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:56
 msgid "Admin settings"
 msgstr "Nastavenia správcu"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:156
 msgid "and is built with care by a team from all across this pale blue dot."
 msgstr "a je starostlivo vybudovaný tímom z celej tejto bledomodrej krajiny."
 
-#: frontend/src/metabase/query_builder/actions.js:1666
+#: frontend/src/metabase/query_builder/actions.js:1675
 msgid "This is a model now."
 msgstr "Toto je teraz model."
 
-#: frontend/src/metabase/query_builder/actions.js:1679
+#: frontend/src/metabase/query_builder/actions.js:1688
 msgid "This is a question now."
 msgstr "To je teraz otázka."
 
@@ -20646,7 +20648,7 @@ msgstr "Licencia"
 msgid "New…"
 msgstr "Nové..."
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:85
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:83
 msgid "{0} distinct value"
 msgid_plural "{0} distinct values"
 msgstr[0] "{0} odlišná hodnota"
@@ -20654,7 +20656,7 @@ msgstr[1] "{0} odlišná hodnôt"
 msgstr[2] "{0} odlišná hodnôt"
 msgstr[3] "{0} odlišná hodnôt"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:94
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:92
 msgid "Getting distinct values..."
 msgstr "Získanie odlišných hodnôt..."
 
@@ -20729,15 +20731,15 @@ msgstr "Neznámy segment: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Neznáma oblasť: {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:130
+#: frontend/src/metabase/lib/expressions/resolver.js:133
 msgid "Unknown function {0}"
 msgstr "Neznáma funkcia {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:135
+#: frontend/src/metabase/lib/expressions/resolver.js:138
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "Očakával som {0}, ale našiel som funkciu {1}, ktorá vracia {2}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:173
+#: frontend/src/metabase/lib/expressions/resolver.js:176
 msgid "Expecting {0} but found {1}"
 msgstr "Očakával {0}, ale našiel {1}"
 
@@ -20973,15 +20975,15 @@ msgstr "Obnovenie vzorovej databázy..."
 msgid "Bring the sample database back"
 msgstr "Vráťte databázu vzoriek späť"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:51
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:58
 msgid "Timezone"
 msgstr "Časové pásmo"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:55
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:62
 msgid "Earliest date"
 msgstr "Najstarší dátum"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:59
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:66
 msgid "Latest date"
 msgstr "Najnovší dátum"
 
@@ -21025,11 +21027,11 @@ msgstr "Typ stĺpca"
 msgid "This column should appear in…"
 msgstr "Tento stĺpec by sa mal objaviť v..."
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:29
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:31
 msgid "Run selection"
 msgstr "Výber behu"
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:33
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:36
 msgid "Save as snippet"
 msgstr "Uložiť ako úryvok"
 
@@ -21046,7 +21048,7 @@ msgid "Edit model"
 msgstr "Upraviť model"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:161
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:193
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:196
 msgid "(required)"
 msgstr "(povinné)"
 
@@ -22305,15 +22307,15 @@ msgstr "Pozrite si naše dokumenty, v ktorých nájdete podrobné pokyny na prip
 msgid "You've updated your password."
 msgstr "Aktualizovali ste svoje heslo."
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:32
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
 msgid "A question"
 msgstr "Otázka"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:33
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:35
 msgid "A dashboard"
 msgstr "Prístrojová doska"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:36
 msgid "A model"
 msgstr "Model"
 
@@ -22321,15 +22323,15 @@ msgstr "Model"
 msgid "Save your questions, dashboards, and models in collections — and pin them to feature them at the top."
 msgstr "Uložte si otázky, ovládacie panely a modely do kolekcií a pripnite ich, aby boli na vrchole."
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:117
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:129
 msgid "Useful data"
 msgstr "Užitočné údaje"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:120
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:132
 msgid "Start new explorations here"
 msgstr "Začnite nové prieskumy tu"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:121
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:133
 msgid "Start new explorations about {0} here"
 msgstr "Začnite nové prieskumy o {0} tu"
 
@@ -22414,16 +22416,16 @@ msgstr "Správa databázy"
 msgid "Unbinned"
 msgstr "Neobalené"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1547
+#: frontend/src/metabase-lib/lib/Dimension.ts:1566
 msgid "Invalid template tag \"{0}\""
 msgstr "Neplatná značka šablóny \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1552
+#: frontend/src/metabase-lib/lib/Dimension.ts:1571
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Premennú \"{0}\" je potrebné namapovať na pole."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1677
-#: frontend/src/metabase-lib/lib/Dimension.ts:1813
+#: frontend/src/metabase-lib/lib/Dimension.ts:1696
+#: frontend/src/metabase-lib/lib/Dimension.ts:1832
 msgid "Don't bin"
 msgstr "Nevyhadzujte do koša"
 
@@ -22666,14 +22668,14 @@ msgstr "Odstrániť záložku"
 msgid "Bookmarks"
 msgstr "Záložky"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:120
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:121
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 msgid "Past"
 msgstr "Minulosť"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:213
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:133
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:156
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:131
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:86
 msgid "Exclude..."
 msgstr "Okrem..."
 
@@ -22846,32 +22848,32 @@ msgstr "Konkrétne dátumy..."
 msgid "Relative dates..."
 msgstr "Relatívne dátumy..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:56
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:57
 msgid "Days of the week..."
 msgstr "Dni v týždni..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:80
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:64
 msgid "Months of the year..."
 msgstr "Mesiace v roku..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:104
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:71
 msgid "Quarters of the year..."
 msgstr "Štvrtiny roka..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:129
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:78
 msgid "Hours of the day..."
 msgstr "Hodiny počas dňa..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:471
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:215
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:145
 msgid "Is not empty"
 msgstr "Nie je prázdny"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select none..."
 msgstr "Vyberte žiadne..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select all..."
 msgstr "Vyberte všetky..."
 
@@ -22886,11 +22888,11 @@ msgstr "Práve teraz je to {0}"
 msgid "Right now, this is {0} - {1}"
 msgstr "Práve teraz je to {0} - {1}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:190
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:187
 msgid "Starting from..."
 msgstr "Počnúc..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:252
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:248
 msgid "Starting from"
 msgstr "Počnúc"
 
@@ -22902,15 +22904,15 @@ msgstr "0/{0} naložené"
 msgid "Your dashboard is ready"
 msgstr "Váš prístrojový panel je pripravený"
 
-#: frontend/src/metabase/query_builder/actions.js:1372
+#: frontend/src/metabase/query_builder/actions.js:1379
 msgid "Doing Science..."
 msgstr "Robiť vedu..."
 
-#: frontend/src/metabase/query_builder/actions.js:1374
+#: frontend/src/metabase/query_builder/actions.js:1381
 msgid "Still Here..."
 msgstr "Stále tu..."
 
-#: frontend/src/metabase/query_builder/actions.js:1431
+#: frontend/src/metabase/query_builder/actions.js:1438
 msgid "Your question is ready!"
 msgstr "Vaša otázka je pripravená!"
 
@@ -22918,11 +22920,11 @@ msgstr "Vaša otázka je pripravená!"
 msgid "You can customize filter values for each subscription with paid plans."
 msgstr "Pri platených plánoch môžete prispôsobiť hodnoty filtrov pre každé predplatné."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:112
 msgid "Get Help"
 msgstr "Získajte pomoc"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:113
 msgid "Resources and support"
 msgstr "Zdroje a podpora"
 
@@ -22996,11 +22998,11 @@ msgstr "Časová os"
 msgid "Excludes"
 msgstr "Nezahŕňa"
 
-#: frontend/src/metabase/lib/query_time.js:130
+#: frontend/src/metabase/lib/query_time.js:131
 msgid "{0}, starting {1} {2}"
 msgstr "{0}, začínajúc {1} {2}"
 
-#: frontend/src/metabase/lib/query_time.js:362
+#: frontend/src/metabase/lib/query_time.js:363
 msgid "minute {0}"
 msgid_plural "minutes {0}"
 msgstr[0] "minúta {0}"
@@ -23008,7 +23010,7 @@ msgstr[1] "minúty {0}"
 msgstr[2] "minút {0}"
 msgstr[3] "minúty {0}"
 
-#: frontend/src/metabase/lib/query_time.js:364
+#: frontend/src/metabase/lib/query_time.js:365
 msgid "hour {0}"
 msgid_plural "hours {0}"
 msgstr[0] "hodina {0}"
@@ -23016,7 +23018,7 @@ msgstr[1] "hodiny {0}"
 msgstr[2] "hodín {0}"
 msgstr[3] "hodiny {0}"
 
-#: frontend/src/metabase/lib/query_time.js:366
+#: frontend/src/metabase/lib/query_time.js:367
 msgid "day {0}"
 msgid_plural "days {0}"
 msgstr[0] "deň {0}"
@@ -23024,7 +23026,7 @@ msgstr[1] "dni {0}"
 msgstr[2] "dní {0}"
 msgstr[3] "dni {0}"
 
-#: frontend/src/metabase/lib/query_time.js:368
+#: frontend/src/metabase/lib/query_time.js:369
 msgid "week {0}"
 msgid_plural "weeks {0}"
 msgstr[0] "týždeň {0}"
@@ -23032,7 +23034,7 @@ msgstr[1] "týždne {0}"
 msgstr[2] "týždňov {0}"
 msgstr[3] "týždne {0}"
 
-#: frontend/src/metabase/lib/query_time.js:370
+#: frontend/src/metabase/lib/query_time.js:371
 msgid "month {0}"
 msgid_plural "months {0}"
 msgstr[0] "mesiac {0}"
@@ -23040,7 +23042,7 @@ msgstr[1] "mesiace {0}"
 msgstr[2] "mesiacov {0}"
 msgstr[3] "mesiace {0}"
 
-#: frontend/src/metabase/lib/query_time.js:372
+#: frontend/src/metabase/lib/query_time.js:373
 msgid "quarter {0}"
 msgid_plural "quarters {0}"
 msgstr[0] "štvrťrok {0}"
@@ -23048,7 +23050,7 @@ msgstr[1] "štvrtiny {0}"
 msgstr[2] "štvrťrokov {0}"
 msgstr[3] "štvrtiny {0}"
 
-#: frontend/src/metabase/lib/query_time.js:374
+#: frontend/src/metabase/lib/query_time.js:375
 msgid "year {0}"
 msgid_plural "years {0}"
 msgstr[0] "rok {0}"
@@ -23088,11 +23090,11 @@ msgstr "{0} je načítané."
 msgid "Would you like to be notified when this question is done loading?"
 msgstr "Chcete byť upozornení, keď sa táto otázka načíta?"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:281
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:275
 msgid "Switch to data"
 msgstr "Prepnutie na údaje"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:286
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:280
 msgid "Switch to visualization"
 msgstr "Prepnutie na vizualizáciu"
 
@@ -23262,4 +23264,32 @@ msgstr "Už nebudete môcť spravovať používateľov tejto skupiny."
 #: enterprise/backend/src/metabase_enterprise/advanced_permissions/models/permissions/group_manager.clj
 msgid "Not allowed to edit group memberships"
 msgstr "Nie je povolené upravovať členstvo v skupine"
+
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:215
+msgid "Exclude"
+msgstr "Vylúčiť"
+
+#: frontend/src/metabase/account/login-history/components/LoginHistory/LoginHistory.jsx:68
+msgid "No logins"
+msgstr "Žiadne prihlásenia"
+
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:335
+msgid "You need unrestricted data access on this table to map custom display values."
+msgstr "Na mapovanie vlastných hodnôt zobrazenia potrebujete neobmedzený prístup k údajom v tejto tabuľke."
+
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1062
+msgid "View Details"
+msgstr "Zobraziť podrobnosti"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:122
+msgid "Field access denied"
+msgstr "Prístup do poľa zamietnutý"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
+msgid "No key available"
+msgstr "Kľúč nie je k dispozícii"
+
+#: src/metabase/cmd/rotate_encryption_key.clj
+msgid "Connected to"
+msgstr "Pripojené k"
 
