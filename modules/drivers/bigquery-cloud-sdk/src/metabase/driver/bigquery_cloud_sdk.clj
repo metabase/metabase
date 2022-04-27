@@ -67,14 +67,18 @@
    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
          inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
          exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)
-         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
-                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+         all-dataset-iter (for [^Dataset dataset (.iterateAll datasets)
+                                :let [^DatasetId dataset-id (.. dataset getDatasetId)]]
+                            dataset-id)
+         dataset-iter (for [^DatasetId dataset-id all-dataset-iter
                             :when (driver.s/include-schema? inclusion-patterns
                                                             exclusion-patterns
                                                             (.getDataset dataset-id))]
                         dataset-id)]
      (when (and validate-dataset? (zero? (count dataset-iter)))
-       (throw (ex-info (tru "Looks like we cannot find any matching datasets.") {::pass-to-user? true})))
+       (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
+                       {::driver/can-connect-message? true
+                        :datasets (mapv #(.getDataset %) all-dataset-iter)})))
      (apply concat (for [^DatasetId dataset-id dataset-iter]
                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
                          .iterateAll
@@ -94,7 +98,7 @@
   ;; check whether we can connect by seeing whether listing tables succeeds
   (try (some? (list-tables {:details details-map} ::validate-dataset))
        (catch Exception e
-         (when (::pass-to-user? (ex-data e))
+         (when (::driver/can-connect-message? (ex-data e))
            (throw e))
          (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
          false)))
