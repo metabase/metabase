@@ -142,6 +142,7 @@ export function issue17514() {
 
         visualize();
         cy.findByTextEnsureVisible("Subtotal");
+        cy.wait("@dataset");
 
         // Cypress cannot click elements that are blocked by an overlay so this will immediately fail if the issue is not fixed
         cy.findByText("110.93").click();
