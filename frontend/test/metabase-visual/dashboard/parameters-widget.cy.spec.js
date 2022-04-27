@@ -47,9 +47,17 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       it("is sticky in view mode", () => {
         cy.findByText("test question");
 
-        cy.get("main").scrollTo(0, 264);
+        cy.get("main")
+          .scrollTo(0, 264)
+          .then(() => {
+            cy.percySnapshot();
+          });
 
-        cy.percySnapshot();
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "have.css",
+          "position",
+          "fixed",
+        );
       });
 
       it("is sticky in edit mode", () => {
@@ -62,6 +70,12 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.percySnapshot();
           });
+
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "have.css",
+          "position",
+          "fixed",
+        );
       });
     });
 
@@ -71,9 +85,17 @@ describe(`visual tests > dashboard > parameters widget`, () => {
 
         cy.viewport(375, 667); // iPhone SE
 
-        cy.get("main").scrollTo(0, 264);
+        cy.get("main")
+          .scrollTo(0, 264)
+          .then(() => {
+            cy.percySnapshot();
+          });
 
-        cy.percySnapshot();
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "have.css",
+          "position",
+          "fixed",
+        );
       });
 
       it("is sticky in edit mode", () => {
@@ -88,6 +110,12 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.percySnapshot();
           });
+
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "have.css",
+          "position",
+          "fixed",
+        );
       });
     });
   });
@@ -121,9 +149,17 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       it("is sticky in view mode", () => {
         cy.findByText("test question");
 
-        cy.get("main").scrollTo(0, 264);
+        cy.get("main")
+          .scrollTo(0, 264)
+          .then(() => {
+            cy.percySnapshot();
+          });
 
-        cy.percySnapshot();
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "have.css",
+          "position",
+          "fixed",
+        );
       });
 
       it("is sticky in edit mode", () => {
@@ -136,6 +172,12 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.percySnapshot();
           });
+
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "have.css",
+          "position",
+          "fixed",
+        );
       });
     });
 
@@ -145,9 +187,17 @@ describe(`visual tests > dashboard > parameters widget`, () => {
 
         cy.viewport(375, 667); // iPhone SE
 
-        cy.get("main").scrollTo(0, 264);
+        cy.get("main")
+          .scrollTo(0, 264)
+          .then(() => {
+            cy.percySnapshot();
+          });
 
-        cy.percySnapshot();
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "not.have.css",
+          "position",
+          "fixed",
+        );
       });
 
       it("is not sticky in edit mode", () => {
@@ -162,6 +212,12 @@ describe(`visual tests > dashboard > parameters widget`, () => {
           .then(() => {
             cy.percySnapshot();
           });
+
+        cy.findByTestId("dashboard-parameters-widget-container").should(
+          "not.have.css",
+          "position",
+          "fixed",
+        );
       });
     });
   });
