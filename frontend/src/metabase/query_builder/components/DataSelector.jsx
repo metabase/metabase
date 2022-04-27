@@ -584,7 +584,6 @@ export class UnconnectedDataSelector extends Component {
   }
 
   getPreviousStep() {
-    console.log("---> getPreviousStep:", this);
     const { steps } = this.props;
     const { activeStep } = this.state;
     if (this.isLoadingDatasets() || activeStep === null) {
