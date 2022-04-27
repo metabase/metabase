@@ -552,17 +552,27 @@ export class UnconnectedDataSelector extends Component {
   async skipSteps() {
     const { activeStep } = this.state;
 
-    if (activeStep === DATABASE_STEP && this.props.useOnlyAvailableDatabase) {
+    console.log("---> skipSteps:", activeStep);
+
+    if (
+      activeStep === DATABASE_STEP &&
+      this.props.useOnlyAvailableDatabase &&
+      !this.props.selectedDatabaseId
+    ) {
       const databases = this.getDatabases();
       if (databases && databases.length === 1) {
-        this.onChangeDatabase(databases[0]);
+        await this.onChangeDatabase(databases[0]);
       }
     }
 
-    if (activeStep === SCHEMA_STEP && this.props.useOnlyAvailableSchema) {
+    if (
+      activeStep === SCHEMA_STEP &&
+      this.props.useOnlyAvailableSchema &&
+      !this.props.selectedSchemaId
+    ) {
       const { schemas } = this.state;
       if (schemas && schemas.length === 1) {
-        this.onChangeSchema(schemas[0]);
+        await this.onChangeSchema(schemas[0]);
       }
     }
   }
@@ -574,11 +584,14 @@ export class UnconnectedDataSelector extends Component {
   }
 
   getPreviousStep() {
+    console.log("---> getPreviousStep:", this);
     const { steps } = this.props;
     const { activeStep } = this.state;
     if (this.isLoadingDatasets() || activeStep === null) {
       return null;
     }
+
+    console.log("---> getPreviousStep:", activeStep);
 
     let index = steps.indexOf(activeStep);
     if (index === -1) {
@@ -590,30 +603,32 @@ export class UnconnectedDataSelector extends Component {
     index -= 1;
 
     // Database: possibly skip another step backwards
-    console.log(
-      DATABASE_STEP,
-      this.props.useOnlyAvailableDatabase,
-      this.state.databases,
-    );
+    // console.log(
+    //   DATABASE_STEP,
+    //   this.props.useOnlyAvailableDatabase,
+    //   this.state.databases,
+    // );
     if (
       steps[index] === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
       this.state.databases.length === 1
     ) {
+      // console.log("\tskip");
       index -= 1;
     }
 
     // Schema: possibly skip another step backwards
-    console.log(
-      SCHEMA_STEP,
-      this.props.useOnlyAvailableSchema,
-      this.state.schemas,
-    );
+    // console.log(
+    //   SCHEMA_STEP,
+    //   this.props.useOnlyAvailableSchema,
+    //   this.state.schemas,
+    // );
     if (
       steps[index] === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       this.state.schemas.length === 1
     ) {
+      // console.log("\tskip");
       index -= 1;
     }
 
@@ -890,7 +905,8 @@ export class UnconnectedDataSelector extends Component {
       // misc
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
-      onBack: this.getPreviousStep() ? this.previousStep : null,
+      // onBack: this.getPreviousStep() ? this.previousStep : null,
+      onBack: this.getPreviousStep ? this.previousStep.bind(this) : null,
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
