@@ -336,12 +336,13 @@
     `(let [ee-ns#        '~(or ee-ns (ns-name *ns*))
            ee-fn-name#   (symbol (str ee-ns# "/" '~fn-name))
            oss-or-ee-fn# ~(if schema?
-                           `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
-                           `(fn ~(symbol (str fn-name)) ~@fn-tail))]
-        (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
-        (def
-          ~(vary-meta fn-name assoc :arglists ''([& args]))
-          (dynamic-ee-oss-fn ee-ns# ee-fn-name#)))))
+                            `(schema/fn ~(symbol (str fn-name)) :- ~return-schema ~@fn-tail)
+                            `(fn ~(symbol (str fn-name)) ~@fn-tail))]
+       (register-mapping! ee-fn-name# (merge ~options {~oss-or-ee oss-or-ee-fn#}))
+       (def
+         ~(vary-meta fn-name assoc :arglists ''([& args]))
+         ~docstr
+         (dynamic-ee-oss-fn ee-ns# ee-fn-name#)))))
 
 (defn- options-conformer
   [conformed-options]
@@ -397,8 +398,8 @@
   {:pre [(symbol? fn-name)]}
   (let [parsed-args (spec/conform ::defenterprise-args defenterprise-args)
         _           (when (spec/invalid? parsed-args)
-                          (throw (ex-info "Failed to parse defenterprise args"
-                                          (spec/explain-data ::defenterprise-args parsed-args))))
+                      (throw (ex-info "Failed to parse defenterprise args"
+                                      (spec/explain-data ::defenterprise-args parsed-args))))
         args        (assoc parsed-args :fn-name fn-name)]
     `(defenterprise-impl ~args)))
 
@@ -410,8 +411,8 @@
   {:pre [(symbol? fn-name)]}
   (let [parsed-args (spec/conform ::defenterprise-schema-args defenterprise-args)
         _           (when (spec/invalid? parsed-args)
-                          (throw (ex-info "Failed to parse defenterprise-schema args"
-                                          (spec/explain-data ::defenterprise-schema-args parsed-args))))
+                      (throw (ex-info "Failed to parse defenterprise-schema args"
+                                      (spec/explain-data ::defenterprise-schema-args parsed-args))))
         args        (-> (:defenterprise-args parsed-args)
                         (assoc :schema? true)
                         (assoc :return-schema (-> parsed-args :return-schema :schema))
