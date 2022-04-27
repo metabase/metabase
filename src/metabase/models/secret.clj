@@ -102,6 +102,11 @@
 
 (def ^:private uploaded-base-64-prefix "data:application/x-x509-ca-cert;base64,")
 
+(def ^:private uploaded-base-64-re #"data:application/(.+);base64,")
+
+;; (re-find uploaded-base-64-re "data:application/abc;base64,hello")
+;; (str/replace "data:application/abc;base64,hello" uploaded-base-64-re "")
+
 (defn db-details-prop->secret-map
   "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
   name of a connection property having `:type` `:secret`, and the relevant sub-properties (ex: -value, -path, etc.) will
@@ -118,6 +123,10 @@
                 intermediate subproperties are removed from the connection-properties before building the JDBC spec)."
   {:added "0.42.0"}
   [details conn-prop-nm]
+  ;;(def details details)
+  (log/warn "DETAILS:" (pr-str details))
+  ;;(def conn-prop-nm conn-prop-nm)
+  (log/warn "CONN_PROP_NM:" (pr-str conn-prop-nm))
   (let [sub-prop   (fn [suffix]
                      (keyword (str conn-prop-nm suffix)))
         path-kw    (sub-prop "-path")
@@ -127,8 +136,13 @@
         value      (cond
                      ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
                      (and (value-kw details) (= "ssl-root-cert" conn-prop-nm)
-                          (str/starts-with? (value-kw details) uploaded-base-64-prefix))
-                     (-> (value-kw details) (str/replace-first uploaded-base-64-prefix "") u/decode-base64)
+                          (re-find uploaded-base-64-re (value-kw details))
+                          ;;(str/starts-with? (value-kw details) uploaded-base-64-prefix)
+                          )
+                     (-> (value-kw details)
+                         (str/replace uploaded-base-64-prefix "")
+                         ;;(str/replace-first uploaded-base-64-prefix "")
+                         u/decode-base64)
 
                      ;; the -value suffix was specified; use that
                      (value-kw details)
