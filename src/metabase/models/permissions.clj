@@ -180,10 +180,9 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-revision :as perms-revision :refer [PermissionsRevision]]
-            [metabase.models.permissions.delete-sandboxes :as delete-sandboxes]
             [metabase.models.permissions.parse :as perms-parse]
             [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -945,6 +944,12 @@
   (check-not-personal-collection-or-descendant collection-or-id)
   (grant-permissions! (u/the-id group-or-id) (collection-read-path collection-or-id)))
 
+(defenterprise ^:private delete-gtaps-if-needed-after-permissions-change!
+  "Delete GTAPs (sandboxes) that are no longer needed after the permissions graph is updated. This is EE-specific --
+  OSS impl is a no-op, since sandboxes are an EE-only feature."
+  metabase-enterprise.sandbox.models.permissions.delete-sandboxes
+  [_])
+
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
 (defn ee-permissions-exception
@@ -1198,7 +1203,7 @@
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
          (save-perms-revision! PermissionsRevision (:revision old-graph) old new)
-         (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change! new)))))
+         (delete-gtaps-if-needed-after-permissions-change! new)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any] new-value]
