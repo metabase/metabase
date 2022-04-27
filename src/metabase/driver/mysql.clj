@@ -345,6 +345,7 @@
      default-connection-args
      ;; newer versions of MySQL will complain if you don't specify this when not using SSL
      {:useSSL (boolean ssl?)}
+     {:sessionVariables "max_statement_time=1200"} ; Configure a timeout of 20 minutes, our prod timeout.
      (let [details (-> (if ssl-cert? (set/rename-keys details {:ssl-cert :serverSslCert}) details)
                        (set/rename-keys {:dbname :db})
                        (dissoc :ssl))]
