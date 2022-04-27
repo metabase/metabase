@@ -20,7 +20,7 @@ export default class Ellipsified extends Component {
     showTooltip: true,
   };
 
-  _content = React.createRef();
+  _content = null;
 
   componentDidMount() {
     resizeObserver.subscribe(this._content, this._updateTruncated);
