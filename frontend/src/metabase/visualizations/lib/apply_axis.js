@@ -101,6 +101,8 @@ export function applyChartTimeseriesXAxis(
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
+  let tickFormat = () => "";
+  const { timezone } = tickInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
     chart.xAxisLabel(
@@ -123,13 +125,10 @@ export function applyChartTimeseriesXAxis(
         ? xValues[xValues.length - 1]
         : null;
 
-    // extract xInterval timezone for updating tickInterval
-    const { timezone } = tickInterval;
-
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
-    const tickFormat = timestamp => {
+    tickFormat = timestamp => {
       const { column, ...columnSettings } = chart.settings.column(
         dimensionColumn,
       );
@@ -170,19 +169,19 @@ export function applyChartTimeseriesXAxis(
     } else {
       chart.xAxis().tickPadding(X_AXIS_PADDING);
     }
-
-    // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = {
-      ...tickInterval,
-      ...computeTimeseriesTicksInterval(
-        xDomain,
-        tickInterval,
-        chart.width(),
-        tickFormat,
-      ),
-      timezone,
-    };
   }
+
+  // Compute a sane interval to display based on the data granularity, domain, and chart width
+  tickInterval = {
+    ...tickInterval,
+    ...computeTimeseriesTicksInterval(
+      xDomain,
+      tickInterval,
+      chart.width(),
+      tickFormat,
+    ),
+    timezone,
+  };
 
   // pad the domain slightly to prevent clipping
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
