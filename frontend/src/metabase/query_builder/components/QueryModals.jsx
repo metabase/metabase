@@ -207,6 +207,7 @@ export default class QueryModals extends React.Component {
               ...this.props.card,
               ...formValues,
               description: formValues.description || null,
+              collection_position: null,
             });
             return { payload: { object } };
           }}
