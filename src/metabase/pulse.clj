@@ -373,7 +373,7 @@
 (defmethod send-notification! :slack
   [{:keys [channel-id message attachments]}]
   (let [attachments (create-and-upload-slack-attachments! attachments)]
-    (slack/post-chat-message! channel-id message attachments)))
+    (slack/post-chat-message-retrying! channel-id message attachments)))
 
 (defmethod send-notification! :email
   [{:keys [subject recipients message-type message]}]

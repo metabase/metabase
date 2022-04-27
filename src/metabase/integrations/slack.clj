@@ -6,11 +6,13 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.config :as config :refer [run-mode-val]]
             [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.retry :as retry]
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
@@ -298,3 +300,70 @@
           :text        text-or-nil
           :attachments (when (seq attachments)
                          (json/generate-string attachments))}}))
+
+(defn- reconfigure-retrying "No-op. Will be overridden." [_ _])
+
+(defsetting slack-post-retry-max-attempts
+  (deferred-tru "The maximum number of attempts for posting a single slack message.")
+  :type :integer
+  :default (run-mode-val
+             (:dev :test) 1
+             5)
+  :on-change #'reconfigure-retrying)
+
+(defsetting slack-post-retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds when posting slack messages.")
+  :type :integer
+  :default (run-mode-val
+             (:dev :test) 1
+             15000)
+  :on-change #'reconfigure-retrying)
+
+(defsetting slack-post-retry-multiplier
+  (deferred-tru "The delay multiplier between attempts to post a single slack message.")
+  :type :double
+  :default 2.0
+  :on-change #'reconfigure-retrying)
+
+(defsetting slack-post-retry-randomizaion-factor
+  (deferred-tru "The randomization factor of the retry delay when posting slack messages.")
+  :type :double
+  :default 0.1
+  :on-change #'reconfigure-retrying)
+
+(defsetting slack-post-retry-max-interval-millis
+  (deferred-tru "The maximum delay beetween attempts to post a single slack message.")
+  :type :integer
+  :default 120000
+  :on-change #'reconfigure-retrying)
+
+(defn- make-retry-state
+  "Returns an email sender wrapping [[send-message!]] retrying according to the
+  email retry configuration."
+  []
+  (let [retry (retry/random-exponential-backoff-retry
+               "slack-post-retry"
+               {:max-attempts (slack-post-retry-max-attempts)
+                :initial-interval-millis (slack-post-retry-initial-interval)
+                :multiplier (slack-post-retry-multiplier)
+                :randomization-factor (slack-post-retry-randomizaion-factor)
+                :max-interval-millis (slack-post-retry-max-interval-millis)
+                :retry-on-result-pred #(and (map? %) (instance? Throwable (::error %)))})]
+    {:retry retry
+     :sender (retry/decorate post-chat-message! retry)}))
+
+(defonce
+  ^{:private true
+    :doc "Stores the current retry state. Updated whenever the slack retry settings change."}
+  retry-state
+  (atom (make-retry-state)))
+
+(defn- reconfigure-retrying [_old-value _new-value]
+  (log/info (trs "Reconfiguring slack postman"))
+  (reset! retry-state (make-retry-state)))
+
+(defn post-chat-message-retrying!
+  "Like [[post-chat-message!]] but retries sending on errors according to the
+  retry settings."
+  [& args]
+  (apply (:sender @retry-state) args))
