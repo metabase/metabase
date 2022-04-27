@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -350,8 +351,8 @@
             (let [synced-tables (db/select Table :db_id (mt/id))]
               (is (partial= {true [{:name "messages"} {:name "users"}]
                              false [{:name "messages"} {:name "users"}]}
-                            (-> (group-by :active (doto synced-tables tap>))
-                                (update-vals #(sort-by :name %)))))))
+                            (->> (group-by :active synced-tables)
+                                 (m/map-vals #(sort-by :name %)))))))
           (finally (db/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
