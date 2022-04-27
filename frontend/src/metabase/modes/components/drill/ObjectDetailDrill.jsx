@@ -2,8 +2,6 @@ import { t } from "ttag";
 import { isFK, isPK } from "metabase/lib/schema_metadata";
 import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
-import Question from "metabase-lib/lib/Question";
-import { FieldDimension } from "metabase-lib/lib/Dimension";
 
 function hasManyPKColumns(question) {
   return (
@@ -24,29 +22,6 @@ function getActionForPKColumn({ question, column, objectId, isDashboard }) {
     return ["url", () => Urls.question(question.card(), { objectId })];
   }
   return ["action", () => zoomInRow({ objectId })];
-}
-
-function getActionForFKColumn({ field, objectId }) {
-  return [
-    "url",
-    () => {
-      const databaseId = field.table.database.id;
-      const tableId = field.table_id;
-      const dimension = new FieldDimension(field.id, null, field.metadata);
-      const question = Question.create({ databaseId, tableId }).filter(
-        "=",
-        dimension.column(),
-        objectId,
-      );
-
-      return question.getUrl({ query: { objectId } });
-    },
-  ];
-}
-
-function getFKTargetField(question, column) {
-  const fkField = question.metadata().field(column.id);
-  return fkField?.target;
 }
 
 function getBaseActionObject() {
@@ -74,16 +49,11 @@ function getPKAction({ question, column, objectId, isDashboard }) {
 
 function getFKAction({ question, column, objectId }) {
   const actionObject = getBaseActionObject();
-  const targetField = getFKTargetField(question, column);
-  if (!targetField) {
+  const fkField = question.metadata().field(column.id);
+  if (!fkField?.target) {
     return;
   }
-  const [actionKey, action] = getActionForFKColumn({
-    field: targetField,
-    objectId,
-  });
-
-  actionObject[actionKey] = action;
+  actionObject.question = () => question.drillPK(fkField.target, objectId);
   return actionObject;
 }
 
