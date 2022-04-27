@@ -22,7 +22,8 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 
 1. Review the spelling on the line that is failing in your SQL query.
 2. Review for missing brackets or commas on the line that is failing in your SQL query.
-3. Review for common syntax errors that are [specific to your SQL dialect][sql-reference-guide].
+3. Remove commented lines (lines that begin with `--` or `/*`).
+4. Review for common syntax errors that are [specific to your SQL dialect][sql-reference-guide].
 
 ### Common SQL reference guides
 
@@ -74,9 +75,11 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 
 2.  Review the [data reference][data-reference] for the tables and columns in your query.
 
-    - Does the column name exist in the table?
+    - If the column or table name doesn't exist in the data reference: 
+      - The column or table _display_ name may be different from the original column or table name in your database.
+      - Run `SELECT * FROM your_table_name LIMIT 10;` to look for the original column or table name to use in your query.
 
-    - If the column name exists, but you can’t query the column from the SQL editor:
+    - If the column name exists, but you can’t query the column from the SQL editor: 
       - Ask your Metabase admin if the column was re-named or removed on the database side.
       - If you’re a Metabase admin, you may need to [run a sync][database-syncing] to refresh your data.
 
@@ -86,6 +89,7 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 **Causes:**
 
 - You need to use the correct SQL syntax for the database that stores the tables you want to query.
+- If a column or table _display_ name was updated by an admin, your SQL query still needs to use the original column or table name from your database.
 - If a column or table name was updated in your database, but your Metabase hasn’t run a sync with your database yet, your database won’t recognize the names from your query.
 
 **Further reading:**
@@ -148,6 +152,8 @@ Once you find the line that is failing in your SQL query, go to the [Debugging S
 
 - If your query uses any SQL variables that point to Metabase models, run each model separately. Go to the model by opening the variables panel, or enter the model ID number from the variable in the Metabase search bar.
 
+- Remember to [read the SQL error message][how-to-read-sql-error] as you try to isolate the problem. For more information, go to [How does SQL debugging work?][how-does-sql-debugging-work].
+
 **Tips for working in the Metabase SQL editor:**
 
 - Highlight the lines that you want to run, and hit `Cmd + Return` or `Ctrl + Enter`.
@@ -182,8 +188,10 @@ Search or ask the community on [Discourse][discourse].
 [how-metabase-executes-queries]: ../users-guide/writing-sql.html#how-metabase-executes-sql-queries
 [how-to-cast-data-type]: ../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
 [how-to-convert-gui-question-to-sql]: ../users-guide/04-asking-questions.html#viewing-the-sql-that-powers-your-question
+[how-does-sql-debugging-work]: #how-does-sql-debugging-work
 [how-to-find-failing-sql-line]: #i-dont-know-which-line-of-my-sql-query-is-failing
 [how-to-find-sql-dialect]: #i-dont-know-what-sql-dialect-to-use
+[how-to-read-sql-error]: #reading-your-sql-error-message
 [how-to-reduce-sql-query-size]: #reducing-the-size-of-a-sql-query
 [notebook-editor]: ../users-guide/04-asking-questions.html#the-query-builder
 [sql-debugging]: #debugging-sql-queries
