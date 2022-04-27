@@ -29,7 +29,8 @@ describe("issue 16938", () => {
       .click();
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText(`Order ${ORDER_ID}`);
+      // Test adjusted for the 43 release, becasue Object detail changes are going to be released in the release 44
+      cy.findByText("37.65");
     });
   });
 });
