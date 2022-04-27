@@ -10,6 +10,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [java-time :as t]
             [medley.core :as m]
+            [metabase.config :as config]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
@@ -111,7 +112,7 @@
                               :nested-queries                  true
                               :regex                           true
                               :binning                         true
-                              :foreign-keys                    true}]
+                              :foreign-keys                    (not config/is-test?)}]
   (defmethod driver/supports? [:ocient feature] [_ _] supported?))
 
 ;; overriding driver/describe-table-fields may fix many of our test errors
