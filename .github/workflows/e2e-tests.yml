@@ -63,7 +63,6 @@ jobs:
           - "dashboard-filters"
           - "downloads"
           - "joins"
-          - "moderation"
     services:
       maildev:
         image: maildev/maildev:1.1.0
