@@ -10,10 +10,10 @@ function createResizeObserver() {
   const callbacksMap: Map<unknown, ResizeObserverCallback[]> = new Map();
 
   function handler(entries: ResizeObserverEntry[], observer: ResizeObserver) {
-    for (let i = 0; i < entries.length; i++) {
-      const entryCallbacks = callbacksMap.get(entries[i].target);
-      entryCallbacks?.forEach(callback => callback(entries[i], observer));
-    }
+    entries.forEach(entry => {
+      const entryCallbacks = callbacksMap.get(entry.target);
+      entryCallbacks?.forEach(callback => callback(entry, observer));
+    });
   }
 
   const observer = new ResizeObserver(
