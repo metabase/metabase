@@ -149,45 +149,6 @@
                                                         3)
                                                   2))))
 
-(defprotocol ^:private Insertable
-  (^:private ->insertable [this]
-    "Convert a value to an appropriate Ocient type when inserting a new row."))
-
-(extend-protocol Insertable
-  nil
-  (->insertable [_] nil)
-
-  Object
-  (->insertable [this] this)
-
-  clojure.lang.Keyword
-  (->insertable [k]
-    (u/qualified-name k))
-
-  java.time.temporal.Temporal
-  (->insertable [t] (u.date/format-sql t))
-
-  ;; normalize to UTC. Ocient complains when inserting values that have an offset
-  java.time.OffsetDateTime
-  (->insertable [t]
-    (->insertable (t/local-date-time (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-  ;; for whatever reason the `date time zone-id` syntax that works in SQL doesn't work when loading data
-  java.time.ZonedDateTime
-  (->insertable [t]
-    (->insertable (t/offset-date-time t)))
-
-  ;; normalize to UTC, since Ocient doesn't support TIME WITH TIME ZONE
-  java.time.OffsetTime
-  (->insertable [t]
-    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
-
-  ;; Convert the HoneySQL `timestamp(...)` form we sometimes use to wrap a `Timestamp` to a plain literal string
-  honeysql.types.SqlCall
-  (->insertable [{[{s :literal}] :args, fn-name :name}]
-    (assert (= (name fn-name) "timestamp"))
-    (->insertable (u.date/parse (str/replace s #"'" "")))))
-
 (defn in?
   "true if coll contains elm"
   [coll elm]
@@ -415,6 +376,38 @@
                        (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
                (load-data/load-data! driver dbdef tabledef))))
 
+(defprotocol ^:private Insertable
+  (^:private ->insertable [this]
+    "Convert a value to an appropriate Ocient type when inserting a new row."))
+
+(extend-protocol Insertable
+  nil
+  (->insertable [_] nil)
+
+  Object
+  (->insertable [this] this)
+
+  clojure.lang.Keyword
+  (->insertable [k]
+    (u/qualified-name k))
+
+  java.time.temporal.Temporal
+  (->insertable [t] (u.date/format-sql t))
+
+  ;; normalize to UTC. Ocient complains when inserting values that have an offset
+  java.time.OffsetDateTime
+  (->insertable [t]
+    (->insertable (t/local-date-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+  ;; for whatever reason the `date time zone-id` syntax that works in SQL doesn't work when loading data
+  java.time.ZonedDateTime
+  (->insertable [t]
+    (->insertable (t/offset-date-time t)))
+
+  ;; normalize to UTC, since Ocient doesn't support TIME WITH TIME ZONE
+  java.time.OffsetTime
+  (->insertable [t]
+    (u.date/format-sql (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))))))
 
 ;; Ocient has different syntax for inserting multiple rows, it looks like:
 ;;
