@@ -1,15 +1,11 @@
-import {
-  restore,
-  openProductsTable,
-  visualize,
-  popover,
-} from "__support__/e2e/cypress";
+import { restore, openProductsTable, popover } from "__support__/e2e/cypress";
 
 describe("issue 21979", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
     openProductsTable({ mode: "notebook" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("exclude 'day of the week' should show the correct day reference in the UI (metabase#21979)", () => {
@@ -21,32 +17,31 @@ describe("issue 21979", () => {
 
     popover().within(() => {
       cy.findByText("Monday").click();
-
       cy.button("Add filter").click();
     });
 
     cy.log("Make sure the filter references correct day in the UI");
-    cy.findByText("Created At excludes Monday");
+    cy.findByText("Created At excludes Monday").should("be.visible");
 
-    visualize();
-
-    cy.log("Make sure the query is correct");
+    cy.button("Visualize").click();
+    cy.wait("@dataset");
 
     // One of the products created on Monday
+    cy.log("Make sure the query is correct");
     cy.findByText("Enormous Marble Wallet").should("not.exist");
 
-    cy.log("Make sure we can re-enable the exluded filter");
-
+    cy.log("Make sure we can re-enable the excluded filter");
     cy.findByText("Created At excludes Monday").click();
 
     popover().within(() => {
       cy.findByText("Monday").click();
+      cy.findByText("Thursday").click();
 
-      cy.button("Add filter").click();
+      cy.button("Update filter").click();
+      cy.wait("@dataset");
     });
 
-    visualize();
-
-    cy.findByText("Enormous Marble Wallet");
+    cy.findByText("Created At excludes Thursday").should("be.visible");
+    cy.findByText("Enormous Marble Wallet").should("be.visible");
   });
 });
