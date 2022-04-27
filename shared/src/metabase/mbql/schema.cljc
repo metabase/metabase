@@ -293,21 +293,33 @@
       validate-bin-width
       validate-num-bins))
 
+(defn valid-temporal-unit-for-base-type?
+  "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
+  will return truthy. Accepts either map of `field-options` or `base-type` and `temporal-unit` passed separately."
+  ([{:keys [base-type temporal-unit] :as _field-options}]
+   (valid-temporal-unit-for-base-type? base-type temporal-unit))
+
+  ([base-type temporal-unit]
+   (cond
+     (core/not temporal-unit)
+     true
+
+     (core/not base-type)
+     true
+
+     :else
+     (let [units (condp #(isa? %2 %1) base-type
+                   :type/Date     date-bucketing-units
+                   :type/Time     time-bucketing-units
+                   :type/DateTime datetime-bucketing-units)]
+       (contains? units temporal-unit)))))
+
 (defn- validate-temporal-unit [schema]
   ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
   ;; specific error messages
   (s/constrained
    schema
-   (fn [{:keys [base-type temporal-unit]}]
-     (if-not temporal-unit
-       true
-       (if-let [units (condp #(isa? %2 %1) base-type
-                        :type/Date     date-bucketing-units
-                        :type/Time     time-bucketing-units
-                        :type/DateTime datetime-bucketing-units
-                        nil)]
-         (contains? units temporal-unit)
-         true)))
+   valid-temporal-unit-for-base-type?
    "Invalid :temporal-unit for the specified :base-type."))
 
 (defn- no-binning-options-at-top-level [schema]
