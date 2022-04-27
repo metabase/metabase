@@ -22,6 +22,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
             [metabase.models.database :refer [Database]]
+            [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.format-rows :as format-rows]
@@ -29,11 +30,11 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
+            [metabase.util.regex :as u.regex]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [toucan.db :as db])
-  (:import [java.time LocalDate LocalDateTime]
-           org.joda.time.DateTime))
+  (:import [java.time LocalDate LocalDateTime]))
 
 (defn- ->long-if-number [x]
   (if (number? x)
@@ -1177,3 +1178,40 @@
                  :mongo []
                  [[0]])
                (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
+(deftest june-31st-test
+  (testing "What happens when you try to add 3 months to March 31st? It should still work (#10072, #21968, #21969)"
+    ;; only testing the SQL drivers for now since I'm not 100% sure how to mock this for everyone else. Maybe one day
+    ;; when we support expressions like `+` for temporal types we can do an `:absolute-datetime` plus
+    ;; `:relative-datetime` expression and do this directly in MBQL.
+    (mt/test-drivers (filter #(isa? driver/hierarchy (driver/the-initialized-driver %) :sql)
+                             (mt/normal-drivers))
+      (doseq [[n unit] [[3 :month]
+                        [1 :quarter]]
+              t        [#t "2022-03-31"
+                        #t "2022-03-31T00:00:00"
+                        #t "2022-03-31T00:00:00-00:00"]]
+        (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
+          (let [march-31     (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+                june-31      (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
+                checkins     (mt/with-everything-store
+                               (sql.qp/->honeysql driver/*driver* (db/select-one Table :id (mt/id :checkins))))
+                honeysql     {:select [[june-31 :june_31]]
+                              :from   [checkins]}
+                honeysql     (sql.qp/apply-top-level-clause driver/*driver* :limit honeysql {:limit 1})
+                [sql & args] (sql.qp/format-honeysql driver/*driver* honeysql)
+                query        (mt/native-query {:query sql, :params args})]
+            (mt/with-native-query-testing-context query
+              (is (re= (u.regex/rx #"^2022-"
+                                   ;; We don't really care if someone returns June 29th or 30th or July 1st here. I
+                                   ;; guess you could make a case for either June 30th or July 1st. I don't really know
+                                   ;; how you can get June 29th from this, but that's what Vertica returns. :shrug: The
+                                   ;; main thing here is that it's not barfing.
+                                   (or (and "06-" (or "29" "30")) "07-01")
+                                   ;; We also don't really care if this is returned as a date or a timestamp with or
+                                   ;; without time zone.
+                                   (opt (or "T" #"\s")
+                                        "00:00:00"
+                                        (opt "Z")))
+                       (first (mt/first-row (qp/process-query query))))))))))))

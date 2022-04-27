@@ -54,7 +54,9 @@ describe("collection permissions", () => {
                   it("should offer to save dashboard to root collection from a dashboard page (metabase#16832)", () => {
                     cy.visit("/collection/root");
                     cy.findByText("Orders in a dashboard").click();
-                    cy.icon("add").click();
+                    appBar().within(() => {
+                      cy.icon("add").click();
+                    });
                     popover()
                       .findByText("Dashboard")
                       .click();

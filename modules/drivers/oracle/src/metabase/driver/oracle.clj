@@ -153,7 +153,9 @@
 
       (trunc :day v) -> TRUNC(v, 'day')"
   [format-template v]
-  (hsql/call :trunc v (hx/literal format-template)))
+  (-> (hsql/call :trunc v (hx/literal format-template))
+      ;; trunc() returns a date -- see https://docs.oracle.com/cd/E11882_01/server.112/e10729/ch4datetime.htm#NLSPG253
+      (hx/with-database-type-info "date")))
 
 (defmethod sql.qp/date [:oracle :minute]         [_ _ v] (trunc :mi v))
 ;; you can only extract minute + hour from TIMESTAMPs, even though DATEs still have them (WTF), so cast first
@@ -225,19 +227,36 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
+(def ^:private timestamp-types
+  #{"timestamp" "timestamp with time zone" "timestamp with local time zone"})
+
+(defn- cast-to-timestamp-if-needed
+  "If `hsql-form` isn't already one of the [[timestamp-types]], cast it to `timestamp`."
+  [hsql-form]
+  (hx/cast-unless-type-in "timestamp" timestamp-types hsql-form))
+
+(defn- cast-to-date-if-needed
+  "If `hsql-form` isn't already one of the [[timestamp-types]] *or* `date`, cast it to `date`."
+  [hsql-form]
+  (hx/cast-unless-type-in "date" (conj timestamp-types "date") hsql-form))
+
+(defn- add-months [hsql-form amount]
+  (-> (hsql/call :add_months (cast-to-date-if-needed hsql-form) amount)
+      (hx/with-database-type-info "date")))
+
 (defmethod sql.qp/add-interval-honeysql-form :oracle
-  [_ hsql-form amount unit]
-  (hx/+
-   (hx/->timestamp hsql-form)
-   (case unit
-     :second  (num-to-ds-interval :second amount)
-     :minute  (num-to-ds-interval :minute amount)
-     :hour    (num-to-ds-interval :hour   amount)
-     :day     (num-to-ds-interval :day    amount)
-     :week    (num-to-ds-interval :day    (hx/* amount (hsql/raw 7)))
-     :month   (num-to-ym-interval :month  amount)
-     :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
-     :year    (num-to-ym-interval :year   amount))))
+  [driver hsql-form amount unit]
+  ;; use add_months() for months since Oracle will barf if you try to do something like 2022-03-31 + 3 months since
+  ;; June 31st doesn't exist. add_months() can figure it out tho.
+  (case unit
+    :quarter (recur driver hsql-form (* 3 amount) :month)
+    :month   (add-months hsql-form amount)
+    :second  (hx/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :second amount))
+    :minute  (hx/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :minute amount))
+    :hour    (hx/+ (cast-to-timestamp-if-needed hsql-form) (num-to-ds-interval :hour   amount))
+    :day     (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    amount))
+    :week    (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ds-interval :day    (hx/* amount (hsql/raw 7))))
+    :year    (hx/+ (cast-to-date-if-needed hsql-form)      (num-to-ym-interval :year   amount))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
   [_ _ field-or-value]

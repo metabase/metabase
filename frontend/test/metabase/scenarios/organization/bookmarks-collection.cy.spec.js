@@ -8,7 +8,7 @@ const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
 
 const { STATIC_ORDERS_ID } = SAMPLE_DB_TABLES;
 
-describe("Bookmarks in a collection page", () => {
+describe("scenarios > organization > bookmarks > collection", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

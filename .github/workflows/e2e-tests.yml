@@ -62,7 +62,7 @@ jobs:
           - "binning"
           - "dashboard-filters"
           - "downloads"
-          - "moderation"
+          - "joins"
     services:
       maildev:
         image: maildev/maildev:1.1.0

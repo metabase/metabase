@@ -133,7 +133,10 @@ export default class DashCard extends Component {
         card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
     }));
 
-    const loading = !(series.length > 0 && _.every(series, s => s.data));
+    const loading =
+      !(series.length > 0 && _.every(series, s => s.data)) &&
+      !isVirtualDashCard(dashcard);
+
     const expectedDuration = Math.max(
       ...series.map(s => s.card.query_average_duration || 0),
     );
