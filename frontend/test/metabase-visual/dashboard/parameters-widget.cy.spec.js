@@ -7,86 +7,162 @@ const questionDetails = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-const filter = {
+const parameter = {
   name: "Category",
   slug: "category",
   id: "ad1c877e",
   type: "category",
 };
 
-const parameters = new Array(12).fill(filter);
+describe(`visual tests > dashboard > parameters widget`, () => {
+  const parametersShort = new Array(5).fill(parameter);
+  const parametersLong = new Array(12).fill(parameter);
 
-describe(`visual tests > dashboard > parameters widget (${parameters.length} filters)`, () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
+  describe(`${parametersShort.length} filters (sticky on mobile)`, () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
-    cy.createQuestionAndDashboard({
-      questionDetails,
-    }).then(({ body: card }) => {
-      const { dashboard_id } = card;
+      cy.createQuestionAndDashboard({
+        questionDetails,
+      }).then(({ body: card }) => {
+        const { dashboard_id } = card;
 
-      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-        parameters,
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: parametersShort,
+        });
+
+        const updatedSize = {
+          sizeX: 12,
+          sizeY: 32,
+        };
+
+        cy.editDashboardCard(card, updatedSize);
+
+        visitDashboard(dashboard_id);
+      });
+    });
+
+    describe(`Stickiness on desktop`, () => {
+      it("is sticky in view mode", () => {
+        cy.findByText("test question");
+
+        cy.get("main").scrollTo(0, 264);
+
+        cy.percySnapshot();
       });
 
-      const updatedSize = {
-        sizeX: 12,
-        sizeY: 32,
-      };
+      it("is sticky in edit mode", () => {
+        cy.findByText("test question");
 
-      cy.editDashboardCard(card, updatedSize);
+        cy.icon("pencil").click();
 
-      visitDashboard(dashboard_id);
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .scrollTo(0, 464)
+          .then(() => {
+            cy.percySnapshot();
+          });
+      });
+    });
+
+    describe(`Stickiness on mobile`, () => {
+      it("is sticky in view mode", () => {
+        cy.findByText("test question");
+
+        cy.viewport(375, 667); // iPhone SE
+
+        cy.get("main").scrollTo(0, 264);
+
+        cy.percySnapshot();
+      });
+
+      it("is sticky in edit mode", () => {
+        cy.findByText("test question");
+
+        cy.viewport(375, 667); // iPhone SE
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .scrollTo(0, 464)
+          .then(() => {
+            cy.percySnapshot();
+          });
+      });
     });
   });
 
-  // desktop
-  describe(`Stickiness on desktop (${parameters.length} filters)`, () => {
-    it("is sticky in view mode", () => {
-      cy.findByText("test question");
+  describe(`${parametersLong.length} filters (non sticky on mobile)`, () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
 
-      cy.get("main").scrollTo(0, 264);
+      cy.createQuestionAndDashboard({
+        questionDetails,
+      }).then(({ body: card }) => {
+        const { dashboard_id } = card;
 
-      cy.percySnapshot();
-    });
-
-    it("is sticky in edit mode", () => {
-      cy.findByText("test question");
-
-      cy.icon("pencil").click();
-
-      cy.findByTestId("dashboard-parameters-and-cards")
-        .scrollTo(0, 464)
-        .then(() => {
-          cy.percySnapshot();
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          parameters: parametersLong,
         });
-    });
-  });
 
-  // mobile
-  describe(`Stickiness on mobile (${parameters.length} filters)`, () => {
-    it("is not sticky in view mode", () => {
-      cy.findByText("test question");
+        const updatedSize = {
+          sizeX: 12,
+          sizeY: 32,
+        };
 
-      // iPhone SE
-      cy.viewport(375, 667);
+        cy.editDashboardCard(card, updatedSize);
 
-      cy.get("main").scrollTo(0, 264);
-
-      cy.percySnapshot();
+        visitDashboard(dashboard_id);
+      });
     });
 
-    it("is not sticky in edit mode", () => {
-      cy.findByText("test question");
+    describe(`Stickiness on desktop`, () => {
+      it("is sticky in view mode", () => {
+        cy.findByText("test question");
 
-      cy.icon("pencil").click();
+        cy.get("main").scrollTo(0, 264);
 
-      cy.findByTestId("dashboard-parameters-and-cards")
-        .scrollTo(0, 464)
-        .then(() => {
-          cy.percySnapshot();
-        });
+        cy.percySnapshot();
+      });
+
+      it("is sticky in edit mode", () => {
+        cy.findByText("test question");
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .scrollTo(0, 464)
+          .then(() => {
+            cy.percySnapshot();
+          });
+      });
+    });
+
+    describe(`Stickiness on mobile`, () => {
+      it("is not sticky in view mode", () => {
+        cy.findByText("test question");
+
+        cy.viewport(375, 667); // iPhone SE
+
+        cy.get("main").scrollTo(0, 264);
+
+        cy.percySnapshot();
+      });
+
+      it("is not sticky in edit mode", () => {
+        cy.findByText("test question");
+
+        cy.viewport(375, 667); // iPhone SE
+
+        cy.icon("pencil").click();
+
+        cy.findByTestId("dashboard-parameters-and-cards")
+          .scrollTo(0, 464)
+          .then(() => {
+            cy.percySnapshot();
+          });
+      });
     });
   });
 });
