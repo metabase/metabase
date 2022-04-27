@@ -716,6 +716,16 @@
                    (perms)))))))))
 
 
+#_(deftest get-graph-should-unescape-slashes-test
+  (mt/with-temp PermissionsGroup [group]
+    (testing "before"
+      ;; first, graph permissions only for VENUES
+      (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema/public" (mt/id :venues)))
+      (is (= {(mt/id :venues) :all}
+             (perms/data-perms-graph))))
+    ))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -23,7 +23,11 @@
   [[_ s]]
   (name s))
 
-(defmethod convert :kw-with-sepereator->str
+;; Convert a keyword to string without excluding the namespace.
+;; e.g: :schema/name => "schema/name".
+;; Primarily used for schema-name since schema are allowed to have "/"
+;; and calling (name s) returning a substring after "/".
+(defmethod convert :kw->full-str
   [[_ s]]
   (.substring (str s) 1))
 
@@ -46,7 +50,7 @@
 
 ;;; ------------------------------------------------ Data Permissions ------------------------------------------------
 
-(s/def ::schema-name (s/or :kw-with-sepereator->str keyword?))
+(s/def ::schema-name (s/or :kw->full-str keyword?))
 
 ;; {:groups {1 {:data {:schemas {"PUBLIC" ::schema-perms-granular}}}}} =>
 ;; {:groups {1 {:data {:schemas {"PUBLIC" {1 :all}}}}}}
