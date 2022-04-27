@@ -61,6 +61,7 @@ function getQuestion({
   name = "Q1",
   description = "Example",
   collection_id = 12,
+  can_write = true,
 } = {}) {
   const extraCardParams = {};
 
@@ -69,6 +70,7 @@ function getQuestion({
     extraCardParams.name = name;
     extraCardParams.description = description;
     extraCardParams.collection_id = collection_id;
+    extraCardParams.can_write = can_write;
   }
 
   return new Question(
@@ -348,6 +350,7 @@ describe("SaveQuestionModal", () => {
 
     it("shouldn't allow to save a question if form is invalid", () => {
       const originalQuestion = getQuestion({ isSaved: true });
+      console.log(originalQuestion);
       renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
@@ -485,6 +488,23 @@ describe("SaveQuestionModal", () => {
       userEvent.click(screen.getByText(/Replace original question, ".*"/));
 
       expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
+    });
+
+    it("should not allow overwriting when user does not have curate permission on collection (metabase#20717)", () => {
+      const originalQuestion = getQuestion({
+        isSaved: true,
+        name: "Beautiful Orders",
+        can_write: false,
+      });
+      const dirtyQuestion = getDirtyQuestion(originalQuestion);
+      renderSaveQuestionModal(dirtyQuestion, originalQuestion);
+
+      expect(
+        screen.queryByText("Save as new question"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Replace original question, ".*"/),
+      ).not.toBeInTheDocument();
     });
   });
 
