@@ -31,7 +31,7 @@ msgstr "Velg en databasetype"
 #: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:241
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.jsx:35
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:461
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:145
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:181
 #: frontend/src/metabase/components/ActionButton.jsx:30
@@ -40,7 +40,7 @@ msgstr "Velg en databasetype"
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:149
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:75
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:423
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:429
 #: frontend/src/metabase/reference/components/EditHeader.jsx:53
 #: frontend/src/metabase/reference/components/EditHeader.jsx:68
 msgid "Save"
@@ -404,11 +404,11 @@ msgstr "Suksess"
 msgid "Preview"
 msgstr "Forhåndsvisning"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:100
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:103
 msgid "No column description yet"
 msgstr "Ingen kolonnebeskrivelse enda"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:128
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:145
 msgid "Select a field visibility"
 msgstr "Velg en feltsynlighet"
 
@@ -417,7 +417,7 @@ msgstr "Velg en feltsynlighet"
 msgid "No special type"
 msgstr "Ingen spesiell type"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:183
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:201
 #: frontend/src/metabase/lib/core.js:324
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
 #: frontend/src/metabase/reference/components/Field.jsx:54
@@ -432,7 +432,7 @@ msgstr "Andre"
 msgid "Select a special type"
 msgstr "Velg en spesiell type"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:253
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/FKTargetPicker.tsx:90
 #: frontend/src/metabase/reference/components/Field.jsx:91
 msgid "Select a target"
@@ -457,7 +457,7 @@ msgstr "Kolonne"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList/ColumnsList.jsx:109
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable/MetadataTable.tsx:102
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:269
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:276
 msgid "Visibility"
 msgstr "Synlighet"
 
@@ -628,35 +628,35 @@ msgstr " Historie"
 msgid "Revision History for"
 msgstr "Revisjons historie for"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:208
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:213
 msgid "{0} – Field Settings"
 msgstr "{0} - felt instillinger"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:270
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:277
 msgid "Where this field will appear throughout Metabase"
 msgstr "Hvor dette feltet vil dukke opp i Metabase"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:322
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:329
 msgid "Filtering on this field"
 msgstr "Filtrering på dette feltet"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:323
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:330
 msgid "When this field is used in a filter, what should people use to enter the value they want to filter on?"
 msgstr "Når dette feltet brukes i ett filter, hvilken metode skal brukes for å legge inn filtreringsverdi?"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:444
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:452
 msgid "No description for this field yet"
 msgstr "Ingen beskrivelse for dette feltet enda"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:418
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:439
 msgid "Original value"
 msgstr "Opprinnelig verdi"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:419
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:440
 msgid "Mapped value"
 msgstr "Kartlagt verdi"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:462
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:483
 msgid "Enter value"
 msgstr "Legg inn verdi"
 
@@ -673,31 +673,31 @@ msgid "Custom mapping"
 msgstr "Tilpasset kartlegging"
 
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:56
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:164
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:176
 msgid "Unrecognized mapping type"
 msgstr "Ukjent kartleggingstype"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:92
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:104
 msgid "Current field isn't a foreign key or FK target table metadata is missing"
 msgstr "Det gjeldende feltet er ikke en fremmednøkkel eller måltabellen mangler FK-metadata."
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:202
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:214
 msgid "The selected field isn't a foreign key"
 msgstr "Valgt felt er ikke en fremmednøkkel"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:339
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:346
 msgid "Display values"
 msgstr "Vis verdier"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:340
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:347
 msgid "Choose to show the original value from the database, or have this field display associated or custom information."
 msgstr "Velg å vise originalverdien fra databasen, eller å vise tilhørende eller egendefinert informasjon."
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:290
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:305
 msgid "Choose a field"
 msgstr "Velg ett felt"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:311
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:326
 msgid "Please select a column to use for display."
 msgstr "Vennligst velg en kolonne til visning"
 
@@ -705,16 +705,16 @@ msgstr "Vennligst velg en kolonne til visning"
 msgid "Tip:"
 msgstr "Tips:"
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:472
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:493
 msgid "You might want to update the field name to make sure it still makes sense based on your remapping choices."
 msgstr "Du vil kanskje oppdatere feltnavnet sånn at det fortsatt gir mening dersom du har valgt å bruke verdien fra et annet felt."
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:356
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:364
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:90
 msgid "Cached field values"
 msgstr "Mellomlagret felt verdier"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:357
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:365
 msgid "Metabase can scan the values for this field to enable checkbox filters in dashboards and questions."
 msgstr "Metabase kan skanne verdiene for dette feltet for å aktivere avhukingsfilter i infotavler og spørsmål."
 
@@ -870,11 +870,11 @@ msgstr "Dette vil vises i revisjonshistorikken for dette segmentet for å hjelpe
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:76
 #: frontend/src/metabase/admin/routes.jsx:162
 #: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:237
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:106
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:131
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:76
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:247
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
 msgid "Settings"
 msgstr "Innstillinger"
 
@@ -930,7 +930,7 @@ msgstr "Dette er en spesiell gruppe, og dens medlemmer kan se alt i denne Metaba
 msgid "To make sure you don't get locked out of Metabase, there always has to be at least one user in this group."
 msgstr "For å sikre at du ikke blir låst ute av Metabase, må det alltid være igjen en bruker i denne gruppen."
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
 msgid "Members"
 msgstr "Medlemmer"
 
@@ -957,8 +957,8 @@ msgstr "Administrator"
 
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:17
 #: frontend/src/metabase/lib/revisions/components.jsx:50
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:203
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:260
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:202
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:259
 #: frontend/src/metabase/query_builder/components/filters/pickers/DefaultPicker.jsx:212
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:312
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:500
@@ -1014,11 +1014,11 @@ msgstr "Nei"
 msgid "Edit Name"
 msgstr "Rediger navn"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:96
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:98
 msgid "Remove Group"
 msgstr "Fjern gruppe"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:139
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:141
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:43
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:42
 #: frontend/src/metabase/components/HeaderModal.jsx:44
@@ -1035,13 +1035,13 @@ msgid "Done"
 msgstr "Ferdig"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:76
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:217
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:271
 msgid "Group name"
 msgstr "Gruppenavn"
 
 #: frontend/src/metabase/admin/people/components/GroupSelect.jsx:68
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:362
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:364
 #: frontend/src/metabase/admin/people/components/MembershipSelect/MembershipSelect.tsx:35
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:193
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
@@ -1052,11 +1052,11 @@ msgstr "Gruppenavn"
 msgid "Groups"
 msgstr "Grupper"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:363
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:365
 msgid "Create a group"
 msgstr "Opprett en gruppe"
 
-#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:369
+#: frontend/src/metabase/admin/people/components/GroupsListing.jsx:371
 msgid "You can use groups to control your users' access to your data. Put users in groups and then go to the Permissions section to control each group's access. The Administrators and All Users groups are special default groups that can't be removed."
 msgstr "Du kan bruke grupper for og kontrollere din brukers tilgang til dataene. Putt brukere i grupper og endre hver gruppes tilgang under tilgangseksjonen. Gruppene \"Administratorer\" og \"Alle brukere\" er spesielle grupper som ikke kan slettes."
 
@@ -1597,7 +1597,7 @@ msgstr "Slett"
 #: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:130
 #: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:193
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:205
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:208
 msgid "Select…"
 msgstr "Velg..."
 
@@ -1798,7 +1798,7 @@ msgstr "Ukjent innstilling {0}"
 msgid "Setup"
 msgstr "Oppsett"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:186
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
 #: frontend/src/metabase/admin/settings/selectors.js:61
 msgid "General"
 msgstr "Generelt"
@@ -2240,7 +2240,7 @@ msgstr "Dearkiver {0}"
 #: frontend/src/metabase/browse/components/TableBrowser/TableBrowser.jsx:45
 #: frontend/src/metabase/browse/containers/DatabaseBrowser.jsx:23
 #: frontend/src/metabase/browse/containers/SchemaBrowser.jsx:39
-#: frontend/src/metabase/reference/databases/DatabaseList.jsx:45
+#: frontend/src/metabase/reference/databases/DatabaseList.jsx:55
 #: frontend/src/metabase/reference/guide/BaseSidebar.jsx:38
 msgid "Our data"
 msgstr "Vår data"
@@ -2459,8 +2459,8 @@ msgstr "{0} for å gå til konsollen hvis du ikke allerede har gjort det."
 msgid "How would you like to refer to this database?"
 msgstr "Hvordan vil du referere til denne databasen?"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:152
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:153
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:203
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:148
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:74
@@ -3262,7 +3262,7 @@ msgid "received the latest data from"
 msgstr "mottok de siste dataene fra"
 
 #: frontend/src/metabase/home/components/Activity.jsx:257
-#: frontend/src/metabase/lib/query_time.js:211
+#: frontend/src/metabase/lib/query_time.js:212
 #: frontend/src/metabase/lib/revisions/revisions.js:74
 #: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:27
 #: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
@@ -3402,7 +3402,7 @@ msgid "Unarchive"
 msgstr "Dearkiver"
 
 #: frontend/src/metabase/home/containers/ActivityApp.jsx:56
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:66
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:62
 msgid "Activity"
 msgstr "Aktivitet"
 
@@ -3692,20 +3692,20 @@ msgstr "Distrikt"
 msgid "StandardDeviation"
 msgstr "StandardAvvik"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:96
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:103
 #: frontend/src/metabase/lib/schema_metadata.js:627
 #: frontend/src/metabase/visualizations/lib/utils.js:143
 msgid "Average"
 msgstr "Gjennomsnitt"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:97
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/lib/schema_metadata.js:672
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:496
 msgid "Min"
 msgstr "Min"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:98
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/lib/schema_metadata.js:681
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:504
@@ -3765,7 +3765,7 @@ msgstr "Hva lurer du på?"
 #: frontend/src/metabase/lib/query/description.js:264
 #: frontend/src/metabase/lib/schema_metadata.js:600
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:60
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:212
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:211
 msgid "Raw data"
 msgstr "Rådata"
 
@@ -3882,7 +3882,7 @@ msgstr "Er ikke"
 #: frontend/src/metabase/lib/schema_metadata.js:470
 #: frontend/src/metabase/lib/schema_metadata.js:476
 #: frontend/src/metabase/lib/schema_metadata.js:495
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:206
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:136
 msgid "Is empty"
 msgstr "Er tom"
 
@@ -3923,7 +3923,7 @@ msgstr "Mindre enn"
 #: frontend/src/metabase/lib/schema_metadata.js:469
 #: frontend/src/metabase/lib/schema_metadata.js:489
 #: frontend/src/metabase/parameters/constants.js:18
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:175
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:176
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:250
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:98
 msgid "Between"
@@ -3968,14 +3968,14 @@ msgid "Ends with"
 msgstr "Slutter med"
 
 #: frontend/src/metabase/lib/schema_metadata.js:467
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:189
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:190
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:229
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:76
 msgid "Before"
 msgstr "Før"
 
 #: frontend/src/metabase/lib/schema_metadata.js:468
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:205
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:206
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:236
 #: frontend/src/metabase/query_builder/components/filters/pickers/TimePicker.jsx:87
 msgid "After"
@@ -4239,11 +4239,12 @@ msgstr "Kategori, Type, Modell, Vurdering, osv."
 
 #: frontend/src/metabase/account/app/components/AccountHeader/AccountHeader.jsx:41
 #: frontend/src/metabase/account/routes.jsx:14
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:53
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:49
 msgid "Account settings"
 msgstr "Kontoinnstillinger"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:52
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:59
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:99
 msgid "Exit admin"
 msgstr "Lukk admin"
 
@@ -4251,18 +4252,18 @@ msgstr "Lukk admin"
 msgid "Logs"
 msgstr "Logger"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:104
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
 #: frontend/src/metabase/admin/tasks/containers/TroubleshootingApp.jsx:22
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:73
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:69
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:82
 msgid "Help"
 msgstr "Hjelp"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:84
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:80
 msgid "About Metabase"
 msgstr "Om Metabase"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:90
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:86
 msgid "Sign out"
 msgstr "Logg ut"
 
@@ -4270,15 +4271,15 @@ msgstr "Logg ut"
 msgid "Thanks for using"
 msgstr "Takk for at du bruker"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:129
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:131
 msgid "You're on version"
 msgstr "Du bruker versjon"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:132
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:134
 msgid "Built on"
 msgstr "Bygget den"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:152
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
 msgid "is a Trademark of"
 msgstr "er et varemerke for"
 
@@ -4286,7 +4287,7 @@ msgstr "er et varemerke for"
 msgid "and is built with care in San Francisco, CA"
 msgstr "og er bygget med omhu i San Francisco, California"
 
-#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:33
+#: frontend/src/metabase/nav/components/AdminNavbar/AdminNavbar.tsx:37
 msgid "Metabase Admin"
 msgstr "Metabase Admin"
 
@@ -4355,15 +4356,15 @@ msgstr "For mer kompliserte spørsmål, kan du skrive din egen SQL eller lokal s
 msgid "Select a default value…"
 msgstr "Velg en standardverdi..."
 
-#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:108
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:152
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
 #: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 msgid "Update filter"
 msgstr "Oppdater filter"
 
-#: frontend/src/metabase/lib/query_time.js:143
-#: frontend/src/metabase/lib/query_time.js:154
+#: frontend/src/metabase/lib/query_time.js:144
+#: frontend/src/metabase/lib/query_time.js:155
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:10
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:145
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:33
@@ -4372,7 +4373,7 @@ msgstr "Oppdater filter"
 msgid "Today"
 msgstr "I dag"
 
-#: frontend/src/metabase/lib/query_time.js:149
+#: frontend/src/metabase/lib/query_time.js:150
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:15
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:43
@@ -4389,24 +4390,24 @@ msgstr "Siste 7 dager"
 msgid "Past 30 days"
 msgstr "Siste 30 dager"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1702
-#: frontend/src/metabase/lib/query_time.js:229
+#: frontend/src/metabase-lib/lib/Dimension.ts:1721
+#: frontend/src/metabase/lib/query_time.js:230
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Week"
 msgstr "Uke"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1708
-#: frontend/src/metabase/lib/query_time.js:231
+#: frontend/src/metabase-lib/lib/Dimension.ts:1727
+#: frontend/src/metabase/lib/query_time.js:232
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Month"
 msgstr "Måned"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1720
-#: frontend/src/metabase/lib/query_time.js:235
+#: frontend/src/metabase-lib/lib/Dimension.ts:1739
+#: frontend/src/metabase/lib/query_time.js:236
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4459,6 +4460,7 @@ msgstr "Skriv en standardverdi..."
 
 #: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:49
 #: frontend/src/metabase/containers/Form.jsx:230
+#: frontend/src/metabase/containers/Form.jsx:239
 #: frontend/src/metabase/public/components/PublicError.jsx:13
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:127
 msgid "An error occurred"
@@ -5219,7 +5221,7 @@ msgstr "Ukjent felt"
 msgid "field"
 msgstr "felt"
 
-#: frontend/src/metabase/query_builder/components/Filter.jsx:91
+#: frontend/src/metabase/query_builder/components/Filter.jsx:111
 msgid "Matches"
 msgstr "Matcher"
 
@@ -5229,7 +5231,7 @@ msgstr "Matcher"
 msgid "Add filters to narrow your answer"
 msgstr "Legg til filter for å snevre inn svaret ditt"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:254
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:253
 msgid "Add a grouping"
 msgstr "Legg til en gruppering"
 
@@ -5237,9 +5239,9 @@ msgstr "Legg til en gruppering"
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:60
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:19
 #: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:136
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:285
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:284
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:39
-#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:72
+#: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:75
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:116
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:91
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:137
@@ -5255,17 +5257,17 @@ msgstr "Legg til en gruppering"
 msgid "Data"
 msgstr "Data"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:312
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:311
 msgid "Filtered by"
 msgstr "Filtrert etter"
 
 #: frontend/src/metabase/admin/permissions/constants/collections-permissions.js:11
 #: frontend/src/metabase/admin/tasks/containers/TasksApp.jsx:100
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:329
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:328
 msgid "View"
 msgstr "Vis"
 
-#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:346
+#: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:345
 msgid "Grouped By"
 msgstr "Gruppert Etter"
 
@@ -5273,7 +5275,7 @@ msgstr "Gruppert Etter"
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx:69
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:53
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:28
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:209
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:212
 msgid "None"
 msgstr "Ingen"
 
@@ -5478,15 +5480,15 @@ msgstr "Det var et problem med spørsmålet ditt"
 msgid "Most of the time this is caused by an invalid selection or bad input value. Double check your inputs and retry your query."
 msgstr "For det meste skyldes dette et ugyldig valg eller feil inntastet verdi. Sjekk input en gang til og prøv spørringen din igjen."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:60
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:69
 msgid "This may be the answer you’re looking for. If not, try removing or changing your filters to make them less specific."
 msgstr "Dette kan være svaret du leter etter. Hvis ikke, prøv å fjern eller endre filterne for å gjøre det mindre spesifisert."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:65
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:74
 msgid "You can also {0} when there are some results."
 msgstr "Du kan også {0} når det er noen resultater."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:67
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
 msgid "get an alert"
 msgstr "få en varsel"
 
@@ -5494,7 +5496,7 @@ msgstr "få en varsel"
 msgid "Back to last run"
 msgstr "Tilbake til siste kjøring"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:233
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:227
 msgid "Visualization"
 msgstr "Visualisering"
 
@@ -5609,7 +5611,7 @@ msgstr "Tenk på dette litt som å skrive en formel i et regneark: Du kan bruke 
 #: frontend/src/metabase/entities/databases/forms.js:149
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorHelpText.tsx:66
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:227
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:230
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:405
 msgid "Learn more"
 msgstr "Lær mer"
@@ -5694,12 +5696,12 @@ msgstr "Element"
 msgid "Previous"
 msgstr "Siste"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:143
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:144
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:217
 msgid "Current"
 msgstr "Nåværende"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:197
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:198
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:243
 #: frontend/src/metabase/visualizations/lib/settings/column.js:229
 #: frontend/src/metabase/visualizations/lib/settings/series.js:81
@@ -5711,7 +5713,7 @@ msgid "Enter desired number"
 msgstr "Skriv inn ønsket tall"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:61
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:40
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:42
 msgid "Empty"
 msgstr "Tom"
 
@@ -5811,15 +5813,15 @@ msgstr "Felt filter"
 msgid "Field to map to"
 msgstr "Felt å koble til"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:191
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:194
 msgid "Filter widget type"
 msgstr "Filter type"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:250
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:253
 msgid "Required?"
 msgstr "Påkrevd?"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:261
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:264
 msgid "Default filter widget value"
 msgstr "Standard filter verdi"
 
@@ -6745,7 +6747,7 @@ msgstr "Kartnål-kart"
 msgid "Unset"
 msgstr "Ikke satt"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:126
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:135
 msgid "Rows {0}-{1} of {2}"
 msgstr "Rader {0}-{1} av {2}"
 
@@ -6761,7 +6763,7 @@ msgstr "Kunne ikke finne visualisering"
 msgid "Could not display this chart with this data."
 msgstr "Kunne ikke vise grafen med denne dataen."
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:59
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:475
 msgid "No results!"
 msgstr "Ingen resultater!"
@@ -7331,19 +7333,19 @@ msgstr "Maks zoom"
 msgid "No relationships found."
 msgstr "Ingen forhold funnet"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:86
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:96
 msgid "via {0}"
 msgstr "via {0}"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:236
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectRelationships.tsx:44
 msgid "This {0} is connected to:"
 msgstr "{0} er koblet til:"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:333
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:352
 msgid "Object Detail"
 msgstr "Objekt detaljer"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:336
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:355
 msgid "object"
 msgstr "objekt"
 
@@ -7455,46 +7457,46 @@ msgstr "Pivoter tabellen"
 msgid "Visible fields"
 msgstr "Synlige felter"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:121
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:131
 #, fuzzy
 msgid "Write here, and use Markdown if you'd like"
 msgstr "Skriv her, og bruk gjerne Markdown hvis du vil"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:57
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:57
 msgid "Vertical Alignment"
 msgstr "Loddrett justering"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:61
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:61
 msgid "Top"
 msgstr "Topp"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:62
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:62
 msgid "Middle"
 msgstr "Midten"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:63
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:63
 msgid "Bottom"
 msgstr "Bunn"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:70
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:70
 msgid "Horizontal Alignment"
 msgstr "Vannrett justering"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:118
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:74
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:74
 msgid "Left"
 msgstr "Venstre"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:75
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:75
 msgid "Center"
 msgstr "Senter"
 
 #: frontend/src/metabase/visualizations/lib/settings/series.js:119
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:76
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:76
 msgid "Right"
 msgstr "Høyre"
 
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:83
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:83
 msgid "Show background"
 msgstr "Vis bakgrunn"
 
@@ -7617,7 +7619,6 @@ msgstr "Innebygging er ikke aktivert."
 msgid "The object has been archived."
 msgstr "Objektet har blitt arkivert."
 
-#: src/metabase/api/common/internal.clj
 #: target/classes/metabase/api/common/internal.clj
 msgid "Attempted to return a boolean as an API response. This is not allowed!"
 msgstr "Forsøkte å returnere en boolsk verdi som et API-svar. Dette er ikke tillatt!"
@@ -7760,7 +7761,7 @@ msgstr "Har du mange lagrede spørsmål i {0}? Lag samlinger for å håndtere de
 #. It shows up a solid 10-15 seconds before the "Starting Metabase in STANDALONE mode" message because so many other namespaces need to get loaded
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:231
 #: frontend/src/metabase/home/components/Activity.jsx:87
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:102
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:103
 #: frontend/src/metabase/public/components/LogoBadge.jsx:18
 #: frontend/src/metabase/routes-public.jsx:13
 #: frontend/src/metabase/routes.jsx:153 src/metabase/api/setup.clj
@@ -7789,7 +7790,7 @@ msgstr "Hjelp alle med å forstå hverandre ved å lage standard-sett med filter
 msgid "Table ''{0}'' is now visible. Resyncing."
 msgstr "Tabell \"{0}\" er synlig. Synkroniserer på nytt."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1642 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1661 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Auto bin"
 msgstr "Auto samle"
@@ -7798,102 +7799,102 @@ msgstr "Auto samle"
 msgid "Don''t bin"
 msgstr "Ikke samle"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1696
-#: frontend/src/metabase/lib/query_time.js:227 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1715
+#: frontend/src/metabase/lib/query_time.js:228 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr "Dag"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1684
-#: frontend/src/metabase/lib/query_time.js:223 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1703
+#: frontend/src/metabase/lib/query_time.js:224 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr "Minutt"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1690
-#: frontend/src/metabase/lib/query_time.js:225 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1709
+#: frontend/src/metabase/lib/query_time.js:226 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr "Time"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1714
-#: frontend/src/metabase/lib/query_time.js:233 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1733
+#: frontend/src/metabase/lib/query_time.js:234 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter"
 msgstr "Kvartal"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1726 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1745 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute of Hour"
 msgstr "Minutt i time"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1732 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1751 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Hour of Day"
 msgstr "Time på dagen"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1738 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1757 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Week"
 msgstr "Dag i uke"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1744 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1763 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Month"
 msgstr "Dag i måned"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1750 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1769 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day of Year"
 msgstr "Dag i år"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1756 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1775 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Week of Year"
 msgstr "Uke i år"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1762 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1781 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Month of Year"
 msgstr "Måned i år"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1768 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1787 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter of Year"
 msgstr "Kvartal i år"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1650 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1669 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "10 bins"
 msgstr "10 samlinger"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1659 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1678 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "50 bins"
 msgstr "50 samlinger"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1668 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1687 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "100 bins"
 msgstr "100 samlinger"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1777 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1796 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 0.1 degrees"
 msgstr "Samle hver 0,1 grader"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1786 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1805 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 1 degree"
 msgstr "Samle hver grad"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1795 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1814 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 10 degrees"
 msgstr "Samle hver 10ende grad"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1804 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1823 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Bin every 20 degrees"
 msgstr "Samle hver 20ende grad"
@@ -9782,9 +9783,9 @@ msgstr "Deling"
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:132
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:65
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:71
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:56
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:69
-#: frontend/src/metabase/visualizations/visualizations/Text.jsx:82
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:56
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:69
+#: frontend/src/metabase/visualizations/visualizations/Text/Text.jsx:82
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:25
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:31
 #: frontend/src/metabase/visualizations/visualizations/WaterfallChart.jsx:37
@@ -9803,7 +9804,7 @@ msgstr "Visning"
 msgid "Axes"
 msgstr "Akser"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:196
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:132
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingFieldsPartition.jsx:91
 #: frontend/src/metabase/visualizations/lib/settings/column.js:45
@@ -9868,15 +9869,15 @@ msgstr "Bruk JVM-tidssone"
 msgid "We're currently analyzing the tables and fields to help you explore your data."
 msgstr "Vi analyserer nå tabellene og feltene for å hjelpe deg med å utforske dataene dine."
 
-#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:471
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:492
 msgid "Tip: "
 msgstr "Tips: "
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:231
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:247
 msgid "Select a currency type"
 msgstr "Velg valutatype"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:281
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:288
 msgid "Field Type"
 msgstr "Felt type"
 
@@ -10249,7 +10250,7 @@ msgstr "uke"
 msgid "month"
 msgstr "måned"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:113
+#: frontend/src/metabase/lib/query_time.js:652
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "quarter"
@@ -11974,94 +11975,94 @@ msgstr "Dupliser \"{0}\""
 msgid "Duplicate"
 msgstr "Dupliser"
 
-#: frontend/src/metabase/lib/query_time.js:146
+#: frontend/src/metabase/lib/query_time.js:147
 msgid "Tomorrow"
 msgstr "Imorgen"
 
-#: frontend/src/metabase/lib/query_time.js:160
-#: frontend/src/metabase/lib/query_time.js:174
+#: frontend/src/metabase/lib/query_time.js:161
+#: frontend/src/metabase/lib/query_time.js:175
 msgid "This {0}"
 msgstr "Dette {0}"
 
-#: frontend/src/metabase/lib/query_time.js:163
+#: frontend/src/metabase/lib/query_time.js:164
 msgid "Next {0}"
 msgstr "Neste {0}"
 
-#: frontend/src/metabase/lib/query_time.js:166
+#: frontend/src/metabase/lib/query_time.js:167
 #: src/metabase/pulse/render/datetime.clj
 #: target/classes/metabase/pulse/render/datetime.clj
 msgid "Previous {0}"
 msgstr "Sist {0}"
 
-#: frontend/src/metabase/lib/query_time.js:170
+#: frontend/src/metabase/lib/query_time.js:171
 msgid "Previous {0} {1}"
 msgstr "Sist {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:172
+#: frontend/src/metabase/lib/query_time.js:173
 msgid "Next {0} {1}"
 msgstr "Neste {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:202
+#: frontend/src/metabase/lib/query_time.js:203
 msgid "Now"
 msgstr "Nå"
 
-#: frontend/src/metabase/lib/query_time.js:205
+#: frontend/src/metabase/lib/query_time.js:206
 msgid "{0} {1} ago"
 msgstr "{0} {1} siden"
 
-#: frontend/src/metabase/lib/query_time.js:206
+#: frontend/src/metabase/lib/query_time.js:207
 msgid "{0} {1} from now"
 msgstr "{0} {1} fra nå"
 
-#: frontend/src/metabase/lib/query_time.js:221
+#: frontend/src/metabase/lib/query_time.js:222
 msgid "Default period"
 msgid_plural "Default periods"
 msgstr[0] "Standard periode"
 msgstr[1] "Standard perioder"
 
-#: frontend/src/metabase/lib/query_time.js:237
+#: frontend/src/metabase/lib/query_time.js:238
 msgid "Minute of hour"
 msgid_plural "Minutes of hour"
 msgstr[0] "Minutt i time"
 msgstr[1] "Minutter av time"
 
-#: frontend/src/metabase/lib/query_time.js:239
+#: frontend/src/metabase/lib/query_time.js:240
 msgid "Hour of day"
 msgid_plural "Hours of day"
 msgstr[0] "Time på dagen"
 msgstr[1] "Timer i dagen"
 
-#: frontend/src/metabase/lib/query_time.js:241
+#: frontend/src/metabase/lib/query_time.js:242
 msgid "Day of week"
 msgid_plural "Days of week"
 msgstr[0] "Dag i uke"
 msgstr[1] "Dager i uke"
 
-#: frontend/src/metabase/lib/query_time.js:243
+#: frontend/src/metabase/lib/query_time.js:244
 msgid "Day of month"
 msgid_plural "Days of month"
 msgstr[0] "Dag i måned"
 msgstr[1] "Dager i måned"
 
-#: frontend/src/metabase/lib/query_time.js:245
+#: frontend/src/metabase/lib/query_time.js:246
 msgid "Day of year"
 msgid_plural "Days of year"
 msgstr[0] "Dag i år"
 msgstr[1] "Dager i år"
 
-#: frontend/src/metabase/lib/query_time.js:247
+#: frontend/src/metabase/lib/query_time.js:248
 msgid "Week of year"
 msgid_plural "Weeks of year"
 msgstr[0] "Uke i år"
 msgstr[1] "Uker i år"
 
-#: frontend/src/metabase/lib/query_time.js:249
+#: frontend/src/metabase/lib/query_time.js:250
 msgid "Month of year"
 msgid_plural "Months of year"
 msgstr[0] "Måned i år"
 msgstr[1] "Måneder i år"
 
-#: frontend/src/metabase/lib/query_time.js:251
+#: frontend/src/metabase/lib/query_time.js:252
 msgid "Quarter of year"
 msgid_plural "Quarters of year"
 msgstr[0] "Kvartal i år"
@@ -12069,7 +12070,7 @@ msgstr[1] "Kvartaler i år"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.ts:304
 #: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidgetValue/ParameterFieldWidgetValue.jsx:9
-#: frontend/src/metabase/query_builder/components/Filter.jsx:56
+#: frontend/src/metabase/query_builder/components/Filter.jsx:62
 msgid "{0} selection"
 msgid_plural "{0} selections"
 msgstr[0] "{0} valgt"
@@ -12784,7 +12785,7 @@ msgstr "Epost er påkrevd"
 msgid "Items you archive will appear here."
 msgstr "Ting du arkiverer vil være her"
 
-#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:27
+#: frontend/src/metabase/components/MetadataInfo/DimensionInfo/DimensionInfo.jsx:28
 #: frontend/src/metabase/components/MetadataInfo/TableInfo/TableInfo.tsx:106
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:16
 msgid "No description"
@@ -13140,7 +13141,7 @@ msgstr "Vis maksimum"
 msgid "Get Preview"
 msgstr "Hent Forhåndsvisning"
 
-#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:76
+#: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:85
 msgid "Back to previous results"
 msgstr "Tilbake til forrige resultater"
 
@@ -13846,7 +13847,7 @@ msgstr "Kunne ikke avgjøre forventede kolonner for spørring."
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "Ubehandlet unntak, forventet at `catch-exceptions`-mellomvare skulle behandle den."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:125
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:129
 msgid "Diagnostic Info"
 msgstr "Diagnostisk info"
 
@@ -13986,7 +13987,7 @@ msgstr "Her vil dine resultater vises"
 msgid "You won't make any permanent changes to a saved question unless you click Save and choose to replace the original question."
 msgstr "Du lager ingen permanente endringer til en lagret spørring hvis du ikke klikker Lagre og velger å erstatte originalspørsmålet."
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:218
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:221
 msgid "There aren't any filter widgets for this type of field yet."
 msgstr "Det fins ikke noen filter-widget for denne type felt enda."
 
@@ -14362,15 +14363,15 @@ msgstr "Lag innlegg på Metabase-forumet"
 msgid "A community forum for all things Metabase"
 msgstr "Et fellesskap for alt om Metabase"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:117
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:121
 msgid "File a bug report"
 msgstr "Send inn en feilrapport"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:118
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:122
 msgid "Create a GitHub issue (includes the diagnostic info below)"
 msgstr "Opprett GitHub-issue (inkluderer diagnostikk-informasjonen under)"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:126
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:130
 msgid "Please include these details in support requests. Thank you!"
 msgstr "Vennligst inkluder disse detaljene i brukerstøttehenvendelsen. Takk!"
 
@@ -14992,7 +14993,7 @@ msgstr "må være en gyldig e-postadresse"
 msgid "must be {0} characters or less"
 msgstr "må være mindre enn {0} tegn"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:126
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:128
 msgid "Thanks for using Metabase!"
 msgstr "Takk for at du valgte Metabase!"
 
@@ -15021,7 +15022,7 @@ msgstr "Valgte et lagret spørsmål"
 msgid "Pick a different question"
 msgstr "Velg et annet spørsmål"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:235
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:228
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:68
 msgid "Loading…"
 msgstr "Laster..."
@@ -15051,7 +15052,7 @@ msgstr "Å gi en variabel typen \"Felt Filter\" lar deg koble sammen spørsmål 
 msgid "Variable name"
 msgstr "Variabelnavn"
 
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:236
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:239
 msgid "Filter widget label"
 msgstr "Etikett for filter-widget"
 
@@ -17745,7 +17746,7 @@ msgstr "Du trenger å {0} først."
 msgid "First, you'll have to {0}."
 msgstr "Først må du {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:124
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:133
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Rad {0}-{1} av første {2}"
 
@@ -18341,7 +18342,7 @@ msgstr "Testinnstilling - dette vises bare i utviklermodus (1)"
 msgid "Test setting - this only shows up in dev (2)"
 msgstr "Testinnstilling - dette vises bare i utviklermodus (2)"
 
-#: test/metabase/models/setting_test.clj
+#: test/metabase/api/setting_test.clj test/metabase/models/setting_test.clj
 msgid "Test setting - this only shows up in dev (3)"
 msgstr "Testinnstilling - dette vises bare i utviklermodus (3)"
 
@@ -18641,24 +18642,24 @@ msgstr "Slette databasen {0}?"
 msgid "Restoring the sample dataset..."
 msgstr "Gjenoppretter eksempeldatasettet..."
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:182
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:200
 msgid "No semantic type"
 msgstr "Ingen semantisk type"
 
-#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:211
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:227
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:77
 msgid "Select a semantic type"
 msgstr "Velg semantisk type"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:293
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:300
 msgid "Cast to a specific data type"
 msgstr "Omgjør til en spesifikk datatype"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:296
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:303
 msgid "Select a conversion"
 msgstr "Velg en omdanning"
 
-#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:311
+#: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:318
 msgid "Don't cast"
 msgstr "Ikke omgjør"
 
@@ -18693,11 +18694,11 @@ msgstr "Kolonnen som skal sjekkes."
 msgid "Checks if a column is empty"
 msgstr "Sjekker om en kolonne er tom"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:101
+#: frontend/src/metabase/lib/expressions/resolver.js:104
 msgid "CASE expects 2 arguments or more"
 msgstr "CASE forventer 2 argumenter eller fler"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:149
+#: frontend/src/metabase/lib/expressions/resolver.js:152
 msgid "Function {0} expects {1} argument"
 msgid_plural "Function {0} expects {1} arguments"
 msgstr[0] "Funksjonen {0} forventer {1} argument"
@@ -18794,6 +18795,7 @@ msgid_plural "and {0} others"
 msgstr[0] "og {0} annen"
 msgstr[1] "og {0} andre"
 
+#: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:100
 #: frontend/src/metabase/sharing/components/PulsesListSidebar.jsx:159
 msgid "{0} selections"
 msgstr "{0} valgt"
@@ -19105,15 +19107,15 @@ msgstr "Bare endre dette hvis du vet hva du gjør!"
 msgid "Replace underscores and dashes with spaces"
 msgstr "Erstatt understrek og bindestrek med mellomrom"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:128
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
 msgid "Advanced Details (click to download)"
 msgstr "Avanserte detaljer ("
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:131
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:135
 msgid "Connection Pool Details"
 msgstr "Detaljer for tilkoblingspool"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:132
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:136
 msgid "Information about active and idle connections for all pools"
 msgstr "Informasjon om aktive og inaktive tilkoblinger for alle pools"
 
@@ -19252,7 +19254,7 @@ msgstr "Forventet {0} startparenteser"
 msgid "Expecting an opening parenthesis after function {0}"
 msgstr "Forventet en startparentes etter funksjon {0}"
 
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:513
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:519
 msgid "Explore results"
 msgstr "Utforsk resultater"
 
@@ -20041,7 +20043,7 @@ msgstr "Søk etter en samling"
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:74
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:210
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/group-sidebar.ts:44
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:331
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
 msgid "Search for a group"
 msgstr "Søk etter en gruppe"
 
@@ -20060,7 +20062,7 @@ msgstr "Rediger detaljer for infotavle"
 msgid "More options"
 msgstr "Flere alternativ"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:89
+#: frontend/src/metabase/lib/expressions/resolver.js:92
 msgid "Expecting field but found {0}"
 msgstr "Forventet felt men fant {0}"
 
@@ -20289,20 +20291,20 @@ msgid "Search for a table"
 msgstr "Søk etter en tabell"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:155
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
 msgid "Data access"
 msgstr "Datatilgang"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:156
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:274
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
 msgid "Native query editing"
 msgstr "Lokal spørringseditor"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:322
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:321
 msgid "The Administrators group is special, and always has Unrestricted access."
 msgstr "Administratorgruppen er spesiell og har alltid ubegrenset tilgang."
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:329
 msgid "Permissions for"
 msgstr "Tillatelser for"
 
@@ -20318,11 +20320,11 @@ msgstr "Skjemanavn"
 msgid "Search for a schema"
 msgstr "Søk etter et skjema"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:230
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:229
 msgid "Permissions for the "
 msgstr "Tilltatelser for "
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:237
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:236
 msgid "{0} person"
 msgid_plural "{0} people"
 msgstr[0] "{0} personer"
@@ -20423,19 +20425,19 @@ msgstr "Javascript-ressurs ikke funnet: {0}"
 msgid "Found new version for DB: {0}"
 msgstr "Fant ny versjon for DB: {0}"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:60
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:56
 msgid "Admin settings"
 msgstr "Administratorinnstillinger"
 
-#: frontend/src/metabase/nav/components/ProfileLink.jsx:154
+#: frontend/src/metabase/nav/components/ProfileLink.jsx:156
 msgid "and is built with care by a team from all across this pale blue dot."
 msgstr "og er bygget med omhu av et team fra hele denne lyseblå prikken."
 
-#: frontend/src/metabase/query_builder/actions.js:1666
+#: frontend/src/metabase/query_builder/actions.js:1675
 msgid "This is a model now."
 msgstr "Dette er en modell nå."
 
-#: frontend/src/metabase/query_builder/actions.js:1679
+#: frontend/src/metabase/query_builder/actions.js:1688
 msgid "This is a question now."
 msgstr "Dette er et spørsmål nå."
 
@@ -20598,13 +20600,13 @@ msgstr "Tillatelse"
 msgid "New…"
 msgstr "Ny…"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:85
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:83
 msgid "{0} distinct value"
 msgid_plural "{0} distinct values"
 msgstr[0] "{0} distinkt verdi"
 msgstr[1] "{0} forskjellige verdier"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:94
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/CategoryFingerprint.jsx:92
 msgid "Getting distinct values..."
 msgstr "Får distinkte verdier..."
 
@@ -20679,15 +20681,15 @@ msgstr "Ukjent segment: {0}"
 msgid "Unknown Field: {0}"
 msgstr "Ukjent felt: {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:130
+#: frontend/src/metabase/lib/expressions/resolver.js:133
 msgid "Unknown function {0}"
 msgstr "Ukjent funksjon {0}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:135
+#: frontend/src/metabase/lib/expressions/resolver.js:138
 msgid "Expecting {0} but found function {1} returning {2}"
 msgstr "Forventer {0}, men fant funksjonen {1} som returnerer {2}"
 
-#: frontend/src/metabase/lib/expressions/resolver.js:173
+#: frontend/src/metabase/lib/expressions/resolver.js:176
 msgid "Expecting {0} but found {1}"
 msgstr "Forventer {0}, men fant {1}"
 
@@ -20919,15 +20921,15 @@ msgstr "Gjenoppretter eksempeldatabasen..."
 msgid "Bring the sample database back"
 msgstr "Ta med prøvedatabasen tilbake"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:51
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:58
 msgid "Timezone"
 msgstr "Tidssone"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:55
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:62
 msgid "Earliest date"
 msgstr "Tidligste dato"
 
-#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:59
+#: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:66
 msgid "Latest date"
 msgstr "Siste dato"
 
@@ -20971,11 +20973,11 @@ msgstr "Kolonnetype"
 msgid "This column should appear in…"
 msgstr "Denne kolonnen skal vises i..."
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:29
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:31
 msgid "Run selection"
 msgstr "Kjør utvalg"
 
-#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:33
+#: frontend/src/metabase/query_builder/components/NativeQueryEditor/RightClickPopover/RightClickPopover.jsx:36
 msgid "Save as snippet"
 msgstr "Lagre som kodebit"
 
@@ -20992,7 +20994,7 @@ msgid "Edit model"
 msgstr "Rediger modell"
 
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:161
-#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:193
+#: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:196
 msgid "(required)"
 msgstr "(obligatorisk)"
 
@@ -22249,15 +22251,15 @@ msgstr "Se dokumentene våre for trinnvise instruksjoner om hvordan du kobler ti
 msgid "You've updated your password."
 msgstr "Du har oppdatert passordet ditt."
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:32
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
 msgid "A question"
 msgstr "Et spørsmål"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:33
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:35
 msgid "A dashboard"
 msgstr "Et dashbord"
 
-#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:34
+#: frontend/src/metabase/collections/components/PinnedItemCard/PinnedItemCard.tsx:36
 msgid "A model"
 msgstr "En modell"
 
@@ -22265,15 +22267,15 @@ msgstr "En modell"
 msgid "Save your questions, dashboards, and models in collections — and pin them to feature them at the top."
 msgstr "Lagre spørsmålene, dashbordene og modellene dine i samlinger – og fest dem for å vise dem øverst."
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:117
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:129
 msgid "Useful data"
 msgstr "Nyttige data"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:120
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:132
 msgid "Start new explorations here"
 msgstr "Start nye utforskninger her"
 
-#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:121
+#: frontend/src/metabase/collections/components/PinnedItemOverview/PinnedItemOverview.tsx:133
 msgid "Start new explorations about {0} here"
 msgstr "Start nye utforskninger om {0} her"
 
@@ -22358,16 +22360,16 @@ msgstr "Behandle database"
 msgid "Unbinned"
 msgstr "Ubinget"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1547
+#: frontend/src/metabase-lib/lib/Dimension.ts:1566
 msgid "Invalid template tag \"{0}\""
 msgstr "Ugyldig tag for mal \"{0}\""
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1552
+#: frontend/src/metabase-lib/lib/Dimension.ts:1571
 msgid "The variable \"{0}\" needs to be mapped to a field."
 msgstr "Variabelen \"{0}\" må kobles til et felt."
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1677
-#: frontend/src/metabase-lib/lib/Dimension.ts:1813
+#: frontend/src/metabase-lib/lib/Dimension.ts:1696
+#: frontend/src/metabase-lib/lib/Dimension.ts:1832
 msgid "Don't bin"
 msgstr "Ikke bing"
 
@@ -22610,14 +22612,14 @@ msgstr "Fjern bokmerke"
 msgid "Bookmarks"
 msgstr "Bokmerke"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:120
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:121
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
 msgid "Past"
 msgstr "Tidligere"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:213
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:133
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:156
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:214
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:131
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:86
 msgid "Exclude..."
 msgstr "Ekskluder..."
 
@@ -22788,32 +22790,32 @@ msgstr "Spesifikke datoer..."
 msgid "Relative dates..."
 msgstr "Relative datoer..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:56
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:57
 msgid "Days of the week..."
 msgstr "Dager i uken..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:80
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:64
 msgid "Months of the year..."
 msgstr "Måneder i året..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:104
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:71
 msgid "Quarters of the year..."
 msgstr "Kvartaler i året..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:129
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:78
 msgid "Hours of the day..."
 msgstr "Timer på dagen..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:471
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:215
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:145
 msgid "Is not empty"
 msgstr "Er ikke tom"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select none..."
 msgstr "Velg ingen..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:228
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
 msgid "Select all..."
 msgstr "Velg alle..."
 
@@ -22828,11 +22830,11 @@ msgstr "Akkurat nå, er dette {0}"
 msgid "Right now, this is {0} - {1}"
 msgstr "Akkurat nå, er dette {0} - {1}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:190
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:187
 msgid "Starting from..."
 msgstr "Starter fra..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:252
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:248
 msgid "Starting from"
 msgstr "Startet fra"
 
@@ -22844,15 +22846,15 @@ msgstr "0/{0} lastet"
 msgid "Your dashboard is ready"
 msgstr "Din infotavle er klar"
 
-#: frontend/src/metabase/query_builder/actions.js:1372
+#: frontend/src/metabase/query_builder/actions.js:1379
 msgid "Doing Science..."
 msgstr "Utfører vitenskap..."
 
-#: frontend/src/metabase/query_builder/actions.js:1374
+#: frontend/src/metabase/query_builder/actions.js:1381
 msgid "Still Here..."
 msgstr "Fremdeles her..."
 
-#: frontend/src/metabase/query_builder/actions.js:1431
+#: frontend/src/metabase/query_builder/actions.js:1438
 msgid "Your question is ready!"
 msgstr "Spørsmålet ditt er klart!"
 
@@ -22860,11 +22862,11 @@ msgstr "Spørsmålet ditt er klart!"
 msgid "You can customize filter values for each subscription with paid plans."
 msgstr "Du kan tilpasse filterverdier for hvert abonnement med betalte planer."
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:108
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:112
 msgid "Get Help"
 msgstr "Få hjelp"
 
-#: frontend/src/metabase/admin/tasks/containers/Help.jsx:109
+#: frontend/src/metabase/admin/tasks/containers/Help.jsx:113
 msgid "Resources and support"
 msgstr "Ressurser og støtte"
 
@@ -22938,47 +22940,47 @@ msgstr "Tidslinje"
 msgid "Excludes"
 msgstr "Ekskluderer"
 
-#: frontend/src/metabase/lib/query_time.js:130
+#: frontend/src/metabase/lib/query_time.js:131
 msgid "{0}, starting {1} {2}"
 msgstr "{0}, starter {1} {2}"
 
-#: frontend/src/metabase/lib/query_time.js:362
+#: frontend/src/metabase/lib/query_time.js:363
 msgid "minute {0}"
 msgid_plural "minutes {0}"
 msgstr[0] "minutt {0}"
 msgstr[1] "minutt {0}"
 
-#: frontend/src/metabase/lib/query_time.js:364
+#: frontend/src/metabase/lib/query_time.js:365
 msgid "hour {0}"
 msgid_plural "hours {0}"
 msgstr[0] "time {0}"
 msgstr[1] "timer {0}"
 
-#: frontend/src/metabase/lib/query_time.js:366
+#: frontend/src/metabase/lib/query_time.js:367
 msgid "day {0}"
 msgid_plural "days {0}"
 msgstr[0] "dag {0}"
 msgstr[1] "dager {0}"
 
-#: frontend/src/metabase/lib/query_time.js:368
+#: frontend/src/metabase/lib/query_time.js:369
 msgid "week {0}"
 msgid_plural "weeks {0}"
 msgstr[0] "uke {0}"
 msgstr[1] "uker {0}"
 
-#: frontend/src/metabase/lib/query_time.js:370
+#: frontend/src/metabase/lib/query_time.js:371
 msgid "month {0}"
 msgid_plural "months {0}"
 msgstr[0] "måned {0}"
 msgstr[1] "måneder {0}"
 
-#: frontend/src/metabase/lib/query_time.js:372
+#: frontend/src/metabase/lib/query_time.js:373
 msgid "quarter {0}"
 msgid_plural "quarters {0}"
 msgstr[0] "kvartal {0}"
 msgstr[1] "kvartal {0}"
 
-#: frontend/src/metabase/lib/query_time.js:374
+#: frontend/src/metabase/lib/query_time.js:375
 msgid "year {0}"
 msgid_plural "years {0}"
 msgstr[0] "år {0}"
@@ -23016,11 +23018,11 @@ msgstr "{0} er lastet."
 msgid "Would you like to be notified when this question is done loading?"
 msgstr "Vil du bli varslet når spørsmålet er ferdig lastet?"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:281
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:275
 msgid "Switch to data"
 msgstr "Bytt til data"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:286
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:280
 msgid "Switch to visualization"
 msgstr "Bytt til visualisering"
 
@@ -23189,4 +23191,32 @@ msgstr "Du vil ikke lenger kunne administrere brukere av denne gruppen."
 #: enterprise/backend/src/metabase_enterprise/advanced_permissions/models/permissions/group_manager.clj
 msgid "Not allowed to edit group memberships"
 msgstr "Ikke tillatt å redigere gruppemedlemskap"
+
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:215
+msgid "Exclude"
+msgstr "Utelukke"
+
+#: frontend/src/metabase/account/login-history/components/LoginHistory/LoginHistory.jsx:68
+msgid "No logins"
+msgstr "Ingen pålogginger"
+
+#: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:335
+msgid "You need unrestricted data access on this table to map custom display values."
+msgstr "Du trenger ubegrenset datatilgang på denne tabellen for å kartlegge egendefinerte visningsverdier."
+
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1062
+msgid "View Details"
+msgstr "Vis detaljer"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:122
+msgid "Field access denied"
+msgstr "Felttilgang nektet"
+
+#: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
+msgid "No key available"
+msgstr "Ingen nøkkel tilgjengelig"
+
+#: src/metabase/cmd/rotate_encryption_key.clj
+msgid "Connected to"
+msgstr "Koblet til"
 
