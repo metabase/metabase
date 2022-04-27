@@ -1,3 +1,5 @@
+import uiThrottle from "raf-schd";
+
 type ResizeObserverCallback = (
   entry: ResizeObserverEntry,
   observer: ResizeObserver,
@@ -6,12 +8,14 @@ type ResizeObserverCallback = (
 function createResizeObserver() {
   const callbacksMap: Map<unknown, ResizeObserverCallback[]> = new Map();
 
-  const observer = new ResizeObserver((entries, observer) => {
-    for (let i = 0; i < entries.length; i++) {
-      const entryCallbacks = callbacksMap.get(entries[i].target);
-      entryCallbacks?.forEach(callback => callback(entries[i], observer));
-    }
-  });
+  const observer = new ResizeObserver(
+    uiThrottle((entries, observer) => {
+      for (let i = 0; i < entries.length; i++) {
+        const entryCallbacks = callbacksMap.get(entries[i].target);
+        entryCallbacks?.forEach(callback => callback(entries[i], observer));
+      }
+    }),
+  );
 
   return {
     observer,
