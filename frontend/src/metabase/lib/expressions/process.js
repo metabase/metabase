@@ -27,8 +27,10 @@ export function processSource(options) {
       }
       return Array.isArray(segment.id) ? segment.id : ["segment", segment.id];
     } else {
+      const reference = options.name; // avoid circular reference
+
       // fallback
-      const dimension = parseDimension(name, options);
+      const dimension = parseDimension(name, { reference, ...options });
       if (!dimension) {
         throw new Error(t`Unknown Field: ${name}`);
       }
