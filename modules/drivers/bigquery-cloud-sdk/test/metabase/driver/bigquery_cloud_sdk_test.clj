@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -335,8 +336,24 @@
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
-          "`describe-table` should detect the correct base-type for array type columns")))))
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+               "`describe-table` should detect the correct base-type for array type columns")))))
+
+(deftest sync-inactivates-old-duplicate-tables
+  (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/dataset avian-singles
+        (try
+          (let [synced-tables (db/select Table :db_id (mt/id))]
+            (is (= 2 (count synced-tables)))
+            (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
+            (sync/sync-database! (mt/db) {:scan :schema})
+            (let [synced-tables (db/select Table :db_id (mt/id))]
+              (is (partial= {true [{:name "messages"} {:name "users"}]
+                             false [{:name "messages"} {:name "users"}]}
+                            (->> (group-by :active synced-tables)
+                                 (m/map-vals #(sort-by :name %)))))))
+          (finally (db/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk
