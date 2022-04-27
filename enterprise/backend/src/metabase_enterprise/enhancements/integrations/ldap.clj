@@ -74,18 +74,16 @@
 (defenterprise-schema fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   :feature :any
-  [user-info :- i/UserInfo
-   settings  :- i/LDAPSettings]
-  (let [{:keys [first-name last-name email groups attributes]} user-info
-        sync-groups? (:sync-groups? settings)
-        user (or (attribute-synced-user user-info)
+  [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
+   {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
+  (let [user (or (attribute-synced-user user-info)
                  (-> (user/create-new-ldap-auth-user! {:first_name       (or first-name (trs "Unknown"))
                                                        :last_name        (or last-name (trs "Unknown"))
                                                        :email            email
                                                        :login_attributes attributes})
                      (assoc :is_active true)))]
     (u/prog1 user
-      (when (:sync-groups? settings)
+      (when sync-groups?
         (let [group-ids            (default-impl/ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (default-impl/all-mapped-group-ids settings)]
           (integrations.common/sync-group-memberships! user

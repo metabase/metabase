@@ -126,11 +126,9 @@
 (defenterprise-schema fetch-or-create-user! :- (class User)
   "Using the `user-info` (from `find-user`) get the corresponding Metabase user, creating it if necessary."
   metabase-enterprise.enhancements.integrations.ldap
-  [user-info :- i/UserInfo
-   settings  :- i/LDAPSettings]
-  (let [{:keys [first-name last-name email groups]} user-info
-        sync-groups? (:sync-groups? settings)
-        user (db/select-one [User :id :last_login :first_name :last_name :is_active]
+  [{:keys [first-name last-name email groups]} :- i/UserInfo
+   {:keys [sync-groups?], :as settings}        :- i/LDAPSettings]
+  (let [user (db/select-one [User :id :last_login :first_name :last_name :is_active]
                             :%lower.email (u/lower-case-en email))
         new-user (if user
                    (let [old-first-name (:first_name user)
@@ -150,7 +148,7 @@
                                                          :email      email})
                        (assoc :is_active true)))]
     (u/prog1 new-user
-      (when (:sync-groups? settings)
+      (when sync-groups?
         (let [group-ids            (ldap-groups->mb-group-ids groups settings)
               all-mapped-group-ids (all-mapped-group-ids settings)]
           (integrations.common/sync-group-memberships! new-user group-ids all-mapped-group-ids))))))
