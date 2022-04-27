@@ -156,8 +156,7 @@ export function ObjectDetailFn({
 
   useEffect(() => {
     // if the card changed or table metadata loaded then reload fk references
-    const tableFKsJustLoaded = !prevTableForeignKeys && tableForeignKeys;
-    if (data !== prevData || tableFKsJustLoaded) {
+    if (tableForeignKeys && (data !== prevData || !prevTableForeignKeys)) {
       loadObjectDetailFKReferences();
     }
   }, [
