@@ -5,7 +5,8 @@
   then postwalk to actually perform the conversion."
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [metabase.util :as u]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
@@ -29,7 +30,7 @@
 ;; and calling (name s) returning a substring after "/".
 (defmethod convert :kw->full-str
   [[_ s]]
-  (.substring (str s) 1))
+  (u/qualified-name s))
 
 (defmethod convert :nil->none
   [[_ _]]

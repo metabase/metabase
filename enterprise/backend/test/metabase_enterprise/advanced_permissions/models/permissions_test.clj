@@ -226,3 +226,27 @@
                clojure.lang.ExceptionInfo
                #"The details permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Graph                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-graph-should-unescape-slashes-test
+  (testing "If a schema name contains slash, getting graph should unescape it"
+    (doseq [[perm-type perm-value] [[:data-model :all] [:download :full]]]
+      (testing (pr-str perm-type)
+        (testing "slash"
+          (mt/with-temp PermissionsGroup [group]
+            (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema/with_slash" )
+            (is (= "schema/with_slash"
+                   (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
+                       keys
+                       first)))))
+
+        (testing "backslash"
+          (mt/with-temp PermissionsGroup [group]
+            (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema\\with_backslash")
+            (is (= "schema\\with_backslash"
+                   (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
+                       keys
+                       first)))))))))
