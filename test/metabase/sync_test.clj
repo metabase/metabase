@@ -11,7 +11,7 @@
             [metabase.models.table :refer [Table]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.u]
+            [metabase.test.mock.util :as mock.util]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -81,7 +81,7 @@
 
 (defmethod driver/execute-reducible-query ::sync-test
   [_ query _ respond]
-  (mock.u/mock-execute-reducible-query query respond))
+  (mock.util/mock-execute-reducible-query query respond))
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)

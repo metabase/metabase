@@ -23,7 +23,8 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
   align-items: center;
   position: relative;
 
-  background-color: ${color("bg-light")};
+  background-color: ${props =>
+    props.isActive ? color("bg-medium") : color("bg-light")};
   border: 1px solid ${color("border")};
 
   overflow: hidden;
@@ -49,7 +50,7 @@ export const SearchInputContainer = styled.div<{ isActive: boolean }>`
     ${props =>
       props.isActive &&
       css`
-        width: 95%;
+        width: 100%;
         ${activeInputCSS};
       `}
   }
@@ -66,6 +67,8 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   color: ${color("text-dark")};
   font-weight: 700;
 
+  width: 100%;
+
   &:focus {
     outline: none;
   }
@@ -75,11 +78,12 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   }
 
   ${breakpointMinSmall} {
-    padding: 10px 12px;
+    padding: 9px 12px;
   }
 
   ${breakpointMaxSmall} {
     width: 0;
+    padding: 0;
 
     ${props =>
       props.isActive &&
@@ -95,9 +99,14 @@ const ICON_MARGIN = "10px";
 
 export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
   ${breakpointMaxSmall} {
-    margin-left: ${props => (props.isActive ? ICON_MARGIN : "3px")};
-    margin-right: ${props => (props.isActive ? ICON_MARGIN : 0)};
     transition: margin 0.3s;
+
+    ${props =>
+      props.isActive &&
+      css`
+        margin-left: ${ICON_MARGIN};
+        margin-right: ${ICON_MARGIN};
+      `}
   }
 
   ${breakpointMinSmall} {
@@ -105,7 +114,7 @@ export const SearchIcon = styled(Icon)<{ isActive: boolean }>`
   }
 `;
 
-export const ClearIconButton = styled.button`
+export const CloseSearchButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -116,6 +125,10 @@ export const ClearIconButton = styled.button`
   color: ${color("text-light")};
 
   cursor: pointer;
+
+  &:hover {
+    color: ${color("text-medium")};
+  }
 `;
 
 export const SearchResultsFloatingContainer = styled.div`
@@ -130,7 +143,7 @@ export const SearchResultsFloatingContainer = styled.div`
   }
 
   ${breakpointMinSmall} {
-    top: 60px;
+    top: 42px;
   }
 `;
 

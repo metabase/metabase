@@ -19,7 +19,6 @@ import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 
 import { isEventOverElement } from "metabase/lib/dom";
-import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
@@ -202,21 +201,7 @@ export default class NativeQueryEditor extends Component {
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
-      runQuestionQuery()
-        // <hack>
-        // This is an attempt to fix a conflict between Ace and react-draggable.
-        // TableInteractive uses react-draggable for the column headers. When
-        // that's first added (as a result of runninga query), Ace freezes until
-        // the arrow keys are hit or text is deleted.
-        // Bluring and refocusing gets it out of that state. Here we try and
-        // wait until just after a table is added. That's super error prone, but
-        // we're just doing a best effort to eliminate the freezing.
-        .then(() => delay(1500))
-        .then(() => {
-          this._editor.blur();
-          this._editor.focus();
-        });
-      // </hack>
+      runQuestionQuery();
     }
   };
 
@@ -416,6 +401,7 @@ export default class NativeQueryEditor extends Component {
       hasTopBar = true,
       hasEditingSidebar = true,
       resizableBoxProps = {},
+      snippetCollections = [],
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -424,6 +410,10 @@ export default class NativeQueryEditor extends Component {
       <div className="NativeQueryEditorDragHandleWrapper">
         <div className="NativeQueryEditorDragHandle" />
       </div>
+    );
+
+    const canSaveSnippets = snippetCollections.some(
+      collection => collection.can_write,
     );
 
     return (
@@ -483,6 +473,7 @@ export default class NativeQueryEditor extends Component {
             openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
             runQuery={this.runQuery}
             target={() => this.editor.current.querySelector(".ace_selection")}
+            canSaveSnippets={canSaveSnippets}
           />
 
           {this.props.modalSnippet && (

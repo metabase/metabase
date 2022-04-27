@@ -13,7 +13,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
             [metabase.models.task-history :refer [TaskHistory]]
-            [metabase.query-processor.interface :as qpi]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
@@ -122,7 +122,7 @@
   {:style/indent 0}
   [f]
   (fn []
-    (binding [qpi/*disable-qp-logging* true
+    (binding [qp.i/*disable-qp-logging* true
               db/*disable-db-logging*  true]
       (f))))
 

@@ -4,16 +4,16 @@
   (:require [clojure.java.io :as io]
             [clojure.java.shell :as sh]
             [clojure.string :as str]
-            [hiccup.core :as h]
+            [hiccup.core :as hiccup]
             [metabase.models.card :as card]
             [metabase.models.user :as user]
             [metabase.pulse :as pulse]
-            [metabase.pulse.render :as pulse-render]
+            [metabase.pulse.render :as render]
             [metabase.pulse.render.js-svg :as js-svg]
             [metabase.pulse.render.png :as png]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
-            [toucan.db :as tdb])
+            [toucan.db :as db])
   (:import org.fit.cssbox.misc.Base64Coder))
 
 ;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
@@ -48,8 +48,8 @@
   "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
   match what's rendered on another system, like a docker container."
   [card-id]
-  (let [{:keys [dataset_query] :as card} (tdb/select-one card/Card :id card-id)
-        user                             (tdb/select-one user/User)
+  (let [{:keys [dataset_query] :as card} (db/select-one card/Card :id card-id)
+        user                             (db/select-one user/User)
         query-results                    (binding [qp.perms/*card-id* nil]
                                            (qp/process-query-and-save-execution!
                                             (-> dataset_query
@@ -58,7 +58,7 @@
                                             {:executed-by (:id user)
                                              :context     :pulse
                                              :card-id     card-id}))
-        png-bytes                        (pulse-render/render-pulse-card-to-png (pulse/defaulted-timezone card)
+        png-bytes                        (render/render-pulse-card-to-png (pulse/defaulted-timezone card)
                                                                                 card
                                                                                 query-results
                                                                                 1000)
@@ -105,14 +105,14 @@
   the [:img {:src chart-placeholder}] and the resulting html will be opened."
   [{:keys [chart html-file html-inline]}]
   (let [chart-image (render-img-data-uri (svg-image chart))
-        chart-html (h/html [:img {:src chart-image :style "display: block; width: 100%"}])
+        chart-html (hiccup/html [:img {:src chart-image :style "display: block; width: 100%"}])
         html (cond html-file
                    (slurp html-file)
                    html-inline
                    (str "<html><body style=\"margin: 0; padding: 0; background-color: white;\">"
                         html-inline
                         "</body></html>"))
-        html (h/html (str/replace html #"\{\{chart\}\}" chart-html))]
+        html (hiccup/html (str/replace html #"\{\{chart\}\}" chart-html))]
     (with-open [os (java.io.ByteArrayOutputStream.)]
       (let [image-bytes (do (-> (#'png/render-to-png html 1000)
                                 (#'png/write-image! "png" os))

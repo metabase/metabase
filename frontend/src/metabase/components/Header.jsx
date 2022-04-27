@@ -38,6 +38,7 @@ const propTypes = {
   setItemAttributeFn: PropTypes.func,
   onHeaderModalDone: PropTypes.func,
   onHeaderModalCancel: PropTypes.func,
+  onLastEditInfoClick: PropTypes.func,
 };
 
 const defaultProps = {
@@ -116,7 +117,7 @@ class Header extends Component {
   }
 
   render() {
-    const { item, hasBadge } = this.props;
+    const { item, hasBadge, onLastEditInfoClick } = this.props;
     const hasLastEditInfo = !!item["last-edit-info"];
 
     let titleAndDescription;
@@ -185,7 +186,12 @@ class Header extends Component {
               {hasBadge && hasLastEditInfo && (
                 <HeaderBadgesDivider>•</HeaderBadgesDivider>
               )}
-              {hasLastEditInfo && <StyledLastEditInfoLabel item={item} />}
+              {hasLastEditInfo && (
+                <StyledLastEditInfoLabel
+                  item={item}
+                  onClick={onLastEditInfoClick}
+                />
+              )}
             </HeaderBadges>
           </HeaderContent>
 

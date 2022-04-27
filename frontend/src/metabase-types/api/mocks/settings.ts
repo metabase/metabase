@@ -34,6 +34,7 @@ export const createMockVersion = (opts?: Partial<Version>): Version => ({
 });
 
 export const createMockSettings = (opts?: Partial<Settings>): Settings => ({
+  "available-locales": [],
   "enable-public-sharing": false,
   "enable-xrays": false,
   engines: createMockEngines(),

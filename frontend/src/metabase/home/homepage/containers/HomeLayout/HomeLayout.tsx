@@ -4,7 +4,7 @@ import { State } from "metabase-types/store";
 import HomeLayout from "../../components/HomeLayout";
 
 const mapStateToProps = (state: State) => ({
-  showScene: PLUGIN_SELECTORS.getShowBrandScene(state),
+  showScene: !PLUGIN_SELECTORS.getHasCustomBranding(state),
 });
 
 export default connect(mapStateToProps)(HomeLayout);

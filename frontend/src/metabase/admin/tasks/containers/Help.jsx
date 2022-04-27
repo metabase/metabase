@@ -99,6 +99,10 @@ export default class Help extends Component {
   render() {
     const { details } = this.state;
     const detailString = JSON.stringify(details, null, 2);
+    const { tag } = MetabaseSettings.get("version");
+    const compactDetailStringForUrl = encodeURIComponent(
+      JSON.stringify(details),
+    );
     return (
       <HelpRoot>
         <AdminHeader title={t`Help`} className="mb2" />
@@ -109,8 +113,8 @@ export default class Help extends Component {
               description={t`Resources and support`}
               link={
                 MetabaseSettings.isPaidPlan()
-                  ? "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help"
-                  : "https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help"
+                  ? `https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}&diag=${compactDetailStringForUrl}`
+                  : `https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=${tag}`
               }
             />
             <HelpLink

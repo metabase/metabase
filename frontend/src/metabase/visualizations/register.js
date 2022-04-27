@@ -19,7 +19,7 @@ import MapViz from "./visualizations/Map";
 import ScatterPlot from "./visualizations/ScatterPlot";
 import Funnel from "./visualizations/Funnel";
 import Gauge from "./visualizations/Gauge";
-import ObjectDetail from "./visualizations/ObjectDetail";
+import ObjectDetail from "./components/ObjectDetail";
 import PivotTable from "./visualizations/PivotTable";
 
 export default function() {

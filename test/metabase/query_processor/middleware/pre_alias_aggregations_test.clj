@@ -4,12 +4,12 @@
   applied in the correct places."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-aggregations]
+            [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
             [metabase.test :as mt]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
-    (pre-alias-aggregations/pre-alias-aggregations query)))
+    (qp.pre-alias-aggregations/pre-alias-aggregations query)))
 
 (deftest pre-alias-aggregations-test
   (is (= (mt/mbql-query checkins

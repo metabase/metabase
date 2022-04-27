@@ -9,7 +9,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.driver.impl :as impl]
+            [metabase.driver.impl :as driver.impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -88,13 +88,13 @@
 ;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p/import-vars [impl hierarchy register! initialized?])
+(p/import-vars [driver.impl hierarchy register! initialized?])
 
 (add-watch
  #'hierarchy
  nil
  (fn [_ _ _ _]
-   (when (not= hierarchy impl/hierarchy)
+   (when (not= hierarchy driver.impl/hierarchy)
      ;; this is a dev-facing error so no need to i18n it.
      (throw (Exception. (str "Don't alter #'metabase.driver/hierarchy directly, since it is imported from "
                              "metabase.driver.impl. Alter #'metabase.driver.impl/hierarchy instead if you need to "
@@ -107,7 +107,7 @@
   Note that an available driver is not necessarily initialized yet; for example lazy-loaded drivers are *registered*
   when Metabase starts up (meaning this will return `true` for them) and only initialized when first needed."
   [driver]
-  ((every-pred impl/registered? impl/concrete?) driver))
+  ((every-pred driver.impl/registered? driver.impl/concrete?) driver))
 
 (defn the-driver
   "Like [[clojure.core/the-ns]]. Converts argument to a keyword, then loads and registers the driver if not already done,
@@ -132,16 +132,16 @@
   {:pre [((some-fn keyword? string?) driver)]}
   (classloader/the-classloader)
   (let [driver (keyword driver)]
-    (impl/load-driver-namespace-if-needed! driver)
+    (driver.impl/load-driver-namespace-if-needed! driver)
     driver))
 
 (defn add-parent!
   "Add a new parent to `driver`."
   [driver new-parent]
   (when-not *compile-files*
-    (impl/load-driver-namespace-if-needed! driver)
-    (impl/load-driver-namespace-if-needed! new-parent)
-    (alter-var-root #'impl/hierarchy derive driver new-parent)))
+    (driver.impl/load-driver-namespace-if-needed! driver)
+    (driver.impl/load-driver-namespace-if-needed! new-parent)
+    (alter-var-root #'driver.impl/hierarchy derive driver new-parent)))
 
 (defn- dispatch-on-uninitialized-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's
@@ -158,7 +158,7 @@
   "Like [[the-driver]], but also initializes the driver if not already initialized."
   [driver]
   (let [driver (the-driver driver)]
-    (impl/initialize-if-needed! driver initialize!)
+    (driver.impl/initialize-if-needed! driver initialize!)
     driver))
 
 (defn dispatch-on-initialized-driver
@@ -247,7 +247,8 @@
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
   can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
-  connection cannot be made."
+  connection cannot be made. Throw an `ex-info` containing a truthy `::can-connect-message?` in `ex-data`
+  in order to suppress logging expected driver validation messages during setup."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -501,7 +502,7 @@
 
 (defmethod escape-alias ::driver
   [_driver alias-name]
-  (impl/truncate-alias alias-name))
+  (driver.impl/truncate-alias alias-name))
 
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.

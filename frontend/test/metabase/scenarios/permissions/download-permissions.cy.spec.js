@@ -5,8 +5,8 @@ import {
   assertPermissionForItem,
   modifyPermission,
   downloadAndAssert,
+  assertSheetRowsCount,
 } from "__support__/e2e/cypress";
-const xlsx = require("xlsx");
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
@@ -138,14 +138,7 @@ describeEE("scenarios > admin > permissions", () => {
 
     downloadAndAssert(
       { fileType: "xlsx", questionId },
-      getRowsCountAssertion(10000),
+      assertSheetRowsCount(10000),
     );
   });
 });
-
-function getRowsCountAssertion(expectedCount) {
-  return sheet => {
-    const range = xlsx.utils.decode_range(sheet["!ref"]);
-    expect(range.e.r).to.eq(expectedCount);
-  };
-}

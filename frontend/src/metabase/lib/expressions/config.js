@@ -398,6 +398,8 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "starts-with",
   "between",
   "time-interval",
+  "relative-datetime",
+  "interval",
   "is-null",
   "is-empty",
   // other

@@ -16,7 +16,7 @@
             [metabase.cmd.copy :as copy]
             [metabase.cmd.copy.h2 :as copy.h2]
             [metabase.cmd.rotate-encryption-key :as rotate-encryption]
-            [metabase.db.connection :as mdb.conn]))
+            [metabase.db.connection :as mdb.connection]))
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
@@ -35,7 +35,7 @@
      (log/infof "Dumping from configured Metabase db to H2 file %s" h2-filename)
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
-     (copy/copy! (mdb.conn/db-type) (mdb.conn/data-source) :h2 h2-data-source)
+     (copy/copy! (mdb.connection/db-type) (mdb.connection/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (binding [mdb.conn/*application-db* (mdb.conn/application-db :h2 h2-data-source)]
+       (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 h2-data-source)]
          (rotate-encryption/rotate-encryption-key! nil))))))

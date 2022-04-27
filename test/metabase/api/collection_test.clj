@@ -3,7 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
-            [metabase.api.collection :as api-coll]
+            [metabase.api.collection :as api.collection]
             [metabase.models :refer [Card Collection Dashboard DashboardCard ModerationReview NativeQuerySnippet
                                      PermissionsGroup PermissionsGroupMembership Pulse PulseCard PulseChannel
                                      PulseChannelRecipient Revision Timeline TimelineEvent User]]
@@ -12,7 +12,7 @@
             [metabase.models.collection.graph :as graph]
             [metabase.models.collection.graph-test :as graph.test]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -32,7 +32,7 @@
          (every? symbol? collection-bindings)]}
   `(collection-test/with-collection-hierarchy [{:keys ~collection-bindings}]
      ~@(for [collection-symb collection-bindings]
-         `(perms/grant-collection-read-permissions! (group/all-users) ~collection-symb))
+         `(perms/grant-collection-read-permissions! (perms-group/all-users) ~collection-symb))
      ~@body))
 
 (defn- do-with-french-user-and-personal-collection [f]
@@ -100,7 +100,7 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                         Collection [collection-2 {:name "Collection 2"}]]
-          (perms/grant-collection-read-permissions! (group/all-users) collection-1)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection-1)
           (is (= ["Our analytics"
                   "Collection 1"
                   "Rasta Toucan's Personal Collection"]
@@ -142,7 +142,7 @@
             (is (= ["Normal Collection"]
                    (collection-names (mt/user-http-request :rasta :get 200 "collection")))))
 
-          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= ["Coin Collection"]
@@ -245,8 +245,8 @@
       (mt/with-non-admin-groups-no-root-collection-perms
         (mt/with-temp* [Collection [parent-collection {:name "Parent"}]
                         Collection [child-collection  {:name "Child", :location (format "/%d/" (:id parent-collection))}]]
-          (perms/revoke-collection-permissions! (group/all-users) parent-collection)
-          (perms/grant-collection-readwrite-permissions! (group/all-users) child-collection)
+          (perms/revoke-collection-permissions! (perms-group/all-users) parent-collection)
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) child-collection)
           (is (= [{:name "Child", :children []}]
                  (collection-tree-names-only (map :id [parent-collection child-collection])
                                              (mt/user-http-request :rasta :get 200 "collection/tree")))))))
@@ -259,7 +259,7 @@
             (is (= [{:name "Normal Collection", :children []}]
                    (collection-tree-names-only ids (mt/user-http-request :rasta :get 200 "collection/tree")))))
 
-          (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
           (testing "By passing `:namespace` we should be able to see Collections of that `:namespace`"
             (testing "?namespace=currency"
               (is (= [{:name "Coin Collection", :children []}]
@@ -287,7 +287,7 @@
       ;;     +-> F* -> G*
       (collection-test/with-collection-hierarchy [{:keys [a b e f g], :as collections}]
         (doseq [collection [a b e f g]]
-          (perms/grant-collection-read-permissions! (group/all-users) collection))
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection))
         (is (= [{:name     "A"
                  :children [{:name "B", :children []}
                             {:name "E", :children []}
@@ -310,7 +310,7 @@
   (testing "GET /api/collection/:id"
     (testing "check that we can see collection details"
       (mt/with-temp Collection [collection {:name "Coin Collection"}]
-        (perms/grant-collection-read-permissions! (group/all-users) collection)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (is (= "Coin Collection"
                (:name (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection))))))))
 
@@ -457,7 +457,7 @@
 
     (testing "check that you get to see the children as appropriate"
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
-        (perms/grant-collection-read-permissions! (group/all-users) collection)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
           (is (= (map default-item [{:name "Acme Products", :model "pulse"}
                                     {:name "Birthday Card", :description nil, :model "card", :display "table"}
@@ -468,7 +468,7 @@
 
       (testing "...and that you can also filter so that you only see the children you want to see"
         (mt/with-temp Collection [collection {:name "Art Collection"}]
-          (perms/grant-collection-read-permissions! (group/all-users) collection)
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (with-some-children-of-collection collection
             (is (= ()
                    (mt/boolean-ids-and-timestamps
@@ -484,7 +484,7 @@
 
     (testing "Let's make sure the `archived` option works."
       (mt/with-temp Collection [collection {:name "Art Collection"}]
-        (perms/grant-collection-read-permissions! (group/all-users) collection)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
           (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
           (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
@@ -660,36 +660,36 @@
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
       (is (= [[:%lower.name :asc]]
-             (api-coll/children-sort-clause nil app-db)))))
+             (api.collection/children-sort-clause nil app-db)))))
   (testing "Sorting by last-edited-at"
     (is (= [[(hsql/call :ISNULL :last_edit_timestamp)]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:last-edited-at :asc] :mysql)))
+           (api.collection/children-sort-clause [:last-edited-at :asc] :mysql)))
     (is (= [[:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:last-edited-at :asc] :postgres))))
+           (api.collection/children-sort-clause [:last-edited-at :asc] :postgres))))
   (testing "Sorting by last-edited-by"
     (is (= [[:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:last-edited-by :asc] :postgres)))
+           (api.collection/children-sort-clause [:last-edited-by :asc] :postgres)))
     (is (= [[(hsql/call :ISNULL :last_edit_last_name)]
             [:last_edit_last_name :asc]
             [(hsql/call :ISNULL :last_edit_first_name)]
             [:last_edit_first_name :asc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:last-edited-by :asc] :mysql))))
+           (api.collection/children-sort-clause [:last-edited-by :asc] :mysql))))
   (testing "Sortinb by model"
     (is (= [[:model_ranking :asc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:model :asc] :postgres)))
+           (api.collection/children-sort-clause [:model :asc] :postgres)))
     (is (= [[:model_ranking :desc]
             [:%lower.name :asc]]
-           (api-coll/children-sort-clause [:model :desc] :mysql)))))
+           (api.collection/children-sort-clause [:model :desc] :mysql)))))
 
 (deftest snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1085,7 +1085,7 @@
     (testing "\n?namespace= parameter"
       (mt/with-temp* [Collection [{normal-id :id} {:name "Normal Collection"}]
                       Collection [{coins-id :id}  {:name "Coin Collection", :namespace "currency"}]]
-        (perms/grant-collection-read-permissions! (group/all-users) coins-id)
+        (perms/grant-collection-read-permissions! (perms-group/all-users) coins-id)
         (letfn [(collection-names [items]
                   (->> (:data items)
                        (filter #(and (= (:model %) "collection")
@@ -1366,7 +1366,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp* [Collection [collection-a]
                           Collection [collection-b {:location (collection/children-location collection-a)}]]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:archived true})))))))))
@@ -1393,7 +1393,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp* [Collection [collection-a]
                           Collection [collection-b]]
-            (perms/grant-collection-readwrite-permissions! (group/all-users) collection-a)
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-a)
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                          {:parent_id (u/the-id collection-b)}))))))
@@ -1408,7 +1408,7 @@
                               Collection [collection-b {:location (collection/children-location collection-a)}]
                               Collection [collection-c]]
                 (doseq [collection [collection-a collection-b]]
-                  (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)}))))))
@@ -1421,7 +1421,7 @@
                               Collection [collection-b {:location (collection/children-location collection-a)}]
                               Collection [collection-c]]
                 (doseq [collection [collection-a collection-c]]
-                  (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)}))))))
@@ -1434,7 +1434,7 @@
                               Collection [collection-b {:location (collection/children-location collection-a)}]
                               Collection [collection-c]]
                 (doseq [collection [collection-b collection-c]]
-                  (perms/grant-collection-readwrite-permissions! (group/all-users) collection))
+                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection))
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :put 403 (str "collection/" (u/the-id collection-a))
                                              {:parent_id (u/the-id collection-c)})))))))))))

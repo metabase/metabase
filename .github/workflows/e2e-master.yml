@@ -39,7 +39,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -61,15 +61,15 @@ jobs:
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "dashboard-filters-sql"
           - "downloads"
           - "embedding"
+          - "filters"
           - "joins"
           - "models"
-          - "moderation"
           - "native"
           - "native-filters"
           - "onboarding"
+          - "organization"
           - "permissions"
           - "question"
           - "sharing"

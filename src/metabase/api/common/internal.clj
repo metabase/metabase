@@ -6,7 +6,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.config :as config]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [schema.core :as s])
@@ -279,9 +279,4 @@
   (wrap-response-if-needed [m]
     (if (and (:status m) (contains? m :body))
       m
-      {:status 200, :body m}))
-
-  ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
-  Boolean
-  (wrap-response-if-needed [_]
-    (throw (Exception. (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
+      {:status 200, :body m})))

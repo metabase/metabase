@@ -1,19 +1,31 @@
 import { t } from "ttag";
 import { PermissionSubject } from "metabase/admin/permissions/types";
+import { AdminPathKey } from "metabase-types/store";
 import { UserWithFeaturePermissions } from "./types/user";
 
-export const canAccessDataModel = (user?: UserWithFeaturePermissions) =>
+const canAccessDataModel = (user?: UserWithFeaturePermissions) =>
   user?.permissions?.can_access_data_model ?? false;
 
-export const canAccessDatabaseManagement = (
+const canAccessDatabaseManagement = (user?: UserWithFeaturePermissions) =>
+  user?.permissions?.can_access_db_details ?? false;
+
+export const dataModelPermissionAllowedPathGetter = (
   user?: UserWithFeaturePermissions,
-) => user?.permissions?.can_access_db_details ?? false;
+): AdminPathKey[] => {
+  return canAccessDataModel(user) ? ["data-model"] : [];
+};
+
+export const databaseManagementPermissionAllowedPathGetter = (
+  user?: UserWithFeaturePermissions,
+): AdminPathKey[] => {
+  return canAccessDatabaseManagement(user) ? ["databases"] : [];
+};
 
 export const getDataColumns = (subject: PermissionSubject) => {
   const allSubjectsColumns = [
     {
       name: t`Download results`,
-      hint: t`If you grant someone permissions to download data from a database, you won't be able to schema or table level for native queries.`,
+      hint: t`Downloads of native queries are only allowed if a group has download permissions for the entire database.`,
     },
     {
       name: t`Manage data model`,

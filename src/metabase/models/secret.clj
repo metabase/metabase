@@ -7,7 +7,7 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -29,10 +29,10 @@
                                        :kind   :keyword
                                        :source :keyword})
           :properties     (constantly {:timestamped? true})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         i/superuser?
-          :can-write?        i/superuser?}))
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         mi/superuser?
+          :can-write?        mi/superuser?}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -245,7 +245,7 @@
                       (instance? (class Secret) secret-or-id)
                       secret-or-id
 
-                      true ; default; app DB look up from the ID in db-details
+                      :else ; default; app DB look up from the ID in db-details
                       (latest-for-id (get db-details (subprop "-id"))))
         src     (:source secret*)]
     ;; always populate the -source, -creator-id, and -created-at sub properties
@@ -258,11 +258,11 @@
       (= :file-path src) ; for file path sources only, populate the value
       (assoc (subprop "-value") (value->string secret*)))))
 
-(defn admin-expand-db-details-inferred-secret-values
-  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving admin
-  requests (ex: to edit an existing database or view its current details).  This is to populate certain values that
-  shouldn't be stored in the details blob itself, but which can be derived from the details->secret association itself.
-  Refer to the docstring for [[expand-inferred-secret-values]] for full details."
+(defn expand-db-details-inferred-secret-values
+  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving requests by
+  users with write permissions for the DB (ex: to edit an existing database or view its current details). This is to
+  populate certain values that shouldn't be stored in the details blob itself, but which can be derived from the
+  details->secret association itself. Refer to the docstring for [[expand-inferred-secret-values]] for full details."
   {:added "0.42.0"}
   [database]
   (update database :details (fn [details]

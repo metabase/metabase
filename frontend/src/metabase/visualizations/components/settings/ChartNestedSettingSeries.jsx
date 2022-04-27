@@ -5,6 +5,7 @@ import ColorPicker from "metabase/components/ColorPicker";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingSeries extends React.Component {
@@ -45,13 +46,13 @@ export default class ChartNestedSettingSeries extends React.Component {
                       onChangeObjectSettings(single, { color: value })
                     }
                   />
-                  <input
+                  <InputBlurChange
                     className="input flex-full ml1 align-self-stretch"
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     size={1}
                     value={settings.title}
-                    onChange={e =>
+                    onBlurChange={e =>
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
                   />

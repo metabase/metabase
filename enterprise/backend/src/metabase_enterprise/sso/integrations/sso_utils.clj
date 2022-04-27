@@ -2,7 +2,7 @@
   "Functions shared by the various SSO implementations"
   (:require [clojure.tools.logging :as log]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.email.messages :as email]
+            [metabase.email.messages :as messages]
             [metabase.models.user :refer [User]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -29,7 +29,7 @@
     (log/info (trs "New SSO user created: {0} ({1})" (:common_name <>) (:email <>)))
     ;; send an email to everyone including the site admin if that's set
     (when (sso-settings/send-new-sso-user-admin-email?)
-      (email/send-user-joined-admin-notification-email! <>, :google-auth? true))))
+      (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
 
 (defn fetch-and-update-login-attributes!
   "Update the login attributes for the user at `email`. This call is a no-op if the login attributes are the same"

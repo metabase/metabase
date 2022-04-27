@@ -1,6 +1,6 @@
 export * from "./config";
 
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { ExpressionDimension } from "metabase-lib/lib/Dimension";
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import {
   OPERATORS,
@@ -77,11 +77,20 @@ export function formatMetricName(metric, options) {
 // SEGMENTS
 
 export function parseSegment(segmentName, { query }) {
-  return query
-    .table()
-    .segments.find(
-      segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
-    );
+  const table = query.table();
+  const segment = table.segments.find(
+    segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
+  );
+  if (segment) {
+    return segment;
+  }
+
+  const field = table.fields.find(
+    field => field.name.toLowerCase() === segmentName.toLowerCase(),
+  );
+  if (field?.isBoolean()) {
+    return field;
+  }
 }
 
 export function formatSegmentName(segment, options) {
@@ -93,11 +102,16 @@ export function formatSegmentName(segment, options) {
 /**
  * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
  */
-export function parseDimension(name, { query }) {
+export function parseDimension(name, { reference, query }) {
   // FIXME: this is pretty inefficient, create a lookup table?
   return query
     .dimensionOptions()
     .all()
+    .filter(
+      d =>
+        !(d instanceof ExpressionDimension) ||
+        getDimensionName(d) !== reference,
+    )
     .find(d =>
       EDITOR_FK_SYMBOLS.symbols.some(
         separator => getDimensionName(d, separator) === name,
@@ -208,6 +222,7 @@ export function isExpression(expr) {
     isOperator(expr) ||
     isFunction(expr) ||
     isDimension(expr) ||
+    isBooleanLiteral(expr) ||
     isMetric(expr) ||
     isSegment(expr) ||
     isCase(expr)
@@ -220,6 +235,10 @@ export function isLiteral(expr) {
 
 export function isStringLiteral(expr) {
   return typeof expr === "string";
+}
+
+export function isBooleanLiteral(expr) {
+  return typeof expr === "boolean";
 }
 
 export function isNumberLiteral(expr) {

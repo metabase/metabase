@@ -7,7 +7,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
+            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -21,7 +21,7 @@
               :cols [(mt/col :venues :name)
                      (assoc (mt/col :venues :category_id)
                             :remapped_to "Category ID [internal remap]")
-                     (#'add-dimension-projections/create-remapped-col
+                     (#'qp.add-dimension-projections/create-remapped-col
                       "Category ID [internal remap]"
                       (mt/format-name "category_id")
                       :type/Text)]}
@@ -41,7 +41,7 @@
                        ["Asian"    4 2]]
                 :cols [(merge (mt/col :categories :name)
                               {:display_name  "Category ID [external remap]"
-                               :options       {::add-dimension-projections/new-field-dimension-id dimension-id}
+                               :options       {::qp.add-dimension-projections/new-field-dimension-id dimension-id}
                                :remapped_from (mt/format-name "category_id")
                                :field_ref     [:field
                                                (mt/id :categories :name)
@@ -49,7 +49,7 @@
                                :fk_field_id   (mt/id :venues :category_id)
                                :source        :breakout})
                        (merge (mt/col :venues :category_id)
-                              {:options     {::add-dimension-projections/original-field-dimension-id dimension-id}
+                              {:options     {::qp.add-dimension-projections/original-field-dimension-id dimension-id}
                                :remapped_to (mt/format-name "name")
                                :source      :breakout})
                        {:field_ref     [:aggregation 0]
@@ -76,7 +76,7 @@
               :cols [(mt/col :venues :name)
                      (-> (mt/col :venues :category_id)
                          (assoc :remapped_to "Category ID [internal remap]"))
-                     (#'add-dimension-projections/create-remapped-col
+                     (#'qp.add-dimension-projections/create-remapped-col
                       "Category ID [internal remap]"
                       (mt/format-name "category_id")
                       :type/Text)]}
@@ -146,7 +146,7 @@
                          (assoc (mt/col :categories :name)
                                 :fk_field_id   %category_id
                                 :display_name  "Category ID [external remap]"
-                                :options       {::add-dimension-projections/new-field-dimension-id
+                                :options       {::qp.add-dimension-projections/new-field-dimension-id
                                                 (db/select-one-id Dimension :field_id (mt/id :venues :category_id))}
                                 :name          (mt/format-name "name_2")
                                 :remapped_from (mt/format-name "category_id")

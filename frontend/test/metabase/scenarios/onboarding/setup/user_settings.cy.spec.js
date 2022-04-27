@@ -12,7 +12,11 @@ const CURRENT_USER = {
   is_active: true,
   is_qbnewb: false,
   updated_at: "2021-02-08T15:09:33.918",
-  group_ids: [1, 4, 5],
+  user_group_memberships: [
+    { id: 1, is_group_manager: false },
+    { id: 4, is_group_manager: false },
+    { id: 5, is_group_manager: false },
+  ],
   is_superuser: false,
   login_attributes: null,
   id: 2,
