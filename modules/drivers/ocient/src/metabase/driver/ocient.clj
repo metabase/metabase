@@ -7,6 +7,7 @@
             [clojure.string :as str]
             [clj-http.client :as http]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [metabase.util.honeysql-extensions :as hx]
             [java-time :as t]
             [medley.core :as m]
@@ -14,10 +15,13 @@
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [schema.core :as s]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru]]]
+             [i18n :refer [tru]]
+             [date-2 :as u.date]]
             [metabase.driver.sql-jdbc.sync.common :as sync-common]
             [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql-jdbc
@@ -26,10 +30,10 @@
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]])
 
-  (:import [java.sql Connection PreparedStatement ResultSet Types Timestamp]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+  (:import [java.sql PreparedStatement Types]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime Instant]
            [java.sql DatabaseMetaData ResultSet]
-           [java.util Date Calendar TimeZone]))
+           [java.util Calendar TimeZone]))
 
 
 (driver/register! :ocient, :parent :sql-jdbc)
@@ -131,7 +135,20 @@
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
-(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
+(defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
+  [_ t]
+  (let [s (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
+              ;; Ocient doesn't like `Z` to mean UTC
+              (str/replace #"Z$" "UTC"))]
+    (format "timestamp('%s')" s)))
+
+(defmethod unprepare/unprepare-value [:ocient ZonedDateTime]
+  [_ t]
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)))
+
+(defmethod unprepare/unprepare-value [:ocient Instant]
+  [driver t]
+  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
 
 (defmethod sql.qp/->honeysql [:ocient :median]
   [driver [_ arg]]
