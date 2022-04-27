@@ -217,20 +217,7 @@
                                    :month   [1 "months"]
                                    :quarter [3 "months"]
                                    :year    [1 "years"])]
-    ;; Make a string like DATETIME(DATE('now', 'start of month'), '-1 month') The date bucketing will end up being
-    ;; done twice since `date` is called on the results of `date-interval` automatically. This shouldn't be a big deal
-    ;; because it's used for relative dates and only needs to be done once.
-    ;;
-    ;; It's important to call `date` on 'now' to apply bucketing *before* adding/subtracting dates to handle certain
-    ;; edge cases as discussed in issue #2275 (https://github.com/metabase/metabase/issues/2275).
-    ;;
-    ;; Basically, March 30th minus one month becomes Feb 30th in SQLite, which becomes March 2nd.
-    ;; DATE(DATETIME('2016-03-30', '-1 month'), 'start of month') is thus March 1st.
-    ;; The SQL we produce instead (for "last month") ends up looking something like:
-    ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
-    ;; It's a little verbose, but gives us the correct answer (Feb 1st).
-    (->datetime (sql.qp/date driver unit hsql-form)
-                (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
+    (->datetime hsql-form (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
