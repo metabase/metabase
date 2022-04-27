@@ -94,7 +94,7 @@ export function parseTimestamp(value, unit = null, local = false) {
   } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     m = NUMERIC_UNIT_FORMATS[unit](value);
   } else {
-    m = moment.utc(value);
+    m = moment.utc(value, moment.ISO_8601);
   }
   return local ? m.local() : m;
 }
