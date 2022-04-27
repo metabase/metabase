@@ -1256,6 +1256,7 @@ workflows:
                   "custom-column",
                   "dashboard",
                   "embedding",
+                  "filters",
                   "joins",
                   "models",
                   "native",
