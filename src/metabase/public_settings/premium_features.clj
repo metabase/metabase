@@ -344,9 +344,7 @@
 
 (defn- options-conformer
   [conformed-options]
-  (into {}
-        (map #(-> % second vals vec)
-             conformed-options)))
+  (into {} (map (comp (juxt :k :v) second) conformed-options)))
 
 (spec/def ::defenterprise-options
   (spec/&
