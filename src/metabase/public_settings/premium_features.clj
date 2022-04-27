@@ -3,6 +3,7 @@
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.core.memoize :as memoize]
+            #_:clj-kondo/ignore
             [clojure.spec.alpha :as spec]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
