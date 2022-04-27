@@ -114,9 +114,6 @@
                               :foreign-keys                    (not config/is-test?)}]
   (defmethod driver/supports? [:ocient feature] [_ _] supported?))
 
-;; overriding driver/describe-table-fields may fix many of our test errors
-;; TODO
-
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIMESTAMP]
   [_ rs _ i]
   (fn []
@@ -185,63 +182,3 @@
   [_]
   :%current_timestamp)
 
-;; The following INTERVAL calc needs work, it is resulting in
-;; "SELECT count(*) AS \"count\" FROM \"canal\".\"location_d\" WHERE (\"canal\".\"location_d\".\"date\" >= day((CAST(now() AS timestamp) + days(-30))) AND \"canal\".\"
-;; location_d\".\"date\" < day(now()))" 
-;;"The comparison operation 'location_d.date >= day((current_timestamp())+(days((byte((-1)))*((30)))))' is invalid (LHS is type TIMESTAMP, RHS is type INT)",
-;; WHERE clause should be: WHERE (canal.location_d.date >= now() +  days(-30) AND canal.location_d.date < now());
-
-;; (defmethod sql.qp/->honeysql [:ocient :relative-datetime]
-;;   [driver [_ amount unit]]
-;;   (sql.qp/date driver unit (if (zero? amount)
-;;                              (sql.qp/current-datetime-honeysql-form driver)
-;;                              (sql.qp/add-interval-honeysql-form driver (sql.qp/current-datetime-honeysql-form driver) amount unit))))
-
-;; (defmethod sql.qp/add-interval-honeysql-form :ocient
-;;   [_ hsql-form amount unit]
-;;   (hx/+
-;;    (hx/->timestamp hsql-form)
-;;    (case unit
-;;      :second   (hsql/call :seconds amount)
-;;      :minute   (hsql/call :minutes amount)
-;;      :hour     (hsql/call :hours amount)
-;;      :day      (hsql/call :days amount)
-;;      :week     (hsql/call :weeks amount)
-;;      :month    (hsql/call :months amount)
-;;      :quarter  (hsql/call :months (hx/* amount (hsql/raw 3)))
-;;      :quarters (hsql/call :months (hx/* amount (hsql/raw 3)))
-;;      :year     (hsql/call :years amount))))
-
-;; (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
-;; (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
-
-;; (defmethod sql.qp/unix-timestamp->honeysql [:ocient :seconds]
-;;   [_ _ field-or-value]
-;;   (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
-;;         (num-to-ds-interval :second field-or-value)))
-
-;; (defmethod sql.qp/unix-timestamp->honeysql [:ocient :milliseconds]
-;;   [driver _ field-or-value]
-;;   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
-
-;; (defmethod sql.qp/unix-timestamp->honeysql [:ocient :microseconds]
-;;   [driver _ field-or-value]
-;;   (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
-
-;; (defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
-
-;; ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
-;; ;; *  extract the year and quarter from the date;
-;; ;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;; ;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10]);
-;; ;; *  concatenate the year and quarter start month together to create a yyyymm date string;
-;; ;; *  parse the string as a date. :sunglasses:
-;; ;;
-;; ;; Postgres DATE_TRUNC('quarter', x)
-;; ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-;; (defmethod sql.qp/date [:ocient :quarter]
-;;   [_ _ expr]
-;;   (parse-datetime "yyyyMM"
-;;                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
-;;                                                         3)
-;;                                                   2))))
