@@ -26,7 +26,12 @@ import cx from "classnames";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { isID, isFK } from "metabase/lib/schema_metadata";
+import { isFK, isID } from "metabase/lib/schema_metadata";
+
+const HEADER_HEIGHT = 30;
+const FOOTER_HEIGHT = 33;
+const NORMAL_ROW_HEIGHT = 30;
+const IMAGE_ROW_HEIGHT = 50;
 
 @ExplicitSize()
 export default class TableSimple extends Component {
@@ -39,10 +44,6 @@ export default class TableSimple extends Component {
       sortColumn: null,
       sortDescending: false,
     };
-
-    this.headerRef = React.createRef();
-    this.footerRef = React.createRef();
-    this.firstRowRef = React.createRef();
   }
 
   static propTypes = {
@@ -62,18 +63,24 @@ export default class TableSimple extends Component {
   }
 
   componentDidUpdate() {
-    const headerHeight = this.headerRef.current.getBoundingClientRect().height;
-    const footerHeight = this.footerRef.current
-      ? this.footerRef.current.getBoundingClientRect().height
-      : 0;
-    const rowHeight =
-      this.firstRowRef.current.getBoundingClientRect().height + 1;
-    const pageSize = Math.max(
+    const { data, settings, height } = this.props;
+    const { pageSize } = this.state;
+    const { rows, cols } = data;
+
+    const hasImages = cols.some(c => settings.column(c)?.view_as === "image");
+    const hasFooter = pageSize < rows.length;
+
+    const headerHeight = HEADER_HEIGHT;
+    const footerHeight = hasFooter ? FOOTER_HEIGHT : 0;
+    const rowHeight = hasImages ? IMAGE_ROW_HEIGHT : NORMAL_ROW_HEIGHT;
+
+    const newPageSize = Math.max(
       1,
-      Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
+      Math.floor((height - headerHeight - footerHeight) / rowHeight),
     );
-    if (this.state.pageSize !== pageSize) {
-      this.setState({ pageSize });
+
+    if (pageSize !== newPageSize) {
+      this.setState({ page: 0, pageSize: newPageSize });
     }
   }
 
@@ -150,7 +157,7 @@ export default class TableSimple extends Component {
                 "fullscreen-night-text",
               )}
             >
-              <thead ref={this.headerRef}>
+              <thead>
                 <tr>
                   {cols.map((col, colIndex) => (
                     <th
@@ -184,11 +191,7 @@ export default class TableSimple extends Component {
               </thead>
               <tbody>
                 {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr
-                    key={rowIndex}
-                    ref={index === 0 ? this.firstRowRef : null}
-                    data-testid="table-row"
-                  >
+                  <tr key={rowIndex} data-testid="table-row">
                     {rows[rowIndex].map((value, columnIndex) => {
                       const clickedRowData = getTableClickedObjectRowData(
                         series,
@@ -286,10 +289,7 @@ export default class TableSimple extends Component {
           </div>
         </div>
         {pageSize < rows.length ? (
-          <div
-            ref={this.footerRef}
-            className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
-          >
+          <div className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text">
             <span className="text-bold">{paginateMessage}</span>
             <span
               className={cx("text-brand-hover px1 cursor-pointer", {
