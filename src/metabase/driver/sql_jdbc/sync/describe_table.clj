@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models.table :as table]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection DatabaseMetaData ResultSet]))
@@ -138,12 +139,20 @@
   (into
    #{}
    (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
-                  (merge
-                   (u/select-non-nil-keys col [:name :database-type :field-comment])
-                   {:base-type         (database-type->base-type-or-warn driver database-type)
-                    :database-position i}
-                   (when-let [semantic-type (calculated-semantic-type driver column-name database-type)]
-                     {:semantic-type semantic-type}))))
+                  (let [semantic-type (calculated-semantic-type driver column-name database-type)]
+                    (merge
+                      (u/select-non-nil-keys col [:name :database-type :field-comment])
+                      {:base-type         (database-type->base-type-or-warn driver database-type)
+                       :database-position i}
+                      (when semantic-type
+                        {:semantic-type semantic-type})
+                      (when (and
+                              (isa? semantic-type :type/SerializedJSON)
+                              (driver/database-supports?
+                                driver
+                                :nested-field-columns
+                                (table/database table)))
+                        {:visibility-type :details-only})))))
    (fields-metadata driver conn table db-name-or-nil)))
 
 (defn add-table-pks
@@ -241,8 +250,8 @@
   ([acc-field-type-map] acc-field-type-map)
   ([acc-field-type-map second-field-type-map]
    (into {}
-         (for [json-column (set/union (keys second-field-type-map)
-                                      (keys acc-field-type-map))]
+         (for [json-column (set/union (set (keys second-field-type-map))
+                                      (set (keys acc-field-type-map)))]
            (cond
              (or (nil? acc-field-type-map)
                  (nil? (acc-field-type-map json-column))
@@ -321,7 +330,7 @@
   "Default implementation of `describe-nested-field-columns` for SQL JDBC drivers. Goes and queries the table if there are JSON columns for the nested contents."
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
-    (let [map-inner        (fn [f xs] (map #(into {}
+    (let [_map-inner       (fn [f xs] (map #(into {}
                                                   (for [[k v] %]
                                                     [k (f v)])) xs))
           table-fields     (describe-table-fields driver conn table)

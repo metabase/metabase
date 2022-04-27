@@ -213,7 +213,7 @@
   (fn [chart-type _ _ _ _ _] chart-type))
 
 (s/defmethod render :table :- common/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card _ {:keys [rows] :as data}]
   (let [table-body [:div
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))

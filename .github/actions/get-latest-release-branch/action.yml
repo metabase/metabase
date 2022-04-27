@@ -19,7 +19,7 @@ runs:
           });
 
           const getVersionFromBranch = branch => {
-            const match = branch.match(/release-x\.(.*?)\.x/);
+            const match = branch.match(/release-x\.(.*?)\.x$/);
             return match && parseInt(match[1]);
           };
           const latestReleaseBranch = releaseBranches.data

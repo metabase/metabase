@@ -16,7 +16,9 @@ export function browseDatabase(database: Database) {
 
 export function browseSchema(table: Table) {
   const databaseId = table.db?.id || table.db_id;
-  return `/browse/${databaseId}/schema/${table.schema_name}`;
+  return `/browse/${databaseId}/schema/${encodeURIComponent(
+    table.schema_name ?? "",
+  )}`;
 }
 
 export function browseTable(table: Table) {
