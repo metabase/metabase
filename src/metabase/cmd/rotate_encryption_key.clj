@@ -1,8 +1,10 @@
 (ns metabase.cmd.rotate-encryption-key
   (:require [cheshire.core :as json]
             [clojure.java.jdbc :as jdbc]
+            [clojure.tools.logging :as log]
             [metabase.db :as mdb]
             [metabase.db.connection :as mdb.connection]
+            [metabase.db.env :as mdb.env]
             [metabase.models :refer [Database Secret Setting]]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.util.encryption :as encryption]
@@ -12,7 +14,10 @@
 (defn rotate-encryption-key!
   "Rotate the current configured db using the current MB_ENCRYPTION_SECRET_KEY env var and `to-key` argument."
   [to-key]
-  (mdb/setup-db!)
+  (when-not (mdb/db-is-set-up?)
+    (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
+    (mdb/setup-db!))
+  (log/infof "%s: %s | %s" (trs "Connected to") mdb.env/db-type (mdb.env/db-file))
   (let [make-encrypt-fn   (fn [maybe-encrypt-fn]
                             (if to-key
                               (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))
@@ -43,6 +48,5 @@
           (throw (ex-info (trs "Can't decrypt secret value with MB_ENCRYPTION_SECRET_KEY") {:secret-id id})))
         (jdbc/update! t-conn
           :secret
-          {:value (let [v (encrypt-bytes-fn value)]
-                    v)}
+          {:value (encrypt-bytes-fn value)}
           ["secret.id = ?" id])))))

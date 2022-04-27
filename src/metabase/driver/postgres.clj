@@ -15,7 +15,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.sync.describe-table]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
@@ -188,7 +188,7 @@
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
   (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)]
+        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
     (if (> (count fields) max-nested-field-columns)
       #{}
       fields)))
@@ -301,7 +301,7 @@
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)
-        nfc-path      (:nfc_path stored-field)]
+        _nfc-path     (:nfc_path stored-field)]
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
@@ -320,7 +320,7 @@
 ;; The alias names in JSON fields are unique wrt nfc path"
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
-  [driver clause honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
+  [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
   (let [stored-field-ids (map second breakout-fields)
         stored-fields    (map #(when (integer? %) (qp.store/field %)) stored-field-ids)
         parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
