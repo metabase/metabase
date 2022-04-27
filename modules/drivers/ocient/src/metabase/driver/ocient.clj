@@ -170,32 +170,69 @@
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "date" "time"} honeysql-form))
 
+(defmethod driver/db-start-of-week :ocient
+  [_]
+  :sunday)
+
+(defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
+
 (defmethod sql.qp/date [:ocient :date]            [_ _ expr] (hsql/call :date expr))
 (defmethod sql.qp/date [:ocient :minute]          [_ _ expr] (date-trunc :minute expr))
 (defmethod sql.qp/date [:ocient :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:ocient :day]             [_ _ expr] (hsql/call :date expr))
-(defmethod sql.qp/date [:ocient :week]            [_ _ expr] (date-trunc :week expr))
+(defmethod sql.qp/date [:ocient :day]             [_ _ expr] (date-trunc :day expr))
+(defmethod sql.qp/date [:ocient :week]            [_ _ expr] (sql.qp/adjust-start-of-week :ocient (partial date-trunc :week) expr))
 (defmethod sql.qp/date [:ocient :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:ocient :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:ocient :year]            [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:ocient :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
 (defmethod sql.qp/date [:ocient :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
 (defmethod sql.qp/date [:ocient :day-of-week]     [_ _ expr] (hsql/call :day_of_week expr))
-(defmethod sql.qp/date [:ocient :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
+(defmethod sql.qp/date [:ocient :day-of-month]    [_ _ expr] (hsql/call :day expr))
 (defmethod sql.qp/date [:ocient :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 (defmethod sql.qp/date [:ocient :week-of-year]    [_ _ expr] (hsql/call :week expr))
 (defmethod sql.qp/date [:ocient :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:ocient :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
-
 (defmethod sql.qp/date [:ocient :default]         [_ _ expr] expr)
 
-(defmethod sql.qp/current-datetime-honeysql-form :ocient [driver] :%now)
+(defmethod sql.qp/current-datetime-honeysql-form :ocient [_] :%now)
 
-;; (defmethod sql.qp/unix-timestamp->honeysql [:ocient :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
-;; (defmethod sql.qp/unix-timestamp->honeysql [:ocient :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
-;; (defmethod sql.qp/unix-timestamp->honeysql [:ocient :microseconds] [_ _ expr] (hsql/call :to_timestamp expr 6))
+(defmethod sql.qp/unix-timestamp->honeysql [:ocient :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
+(defmethod sql.qp/unix-timestamp->honeysql [:ocient :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
+(defmethod sql.qp/unix-timestamp->honeysql [:ocient :microseconds] [_ _ expr] (hsql/call :to_timestamp expr 6))
 
 (defmethod sql.qp/current-datetime-honeysql-form :ocient
   [_]
   :%current_timestamp)
 
+(defmethod sql.qp/->honeysql [:ocient :relative-datetime]
+  [driver [_ amount unit]]
+  (sql.qp/date driver unit (if (zero? amount)
+                             (sql.qp/current-datetime-honeysql-form driver)
+                             (sql.qp/add-interval-honeysql-form driver (sql.qp/current-datetime-honeysql-form driver) amount unit))))
+
+(defmethod sql.qp/add-interval-honeysql-form :ocient
+  [_ hsql-form amount unit]
+  (hx/+
+   (hx/->timestamp hsql-form)
+   (case unit
+     :second   (hsql/call :seconds amount)
+     :minute   (hsql/call :minutes amount)
+     :hour     (hsql/call :hours amount)
+     :day      (hsql/call :days amount)
+     :week     (hsql/call :weeks amount)
+     :month    (hsql/call :months amount)
+     :quarter  (hsql/call :months (hx/* amount (hsql/raw 3)))
+     :quarters (hsql/call :months (hx/* amount (hsql/raw 3)))
+     :year     (hsql/call :years amount))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:ocient :seconds]
+  [_ _ field-or-value]
+  (hsql/call :to_timestamp field-or-value))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:ocient :milliseconds]
+  [driver _ field-or-value]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:ocient :microseconds]
+  [driver _ field-or-value]
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
