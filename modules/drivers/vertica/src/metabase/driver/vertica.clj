@@ -157,16 +157,18 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 
-(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIME]
+  [_driver ^ResultSet rs _rsmeta ^long i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:vertica Types/TIME_WITH_TIMEZONE]
+  [_driver ^ResultSet rs _rsmeta ^long i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+        t))))

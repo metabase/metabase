@@ -1,9 +1,8 @@
 (ns metabase.driver.sql-jdbc.execute
   "Code related to actually running a SQL query against a JDBC database and for properly encoding/decoding types going
-  in and out of the database. Old, non-reducible implementation can be found in
-  `metabase.driver.sql-jdbc.execute.old-impl`, which will be removed in a future release; implementations of methods
-  for JDBC drivers that do not support `java.time` classes can be found in
-  `metabase.driver.sql-jdbc.execute.legacy-impl`. "
+  in and out of the database. Some deprecated methods can be found in [[metabase.driver.sql-jdbc.execute.old-impl]],
+  which will be removed in a future release; implementations of methods for JDBC drivers that do not support
+  `java.time` classes can be found in [[metabase.driver.sql-jdbc.execute.legacy-impl]]. "
   (:require [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -428,28 +427,12 @@
                 (or (:name (meta f))
                     f)))))))
 
-(defn- old-read-column-thunk
-  "Implementation of deprecated method `old/read-column` if a non-default one is available."
-  [driver rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [col-type (.getColumnType rsmeta i)
-        method   (get-method sql-jdbc.execute.old/read-column [driver col-type])
-        default? (some (fn [dispatch-val]
-                         (= method (get-method sql-jdbc.execute.old/read-column dispatch-val)))
-                       [:default
-                        [::driver/driver col-type]
-                        [:sql-jdbc col-type]])]
-    (when-not default?
-      ^{:name (format "old-impl/read-column %s %d" driver i)}
-      (fn []
-        (method driver nil rs rsmeta i)))))
-
 (defn row-thunk
   "Returns a thunk that can be called repeatedly to get the next row in the result set, using appropriate methods to
   fetch each value in the row. Returns `nil` when the result set has no more rows."
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta]
   (let [fns (for [i (column-range rsmeta)]
-              (or (old-read-column-thunk driver rs rsmeta i)
-                  (read-column-thunk driver rs rsmeta (long i))))]
+              (read-column-thunk driver rs rsmeta (long i)))]
     (log-readers driver rsmeta fns)
     (let [thunk (apply juxt fns)]
       (fn row-thunk* []
@@ -514,5 +497,4 @@
 (p/import-vars
  [sql-jdbc.execute.old
   ;; interface (set-parameter is imported as well at the top of the namespace)
-  set-timezone-sql
-  read-column])
+  set-timezone-sql])

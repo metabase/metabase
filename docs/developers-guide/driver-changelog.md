@@ -1,5 +1,10 @@
 # Driver Interface Changelog
 
+## Metabase 0.44.0
+
+- The `metabase.driver.sql-jdbc.execute/read-column` method, deprecated in 0.35.0, has been removed. Replace all
+  implementations of this method with implementations of `metabase.driver.sql-jdbc.execute/read-column-thunk`.
+
 ## Metabase 0.43.0
 
 - The `:expressions` map in an MBQL query now uses strings as keys rather than keywords (see

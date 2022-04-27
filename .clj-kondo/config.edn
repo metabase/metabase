@@ -43,8 +43,6 @@
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.common/current-db-time-date-formatters
                                       {:namespaces ["metabase\\.driver.*"]}
-                                      metabase.driver.sql-jdbc.execute.old-impl/read-column
-                                      {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.common/first-successful-parse
                                       {:namespaces ["metabase\\.driver.*"]}
                                       metabase.driver.common/ThreadSafeSimpleDateFormat
