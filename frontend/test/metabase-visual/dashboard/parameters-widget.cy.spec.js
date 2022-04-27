@@ -43,7 +43,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`Stickiness on desktop`, () => {
+    describe(`desktop`, () => {
       it("is sticky in view mode", () => {
         cy.findByText("test question");
 
@@ -71,15 +71,15 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             cy.percySnapshot();
           });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
+        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+          "not.have.css",
           "position",
           "fixed",
         );
       });
     });
 
-    describe(`Stickiness on mobile`, () => {
+    describe(`mobile`, () => {
       it("is sticky in view mode", () => {
         cy.findByText("test question");
 
@@ -111,8 +111,8 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             cy.percySnapshot();
           });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
+        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+          "not.have.css",
           "position",
           "fixed",
         );
@@ -145,7 +145,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
       });
     });
 
-    describe(`Stickiness on desktop`, () => {
+    describe(`desktop`, () => {
       it("is sticky in view mode", () => {
         cy.findByText("test question");
 
@@ -173,15 +173,15 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             cy.percySnapshot();
           });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
-          "have.css",
+        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
+          "not.have.css",
           "position",
           "fixed",
         );
       });
     });
 
-    describe(`Stickiness on mobile`, () => {
+    describe(`mobile`, () => {
       it("is not sticky in view mode", () => {
         cy.findByText("test question");
 
@@ -213,7 +213,7 @@ describe(`visual tests > dashboard > parameters widget`, () => {
             cy.percySnapshot();
           });
 
-        cy.findByTestId("dashboard-parameters-widget-container").should(
+        cy.findByTestId("edit-dashboard-parameters-widget-container").should(
           "not.have.css",
           "position",
           "fixed",
