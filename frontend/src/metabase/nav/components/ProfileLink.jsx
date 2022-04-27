@@ -106,6 +106,7 @@ export default class ProfileLink extends Component {
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
+          targetOffsetY={20}
           triggerProps={{
             color: color("text-medium"),
             hover: {
