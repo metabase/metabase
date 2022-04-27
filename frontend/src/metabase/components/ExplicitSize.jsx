@@ -36,9 +36,9 @@ export default ({
       if (isCypressActive) {
         this._updateSize = this.__updateSize;
       } else {
-        const mode =
+        this._refreshMode =
           typeof refreshMode === "function" ? refreshMode(props) : refreshMode;
-        const refreshFn = REFRESH_MODE[mode];
+        const refreshFn = REFRESH_MODE[this._refreshMode];
         this._updateSize = refreshFn(this.__updateSize);
       }
     }
@@ -63,10 +63,7 @@ export default ({
       // update ResizeObserver if element changes
       this._updateResizeObserver();
       if (typeof refreshMode === "function" && !isCypressActive) {
-        resizeObserver.unsubscribe(this._currentElement, this._updateSize);
-        const refreshFn = REFRESH_MODE[refreshMode(this.props)];
-        this._updateSize = refreshFn(this.__updateSize);
-        resizeObserver.subscribe(this._currentElement, this._updateSize);
+        this._updateRefreshMode();
       }
     }
 
@@ -74,6 +71,18 @@ export default ({
       this._teardownResizeObserver();
       this._teardownQueryMediaListener();
     }
+
+    _updateRefreshMode = () => {
+      const nextMode = refreshMode(this.props);
+      if (nextMode === this._refreshMode) {
+        return;
+      }
+      resizeObserver.unsubscribe(this._currentElement, this._updateSize);
+      const refreshFn = REFRESH_MODE[nextMode];
+      this._updateSize = refreshFn(this.__updateSize);
+      resizeObserver.subscribe(this._currentElement, this._updateSize);
+      this._refreshMode = nextMode;
+    };
 
     // ResizeObserver, ensure re-layout when container element changes size
     _initResizeObserver() {
@@ -89,6 +98,7 @@ export default ({
         resizeObserver.subscribe(this._currentElement, this._updateSize);
       }
     }
+
     _teardownResizeObserver() {
       resizeObserver.unsubscribe(this._currentElement, this._updateSize);
     }
