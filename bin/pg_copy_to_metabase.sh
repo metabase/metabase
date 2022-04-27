@@ -1,7 +1,7 @@
 # Set the script to fail fast if there
 # is an error or a missing variable
 
-set -eu
+set -eux
 set -o pipefail
 
 #!/bin/sh
