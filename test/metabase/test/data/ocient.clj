@@ -95,59 +95,6 @@
                              :type/TimeWithTZ     "TIMESTAMP"
                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:ocient base-type] [_ _] db-type))
-(defonce timestamp-base-types
-  (set [:type/DateTime :type/DateTimeWithTZ :type/ZonedDateTime]))
-
-(defmethod sql.qp/->honeysql [:ocient :relative-datetime]
-  [driver [_ amount unit]]
-  (sql.qp/date driver unit (if (zero? amount)
-                             (sql.qp/current-datetime-honeysql-form driver)
-                             (sql.qp/add-interval-honeysql-form driver (sql.qp/current-datetime-honeysql-form driver) amount unit))))
-
-(defmethod sql.qp/add-interval-honeysql-form :ocient
-  [_ hsql-form amount unit]
-  (hx/+
-   (hx/->timestamp hsql-form)
-   (case unit
-     :second   (hsql/call :seconds amount)
-     :minute   (hsql/call :minutes amount)
-     :hour     (hsql/call :hours amount)
-     :day      (hsql/call :days amount)
-     :week     (hsql/call :weeks amount)
-     :month    (hsql/call :months amount)
-     :quarter  (hsql/call :months (hx/* amount (hsql/raw 3)))
-     :quarters (hsql/call :months (hx/* amount (hsql/raw 3)))
-     :year     (hsql/call :years amount))))
-
-(defmethod sql.qp/unix-timestamp->honeysql [:ocient :seconds]
-  [_ _ field-or-value]
-  (hsql/call :to_timestamp field-or-value))
-
-(defmethod sql.qp/unix-timestamp->honeysql [:ocient :milliseconds]
-  [driver _ field-or-value]
-  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
-
-(defmethod sql.qp/unix-timestamp->honeysql [:ocient :microseconds]
-  [driver _ field-or-value]
-  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000000))))
-
-(defn- parse-datetime    [format-str expr] (hsql/call :parsedatetime expr  (hx/literal format-str)))
-
-;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
-;; *  extract the year and quarter from the date;
-;; *  convert the quarter (1 - 4) to the corresponding starting month (1, 4, 7, or 10).
-;;    (do this by multiplying by 3, giving us [3 6 9 12]. Then subtract 2 to get [1 4 7 10]);
-;; *  concatenate the year and quarter start month together to create a yyyymm date string;
-;; *  parse the string as a date. :sunglasses:
-;;
-;; Postgres DATE_TRUNC('quarter', x)
-;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-(defmethod sql.qp/date [:ocient :quarter]
-  [_ _ expr]
-  (parse-datetime "yyyyMM"
-                  (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
-                                                        3)
-                                                  2))))
 
 (defn in?
   "true if coll contains elm"
