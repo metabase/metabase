@@ -20,8 +20,9 @@
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [db-details   (:details (mt/db))
-          fake-proj-id "definitely-not-a-real-project-id-way-no-how"]
+    (let [db-details (:details (mt/db))
+          fake-proj-id "definitely-not-a-real-project-id-way-no-how"
+          fake-dataset-id "definitely-not-a-real-dataset-id-way-no-how"]
       (testing "can-connect? returns true in the happy path"
         (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
       (testing "can-connect? returns false for bogus credentials"
@@ -29,7 +30,12 @@
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
         (with-redefs [bigquery/list-tables (fn [& _]
                                              [])]
-          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))))))
+          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
+      (testing "can-connect? returns an appropriate exception message if no datasets are found"
+        (is (thrown-with-msg? Exception
+                              #"Looks like we cannot find any matching datasets."
+                              (driver/can-connect? :bigquery-cloud-sdk
+                                                   (assoc db-details :dataset-filters-patterns fake-dataset-id))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :bigquery-cloud-sdk
