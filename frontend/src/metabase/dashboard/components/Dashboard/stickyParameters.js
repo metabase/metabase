@@ -37,8 +37,7 @@ const checkIfShouldToggleStickiness = (dashboard, shouldBeSticky) => {
 
 const checkIfParametersWidgetShouldBeSticky = dashboard => {
   const isStickyForDevice = !(
-    dashboard.state.parametersList &&
-    dashboard.state.parametersList.length > MAXIMUM_PARAMETERS_FOR_STICKINESS &&
+    dashboard.state.parametersListLength > MAXIMUM_PARAMETERS_FOR_STICKINESS &&
     isSmallScreen()
   );
   const offsetTop =

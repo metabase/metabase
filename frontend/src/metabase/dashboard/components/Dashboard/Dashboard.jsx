@@ -31,7 +31,7 @@ export default class Dashboard extends Component {
   state = {
     error: null,
     isParametersWidgetSticky: false,
-    parametersList: null,
+    parametersListLength: 0,
   };
 
   static propTypes = {
@@ -100,15 +100,9 @@ export default class Dashboard extends Component {
   }
 
   static getDerivedStateFromProps(props, state) {
-    const parametersList = getValuePopulatedParameters(
-      props.parameters,
-      props.parameterValues,
-    );
-    if (!_.isEqual(parametersList, state.parametersList)) {
-      return { parametersList };
-    }
-
-    return null;
+    return props.parameters.length !== state.parametersListLength
+      ? { parametersListLength: props.parameters.length }
+      : null;
   }
 
   throttleParameterWidgetStickiness = _.throttle(
@@ -219,6 +213,7 @@ export default class Dashboard extends Component {
       isNightMode,
       isSharing,
       parameters,
+      parameterValues,
       isNavbarOpen,
       showAddQuestionSidebar,
       editingParameter,
@@ -227,7 +222,11 @@ export default class Dashboard extends Component {
       setEditingParameter,
     } = this.props;
 
-    const { error, isParametersWidgetSticky, parametersList } = this.state;
+    const { error, isParametersWidgetSticky } = this.state;
+    const parametersList = getValuePopulatedParameters(
+      parameters,
+      parameterValues,
+    );
 
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
