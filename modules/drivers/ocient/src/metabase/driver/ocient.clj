@@ -75,7 +75,6 @@
 (def ^:private database-type->base-type
   (sql-jdbc.sync/pattern-based-database-type->base-type
    [[#"BIGINT"    :type/BigInteger]
-    [#"BIGINT"    :type/BigInteger]
     [#"INT"       :type/Integer]
     [#"SHORT"     :type/Integer]
     [#"SMALLINT"  :type/Integer]
@@ -85,12 +84,12 @@
     [#"BLOB"      :type/*]
     [#"BINARY"    :type/*]
     [#"REAL"      :type/Float]
-    [#"DOUBLE"      :type/Double]
+    [#"DOUBLE"    :type/Float]
     [#"FLOAT"     :type/Float]
     [#"LONG"      :type/BigInteger]
     [#"DECIMAL"   :type/Decimal]
     [#"BOOLEAN"   :type/Boolean]
-    [#"TIMESTAMP" :type/DateTime]
+    [#"TIMESTAMP" :type/DateTimeWithLocalTZ]
     [#"DATETIME"  :type/DateTime]
     [#"DATE"      :type/Date]
     [#"TIME"      :type/Time]]))
