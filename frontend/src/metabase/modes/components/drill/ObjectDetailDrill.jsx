@@ -39,7 +39,7 @@ function getActionForFKColumn({ field, objectId }) {
         objectId,
       );
 
-      return question.getUrl();
+      return question.getUrl({ query: { objectId } });
     },
   ];
 }
