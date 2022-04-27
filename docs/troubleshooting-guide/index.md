@@ -33,7 +33,7 @@ Problems, their causes, how to detect them, and how to fix them.
 
 - [Saving questions or dashboards][proxies].
 - [My dashboard is slow][slow-dashboard].
-- [My SQL question (native query) doesn't work][sql].
+- [My SQL question doesn't work][sql].
 - [The dates and times in my questions and charts are wrong][incorrect-times].
 - [My dashboard filters don't work][filters].
 - [My dashboard's linked filters don't work][linked-filters].

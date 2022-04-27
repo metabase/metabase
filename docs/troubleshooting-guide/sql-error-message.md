@@ -1,6 +1,6 @@
 ## What's wrong with your SQL query?
 
-- [I get an error message when I run my SQL query][sql-debugging].
+- [I get an error message][sql-debugging].
 - [I don't have an error message, but my query results are incorrect][troubleshoot-sql-logic].
 
 ## Debugging SQL queries
@@ -14,8 +14,8 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 
 ### How does SQL debugging work?
 
-- SQL error messages are displayed for each line in your query that is failing to run. You will need to follow the steps above for each line that is failing.
-- If you make any changes to a line, run your query to check if the problem is fixed before moving on to the next step.
+- SQL error messages are displayed for each line in your query that fails to run. You'll need to follow the steps above for each line that failed.
+- If you make any changes to a line, run your query to check if the problem is fixed before moving on to the next step. You can add a `LIMIT` clause at the end of your query to speed up the process.
 - Note that [SQL queries are not run from top to bottom][sql-order-execution], so you won’t be debugging your query lines in the order that they are written. Follow the error messages to help you find the lines that need attention.
 
 ## Troubleshooting SQL syntax errors
@@ -33,7 +33,7 @@ Before you start, open up the SQL reference guide for the SQL dialect that you�
 - [PostgreSQL](https://www.postgresql.org/docs/current/sql-syntax-lexical.html)
 - [Microsoft SQL Server](https://docs.microsoft.com/en-us/sql/t-sql/language-reference)
 - [Amazon Redshift](https://docs.aws.amazon.com/redshift/latest/dg/cm_chap_SQLCommandRef.html)
-- [Google Bigquery](https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical)
+- [Google BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/lexical)
 - [Snowflake](https://docs.snowflake.com/en/sql-reference/constructs.html)
 - [I don’t know what SQL dialect to use][how-to-find-sql-dialect].
 
@@ -44,7 +44,7 @@ What does your error message say?
 - [My column or table name is "not found" or "not recognized"][sql-error-not-found].
 - [My SQL "function does not exist”][sql-error-function-does-not-exist].
 
-If your error message is not listed above, search or ask the community on [Discourse][discourse].
+If you have a different error message, search or ask the [Metabase community][discourse].
 
 #### My column or table name is "not found" or "not recognized".
 
@@ -58,7 +58,7 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 
       - `SELECT 'column_name'`
       - `SELECT "column_name"`
-      - ` SELECT {% raw %}``column_name``{% endraw %} `
+      - `SELECT {% raw %}``column_name``{% endraw %}`
 
     - Are you using the correct path to columns and tables? For example:
 
@@ -72,25 +72,34 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
 
       - `SELECT users` will throw an error.
       - `SELECT "users"` will run correctly.
+    
+    **Tip: Use Metabase to check for column and table name syntax**
 
-2.  Review the [data reference][data-reference] for the tables and columns in your query.
+      1. Create a simple question in the [notebook editor][notebook-editor] using the same columns and tables as your SQL question.
+      2. [Convert the question to SQL][how-to-convert-gui-question-to-sql].
+      3. Look at how the Metabase-generated SQL query refers to column and table names.
 
-    - If the column or table name doesn't exist in the data reference: 
-      - The column or table _display_ name may be different from the original column or table name in your database.
-      - Run `SELECT * FROM your_table_name LIMIT 10;` to look for the original column or table name to use in your query.
+2.  Review the [data reference][data-reference] for the column and tables in your query.
+
+    - If the column or table name doesn't exist in the data reference:
+      - Run `SELECT * FROM your_table_name LIMIT 10;` to look for the column or table name to use in your query.
+      - If you're a Metabase admin, check the Data model page for the [original schema][original-schema].
 
     - If the column name exists, but you can’t query the column from the SQL editor: 
       - Ask your Metabase admin if the column was re-named or removed on the database side.
       - If you’re a Metabase admin, you may need to [run a sync][database-syncing] to refresh your data.
 
 3.  If you no longer have an error message, but your query results are incorrect, go to [Troubleshooting SQL logic][troubleshoot-sql-logic].
-4.  If you're still stuck, search or ask the community on [Discourse][discourse].
+4.  If you're still stuck, search or ask the [Metabase community][discourse].
 
-**Causes:**
+**Explanation:**
 
-- You need to use the correct SQL syntax for the database that stores the tables you want to query.
-- If a column or table _display_ name was updated by an admin, your SQL query still needs to use the original column or table name from your database.
-- If a column or table name was updated in your database, but your Metabase hasn’t run a sync with your database yet, your database won’t recognize the names from your query.
+You need to make sure that you're using the correct syntax for the SQL dialect used by your database. 
+
+You also need to check that the column and table names in your query match the original names in your database. They can differ for two reasons:
+
+1. [Columns and tables have _display_ names in Metabase that are set by your Metabase admin][column-metadata].
+2. If a column or table name was updated in your database, but Metabase hasn’t run a sync yet, your database won’t recognize the names from your query.
 
 **Further reading:**
 
@@ -119,13 +128,13 @@ If your SQL query contains [SQL variables][sql-variable-def] that look like `{% 
    - If you’re a Metabase admin, you can also [cast data types from the Data model page][how-to-cast-data-type].
 
 4. If you no longer have an error message, but your query results are incorrect, go to [Troubleshooting SQL logic][troubleshoot-sql-logic].
-5. If you're still stuck, search or ask the community on [Discourse][discourse].
+5. If you're still stuck, search or ask the [Metabase community][discourse].
 
-**Causes:**
+**Explanation:**
 
-- SQL functions are designed to work on specific data types in your database.
-- For example, the [`DATE_TRUNC` function in PostgresSQL](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC) works on columns with `date`, `timestamp`, and `time` typed data in a Postgres database. If you try to use the `DATE_TRUNC` function on a column with a `string` data type in your database, it won’t work.
-- Note that Metabase [field types][field-type-def] are not one-to-one with the data types in your database. In this case, the field type gives you enough information about the column data type to troubleshoot the error.
+SQL functions are designed to work on specific data types in your database. For example, the [`DATE_TRUNC` function in PostgresSQL](https://www.postgresql.org/docs/current/functions-datetime.html#FUNCTIONS-DATETIME-TRUNC) works on columns with `date`, `timestamp`, and `time` typed data in a Postgres database. If you try to use the `DATE_TRUNC` function on a column with a `string` data type in your database, it won’t work. 
+
+Note that Metabase [field types][field-type-def] are not one-to-one with the data types in your database. In this case, the field type gives you enough information about the column data type to troubleshoot the error.
 
 **Further reading:**
 
@@ -140,30 +149,25 @@ Once you find the line that is failing in your SQL query, go to the [Debugging S
 
 ### Reading your SQL error message
 
-- Does your error message tell you the line or character position?
-- Does your error message include a table or column name? If the table or column name appears more than once in your query, [reduce the size of your query][how-to-reduce-sql-query-size].
-- Does your error message mention a SQL clause?
+Does your error message:
+- Tell you the line or character position?
+- Include a table or column name? If the table or column name appears more than once in your query, [reduce the size of your query][how-to-reduce-sql-query-size].
+- Mention a SQL clause?
 
 ### Reducing the size of a SQL query
 
-- If your query uses subqueries (nested queries), run each subquery separately. Start with the inner subqueries and work your way out.
+If your query uses:
 
-- If your query uses CTEs, run each CTE separately. Start with your base CTE and work your way down the query.
-
-- If your query uses any SQL variables that point to Metabase models, run each model separately. Go to the model by opening the variables panel, or enter the model ID number from the variable in the Metabase search bar.
-
+- **Subqueries** (nested queries), run each subquery separately. Start with the inner subqueries and work your way out.
+- **CTEs**, run each CTE separately. Start with your base CTE and work your way down the query.
+- **SQL variables that point to Metabase models**, run each model separately. Go to the model by opening the variables panel, or enter the model ID number from the variable in the Metabase search bar.
 - Remember to [read the SQL error message][how-to-read-sql-error] as you try to isolate the problem. For more information, go to [How does SQL debugging work?][how-does-sql-debugging-work].
 
-**Tips for working in the Metabase SQL editor:**
+**Tips for working in the Metabase SQL editor**
 
-- Highlight the lines that you want to run, and hit `Cmd + Return` or `Ctrl + Enter`.
-- Highlight the lines that you want to comment out, and hit `Cmd + /` or `Ctrl + /`.
-
-### Comparing your SQL query against a Metabase-generated query
-
-1. Re-create your question using the [notebook editor][notebook-editor].
-2. [Convert the question to SQL][how-to-convert-gui-question-to-sql].
-3. Compare your original SQL query against the Metabase-generated SQL to find any lines that are written differently.
+Highlight lines of your SQL query to:
+- Run the lines with `Cmd + Return` or `Ctrl + Enter`.
+- Comment/uncomment the lines with  `Cmd + /` or `Ctrl + /`.
 
 ## I don’t know what SQL dialect to use.
 
@@ -176,17 +180,18 @@ To find out which database you’re querying:
 
 ## Are you still stuck?
 
-Search or ask the community on [Discourse][discourse].
+Search or ask the [Metabase community][discourse].
 
+[column-metadata]: ../administration-guide/03-metadata-editing.html#metadata-for-columns
 [data-reference]: ../users-guide/12-data-model-reference.html
 [data-source-list]: https://www.metabase.com/datasources/
 [database-syncing]: ../administration-guide/01-managing-databases.html#database-syncing
 [data-type-def]: /glossary/data_type.html
-[discourse]: https://discourse.metabase.com/
+[discourse]: https://discourse.metabase.com/search?q=sql%20error%20message
 [field-type-def]: /glossary/field_type.html
 [field-type-doc]: ../users-guide/field-types.html
 [how-metabase-executes-queries]: ../users-guide/writing-sql.html#how-metabase-executes-sql-queries
-[how-to-cast-data-type]: ../administration-guide/03-metadata-editing#casting-to-a-specific-data-type
+[how-to-cast-data-type]: ../administration-guide/03-metadata-editing#casting-to-a-specific-data-type 
 [how-to-convert-gui-question-to-sql]: ../users-guide/04-asking-questions.html#viewing-the-sql-that-powers-your-question
 [how-does-sql-debugging-work]: #how-does-sql-debugging-work
 [how-to-find-failing-sql-line]: #i-dont-know-which-line-of-my-sql-query-is-failing
@@ -194,6 +199,7 @@ Search or ask the community on [Discourse][discourse].
 [how-to-read-sql-error]: #reading-your-sql-error-message
 [how-to-reduce-sql-query-size]: #reducing-the-size-of-a-sql-query
 [notebook-editor]: ../users-guide/04-asking-questions.html#the-query-builder
+[original-schema]: ../administration-guide/03-metadata-editing.html#original-schema
 [sql-debugging]: #debugging-sql-queries
 [sql-error-function-does-not-exist]: #my-sql-function-does-not-exist
 [sql-error-message]: ./sql-error-message.html
