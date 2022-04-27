@@ -47,7 +47,6 @@
 
 ;; Additional columns required by the Ocient database 
 (defonce id-column-key (str "id"))
-(defonce timestamp-column-key (str "created"))
 
 ;; Define the primary key type
 (defmethod sql.tx/pk-sql-type :ocient [_] "INT NOT NULL")
@@ -150,32 +149,24 @@
   (str/join "\n"
             (list
              (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))),
-             (format "  %s TIMESTAMP TIME KEY BUCKET(1, HOUR) NOT NULL DEFAULT '0'," timestamp-column-key),
              (format "  %s INT NOT NULL," id-column-key),
              (format "  %s VARCHAR(255) NOT NULL," fks-table-field-name),
              (format "  %s VARCHAR(255) NOT NULL," fks-table-dest-table-name),
              (format "  CLUSTERING INDEX idx01 (%s)" id-column-key),
-             ")")))
+             ") AS SELECT 0, NULL, NULL LIMIT 0")))
 
 ;; Drops the FKs table
 (defn- drop-fks-table-sql
   [database-name table-name]
   (format "DROP TABLE IF EXISTS %s" (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))))
 
-;; Inserts the FK mapping into the table
-(defn- insert-fk-sql
-  [database-name table-name field-name dest-table-name id]
-  (let [quot            #(sql.u/quote-name :ocient %1 (tx/format-name :ocient %2))]
-    (format "INSERT INTO %s SELECT %s, %s, '%s', '%s'"
-            (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))
-            (tc/to-long (time/now))
-            id
-            field-name
-            dest-table-name)))
-
 (defn- add-fk-sql
   [{:keys [database-name]} {:keys [table-name]} {dest-table-name :fk, field-name :field-name} id]
-  (insert-fk-sql database-name table-name field-name (name dest-table-name) id))
+  (format "INSERT INTO %s SELECT %s, '%s', '%s'"
+          (sql.tx/qualify-and-quote :ocient database-name (fks-table-name table-name))
+          id
+          field-name
+          (name dest-table-name)))
 
 ;; Ocient does not support foreign keys, but this is needed to enable some of the join functionality
 (defmethod sql.tx/add-fk-sql :ocient
@@ -226,10 +217,8 @@
 
 ;; Ocient requires a timestamp column and a clustering index key. These fields are prepended to the field definitions
 (defmethod sql.tx/create-table-sql :ocient
-  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as tabledef}]
-  (let [quot                  #(sql.u/quote-name driver :field (tx/format-name driver %))
-        rows                  (load-data/load-data-get-rows driver dbdef tabledef)
-        columns               (keys (first rows))]
+  [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
+  (let [quot                  #(sql.u/quote-name driver :field (tx/format-name driver %))]
     (str/join "\n"
               (list
                (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote driver database-name table-name)),
@@ -277,7 +266,7 @@
                       \"segmentGenerationTimeout\": \"30s\"
                   }
                 }'"
-               (format "AS SELECT 0, %s LIMIT 0" (str/join  ", " (map (fn nullify [_] "NULL") columns)))))))
+               (format "AS SELECT 0, %s LIMIT 0" (str/join  ", " (map (fn nullify [_] "NULL") field-definitions)))))))
 
 (defmethod ddl/create-db-tables-ddl-statements :ocient
   [driver {:keys [database-name, table-definitions], :as dbdef} & _]
@@ -298,7 +287,6 @@
           (add! (add-fk-sql dbdef tabledef fielddef id)))))
     @statements))
 
-;;A System Administrator must first create the database before the tests can procede
 (defmethod tx/create-db! :ocient
   [driver {:keys [table-definitions database-name] :as dbdef} & {:keys [skip-drop-db?] :as options}]
   ;; first execute statements to drop the DB if needed (this will do nothing if `skip-drop-db?` is true)
