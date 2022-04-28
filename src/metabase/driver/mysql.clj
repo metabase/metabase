@@ -14,6 +14,7 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.timezone :as qp.timezone]
@@ -30,9 +31,10 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
-
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -167,6 +169,19 @@
 (defmethod driver/db-start-of-week :mysql
   [_]
   :sunday)
+
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
+(defmethod sql-jdbc.sync/describe-nested-field-columns :mysql
+  [driver database table]
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
+    (println fields)
+    (if (> (count fields) max-nested-field-columns)
+      #{}
+      fields)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -306,6 +321,13 @@
     :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
+
+(defmethod sql-jdbc.sync/column->semantic-type :mysql
+  [_ database-type _]
+  ;; More types to be added when we start caring about them
+  (case database-type
+    "JSON"  :type/SerializedJSON
+    nil))
 
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."
