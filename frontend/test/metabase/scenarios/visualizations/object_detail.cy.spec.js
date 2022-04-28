@@ -33,10 +33,7 @@ describe("scenarios > question > object details", () => {
 
   it("handles browsing records by PKs", () => {
     cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
-    getFirstTableColumn()
-      .eq(1)
-      .should("contain", FIRST_ORDER_ID)
-      .click();
+    drillPK({ id: FIRST_ORDER_ID });
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
     getPreviousObjectDetailButton().should("have.attr", "disabled", "disabled");
@@ -59,10 +56,7 @@ describe("scenarios > question > object details", () => {
     cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
     const FIRST_USER_ID = 1283;
 
-    cy.findByText(String(FIRST_USER_ID)).click();
-    popover()
-      .findByText("View details")
-      .click();
+    drillFK({ id: FIRST_ORDER_ID });
 
     assertUserDetailView({ id: FIRST_USER_ID });
     getPreviousObjectDetailButton().click();
@@ -89,10 +83,7 @@ describe("scenarios > question > object details", () => {
     const EXPECTED_LINKED_REVIEWS_COUNT = 8;
     openProductsTable();
 
-    getFirstTableColumn()
-      .eq(5)
-      .should("contain", 5)
-      .click();
+    drillPK({ id: 5 });
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByTestId("fk-relation-orders").findByText(97);
@@ -122,9 +113,7 @@ describe("scenarios > question > object details", () => {
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
     openPeopleTable({ limit: 2 });
 
-    cy.get(".Table-ID")
-      .contains("2")
-      .click();
+    drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
     cy.findByTestId("object-detail")
@@ -138,8 +127,21 @@ describe("scenarios > question > object details", () => {
   });
 });
 
-function getFirstTableColumn() {
-  return cy.get(".TableInteractive-cellWrapper--firstColumn");
+function drillPK({ id }) {
+  cy.get(".Table-ID")
+    .contains(id)
+    .first()
+    .click();
+}
+
+function drillFK({ id }) {
+  cy.get(".Table-FK")
+    .contains(id)
+    .first()
+    .click();
+  popover()
+    .findByText("View details")
+    .click();
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
