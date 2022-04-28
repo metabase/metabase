@@ -263,6 +263,7 @@ More on [Dashboard filters][dashboard-filters].
 
 - [Create filter widgets for charts using SQL variables][sql-variables].
 - [Field Filters: create smart filter widgets for SQL questions][field-filter].
+- [Troubleshooting SQL][troubleshooting-sql].
 - [Troubleshooting filters][troubleshooting-filters].
 - [Dashboard filters][dashboard-filters].
 
@@ -279,4 +280,5 @@ Learn how to [refer to a saved question in a SQL query](referencing-saved-questi
 [filtering-on-this-field]: ../administration-guide/03-metadata-editing.html#picking-the-filter-user-interface-for-a-column
 [sql-variables]: /learn/sql-questions/sql-variables.html
 [troubleshooting-filters]: ../troubleshooting-guide/filters.html
+[troubleshooting-sql]: ../troubleshooting-guide/sql.html
 [basic-input]: /learn/sql-questions/sql-variables.html#basic-input-variable-text

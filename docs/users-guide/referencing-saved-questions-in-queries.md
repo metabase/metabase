@@ -90,6 +90,10 @@ For other ways to standardize analytics, check out:
 - The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
 - You cannot reference variables in sub-queries. You only have access to the _results_ of the saved question, not the saved question's query. For example, if you have a saved question that uses a [field filter](https://www.metabase.com/learn/building-analytics/sql-templates/field-filters), you won't be able to reference that variable. If you need to change how the saved question has filtered the results, you'll need to update (or duplicate) that question and apply the filter.
 
+## Need help?
+
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../troubleshooting-guide/sql.html).
+
 ---
 
 ## Next: automated X-ray explorations

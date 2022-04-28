@@ -97,3 +97,4 @@ Check out:
 
 - [SQL snippets](https://www.metabase.com/learn/building-analytics/sql-templates/sql-snippets.html)
 - [SQL Snippets vs Saved Questions vs Views](https://www.metabase.com/learn/building-analytics/sql-templates/organizing-sql.html).
+- If you're having trouble with your SQL query, go to the [SQL troubleshooting guide](../troubleshooting-guide/sql.html).
