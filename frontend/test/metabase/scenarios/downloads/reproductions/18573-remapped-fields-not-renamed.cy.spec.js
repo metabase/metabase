@@ -43,7 +43,7 @@ describe("issue 18573", () => {
     cy.findByText("Foo");
     cy.findByText("Awesome Concrete Shoes");
 
-    downloadAndAssert("xlsx", assertion);
+    downloadAndAssert({ fileType: "xlsx" }, assertion);
   });
 });
 
