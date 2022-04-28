@@ -136,15 +136,18 @@ describe("ObjectDetailDrill", () => {
 
       it("should return object detail filter", () => {
         expect(actions).toMatchObject([
-          { name: "object-detail", url: expect.any(Function) },
+          {
+            name: "object-detail",
+            question: expect.any(Function),
+            extra: expect.any(Function),
+          },
         ]);
       });
 
       it("should return correct URL to object detail", () => {
         const [action] = actions;
-        expect(action.url()).toBe(
-          `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}/${cellValue}`,
-        );
+        expect(action.question()).toBe(SAVED_QUESTION);
+        expect(action.extra()).toEqual({ objectId: cellValue });
       });
     });
   });

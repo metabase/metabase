@@ -1,6 +1,5 @@
 import { t } from "ttag";
 import { isFK, isPK } from "metabase/lib/schema_metadata";
-import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 function hasManyPKColumns(question) {
@@ -19,7 +18,9 @@ function getActionForPKColumn({ question, column, objectId, isDashboard }) {
     return ["question", () => question.filter("=", column, objectId)];
   }
   if (isDashboard) {
-    return ["url", () => Urls.question(question.card(), { objectId })];
+    const getNextQuestion = () => question;
+    const getExtraData = () => ({ objectId });
+    return ["question", getNextQuestion, getExtraData];
   }
   return ["action", () => zoomInRow({ objectId })];
 }
@@ -37,13 +38,16 @@ function getBaseActionObject() {
 
 function getPKAction({ question, column, objectId, isDashboard }) {
   const actionObject = getBaseActionObject();
-  const [actionKey, action] = getActionForPKColumn({
+  const [actionKey, action, extra] = getActionForPKColumn({
     question,
     column,
     objectId,
     isDashboard,
   });
   actionObject[actionKey] = action;
+  if (extra) {
+    actionObject.extra = extra;
+  }
   return actionObject;
 }
 
