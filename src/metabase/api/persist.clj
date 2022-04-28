@@ -1,6 +1,6 @@
 (ns metabase.api.persist
   (:require [clojure.tools.logging :as log]
-            [compojure.core :refer [DELETE GET POST PUT]]
+            [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.driver.ddl.interface :as ddl.i]
