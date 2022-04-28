@@ -1,5 +1,6 @@
 (ns metabase.api.persist
   (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [DELETE GET POST PUT]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
             [metabase.driver.ddl.interface :as ddl.i]
@@ -8,7 +9,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
-            [metabase.server.middleware.offset-paging :as offset-paging]
+            [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
@@ -51,10 +52,10 @@
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
   (api/check-superuser)
-  {:data   (fetch-persisted-info nil offset-paging/*limit* offset-paging/*offset*)
+  {:data   (fetch-persisted-info nil mw.offset-paging/*limit* mw.offset-paging/*offset*)
    :total  (db/count PersistedInfo)
-   :limit  offset-paging/*limit*
-   :offset offset-paging/*offset*})
+   :limit  mw.offset-paging/*limit*
+   :offset mw.offset-paging/*offset*})
 
 (api/defendpoint GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."

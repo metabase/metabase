@@ -1,8 +1,8 @@
 (ns metabase.models.persisted-info
   (:require [buddy.core.codecs :as codecs]
             [clojure.string :as str]
-            [metabase.models.interface :as i]
-            [metabase.query-processor.util :as qputil]
+            [metabase.models.interface :as mi]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -37,7 +37,7 @@
 (defn query-hash
   "Base64 string of the hash of a query."
   [query]
-  (String. ^bytes (codecs/bytes->b64 (qputil/query-hash query))))
+  (String. ^bytes (codecs/bytes->b64 (qp.util/query-hash query))))
 
 (def ^:dynamic *allow-persisted-substitution*
   "Allow persisted substitution. When refreshing, set this to nil to ensure that all undelrying queries are used to
@@ -52,9 +52,9 @@
        (apply str)))
 
 (models/add-type! ::definition
-                  :in i/json-in
+                  :in mi/json-in
                   :out (fn [definition]
-                         (when-let [definition (not-empty (i/json-out-with-keywordization definition))]
+                         (when-let [definition (not-empty (mi/json-out-with-keywordization definition))]
                            (update definition :field-definitions (fn [field-definitions]
                                                                    (mapv #(update % :base-type keyword)
                                                                          field-definitions))))))
