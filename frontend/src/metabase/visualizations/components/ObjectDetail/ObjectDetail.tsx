@@ -34,7 +34,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { getObjectName, getIdValue } from "./utils";
+import { getObjectName, getIdValue, getSingleResultsRow } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
@@ -44,16 +44,29 @@ import {
   ErrorWrapper,
 } from "./ObjectDetail.styled";
 
-const mapStateToProps = (state: unknown) => ({
-  question: getQuestion(state),
-  table: getTableMetadata(state),
-  tableForeignKeys: getTableForeignKeys(state),
-  tableForeignKeyReferences: getTableForeignKeyReferences(state),
-  zoomedRow: getZoomRow(state),
-  zoomedRowID: getZoomedObjectId(state),
-  canZoomPreviousRow: getCanZoomPreviousRow(state),
-  canZoomNextRow: getCanZoomNextRow(state),
-});
+const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+  let zoomedRowID = getZoomedObjectId(state);
+  const isZooming = zoomedRowID != null;
+
+  if (!isZooming) {
+    zoomedRowID = getIdValue({ data });
+  }
+
+  const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
+  const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
+  const canZoomNextRow = isZooming ? getCanZoomNextRow(state) : false;
+
+  return {
+    question: getQuestion(state),
+    table: getTableMetadata(state),
+    tableForeignKeys: getTableForeignKeys(state),
+    tableForeignKeyReferences: getTableForeignKeyReferences(state),
+    zoomedRowID,
+    zoomedRow,
+    canZoomPreviousRow,
+    canZoomNextRow,
+  };
+};
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = (dispatch: any) => ({
@@ -210,7 +223,7 @@ export function ObjectDetailFn({
             <ObjectDetailHeader
               canZoom={canZoom}
               objectName={objectName}
-              objectId={getIdValue({ data, zoomedRowID })}
+              objectId={zoomedRowID}
               canZoomPreviousRow={canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
               viewPreviousObjectDetail={viewPreviousObjectDetail}

@@ -49,3 +49,7 @@ export const getIdValue = ({
   const columnIndex = _.findIndex(cols, col => isPK(col));
   return rows[0][columnIndex] as number;
 };
+
+export function getSingleResultsRow(data: DatasetData) {
+  return data.rows.length === 1 ? data.rows[0] : null;
+}
