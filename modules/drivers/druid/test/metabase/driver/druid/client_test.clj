@@ -4,6 +4,7 @@
             [metabase.driver.druid.client :as druid.client]
             [metabase.driver.util :as driver.u]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context.default :as default]
             [metabase.test :as mt]
             [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
@@ -28,6 +29,32 @@
                 (a/close! out-chan)))
             (is (= ::cancel
                    (mt/wait-for-result cancel-chan 2000)))))))))
+
+(deftest query-timeout-test
+  (mt/test-driver :druid
+    (tqpt/with-flattened-dbdef
+      (let [query (mt/mbql-query checkins)
+            executed-query (atom nil)]
+        (mt/with-open-channels [running-chan (a/promise-chan)
+                                cancel-chan  (a/promise-chan)]
+          (with-redefs [druid.client/DELETE   (fn [& _]
+                                                (a/>!! cancel-chan ::cancel))
+                        druid.client/do-query (fn [_ query]
+                                                (a/>!! running-chan ::running)
+                                                (reset! executed-query query)
+                                                (Thread/sleep 5000)
+                                                (throw (Exception. "Don't actually run!")))]
+
+            (let [out-chan (qp/process-query-async query)]
+              ;; wait for query to start running, then close `out-chan`
+              (a/go
+                (a/<! running-chan)
+                (a/close! out-chan)))
+            (is (= ::cancel
+                   (mt/wait-for-result cancel-chan 2000)))
+            ;; Check the query as executed to see if it got the timeout applied correctly (3 minutes in tests)
+            (is (partial= {:context {:timeout default/query-timeout-ms}}
+                          @executed-query))))))))
 
 (deftest ssh-tunnel-test
   (mt/test-driver

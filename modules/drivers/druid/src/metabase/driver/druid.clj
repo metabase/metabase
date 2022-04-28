@@ -37,10 +37,10 @@
     (assoc-in parsed [:context :timeout] timeout)))
 
 (defmethod driver/execute-reducible-query :druid
-  [_ query {:keys [timeout] :as context} respond]
+  [_ query context respond]
   (druid.execute/execute-reducible-query
     (partial druid.client/do-query-with-cancellation (qp.context/canceled-chan context))
-    (update-in query [:native :query] add-timeout-to-query timeout)
+    (update-in query [:native :query] add-timeout-to-query (qp.context/timeout context))
     respond))
 
 (doseq [[feature supported?] {:set-timezone            true
