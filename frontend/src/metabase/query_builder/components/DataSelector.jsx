@@ -590,14 +590,16 @@ export class UnconnectedDataSelector extends Component {
     return index < steps.length - 1 ? steps[index + 1] : null;
   }
 
-  getPreviousStep() {
+  getPreviousStep(debug = true) {
     const { steps } = this.props;
     const { activeStep } = this.state;
     if (this.isLoadingDatasets() || activeStep === null) {
       return null;
     }
 
-    console.log("<--- getPreviousStep:", activeStep);
+    if (debug) {
+      console.log("<--- getPreviousStep:", activeStep);
+    }
 
     let index = steps.indexOf(activeStep);
     if (index === -1) {
@@ -638,7 +640,9 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    console.log("");
+    if (debug) {
+      console.log("");
+    }
 
     // data bucket step doesn't make a lot of sense when there're no datasets
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
@@ -649,6 +653,8 @@ export class UnconnectedDataSelector extends Component {
     if (index < 0) {
       return null;
     }
+
+    // valid previous step
     return steps[index];
   }
 
@@ -913,8 +919,7 @@ export class UnconnectedDataSelector extends Component {
       // misc
       isLoading: this.state.isLoading,
       hasNextStep: !!this.getNextStep(),
-      // onBack: this.getPreviousStep() ? this.previousStep : null,
-      onBack: this.getPreviousStep ? this.previousStep.bind(this) : null,
+      onBack: this.getPreviousStep(false) ? this.previousStep : null,
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
@@ -1272,7 +1277,7 @@ const DatabasePicker = ({
       items: databases.map((database, index) => ({
         name: database.name,
         index,
-        database: database,
+        database,
       })),
     },
   ];
