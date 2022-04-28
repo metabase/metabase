@@ -72,9 +72,10 @@ const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
 const mapDispatchToProps = (dispatch: any) => ({
   fetchTableFks: (id: number) =>
     dispatch(Tables.objectActions.fetchForeignKeys({ id })),
-  followForeignKey: (fk: ForeignKey) => dispatch(followForeignKey(fk)),
   loadObjectDetailFKReferences: (args: any) =>
     dispatch(loadObjectDetailFKReferences(args)),
+  followForeignKey: ({ objectId, fk }: { objectId: number; fk: ForeignKey }) =>
+    dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
@@ -96,8 +97,8 @@ export interface ObjectDetailProps {
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   fetchTableFks: (id: number) => void;
-  followForeignKey: (fk: ForeignKey) => void;
   loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
+  followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -183,6 +184,13 @@ export function ObjectDetailFn({
     loadFKReferences,
   ]);
 
+  const onFollowForeignKey = useCallback(
+    (fk: ForeignKey) => {
+      followForeignKey({ objectId: zoomedRowID, fk });
+    },
+    [zoomedRowID, followForeignKey],
+  );
+
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: { [key: string]: () => void } = {
       ArrowUp: viewPreviousObjectDetail,
@@ -241,7 +249,7 @@ export function ObjectDetailFn({
               visualizationIsClickable={visualizationIsClickable}
               tableForeignKeys={tableForeignKeys}
               tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={followForeignKey}
+              followForeignKey={onFollowForeignKey}
             />
           </div>
         )}
