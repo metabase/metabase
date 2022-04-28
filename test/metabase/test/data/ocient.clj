@@ -78,21 +78,18 @@
          (when (= context :db)
            {:db (tx/format-name driver database-name)})))
 
-(doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
-                             :type/Boolean        "BOOL"
-                             :type/Date           "DATE"
-                             :type/DateTime       "TIMESTAMP"
-                             :type/DateTimeWithTZ "TIMESTAMP"
-                             :type/ZonedDateTime  "TIMESTAMP"
-                             :type/Decimal        "DECIMAL(16, 4)"
-                             :type/Float          "DOUBLE"
-                             :type/Integer        "INT"
-                             :type/IPAddress      "IPV4"
-                             :type/*              "VARCHAR(255)"
-                             :type/Text           "VARCHAR(255)"
-                             :type/Time           "TIME"
-                             :type/TimeWithTZ     "TIMESTAMP"
-                             :type/UUID           "UUID"}]
+(doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
+                             :type/Boolean                "BOOL"
+                             :type/Date                   "DATE"
+                             :type/DateTime               "TIMESTAMP"
+                             :type/Decimal                "DECIMAL(16, 4)"
+                             :type/Float                  "DOUBLE"
+                             :type/Integer                "INT"
+                             :type/IPAddress              "IPV4"
+                             :type/*                      "VARCHAR(255)"
+                             :type/Text                   "VARCHAR(255)"
+                             :type/Time                   "TIME"
+                             :type/UUID                   "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:ocient base-type] [_ _] db-type))
 
 (defn in?

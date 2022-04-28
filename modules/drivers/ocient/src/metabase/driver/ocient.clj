@@ -31,7 +31,7 @@
              [sync :as sql-jdbc.sync]])
 
   (:import [java.sql PreparedStatement Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime Instant]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime Instant OffsetTime ZoneId]
            [java.sql DatabaseMetaData ResultSet]
            [java.util Calendar TimeZone]))
 
@@ -93,7 +93,7 @@
     [#"LONG"      :type/BigInteger]
     [#"DECIMAL"   :type/Decimal]
     [#"BOOLEAN"   :type/Boolean]
-    [#"TIMESTAMP" :type/DateTimeWithLocalTZ]
+    [#"TIMESTAMP" :type/DateTime]
     [#"DATETIME"  :type/DateTime]
     [#"DATE"      :type/Date]
     [#"TIME"      :type/Time]]))
@@ -103,7 +103,8 @@
   (database-type->base-type database-type))
 
 
-(doseq [[feature supported?] {:set-timezone                    true
+(doseq [[feature supported?] {;; Ocinet reports all temporal values in UTC
+                              :set-timezone                    false
                               :native-parameters               true
                               :basic-aggregations              true
                               :standard-deviation-aggregations true
@@ -122,11 +123,34 @@
   [_ rs _ i]
   (fn []
     (.toLocalDateTime (.getObject rs i))))
+  ;; (fn []
+  ;;   (let [instant      (.toInstant (.getObject rs i))
+  ;;         zone-id      (ZoneId/of "UTC")]
+  ;;     (LocalDateTime/of instant zone-id))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/DATE]
   [_ rs _ i]
   (fn []
     (.toLocalDate (.getObject rs i))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIME]
+  [_ rs _ i]
+  (fn []
+    (let [utc-str (.toString (.getObject rs i))]
+      (LocalTime/parse utc-str))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ rs _ i]
+  (fn []
+    (let [local-date-time    (.toLocalDateTime (.getObject rs i))
+          zone-id            (ZoneId/of "UTC")]
+      (OffsetDateTime/of local-date-time zone-id))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIME_WITH_TIMEZONE]
+  [_ rs _ i]
+  (fn []
+    (let [utc-str (.toString (.getObject rs i))]
+      (LocalTime/parse utc-str))))
 
 (defmethod sql-jdbc.execute/set-parameter [:ocient java.time.OffsetDateTime]
   [_ ^PreparedStatement ps ^Integer i t]
@@ -134,6 +158,10 @@
         t   (t/sql-timestamp t)]
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
+
+(defmethod unprepare/unprepare-value [:ocient OffsetTime]
+  [_ t]
+  (format "time('%s')" (t/format "HH:mm:ss.SSS VV" t)))
 
 (defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
   [_ t]
