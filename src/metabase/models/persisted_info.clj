@@ -68,9 +68,13 @@
 
 (defn persisted?
   "Hydrate a card :is_persisted for the frontend."
-  {:hydrate :persisted}
-  [card]
-  (db/exists? PersistedInfo :card_id (:id card) :state [:not= "deletable"]))
+  {:batched-hydrate :persisted}
+  [cards]
+  (when (seq cards)
+    (let [existing-ids (db/select-ids PersistedInfo :card_id [:in (map :id cards)])]
+      (map (fn [{id :id :as card}]
+             (assoc card :persisted (contains? existing-ids id)))
+           cards))))
 
 (defn mark-for-deletion!
   "Marks PersistedInfo as `deletable`, these will at some point be cleaned up by the PersistPrune task."
