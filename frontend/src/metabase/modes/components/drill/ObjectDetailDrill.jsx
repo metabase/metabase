@@ -1,5 +1,6 @@
 import { t } from "ttag";
 import { isFK, isPK } from "metabase/lib/schema_metadata";
+import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 function hasManyPKColumns(question) {
@@ -11,17 +12,30 @@ function hasManyPKColumns(question) {
   );
 }
 
-function getActionForPKColumn({ question, column, objectId, isDashboard }) {
+function getActionForPKColumn({ question, column, objectId, extraData }) {
   if (hasManyPKColumns(question)) {
     // Filter by a clicked value, then a user can click on the 2nd, 3d, ..., Nth PK cells
     // to narrow down filtering and eventually enter the object detail view once all PKs are filtered
     return ["question", () => question.filter("=", column, objectId)];
   }
+
+  const isDashboard = !!extraData?.dashboard;
   if (isDashboard) {
-    const getNextQuestion = () => question;
-    const getExtraData = () => ({ objectId });
-    return ["question", getNextQuestion, getExtraData];
+    const { parameterValuesBySlug = {} } = extraData;
+    const hasParameters = Object.keys(parameterValuesBySlug).length > 0;
+
+    // This should result in a metabase/dashboard/actions navigateToNewCardFromDashboard call
+    // That will convert dashboard parameters into question filters
+    // and make sure the clicked row will be present in the query results
+    if (hasParameters) {
+      const getNextQuestion = () => question;
+      const getExtraData = () => ({ objectId });
+      return ["question", getNextQuestion, getExtraData];
+    }
+
+    return ["url", () => Urls.question(question.card(), { objectId })];
   }
+
   return ["action", () => zoomInRow({ objectId })];
 }
 
@@ -36,13 +50,13 @@ function getBaseActionObject() {
   };
 }
 
-function getPKAction({ question, column, objectId, isDashboard }) {
+function getPKAction({ question, column, objectId, extraData }) {
   const actionObject = getBaseActionObject();
   const [actionKey, action, extra] = getActionForPKColumn({
     question,
     column,
     objectId,
-    isDashboard,
+    extraData,
   });
   actionObject[actionKey] = action;
   if (extra) {
@@ -70,12 +84,8 @@ export default ({ question, clicked }) => {
   ) {
     return [];
   }
-
   const { column, value: objectId, extraData } = clicked;
-  const isDashboard = !!extraData?.dashboard;
-
-  const params = { question, column, objectId, isDashboard };
-
+  const params = { question, column, objectId, extraData };
   const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
   return actionObject ? [actionObject] : [];
 };

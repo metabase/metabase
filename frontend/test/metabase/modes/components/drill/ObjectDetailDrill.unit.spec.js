@@ -126,11 +126,42 @@ describe("ObjectDetailDrill", () => {
     });
 
     describe("from dashboard", () => {
+      describe("without parameters", () => {
+        const { actions, cellValue } = setup({
+          question: SAVED_QUESTION,
+          column: ORDERS.ID.column(),
+          extraData: {
+            dashboard: { id: 5 },
+          },
+        });
+
+        it("should return object detail filter", () => {
+          expect(actions).toMatchObject([
+            {
+              name: "object-detail",
+              url: expect.any(Function),
+            },
+          ]);
+        });
+
+        it("should return correct URL to object detail", () => {
+          const [action] = actions;
+          expect(action.url()).toBe(
+            `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}/${cellValue}`,
+          );
+        });
+      });
+    });
+
+    describe("with parameters", () => {
       const { actions, cellValue } = setup({
         question: SAVED_QUESTION,
         column: ORDERS.ID.column(),
         extraData: {
           dashboard: { id: 5 },
+          parameterValuesBySlug: {
+            foo: "bar",
+          },
         },
       });
 
