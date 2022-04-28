@@ -566,9 +566,7 @@ export class UnconnectedDataSelector extends Component {
       if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
       }
-    }
-
-    if (
+    } else if (
       activeStep === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       !this.props.selectedSchemaId
@@ -611,6 +609,7 @@ export class UnconnectedDataSelector extends Component {
     index -= 1;
 
     // // Database: possibly skip another step backwards
+    // const databases = this.getDatabases();
     // // console.log(
     // //   DATABASE_STEP,
     // //   this.props.useOnlyAvailableDatabase,
@@ -619,7 +618,8 @@ export class UnconnectedDataSelector extends Component {
     // if (
     //   steps[index] === DATABASE_STEP &&
     //   this.props.useOnlyAvailableDatabase &&
-    //   this.state.databases.length === 1
+    //   databases.length === 1
+    //   // this.state.databases.length === 1
     // ) {
     //   // console.log("\tskip");
     //   index -= 1;
