@@ -270,12 +270,13 @@ export default class DashCard extends Component {
           mode={mode}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard
-              ? ({ nextCard, previousCard }) => {
+              ? ({ nextCard, previousCard, objectId }) => {
                   // navigateToNewCardFromDashboard needs `dashcard` for applying active filters to the query
                   navigateToNewCardFromDashboard({
                     nextCard,
                     previousCard,
                     dashcard,
+                    objectId,
                   });
                 }
               : null
