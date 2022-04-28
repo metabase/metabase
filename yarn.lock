@@ -3388,31 +3388,31 @@
   dependencies:
     "@sinonjs/commons" "^1.7.0"
 
-"@snowplow/browser-tracker-core@3.1.6":
-  version "3.1.6"
-  resolved "https://registry.yarnpkg.com/@snowplow/browser-tracker-core/-/browser-tracker-core-3.1.6.tgz#660e62311d5aafa9769d3e8ac315bba1939ff0ca"
-  integrity sha512-IOsQaI5EOaaOHxxgIGAeSZIR7oM8sre0dDjgBwqsUFpQgpha2/c5mP0ui59hXhBzGFlXA+10wml50OXx/YwMCw==
+"@snowplow/browser-tracker-core@3.4.0":
+  version "3.4.0"
+  resolved "https://registry.yarnpkg.com/@snowplow/browser-tracker-core/-/browser-tracker-core-3.4.0.tgz#ff037367325445cb0f5373fdefd6dabc7434192c"
+  integrity sha512-Eav/+UnfnytnuGVJRh8wjIdAN2Qx/IZxAtDtNj0cu+WQactAnSJBeUuaWOrcasXbvrMchlF+GyvA/PiOXLeDTQ==
   dependencies:
-    "@snowplow/tracker-core" "3.1.6"
+    "@snowplow/tracker-core" "3.4.0"
     sha1 "^1.1.1"
-    tslib "^2.3.0"
+    tslib "^2.3.1"
     uuid "^3.4.0"
 
-"@snowplow/browser-tracker@^3.1.6":
-  version "3.1.6"
-  resolved "https://registry.yarnpkg.com/@snowplow/browser-tracker/-/browser-tracker-3.1.6.tgz#f8f41b12c79e9886fda7d10924a6a487112d5cf6"
-  integrity sha512-6VY/3cgEvRzE6u52n0OSZR9pSjFzud4cICNIZrH2YVcF8/lCrHKscatBVffALrLShSglSB4FZPG9CtfPCAivow==
+"@snowplow/browser-tracker@^3.3.1":
+  version "3.4.0"
+  resolved "https://registry.yarnpkg.com/@snowplow/browser-tracker/-/browser-tracker-3.4.0.tgz#8d1b5df945d0d8872b97c470b00baa0aae0a6e7d"
+  integrity sha512-kOzTFAc4cwr/CJLA+lpwR0eDc0vmcIIjlX6veoRXiELb7tR1JFdCjaQirSmQ1mLjjxTjqrkBPb+2TNhxtCzw0g==
   dependencies:
-    "@snowplow/browser-tracker-core" "3.1.6"
-    "@snowplow/tracker-core" "3.1.6"
-    tslib "^2.3.0"
+    "@snowplow/browser-tracker-core" "3.4.0"
+    "@snowplow/tracker-core" "3.4.0"
+    tslib "^2.3.1"
 
-"@snowplow/tracker-core@3.1.6":
-  version "3.1.6"
-  resolved "https://registry.yarnpkg.com/@snowplow/tracker-core/-/tracker-core-3.1.6.tgz#f1f87782e64a2d59ab881cbb7e6e1a1e43972283"
-  integrity sha512-b2O1xXEqQRzuhIol+3mhk9Xvz/smiW+6pQ3W1fVWonXrYoKtTyak2K+98phj2e0V+H/jUXeviH8adLEdbRkCYA==
+"@snowplow/tracker-core@3.4.0":
+  version "3.4.0"
+  resolved "https://registry.yarnpkg.com/@snowplow/tracker-core/-/tracker-core-3.4.0.tgz#688ddcbf7ebe894112d337532ee1473c703eb920"
+  integrity sha512-HINAMZdvcQwIOZVVM8UtNZB2X33m7+gAIzDj3YQxvzphDUo7+GPCmmoVZmP9C2m6HovtBbKDX7slruvWFh+kcw==
   dependencies:
-    tslib "^2.3.0"
+    tslib "^2.3.1"
     uuid "^3.4.0"
 
 "@storybook/addon-actions@6.3.12", "@storybook/addon-actions@^6.3.12":
@@ -20737,6 +20737,11 @@ tslib@^2.0.3:
   version "2.2.0"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.2.0.tgz#fb2c475977e35e241311ede2693cee1ec6698f5c"
   integrity sha512-gS9GVHRU+RGn5KQM2rllAlR3dU6m7AcpJKdtH8gFvQiC4Otgk98XnmMU+nZenHt/+VhnBPWwgrJsyrdcw6i23w==
+
+tslib@^2.3.1:
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/tslib/-/tslib-2.4.0.tgz#7cecaa7f073ce680a05847aa77be941098f36dc3"
+  integrity sha512-d6xOpEDfsi2CZVlPQzGeux8XMwLT9hssAsaPYExaQMuYskwb+x1x7J371tWlbBdWHroy99KnVB6qIkUbs5X3UQ==
 
 tsutils@^3.21.0:
   version "3.21.0"

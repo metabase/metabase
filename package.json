@@ -12,7 +12,7 @@
   "dependencies": {
     "@emotion/react": "^11.7.1",
     "@emotion/styled": "^11.6.0",
-    "@snowplow/browser-tracker": "^3.1.6",
+    "@snowplow/browser-tracker": "^3.3.1",
     "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",
     "@visx/clip-path": "^2.1.0",
