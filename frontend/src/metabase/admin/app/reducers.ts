@@ -40,7 +40,7 @@ const getAdminPaths: () => AdminPath[] = () => {
     },
   ];
 
-  const isModelPersistenceEnabled = Settings.get("enabled-persisted-models");
+  const isModelPersistenceEnabled = Settings.get("persisted-models-enabled");
   const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
 
   if (

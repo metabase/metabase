@@ -36,7 +36,7 @@ type ToolTab = {
 
 function mapStateToProps(state: State) {
   return {
-    isModelPersistenceEnabled: getSetting(state, "enabled-persisted-models"),
+    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 }
 

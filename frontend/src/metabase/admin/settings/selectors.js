@@ -403,7 +403,7 @@ const SECTIONS = updateSectionsWithPlugins({
         widget: SectionDivider,
       },
       {
-        key: "enabled-persisted-models",
+        key: "persisted-models-enabled",
         display_name: t`Models`,
         description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
           <ExternalLink
@@ -436,7 +436,7 @@ const SECTIONS = updateSectionsWithPlugins({
         },
         disableDefaultUpdate: true,
         widget: PersistedModelRefreshIntervalWidget,
-        getHidden: settings => !settings["enabled-persisted-models"],
+        getHidden: settings => !settings["persisted-models-enabled"],
         onChanged: async (oldValue, newValue) =>
           PersistedModelsApi.setRefreshInterval({ hours: newValue }),
       },

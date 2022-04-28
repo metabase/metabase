@@ -59,7 +59,7 @@ const mapStateToProps = state => {
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
-    isModelPersistenceEnabled: getSetting(state, "enabled-persisted-models"),
+    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
 

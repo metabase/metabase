@@ -92,7 +92,7 @@
   []
   (api/check-superuser)
   (log/info (tru "Enabling model persistence"))
-  (public-settings/enabled-persisted-models true)
+  (public-settings/persisted-models-enabled true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
 
@@ -115,12 +115,12 @@
   that option from databases which might have it enabled, and delete all cached tables."
   []
   (api/check-superuser)
-  (when (public-settings/enabled-persisted-models)
-    (try (public-settings/enabled-persisted-models false)
+  (when (public-settings/persisted-models-enabled)
+    (try (public-settings/persisted-models-enabled false)
          (disable-persisting)
          (catch Exception e
            ;; re-enable so can continue to attempt to clean up
-           (public-settings/enabled-persisted-models true)
+           (public-settings/persisted-models-enabled true)
            (throw e))))
   api/generic-204-no-content)
 

@@ -654,7 +654,7 @@
   [id]
   {:id su/IntGreaterThanZero}
   (api/check-superuser)
-  (api/check (public-settings/enabled-persisted-models)
+  (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (Database id)]

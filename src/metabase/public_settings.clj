@@ -200,7 +200,7 @@
   :type    :boolean
   :default false)
 
-(defsetting enabled-persisted-models
+(defsetting persisted-models-enabled
   (deferred-tru "Allow persisting models into the source database.")
   :type       :boolean
   :default    false

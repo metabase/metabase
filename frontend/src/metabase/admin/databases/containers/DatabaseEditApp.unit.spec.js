@@ -63,7 +63,7 @@ async function setup({ cachingEnabled = false } = {}) {
 
   const settingsReducer = () => ({
     values: {
-      "enabled-persisted-models": false,
+      "persisted-models-enabled": false,
     },
   });
 

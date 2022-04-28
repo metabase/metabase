@@ -356,5 +356,5 @@
 (defmethod task/init! ::PersistPrune
   [_]
   (task/add-job! prune-job)
-  (when (public-settings/enabled-persisted-models)
+  (when (public-settings/persisted-models-enabled)
     (enable-persisting!)))

@@ -79,7 +79,7 @@ const UserCanAccessTools = UserAuthWrapper({
     }
     const isModelPersistenceEnabled = getSetting(
       state,
-      "enabled-persisted-models",
+      "persisted-models-enabled",
     );
     const hasLoadedSettings = typeof isModelPersistenceEnabled === "boolean";
     return !hasLoadedSettings || isModelPersistenceEnabled;
