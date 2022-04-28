@@ -299,7 +299,6 @@
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
   [x-col y-col labels {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [default-format {:number_style "decimal"
-                        :decimals 0
                         :currency "USD"
                         :currency_style "symbol"}
         x-col-settings (or (settings-from-column x-col column-settings) {})

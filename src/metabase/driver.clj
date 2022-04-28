@@ -247,7 +247,8 @@
   "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
   database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
   can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
-  connection cannot be made."
+  connection cannot be made. Throw an `ex-info` containing a truthy `::can-connect-message?` in `ex-data`
+  in order to suppress logging expected driver validation messages during setup."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

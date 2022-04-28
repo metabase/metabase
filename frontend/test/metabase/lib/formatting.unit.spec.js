@@ -535,6 +535,30 @@ describe("formatting", () => {
         "Sun",
       );
     });
+
+    it("should format days of week with exclude option", () => {
+      const options = {
+        isExclude: true,
+      };
+
+      expect(
+        formatDateTimeWithUnit("2022-04-25", "day-of-week", options),
+      ).toEqual("Monday");
+    });
+
+    it("should format hours of day with exclude option", () => {
+      const options = {
+        isExclude: true,
+      };
+
+      expect(
+        formatDateTimeWithUnit(
+          "2022-04-27T06:00:00.000Z",
+          "hour-of-day",
+          options,
+        ),
+      ).toEqual("6 AM");
+    });
   });
 
   describe("formatTime", () => {
