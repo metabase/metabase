@@ -20,7 +20,7 @@
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
   [{:keys [persisted-info-id card-id]} limit offset]
-  (let [instance-id-str  (public-settings/site-uuid)
+  (let [site-uuid-str    (public-settings/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)]
     (-> (cond-> {:select    [:p.id :p.database_id :p.definition
                              :p.active :p.state :p.error
@@ -44,7 +44,7 @@
         (->> (db/do-post-select PersistedInfo)
              (map (fn [{:keys [database_id] :as pi}]
                     (assoc pi
-                           :schema_name (ddl.i/schema-name {:id database_id} instance-id-str)
+                           :schema_name (ddl.i/schema-name {:id database_id} site-uuid-str)
                            :next-fire-time (get-in db-id->fire-time [database_id :next-fire-time]))))))))
 
 (api/defendpoint GET "/"

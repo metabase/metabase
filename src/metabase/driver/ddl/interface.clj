@@ -8,8 +8,8 @@
   multiple connections from multiple metabae remain distinct. The UUID will have the first character of each section taken.
 
   (schema-name {:id 234} \"143dd8ce-e116-4c7f-8d6d-32e99eaefbbc\") ->  \"metabase_cache_1e483_1\""
-  [{:keys [id] :as _database} uuid-string]
-  (let [instance-string (apply str (map first (str/split uuid-string #"-")))]
+  [{:keys [id] :as _database} site-uuid-string]
+  (let [instance-string (apply str (map first (str/split site-uuid-string #"-")))]
     (format "metabase_cache_%s_%s" instance-string id)))
 
 (defmulti format-name
