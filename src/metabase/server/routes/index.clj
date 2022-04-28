@@ -25,10 +25,10 @@
   ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
   (str/replace s #"(?i)</script" "</scr\\\\ipt"))
 
-(defn- fallback-localization [locale-or-name]
+(def ^:private fallback-localization
   (json/generate-string
    {"headers"
-    {"language"     (str locale-or-name)
+    {"language"     "en"
      "plural-forms" "nplurals=2; plural=(n != 1);"}
 
     "translations"
@@ -51,7 +51,7 @@
                     (throw (FileNotFoundException. (format "Locale '%s' not found." locale-name)))))
          (catch Throwable e
            (log/warn (.getMessage e))))))
-   (fallback-localization locale-or-name)))
+   fallback-localization))
 
 (def ^:private ^{:arglists '([])} load-localization
   "Load a JSON-encoded map of localized strings for the current user's Locale."
