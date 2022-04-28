@@ -47,9 +47,12 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :persist-models] [_driver _feat _db]
+(defmethod driver/database-supports? [:postgres :persist-models]
+  [_driver _feat _db]
   true)
-(defmethod driver/database-supports? [:postgres :persist-models-enabled] [_driver _feat db]
+
+(defmethod driver/database-supports? [:postgres :persist-models-enabled]
+  [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
 (defn- ->timestamp [honeysql-form]

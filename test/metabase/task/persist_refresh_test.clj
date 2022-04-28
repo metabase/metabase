@@ -61,7 +61,7 @@
                     Database [db-2 {:options {:persist-models-enabled true}}]]
       (#'pr/job-init)
       (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 4]
-        (pr/reschedule-refresh)
+        (pr/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
@@ -70,7 +70,7 @@
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2))))
       (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 8]
-        (pr/reschedule-refresh)
+        (pr/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}

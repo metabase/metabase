@@ -667,7 +667,7 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (db/update! Database id :options
                           (assoc (:options database) :persist-models-enabled true))
-              (task.persist-refresh/schedule-persistence-for-database database
+              (task.persist-refresh/schedule-persistence-for-database! database
                                                                       (public-settings/persisted-model-refresh-interval-hours))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
@@ -683,8 +683,8 @@
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
-          (persisted-info/mark-for-deletion {:database_id id})
-          (task.persist-refresh/unschedule-persistence-for-database database)
+          (persisted-info/mark-for-deletion! {:database_id id})
+          (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
       api/generic-204-no-content)))

@@ -72,7 +72,7 @@
   [card]
   (db/exists? PersistedInfo :card_id (:id card) :state [:not= "deletable"]))
 
-(defn mark-for-deletion
+(defn mark-for-deletion!
   "Marks PersistedInfo as `deletable`, these will at some point be cleaned up by the PersistPrune task."
   [conditions-map]
   (db/update-where! PersistedInfo conditions-map :active false, :state "deletable", :state_change_at :%now))

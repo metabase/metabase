@@ -262,7 +262,7 @@
    (triggers/for-job (jobs/key refresh-job-key))
    (triggers/start-now)))
 
-(defn schedule-persistence-for-database
+(defn schedule-persistence-for-database!
   "Schedule a database for persistence refreshing."
   [database interval-hours]
   (let [tggr (database-trigger database interval-hours)]
@@ -277,7 +277,7 @@
                             (u/the-id database)
                             (.. ^Trigger tggr getKey getName)))))))
 
-(defn schedule-refresh-for-individual
+(defn schedule-refresh-for-individual!
   "Schedule a refresh of an individual [[PersistedInfo record]]. Done through quartz for locking purposes."
   [persisted-info]
   (let [tggr (individual-trigger persisted-info)]
@@ -302,13 +302,13 @@
            :triggers
            (u/key-by (comp #(get % "db-id") qc/from-job-data :data))))
 
-(defn unschedule-persistence-for-database
+(defn unschedule-persistence-for-database!
   "Stop refreshing tables for a given database. Should only be called when marking the database as not
   persisting. Tables will be left over and up to the caller to clean up."
   [database]
   (task/delete-trigger! (database-trigger-key database)))
 
-(defn- unschedule-all-refresh-triggers
+(defn- unschedule-all-refresh-triggers!
   "Unschedule all job triggers."
   [job-key]
   (let [trigger-keys (->> (task/job-info job-key)
@@ -317,33 +317,33 @@
     (doseq [tk trigger-keys]
       (task/delete-trigger! (triggers/key tk)))))
 
-(defn reschedule-refresh
+(defn reschedule-refresh!
   "Reschedule refresh for all enabled databases. Removes all existing triggers, and schedules refresh for databases with
   `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-interval-hours]]."
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
         interval-hours       (public-settings/persisted-model-refresh-interval-hours)]
-    (unschedule-all-refresh-triggers refresh-job-key)
+    (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]
-      (schedule-persistence-for-database db interval-hours))))
+      (schedule-persistence-for-database! db interval-hours))))
 
-(defn enable-persisting
+(defn enable-persisting!
   "Enable persisting
    - The prune job is scheduled anew.
    - Refresh jobs are added when persist is enabled on a db."
   []
-  (unschedule-all-refresh-triggers prune-job-key)
+  (unschedule-all-refresh-triggers! prune-job-key)
   (task/add-trigger! prune-scheduled-trigger))
 
-(defn disable-persisting
+(defn disable-persisting!
   "Disable persisting
    - All PersistedInfo are marked for deletion.
    - Refresh job triggers are removed.
    - Prune scheduled job trigger is removed.
    - The prune job is triggered to run immediately. "
   []
-  (persisted-info/mark-for-deletion {})
-  (unschedule-all-refresh-triggers refresh-job-key)
+  (persisted-info/mark-for-deletion! {})
+  (unschedule-all-refresh-triggers! refresh-job-key)
   (task/delete-trigger! prune-scheduled-trigger-key)
   ;; ensure we clean up marked for deletion
   (task/add-trigger! prune-once-trigger))
@@ -355,15 +355,10 @@
 (defmethod task/init! ::PersistRefresh
   [_]
   (job-init)
-  (reschedule-refresh))
+  (reschedule-refresh!))
 
 (defmethod task/init! ::PersistPrune
   [_]
   (task/add-job! prune-job)
   (when (public-settings/enabled-persisted-models)
-    (enable-persisting)))
-
-
-(comment
-  (task/add-trigger! prune-once-trigger)
-  (schedule-refresh-for-individual (PersistedInfo 3)))
+    (enable-persisting!)))

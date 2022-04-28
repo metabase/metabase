@@ -84,7 +84,7 @@
   {hours HoursInterval}
   (api/check-superuser)
   (public-settings/persisted-model-refresh-interval-hours hours)
-  (task.persist-refresh/reschedule-refresh)
+  (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
 (api/defendpoint POST "/enable"
@@ -93,7 +93,7 @@
   (api/check-superuser)
   (log/info (tru "Enabling model persistence"))
   (public-settings/enabled-persisted-models true)
-  (task.persist-refresh/enable-persisting)
+  (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
 
 (defn- disable-persisting
@@ -108,7 +108,7 @@
     (doseq [db enabled-dbs]
       (db/update! Database (u/the-id db)
         :options (not-empty (dissoc (:options db) :persist-models-enabled))))
-    (task.persist-refresh/disable-persisting)))
+    (task.persist-refresh/disable-persisting!)))
 
 (api/defendpoint POST "/disable"
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
