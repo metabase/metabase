@@ -31,7 +31,7 @@
 
 (deftest fallback-localization-test
   (testing "if locale does not exist it should log a message and return the 'fallback' localalization (english)"
-    (is (= {"headers"      {"language" "xx", "plural-forms" "nplurals=2; plural=(n != 1);"}
+    (is (= {"headers"      {"language" "en", "plural-forms" "nplurals=2; plural=(n != 1);"}
             "translations" {"" {"Metabase" {"msgid" "Metabase", "msgstr" ["Metabase"]}}}}
            (mt/suppress-output
              (some->
