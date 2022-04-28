@@ -28,7 +28,10 @@ import { getIn } from "icepick";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
-@ExplicitSize()
+@ExplicitSize({
+  refreshMode: props =>
+    props.isDashboard && !props.isEditing ? "debounce" : "throttle",
+})
 export default class TableSimple extends Component {
   constructor(props) {
     super(props);

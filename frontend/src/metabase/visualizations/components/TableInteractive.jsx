@@ -58,7 +58,9 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   return rowIndexes;
 }
 
-@ExplicitSize()
+@ExplicitSize({
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+})
 export default class TableInteractive extends Component {
   constructor(props) {
     super(props);
