@@ -13,6 +13,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
+
 const card = {
   display: "table",
   visualization_settings: {},
@@ -929,6 +931,50 @@ describe("Question", () => {
         metadata,
       );
       expect(question.getResultMetadata()).toEqual([]);
+    });
+  });
+
+  describe("Question.prototype.dependentMetadata", () => {
+    it("should return model FK field targets", () => {
+      const question = new Question(
+        {
+          ...card,
+          dataset: true,
+          result_metadata: [
+            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
+          ],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
+    });
+
+    it("should return skip with with FK target field which are not FKs semantically", () => {
+      const question = new Question(
+        {
+          ...card,
+          dataset: true,
+          result_metadata: [{ fk_target_field_id: 5 }],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([]);
+    });
+
+    it("should return nothing for regular questions", () => {
+      const question = new Question(
+        {
+          ...card,
+          result_metadata: [
+            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
+          ],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 

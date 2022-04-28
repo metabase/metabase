@@ -22,6 +22,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
+import { isFK } from "metabase/lib/schema_metadata";
 import { memoize, sortObject } from "metabase-lib/lib/utils";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
@@ -69,6 +70,7 @@ import { Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import { ClickObject } from "metabase-types/types/Visualization";
+import { DependentMetadataItem } from "metabase-types/types/Query";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
@@ -1011,6 +1013,24 @@ export default class Question {
 
   getResultMetadata() {
     return this.card().result_metadata ?? [];
+  }
+
+  dependentMetadata(): DependentMetadataItem[] {
+    if (!this.isDataset()) {
+      return [];
+    }
+    const dependencies = [];
+
+    this.getResultMetadata().forEach(field => {
+      if (isFK(field) && field.fk_target_field_id) {
+        dependencies.push({
+          type: "field",
+          id: field.fk_target_field_id,
+        });
+      }
+    });
+
+    return dependencies;
   }
 
   /**
