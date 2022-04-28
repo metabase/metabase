@@ -45,7 +45,9 @@
   true)
 
 (defn- slug-name
-  "A slug from a card suitable for a table name."
+  "A slug from a card suitable for a table name. This slug is not intended to be unique but to be human guide if looking
+  at schemas. Persisted table names will follow the pattern `model_<card-id>_slug` and the model-id will ensure
+  uniqueness."
   [nom]
   (->> (str/replace (str/lower-case nom) #"\s+" "_")
        (take 10)
