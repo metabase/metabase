@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.db.spec :as mdb.spec]
@@ -224,8 +225,16 @@
 
 (defmethod sql.qp/json-query :mysql
   [driver identifier stored-field]
-  (let [nfc-path (:nfc_path stored-field)]
-    (comment)))
+  (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
+    (let [nfc-path             (:nfc_path stored-field)
+          unwrapped-identifier (:form identifier)
+          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
+      (reify
+        hformat/ToSql
+        (to-sql [_]
+          (hformat/to-params-default jsonpath-query "nfc_path")
+          (format "(%s->>?)" (hformat/to-sql parent-identifier)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
