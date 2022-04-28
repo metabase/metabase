@@ -1,3 +1,5 @@
+export type ObjectId = number | string;
+
 export type OnVisualizationClickType =
   | (({
       column,
