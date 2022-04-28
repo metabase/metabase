@@ -83,7 +83,6 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should allow empty card title (metabase#12013)", () => {
-    cy.intercept("GET", "/api/table/**/query_metadata").as("tableMetadata");
     visitDashboard(1);
 
     cy.findByTextEnsureVisible("Orders");
