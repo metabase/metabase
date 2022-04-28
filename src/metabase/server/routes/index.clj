@@ -36,7 +36,8 @@
                      "msgstr" ["Metabase"]}}}}))
 
 (defn- localization-json-file-name [locale-or-name]
-  (format "frontend_client/app/locales/%s.json" (str (i18n/locale locale-or-name))))
+  (format "frontend_client/app/locales/%s.json"
+          (str/replace (.toLanguageTag (i18n/locale locale-or-name)) \- \_)))
 
 (defn- load-localization* [locale-or-name]
   (or
