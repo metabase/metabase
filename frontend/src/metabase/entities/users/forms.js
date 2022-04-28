@@ -143,6 +143,7 @@ export default {
           initial: true,
           hidden: cookies,
           horizontal: true,
+          align: "left",
         },
       ],
     };
