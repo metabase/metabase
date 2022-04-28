@@ -30,7 +30,15 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti check-can-persist
-  "Verify that the source database is acceptable to persist. Returns a tuple"
+  "Verify that the source database is acceptable to persist. Returns a tuple of a boolean and `:persist.check/valid` in
+  the event it was successful or a keyword indicating the reason for failure.
+
+  Examples:
+  - [true  :persist.check/valid]
+  - [false :persist.check/create-schema]
+  - [false :persist.check/create-table]
+  - [false :persist.check/read-table]
+  - [false :persist.check/delete-table]"
   {:arglists '([database])}
   (fn [database] (driver/dispatch-on-initialized-driver (:engine database)))
   :hierarchy #'driver/hierarchy)
