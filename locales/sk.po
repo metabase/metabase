@@ -9611,6 +9611,10 @@ msgstr "Používate zabezpečené pripojenie (SSL)?"
 msgid "Additional JDBC connection string options"
 msgstr "Ďalšie možnosti reťazcov pripojenia JDBC"
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr "Snowflake hostname (v prípade privateLink alebo reverzného proxy)"
+
 #: frontend/src/metabase/entities/databases/big-query-fields.js:75
 msgid "Project ID"
 msgstr "ID projektu"

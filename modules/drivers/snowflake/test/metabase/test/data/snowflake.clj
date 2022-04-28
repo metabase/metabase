@@ -43,6 +43,8 @@
     :user                (tx/db-test-env-var-or-throw :snowflake :user)
     :password            (tx/db-test-env-var-or-throw :snowflake :password)
     :additional-options  (tx/db-test-env-var :snowflake :additional-options)
+    :alternative-hostname (tx/db-test-en-var :snowflake :alternative-hostname)
+
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
     :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))

@@ -15269,6 +15269,10 @@ msgstr ""
 msgid "Additional JDBC connection string options"
 msgstr ""
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr ""
+
 #: src/metabase/driver/common.clj
 msgid "Use an SSH tunnel"
 msgstr ""

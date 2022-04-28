@@ -9583,6 +9583,10 @@ msgstr "Да се ​​използва сигурна връзка (SSL)?"
 msgid "Additional JDBC connection string options"
 msgstr "Допълнителни опции за низ на JDBC връзка"
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr "Snowflake име на хост (в случай на частна връзка или обратен прокси)"
+
 #: frontend/src/metabase/entities/databases/big-query-fields.js:75
 msgid "Project ID"
 msgstr "Идент. № на проекта"

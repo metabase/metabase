@@ -9590,6 +9590,10 @@ msgstr "آیا از اتصال امن (SSL) استفاده می کنید؟"
 msgid "Additional JDBC connection string options"
 msgstr "گزینه های رشته اتصال JDBC اضافی"
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr "Snowflake نام میزبان (در مورد PrivateLink یا پروکسی معکوس)"
+
 #: frontend/src/metabase/entities/databases/big-query-fields.js:75
 msgid "Project ID"
 msgstr "شناسه پروژه"

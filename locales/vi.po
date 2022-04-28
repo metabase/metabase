@@ -9566,6 +9566,10 @@ msgstr "Sử dụng kết nối an toàn (SSL)?"
 msgid "Additional JDBC connection string options"
 msgstr "Các tùy chọn chuỗi kết nối JDBC bổ sung"
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr "Snowflake MÔ TẢ (trong trường hợp của Privatelink hoặc Reverse Proxy)"
+
 #: frontend/src/metabase/entities/databases/big-query-fields.js:75
 msgid "Project ID"
 msgstr "ID dự án"

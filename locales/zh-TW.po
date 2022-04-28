@@ -9564,6 +9564,10 @@ msgstr "使用安全連接(SSL)?"
 msgid "Additional JDBC connection string options"
 msgstr "額外的JDBC連接字串選項"
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr "snowflake主機名（如果是PrivateLink或反向代理）"
+
 #: frontend/src/metabase/entities/databases/big-query-fields.js:75
 msgid "Project ID"
 msgstr "項目 ID"

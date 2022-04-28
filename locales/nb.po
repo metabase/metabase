@@ -9603,6 +9603,10 @@ msgstr "Bruk sikker kobling (SSL)?"
 msgid "Additional JDBC connection string options"
 msgstr "Ekstra JDBC koblingsstreng alternativer"
 
+#: src/metabase/driver/common.clj target/classes/metabase/driver/common.clj
+msgid "Snowflake hostname (in case of privatelink or reverse proxy)"
+msgstr "Snowflake hostname (i tilfelle Privatelink eller Reverse Proxy)"
+
 #: frontend/src/metabase/entities/databases/big-query-fields.js:75
 msgid "Project ID"
 msgstr "Prosjekt ID"

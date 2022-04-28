@@ -40,6 +40,7 @@ driver:
     - merge:
       - additional-options
       - placeholder: 'queryTimeout=0'
+    - alternative-hostname
     - default-advanced-options
 init:
   - step: load-namespace
