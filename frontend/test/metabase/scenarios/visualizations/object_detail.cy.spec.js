@@ -149,7 +149,7 @@ function assertDetailView({ id, entityName, byFK = false }) {
     .should("contain", id);
 
   const pattern = byFK
-    ? new RegExp(`/question\\?objectId=${id}#*`)
+    ? new RegExp("/question#*")
     : new RegExp(`/question/[1-9]d*.*/${id}`);
 
   cy.url().should("match", pattern);
