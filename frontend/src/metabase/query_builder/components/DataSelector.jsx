@@ -566,7 +566,9 @@ export class UnconnectedDataSelector extends Component {
       if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
       }
-    } else if (
+    }
+
+    if (
       activeStep === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       !this.props.selectedSchemaId
