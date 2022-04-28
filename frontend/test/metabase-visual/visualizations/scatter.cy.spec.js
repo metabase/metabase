@@ -39,4 +39,31 @@ describe("visual tests > visualizations > scatter", () => {
 
     cy.percySnapshot();
   });
+
+  it("with log axes", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 x, 1 y
+                  union all select 10 x, 10 y
+                  union all select 100 x, 100 y
+                  union all select 200 x, 200 y
+                  union all select 10000 x, 10000 y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+
+      displayIsLocked: true,
+      visualization_settings: {
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+        "graph.x_axis.scale": "log",
+        "graph.y_axis.scale": "log",
+      },
+    });
+
+    cy.percySnapshot();
+  });
 });
