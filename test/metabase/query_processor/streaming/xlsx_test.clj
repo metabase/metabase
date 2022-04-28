@@ -380,6 +380,13 @@
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code",
                                                            ::mb.viz/currency-in-header false}}}
+                               [])))))
+
+  (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
+    (is (= ["Correct title"]
+           (first (xlsx-export [{:id 0, :fk_field_id 1}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Incorrect title"}
+                                                          {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
                                []))))))
 
 (deftest scale-test
