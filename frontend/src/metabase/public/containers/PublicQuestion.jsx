@@ -47,7 +47,7 @@ const mapDispatchToProps = {
 
 @connect(mapStateToProps, mapDispatchToProps)
 @title(({ card }) => card && card.name)
-@ExplicitSize()
+@ExplicitSize({ refreshMode: "debounceLeading" })
 export default class PublicQuestion extends Component {
   constructor(props) {
     super(props);

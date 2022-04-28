@@ -57,7 +57,7 @@ const DEFAULT_POPOVER_STATE = {
   breakoutPopoverTarget: null,
 };
 
-@ExplicitSize()
+@ExplicitSize({ refreshMode: "debounceLeading" })
 export default class View extends React.Component {
   state = {
     ...DEFAULT_POPOVER_STATE,

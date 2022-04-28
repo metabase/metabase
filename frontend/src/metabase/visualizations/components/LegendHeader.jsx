@@ -13,7 +13,7 @@ import { normal } from "metabase/lib/colors";
 const DEFAULT_COLORS = Object.values(normal);
 const MIN_WIDTH_PER_SERIES = 100;
 
-@ExplicitSize()
+@ExplicitSize({ refreshMode: "debounce" })
 export default class LegendHeader extends Component {
   static propTypes = {
     series: PropTypes.array.isRequired,
