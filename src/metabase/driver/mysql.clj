@@ -225,7 +225,7 @@
 
 (defmethod sql.qp/json-query :mysql
   [driver identifier stored-field]
-  (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
+  (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
     (let [nfc-path             (:nfc_path stored-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
@@ -234,7 +234,7 @@
         hformat/ToSql
         (to-sql [_]
           (hformat/to-params-default jsonpath-query "nfc_path")
-          (format "(%s->>?)" (hformat/to-sql parent-identifier)))))))
+          (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier)))))))
 
 (defmethod sql.qp/->honeysql [:mysql :field]
   [driver [_ id-or-name opts :as clause]]
