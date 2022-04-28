@@ -558,8 +558,8 @@ export class UnconnectedDataSelector extends Component {
 
     if (
       activeStep === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase
-      // && !this.props.selectedDatabaseId
+      this.props.useOnlyAvailableDatabase &&
+      !this.props.selectedDatabaseId
     ) {
       const databases = this.getDatabases();
       console.log("DB:", databases);
