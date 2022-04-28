@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  openOrdersTable,
   openPeopleTable,
   openProductsTable,
 } from "__support__/e2e/cypress";
@@ -52,18 +53,24 @@ describe("scenarios > question > object details", () => {
     assertOrderDetailView({ id: FIRST_ORDER_ID });
   });
 
-  it("handles browsing records by FKs", () => {
-    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
-    const FIRST_USER_ID = 1283;
+  it("handles browsing records by FKs (metabase#21756)", () => {
+    openOrdersTable();
 
-    drillFK({ id: FIRST_ORDER_ID });
+    drillFK({ id: 1 });
 
-    assertUserDetailView({ id: FIRST_USER_ID });
-    getPreviousObjectDetailButton().click();
-    assertUserDetailView({ id: FIRST_USER_ID - 1 });
-    getNextObjectDetailButton().click();
-    getNextObjectDetailButton().click();
-    assertUserDetailView({ id: FIRST_USER_ID + 1 });
+    assertUserDetailView({ id: 1 });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
+
+    cy.go("back");
+    cy.wait("@dataset");
+
+    changeSorting("User ID", "desc");
+    drillFK({ id: 2500 });
+
+    assertDetailView({ id: 2500, entityName: "Person", byFK: true });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
   });
 
   it("handles opening a filtered out record", () => {
@@ -171,4 +178,13 @@ function getPreviousObjectDetailButton() {
 
 function getNextObjectDetailButton() {
   return cy.findByTestId("view-next-object-detail");
+}
+
+function changeSorting(columnName, direction) {
+  const icon = direction === "asc" ? "arrow_up" : "arrow_down";
+  cy.findByText(columnName).click();
+  popover().within(() => {
+    cy.icon(icon).click();
+  });
+  cy.wait("@dataset");
 }
