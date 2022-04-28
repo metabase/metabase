@@ -102,8 +102,10 @@ function App({
       return false;
     }
     if (IFRAMED) {
-      return EMBEDDED_ROUTES_WITH_NAVBAR.some(path =>
-        pathname.startsWith(path),
+      const isHomepage = pathname === "/";
+      return (
+        isHomepage ||
+        EMBEDDED_ROUTES_WITH_NAVBAR.some(path => pathname.startsWith(path))
       );
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
