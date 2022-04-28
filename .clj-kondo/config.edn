@@ -1,4 +1,3 @@
-^replace
 {:config-paths ["macros"]
  :linters {:unresolved-symbol
            {:exclude [schema= re=
@@ -31,6 +30,7 @@
            :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
            :missing-else-branch          {:level :warning}
            :misplaced-docstring          {:level :warning}
+           :non-arg-vec-return-type-hint {:level :warning}
            :missing-body-in-when         {:level :warning}
            :missing-docstring            {:level :warning}
            ; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
