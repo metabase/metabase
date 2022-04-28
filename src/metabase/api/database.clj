@@ -528,7 +528,7 @@
         :else
         (invalid-response-handler :db (tru "Unable to connect to database.")))
       (catch Throwable e
-        (when log-exception
+        (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
           (log/error e (trs "Cannot connect to Database")))
         (invalid-response-handler :dbname (.getMessage e))))))
 
