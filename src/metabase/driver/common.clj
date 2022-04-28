@@ -111,6 +111,12 @@
    :display-name (deferred-tru "Additional JDBC connection string options")
    :visible-if   {"advanced-options" true}})
 
+(def alternative-hostname
+  "Snowflake hostname (in case of privatelink or reverse proxy)"
+  {:name         "alternative-hostname"
+   :display-name (deferred-tru "Snowflake hostname (in case of privatelink or reverse proxy)")
+   :visible-if   {"advanced-options" true}})
+
 (def ssh-tunnel-preferences
   "Configuration parameters to include in the add driver page on drivers that
   support ssh tunnels"
@@ -238,6 +244,7 @@
    :user                     default-user-details
    :ssh-tunnel               ssh-tunnel-preferences
    :additional-options       additional-options
+   :alternative-hostname     alternative-hostname
    :advanced-options-start   advanced-options-start
    :default-advanced-options default-advanced-options})
 
