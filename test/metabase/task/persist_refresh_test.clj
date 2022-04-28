@@ -59,7 +59,7 @@
   (mt/with-temp-scheduler
     (mt/with-temp* [Database [db-1 {:options {:persist-models-enabled true}}]
                     Database [db-2 {:options {:persist-models-enabled true}}]]
-      (#'pr/job-init)
+      (#'pr/job-init!)
       (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 4]
         (pr/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}

@@ -65,7 +65,7 @@
         :state_change_at :%now
         :error (when (= state :error) (:error results))))))
 
-(defn- saving-task-history
+(defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
   and :task_details will be the result of `f`."
   [task-type db-id f]
@@ -98,7 +98,7 @@
                                          (update stats :error inc)))))
                                  {:success 0, :error 0}
                                  deletables))]
-      (saving-task-history "unpersist-tables" nil unpersist-fn))) )
+      (save-task-history! "unpersist-tables" nil unpersist-fn))) )
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -125,7 +125,7 @@
                                   (update stats :error inc))))
                             {:success 0, :error 0}
                             persisted))]
-    (saving-task-history "persist-refresh" database-id thunk))
+    (save-task-history! "persist-refresh" database-id thunk))
   (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
 
 (defn- refresh-individual!
@@ -138,7 +138,7 @@
                          (Database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
-       (saving-task-history "persist-refresh" (u/the-id database)
+       (save-task-history! "persist-refresh" (u/the-id database)
                             (fn []
                               (try (refresh-with-state! refresher database persisted-info)
                                    {:success 1 :error 0}
@@ -344,13 +344,13 @@
   ;; ensure we clean up marked for deletion
   (task/add-trigger! prune-once-trigger))
 
-(defn- job-init
+(defn- job-init!
   []
   (task/add-job! refresh-job))
 
 (defmethod task/init! ::PersistRefresh
   [_]
-  (job-init)
+  (job-init!)
   (reschedule-refresh!))
 
 (defmethod task/init! ::PersistPrune
