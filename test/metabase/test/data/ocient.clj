@@ -385,44 +385,59 @@
         (throw e)))))
 
 
-(defn- add-ids
-  "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
-  specified. (This isn't meant for composition with `load-data-get-rows`; "
-  [rows]
-  (for [[i row] (m/indexed rows)]
-    (apply array-map (keyword id-column-key) (inc i) (flatten (vec row)))))
+;; (defn- add-ids
+;;   "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
+;;   specified. (This isn't meant for composition with `load-data-get-rows`; "
+;;   [rows]
+;;   (for [[i row] (m/indexed rows)]
+;;     (apply array-map (keyword id-column-key) (inc i) (flatten (vec row)))))
 
-(defn- load-data-add-ids
-  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
-  insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
-  args."
-  [insert!]
-  (fn [rows]
-    (insert! (vec (add-ids rows)))))
+;; (defn- load-data-add-ids
+;;   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
+;;   insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
+;;   args."
+;;   [insert!]
+;;   (fn [rows]
+;;     (insert! (vec (add-ids rows)))))
 
 
-(defn- load-data [dbdef tabledef]
-  ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
-  ;; parameters being set in a single statement; these numbers were arrived at empirically
-  (let [chunk-size (case (:table-name tabledef)
-                     "people" 30
-                     "reviews" 40
-                     "orders" 30
-                     "venues" 50
-                     "products" 20
-                     "cities" 50
-                     "sightings" 50
-                     "incidents" 50
-                     "checkins" 25
-                     "airport" 50
-                     100)
-        load-fn    (load-data/make-load-data-fn load-data-add-ids
-                                                (partial load-data/load-data-chunked pmap chunk-size))]
-    (load-fn :ocient dbdef tabledef)))
+;; (defn- load-data [dbdef tabledef]
+;;   ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
+;;   ;; parameters being set in a single statement; these numbers were arrived at empirically
+;;   (let [chunk-size (case (:table-name tabledef)
+;;                      "people" 100
+;;                      "reviews" 100
+;;                      "orders" 100
+;;                      "venues" 100
+;;                      "products" 100
+;;                      "cities" 50
+;;                      "sightings" 50
+;;                      "incidents" 100
+;;                      "checkins" 25
+;;                      "airport" 50
+;;                      100)
+;;         load-fn    (load-data/make-load-data-fn load-data-add-ids
+;;                                                 (partial load-data/load-data-chunked pmap chunk-size))]
+;;     (load-fn :ocient dbdef tabledef)))
 
-;; Ocient requires an id and a timestamp for each row
-(defmethod load-data/load-data! :ocient [_ dbdef tabledef]
-  (load-data dbdef tabledef))
+;; ;; Ocient requires an id and a timestamp for each row
+;; (defmethod load-data/load-data! :ocient [_ dbdef tabledef]
+;;   (load-data dbdef tabledef))
+
+;; FIXME So this is really f'ing stupid - the column order in each row provided 
+;; will match the order of the table definition IFF the number of columns in the 
+;; table is <9. 
+;; 
+;; TLDR;
+;; This has to do with the usage of `zipmap` in the load-data module. The intent is
+;; to zip two vectors mapping the values in vec1 to values in vec2. The result is a
+;; map. When the number of columns is <=8, returned value is an PersistentArrayMap, 
+;; but when >9, the value is a PersistentHashMap. Ocient requires the order of the 
+;; values in INSERT INTO statement to match the table definition. 
+;; https://clojuredocs.org/clojure.core/zipmap#example-5de00830e4b0ca44402ef7ed
+(defmethod load-data/load-data! :ocient
+  [& args]
+  (apply load-data/load-data-chunked-parallel! args))
 
 (defmethod tx/destroy-db! :ocient [driver dbdef]
   (println "Ocient destroy-db! entered")
