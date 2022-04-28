@@ -17,7 +17,10 @@
             [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.field :as field]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs]])
@@ -178,7 +181,6 @@
   [driver database table]
   (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
         fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
-    (println fields)
     (if (> (count fields) max-nested-field-columns)
       #{}
       fields)))
@@ -219,6 +221,23 @@
 (defmethod sql.qp/->honeysql [:mysql :length]
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/json-query :mysql
+  [driver identifier stored-field]
+  (let [nfc-path (:nfc_path stored-field)]
+    (comment)))
+
+(defmethod sql.qp/->honeysql [:mysql :field]
+  [driver [_ id-or-name opts :as clause]]
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
+    (if (field/json-field? stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (sql.qp/json-query :mysql identifier stored-field))
+      identifier)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
