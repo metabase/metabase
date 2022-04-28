@@ -55,7 +55,8 @@
 (defmulti refresh!
   "Refresh a model in a datastore. A table is created and populated in the source datastore, not the application
   database. Assumes that the destination schema is populated and permissions are correct. This should all be true
-  if `(driver/database-supports engine :persisted-models database)` returns true."
+  if `(driver/database-supports engine :persisted-models database)` returns true. Returns a map with :state that
+  is :success or :error. If :state is :error, includes a key :error with a string message."
   {:arglists '([driver database definition dataset-query])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

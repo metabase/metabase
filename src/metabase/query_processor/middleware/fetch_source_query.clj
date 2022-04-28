@@ -96,7 +96,7 @@
         (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
         trimmed-string))))
 
-(defn sub-cached-field-refs
+(defn- sub-cached-field-refs
   "Change field refs by id into field refs by name."
   [metadata]
   (map (fn [m]

@@ -22,7 +22,7 @@
   [job-context]
   (select-keys (qc/from-job-data job-context) ["db-id" "persisted-id" "type"]))
 
-(def refreshable-states
+(def ^:private refreshable-states
   "States of `persisted_info` records which can be refreshed."
   #{"persisted" "error"})
 
@@ -30,10 +30,12 @@
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
    multimethods on fake engine types, just work against this, and it will dispatch to the ddl.interface normally, or
    allow for easy to control custom behavior in tests."
-  (refresh! [this database definition dataset-query])
+  (refresh! [this database definition dataset-query]
+    "Refresh a persisted model. Returns a map with :state that is :success or :error. If :state is :error, includes a
+    key :error with a string message. See [[metabase.driver.ddl.interface/refresh!]] for more information.")
   (unpersist! [this database persisted-info]))
 
-(def dispatching-refresher
+(def ^:private dispatching-refresher
   "Refresher implementation that dispatches to the multimethods in [[metabase.driver.ddl.interface]]."
   (reify Refresher
     (refresh! [_ database definition dataset-query]
@@ -56,18 +58,12 @@
                         :state "refreshing"
                         :state_change_at :%now)
           {:keys [state] :as results} (refresh! refresher database definition (:dataset_query card))]
-      (if (= state :success)
-        (db/update! PersistedInfo (u/the-id persisted-info)
-                    :active true,
-                    :refresh_end :%now,
-                    :state "persisted"
-                    :state_change_at :%now
-                    :error nil)
-        (db/update! PersistedInfo (u/the-id persisted-info)
-                    :state_change_at :%now
-                    :refresh_end :%now
-                    :state "error"
-                    :error (:error results))))))
+      (db/update! PersistedInfo (u/the-id persisted-info)
+        :active (= state :success),
+        :refresh_end :%now,
+        :state (if (= state :success) "persisted" "error")
+        :state_change_at :%now
+        :error (when (= state :error) (:error results))))))
 
 (defn- saving-task-history
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
