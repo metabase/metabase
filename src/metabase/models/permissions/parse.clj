@@ -118,14 +118,15 @@
   (match tree
     (_ :guard insta/failure?)      (log/error (trs "Error parsing permissions tree {0}" (pr-str tree)))
     [:permission t]                (path2 t)
+    [:schema-name schema-name]     (unescape-path-component schema-name)
     ;; data model perms
     [:data-model db-node]          (path2 db-node)
     [:dm-db db-id]                 (let [db-id (Long/parseUnsignedLong db-id)]
                                      [:db db-id :data-model :schemas :all])
     [:dm-db db-id db-node]         (let [db-id (Long/parseUnsignedLong db-id)]
                                      (into [:db db-id :data-model :schemas] (path2 db-node)))
-    [:dm-schema schema-name]       [(path1 schema-name) :all]
-    [:dm-schema schema-name table] (into [(path1 schema-name)] (path2 table))
+    [:dm-schema schema-name]       [(path2 schema-name) :all]
+    [:dm-schema schema-name table] (into [(path2 schema-name)] (path2 table))
     [:dm-table table-id]           [(Long/parseUnsignedLong table-id) :all]
     ;; DB details perms
     [:details db-id]            (let [db-id (Long/parseUnsignedLong db-id)]
