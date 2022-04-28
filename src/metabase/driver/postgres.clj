@@ -282,7 +282,7 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defmethod sql.qp/json-query :mysql
+(defmethod sql.qp/json-query :postgres
   [driver identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)

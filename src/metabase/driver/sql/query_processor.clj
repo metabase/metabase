@@ -228,7 +228,7 @@
 
   Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with indexing into it. Implement the special syntax in this multimethod."
   {:arglists '([driver identifier json-field]), :added "0.43.1"}
-  (fn [driver identifier json-field] [(driver/dispatch-on-initialized-driver driver) identifier json-field])
+  (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
   :hierarchy #'driver/hierarchy)
 
 
