@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -72,8 +72,9 @@ const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
 const mapDispatchToProps = (dispatch: any) => ({
   fetchTableFks: (id: number) =>
     dispatch(Tables.objectActions.fetchForeignKeys({ id })),
-  loadObjectDetailFKReferences: () => dispatch(loadObjectDetailFKReferences()),
   followForeignKey: (fk: ForeignKey) => dispatch(followForeignKey(fk)),
+  loadObjectDetailFKReferences: (args: any) =>
+    dispatch(loadObjectDetailFKReferences(args)),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
@@ -95,8 +96,8 @@ export interface ObjectDetailProps {
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   fetchTableFks: (id: number) => void;
-  loadObjectDetailFKReferences: () => void;
   followForeignKey: (fk: ForeignKey) => void;
+  loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -127,6 +128,12 @@ export function ObjectDetailFn({
   const prevData = usePrevious(data);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
 
+  const loadFKReferences = useCallback(() => {
+    if (zoomedRowID) {
+      loadObjectDetailFKReferences({ objectId: zoomedRowID });
+    }
+  }, [zoomedRowID, loadObjectDetailFKReferences]);
+
   useOnMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
@@ -139,7 +146,7 @@ export function ObjectDetailFn({
     }
     // load up FK references
     if (tableForeignKeys) {
-      loadObjectDetailFKReferences();
+      loadFKReferences();
     }
     window.addEventListener("keydown", onKeyDown, true);
 
@@ -150,14 +157,9 @@ export function ObjectDetailFn({
 
   useEffect(() => {
     if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
-      loadObjectDetailFKReferences();
+      loadFKReferences();
     }
-  }, [
-    tableForeignKeys,
-    prevZoomedRowId,
-    zoomedRowID,
-    loadObjectDetailFKReferences,
-  ]);
+  }, [tableForeignKeys, prevZoomedRowId, zoomedRowID, loadFKReferences]);
 
   useEffect(() => {
     const queryCompleted = !prevData && data;
@@ -171,14 +173,14 @@ export function ObjectDetailFn({
     // if the card changed or table metadata loaded then reload fk references
     const tableFKsJustLoaded = !prevTableForeignKeys && tableForeignKeys;
     if (data !== prevData || tableFKsJustLoaded) {
-      loadObjectDetailFKReferences();
+      loadFKReferences();
     }
   }, [
     tableForeignKeys,
     data,
     prevData,
     prevTableForeignKeys,
-    loadObjectDetailFKReferences,
+    loadFKReferences,
   ]);
 
   const onKeyDown = (event: KeyboardEvent) => {
