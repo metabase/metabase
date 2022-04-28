@@ -1,18 +1,16 @@
 (ns metabase.pulse.parameters
   "Utilities for processing parameters for inclusion in dashboard subscriptions."
   (:require [clojure.string :as str]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.pulse.interface :as i]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.urls :as urls]
             [ring.util.codec :as codec]))
 
-(def ^:private parameters-impl
-  (u/prog1 (or (u/ignore-exceptions
-                 (classloader/require 'metabase-enterprise.pulse)
-                 (some-> (resolve 'metabase-enterprise.pulse/ee-strategy-parameters-impl)
-                         var-get))
-               i/default-parameters-impl)))
+(defenterprise the-parameters
+  "OSS way of getting filter parameters for a dashboard subscription"
+  metabase-enterprise.pulse
+  [_pulse dashboard]
+  (:parameters dashboard))
 
 (defn parameters
   "Returns the list of parameters applied to a dashboard subscription, filtering out ones
@@ -20,7 +18,7 @@
   [subscription dashboard]
   (filter
    #(or (:value %) (:default %))
-   (i/the-parameters parameters-impl subscription dashboard)))
+   (the-parameters subscription dashboard)))
 
 (defn value-string
   "Returns the value of a dashboard filter as a comma-separated string"

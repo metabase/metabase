@@ -1,12 +1,9 @@
 (ns metabase-enterprise.enhancements.models.native-query-snippet.permissions
   "EE implementation of NativeQuerySnippet permissions."
-  (:require [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
-            [metabase.models.interface :as mi]
-            [metabase.models.native-query-snippet.permissions :as snippet.perms]
+  (:require [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util.schema :as su]
-            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -15,38 +12,32 @@
    read-or-write :- (s/enum :read :write)]
   (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection "snippets" snippet read-or-write)))
 
-(def ^:private ee-impl*
-  (reify
-    PrettyPrintable
-    (pretty [_]
-      `ee-impl*)
+(defenterprise can-read?
+  "Can the current User read this `snippet`?"
+  :feature :any
+  ([snippet]
+   (has-parent-collection-perms? snippet :read))
+  ([model id]
+   (has-parent-collection-perms? (db/select-one [model :collection_id] :id id) :read)))
 
-    snippet.perms/PermissionsImpl
-    (can-read?* [_ snippet]
-      (has-parent-collection-perms? snippet :read))
+(defenterprise can-write?
+  "Can the current User edit this `snippet`?"
+  :feature :any
+  ([snippet]
+   (has-parent-collection-perms? snippet :write))
+  ([model id]
+   (has-parent-collection-perms? (db/select-one [model :collection_id] :id id) :write)))
 
-    (can-read?* [_ model id]
-      (has-parent-collection-perms? (db/select-one [model :collection_id] :id id) :read))
+(defenterprise can-create?
+  "Can the current User save a new Snippet with the values in `m`?"
+  :feature :any
+  [model m]
+  (has-parent-collection-perms? m :write))
 
-    (can-write?* [_ snippet]
-      (has-parent-collection-perms? snippet :write))
-
-    (can-write?* [_ model id]
-      (has-parent-collection-perms? (db/select-one [model :collection_id] :id id) :write))
-
-    (can-create?* [_ model m]
-      (has-parent-collection-perms? m :write))
-
-    (can-update?* [_ snippet changes]
-      (and (has-parent-collection-perms? snippet :write)
-           (or (not (contains? changes :collection_id))
-               (has-parent-collection-perms? changes :write))))))
-
-(def ee-impl
-  "EE implementation of NativeQuerySnippet permissions. Uses Collection permissions instead allowing anyone to view or
-  edit all Snippets. (Only when a valid Enterprise Edition token is present. Otherwise, this forwards method
-  invocations to the default impl)."
-  (ee-strategy-impl/reify-ee-strategy-impl #'premium-features/enable-enhancements? ee-impl* snippet.perms/default-impl
-    snippet.perms/PermissionsImpl))
-
-(snippet.perms/set-impl! ee-impl)
+(defenterprise can-update?
+  "Can the current User apply a map of `changes` to a `snippet`?"
+  :feature :any
+  [snippet changes]
+  (and (has-parent-collection-perms? snippet :write)
+       (or (not (contains? changes :collection_id))
+           (has-parent-collection-perms? changes :write))))

@@ -1,15 +1,13 @@
 (ns metabase-enterprise.sandbox.models.params.field-values
   (:require [clojure.core.memoize :as memoize]
-            [metabase-enterprise.enhancements.ee-strategy-impl :as ee-strategy-impl]
             [metabase-enterprise.sandbox.api.table :as table]
             [metabase.api.common :as api]
             [metabase.db.connection :as mdb.connection]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.params.field-values :as params.field-values]
-            [metabase.public-settings.premium-features :as premium-features]
+            [metabase.public-settings.premium-features :refer [defenterprise]]
             [metabase.util :as u]
-            [pretty.core :as pretty]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -51,7 +49,14 @@
   ;; back to fetching it manually with `field/table`
   (table/only-segmented-perms? (or table (field/table field))))
 
-(defn- field-id->field-values-for-current-user [field-ids]
+(defenterprise field-id->field-values-for-current-user*
+  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
+
+    {field-id FieldValues-instance}
+
+  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
+  :feature :sandboxes
+  [field-ids]
   (let [fields                   (when (seq field-ids)
                                    (hydrate (db/select Field :id [:in (set field-ids)]) :table))
         {unsandboxed-fields false
@@ -59,32 +64,18 @@
     (merge
      ;; use the normal OSS batched implementation for any Fields that aren't subject to sandboxing.
      (when (seq unsandboxed-fields)
-       (params.field-values/field-id->field-values-for-current-user*
-        params.field-values/default-impl
+       (params.field-values/default-field-id->field-values-for-current-user
         (set (map u/the-id unsandboxed-fields))))
      ;; for sandboxed fields, fetch the sandboxed values individually.
      (into {} (for [{field-id :id, :as field} sandboxed-fields]
                 [field-id (fetch-sandboxed-field-values field)])))))
 
-(def ^:private impl
-  (reify
-    pretty/PrettyPrintable
-    (pretty [_]
-      `impl)
-
-    params.field-values/FieldValuesForCurrentUser
-    (get-or-create-field-values-for-current-user!* [_ field]
-      (if (field-is-sandboxed? field)
-        ;; if sandboxing is in effect we never actually "save" the FieldValues the way the OSS/non-sandboxed impl does.
-        (fetch-sandboxed-field-values field)
-        (params.field-values/get-or-create-field-values-for-current-user!* params.field-values/default-impl field)))
-
-    (field-id->field-values-for-current-user* [_ field-ids]
-      (field-id->field-values-for-current-user field-ids))))
-
-(def ee-strategy-impl
-  "Enterprise version of the fetch FieldValues for current User logic. Uses our EE strategy pattern adapter: if EE
-  features *are* enabled, forwards method invocations to `impl`; if EE features *are not* enabled, forwards method
-  invocations to the default OSS impl."
-  (ee-strategy-impl/reify-ee-strategy-impl #'premium-features/enable-sandboxes? impl params.field-values/default-impl
-    params.field-values/FieldValuesForCurrentUser))
+(defenterprise get-or-create-field-values-for-current-user!*
+  "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These
+  should be filtered as appropriate for the current User (currently this only applies to the EE impl)."
+  :feature :sandboxes
+  [field]
+  (if (field-is-sandboxed? field)
+    ;; if sandboxing is in effect we never actually "save" the FieldValues the way the OSS/non-sandboxed impl does.
+    (fetch-sandboxed-field-values field)
+    (params.field-values/default-get-or-create-field-values-for-current-user! field)))
