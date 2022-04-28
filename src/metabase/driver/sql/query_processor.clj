@@ -138,7 +138,16 @@
       (truncate-fn expr))))
 
 (s/defn adjust-day-of-week
-  "Adjust day of week wrt start of week setting."
+  "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
+
+  The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
+
+  * `1` = first day of the week (e.g. Sunday)
+  * `7` = last day of the week (e.g. Saturday)
+
+  This assumes `day-of-week` as returned by the driver is already between `1` and `7` (adjust it if it's not). It
+  adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
+  from [[driver/db-start-of-week]]."
   ([driver day-of-week]
    (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
 
