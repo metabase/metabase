@@ -63,6 +63,7 @@ const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
     zoomedRowID,
     zoomedRow,
+    canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
     canZoomNextRow,
   };
@@ -92,6 +93,7 @@ export interface ObjectDetailProps {
     [key: number]: { status: number; value: number };
   };
   settings: any;
+  canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   onVisualizationClick: OnVisualizationClickType;
@@ -113,6 +115,7 @@ export function ObjectDetailFn({
   tableForeignKeys,
   tableForeignKeyReferences,
   settings,
+  canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
   onVisualizationClick,
@@ -211,7 +214,6 @@ export function ObjectDetailFn({
     return null;
   }
 
-  const canZoom = !!zoomedRow;
   const objectName = getObjectName({ table, question });
 
   const hasRelationships = tableForeignKeys && !!tableForeignKeys.length;
