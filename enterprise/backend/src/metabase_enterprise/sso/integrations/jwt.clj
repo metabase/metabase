@@ -101,5 +101,5 @@
                                 (str return-to-param redirect)))))))
 
 (defmethod sso.i/sso-post :jwt
-  [req]
+  [_]
   (throw (ex-info "POST not valid for JWT SSO requests" {:status-code 400})))
