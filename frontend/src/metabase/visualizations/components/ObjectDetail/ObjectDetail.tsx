@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 import { Table } from "metabase-types/types/Table";
 import { ForeignKey } from "metabase-types/api/foreignKey";
 import { DatasetData } from "metabase-types/types/Dataset";
-import { OnVisualizationClickType } from "./types";
+import { ObjectId, OnVisualizationClickType } from "./types";
 
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
@@ -71,7 +71,7 @@ export interface ObjectDetailProps {
   question: Question;
   table: Table | null;
   zoomedRow: unknown[] | undefined;
-  zoomedRowID: number;
+  zoomedRowID: ObjectId;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
     [key: number]: { status: number; value: number };
@@ -237,7 +237,7 @@ export function ObjectDetailFn({
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
-  objectId: number | null;
+  objectId: ObjectId;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   viewPreviousObjectDetail: () => void;
