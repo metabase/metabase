@@ -66,7 +66,7 @@
   specified. (This isn't meant for composition with `load-data-get-rows`; "
   [rows]
   (for [[i row] (m/indexed rows)]
-    (into {:id (inc i)} row)))
+    (apply array-map (keyword "id") (inc i) (flatten (vec row)))))
 
 (defn load-data-add-ids
   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
@@ -100,7 +100,7 @@
                                 (:field-definitions tabledef))]
     ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
-      (zipmap fields-for-insert row))))
+      (apply array-map (interleave fields-for-insert row)))))
 
 (defn- make-insert!
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
@@ -221,7 +221,7 @@
                                        "NONE")]]
     (u/profile (format "load-data for %s %s %s (reference H2 duration: %s)"
                        (name driver) (:database-name dbdef) (:table-name tabledef) reference-duration)
-      (load-data! driver dbdef tabledef))))
+               (load-data! driver dbdef tabledef))))
 
 (defn destroy-db!
   "Default impl of `destroy-db!` for SQL drivers."
