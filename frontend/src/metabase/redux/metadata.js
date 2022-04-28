@@ -306,11 +306,16 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+export const loadMetadataForQuery = (query, extraDependencies) =>
+  loadMetadataForQueries([query], extraDependencies);
 
-export const loadMetadataForQueries = queries => dispatch => {
+export const loadMetadataForQueries = (
+  queries,
+  extraDependencies = [],
+) => dispatch => {
   const dependencies = _.chain(queries)
     .map(q => q.dependentMetadata())
+    .push(...extraDependencies)
     .flatten()
     .uniq(false, dep => dep.type + dep.id)
     .map(({ type, id, foreignTables }) => {
