@@ -453,7 +453,7 @@
                              :type/Date                "DATE"
                              :type/DateTime            "TIMESTAMP"
                              :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
-                             :type/DateTimeWithLocalTZ "TIMESTAMPTZ"
+                             :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
                              :type/Decimal             "DECIMAL"
                              :type/Float               "FLOAT"
                              :type/Integer             "INTEGER"
