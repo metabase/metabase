@@ -300,19 +300,14 @@
    (valid-temporal-unit-for-base-type? base-type temporal-unit))
 
   ([base-type temporal-unit]
-   (cond
-     (core/not temporal-unit)
-     true
-
-     (core/not base-type)
-     true
-
-     :else
-     (let [units (condp #(isa? %2 %1) base-type
-                   :type/Date     date-bucketing-units
-                   :type/Time     time-bucketing-units
-                   :type/DateTime datetime-bucketing-units)]
-       (contains? units temporal-unit)))))
+   (if-let [units (when (core/and temporal-unit base-type)
+                    (condp #(isa? %2 %1) base-type
+                      :type/Date     date-bucketing-units
+                      :type/Time     time-bucketing-units
+                      :type/DateTime datetime-bucketing-units
+                      nil))]
+     (contains? units temporal-unit)
+     true)))
 
 (defn- validate-temporal-unit [schema]
   ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more

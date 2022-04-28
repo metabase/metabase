@@ -1402,12 +1402,9 @@
           (t/is (= {:query bad-query}
                    (ex-data e))))
         (t/testing "\nParent exception(s) should be even more specific"
-          (let [cause #?(:clj (some-> ^Throwable e .getCause)
-                         :cljs (ex-cause e))]
+          (let [cause (ex-cause e)]
             (t/is (some? cause))
-            (t/is (= "Error normalizing form."
-                     #?(:clj (.getMessage cause)
-                        :cljs (ex-message cause))))
+            (t/is (re-find #"Error normalizing form:" (ex-message cause)))
             (t/is (= {:form       bad-query
                       :path       []
                       :special-fn nil}
