@@ -144,7 +144,7 @@ describe("ObjectDetailDrill", () => {
         ]);
       });
 
-      it("should return correct URL to object detail", () => {
+      it("should return correct action", () => {
         const [action] = actions;
         expect(action.question()).toBe(SAVED_QUESTION);
         expect(action.extra()).toEqual({ objectId: cellValue });
