@@ -18,8 +18,7 @@ const ChartCaption = ({
   actionButtons,
   onChangeCardAndRun,
 }) => {
-  const cardTitle = settings["card.title"];
-  const title = typeof cardTitle === "string" ? cardTitle : series[0].card.name;
+  const title = settings["card.title"] ?? series[0].card.name;
   const description = settings["card.description"];
   const data = series._raw || series;
   const card = data[0].card;
