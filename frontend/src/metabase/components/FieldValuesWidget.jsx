@@ -144,11 +144,14 @@ export class FieldValuesWidget extends Component {
   getNonSearchableTokenFieldPlaceholder(firstField) {
     if (firstField.isID()) {
       return t`Enter an ID`;
+    } else if (firstField.isString()) {
+      return t`Enter some text`;
     } else if (firstField.isNumeric()) {
       return t`Enter a number`;
-    } else {
-      return t`Enter some text`;
     }
+
+    // fallback
+    return t`Enter some text`;
   }
 
   getTokenFieldPlaceholder() {

@@ -16,7 +16,7 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
@@ -392,6 +392,31 @@ describe("scenarios > question > notebook", () => {
 
     cy.findByText("Tax");
     cy.findByText("ID").should("not.exist");
+  });
+
+  it("should treat max/min on a name as a string filter (metabase#21973)", () => {
+    const questionDetails = {
+      name: "21973",
+      query: {
+        "source-table": PEOPLE_ID,
+        aggregation: [["max", ["field", PEOPLE.NAME, null]]],
+        breakout: [["field", PEOPLE.SOURCE, null]],
+      },
+      display: "table",
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByText("Filter").click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Max of Name").click();
+
+      cy.findByText("Is").click();
+    });
+
+    cy.findByText("Starts with").click();
+
+    cy.findByText("Case sensitive").click();
   });
 
   // flaky test
