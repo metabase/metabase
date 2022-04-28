@@ -144,7 +144,6 @@ function getFirstTableColumn() {
 
 function assertDetailView({ id, entityName, byFK = false }) {
   cy.get("h2")
-    .parent()
     .should("contain", entityName)
     .should("contain", id);
 
