@@ -3,6 +3,7 @@ import {
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
+  editDashboard,
   showDashboardCardActions,
   filterWidget,
   sidebar,
@@ -85,24 +86,19 @@ describe("scenarios > dashboard", () => {
     cy.intercept("GET", "/api/table/**/query_metadata").as("tableMetadata");
     visitDashboard(1);
 
-    // 3 tables
-    cy.wait("@tableMetadata");
-    cy.wait("@tableMetadata");
-    cy.wait("@tableMetadata");
-
     cy.findByTextEnsureVisible("Orders");
-    cy.get("[data-testid='legend-caption']").should("exist");
+    cy.findByTestId("legend-caption").should("exist");
 
-    cy.findByTextEnsureVisible("Quantity").realHover();
-    cy.icon("pencil").click({ force: true });
+    editDashboard();
+    showDashboardCardActions();
     cy.icon("palette").click();
 
-    cy.get("[data-testid='card.title']")
+    cy.findByDisplayValue("Orders")
       .click()
       .clear();
     cy.get("[data-metabase-event='Chart Settings;Done']").click();
 
-    cy.get("[data-testid='legend-caption']").should("not.exist");
+    cy.findByTestId("legend-caption").should("not.exist");
   });
 
   it("should add a filter", () => {
