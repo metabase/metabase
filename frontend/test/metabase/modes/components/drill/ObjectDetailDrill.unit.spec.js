@@ -1,6 +1,7 @@
 import Question from "metabase-lib/lib/Question";
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
 import {
   ORDERS,
   PRODUCTS,
@@ -184,22 +185,48 @@ describe("ObjectDetailDrill", () => {
   });
 
   describe("FK cells", () => {
-    const { actions, cellValue } = setup({
-      column: ORDERS.PRODUCT_ID.column(),
+    describe("with a FK column", () => {
+      const { actions, cellValue } = setup({
+        column: ORDERS.PRODUCT_ID.column(),
+      });
+
+      it("should return object detail filter", () => {
+        expect(actions).toMatchObject([
+          { name: "object-detail", question: expect.any(Function) },
+        ]);
+      });
+
+      it("should apply object detail filter correctly", () => {
+        const [action] = actions;
+        const card = action.question().card();
+        expect(card.dataset_query.query).toEqual({
+          "source-table": PRODUCTS.id,
+          filter: ["=", PRODUCTS.ID.reference(), cellValue],
+        });
+      });
     });
 
-    it("should return object detail filter", () => {
-      expect(actions).toMatchObject([
-        { name: "object-detail", question: expect.any(Function) },
-      ]);
-    });
+    describe("with fk_target_field_id (model with customized metadata)", () => {
+      const { actions, cellValue } = setup({
+        column: {
+          semantic_type: SEMANTIC_TYPE.FK,
+          fk_target_field_id: PRODUCTS.ID.id,
+        },
+      });
 
-    it("should apply object detail filter correctly", () => {
-      const [action] = actions;
-      const card = action.question().card();
-      expect(card.dataset_query.query).toEqual({
-        "source-table": PRODUCTS.id,
-        filter: ["=", PRODUCTS.ID.reference(), cellValue],
+      it("should return object detail filter", () => {
+        expect(actions).toMatchObject([
+          { name: "object-detail", question: expect.any(Function) },
+        ]);
+      });
+
+      it("should apply object detail filter correctly", () => {
+        const [action] = actions;
+        const card = action.question().card();
+        expect(card.dataset_query.query).toEqual({
+          "source-table": PRODUCTS.id,
+          filter: ["=", PRODUCTS.ID.reference(), cellValue],
+        });
       });
     });
   });
