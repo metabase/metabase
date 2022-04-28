@@ -81,6 +81,30 @@ describe("scenarios > dashboard", () => {
     cy.findByText("How many orders were placed in each year?");
   });
 
+  it("should allow empty card title (metabase#12013)", () => {
+    cy.intercept("GET", "/api/table/**/query_metadata").as("tableMetadata");
+    visitDashboard(1);
+
+    // 3 tables
+    cy.wait("@tableMetadata");
+    cy.wait("@tableMetadata");
+    cy.wait("@tableMetadata");
+
+    cy.findByTextEnsureVisible("Orders");
+    cy.get("[data-testid='legend-caption']").should("exist");
+
+    cy.findByTextEnsureVisible("Quantity").realHover();
+    cy.icon("pencil").click({ force: true });
+    cy.icon("palette").click();
+
+    cy.get("[data-testid='card.title']")
+      .click()
+      .clear();
+    cy.get("[data-metabase-event='Chart Settings;Done']").click();
+
+    cy.get("[data-testid='legend-caption']").should("not.exist");
+  });
+
   it("should add a filter", () => {
     visitDashboard(1);
     cy.icon("pencil").click();
