@@ -29,7 +29,7 @@ export const getObjectName = ({
 
 export interface GetIdValueArgs {
   data: DatasetData;
-  zoomedRowID: number;
+  zoomedRowID?: number;
 }
 
 export const getIdValue = ({
