@@ -350,7 +350,6 @@ describe("SaveQuestionModal", () => {
 
     it("shouldn't allow to save a question if form is invalid", () => {
       const originalQuestion = getQuestion({ isSaved: true });
-      console.log(originalQuestion);
       renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
