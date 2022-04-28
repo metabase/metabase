@@ -552,33 +552,34 @@ export class UnconnectedDataSelector extends Component {
   async skipSteps() {
     const { activeStep } = this.state;
 
-    console.log("---> skipSteps:", activeStep);
+    console.log("---> skipSteps:", activeStep, this.state);
+    console.log("Database:", this.props.selectedDatabaseId);
+    console.log("Schema:", this.props.selectedSchemaId);
 
-    console.log(this.props.selectedDatabaseId);
     if (
       activeStep === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase
       // && !this.props.selectedDatabaseId
     ) {
       const databases = this.getDatabases();
+      console.log("DB:", databases);
       if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
       }
-    }
-
-    console.log(this.props.selectedSchemaId);
-    if (
+    } else if (
       activeStep === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       !this.props.selectedSchemaId
     ) {
       const { schemas } = this.state;
-      console.log("skipSteps:", schemas);
+      console.log("SCH:", schemas);
       if (schemas && schemas.length === 1) {
         console.log("skipSteps:", activeStep);
         await this.onChangeSchema(schemas[0]);
       }
     }
+
+    console.log("");
   }
 
   getNextStep() {
@@ -594,7 +595,7 @@ export class UnconnectedDataSelector extends Component {
       return null;
     }
 
-    console.log("---> getPreviousStep:", activeStep);
+    console.log("<--- getPreviousStep:", activeStep);
 
     let index = steps.indexOf(activeStep);
     if (index === -1) {
@@ -605,20 +606,20 @@ export class UnconnectedDataSelector extends Component {
     // move to previous step
     index -= 1;
 
-    // Database: possibly skip another step backwards
-    // console.log(
-    //   DATABASE_STEP,
-    //   this.props.useOnlyAvailableDatabase,
-    //   this.state.databases,
-    // );
-    if (
-      steps[index] === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase &&
-      this.state.databases.length === 1
-    ) {
-      // console.log("\tskip");
-      index -= 1;
-    }
+    // // Database: possibly skip another step backwards
+    // // console.log(
+    // //   DATABASE_STEP,
+    // //   this.props.useOnlyAvailableDatabase,
+    // //   this.state.databases,
+    // // );
+    // if (
+    //   steps[index] === DATABASE_STEP &&
+    //   this.props.useOnlyAvailableDatabase &&
+    //   this.state.databases.length === 1
+    // ) {
+    //   // console.log("\tskip");
+    //   index -= 1;
+    // }
 
     // Schema: possibly skip another step backwards
     // console.log(
@@ -634,6 +635,8 @@ export class UnconnectedDataSelector extends Component {
       // console.log("\tskip");
       index -= 1;
     }
+
+    console.log("");
 
     // data bucket step doesn't make a lot of sense when there're no datasets
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
@@ -914,7 +917,8 @@ export class UnconnectedDataSelector extends Component {
       hasInitialFocus: !this.showTableSearch(),
     };
 
-    console.log("activeStep --->", this.state.activeStep);
+    console.log("activeStep:", this.state.activeStep);
+    console.log("");
 
     switch (this.state.activeStep) {
       case COLLECTION_DATASET_STEP:
