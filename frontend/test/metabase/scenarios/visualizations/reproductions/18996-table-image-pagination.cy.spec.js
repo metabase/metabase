@@ -4,16 +4,16 @@ const questionDetails = {
   name: "18996",
   native: {
     query: `
-select 1 "ID", 'https://upload.wikimedia.org/wikipedia/commons/2/28/JPG_Test.jpg' "IMAGE", 123 "PRICE"
-union all select 2, 'https://upload.wikimedia.org/wikipedia/commons/2/28/JPG_Test.jpg', 123
-union all select 3, 'https://upload.wikimedia.org/wikipedia/commons/2/28/JPG_Test.jpg', 123
-union all select 4, 'https://upload.wikimedia.org/wikipedia/commons/2/28/JPG_Test.jpg', 123
+select 1 "ID", 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg' "IMAGE", 123 "PRICE"
+union all select 2, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
+union all select 3, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
+union all select 4, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
 union all select 5, null, 123
 union all select 6, '', 123
 union all select 7, 'non-exisiting', 123
 union all select 8, null, 123
-union all select 9, 'https://upload.wikimedia.org/wikipedia/commons/2/28/JPG_Test.jpg', 123
-union all select 10, 'https://upload.wikimedia.org/wikipedia/commons/2/28/JPG_Test.jpg', 123
+union all select 9, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
+union all select 10, 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/TEST.jpg/320px-TEST.jpg', 123
 `,
   },
   display: "table",
