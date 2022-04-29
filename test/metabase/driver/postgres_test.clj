@@ -322,7 +322,7 @@
             (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))))))))
 
 (deftest describe-nested-field-columns-test
-  (mt/test-driver :postgres
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
       (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
