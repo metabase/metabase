@@ -75,7 +75,7 @@ You can define whether a group can [edit metadata](03-metadata-editing.md). Opti
 
 {% include plans-blockquote.html feature="Database management permissions" %}
 
-This setting defines whether a person can edit the connection settings for the data source, as well as to sync and scan the database.
+This setting defines whether a person can edit the connection settings for the data source, as well as to sync and scan the database. Note that this setting still prevents people from deleting database connections entirely. Only admins can delete database connections in your Metabase.
 
 ## Table permissions
 
