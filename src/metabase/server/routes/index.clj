@@ -35,26 +35,26 @@
     {"" {"Metabase" {"msgid"  "Metabase"
                      "msgstr" ["Metabase"]}}}}))
 
-(defn- localization-json-file-name [locale-or-name]
-  (format "frontend_client/app/locales/%s.json" (str (i18n/locale locale-or-name))))
+(defn- localization-json-file-name [locale-string]
+  (format "frontend_client/app/locales/%s.json" (str/replace locale-string \- \_)))
 
-(defn- load-localization* [locale-or-name]
+(defn- load-localization* [locale-string]
   (or
-   (when-let [locale-name (some-> locale-or-name str)]
-     (when-not (= locale-name "en")
+   (when locale-string
+     (when-not (= locale-string "en")
        (try
-         (slurp (or (io/resource (localization-json-file-name locale-name))
-                    (when-let [fallback-locale (i18n/fallback-locale locale-name)]
+         (slurp (or (io/resource (localization-json-file-name locale-string))
+                    (when-let [fallback-locale (i18n/fallback-locale locale-string)]
                       (io/resource (localization-json-file-name (str fallback-locale))))
                     ;; don't try to i18n the Exception message below, we have no locale to translate it to!
-                    (throw (FileNotFoundException. (format "Locale '%s' not found." locale-name)))))
+                    (throw (FileNotFoundException. (format "Locale '%s' not found." locale-string)))))
          (catch Throwable e
            (log/warn (.getMessage e))))))
-   (fallback-localization locale-or-name)))
+   (fallback-localization locale-string)))
 
 (def ^:private ^{:arglists '([])} load-localization
   "Load a JSON-encoded map of localized strings for the current user's Locale."
-  (comp (memoize load-localization*) #(some-> (i18n/user-locale) str)))
+  (comp (memoize load-localization*) #(i18n/user-locale-string)))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
