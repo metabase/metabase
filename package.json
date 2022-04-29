@@ -205,6 +205,7 @@
     "cypress-grep": "^2.13.1",
     "cypress-real-events": "^1.7.0",
     "documentation": "^13.2.5",
+    "esbuild-loader": "^2.18.0",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "4.0.2",

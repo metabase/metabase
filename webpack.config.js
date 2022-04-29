@@ -69,7 +69,15 @@ const config = (module.exports = {
       {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [
+          {
+            loader: "esbuild-loader",
+            options: {
+              loader: "tsx",
+              target: "es2015",
+            },
+          },
+        ],
       },
       ...(shouldUseEslint
         ? [
