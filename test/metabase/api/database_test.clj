@@ -178,10 +178,14 @@
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
-    (testing "Check that we can delete a Database"
+    (testing "Check that a superuser can delete a Database"
       (mt/with-temp Database [db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-        (is (false? (db/exists? Database :id (u/the-id db))))))))
+        (is (false? (db/exists? Database :id (u/the-id db))))))
+
+    (testing "Check that a non-superuser cannot delete a Database"
+      (mt/with-temp Database [db]
+        (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
 
 (deftest update-database-test
   (testing "PUT /api/database/:id"
