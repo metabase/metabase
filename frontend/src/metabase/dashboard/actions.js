@@ -1078,12 +1078,17 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
-  const queries = dashCards
+  const questions = dashCards
     .filter(dc => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
     .flatMap(dc => [dc.card].concat(dc.series || []))
-    .map(card => new Question(card, metadata).query());
+    .map(card => new Question(card, metadata));
 
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(
+      questions.map(question => question.query()),
+      questions.map(question => question.dependentMetadata()),
+    ),
+  );
 };
 
 export const fetchDashboardParameterValues = createThunkAction(
