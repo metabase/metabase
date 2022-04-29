@@ -11,11 +11,11 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
-  (:import java.io.OutputStream
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
-           org.apache.poi.ss.util.CellRangeAddress
-           [org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook]))
+  (:import (java.io OutputStream)
+           (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+           (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook)
+           (org.apache.poi.ss.util CellRangeAddress)
+           (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
@@ -412,7 +412,7 @@
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols col-settings]
   (for [col ordered-cols]
-    (let [id-or-name       (or (:fk_field_id col)
+    (let [id-or-name       (or (and (:remapped_from col) (:fk_field_id col))
                                (:id col)
                                (:name col))
           format-settings  (or (get col-settings {::mb.viz/field-id id-or-name})
