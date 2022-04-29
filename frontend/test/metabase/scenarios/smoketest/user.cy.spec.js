@@ -190,7 +190,6 @@ describe("smoketest > user", () => {
     cy.icon("calendar").click();
 
     visualize();
-    cy.wait("@dataset");
 
     cy.get("svg").should("be.visible");
     cy.findAllByText("Created At");
