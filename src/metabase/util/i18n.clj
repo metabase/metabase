@@ -30,14 +30,16 @@
   nil)
 
 (defn site-locale-string
-  "Site Locale string from the settings."
+  "The default locale string for this Metabase installation. Normally this is the value of the `site-locale` Setting,
+  which is also a string."
   []
   (or *site-locale-override*
       (i18n.impl/site-locale-from-setting)
       "en"))
 
 (defn user-locale-string
-  "Locale string ed we should *use* from the current User"
+  "Locale string we should *use* for the current User (e.g. `tru` messages) -- `*user-locale*` if bound, otherwise the
+  system locale as a string."
   []
   (or *user-locale*
       (site-locale-string)))
