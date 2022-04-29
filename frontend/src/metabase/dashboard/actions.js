@@ -70,6 +70,7 @@ import {
   getAllDashboardCards,
   getDashboardType,
   fetchDataOrError,
+  getDatasetQueryParams,
 } from "./utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -572,10 +573,12 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     if (!reload) {
       // if reload not set, check to see if the last result has the same query dict and return that
       const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
-      // "constraints" is added by the backend, remove it when comparing
       if (
         lastResult &&
-        Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)
+        Utils.equals(
+          getDatasetQueryParams(lastResult.json_query),
+          getDatasetQueryParams(datasetQuery),
+        )
       ) {
         return {
           dashcard_id: dashcard.id,
