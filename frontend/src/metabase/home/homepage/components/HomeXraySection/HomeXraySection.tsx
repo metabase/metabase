@@ -5,6 +5,7 @@ import * as Urls from "metabase/lib/urls";
 import Select from "metabase/core/components/Select";
 import { Database, DatabaseCandidate } from "metabase-types/api";
 import HomeCaption from "../HomeCaption";
+import HomeHelpCard from "../HomeHelpCard";
 import HomeXrayCard from "../HomeXrayCard";
 import {
   DatabaseLinkIcon,
@@ -65,6 +66,7 @@ const HomeXraySection = ({
             message={tableMessages[index]}
           />
         ))}
+        <HomeHelpCard />
       </SectionBody>
     </div>
   );
