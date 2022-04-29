@@ -120,7 +120,7 @@ export function DetailsTable({
     <ObjectDetailsTable>
       <GridContainer cols={3}>
         {cols.map((column, columnIndex) => (
-          <>
+          <React.Fragment key={columnIndex}>
             <GridCell>
               <DetailsTableCell
                 column={column}
@@ -143,7 +143,7 @@ export function DetailsTable({
                 visualizationIsClickable={visualizationIsClickable}
               />
             </GridCell>
-          </>
+          </React.Fragment>
         ))}
       </GridContainer>
     </ObjectDetailsTable>
