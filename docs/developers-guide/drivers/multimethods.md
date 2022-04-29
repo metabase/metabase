@@ -9,7 +9,6 @@ Let's first focus on the main driver file for our Fox Pro '98 `src/metabase/driv
 (ns com.mycompany.metabase.driver.foxpro98
   (:require [metabase.driver :as driver]))
 
-;; NOTE FOR CAM: this should be in the plugin manifest, no?
 ;; Can you include a different method here as an example?
 (defmethod driver/display-name :foxpro98 [_]
   "Visual FoxPro '98")
@@ -73,7 +72,7 @@ Many drivers share implementation details, and writing complete implementations 
 
 You can define a driver parent by listing the parent in the [plugin manifest](plugins.md).
 
-Parents like `:sql-jdbc` are intended as a common abstract "base class" for drivers that can share much of their implementation; in the case of `:sql-jdbc`, it's intended for SQL-based drivers that use a JDBC driver under the hood.`:sql-jdbc` and other parents provide implementations for many of the methods needed to power the four main features of a Metabase driver. In fact, `:sql-jdbc` provides implementations of things like `driver/execute-query`, so a driver using it as a parent does not need to provide one itself. However, various parent drivers define their own multimethods to implement.
+Parents like `:sql-jdbc` are intended as a common abstract "base class" for drivers that can share much of their implementation; in the case of `:sql-jdbc`, it's intended for SQL-based drivers that use a JDBC driver under the hood.`:sql-jdbc` and other parents provide implementations for many of the methods needed to power the four main features of a Metabase driver. In fact, `:sql-jdbc` provides implementations of things like `driver/execute-prepared-statement!`, so a driver using it as a parent does not need to provide one itself. However, various parent drivers define their own multimethods to implement.
 
 ## Notable parent drivers
 
