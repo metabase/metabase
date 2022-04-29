@@ -38,6 +38,7 @@ describe("smoketest > user", () => {
   });
 
   it("should sort via both the header and notebook editor", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     // Sorting by header
     cy.wait(1000)
       .get(".Icon-table2")
@@ -53,6 +54,7 @@ describe("smoketest > user", () => {
       .click();
 
     cy.icon("arrow_down").click();
+    cy.wait("@dataset");
 
     cy.get("@firstTableCell").contains("Ergonomic Wool Bag");
 
