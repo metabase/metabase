@@ -81,3 +81,7 @@ If you run into an issue, check that you can login to your LDAP directory and is
 [apache-directory-studio]: https://directory.apache.org/studio/
 [ldap-learn]: /learn/permissions/ldap-auth-access-control.html
 [ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
+
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
