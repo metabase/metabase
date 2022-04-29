@@ -63,7 +63,7 @@
 
 (defn clob->str
   "Convert an H2 clob to a String."
-  ^String [^org.h2.jdbc.JdbcClob clob]
+  ^String [^org.h2_v1_4_197.jdbc.JdbcClob clob]
   (when clob
     (letfn [(->str [^BufferedReader buffered-reader]
               (loop [acc []]
@@ -81,15 +81,15 @@
   (result-set-read-column [clob _ _]
     (.getValue clob))
 
-  org.h2.jdbc.JdbcClob
+  org.h2_v1_4_197.jdbc.JdbcClob
   (result-set-read-column [clob _ _]
     (clob->str clob))
 
-  org.h2.jdbc.JdbcBlob
-  (result-set-read-column [^org.h2.jdbc.JdbcBlob blob _ _]
+  org.h2_v1_4_197.jdbc.JdbcBlob
+  (result-set-read-column [^org.h2_v1_4_197.jdbc.JdbcBlob blob _ _]
     (.getBytes blob 0 (.length blob)))
 
-  org.h2.api.TimestampWithTimeZone
+  org.h2_v1_4_197.api.TimestampWithTimeZone
   (result-set-read-column [t _ _]
     (let [date        (t/local-date (.getYear t) (.getMonth t) (.getDay t))
           time        (LocalTime/ofNanoOfDay (.getNanosSinceMidnight t))

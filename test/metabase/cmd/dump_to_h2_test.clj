@@ -56,7 +56,7 @@
   (let [spec (if (= db-type :h2)
                {:subprotocol "h2"
                 :subname     (format "mem:%s;DB_CLOSE_DELAY=10" db-name)
-                :classname   "org.h2.Driver"}
+                :classname   "org.h2_v1_4_197.Driver"}
                (mdb.spec/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
     (mdb.test-util/->ClojureJDBCSpecDataSource spec)))
 
