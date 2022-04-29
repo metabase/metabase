@@ -36,7 +36,7 @@ For the person in question, check to see which groups they belong to. Do any of 
 
 ### Is the question available via Signed Embedding or Public Sharing?
 
-**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone views the question without logging into Metabase, Metabase lacks user attributes or group information available for filtering the data, so it will show all results.
+**Root cause**: The question is public. [Public questions][public-sharing], even those that use [Signed Embedding][signed-embedding], can't be sandboxed. If someone views the question without logging into Metabase, Metabase lacks user attributes or group information for filtering the data, so it will show all results.
 
 **Steps to take**:
 
