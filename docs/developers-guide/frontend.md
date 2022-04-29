@@ -141,7 +141,7 @@ Pass a form definition to the `form` prop:
 />
 ```
 
-If `<Form>` doesn't have any children elements then it will use the [`metabase/components/StandardLayout`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/components/StandardLayout) component to provide a default form layout.
+If `<Form>` lacks any children elements then it will use the [`metabase/components/StandardLayout`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/components/StandardLayout) component to provide a default form layout.
 
 The schema for this object is defined in [`Form.jsx`](https://github.com/metabase/metabase/blob/master/frontend/src/metabase/containers/Form.jsx#L41-L60).
 

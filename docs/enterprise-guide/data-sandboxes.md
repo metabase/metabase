@@ -155,7 +155,7 @@ __Note__: An important distinction to make is that you can use a saved SQL query
 
 ### Data sandboxes and public sharing don't play well together
 
-Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user — so since a user doesn't have to log in to see a public question or dashboard, Metabase has no knowledge of who that user is.
+Public questions and dashboards can't be sandboxed. Sandboxing works by filtering data based on the group membership and user attributes of an authenticated user. Since someone can see a public question or dashboard without logging in, Metabase won't know who that person is.
 
 ## Further reading
 
