@@ -3,6 +3,7 @@ import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
 import {
   ORDERS,
+  PRODUCTS,
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
@@ -155,15 +156,17 @@ describe("ObjectDetailDrill", () => {
 
     it("should return object detail filter", () => {
       expect(actions).toMatchObject([
-        { name: "object-detail", url: expect.any(Function) },
+        { name: "object-detail", question: expect.any(Function) },
       ]);
     });
 
     it("should apply object detail filter correctly", () => {
       const [action] = actions;
-      const [urlPath, urlHash] = action.url().split("#");
-      expect(urlPath).toBe(`/question?objectId=${cellValue}`);
-      expect(urlHash.length).toBeGreaterThan(0);
+      const card = action.question().card();
+      expect(card.dataset_query.query).toEqual({
+        "source-table": PRODUCTS.id,
+        filter: ["=", PRODUCTS.ID.reference(), cellValue],
+      });
     });
   });
 });

@@ -24,25 +24,6 @@ function getActionForPKColumn({ question, column, objectId, isDashboard }) {
   return ["action", () => zoomInRow({ objectId })];
 }
 
-function getActionForFKColumn({ targetField, objectId }) {
-  const databaseId = targetField.table.database.id;
-  const tableId = targetField.table_id;
-  return [
-    "url",
-    () =>
-      Urls.newQuestion({
-        databaseId,
-        tableId,
-        objectId,
-      }),
-  ];
-}
-
-function getFKTargetField(question, column) {
-  const fkField = question.metadata().field(column.id);
-  return fkField?.target;
-}
-
 function getBaseActionObject() {
   return {
     name: "object-detail",
@@ -68,15 +49,11 @@ function getPKAction({ question, column, objectId, isDashboard }) {
 
 function getFKAction({ question, column, objectId }) {
   const actionObject = getBaseActionObject();
-  const targetField = getFKTargetField(question, column);
-  if (!targetField) {
+  const fkField = question.metadata().field(column.id);
+  if (!fkField?.target) {
     return;
   }
-  const [actionKey, action] = getActionForFKColumn({
-    targetField,
-    objectId,
-  });
-  actionObject[actionKey] = action;
+  actionObject.question = () => question.drillPK(fkField.target, objectId);
   return actionObject;
 }
 

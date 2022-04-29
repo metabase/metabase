@@ -528,7 +528,7 @@
         :else
         (invalid-response-handler :db (tru "Unable to connect to database.")))
       (catch Throwable e
-        (when log-exception
+        (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
           (log/error e (trs "Cannot connect to Database")))
         (invalid-response-handler :dbname (.getMessage e))))))
 
@@ -654,63 +654,63 @@
    refingerprint      (s/maybe s/Bool)
    details            (s/maybe su/Map)
    schedules          (s/maybe sync.schedules/ExpandedSchedulesMap)
-   description        (s/maybe s/Str)                ; s/Str instead of su/NonBlankString because we don't care
-   caveats            (s/maybe s/Str)                ; whether someone sets these to blank strings
+   description        (s/maybe s/Str)   ; s/Str instead of su/NonBlankString because we don't care
+   caveats            (s/maybe s/Str)   ; whether someone sets these to blank strings
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
    cache_ttl          (s/maybe su/IntGreaterThanZero)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
-  (let [existing-database (api/write-check (Database id))]
-    (let [details    (driver.u/db-details-client->server engine details)
-          details    (upsert-sensitive-fields existing-database details)
-          conn-error (when (some? details)
-                       (assert (some? engine))
-                       (test-database-connection engine details))
-          full-sync? (when-not (nil? is_full_sync)
-                       (boolean is_full_sync))]
-      (if conn-error
-        ;; failed to connect, return error
-        {:status 400
-         :body   conn-error}
-        ;; no error, proceed with update
-        (do
-          ;; TODO - is there really a reason to let someone change the engine on an existing database?
-          ;;       that seems like the kind of thing that will almost never work in any practical way
-          ;; TODO - this means one cannot unset the description. Does that matter?
-          (api/check-500 (db/update-non-nil-keys! Database id
-                                                  (merge
-                                                     {:name               name
-                                                      :engine             engine
-                                                      :details            details
-                                                      :refingerprint      refingerprint
-                                                      :is_full_sync       full-sync?
-                                                      :is_on_demand       (boolean is_on_demand)
-                                                      :description        description
-                                                      :caveats            caveats
-                                                      :points_of_interest points_of_interest
-                                                      :auto_run_queries   auto_run_queries}
-                                                     (cond
-                                                       ;; transition back to metabase managed schedules. the schedule
-                                                       ;; details, even if provided, are ignored. database is the
-                                                       ;; current stored value and check against the incoming details
-                                                       (and (get-in existing-database [:details :let-user-control-scheduling])
-                                                            (not (:let-user-control-scheduling details)))
+  (let [existing-database (api/write-check (Database id))
+        details           (driver.u/db-details-client->server engine details)
+        details           (upsert-sensitive-fields existing-database details)
+        conn-error        (when (some? details)
+                            (assert (some? engine))
+                            (test-database-connection engine details))
+        full-sync?        (when-not (nil? is_full_sync)
+                            (boolean is_full_sync))]
+    (if conn-error
+      ;; failed to connect, return error
+      {:status 400
+       :body   conn-error}
+      ;; no error, proceed with update
+      (do
+        ;; TODO - is there really a reason to let someone change the engine on an existing database?
+        ;;       that seems like the kind of thing that will almost never work in any practical way
+        ;; TODO - this means one cannot unset the description. Does that matter?
+        (api/check-500 (db/update-non-nil-keys! Database id
+                                                (merge
+                                                 {:name               name
+                                                  :engine             engine
+                                                  :details            details
+                                                  :refingerprint      refingerprint
+                                                  :is_full_sync       full-sync?
+                                                  :is_on_demand       (boolean is_on_demand)
+                                                  :description        description
+                                                  :caveats            caveats
+                                                  :points_of_interest points_of_interest
+                                                  :auto_run_queries   auto_run_queries}
+                                                 (cond
+                                                   ;; transition back to metabase managed schedules. the schedule
+                                                   ;; details, even if provided, are ignored. database is the
+                                                   ;; current stored value and check against the incoming details
+                                                   (and (get-in existing-database [:details :let-user-control-scheduling])
+                                                        (not (:let-user-control-scheduling details)))
 
-                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
 
-                                                       ;; if user is controlling schedules
-                                                       (:let-user-control-scheduling details)
-                                                       (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
-                                                       ;; do nothing in the case that user is not in control of
-                                                       ;; scheduling. leave them as they are in the db
+                                                   ;; if user is controlling schedules
+                                                   (:let-user-control-scheduling details)
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
+        ;; do nothing in the case that user is not in control of
+        ;; scheduling. leave them as they are in the db
 
-          ;; unlike the other fields, folks might want to nil out cache_ttl
-          (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
+        ;; unlike the other fields, folks might want to nil out cache_ttl
+        (api/check-500 (db/update! Database id {:cache_ttl cache_ttl}))
 
-          (let [db (Database id)]
-            (events/publish-event! :database-update db)
-            ;; return the DB with the expanded schedules back in place
-            (add-expanded-schedules db)))))))
+        (let [db (Database id)]
+          (events/publish-event! :database-update db)
+          ;; return the DB with the expanded schedules back in place
+          (add-expanded-schedules db))))))
 
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------

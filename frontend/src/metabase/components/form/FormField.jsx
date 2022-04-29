@@ -62,6 +62,7 @@ function FormField(props) {
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
+    align = formField?.align || "right",
     children,
   } = props;
 
@@ -88,8 +89,9 @@ function FormField(props) {
 
   return (
     <div id={formFieldId} className={rootClassNames}>
+      {align === "left" && <InputContainer>{children}</InputContainer>}
       {(title || description) && (
-        <FieldContainer horizontal={horizontal}>
+        <FieldContainer horizontal={horizontal} align={align}>
           <FieldRow>
             {title && (
               <Label
@@ -117,7 +119,7 @@ function FormField(props) {
           )}
         </FieldContainer>
       )}
-      <InputContainer horizontal={horizontal}>{children}</InputContainer>
+      {align !== "left" && <InputContainer>{children}</InputContainer>}
       {description && descriptionPosition === "bottom" && (
         <FormFieldDecription className="mt1" description={description} />
       )}

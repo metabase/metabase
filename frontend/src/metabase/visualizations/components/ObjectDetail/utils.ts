@@ -7,6 +7,8 @@ import { Table } from "metabase-types/types/Table";
 import Question from "metabase-lib/lib/Question";
 import { DatasetData } from "metabase-types/types/Dataset";
 
+import { ObjectId } from "./types";
+
 export interface GetObjectNameArgs {
   table: Table | null;
   question: Question;
@@ -29,13 +31,13 @@ export const getObjectName = ({
 
 export interface GetIdValueArgs {
   data: DatasetData;
-  zoomedRowID: number;
+  zoomedRowID?: ObjectId;
 }
 
 export const getIdValue = ({
   data,
   zoomedRowID,
-}: GetIdValueArgs): number | null => {
+}: GetIdValueArgs): ObjectId | null => {
   if (!data) {
     return null;
   }
@@ -47,3 +49,7 @@ export const getIdValue = ({
   const columnIndex = _.findIndex(cols, col => isPK(col));
   return rows[0][columnIndex] as number;
 };
+
+export function getSingleResultsRow(data: DatasetData) {
+  return data.rows.length === 1 ? data.rows[0] : null;
+}

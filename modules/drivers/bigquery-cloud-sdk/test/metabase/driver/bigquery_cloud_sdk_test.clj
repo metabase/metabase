@@ -20,8 +20,9 @@
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
-    (let [db-details   (:details (mt/db))
-          fake-proj-id "definitely-not-a-real-project-id-way-no-how"]
+    (let [db-details (:details (mt/db))
+          fake-proj-id "definitely-not-a-real-project-id-way-no-how"
+          fake-dataset-id "definitely-not-a-real-dataset-id-way-no-how"]
       (testing "can-connect? returns true in the happy path"
         (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))
       (testing "can-connect? returns false for bogus credentials"
@@ -29,7 +30,12 @@
       (testing "can-connect? returns true for a valid dataset-id even with no tables"
         (with-redefs [bigquery/list-tables (fn [& _]
                                              [])]
-          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details))))))))
+          (is (true? (driver/can-connect? :bigquery-cloud-sdk db-details)))))
+      (testing "can-connect? returns an appropriate exception message if no datasets are found"
+        (is (thrown-with-msg? Exception
+                              #"Looks like we cannot find any matching datasets."
+                              (driver/can-connect? :bigquery-cloud-sdk
+                                                   (assoc db-details :dataset-filters-patterns fake-dataset-id))))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -335,8 +341,24 @@
                 :name   tbl-nm
                 :fields #{{:name "int_col", :database-type "INTEGER", :base-type :type/Integer, :database-position 0}
                           {:name "array_col", :database-type "INTEGER", :base-type :type/Array, :database-position 1}}}
-              (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
-          "`describe-table` should detect the correct base-type for array type columns")))))
+               (driver/describe-table :bigquery-cloud-sdk (mt/db) {:name tbl-nm, :schema "v3_test_data"}))
+               "`describe-table` should detect the correct base-type for array type columns")))))
+
+(deftest sync-inactivates-old-duplicate-tables
+  (testing "If on the new driver, then downgrade, then upgrade again (#21981)"
+    (mt/test-driver :bigquery-cloud-sdk
+      (mt/dataset avian-singles
+        (try
+          (let [synced-tables (db/select Table :db_id (mt/id))]
+            (is (= 2 (count synced-tables)))
+            (db/insert-many! Table (map #(dissoc % :id :schema) synced-tables))
+            (sync/sync-database! (mt/db) {:scan :schema})
+            (let [synced-tables (db/select Table :db_id (mt/id))]
+              (is (partial= {true [{:name "messages"} {:name "users"}]
+                             false [{:name "messages"} {:name "users"}]}
+                            (-> (group-by :active (doto synced-tables tap>))
+                                (update-vals #(sort-by :name %)))))))
+          (finally (db/delete! Table :db_id (mt/id) :active false)))))))
 
 (deftest retry-certain-exceptions-test
   (mt/test-driver :bigquery-cloud-sdk

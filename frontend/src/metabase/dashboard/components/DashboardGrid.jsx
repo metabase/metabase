@@ -92,9 +92,10 @@ export default class DashboardGrid extends Component {
         card => String(card.id) === layoutItem.i,
       );
 
+      const keys = ["h", "w", "x", "y"];
       const changed = !_.isEqual(
-        layoutItem,
-        this.getLayoutForDashCard(dashboardCard),
+        _.pick(layoutItem, keys),
+        _.pick(this.getLayoutForDashCard(dashboardCard), keys),
       );
 
       if (changed) {

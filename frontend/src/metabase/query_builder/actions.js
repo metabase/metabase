@@ -1523,42 +1523,47 @@ function getFilterForFK(zoomedObjectId, fk) {
 }
 
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
-export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
-  return async (dispatch, getState) => {
-    const state = getState();
+export const followForeignKey = createThunkAction(
+  FOLLOW_FOREIGN_KEY,
+  ({ objectId, fk }) => {
+    return async (dispatch, getState) => {
+      const state = getState();
 
-    const card = getCard(state);
-    const queryResult = getFirstQueryResult(state);
-    const zoomedObjectId = getZoomedObjectId(state);
+      const card = getCard(state);
+      const queryResult = getFirstQueryResult(state);
 
-    if (!queryResult || !fk) {
-      return false;
-    }
+      if (!queryResult || !fk) {
+        return false;
+      }
 
-    const newCard = startNewCard("query", card.dataset_query.database);
+      const newCard = startNewCard("query", card.dataset_query.database);
 
-    newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-    newCard.dataset_query.query.filter = getFilterForFK(zoomedObjectId, fk);
+      newCard.dataset_query.query["source-table"] = fk.origin.table.id;
+      newCard.dataset_query.query.filter = getFilterForFK(objectId, fk);
 
-    dispatch(resetRowZoom());
-    dispatch(setCardAndRun(newCard));
-  };
-});
+      dispatch(resetRowZoom());
+      dispatch(setCardAndRun(newCard));
+    };
+  },
+);
 
 export const LOAD_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
-  () => {
+  ({ objectId }) => {
     return async (dispatch, getState) => {
       dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
 
       const state = getState();
+      const tableForeignKeys = getTableForeignKeys(state);
+
+      if (!Array.isArray(tableForeignKeys)) {
+        return null;
+      }
 
       const card = getCard(state);
       const queryResult = getFirstQueryResult(state);
-      const tableForeignKeys = getTableForeignKeys(state);
-      const zoomedObjectId = getZoomedObjectId(state);
 
       async function getFKCount(card, queryResult, fk) {
         const fkQuery = Q_DEPRECATED.createQuery("query");
@@ -1566,7 +1571,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
         fkQuery.database = card.dataset_query.database;
         fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];
-        fkQuery.query.filter = getFilterForFK(zoomedObjectId, fk);
+        fkQuery.query.filter = getFilterForFK(objectId, fk);
 
         const info = { status: 0, value: null };
 

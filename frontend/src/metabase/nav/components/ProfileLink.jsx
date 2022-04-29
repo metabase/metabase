@@ -107,6 +107,7 @@ function ProfileLink({ user, handleCloseNavbar, adminItems, handleLogout }) {
         tooltip={t`Settings`}
         items={generateOptionsForUser()}
         triggerIcon="gear"
+        targetOffsetY={20}
         triggerProps={{
           color: color("text-medium"),
           hover: {

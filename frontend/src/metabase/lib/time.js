@@ -93,6 +93,8 @@ export function parseTimestamp(value, unit = null, local = false) {
     m = TEXT_UNIT_FORMATS[unit](value);
   } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     m = NUMERIC_UNIT_FORMATS[unit](value);
+  } else if (typeof value === "number") {
+    m = moment.utc(value, moment.ISO_8601);
   } else {
     m = moment.utc(value);
   }
