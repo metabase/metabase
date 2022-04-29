@@ -30,6 +30,7 @@
   nil)
 
 (defn site-locale-string
+  "Site Locale string from the settings."
   []
   (or *site-locale-override*
       (i18n.impl/site-locale-from-setting)
