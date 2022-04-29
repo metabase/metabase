@@ -1286,7 +1286,7 @@ export default class Question {
     return isAltered ? question.markDirty() : question;
   }
 
-  getUrlWithParameters(parameters, parameterValues, { objectId } = {}) {
+  getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
     const includeDisplayIsLocked = true;
 
     if (this.isStructured()) {
@@ -1297,6 +1297,7 @@ export default class Question {
           .setParameterValues(parameterValues)
           .convertParametersToFilters()
           .getUrl({
+            clean,
             originalQuestion: this,
             includeDisplayIsLocked,
             query: { objectId },
@@ -1304,12 +1305,14 @@ export default class Question {
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);
         return questionWithParameters.markDirty().getUrl({
+          clean,
           query,
           includeDisplayIsLocked,
         });
       }
     } else {
       return this.getUrl({
+        clean,
         query: remapParameterValuesToTemplateTags(
           this.query().templateTags(),
           parameters,
