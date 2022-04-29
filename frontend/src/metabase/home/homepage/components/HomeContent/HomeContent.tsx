@@ -1,12 +1,11 @@
 import React from "react";
-import moment from "moment";
-import { parseTimestamp } from "metabase/lib/time";
 import { isSyncCompleted } from "metabase/lib/syncing";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { Database, PopularItem, RecentItem, User } from "metabase-types/api";
 import HomePopularSection from "../../containers/HomePopularSection";
 import HomeRecentSection from "../../containers/HomeRecentSection";
 import HomeXraySection from "../../containers/HomeXraySection";
+import { isWithinWeeks } from "../../utils";
 
 export interface HomeContentProps {
   user: User;
@@ -43,7 +42,7 @@ const isLoading = ({
 }: HomeContentProps): boolean => {
   if (!user.has_question_and_dashboard) {
     return databases == null;
-  } else if (user.is_installer || !isWithinWeek(user.first_login)) {
+  } else if (user.is_installer || !isWithinWeeks(user.first_login, 1)) {
     return databases == null || recentItems == null;
   } else {
     return databases == null || recentItems == null || popularItems == null;
@@ -59,7 +58,7 @@ const isPopularSection = ({
     !user.is_installer &&
     user.has_question_and_dashboard &&
     popularItems.length > 0 &&
-    (isWithinWeek(user.first_login) || !recentItems.length)
+    (isWithinWeeks(user.first_login, 1) || !recentItems.length)
   );
 };
 
@@ -72,12 +71,6 @@ const isRecentSection = ({
 
 const isXraySection = ({ databases = [] }: HomeContentProps): boolean => {
   return databases.some(isSyncCompleted);
-};
-
-const isWithinWeek = (timestamp: string): boolean => {
-  const date = parseTimestamp(timestamp);
-  const weekAgo = moment().subtract(1, "week");
-  return date.isAfter(weekAgo);
 };
 
 export default HomeContent;
