@@ -10,6 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
 import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
@@ -66,6 +67,7 @@ const mapDispatchToProps = {
 @Database.loadList({
   reloadInterval: getReloadInterval,
   query,
+  LoadingAndErrorWrapper: LoadingAndGenericErrorWrapper,
 })
 @connect(mapStateToProps, mapDispatchToProps)
 export default class DatabaseList extends Component {
