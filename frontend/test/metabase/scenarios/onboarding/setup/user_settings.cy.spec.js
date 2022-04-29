@@ -92,7 +92,7 @@ describe("user > settings", () => {
     cy.findByText("Sign in to Metabase");
   });
 
-  it.skip("should be able to change a language (metabase#22192)", () => {
+  it("should be able to change a language (metabase#22192)", () => {
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
 
     cy.visit("/account/profile");
