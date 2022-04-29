@@ -360,7 +360,7 @@ describe("scenarios > organization > timelines > collection", () => {
 
     it("should move a timeline", () => {
       cy.createTimelineWithEvents({
-        timeline: { name: "Our analytics events", default: true },
+        timeline: { name: "Events", default: true },
         events: [{ name: "RC1" }],
       });
 
@@ -369,11 +369,12 @@ describe("scenarios > organization > timelines > collection", () => {
       cy.findByText("Move timeline").click();
 
       getModal().within(() => {
-        cy.findByText("First collection").click();
+        cy.findByText("My personal collection").click();
         cy.button("Move").click();
         cy.wait("@updateTimeline");
       });
 
+      cy.findByText("Bobby Tables's Personal Collection").should("be.visible");
       cy.findByText("First collection events").should("be.visible");
     });
 
