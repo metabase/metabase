@@ -327,18 +327,9 @@
 
 (deftest delete-database-test
   (mt/with-temp Database [{db-id :id}]
-    (testing "A non-admin cannot delete a database if the advanced-permissions feature flag is not present"
+    (testing "A non-admin cannot delete a database even if they have DB details permissions"
       (with-all-users-data-perms {db-id {:details :yes}}
-        (premium-features-test/with-premium-features #{}
-          (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id)))))
-
-    (testing "A non-admin cannot update database metadata if they do not have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :no}}
-        (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))
-
-    (testing "A non-admin can update database metadata if they have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"})))))
+        (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
 (deftest db-operations-test
   (mt/with-temp* [Database    [{db-id :id}     {:engine "h2", :details (:details (mt/db))}]

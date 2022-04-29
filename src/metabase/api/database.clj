@@ -718,8 +718,8 @@
 (api/defendpoint DELETE "/:id"
   "Delete a `Database`."
   [id]
-  (let [db (api/write-check (Database id))]
-    (api/write-check db)
+  (api/check-superuser)
+  (let [db (Database id)]
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
