@@ -4,12 +4,9 @@ import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 function hasManyPKColumns(question) {
-  return (
-    question
-      .query()
-      .table()
-      .fields.filter(field => field.isPK()).length > 1
-  );
+  const table = question.query().table();
+  const fields = table?.fields ?? question.getResultMetadata();
+  return fields.filter(field => isPK(field)).length > 1;
 }
 
 function getActionForPKColumn({ question, column, objectId, extraData }) {

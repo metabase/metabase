@@ -111,35 +111,69 @@ describe("ObjectDetailDrill", () => {
         });
       });
 
-      describe("composed PK", () => {
-        const question = ORDERS.question();
-        const orderTotalField = question
-          .query()
-          .table()
-          .fields.find(field => field.id === ORDERS.TOTAL.id);
-        orderTotalField.semantic_type = "type/PK";
+      describe("composite PK", () => {
+        describe("default", () => {
+          const question = ORDERS.question();
+          const orderTotalField = question
+            .query()
+            .table()
+            .fields.find(field => field.id === ORDERS.TOTAL.id);
+          orderTotalField.semantic_type = SEMANTIC_TYPE.PK;
 
-        const { actions, cellValue } = setup({
-          question,
-          column: ORDERS.ID.column(),
+          const { actions, cellValue } = setup({
+            question,
+            column: ORDERS.ID.column(),
+          });
+
+          it("should return object detail filter", () => {
+            expect(actions).toMatchObject([
+              { name: "object-detail", question: expect.any(Function) },
+            ]);
+          });
+
+          it("should apply '=' filter to one of the PKs on click", () => {
+            const [action] = actions;
+            const card = action.question().card();
+            expect(card.dataset_query.query).toEqual({
+              "source-table": ORDERS.id,
+              filter: ["=", ORDERS.ID.reference(), cellValue],
+            });
+          });
+
+          orderTotalField.semantic_type = null;
         });
 
-        it("should return object detail filter", () => {
-          expect(actions).toMatchObject([
-            { name: "object-detail", question: expect.any(Function) },
-          ]);
-        });
+        describe("when table metadata is unavailable", () => {
+          let question = ORDERS.question();
+          const fields = question.query().table().fields;
+          question = question.setResultsMetadata({
+            columns: fields.map(field => {
+              if (field.id === ORDERS.TOTAL.id) {
+                return {
+                  ...field,
+                  semantic_type: SEMANTIC_TYPE.PK,
+                };
+              }
+              return field;
+            }),
+          });
+          question.query().isEditable = () => true;
+          question.query().table = () => null;
 
-        it("should apply '=' filter to one of the PKs on click", () => {
-          const [action] = actions;
-          const card = action.question().card();
-          expect(card.dataset_query.query).toEqual({
-            "source-table": ORDERS.id,
-            filter: ["=", ORDERS.ID.reference(), cellValue],
+          const { actions, cellValue } = setup({
+            question,
+            column: ORDERS.ID.column(),
+          });
+
+          it("should fallback to result metadata info about columns if table is not available", () => {
+            const [action] = actions;
+            const card = action.question().card();
+            expect(card.dataset_query.query).toEqual({
+              "source-table": ORDERS.id,
+              filter: ["=", ORDERS.ID.reference(), cellValue],
+            });
           });
         });
-
-        orderTotalField.semantic_type = null;
       });
     });
 
