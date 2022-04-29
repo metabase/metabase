@@ -21,11 +21,49 @@
 
  :builds
  {:app
-  {:target     :npm-module
-   :output-dir "frontend/src/cljs/"
-   :entries    [metabase.mbql.js
+  {
+    :target     :npm-module
+    :output-dir "frontend/src/cljs/"
+    :entries    [metabase.mbql.js
                 metabase.types
-                metabase.shared.util.currency]}
+                metabase.shared.util.currency]
+
+    ;; :target     :npm-module
+    ;; :output-dir "frontend/src/cljs/"
+    ;; :js-options {:js-provider :require}
+    ;; :entries    [metabase.mbql.js
+    ;;             metabase.types
+    ;;             metabase.shared.util.currency]
+
+    ;; :target     :esm
+    ;; :output-dir "frontend/src/cljs/"
+    ;; :js-options {:js-provider :import}
+    ;; :compiler-options {
+    ;;   :infer-externs :auto
+    ;;   ;; :output-feature-set :es-next
+    ;; }
+    ;; ;; :entries    [metabase.mbql.js
+    ;; ;;             metabase.types
+    ;; ;;             metabase.shared.util.currency]
+    ;; :runtime :node
+    ;; :modules {
+    ;;   :index {
+    ;;     :entries    [metabase.mbql.js
+    ;;                  metabase.types
+    ;;                  metabase.shared.util.currency]
+    ;;   }
+    ;; }
+                
+  ;;  :compiler-options {:output-feature-set :es-next}
+  ;; :exports {:entries    [metabase.mbql.js
+  ;;                 metabase.types
+  ;;                 metabase.shared.util.currency]}
+
+  ;;  :modules 
+  ;;   {:index {:entries    [metabase.mbql.js
+  ;;                 metabase.types
+  ;;                 metabase.shared.util.currency]}}
+    }
 
   :test
   {:target    :node-test

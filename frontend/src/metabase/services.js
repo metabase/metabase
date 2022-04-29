@@ -8,8 +8,6 @@ import { FieldDimension } from "metabase-lib/lib/Dimension";
 // use different endpoints for embed previews
 const embedBase = IS_EMBED_PREVIEW ? "/api/preview_embed" : "/api/embed";
 
-import getGAMetadata from "promise-loader?global!metabase/lib/ga-metadata"; // eslint-disable-line import/default
-
 export const ActivityApi = {
   list: GET("/api/activity"),
   recent_views: GET("/api/activity/recent_views"),
@@ -275,7 +273,7 @@ export const MetabaseApi = {
     async table => {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
-        const GA = await getGAMetadata();
+        const GA = await import("metabase/lib/ga-metadata");
         table.fields = table.fields.map(field => ({
           ...field,
           ...GA.fields[field.name],
