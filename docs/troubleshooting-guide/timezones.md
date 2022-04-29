@@ -59,7 +59,7 @@ Once you think you have identified a problem, drill down to understand exactly w
 
 ## Are dates without an explicit time zone being converted to another day?
 
-**Root cause:** You are grouping by a date (rather than by a time) that doesn't have a time zone attached to it.
+**Root cause:** You are grouping by a date (rather than by a time) that lacks a time zone.
 
 **Steps to take:**
 

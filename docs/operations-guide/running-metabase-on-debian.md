@@ -61,7 +61,7 @@ In `/etc/systemd/system/metabase.service`, replace configurable items (they look
     
 ### Create syslog conf
 
-Next we need to create a syslog conf to make sure systemd is able to handle the logs properly.
+Next we need to create a syslog conf to make sure systemd can handle the logs properly.
 
     $ sudo touch /etc/rsyslog.d/metabase.conf
     $ sudo <your-editor> /etc/rsyslog.d/metabase.conf
