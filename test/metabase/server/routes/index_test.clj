@@ -11,44 +11,6 @@
   (is (= "frontend_client/app/locales/es_MX.json"
          (#'index/localization-json-file-name "es-MX"))))
 
-(comment
-  (into {}
-        (comp (remove (comp #{"en"} first))
-              (map (fn [[l _human]]
-                     [l (-> (slurp (clojure.java.io/resource (#'index/localization-json-file-name l)))
-                            json/parse-string
-                            (get-in ["headers" "language"]))])))
-        (i18n/available-locales-with-names))
-  )
-
-(def ^:private po-header-langues
-  "Map from our locale string to the locale declared in the headers of our po editor json
-  files (resources/frontend_client/app/locales/<locale>.json)."
-  {"nl"    "nl"
-   "zh"    "zh-Hans"
-   "sr"    "sr"
-   "tr"    "tr"
-   "it"    "it"
-   "fa"    "fa"
-   "zh_HK" "zh-hk"
-   "vi"    "vi"
-   "id"    "id"
-   "uk"    "uk"
-   "pl"    "pl"
-   "zh_TW" "zh-TW"
-   "ca"    "ca"
-   "sv"    "sv"
-   "fr"    "fr"
-   "de"    "de"
-   "nb"    "nb"
-   "ru"    "ru"
-   "sk"    "sk"
-   "es"    "es"
-   "ja"    "ja"
-   "cs"    "cs"
-   "bg"    "bg"
-   "pt_BR" "pt-br"})
-
 (deftest load-localization-test
   (testing "make sure `load-localization` is correctly loading i18n files (#9938)"
     (is (= {"charset"      "utf-8"
@@ -65,30 +27,7 @@
               (#'index/load-localization))
             json/parse-string
             (update "translations" select-keys [""])
-            (update-in ["translations" ""] select-keys ["Your database has been added!"])))))
-  (testing "Localization files exist for all available locales"
-    (letfn [(locale-json [] (-> (#'index/load-localization)
-                                json/parse-string
-                                (get "headers")
-                                (select-keys ["language" "x-generator"])))]
-      (testing "Setting site-locale finds localization json files for the frontend."
-        (doseq [[localization human-readable] (i18n/available-locales-with-names)]
-          (mt/with-temporary-setting-values [site-locale localization]
-            (when-not (= "en" localization)
-              ;; asserting that it found a json file created from the POEditor and the language is what we expect (ie,
-              ;; not "id" -> "in" and the frontend blows up.)
-              (is (= {"language" (po-header-langues localization)
-                      "x-generator" "POEditor.com"}
-                     (locale-json))
-                  (format "Localization json file does not say exact same localization: %s (%s)" localization human-readable))))))
-      (testing "Setting user-locale finds localization json files for the frontend"
-        (doseq [[localization human-readable] (i18n/available-locales-with-names)]
-          (binding [i18n/*user-locale* localization]
-            (when-not (= "en" localization)
-              (is (= {"language" (po-header-langues localization)
-                      "x-generator" "POEditor.com"}
-                     (locale-json))
-                  (format "Localization json file does not say exact same localization: %s (%s)" localization human-readable)))))))))
+            (update-in ["translations" ""] select-keys ["Your database has been added!"]))))))
 
 (deftest fallback-localization-test
   (testing "if locale does not exist it should log a message and return the 'fallback' localalization (english)"
