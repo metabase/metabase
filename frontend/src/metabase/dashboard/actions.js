@@ -1062,12 +1062,21 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       dashcard,
     );
 
+    // When drilling from a native model, the drill can return a new question
+    // querying a table for which we don't have any metadata for
+    // When building a question URL, it'll usually clean the query and
+    // strip clauses referencing fields from tables without metadata
+    const previousQuestion = new Question(previousCard, metadata);
+    const isDrillingFromNativeModel =
+      previousQuestion.isDataset() && previousQuestion.isNative();
+
     // when the query is for a specific object (ie `=` filter on PK column)
     // it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
     const url = question.isObjectDetail()
       ? Urls.serializedQuestion(question.card())
       : question.getUrlWithParameters(parametersMappedToCard, parameterValues, {
+          clean: !isDrillingFromNativeModel,
           objectId,
         });
 

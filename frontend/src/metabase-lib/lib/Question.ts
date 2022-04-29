@@ -621,6 +621,15 @@ export default class Question {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {
+      if (this.isDataset()) {
+        const drillQuery = Question.create({
+          type: "query",
+          databaseId: this.databaseId(),
+          tableId: field.table_id,
+          metadata: this.metadata(),
+        }).query();
+        return drillQuery.addFilter(["=", field.reference(), value]).question();
+      }
       return;
     }
 
