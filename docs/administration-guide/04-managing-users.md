@@ -20,23 +20,33 @@ To deactivate someone's account, click on the three dots icon on the right of a 
 
 ![Remove a user](images/RemoveUser.png)
 
+### Reactivating an account
+
 To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click on the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
 
 ### Deleting an account
 
-Metabase does not explicitly support account deletion. 
+Metabase does not support account deletion. 
 
 The deactivation process protects the user’s activity (questions, dashboards, and collections) from disappearing when you want to revoke an account's access.
 
-If you want to delete an account because the account information was set up incorrectly, you will need to deactivate the old account and create a new one.
+If you want to delete an account because the account information was set up incorrectly, you can [deactivate](#deactivating-an-account) the old account and create a new one instead.
 
-1. Change the user name and email of the account you want to delete.
-2. Deactivate the account you want to delete.
+1. Change the user name and email of the old account.
+2. Deactivate the old account.
 3. Create a new account with the correct user information.
 
 ### Editing an account
 
 You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing someone's email address, because _this will change the address they’ll use to log in to Metabase_.
+
+### Checking an account's auth method
+
+- Search for a user and look for an icon beside their name. 
+- If they log in using Google credentials, Metabase displays a Google icon. 
+- If they log in using an email address and password stored in Metabase, no icon is shown. 
+
+Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
 
 ### Resetting someone’s password
 
