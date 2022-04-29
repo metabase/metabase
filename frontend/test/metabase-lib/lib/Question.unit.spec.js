@@ -1247,6 +1247,21 @@ describe("Question", () => {
           },
         });
       });
+
+      it("should include objectId in a URL", () => {
+        const OBJECT_ID = "5";
+        const url = question.getUrlWithParameters(
+          parameters,
+          { "1": "bar" },
+          { objectId: OBJECT_ID },
+        );
+
+        expect(parseUrl(url)).toEqual({
+          pathname: "/question",
+          query: { objectId: OBJECT_ID },
+          card: expect.any(Object),
+        });
+      });
     });
 
     describe("with structured question & no permissions", () => {
@@ -1272,6 +1287,16 @@ describe("Question", () => {
           },
           card: deserializedCard,
         });
+      });
+
+      it("should not include objectId in a URL", () => {
+        const url = question.getUrlWithParameters(
+          parameters,
+          { "1": "bar" },
+          { objectId: 5 },
+        );
+
+        expect(parseUrl(url).query.objectId).toBeUndefined();
       });
     });
 
@@ -1348,6 +1373,13 @@ describe("Question", () => {
           query: { bar: "111" },
           card: null,
         });
+      });
+
+      it("should not include objectId in a URL", () => {
+        const url = question.getUrlWithParameters(parametersForNativeQ, {
+          "1": "bar",
+        });
+        expect(parseUrl(url).query.objectId).toBeUndefined();
       });
     });
   });

@@ -47,7 +47,12 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
 
 const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
 
-const EMBEDDED_ROUTES_WITH_NAVBAR = ["/collection", "/archive"];
+const HOMEPAGE_PATTERN = /^\/$/;
+const EMBEDDED_ROUTES_WITH_NAVBAR = [
+  HOMEPAGE_PATTERN,
+  /^\/collection\/.*/,
+  /^\/archive/,
+];
 
 interface AppStateProps {
   currentUser?: User;
@@ -102,8 +107,8 @@ function App({
       return false;
     }
     if (IFRAMED) {
-      return EMBEDDED_ROUTES_WITH_NAVBAR.some(path =>
-        pathname.startsWith(path),
+      return EMBEDDED_ROUTES_WITH_NAVBAR.some(pattern =>
+        pattern.test(pathname),
       );
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));

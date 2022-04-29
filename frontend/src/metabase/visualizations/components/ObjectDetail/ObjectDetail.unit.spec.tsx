@@ -93,6 +93,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        canZoom={true}
         canZoomPreviousRow={false}
         canZoomNextRow={false}
         followForeignKey={() => null}

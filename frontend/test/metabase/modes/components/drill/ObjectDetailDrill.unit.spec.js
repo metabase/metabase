@@ -3,6 +3,7 @@ import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
 import {
   ORDERS,
+  PRODUCTS,
   SAMPLE_DATABASE,
   metadata,
 } from "__support__/sample_database_fixture";
@@ -125,25 +126,59 @@ describe("ObjectDetailDrill", () => {
     });
 
     describe("from dashboard", () => {
+      describe("without parameters", () => {
+        const { actions, cellValue } = setup({
+          question: SAVED_QUESTION,
+          column: ORDERS.ID.column(),
+          extraData: {
+            dashboard: { id: 5 },
+          },
+        });
+
+        it("should return object detail filter", () => {
+          expect(actions).toMatchObject([
+            {
+              name: "object-detail",
+              url: expect.any(Function),
+            },
+          ]);
+        });
+
+        it("should return correct URL to object detail", () => {
+          const [action] = actions;
+          expect(action.url()).toBe(
+            `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}/${cellValue}`,
+          );
+        });
+      });
+    });
+
+    describe("with parameters", () => {
       const { actions, cellValue } = setup({
         question: SAVED_QUESTION,
         column: ORDERS.ID.column(),
         extraData: {
           dashboard: { id: 5 },
+          parameterValuesBySlug: {
+            foo: "bar",
+          },
         },
       });
 
       it("should return object detail filter", () => {
         expect(actions).toMatchObject([
-          { name: "object-detail", url: expect.any(Function) },
+          {
+            name: "object-detail",
+            question: expect.any(Function),
+            extra: expect.any(Function),
+          },
         ]);
       });
 
-      it("should return correct URL to object detail", () => {
+      it("should return correct action", () => {
         const [action] = actions;
-        expect(action.url()).toBe(
-          `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}/${cellValue}`,
-        );
+        expect(action.question()).toBe(SAVED_QUESTION);
+        expect(action.extra()).toEqual({ objectId: cellValue });
       });
     });
   });
@@ -155,15 +190,17 @@ describe("ObjectDetailDrill", () => {
 
     it("should return object detail filter", () => {
       expect(actions).toMatchObject([
-        { name: "object-detail", url: expect.any(Function) },
+        { name: "object-detail", question: expect.any(Function) },
       ]);
     });
 
     it("should apply object detail filter correctly", () => {
       const [action] = actions;
-      const [urlPath, urlHash] = action.url().split("#");
-      expect(urlPath).toBe(`/question?objectId=${cellValue}`);
-      expect(urlHash.length).toBeGreaterThan(0);
+      const card = action.question().card();
+      expect(card.dataset_query.query).toEqual({
+        "source-table": PRODUCTS.id,
+        filter: ["=", PRODUCTS.ID.reference(), cellValue],
+      });
     });
   });
 });

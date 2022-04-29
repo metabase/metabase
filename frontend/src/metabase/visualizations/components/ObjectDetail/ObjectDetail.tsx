@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 import { Table } from "metabase-types/types/Table";
 import { ForeignKey } from "metabase-types/api/foreignKey";
 import { DatasetData } from "metabase-types/types/Dataset";
-import { OnVisualizationClickType } from "./types";
+import { ObjectId, OnVisualizationClickType } from "./types";
 
 import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
@@ -34,7 +34,7 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { getObjectName, getIdValue } from "./utils";
+import { getObjectName, getIdValue, getSingleResultsRow } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
@@ -44,23 +44,39 @@ import {
   ErrorWrapper,
 } from "./ObjectDetail.styled";
 
-const mapStateToProps = (state: unknown) => ({
-  question: getQuestion(state),
-  table: getTableMetadata(state),
-  tableForeignKeys: getTableForeignKeys(state),
-  tableForeignKeyReferences: getTableForeignKeyReferences(state),
-  zoomedRow: getZoomRow(state),
-  zoomedRowID: getZoomedObjectId(state),
-  canZoomPreviousRow: getCanZoomPreviousRow(state),
-  canZoomNextRow: getCanZoomNextRow(state),
-});
+const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+  let zoomedRowID = getZoomedObjectId(state);
+  const isZooming = zoomedRowID != null;
+
+  if (!isZooming) {
+    zoomedRowID = getIdValue({ data });
+  }
+
+  const zoomedRow = isZooming ? getZoomRow(state) : getSingleResultsRow(data);
+  const canZoomPreviousRow = isZooming ? getCanZoomPreviousRow(state) : false;
+  const canZoomNextRow = isZooming ? getCanZoomNextRow(state) : false;
+
+  return {
+    question: getQuestion(state),
+    table: getTableMetadata(state),
+    tableForeignKeys: getTableForeignKeys(state),
+    tableForeignKeyReferences: getTableForeignKeyReferences(state),
+    zoomedRowID,
+    zoomedRow,
+    canZoom: isZooming && !!zoomedRow,
+    canZoomPreviousRow,
+    canZoomNextRow,
+  };
+};
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = (dispatch: any) => ({
   fetchTableFks: (id: number) =>
     dispatch(Tables.objectActions.fetchForeignKeys({ id })),
-  loadObjectDetailFKReferences: () => dispatch(loadObjectDetailFKReferences()),
-  followForeignKey: (fk: ForeignKey) => dispatch(followForeignKey(fk)),
+  loadObjectDetailFKReferences: (args: any) =>
+    dispatch(loadObjectDetailFKReferences(args)),
+  followForeignKey: ({ objectId, fk }: { objectId: number; fk: ForeignKey }) =>
+    dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
@@ -71,19 +87,20 @@ export interface ObjectDetailProps {
   question: Question;
   table: Table | null;
   zoomedRow: unknown[] | undefined;
-  zoomedRowID: number;
+  zoomedRowID: ObjectId;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
     [key: number]: { status: number; value: number };
   };
   settings: any;
+  canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   fetchTableFks: (id: number) => void;
-  loadObjectDetailFKReferences: () => void;
-  followForeignKey: (fk: ForeignKey) => void;
+  loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
+  followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -98,6 +115,7 @@ export function ObjectDetailFn({
   tableForeignKeys,
   tableForeignKeyReferences,
   settings,
+  canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
   onVisualizationClick,
@@ -114,6 +132,12 @@ export function ObjectDetailFn({
   const prevData = usePrevious(data);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
 
+  const loadFKReferences = useCallback(() => {
+    if (zoomedRowID) {
+      loadObjectDetailFKReferences({ objectId: zoomedRowID });
+    }
+  }, [zoomedRowID, loadObjectDetailFKReferences]);
+
   useOnMount(() => {
     const notFoundObject = zoomedRowID != null && !zoomedRow;
     if (data && notFoundObject) {
@@ -126,7 +150,7 @@ export function ObjectDetailFn({
     }
     // load up FK references
     if (tableForeignKeys) {
-      loadObjectDetailFKReferences();
+      loadFKReferences();
     }
     window.addEventListener("keydown", onKeyDown, true);
 
@@ -137,14 +161,9 @@ export function ObjectDetailFn({
 
   useEffect(() => {
     if (tableForeignKeys && prevZoomedRowId !== zoomedRowID) {
-      loadObjectDetailFKReferences();
+      loadFKReferences();
     }
-  }, [
-    tableForeignKeys,
-    prevZoomedRowId,
-    zoomedRowID,
-    loadObjectDetailFKReferences,
-  ]);
+  }, [tableForeignKeys, prevZoomedRowId, zoomedRowID, loadFKReferences]);
 
   useEffect(() => {
     const queryCompleted = !prevData && data;
@@ -158,15 +177,22 @@ export function ObjectDetailFn({
     // if the card changed or table metadata loaded then reload fk references
     const tableFKsJustLoaded = !prevTableForeignKeys && tableForeignKeys;
     if (data !== prevData || tableFKsJustLoaded) {
-      loadObjectDetailFKReferences();
+      loadFKReferences();
     }
   }, [
     tableForeignKeys,
     data,
     prevData,
     prevTableForeignKeys,
-    loadObjectDetailFKReferences,
+    loadFKReferences,
   ]);
+
+  const onFollowForeignKey = useCallback(
+    (fk: ForeignKey) => {
+      followForeignKey({ objectId: zoomedRowID, fk });
+    },
+    [zoomedRowID, followForeignKey],
+  );
 
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: { [key: string]: () => void } = {
@@ -188,7 +214,6 @@ export function ObjectDetailFn({
     return null;
   }
 
-  const canZoom = !!zoomedRow;
   const objectName = getObjectName({ table, question });
 
   const hasRelationships = tableForeignKeys && !!tableForeignKeys.length;
@@ -210,7 +235,7 @@ export function ObjectDetailFn({
             <ObjectDetailHeader
               canZoom={canZoom}
               objectName={objectName}
-              objectId={getIdValue({ data, zoomedRowID })}
+              objectId={zoomedRowID}
               canZoomPreviousRow={canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
@@ -226,7 +251,7 @@ export function ObjectDetailFn({
               visualizationIsClickable={visualizationIsClickable}
               tableForeignKeys={tableForeignKeys}
               tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={followForeignKey}
+              followForeignKey={onFollowForeignKey}
             />
           </div>
         )}
@@ -237,7 +262,7 @@ export function ObjectDetailFn({
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
-  objectId: number | null;
+  objectId: ObjectId;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   viewPreviousObjectDetail: () => void;

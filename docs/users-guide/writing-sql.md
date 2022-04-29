@@ -52,6 +52,10 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
 
+## Need help?
+
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshoot-sql].
+
 ---
 
 ## Next: Creating charts

@@ -1266,7 +1266,7 @@ export default class Question {
     return isAltered ? question.markDirty() : question;
   }
 
-  getUrlWithParameters(parameters, parameterValues) {
+  getUrlWithParameters(parameters, parameterValues, { objectId } = {}) {
     const includeDisplayIsLocked = true;
 
     if (this.isStructured()) {
@@ -1279,6 +1279,7 @@ export default class Question {
           .getUrl({
             originalQuestion: this,
             includeDisplayIsLocked,
+            query: { objectId },
           });
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);
