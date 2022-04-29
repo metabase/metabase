@@ -70,6 +70,23 @@ describe("ObjectDetailDrill", () => {
     expect(createdAtActions).toHaveLength(0);
   });
 
+  it("should not be available for not editable queries", () => {
+    const question = ORDERS.question();
+    question.query().isEditable = () => false;
+
+    const pk = setup({
+      question,
+      column: ORDERS.ID.column(),
+    });
+    const fk = setup({
+      question,
+      column: ORDERS.PRODUCT_ID.column(),
+    });
+
+    expect(pk.actions).toHaveLength(0);
+    expect(fk.actions).toHaveLength(0);
+  });
+
   describe("PK cells", () => {
     describe("general", () => {
       const mockDispatch = jest.fn();
