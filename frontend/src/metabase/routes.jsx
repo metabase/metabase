@@ -272,89 +272,92 @@ export const getRoutes = store => (
         {/* INDIVIDUAL DASHBOARDS */}
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-      </Route>
 
-      <Route path="/collections">
-        <Route path="create" component={CollectionCreate} />
-      </Route>
-
-      {/* REFERENCE */}
-      <Route path="/reference" title={`Data Reference`}>
-        <IndexRedirect to="/reference/databases" />
-        <Route path="metrics" component={MetricListContainer} />
-        <Route path="metrics/:metricId" component={MetricDetailContainer} />
-        <Route
-          path="metrics/:metricId/edit"
-          component={MetricDetailContainer}
-        />
-        <Route
-          path="metrics/:metricId/questions"
-          component={MetricQuestionsContainer}
-        />
-        <Route
-          path="metrics/:metricId/revisions"
-          component={MetricRevisionsContainer}
-        />
-        <Route path="segments" component={SegmentListContainer} />
-        <Route path="segments/:segmentId" component={SegmentDetailContainer} />
-        <Route
-          path="segments/:segmentId/fields"
-          component={SegmentFieldListContainer}
-        />
-        <Route
-          path="segments/:segmentId/fields/:fieldId"
-          component={SegmentFieldDetailContainer}
-        />
-        <Route
-          path="segments/:segmentId/questions"
-          component={SegmentQuestionsContainer}
-        />
-        <Route
-          path="segments/:segmentId/revisions"
-          component={SegmentRevisionsContainer}
-        />
-        <Route path="databases" component={DatabaseListContainer} />
-        <Route
-          path="databases/:databaseId"
-          component={DatabaseDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables"
-          component={TableListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId"
-          component={TableDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields"
-          component={FieldListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-          component={FieldDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/questions"
-          component={TableQuestionsContainer}
-        />
-      </Route>
-
-      {/* PULSE */}
-      <Route path="/pulse" title={t`Pulses`}>
-        {/* NOTE: legacy route, not linked to in app */}
-        <IndexRedirect to="/search" query={{ type: "pulse" }} />
-        <Route path="create" component={PulseEditApp} />
-        <Route path=":pulseId">
-          <IndexRoute component={PulseEditApp} />
+        <Route path="/collections">
+          <Route path="create" component={CollectionCreate} />
         </Route>
+
+        {/* REFERENCE */}
+        <Route path="/reference" title={`Data Reference`}>
+          <IndexRedirect to="/reference/databases" />
+          <Route path="metrics" component={MetricListContainer} />
+          <Route path="metrics/:metricId" component={MetricDetailContainer} />
+          <Route
+            path="metrics/:metricId/edit"
+            component={MetricDetailContainer}
+          />
+          <Route
+            path="metrics/:metricId/questions"
+            component={MetricQuestionsContainer}
+          />
+          <Route
+            path="metrics/:metricId/revisions"
+            component={MetricRevisionsContainer}
+          />
+          <Route path="segments" component={SegmentListContainer} />
+          <Route
+            path="segments/:segmentId"
+            component={SegmentDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields"
+            component={SegmentFieldListContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields/:fieldId"
+            component={SegmentFieldDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/questions"
+            component={SegmentQuestionsContainer}
+          />
+          <Route
+            path="segments/:segmentId/revisions"
+            component={SegmentRevisionsContainer}
+          />
+          <Route path="databases" component={DatabaseListContainer} />
+          <Route
+            path="databases/:databaseId"
+            component={DatabaseDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables"
+            component={TableListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId"
+            component={TableDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields"
+            component={FieldListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+            component={FieldDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/questions"
+            component={TableQuestionsContainer}
+          />
+        </Route>
+
+        {/* PULSE */}
+        <Route path="/pulse" title={t`Pulses`}>
+          {/* NOTE: legacy route, not linked to in app */}
+          <IndexRedirect to="/search" query={{ type: "pulse" }} />
+          <Route path="create" component={PulseEditApp} />
+          <Route path=":pulseId">
+            <IndexRoute component={PulseEditApp} />
+          </Route>
+        </Route>
+
+        {/* ACCOUNT */}
+        {getAccountRoutes(store, IsAuthenticated)}
+
+        {/* ADMIN */}
+        {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
       </Route>
-
-      {/* ACCOUNT */}
-      {getAccountRoutes(store, IsAuthenticated)}
-
-      {/* ADMIN */}
-      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}
@@ -384,7 +387,7 @@ export const getRoutes = store => (
         })
       }
     />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:slug" />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
     <Redirect
       from="/collections/permissions"
       to="/admin/permissions/collections"
