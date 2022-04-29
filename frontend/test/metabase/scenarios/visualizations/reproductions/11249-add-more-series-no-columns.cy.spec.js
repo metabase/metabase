@@ -24,6 +24,7 @@ const questionDetails = {
 describe("issue 11249", () => {
   beforeEach(() => {
     restore();
+    cy.signInAsAdmin();
   });
 
   it("should not allow adding more series when all columns are used (metabase#11249)", () => {
