@@ -47,12 +47,13 @@ const Timelines = createEntity({
       );
     },
 
-    setArchived: (timeline, archived, opts) =>
-      Timelines.actions.update(
+    setArchived: (timeline, archived, opts) => {
+      return Timelines.actions.update(
         { id: timeline.id },
         { archived, default: false },
         undo(opts, t`timeline`, archived ? t`archived` : t`unarchived`),
-      ),
+      );
+    },
   },
 
   reducer: (state = {}, action) => {

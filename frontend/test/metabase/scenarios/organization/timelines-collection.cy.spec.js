@@ -374,8 +374,8 @@ describe("scenarios > organization > timelines > collection", () => {
         cy.wait("@updateTimeline");
       });
 
+      cy.findByText("Our analytics events").should("be.visible");
       cy.findByText("Bobby Tables's Personal Collection").should("be.visible");
-      cy.findByText("First collection events").should("be.visible");
     });
 
     it("should archive a timeline and undo", () => {
