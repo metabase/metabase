@@ -625,6 +625,7 @@ export const EXCLUDE_OPTIONS = {
   [EXCLUDE_UNITS["months"]]: () => {
     const now = moment()
       .utc()
+      .date(1)
       .hours(0)
       .minutes(0)
       .seconds(0)
