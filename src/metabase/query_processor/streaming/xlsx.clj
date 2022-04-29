@@ -412,7 +412,9 @@
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols col-settings]
   (for [col ordered-cols]
-    (let [id-or-name       (or (:id col) (:name col))
+    (let [id-or-name       (or (and (:remapped_from col) (:fk_field_id col))
+                               (:id col)
+                               (:name col))
           format-settings  (or (get col-settings {::mb.viz/field-id id-or-name})
                                (get col-settings {::mb.viz/column-name id-or-name}))
           is-currency?     (or (isa? (:semantic_type col) :type/Currency)
