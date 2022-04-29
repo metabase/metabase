@@ -403,7 +403,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText(PK_VALUE);
+      cy.findByRole("heading", { name: PK_VALUE });
     });
 
     const pattern = new RegExp(`/question\\?objectId=${PK_VALUE}#*`);
