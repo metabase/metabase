@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { dissoc } from "icepick";
@@ -30,9 +31,7 @@ const mapDispatchToProps = {
   onReplaceLocation: replace,
 };
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-class DashboardCopyModal extends React.Component {
+class DashboardCopyModalInner extends React.Component {
   render() {
     const {
       onClose,
@@ -62,5 +61,10 @@ class DashboardCopyModal extends React.Component {
     );
   }
 }
+
+const DashboardCopyModal = _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardCopyModalInner);
 
 export default DashboardCopyModal;

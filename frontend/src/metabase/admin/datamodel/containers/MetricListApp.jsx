@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import { t } from "ttag";
 
 import Metrics from "metabase/entities/metrics";
@@ -9,9 +10,7 @@ import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable"
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
-@Metrics.loadList({ wrapped: true })
-@FilteredToUrlTable("metrics")
-class MetricListApp extends React.Component {
+class MetricListAppInner extends React.Component {
   render() {
     const { metrics, tableSelector } = this.props;
 
@@ -50,5 +49,10 @@ class MetricListApp extends React.Component {
     );
   }
 }
+
+const MetricListApp = _.compose(
+  Metrics.loadList({ wrapped: true }),
+  FilteredToUrlTable("metrics"),
+)(MetricListAppInner);
 
 export default MetricListApp;

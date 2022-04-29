@@ -35,9 +35,7 @@ const mapDispatchToProps = {
   updateTableSandboxingPermission,
 };
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-export default class GTAPModal extends React.Component {
+class GTAPModal extends React.Component {
   state = {
     gtap: null,
     attributesOptions: null,
@@ -251,6 +249,11 @@ export default class GTAPModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(GTAPModal);
 
 const AttributePicker = ({ value, onChange, attributesOptions }) => (
   <div style={{ minWidth: 200 }}>

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
@@ -19,15 +20,7 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(null, mapDispatchToProps)
-@Dashboard.load({
-  id: (state, props) => Urls.extractCollectionId(props.params.slug),
-})
-@Collection.load({
-  id: (state, props) => props.dashboard && props.dashboard.collection_id,
-})
-@withRouter
-export default class ArchiveDashboardModal extends Component {
+class ArchiveDashboardModal extends Component {
   static propTypes = {
     onClose: PropTypes.func,
   };
@@ -58,3 +51,14 @@ export default class ArchiveDashboardModal extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(null, mapDispatchToProps),
+  Dashboard.load({
+    id: (state, props) => Urls.extractCollectionId(props.params.slug),
+  }),
+  Collection.load({
+    id: (state, props) => props.dashboard && props.dashboard.collection_id,
+  }),
+  withRouter,
+)(ArchiveDashboardModal);

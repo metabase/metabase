@@ -375,117 +375,119 @@ export default class AccordionList extends Component {
     }
   };
 
-  @memoize
-  getRowsCached = (
-    searchFilter,
-    searchable,
-    sections,
-    alwaysTogglable,
-    alwaysExpanded,
-    hideSingleSectionTitle,
-    itemIsSelected,
-    hideEmptySectionsInSearch,
-    openSection,
-  ) => {
-    const sectionIsExpanded = sectionIndex =>
-      alwaysExpanded || openSection === sectionIndex;
-    const sectionIsSearchable = sectionIndex =>
-      searchable &&
-      (typeof searchable !== "function" || searchable(sections[sectionIndex]));
+  getRowsCached = memoize(
+    (
+      searchFilter,
+      searchable,
+      sections,
+      alwaysTogglable,
+      alwaysExpanded,
+      hideSingleSectionTitle,
+      itemIsSelected,
+      hideEmptySectionsInSearch,
+      openSection,
+    ) => {
+      const sectionIsExpanded = sectionIndex =>
+        alwaysExpanded || openSection === sectionIndex;
+      const sectionIsSearchable = sectionIndex =>
+        searchable &&
+        (typeof searchable !== "function" ||
+          searchable(sections[sectionIndex]));
 
-    // if any section is searchable just enable a global search
-    let globalSearch = false;
+      // if any section is searchable just enable a global search
+      let globalSearch = false;
 
-    const rows = [];
-    for (const [sectionIndex, section] of sections.entries()) {
-      const isLastSection = sectionIndex === sections.length - 1;
-      if (
-        section.name &&
-        (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
-      ) {
+      const rows = [];
+      for (const [sectionIndex, section] of sections.entries()) {
+        const isLastSection = sectionIndex === sections.length - 1;
         if (
-          !searchable ||
-          !hideEmptySectionsInSearch ||
-          this.checkSectionHasItemsMatchingSearch(section, searchFilter)
+          section.name &&
+          (!hideSingleSectionTitle || sections.length > 1 || alwaysTogglable)
         ) {
-          rows.push({
-            type: "header",
-            section,
-            sectionIndex,
-            isLastSection,
-          });
-        }
-      } else {
-        rows.push({
-          type: "header-hidden",
-          section,
-          sectionIndex,
-          isLastSection,
-        });
-      }
-      if (
-        sectionIsSearchable(sectionIndex) &&
-        sectionIsExpanded(sectionIndex) &&
-        section.items &&
-        section.items.length > 0 &&
-        !section.loading
-      ) {
-        if (alwaysExpanded) {
-          globalSearch = true;
-        } else {
-          rows.push({
-            type: "search",
-            section,
-            sectionIndex,
-            isLastSection,
-          });
-        }
-      }
-      if (
-        sectionIsExpanded(sectionIndex) &&
-        section.items &&
-        section.items.length > 0 &&
-        !section.loading
-      ) {
-        for (const [itemIndex, item] of section.items.entries()) {
-          if (searchFilter(item)) {
-            const isLastItem = itemIndex === section.items.length - 1;
-            if (itemIsSelected(item)) {
-              this._initialSelectedRowIndex = rows.length;
-            }
+          if (
+            !searchable ||
+            !hideEmptySectionsInSearch ||
+            this.checkSectionHasItemsMatchingSearch(section, searchFilter)
+          ) {
             rows.push({
-              type: "item",
+              type: "header",
               section,
               sectionIndex,
               isLastSection,
-              item,
-              itemIndex,
-              isLastItem,
+            });
+          }
+        } else {
+          rows.push({
+            type: "header-hidden",
+            section,
+            sectionIndex,
+            isLastSection,
+          });
+        }
+        if (
+          sectionIsSearchable(sectionIndex) &&
+          sectionIsExpanded(sectionIndex) &&
+          section.items &&
+          section.items.length > 0 &&
+          !section.loading
+        ) {
+          if (alwaysExpanded) {
+            globalSearch = true;
+          } else {
+            rows.push({
+              type: "search",
+              section,
+              sectionIndex,
+              isLastSection,
             });
           }
         }
+        if (
+          sectionIsExpanded(sectionIndex) &&
+          section.items &&
+          section.items.length > 0 &&
+          !section.loading
+        ) {
+          for (const [itemIndex, item] of section.items.entries()) {
+            if (searchFilter(item)) {
+              const isLastItem = itemIndex === section.items.length - 1;
+              if (itemIsSelected(item)) {
+                this._initialSelectedRowIndex = rows.length;
+              }
+              rows.push({
+                type: "item",
+                section,
+                sectionIndex,
+                isLastSection,
+                item,
+                itemIndex,
+                isLastItem,
+              });
+            }
+          }
+        }
+        if (sectionIsExpanded(sectionIndex) && section.loading) {
+          rows.push({
+            type: "loading",
+            section,
+            sectionIndex,
+            isLastSection,
+          });
+        }
       }
-      if (sectionIsExpanded(sectionIndex) && section.loading) {
-        rows.push({
-          type: "loading",
-          section,
-          sectionIndex,
-          isLastSection,
+
+      if (globalSearch) {
+        rows.unshift({
+          type: "search",
+          section: {},
+          sectionIndex: 0,
+          isLastSection: false,
         });
       }
-    }
 
-    if (globalSearch) {
-      rows.unshift({
-        type: "search",
-        section: {},
-        sectionIndex: 0,
-        isLastSection: false,
-      });
-    }
-
-    return rows;
-  };
+      return rows;
+    },
+  );
 
   getRows() {
     const {

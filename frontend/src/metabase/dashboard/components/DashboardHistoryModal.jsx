@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 
@@ -11,13 +12,7 @@ import {
 } from "metabase/dashboard/actions";
 import Dashboards from "metabase/entities/dashboards";
 
-@withRouter
-@Dashboards.load({
-  id: (state, props) => Urls.extractEntityId(props.params.slug),
-  wrapped: false,
-})
-@connect(null, { fetchDashboard, fetchDashboardCardData })
-export default class DashboardHistoryModal extends React.Component {
+class DashboardHistoryModal extends React.Component {
   render() {
     const {
       dashboard,
@@ -41,3 +36,12 @@ export default class DashboardHistoryModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  Dashboards.load({
+    id: (state, props) => Urls.extractEntityId(props.params.slug),
+    wrapped: false,
+  }),
+  connect(null, { fetchDashboard, fetchDashboardCardData }),
+)(DashboardHistoryModal);

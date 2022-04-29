@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
@@ -52,11 +53,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@DashboardData
-@withToast
-@title(({ dashboard }) => dashboard && dashboard.name)
-class AutomaticDashboardApp extends React.Component {
+class AutomaticDashboardAppInner extends React.Component {
   state = {
     savedDashboardId: null,
   };
@@ -192,6 +189,13 @@ class AutomaticDashboardApp extends React.Component {
     );
   }
 }
+
+const AutomaticDashboardApp = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  DashboardData,
+  withToast,
+  title(({ dashboard }) => dashboard && dashboard.name),
+)(AutomaticDashboardAppInner);
 
 const TransientTitle = ({ dashboard }) =>
   dashboard.transient_name ? (

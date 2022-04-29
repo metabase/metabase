@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
@@ -21,9 +22,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-export default class CreateDashboardModal extends Component {
+class CreateDashboardModal extends Component {
   static propTypes = {
     onSaved: PropTypes.func,
     onClose: PropTypes.func,
@@ -52,3 +51,8 @@ export default class CreateDashboardModal extends Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(CreateDashboardModal);

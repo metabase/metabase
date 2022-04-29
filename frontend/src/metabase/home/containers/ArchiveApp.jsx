@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -37,14 +38,7 @@ const mapDispatchToProps = {
 
 const ROW_HEIGHT = 68;
 
-@Search.loadList({
-  query: { archived: true },
-  reload: true,
-  wrapped: true,
-})
-@listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(mapStateToProps, mapDispatchToProps)
-export default class ArchiveApp extends Component {
+class ArchiveApp extends Component {
   componentDidMount() {
     if (!isSmallScreen()) {
       this.props.openNavbar();
@@ -123,6 +117,16 @@ export default class ArchiveApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  Search.loadList({
+    query: { archived: true },
+    reload: true,
+    wrapped: true,
+  }),
+  listSelect({ keyForItem: item => `${item.model}:${item.id}` }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(ArchiveApp);
 
 const BulkActionControls = ({ selected, reload }) => (
   <span>

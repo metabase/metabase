@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
@@ -10,13 +11,7 @@ import SaveStatus from "metabase/components/SaveStatus";
 import Icon from "metabase/components/Icon";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
-@withRouter
-@Databases.loadList({
-  query: {
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  },
-})
-export default class MetadataHeader extends Component {
+class MetadataHeader extends Component {
   static propTypes = {
     databaseId: PropTypes.number,
     databases: PropTypes.array.isRequired,
@@ -80,3 +75,12 @@ export default class MetadataHeader extends Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  Databases.loadList({
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+  }),
+)(MetadataHeader);

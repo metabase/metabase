@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
 import { t } from "ttag";
@@ -15,23 +16,7 @@ import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import { ButtonContainer } from "./UserPasswordResetModal.styled";
 
-@User.load({
-  id: (state, props) => props.params.userId,
-  wrapped: true,
-})
-@connect(
-  (state, props) => ({
-    emailConfigured: MetabaseSettings.isEmailConfigured(),
-    temporaryPassword: getUserTemporaryPassword(state, {
-      userId: props.params.userId,
-    }),
-  }),
-  {
-    onClose: goBack,
-    clearTemporaryPassword,
-  },
-)
-export default class UserPasswordResetModal extends React.Component {
+class UserPasswordResetModal extends React.Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
@@ -74,3 +59,22 @@ export default class UserPasswordResetModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  User.load({
+    id: (state, props) => props.params.userId,
+    wrapped: true,
+  }),
+  connect(
+    (state, props) => ({
+      emailConfigured: MetabaseSettings.isEmailConfigured(),
+      temporaryPassword: getUserTemporaryPassword(state, {
+        userId: props.params.userId,
+      }),
+    }),
+    {
+      onClose: goBack,
+      clearTemporaryPassword,
+    },
+  ),
+)(UserPasswordResetModal);

@@ -49,8 +49,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
-export default class ParameterValueWidget extends Component {
+class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
     name: PropTypes.string,
@@ -237,6 +236,11 @@ export default class ParameterValueWidget extends Component {
     }
   }
 }
+
+export default connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)(ParameterValueWidget);
 
 function getFields(metadata, parameter) {
   if (!metadata) {

@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
@@ -63,12 +64,7 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@reduxForm({
-  form: "fields",
-  validate,
-})
-export default class FieldList extends Component {
+class FieldList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
@@ -194,3 +190,11 @@ export default class FieldList extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  reduxForm({
+    form: "fields",
+    validate,
+  }),
+)(FieldList);

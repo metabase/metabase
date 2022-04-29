@@ -1,5 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
@@ -82,22 +83,7 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@reduxForm({
-  form: "details",
-  fields: [
-    "name",
-    "display_name",
-    "description",
-    "revision_message",
-    "points_of_interest",
-    "caveats",
-    "semantic_type",
-    "fk_target_field_id",
-  ],
-  validate,
-})
-export default class SegmentFieldDetail extends Component {
+class SegmentFieldDetail extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entity: PropTypes.object.isRequired,
@@ -263,3 +249,21 @@ export default class SegmentFieldDetail extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  reduxForm({
+    form: "details",
+    fields: [
+      "name",
+      "display_name",
+      "description",
+      "revision_message",
+      "points_of_interest",
+      "caveats",
+      "semantic_type",
+      "fk_target_field_id",
+    ],
+    validate,
+  }),
+)(SegmentFieldDetail);

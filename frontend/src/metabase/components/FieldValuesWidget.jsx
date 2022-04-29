@@ -49,8 +49,7 @@ function mapStateToProps(state, { fields = [] }) {
   };
 }
 
-@AutoExpanding
-export class FieldValuesWidget extends Component {
+class FieldValuesWidgetInner extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -495,6 +494,8 @@ export class FieldValuesWidget extends Component {
     );
   }
 }
+
+export const FieldValuesWidget = AutoExpanding(FieldValuesWidgetInner);
 
 FieldValuesWidget.propTypes = fieldValuesWidgetPropTypes;
 

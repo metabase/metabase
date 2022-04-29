@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 import { t } from "ttag";
 
 import Database from "metabase/entities/databases";
@@ -20,11 +21,8 @@ import {
 // Please preserve the following 2 @ calls in this order.
 // Otherwise @Database.loadList overrides pagination props
 // that come from @Task.LoadList
-@Database.loadList()
-@Task.loadList({
-  pageSize: 50,
-})
-class TasksApp extends React.Component {
+
+class TasksAppInner extends React.Component {
   render() {
     const {
       tasks,
@@ -112,5 +110,12 @@ class TasksApp extends React.Component {
     );
   }
 }
+
+const TasksApp = _.compose(
+  Database.loadList(),
+  Task.loadList({
+    pageSize: 50,
+  }),
+)(TasksAppInner);
 
 export default TasksApp;

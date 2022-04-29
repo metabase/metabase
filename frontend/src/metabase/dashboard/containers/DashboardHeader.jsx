@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
@@ -36,9 +37,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@Bookmark.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
-export default class DashboardHeader extends Component {
+class DashboardHeader extends Component {
   constructor(props) {
     super(props);
 
@@ -397,3 +396,8 @@ export default class DashboardHeader extends Component {
     );
   }
 }
+
+export default _.compose(
+  Bookmark.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardHeader);

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { getIn } from "icepick";
@@ -28,14 +29,8 @@ const getQuestions = createSelector(
 );
 
 // TODO: rework this so we don't have to load all cards up front
-@Questions.loadList({ query: { f: "all" } })
-@connect(
-  (state, ownProps) => ({
-    questions: getQuestions(state, ownProps),
-  }),
-  { loadMetadataForQueries },
-)
-export default class AddSeriesModal extends Component {
+
+class AddSeriesModal extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -243,3 +238,13 @@ export default class AddSeriesModal extends Component {
     );
   }
 }
+
+export default _.compose(
+  Questions.loadList({ query: { f: "all" } }),
+  connect(
+    (state, ownProps) => ({
+      questions: getQuestions(state, ownProps),
+    }),
+    { loadMetadataForQueries },
+  ),
+)(AddSeriesModal);

@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
+import _ from "underscore";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
@@ -63,12 +64,8 @@ const mapDispatchToProps = {
   addSampleDatabase: addSampleDatabase,
   closeSyncingModal,
 };
-@Database.loadList({
-  reloadInterval: getReloadInterval,
-  query,
-})
-@connect(mapStateToProps, mapDispatchToProps)
-export default class DatabaseList extends Component {
+
+class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
@@ -217,3 +214,11 @@ export default class DatabaseList extends Component {
     );
   }
 }
+
+export default _.compose(
+  Database.loadList({
+    reloadInterval: getReloadInterval,
+    query,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DatabaseList);

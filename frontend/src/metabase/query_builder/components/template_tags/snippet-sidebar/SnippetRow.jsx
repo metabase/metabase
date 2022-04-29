@@ -9,11 +9,7 @@ import Snippets from "metabase/entities/snippets";
 
 const ICON_SIZE = 16;
 
-@Snippets.load({
-  id: (state, props) => props.item.id,
-  wrapped: true,
-})
-class SnippetRow extends React.Component {
+class SnippetRowInner extends React.Component {
   constructor(props) {
     super(props);
     this.state = { isOpen: false };
@@ -94,5 +90,10 @@ class SnippetRow extends React.Component {
     );
   }
 }
+
+const SnippetRow = Snippets.load({
+  id: (state, props) => props.item.id,
+  wrapped: true,
+})(SnippetRowInner);
 
 export default SnippetRow;

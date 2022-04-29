@@ -64,10 +64,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   return rowIndexes;
 }
 
-@ExplicitSize({
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
-})
-export default class TableInteractive extends Component {
+class TableInteractive extends Component {
   constructor(props) {
     super(props);
 
@@ -339,32 +336,26 @@ export default class TableInteractive extends Component {
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
-  _getCellClickedObjectCached(
-    data,
-    settings,
-    rowIndex,
-    columnIndex,
-    isPivoted,
-    series,
-  ) {
-    const clickedRowData = getTableClickedObjectRowData(
-      series,
-      rowIndex,
-      columnIndex,
-      isPivoted,
-      data,
-    );
+  _getCellClickedObjectCached = memoize(
+    (data, settings, rowIndex, columnIndex, isPivoted, series) => {
+      const clickedRowData = getTableClickedObjectRowData(
+        series,
+        rowIndex,
+        columnIndex,
+        isPivoted,
+        data,
+      );
 
-    return getTableCellClickedObject(
-      data,
-      settings,
-      rowIndex,
-      columnIndex,
-      isPivoted,
-      clickedRowData,
-    );
-  }
+      return getTableCellClickedObject(
+        data,
+        settings,
+        rowIndex,
+        columnIndex,
+        isPivoted,
+        clickedRowData,
+      );
+    },
+  );
 
   getHeaderClickedObject(columnIndex) {
     try {
@@ -378,10 +369,9 @@ export default class TableInteractive extends Component {
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
-  _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
+  _getHeaderClickedObjectCached = memoize((data, columnIndex, isPivoted) => {
     return getTableHeaderClickedObject(data, columnIndex, isPivoted);
-  }
+  });
 
   visualizationIsClickable(clicked) {
     try {
@@ -404,14 +394,14 @@ export default class TableInteractive extends Component {
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
-  _visualizationIsClickableCached(visualizationIsClickable, clicked) {
-    return visualizationIsClickable(clicked);
-  }
+  _visualizationIsClickableCached = memoize(
+    (visualizationIsClickable, clicked) => {
+      return visualizationIsClickable(clicked);
+    },
+  );
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
-  getCellBackgroundColor(settings, value, rowIndex, columnName) {
+  getCellBackgroundColor = memoize((settings, value, rowIndex, columnName) => {
     try {
       return settings["table._cell_background_getter"](
         value,
@@ -421,11 +411,10 @@ export default class TableInteractive extends Component {
     } catch (e) {
       console.error(e);
     }
-  }
+  });
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
-  getCellFormattedValue(value, columnSettings, clicked) {
+  getCellFormattedValue = memoize((value, columnSettings, clicked) => {
     try {
       return formatValue(value, {
         ...columnSettings,
@@ -437,7 +426,7 @@ export default class TableInteractive extends Component {
     } catch (e) {
       console.error(e);
     }
-  }
+  });
 
   pkClick(rowIndex) {
     const columnIndex = this.state.IDColumnIndex;
@@ -602,8 +591,7 @@ export default class TableInteractive extends Component {
     return style.left;
   }
 
-  @memoize
-  getDimension(column, query) {
+  getDimension = memoize((column, query) => {
     if (!query) {
       return undefined;
     }
@@ -615,7 +603,7 @@ export default class TableInteractive extends Component {
     );
 
     return dimension;
-  }
+  });
 
   // TableInteractive renders invisible columns to remeasure the layout (see the _measure method)
   // After the measurements are done, invisible columns get unmounted.
@@ -1046,6 +1034,10 @@ export default class TableInteractive extends Component {
     next();
   }
 }
+
+export default ExplicitSize({
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+})(TableInteractive);
 
 const DetailShortcut = React.forwardRef((_props, ref) => (
   <div
