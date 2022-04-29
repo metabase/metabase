@@ -277,13 +277,13 @@ export default class Visualization extends React.PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({ nextCard, seriesIndex }) => {
+  handleOnChangeCardAndRun = ({ nextCard, seriesIndex, objectId }) => {
     const { series, clicked } = this.state;
 
     const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
     const previousCard = series && series[index] && series[index].card;
 
-    this.props.onChangeCardAndRun({ nextCard, previousCard });
+    this.props.onChangeCardAndRun({ nextCard, previousCard, objectId });
   };
 
   onRender = ({ yAxisSplit, warnings = [] } = {}) => {

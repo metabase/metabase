@@ -1035,7 +1035,7 @@ export const deletePublicLink = createAction(
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, dashcard }) => (dispatch, getState) => {
+  ({ nextCard, previousCard, dashcard, objectId }) => (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
@@ -1062,11 +1062,14 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       dashcard,
     );
 
-    // when the query is for a specific object it does not make sense to apply parameter filters
+    // when the query is for a specific object (ie `=` filter on PK column)
+    // it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
     const url = question.isObjectDetail()
       ? Urls.serializedQuestion(question.card())
-      : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
+      : question.getUrlWithParameters(parametersMappedToCard, parameterValues, {
+          objectId,
+        });
 
     dispatch(openUrl(url));
   },
