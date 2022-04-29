@@ -55,6 +55,7 @@ export interface RadioProps<TValue extends Key, TOption = RadioOption<TValue>>
   showButtons?: boolean;
   onChange?: (value: TValue) => void;
   onOptionClick?: (value: TValue) => void;
+  wrap: boolean;
 }
 
 export interface RadioOption<TValue> {
@@ -77,6 +78,7 @@ function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
     showButtons = vertical && variant !== "bubble",
     onChange,
     onOptionClick,
+    wrap = false,
     ...props
   }: RadioProps<TValue, TOption>,
   ref: Ref<HTMLDivElement>,
@@ -91,6 +93,7 @@ function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
       ref={ref as any}
       variant={variant}
       vertical={vertical}
+      wrap={wrap}
     >
       {options.map(option => {
         const optionKey = optionKeyFn(option);
@@ -112,6 +115,7 @@ function RadioInner<TValue extends Key, TOption = RadioOption<TValue>>(
             showButtons={showButtons}
             onChange={onChange}
             onOptionClick={onOptionClick}
+            wrapped={wrap}
           />
         );
       })}
@@ -135,6 +139,7 @@ interface RadioItemProps<TValue extends Key> {
   showButtons: boolean;
   onChange?: (value: TValue) => void;
   onOptionClick?: (value: TValue) => void;
+  wrapped: boolean;
 }
 
 const RadioItem = <TValue extends Key, TOption>({
@@ -149,6 +154,7 @@ const RadioItem = <TValue extends Key, TOption>({
   showButtons,
   onChange,
   onOptionClick,
+  wrapped = false,
 }: RadioItemProps<TValue>): JSX.Element => {
   const { RadioLabel, RadioContainer } = VARIANTS[variant];
 
@@ -161,7 +167,12 @@ const RadioItem = <TValue extends Key, TOption>({
   }, [value, onOptionClick]);
 
   return (
-    <RadioLabel variant={variant} vertical={vertical} onClick={handleClick}>
+    <RadioLabel
+      variant={variant}
+      vertical={vertical}
+      onClick={handleClick}
+      wrapped={wrapped}
+    >
       <RadioInput
         type="radio"
         name={name}

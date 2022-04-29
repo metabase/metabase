@@ -250,6 +250,7 @@ class ChartSettings extends Component {
         optionValueFn={v => v}
         optionKeyFn={v => v}
         variant="bubble"
+        wrap
       />
     );
 
@@ -297,7 +298,7 @@ class ChartSettings extends Component {
           <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show py4">
+          <div className="full-height relative scroll-y scroll-show pt3 pb4">
             {widgetList}
           </div>
         ) : (
