@@ -22,6 +22,18 @@ To deactivate someone's account, click on the three dots icon on the right of a 
 
 To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click on the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
 
+### Deleting an account
+
+Metabase does not explicitly support account deletion. 
+
+The deactivation process protects the user’s activity (questions, dashboards, and collections) from disappearing when you want to revoke an account's access.
+
+If you want to delete an account because the account information was set up incorrectly, you will need to deactivate the old account and create a new one.
+
+1. Change the user name and email of the account you want to delete.
+2. Deactivate the account you want to delete.
+3. Create a new account with the correct user information.
+
 ### Editing an account
 
 You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing someone's email address, because _this will change the address they’ll use to log in to Metabase_.
@@ -31,6 +43,33 @@ You can edit someone's name and email address by clicking the three dots icon an
 If you've already [configured your email settings](02-setting-up-email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
 
 To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](02-setting-up-email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
+
+### Resetting the admin password
+
+If you are using Metabase Cloud, contact support to have your admin password reset.
+
+If you're the administrator of a Metabase instance and have access to the server console, but have forgotten the password for the admin account, you can get Metabase to send you a password reset token:
+
+1.  Stop the running Metabase application.
+2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
+    ```
+    java -jar metabase.jar reset-password email@example.com
+    ```
+3.  This will print out a random token like this:
+
+    ```
+    ...
+    Resetting password for email@example.com...
+
+    OK [[[1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89]]]
+    ```
+
+4.  Start Metabase normally again (_without_ the `reset-password` option).
+5.  Navigate to it in your browser using the path `/auth/reset_password/:token`, where ":token" is the token that was generated from the step above. The full URL should look something like this:
+    ```
+    https://metabase.example.com/auth/reset_password/1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89
+    ```
+6.  You should now see a page where you can input a new password for the admin account.
 
 ### Unsubscribe from all subscriptions / alerts
 

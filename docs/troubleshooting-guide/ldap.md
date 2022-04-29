@@ -1,6 +1,7 @@
 # LDAP
 
 <div class='doc-toc' markdown=1>
+- [LDAP documentation][ldap-docs]
 - [LDAP sample configuration](#ldap-sample-configuration)
 - [Related software for troubleshooting](#related-software-for-troubleshooting)
 - [Current limitations](#current-limitations)
@@ -79,3 +80,4 @@ If you run into an issue, check that you can login to your LDAP directory and is
 
 [apache-directory-studio]: https://directory.apache.org/studio/
 [ldap-learn]: /learn/permissions/ldap-auth-access-control.html
+[ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
