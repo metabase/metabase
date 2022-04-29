@@ -233,7 +233,7 @@ export function ObjectDetailFn({
         ) : (
           <div className="ObjectDetail" data-testid="object-detail">
             <ObjectDetailHeader
-              canZoom={canZoom}
+              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
               objectId={zoomedRowID}
               canZoomPreviousRow={canZoomPreviousRow}

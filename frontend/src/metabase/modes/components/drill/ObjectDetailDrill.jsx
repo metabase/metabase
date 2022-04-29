@@ -71,7 +71,9 @@ function getFKAction({ question, column, objectId }) {
   if (!fkField?.target) {
     return;
   }
-  actionObject.question = () => question.drillPK(fkField.target, objectId);
+  const foreignTableQuestion = question.drillPK(fkField.target, objectId);
+  actionObject.question = () => foreignTableQuestion;
+  actionObject.zoomInRow = objectId;
   return actionObject;
 }
 

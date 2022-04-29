@@ -1,4 +1,5 @@
 import Question from "metabase-lib/lib/Question";
+import { deserializeCardFromUrl } from "metabase/lib/card";
 import ObjectDetailDrill from "metabase/modes/components/drill/ObjectDetailDrill";
 import { ZOOM_IN_ROW } from "metabase/query_builder/actions";
 import {
@@ -190,17 +191,24 @@ describe("ObjectDetailDrill", () => {
 
     it("should return object detail filter", () => {
       expect(actions).toMatchObject([
-        { name: "object-detail", question: expect.any(Function) },
+        { name: "object-detail", url: expect.any(Function) },
       ]);
     });
 
     it("should apply object detail filter correctly", () => {
       const [action] = actions;
-      const card = action.question().card();
+      const cardHash = action.url().match(/#(.+)/, "")[1];
+      const card = deserializeCardFromUrl(cardHash);
       expect(card.dataset_query.query).toEqual({
         "source-table": PRODUCTS.id,
         filter: ["=", PRODUCTS.ID.reference(), cellValue],
       });
+    });
+
+    it("should set the selected foreign key as the objectId in the url", () => {
+      const [action] = actions;
+      const url = action.url();
+      expect(url).toContain(`?objectId=${cellValue}`);
     });
   });
 });
