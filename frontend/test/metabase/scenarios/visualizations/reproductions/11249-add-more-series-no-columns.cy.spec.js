@@ -29,5 +29,16 @@ describe("issue 11249", () => {
 
   it("should not allow adding more series when all columns are used (metabase#11249)", () => {
     visitQuestionAdhoc(questionDetails);
+
+    cy.findByText("Settings").click();
+
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByText("Data").click();
+      cy.findByText("Count").should("not.exist");
+
+      cy.findByText("Add another series...").click();
+      cy.findByText("Count").should("be.visible");
+      cy.findByText("Add another series...").should("not.exist");
+    });
   });
 });
