@@ -11,11 +11,11 @@
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [tru]])
-  (:import (java.io OutputStream)
-           (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-           (org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook)
-           (org.apache.poi.ss.util CellRangeAddress)
-           (org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook)))
+  (:import java.io.OutputStream
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           [org.apache.poi.ss.usermodel Cell DataFormat DateUtil Workbook]
+           org.apache.poi.ss.util.CellRangeAddress
+           [org.apache.poi.xssf.streaming SXSSFRow SXSSFSheet SXSSFWorkbook]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Format string generation                                               |
