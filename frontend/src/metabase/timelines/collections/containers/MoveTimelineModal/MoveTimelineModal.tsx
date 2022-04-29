@@ -1,5 +1,5 @@
 import { connect } from "react-redux";
-import { goBack, push } from "react-router-redux";
+import { goBack } from "react-router-redux";
 import _ from "underscore";
 import * as Urls from "metabase/lib/urls";
 import Timelines from "metabase/entities/timelines";
@@ -7,6 +7,7 @@ import MoveTimelineModal from "metabase/timelines/common/components/MoveTimeline
 import { Timeline } from "metabase-types/api";
 import { State } from "metabase-types/store";
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
+import { setCollectionAndNavigate } from "../../actions";
 import { ModalParams } from "../../types";
 
 interface MoveTimelineModalProps {
@@ -22,9 +23,7 @@ const timelineProps = {
 
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (timeline: Timeline, collectionId: number | null) => {
-    const collection = { id: collectionId };
-    await dispatch(Timelines.actions.setCollection(timeline, collection));
-    dispatch(push(Urls.timelineInCollection(timeline)));
+    dispatch(setCollectionAndNavigate(timeline, collectionId));
   },
   onCancel: () => {
     dispatch(goBack());
