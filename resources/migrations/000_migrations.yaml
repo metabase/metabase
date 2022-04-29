@@ -11529,7 +11529,7 @@ databaseChangeLog:
                 /* token_count > 0 meaning we're running on an EE instance */
                 (SELECT count(*) AS token_count
                  FROM setting
-                 WHERE KEY = 'premium-embedding-token') t2
+                 WHERE setting.key = 'premium-embedding-token') t2
       changes:
         - sql:
             sql: >-
