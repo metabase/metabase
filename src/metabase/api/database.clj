@@ -719,7 +719,7 @@
   "Delete a `Database`."
   [id]
   (api/check-superuser)
-  (let [db (Database id)]
+  (api/let-404 [db (Database id)]
     (db/delete! Database :id id)
     (events/publish-event! :database-delete db))
   api/generic-204-no-content)
