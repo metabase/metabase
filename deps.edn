@@ -192,6 +192,9 @@
                  "-Dfile.encoding=UTF-8"
                  "-Duser.language=en"
                  "-Duser.country=US"
+                 ;; If Clojure fails to start (e.g. because of a compilation error somewhere) print the error
+                 ;; report/stacktrace to stderr rather than to a random EDN file in /tmp/
+                 "-Dclojure.main.report=stderr"
                  ;; Exceptions that get thrown repeatedly are created without stacktraces as a performance
                  ;; optimization in newer Java versions. This makes debugging pretty hard when working on stuff
                  ;; locally -- prefer debuggability over performance for local dev work.
