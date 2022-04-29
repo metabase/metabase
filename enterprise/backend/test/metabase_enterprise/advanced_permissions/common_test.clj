@@ -22,10 +22,12 @@
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (try
         (mt/with-model-cleanup [Permissions]
-          (@#'perms/update-group-permissions! all-users-group-id graph)
+          (u/ignore-exceptions
+           (@#'perms/update-group-permissions! all-users-group-id graph))
           (f))
         (finally
-          (@#'perms/update-group-permissions! all-users-group-id current-graph))))))
+          (u/ignore-exceptions
+           (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
 (defmacro ^:private with-all-users-data-perms
   "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
