@@ -15,10 +15,9 @@
    [clojure.test :refer :all]
    [metabase.db.schema-migrations-test.impl :as impl]
    [metabase.driver :as driver]
-   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table]]
+   [metabase.models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup Pulse Setting Table User]]
    [metabase.models.interface :as mi]
    [metabase.models.permissions-group :as perms-group]
-   [metabase.models.user :refer [User]]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]
    [metabase.util :as u]
@@ -577,25 +576,47 @@
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
 
 (deftest grant-all-users-root-snippets-collection-readwrite-perms-test
-  (testing "Migration v43.00-061: create a Root Snippets Collection entry for All Users"
-    (letfn [(all-users-group-id []
-              (-> (db/query {:select [:id], :from [PermissionsGroup],
-                             :where [:= :name perms-group/all-users-group-name]})
-                  first
-                  :id))
-            (get-perms [object] (map :name (db/query {:select    [:pg.name]
-                                                      :from      [[Permissions :p]]
-                                                      :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
-                                                      :where     [:= :p.object object]})))]
-      (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
-        (is (= [] (get-perms "/collection/namespace/snippets/root/")))
-        (migrate!)
-        (is (= ["All Users"] (get-perms "/collection/namespace/snippets/root/"))))
-
-      (testing "entry already exists: don't create an entry"
+  (letfn [(perms-path [] "/collection/namespace/snippets/root/")
+          (all-users-group-id []
+            (-> (db/query {:select [:id], :from [PermissionsGroup],
+                           :where [:= :name perms-group/all-users-group-name]})
+                first
+                :id))
+          (get-perms [] (map :name (db/query {:select    [:pg.name]
+                                              :from      [[Permissions :p]]
+                                              :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
+                                              :where     [:= :p.object (perms-path)]})))]
+    (testing "Migration v43.00-061: create a Root Snippets Collection entry for All Users\n"
+      (testing "Should run for new OSS instances"
         (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
-          (db/execute! {:insert-into Permissions
-                        :values      [{:object   "/collection/namespace/snippets/root/"
-                                       :group_id (all-users-group-id)}]})
-          (migrate!)
-          (is (= ["All Users"] (get-perms "/collection/namespace/snippets/root/"))))))))
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should run for new EE instances"
+        (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
+                              (db/simple-insert! Setting {:key "premium-embedding-token"
+                                                          :value "fake-key"})
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should run for existing OSS instances"
+        (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
+                              (create-raw-user! "ngoc@metabase.com")
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms)))))
+
+      (testing "Should not run for existing EE instances"
+        (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
+                              (create-raw-user! "ngoc@metabase.com")
+                              (db/simple-insert! Setting {:key "premium-embedding-token"
+                                                          :value "fake-key"})
+                              (migrate!)
+                              (is (= [] (get-perms)))))
+
+      (testing "Should not fail if permissions already exist"
+        (impl/test-migrations ["v43.00-061" "v43.00-062"] [migrate!]
+                              (db/execute! {:insert-into Permissions
+                                            :values      [{:object   (perms-path)
+                                                           :group_id (all-users-group-id)}]})
+                              (migrate!)
+                              (is (= ["All Users"] (get-perms))))))))
