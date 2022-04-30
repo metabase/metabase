@@ -142,6 +142,7 @@ export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   border-top: 1px solid ${color("border")};
   background-color: ${color("white")};
   display: flex;
+  overflow: hidden;
   align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};
