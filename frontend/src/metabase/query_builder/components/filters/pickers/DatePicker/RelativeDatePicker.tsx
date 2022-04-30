@@ -130,6 +130,7 @@ const CURRENT_INTERVAL_NAME = {
   week: t`this week`,
   month: t`this month`,
   year: t`this year`,
+  quarter: t`this quarter`,
   minute: t`this minute`,
   hour: t`this hour`,
 };
