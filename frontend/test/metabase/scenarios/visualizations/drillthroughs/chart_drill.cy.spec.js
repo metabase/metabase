@@ -559,7 +559,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     // count number of distinct values in the Discount column
     cy.findByText("Discount ($)").click();
-    cy.findByText("Count Distinct").click();
+    cy.findByText("distinct values").click();
 
     // there should be 0 distinct values since they are all null
     cy.get(".TableInteractive-cellWrapper").contains("0");

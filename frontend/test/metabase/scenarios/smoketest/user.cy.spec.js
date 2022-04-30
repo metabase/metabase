@@ -248,7 +248,7 @@ describe("smoketest > user", () => {
     visualize();
 
     cy.findByText("Category").click();
-    cy.findByText("Count Distinct").click();
+    cy.findByText("distinct values").click();
     cy.findByText("4");
     cy.findByText("3").should("not.exist");
 
@@ -294,7 +294,7 @@ describe("smoketest > user", () => {
 
     cy.icon("arrow_up");
     cy.icon("arrow_down");
-    cy.findByText("Count Distinct");
+    cy.findByText("distinct values");
     cy.findByText("Distribution").should("not.exist");
     cy.icon("filter");
     cy.findByText("Formatting");
@@ -307,7 +307,7 @@ describe("smoketest > user", () => {
 
     cy.icon("arrow_up");
     cy.icon("arrow_down");
-    cy.findByText("Count Distinct");
+    cy.findByText("distinct values");
     cy.findByText("Distribution");
     cy.icon("filter");
     cy.findByText("Formatting");
@@ -326,7 +326,7 @@ describe("smoketest > user", () => {
     cy.findByText("Sum");
     cy.findByText("Min");
     cy.findByText("Max");
-    cy.findByText("Count Distinct");
+    cy.findByText("distinct values");
     cy.findByText("Sum over time");
     cy.findByText("Distribution");
     cy.icon("filter");
@@ -349,7 +349,7 @@ describe("smoketest > user", () => {
     cy.findByText("Sum");
     cy.findByText("Min");
     cy.findByText("Max");
-    cy.findByText("Count Distinct");
+    cy.findByText("distinct values");
     cy.findByText("Sum over time");
     cy.findByText("Distribution");
     cy.icon("filter");
