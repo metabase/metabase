@@ -16,7 +16,14 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PEOPLE,
+  PEOPLE_ID,
+  PRODUCTS,
+  PRODUCTS_ID,
+} = SAMPLE_DATABASE;
 
 describe("scenarios > question > notebook", () => {
   beforeEach(() => {
@@ -414,6 +421,31 @@ describe("scenarios > question > notebook", () => {
     });
 
     cy.findByText("Starts with").click();
+
+    cy.findByText("Case sensitive").click();
+  });
+
+  it("should treat max/min on a category as a string filter (metabase#22154)", () => {
+    const questionDetails = {
+      name: "22154",
+      query: {
+        "source-table": PRODUCTS_ID,
+        aggregation: [["min", ["field", PRODUCTS.VENDOR, null]]],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      display: "table",
+    };
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByText("Filter").click();
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("Min of Vendor").click();
+
+      cy.findByText("Is").click();
+    });
+
+    cy.findByText("Ends with").click();
 
     cy.findByText("Case sensitive").click();
   });

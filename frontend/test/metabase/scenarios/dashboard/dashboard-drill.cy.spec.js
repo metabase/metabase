@@ -332,13 +332,13 @@ describe("scenarios > dashboard > dashboard drill", () => {
       cy.findByText("=").click();
 
       cy.findByText("Reviewer is xavier");
-      cy.findByText("Rating is equal to 2 selections");
+      cy.findByText("Rating is 2 selections");
       cy.contains("Reprehenderit non error"); // xavier's review
     });
 
     it("when clicking on the card title (metabase#13062-2)", () => {
       cy.findByText(questionDetails.name).click();
-      cy.findByText("Rating is equal to 2 selections");
+      cy.findByText("Rating is 2 selections");
       cy.contains("Ad perspiciatis quis et consectetur."); // 5 star review
     });
   });

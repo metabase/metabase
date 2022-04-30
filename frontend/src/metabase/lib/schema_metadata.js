@@ -44,7 +44,7 @@ const TYPES = {
   [STRING]: {
     base: [TYPE.Text],
     effective: [TYPE.Text],
-    semantic: [TYPE.Text],
+    semantic: [TYPE.Text, TYPE.Category],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
