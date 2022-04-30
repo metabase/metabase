@@ -84,10 +84,13 @@ describe("schema_metadata", () => {
         );
       });
     });
-    it("should still recognize a name as a string regardless of its base type", () => {
+    it("should still recognize some types as a string regardless of its base type", () => {
       // TYPE.Float can occur in a field filter
       expect(
         getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Name }),
+      ).toEqual(STRING);
+      expect(
+        getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Category }),
       ).toEqual(STRING);
     });
     it("should know what it doesn't know", () => {
