@@ -4,7 +4,6 @@ import { t } from "ttag";
 import moment from "moment";
 import { assoc } from "icepick";
 
-import NumericInput from "metabase/components/NumericInput";
 import {
   formatBucketing,
   formatStartingFrom,
@@ -17,8 +16,6 @@ import {
 } from "metabase/lib/query_time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import DateUnitSelector from "./DateUnitSelector";
-
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
   CurrentButton,
@@ -29,6 +26,8 @@ import {
   MoreButton,
   OptionButton,
   OptionsContainer,
+  DateUnitSelector,
+  NumericInput,
 } from "./RelativeDatePicker.styled";
 
 export const PastPicker = (props: Props) => (
@@ -178,6 +177,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
     <OptionsContainer>
       <OptionButton
         icon="arrow_left_to_line"
+        primaryColor={primaryColor}
         reverseIconDirection={reverseIconDirection}
         onClick={() => {
           setOptionsVisible(false);
@@ -210,7 +210,8 @@ const RelativeDatePicker: React.FC<Props> = props => {
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
       ) : null}
       <NumericInput
-        className="input border-purple text-right"
+        className="input text-right"
+        primaryColor={primaryColor}
         style={SELECT_STYLE}
         data-ui-tag="relative-date-input"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
@@ -221,6 +222,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
       />
       <DateUnitSelector
         value={unit}
+        primaryColor={primaryColor}
         onChange={value => {
           onFilterChange(setRelativeDatetimeUnit(filter, value));
         }}
@@ -237,6 +239,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
         >
           <MoreButton
             icon="ellipsis"
+            primaryColor={primaryColor}
             onClick={() => setOptionsVisible(!optionsVisible)}
           />
         </TippyPopover>
@@ -247,7 +250,8 @@ const RelativeDatePicker: React.FC<Props> = props => {
         <>
           <GridText>{t`Starting from`}</GridText>
           <NumericInput
-            className="input border-purple text-right"
+            className="input text-right"
+            primaryColor={primaryColor}
             style={SELECT_STYLE}
             data-ui-tag="relative-date-input"
             value={
@@ -268,6 +272,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
           />
           <DateUnitSelector
             value={startingFrom[1]}
+            primaryColor={primaryColor}
             onChange={value => {
               onFilterChange(setStartingFrom(filter, startingFrom[0], value));
             }}
@@ -280,6 +285,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
           />
           <MoreButton
             icon="close"
+            primaryColor={primaryColor}
             onClick={() => {
               onFilterChange(toTimeInterval(filter));
             }}
