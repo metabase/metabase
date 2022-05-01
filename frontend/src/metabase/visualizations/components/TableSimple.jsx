@@ -280,7 +280,7 @@ function TableSimple({
     let indexes = _.range(0, rows.length);
 
     if (sortColumn != null) {
-      indexes = _.sortBy(rowIndexes, rowIndex => {
+      indexes = _.sortBy(indexes, rowIndex => {
         const value = rows[rowIndex][sortColumn];
         const column = cols[sortColumn];
         return formatCellValueForSorting(value, column);
@@ -288,7 +288,7 @@ function TableSimple({
     }
 
     if (sortDirection === "desc") {
-      indexes = indexes.reverse();
+      indexes.reverse();
     }
 
     return indexes;
