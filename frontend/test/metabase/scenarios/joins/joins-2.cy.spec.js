@@ -117,8 +117,6 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("should join on field literals", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-
       // create two native questions
       cy.createNativeQuestion({
         name: "question a",
@@ -137,10 +135,9 @@ describe("scenarios > question > joined questions", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
-      cy.wait("@schema");
 
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Database").click();
+        cy.findByTextEnsureVisible("Sample Database").click({ force: true });
         cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });

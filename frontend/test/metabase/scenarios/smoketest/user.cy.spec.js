@@ -38,6 +38,7 @@ describe("smoketest > user", () => {
   });
 
   it("should sort via both the header and notebook editor", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
     // Sorting by header
     cy.wait(1000)
       .get(".Icon-table2")
@@ -53,6 +54,7 @@ describe("smoketest > user", () => {
       .click();
 
     cy.icon("arrow_down").click();
+    cy.wait("@dataset");
 
     cy.get("@firstTableCell").contains("Ergonomic Wool Bag");
 
@@ -155,10 +157,13 @@ describe("smoketest > user", () => {
   });
 
   it("should summarize via both the sidebar and notebook editor", () => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     // Sidebar summary
 
     summarize();
     cy.findByText("Category").click();
+    cy.wait("@dataset");
     cy.findByText("Done").click();
 
     // Delete summary from sidebar
@@ -169,6 +174,7 @@ describe("smoketest > user", () => {
         .first()
         .click();
     });
+    cy.wait("@dataset");
     cy.findByText("Done").click();
 
     cy.findByText("Average of Rating by Category").should("not.exist");
@@ -187,7 +193,7 @@ describe("smoketest > user", () => {
 
     visualize();
 
-    cy.get("svg");
+    cy.get("svg").should("be.visible");
     cy.findAllByText("Created At");
   });
 
