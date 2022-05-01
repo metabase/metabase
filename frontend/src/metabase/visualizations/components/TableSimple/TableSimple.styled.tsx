@@ -83,7 +83,7 @@ SortIcon.defaultProps = {
   size: 8,
 };
 
-export const TableFooter = styled.div`
+export const TableFooterRoot = styled.div`
   display: flex;
   flex-shrink: 0;
 

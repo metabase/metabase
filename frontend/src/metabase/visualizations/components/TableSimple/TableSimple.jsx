@@ -8,28 +8,23 @@ import React, {
 } from "react";
 import { getIn } from "icepick";
 import _ from "underscore";
-import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Ellipsified from "metabase/core/components/Ellipsified";
-import Icon from "metabase/components/Icon";
 
 import { isPositiveInteger } from "metabase/lib/number";
 import { isID } from "metabase/lib/schema_metadata";
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import TableCell from "./TableCell";
+import TableFooter from "./TableFooter";
 import {
   Root,
   ContentContainer,
   Table,
   TableContainer,
   TableHeaderCellContent,
-  TableFooter,
   SortIcon,
-  PaginationMessage,
-  PaginationButton,
 } from "./TableSimple.styled";
 
 function getBoundingClientRectSafe(ref) {
@@ -146,13 +141,6 @@ function TableSimple({
     end,
   ]);
 
-  const paginateMessage = useMemo(() => {
-    if (limit === undefined && rows.length >= HARD_ROW_LIMIT) {
-      return t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
-    }
-    return t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
-  }, [rows, start, end, limit]);
-
   const renderColumnHeader = useCallback(
     (col, colIndex) => {
       const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
@@ -223,25 +211,14 @@ function TableSimple({
       </ContentContainer>
       {pageSize < rows.length && (
         <TableFooter
-          className="fullscreen-normal-text fullscreen-night-text"
+          start={start}
+          end={end}
+          limit={limit}
+          total={rows.length}
+          handlePreviousPage={handlePreviousPage}
+          handleNextPage={handleNextPage}
           ref={footerRef}
-        >
-          <PaginationMessage>{paginateMessage}</PaginationMessage>
-          <PaginationButton
-            direction="previous"
-            onClick={handlePreviousPage}
-            disabled={start === 0}
-          >
-            <Icon name="triangle_left" size={10} />
-          </PaginationButton>
-          <PaginationButton
-            direction="next"
-            onClick={handleNextPage}
-            disabled={end + 1 >= rows.length}
-          >
-            <Icon name="triangle_right" size={10} />
-          </PaginationButton>
-        </TableFooter>
+        />
       )}
     </Root>
   );
