@@ -15,6 +15,7 @@ import {
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
 import MiniBar from "../MiniBar";
+import { CellRoot, CellContent } from "./TableCell.styled";
 
 function getCellData({
   value,
@@ -111,9 +112,6 @@ function TableCell({
   const isClickable = !isLink && checkIsVisualizationClickable(clicked);
 
   const onClick = useMemo(() => {
-    if (!isClickable) {
-      return;
-    }
     return e => {
       onVisualizationClick({
         ...clicked,
@@ -121,48 +119,36 @@ function TableCell({
         extraData,
       });
     };
-  }, [isClickable, clicked, extraData, onVisualizationClick]);
+  }, [clicked, extraData, onVisualizationClick]);
 
-  const style = useMemo(() => {
-    const result = { whiteSpace: "nowrap" };
-    if (getCellBackgroundColor) {
-      result.backgroundColor = getCellBackgroundColor(
-        value,
-        rowIndex,
-        column.name,
-      );
-    }
-    return result;
-  }, [value, rowIndex, column, getCellBackgroundColor]);
+  const backgroundColor = useMemo(
+    () => getCellBackgroundColor?.(value, rowIndex, column.name),
+    [value, rowIndex, column, getCellBackgroundColor],
+  );
 
   const classNames = useMemo(
     () =>
-      cx(
-        "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
-        {
-          "text-right": isColumnRightAligned(column),
-          "Table-ID": value != null && isID(column),
-          "Table-FK": value != null && isFK(column),
-          link: isClickable && isID(column),
-        },
-      ),
+      cx("fullscreen-normal-text fullscreen-night-text", {
+        "Table-ID": value != null && isID(column),
+        "Table-FK": value != null && isFK(column),
+        link: isClickable && isID(column),
+      }),
     [value, column, isClickable],
   );
 
-  const classNames2 = useMemo(
-    () =>
-      cx("cellData inline-block", {
-        "cursor-pointer text-brand-hover": isClickable,
-      }),
-    [isClickable],
-  );
-
   return (
-    <td className={classNames} style={style}>
-      <span className={classNames2} onClick={onClick}>
+    <CellRoot
+      className={classNames}
+      backgroundColor={backgroundColor}
+      isRightAligned={isColumnRightAligned(column)}
+    >
+      <CellContent
+        isClickable={isClickable}
+        onClick={isClickable ? onClick : undefined}
+      >
         {cellData}
-      </span>
-    </td>
+      </CellContent>
+    </CellRoot>
   );
 }
 
