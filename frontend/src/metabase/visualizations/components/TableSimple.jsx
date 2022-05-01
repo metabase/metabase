@@ -1,316 +1,424 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useRef,
+} from "react";
+import cx from "classnames";
+import { getIn } from "icepick";
+import _ from "underscore";
+import { t } from "ttag";
 
-import styles from "./Table.css";
-
+import ExternalLink from "metabase/core/components/ExternalLink";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import MiniBar from "./MiniBar";
-
-import ExternalLink from "metabase/core/components/ExternalLink";
 
 import { formatValue } from "metabase/lib/formatting";
+import { isPositiveInteger } from "metabase/lib/number";
+import { isID, isFK } from "metabase/lib/schema_metadata";
+import { HARD_ROW_LIMIT } from "metabase/lib/query";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
-import { HARD_ROW_LIMIT } from "metabase/lib/query";
-import { isPositiveInteger } from "metabase/lib/number";
 
-import { t } from "ttag";
-import cx from "classnames";
-import _ from "underscore";
-import { getIn } from "icepick";
+import MiniBar from "./MiniBar";
+import styles from "./Table.css";
 
-import { isID, isFK } from "metabase/lib/schema_metadata";
+function getBoundingClientRectSafe(ref) {
+  return ref.current?.getBoundingClientRect?.() ?? {};
+}
 
-class TableSimple extends Component {
-  constructor(props) {
-    super(props);
-
-    this.state = {
-      page: 0,
-      pageSize: 1,
-      sortColumn: null,
-      sortDescending: false,
-    };
-
-    this.headerRef = React.createRef();
-    this.footerRef = React.createRef();
-    this.firstRowRef = React.createRef();
-  }
-
-  static propTypes = {
-    data: PropTypes.object.isRequired,
-  };
-
-  static defaultProps = {
-    className: "",
-  };
-
-  setSort(colIndex) {
-    if (this.state.sortColumn === colIndex) {
-      this.setState({ sortDescending: !this.state.sortDescending });
-    } else {
-      this.setState({ sortColumn: colIndex });
+function formatCellValueForSorting(value, column) {
+  if (typeof value === "string") {
+    if (isID(column) && isPositiveInteger(value)) {
+      return parseInt(value, 10);
     }
+    // for strings we should be case insensitive
+    return value.toLowerCase();
   }
-
-  componentDidUpdate() {
-    const headerHeight = this.headerRef.current.getBoundingClientRect().height;
-    const footerHeight = this.footerRef.current
-      ? this.footerRef.current.getBoundingClientRect().height
-      : 0;
-    const rowHeight =
-      this.firstRowRef.current.getBoundingClientRect().height + 1;
-    const pageSize = Math.max(
-      1,
-      Math.floor((this.props.height - headerHeight - footerHeight) / rowHeight),
-    );
-    if (this.state.pageSize !== pageSize) {
-      this.setState({ pageSize });
-    }
+  if (value === null) {
+    return undefined;
   }
+  return value;
+}
 
-  visualizationIsClickable(clicked) {
-    const { onVisualizationClick, visualizationIsClickable } = this.props;
+const CELL_HEADER_ICON_STYLE = {
+  position: "absolute",
+  right: "100%",
+  marginRight: 3,
+};
+
+function getCellData({
+  value,
+  clicked,
+  extraData,
+  cols,
+  rows,
+  columnIndex,
+  columnSettings,
+}) {
+  if (value == null) {
+    return "-";
+  }
+  if (columnSettings["show_mini_bar"]) {
     return (
-      onVisualizationClick &&
-      visualizationIsClickable &&
-      visualizationIsClickable(clicked)
+      <MiniBar
+        value={value}
+        options={columnSettings}
+        extent={getColumnExtent(cols, rows, columnIndex)}
+      />
     );
   }
+  return formatValue(value, {
+    ...columnSettings,
+    clicked: { ...clicked, extraData },
+    type: "cell",
+    jsx: true,
+    rich: true,
+  });
+}
 
-  render() {
-    const {
-      data,
-      onVisualizationClick,
-      isPivoted,
-      settings,
-      getColumnTitle,
-      card,
-      series,
-    } = this.props;
-    const { rows, cols } = data;
-    const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
-    const getCellBackgroundColor = settings["table._cell_background_getter"];
+function TableCell({
+  value,
+  data,
+  series,
+  settings,
+  rowIndex,
+  columnIndex,
+  isPivoted,
+  getCellBackgroundColor,
+  getExtraDataForClick,
+  checkIsVisualizationClickable,
+  onVisualizationClick,
+}) {
+  const { rows, cols } = data;
+  const column = cols[columnIndex];
+  const columnSettings = settings.column(column);
 
-    const { page, pageSize, sortColumn, sortDescending } = this.state;
+  const clickedRowData = useMemo(
+    () =>
+      getTableClickedObjectRowData(
+        series,
+        rowIndex,
+        columnIndex,
+        isPivoted,
+        data,
+      ),
+    [data, series, rowIndex, columnIndex, isPivoted],
+  );
 
-    const start = pageSize * page;
-    const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
+  const clicked = useMemo(
+    () =>
+      getTableCellClickedObject(
+        data,
+        settings,
+        rowIndex,
+        columnIndex,
+        isPivoted,
+        clickedRowData,
+      ),
+    [data, settings, rowIndex, columnIndex, isPivoted, clickedRowData],
+  );
 
-    let rowIndexes = _.range(0, rows.length);
-    if (sortColumn != null) {
-      rowIndexes = _.sortBy(rowIndexes, rowIndex => {
-        let value = rows[rowIndex][sortColumn];
-        const col = cols[sortColumn];
-        // for strings we should be case insensitive
-        if (typeof value === "string") {
-          if (isID(col) && isPositiveInteger(value)) {
-            value = parseInt(value, 10);
-          } else {
-            value = value.toLowerCase();
-          }
-        }
-        if (value === null) {
-          value = undefined;
-        }
-        return value;
+  const extraData = useMemo(() => getExtraDataForClick?.(clicked) ?? {}, [
+    clicked,
+    getExtraDataForClick,
+  ]);
+
+  const cellData = useMemo(
+    () =>
+      getCellData({
+        value,
+        clicked,
+        extraData,
+        cols,
+        rows,
+        columnIndex,
+        columnSettings,
+      }),
+    [value, clicked, extraData, cols, rows, columnIndex, columnSettings],
+  );
+
+  const isLink = cellData && cellData.type === ExternalLink;
+  const isClickable = !isLink && checkIsVisualizationClickable(clicked);
+
+  const onClick = useMemo(() => {
+    if (!isClickable) {
+      return;
+    }
+    return e => {
+      onVisualizationClick({
+        ...clicked,
+        element: e.currentTarget,
+        extraData,
       });
-      if (sortDescending) {
-        rowIndexes.reverse();
-      }
+    };
+  }, [isClickable, clicked, extraData, onVisualizationClick]);
+
+  const style = useMemo(() => {
+    const result = { whiteSpace: "nowrap" };
+    if (getCellBackgroundColor) {
+      result.backgroundColor = getCellBackgroundColor(
+        value,
+        rowIndex,
+        column.name,
+      );
     }
+    return result;
+  }, [value, rowIndex, column, getCellBackgroundColor]);
 
-    let paginateMessage;
-    if (limit === undefined && rows.length >= HARD_ROW_LIMIT) {
-      paginateMessage = t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
-    } else {
-      paginateMessage = t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
-    }
+  const classNames = useMemo(
+    () =>
+      cx(
+        "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
+        {
+          "text-right": isColumnRightAligned(column),
+          "Table-ID": value != null && isID(column),
+          "Table-FK": value != null && isFK(column),
+          link: isClickable && isID(column),
+        },
+      ),
+    [value, column, isClickable],
+  );
 
-    return (
-      <div className={cx(this.props.className, "relative flex flex-column")}>
-        <div className="flex-full relative">
-          <div
-            className="absolute top bottom left right scroll-x scroll-show scroll-show--hover"
-            style={{ overflowY: "hidden" }}
-          >
-            <table
-              className={cx(
-                styles.Table,
-                styles.TableSimple,
-                "fullscreen-normal-text",
-                "fullscreen-night-text",
-              )}
-            >
-              <thead ref={this.headerRef}>
-                <tr>
-                  {cols.map((col, colIndex) => (
-                    <th
-                      key={colIndex}
-                      className={cx(
-                        "TableInteractive-headerCellData cellData text-brand-hover text-medium",
-                        {
-                          "TableInteractive-headerCellData--sorted":
-                            sortColumn === colIndex,
-                          "text-right": isColumnRightAligned(col),
-                        },
-                      )}
-                      onClick={() => this.setSort(colIndex)}
-                    >
-                      <div className="relative">
-                        <Icon
-                          name={sortDescending ? "chevrondown" : "chevronup"}
-                          width={8}
-                          height={8}
-                          style={{
-                            position: "absolute",
-                            right: "100%",
-                            marginRight: 3,
-                          }}
-                        />
-                        <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rowIndexes.slice(start, end + 1).map((rowIndex, index) => (
-                  <tr
-                    key={rowIndex}
-                    ref={index === 0 ? this.firstRowRef : null}
-                    data-testid="table-row"
-                  >
-                    {rows[rowIndex].map((value, columnIndex) => {
-                      const clickedRowData = getTableClickedObjectRowData(
-                        series,
-                        rowIndex,
-                        columnIndex,
-                        isPivoted,
-                        data,
-                      );
-                      const column = cols[columnIndex];
-                      const clicked = getTableCellClickedObject(
-                        data,
-                        settings,
-                        rowIndex,
-                        columnIndex,
-                        isPivoted,
-                        clickedRowData,
-                      );
-                      const columnSettings = settings.column(column);
+  const classNames2 = useMemo(
+    () =>
+      cx("cellData inline-block", {
+        "cursor-pointer text-brand-hover": isClickable,
+      }),
+    [isClickable],
+  );
 
-                      const extraData = this.props.getExtraDataForClick
-                        ? this.props.getExtraDataForClick(clicked)
-                        : {};
+  return (
+    <td className={classNames} style={style}>
+      <span className={classNames2} onClick={onClick}>
+        {cellData}
+      </span>
+    </td>
+  );
+}
 
-                      const cellData =
-                        value == null ? (
-                          "-"
-                        ) : columnSettings["show_mini_bar"] ? (
-                          <MiniBar
-                            value={value}
-                            options={columnSettings}
-                            extent={getColumnExtent(cols, rows, columnIndex)}
-                          />
-                        ) : (
-                          formatValue(value, {
-                            ...columnSettings,
-                            clicked: { ...clicked, extraData },
-                            type: "cell",
-                            jsx: true,
-                            rich: true,
-                          })
-                        );
+function TableSimple({
+  card,
+  data,
+  series,
+  settings,
+  height,
+  isPivoted,
+  className,
+  onVisualizationClick,
+  visualizationIsClickable,
+  getColumnTitle,
+  getExtraDataForClick,
+}) {
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(1);
+  const [sortColumn, setSortColumn] = useState(null);
+  const [sortDirection, setSortDirection] = useState("asc");
 
-                      const isLink = cellData && cellData.type === ExternalLink;
-                      const isClickable =
-                        !isLink && this.visualizationIsClickable(clicked);
+  const headerRef = useRef(null);
+  const footerRef = useRef(null);
+  const firstRowRef = useRef(null);
 
-                      return (
-                        <td
-                          key={columnIndex}
-                          style={{
-                            whiteSpace: "nowrap",
-                            backgroundColor:
-                              getCellBackgroundColor &&
-                              getCellBackgroundColor(
-                                value,
-                                rowIndex,
-                                column.name,
-                              ),
-                          }}
-                          className={cx(
-                            "px1 border-bottom text-dark fullscreen-normal-text fullscreen-night-text text-bold",
-                            {
-                              "text-right": isColumnRightAligned(column),
-                              "Table-ID": value != null && isID(column),
-                              "Table-FK": value != null && isFK(column),
-                              link: isClickable && isID(column),
-                            },
-                          )}
-                        >
-                          <span
-                            className={cx("cellData inline-block", {
-                              "cursor-pointer text-brand-hover": isClickable,
-                            })}
-                            onClick={
-                              isClickable
-                                ? e => {
-                                    onVisualizationClick({
-                                      ...clicked,
-                                      element: e.currentTarget,
-                                      extraData,
-                                    });
-                                  }
-                                : undefined
-                            }
-                          >
-                            {cellData}
-                          </span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        {pageSize < rows.length ? (
-          <div
-            ref={this.footerRef}
-            className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
-          >
-            <span className="text-bold">{paginateMessage}</span>
-            <span
-              className={cx("text-brand-hover px1 cursor-pointer", {
-                disabled: start === 0,
-              })}
-              onClick={() => this.setState({ page: page - 1 })}
-            >
-              <Icon name="triangle_left" size={10} />
-            </span>
-            <span
-              className={cx("text-brand-hover pr1 cursor-pointer", {
-                disabled: end + 1 >= rows.length,
-              })}
-              onClick={() => this.setState({ page: page + 1 })}
-            >
-              <Icon name="triangle_right" size={10} />
-            </span>
-          </div>
-        ) : null}
-      </div>
+  useLayoutEffect(() => {
+    const { height: headerHeight } = getBoundingClientRectSafe(headerRef);
+    const { height: footerHeight = 0 } = getBoundingClientRectSafe(footerRef);
+    const { height: rowHeight = 0 } = getBoundingClientRectSafe(firstRowRef);
+    const currentPageSize = Math.floor(
+      (height - headerHeight - footerHeight) / (rowHeight + 1),
     );
-  }
+    const normalizedPageSize = Math.max(1, currentPageSize);
+    if (pageSize !== normalizedPageSize) {
+      setPageSize(normalizedPageSize);
+    }
+  }, [height, pageSize]);
+
+  const setSort = useCallback(
+    colIndex => {
+      if (sortColumn === colIndex) {
+        setSortDirection(direction => (direction === "asc" ? "desc" : "asc"));
+      } else {
+        setSortColumn(colIndex);
+      }
+    },
+    [sortColumn],
+  );
+
+  const checkIsVisualizationClickable = useCallback(
+    clickedItem => {
+      return (
+        onVisualizationClick &&
+        visualizationIsClickable &&
+        visualizationIsClickable(clickedItem)
+      );
+    },
+    [onVisualizationClick, visualizationIsClickable],
+  );
+
+  const { rows, cols } = data;
+  const limit = getIn(card, ["dataset_query", "query", "limit"]) || undefined;
+  const getCellBackgroundColor = settings["table._cell_background_getter"];
+
+  const start = pageSize * page;
+  const end = Math.min(rows.length - 1, pageSize * (page + 1) - 1);
+
+  const handlePreviousPage = useCallback(() => {
+    setPage(p => p - 1);
+  }, []);
+
+  const handleNextPage = useCallback(() => {
+    setPage(p => p + 1);
+  }, []);
+
+  const rowIndexes = useMemo(() => {
+    let indexes = _.range(0, rows.length);
+
+    if (sortColumn != null) {
+      indexes = _.sortBy(rowIndexes, rowIndex => {
+        const value = rows[rowIndex][sortColumn];
+        const column = cols[sortColumn];
+        return formatCellValueForSorting(value, column);
+      });
+    }
+
+    if (sortDirection === "desc") {
+      indexes = indexes.reverse();
+    }
+
+    return indexes;
+  }, [cols, rows, sortColumn, sortDirection]);
+
+  const paginatedRowIndexes = useMemo(() => rowIndexes.slice(start, end + 1), [
+    rowIndexes,
+    start,
+    end,
+  ]);
+
+  const paginateMessage = useMemo(() => {
+    if (limit === undefined && rows.length >= HARD_ROW_LIMIT) {
+      return t`Rows ${start + 1}-${end + 1} of first ${rows.length}`;
+    }
+    return t`Rows ${start + 1}-${end + 1} of ${rows.length}`;
+  }, [rows, start, end, limit]);
+
+  const renderColumnHeader = useCallback(
+    (col, colIndex) => {
+      const onClick = () => setSort(colIndex);
+      const isSortedColumn = sortColumn === colIndex;
+      return (
+        <th
+          key={colIndex}
+          className={cx(
+            "TableInteractive-headerCellData cellData text-brand-hover text-medium",
+            {
+              "TableInteractive-headerCellData--sorted": isSortedColumn,
+              "text-right": isColumnRightAligned(col),
+            },
+          )}
+          onClick={onClick}
+        >
+          <div className="relative">
+            <Icon
+              name={sortDirection === "desc" ? "chevrondown" : "chevronup"}
+              width={8}
+              height={8}
+              style={CELL_HEADER_ICON_STYLE}
+            />
+            <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
+          </div>
+        </th>
+      );
+    },
+    [sortColumn, sortDirection, getColumnTitle, setSort],
+  );
+
+  const renderRow = useCallback(
+    (rowIndex, index) => {
+      const ref = index === 0 ? firstRowRef : null;
+      return (
+        <tr key={rowIndex} ref={ref} data-testid="table-row">
+          {data.rows[rowIndex].map((value, columnIndex) => (
+            <TableCell
+              key={`${rowIndex}-${columnIndex}`}
+              value={value}
+              data={data}
+              series={series}
+              settings={settings}
+              rowIndex={rowIndex}
+              columnIndex={columnIndex}
+              isPivoted={isPivoted}
+              getCellBackgroundColor={getCellBackgroundColor}
+              getExtraDataForClick={getExtraDataForClick}
+              checkIsVisualizationClickable={checkIsVisualizationClickable}
+              onVisualizationClick={onVisualizationClick}
+            />
+          ))}
+        </tr>
+      );
+    },
+    [
+      data,
+      series,
+      settings,
+      isPivoted,
+      checkIsVisualizationClickable,
+      getCellBackgroundColor,
+      getExtraDataForClick,
+      onVisualizationClick,
+    ],
+  );
+
+  return (
+    <div className={cx(className, "relative flex flex-column")}>
+      <div className="flex-full relative">
+        <div className="absolute top bottom left right scroll-x scroll-show scroll-show--hover overflow-y-hidden">
+          <table
+            className={cx(
+              styles.Table,
+              styles.TableSimple,
+              "fullscreen-normal-text",
+              "fullscreen-night-text",
+            )}
+          >
+            <thead ref={headerRef}>
+              <tr>{cols.map(renderColumnHeader)}</tr>
+            </thead>
+            <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
+          </table>
+        </div>
+      </div>
+      {pageSize < rows.length && (
+        <div
+          ref={footerRef}
+          className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
+        >
+          <span className="text-bold">{paginateMessage}</span>
+          <span
+            className={cx("text-brand-hover px1 cursor-pointer", {
+              disabled: start === 0,
+            })}
+            onClick={handlePreviousPage}
+          >
+            <Icon name="triangle_left" size={10} />
+          </span>
+          <span
+            className={cx("text-brand-hover pr1 cursor-pointer", {
+              disabled: end + 1 >= rows.length,
+            })}
+            onClick={handleNextPage}
+          >
+            <Icon name="triangle_right" size={10} />
+          </span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default ExplicitSize({
