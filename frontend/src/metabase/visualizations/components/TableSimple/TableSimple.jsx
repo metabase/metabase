@@ -27,7 +27,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
-import MiniBar from "./MiniBar";
+import MiniBar from "../MiniBar";
 import styles from "./Table.css";
 
 function getBoundingClientRectSafe(ref) {
