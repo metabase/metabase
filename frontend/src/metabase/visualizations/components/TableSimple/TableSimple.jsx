@@ -6,7 +6,6 @@ import React, {
   useState,
   useRef,
 } from "react";
-import cx from "classnames";
 import { getIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
@@ -21,7 +20,17 @@ import { HARD_ROW_LIMIT } from "metabase/lib/query";
 import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import TableCell from "./TableCell";
-import styles from "./Table.css";
+import {
+  Root,
+  ContentContainer,
+  Table,
+  TableContainer,
+  TableHeaderCellContent,
+  TableFooter,
+  SortIcon,
+  PaginationMessage,
+  PaginationButton,
+} from "./TableSimple.styled";
 
 function getBoundingClientRectSafe(ref) {
   return ref.current?.getBoundingClientRect?.() ?? {};
@@ -40,12 +49,6 @@ function formatCellValueForSorting(value, column) {
   }
   return value;
 }
-
-const CELL_HEADER_ICON_STYLE = {
-  position: "absolute",
-  right: "100%",
-  marginRight: 3,
-};
 
 function TableSimple({
   card,
@@ -152,29 +155,18 @@ function TableSimple({
 
   const renderColumnHeader = useCallback(
     (col, colIndex) => {
+      const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
       const onClick = () => setSort(colIndex);
-      const isSortedColumn = sortColumn === colIndex;
       return (
-        <th
-          key={colIndex}
-          className={cx(
-            "TableInteractive-headerCellData cellData text-brand-hover text-medium",
-            {
-              "TableInteractive-headerCellData--sorted": isSortedColumn,
-              "text-right": isColumnRightAligned(col),
-            },
-          )}
-          onClick={onClick}
-        >
-          <div className="relative">
-            <Icon
-              name={sortDirection === "desc" ? "chevrondown" : "chevronup"}
-              width={8}
-              height={8}
-              style={CELL_HEADER_ICON_STYLE}
-            />
+        <th key={colIndex}>
+          <TableHeaderCellContent
+            isSorted={colIndex === sortColumn}
+            onClick={onClick}
+            isRightAligned={isColumnRightAligned(col)}
+          >
+            <SortIcon name={iconName} />
             <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
-          </div>
+          </TableHeaderCellContent>
         </th>
       );
     },
@@ -218,49 +210,40 @@ function TableSimple({
   );
 
   return (
-    <div className={cx(className, "relative flex flex-column")}>
-      <div className="flex-full relative">
-        <div className="absolute top bottom left right scroll-x scroll-show scroll-show--hover overflow-y-hidden">
-          <table
-            className={cx(
-              styles.Table,
-              styles.TableSimple,
-              "fullscreen-normal-text",
-              "fullscreen-night-text",
-            )}
-          >
+    <Root className={className}>
+      <ContentContainer>
+        <TableContainer className="scroll-show scroll-show--hover">
+          <Table className="fullscreen-normal-text fullscreen-night-text">
             <thead ref={headerRef}>
               <tr>{cols.map(renderColumnHeader)}</tr>
             </thead>
             <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
-          </table>
-        </div>
-      </div>
+          </Table>
+        </TableContainer>
+      </ContentContainer>
       {pageSize < rows.length && (
-        <div
+        <TableFooter
+          className="fullscreen-normal-text fullscreen-night-text"
           ref={footerRef}
-          className="p1 flex flex-no-shrink flex-align-right fullscreen-normal-text fullscreen-night-text"
         >
-          <span className="text-bold">{paginateMessage}</span>
-          <span
-            className={cx("text-brand-hover px1 cursor-pointer", {
-              disabled: start === 0,
-            })}
+          <PaginationMessage>{paginateMessage}</PaginationMessage>
+          <PaginationButton
+            direction="previous"
             onClick={handlePreviousPage}
+            disabled={start === 0}
           >
             <Icon name="triangle_left" size={10} />
-          </span>
-          <span
-            className={cx("text-brand-hover pr1 cursor-pointer", {
-              disabled: end + 1 >= rows.length,
-            })}
+          </PaginationButton>
+          <PaginationButton
+            direction="next"
             onClick={handleNextPage}
+            disabled={end + 1 >= rows.length}
           >
             <Icon name="triangle_right" size={10} />
-          </span>
-        </div>
+          </PaginationButton>
+        </TableFooter>
       )}
-    </div>
+    </Root>
   );
 }
 
