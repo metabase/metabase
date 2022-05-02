@@ -1,3 +1,4 @@
+export * from "./utils";
 export { default } from "./Dimension";
 export { default as AggregationDimension } from "./AggregationDimension";
 export { default as ExpressionDimension } from "./ExpressionDimension";

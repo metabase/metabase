@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-
+import { t } from "ttag";
 import { isa } from "cljs/metabase.types";
 import { formatBucketing } from "metabase/lib/query_time";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
@@ -281,3 +281,181 @@ function getOptions(type) {
 
   return null;
 }
+
+const NUMBER_SUBDIMENSIONS = [
+  {
+    name: t`Auto bin`,
+    options: {
+      binning: {
+        strategy: "default",
+      },
+    },
+  },
+  {
+    name: t`10 bins`,
+    options: {
+      binning: {
+        strategy: "num-bins",
+        "num-bins": 10,
+      },
+    },
+  },
+  {
+    name: t`50 bins`,
+    options: {
+      binning: {
+        strategy: "num-bins",
+        "num-bins": 50,
+      },
+    },
+  },
+  {
+    name: t`100 bins`,
+    options: {
+      binning: {
+        strategy: "num-bins",
+        "num-bins": 100,
+      },
+    },
+  },
+  {
+    name: t`Don't bin`,
+    options: null,
+  },
+];
+
+const DATETIME_SUBDIMENSIONS = [
+  {
+    name: t`Minute`,
+    options: {
+      "temporal-unit": "minute",
+    },
+  },
+  {
+    name: t`Hour`,
+    options: {
+      "temporal-unit": "hour",
+    },
+  },
+  {
+    name: t`Day`,
+    options: {
+      "temporal-unit": "day",
+    },
+  },
+  {
+    name: t`Week`,
+    options: {
+      "temporal-unit": "week",
+    },
+  },
+  {
+    name: t`Month`,
+    options: {
+      "temporal-unit": "month",
+    },
+  },
+  {
+    name: t`Quarter`,
+    options: {
+      "temporal-unit": "quarter",
+    },
+  },
+  {
+    name: t`Year`,
+    options: {
+      "temporal-unit": "year",
+    },
+  },
+  {
+    name: t`Minute of Hour`,
+    options: {
+      "temporal-unit": "minute-of-hour",
+    },
+  },
+  {
+    name: t`Hour of Day`,
+    options: {
+      "temporal-unit": "hour-of-day",
+    },
+  },
+  {
+    name: t`Day of Week`,
+    options: {
+      "temporal-unit": "day-of-week",
+    },
+  },
+  {
+    name: t`Day of Month`,
+    options: {
+      "temporal-unit": "day-of-month",
+    },
+  },
+  {
+    name: t`Day of Year`,
+    options: {
+      "temporal-unit": "day-of-year",
+    },
+  },
+  {
+    name: t`Week of Year`,
+    options: {
+      "temporal-unit": "week-of-year",
+    },
+  },
+  {
+    name: t`Month of Year`,
+    options: {
+      "temporal-unit": "month-of-year",
+    },
+  },
+  {
+    name: t`Quarter of Year`,
+    options: {
+      "temporal-unit": "quarter-of-year",
+    },
+  },
+];
+
+const COORDINATE_SUBDIMENSIONS = [
+  {
+    name: t`Bin every 0.1 degrees`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 0.1,
+      },
+    },
+  },
+  {
+    name: t`Bin every 1 degree`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 1,
+      },
+    },
+  },
+  {
+    name: t`Bin every 10 degrees`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 10,
+      },
+    },
+  },
+  {
+    name: t`Bin every 20 degrees`,
+    options: {
+      binning: {
+        strategy: "bin-width",
+        "bin-width": 20,
+      },
+    },
+  },
+  {
+    name: t`Don't bin`,
+    options: null,
+  },
+];

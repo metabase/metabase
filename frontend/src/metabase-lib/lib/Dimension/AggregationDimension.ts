@@ -1,7 +1,6 @@
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-nocheck
 import _ from "underscore";
-
 import { TYPE } from "metabase/lib/types";
 
 import Field from "../metadata/Field";

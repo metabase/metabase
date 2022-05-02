@@ -85,26 +85,6 @@ export default class Dimension {
     return _.isEmpty(options) ? null : options;
   }
 
-  /**
-   * Parses an MBQL expression into an appropriate Dimension subclass, if possible.
-   * Metadata should be provided if you intend to use the display name or render methods.
-   */
-  static parseMBQL(
-    mbql: ConcreteField,
-    metadata?: Metadata,
-    query?: StructuredQuery | null | undefined,
-  ): Dimension | null | undefined {
-    for (const D of DIMENSION_TYPES) {
-      const dimension = D.parseMBQL(mbql, metadata, query);
-
-      if (dimension != null) {
-        return Object.freeze(dimension);
-      }
-    }
-
-    return null;
-  }
-
   parseMBQL(mbql: ConcreteField): Dimension | null | undefined {
     return Dimension.parseMBQL(mbql, this._metadata, this._query);
   }
@@ -177,9 +157,8 @@ export default class Dimension {
 
     if (defaultDimensionOption) {
       const dimension = this._dimensionForOption(defaultDimensionOption);
-
       // NOTE: temporarily disable for DatetimeFieldDimension until backend automatically picks appropriate bucketing
-      if (!(isFieldDimension(dimension) && dimension.temporalUnit())) {
+      if (!dimension?.isFieldDimension() && dimension.temporalUnit()) {
         return dimension;
       }
     }
@@ -195,6 +174,9 @@ export default class Dimension {
     return null;
   }
 
+  isFieldDimension() {
+    return false;
+  }
   /**
    * Internal method gets a Dimension from a DimensionOption
    */
@@ -259,11 +241,11 @@ export default class Dimension {
     );
   }
 
-  foreign(dimension: Dimension): FieldDimension {
+  foreign(dimension: Dimension) {
     return null;
   }
 
-  datetime(unit: DatetimeUnit): FieldDimension {
+  datetime(unit: DatetimeUnit) {
     return null;
   }
 
@@ -611,7 +593,7 @@ export default class Dimension {
     const defaultDimension = this.defaultDimension();
     return (
       defaultDimension &&
-      isFieldDimension(defaultDimension) &&
+      defaultDimension.isFieldDimension() &&
       defaultDimension.binningOptions()
     );
   }

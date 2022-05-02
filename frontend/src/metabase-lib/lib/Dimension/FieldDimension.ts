@@ -505,6 +505,11 @@ export default class FieldDimension extends Dimension {
         })
       : null;
   }
+
+  isFieldDimension() {
+    return true;
+  }
 }
 
-const isFieldDimension = dimension => dimension instanceof FieldDimension;
+const isFieldDimension = (dimension: any): dimension is FieldDimension =>
+  dimension instanceof FieldDimension;
