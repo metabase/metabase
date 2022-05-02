@@ -3,6 +3,24 @@ import styled from "@emotion/styled";
 import { space } from "metabase/styled-components/theme";
 
 import Button from "metabase/core/components/Button";
+import BaseDateUnitSelector from "./DateUnitSelector";
+import BaseNumericInput from "metabase/components/NumericInput";
+
+type BaseProps = {
+  primaryColor?: string;
+};
+
+export const DateUnitSelector = styled(BaseDateUnitSelector)<BaseProps>`
+  button:focus {
+    border-color: ${({ primaryColor = defaultColor }) => primaryColor};
+  }
+`;
+
+export const NumericInput = styled(BaseNumericInput)<BaseProps>`
+  &:focus {
+    border-color: ${({ primaryColor = defaultColor }) => primaryColor};
+  }
+`;
 
 type ButtonProps = {
   primaryColor?: string;
