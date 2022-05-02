@@ -110,11 +110,15 @@ describe("user > settings", () => {
 
   it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
     cy.request("GET", "/api/user/current").then(({ body: user }) => {
+      cy.intercept("GET", "/api/user/current").as("getUser");
+
       cy.request("GET", "/api/session/properties").then(
         ({ body: settings }) => {
           cy.wrap(settings["available-locales"]).each(([locale]) => {
+            cy.log(`Using ${locale} locale`);
             cy.request("PUT", `/api/user/${user.id}`, { locale });
             cy.visit("/");
+            cy.wait("@getUser");
             cy.icon("gear").should("exist");
           });
         },
