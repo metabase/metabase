@@ -1,9 +1,12 @@
-name: build
+# Scan Docker container images for vulnerabilities
+name: Trivy
+
 on:
   push:
-    branches:
-      - trivy
+    branches: 
+      - master
   pull_request:
+
 jobs:
   build:
     name: Build
@@ -12,16 +15,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run Trivy vulnerability scanner in repo mode
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t docker.io/metabase/metabase:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
+          image-ref: 'docker.io/metabase/metabase:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
           ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v1
+        uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'trivy-results.sarif'
