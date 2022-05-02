@@ -39,3 +39,8 @@
      (when dump-plaintext?
        (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 h2-data-source)]
          (rotate-encryption/rotate-encryption-key! nil))))))
+
+(comment
+  (dump-to-h2!
+    )
+  )
