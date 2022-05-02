@@ -26,15 +26,13 @@ To reactivate a deactivated account, click the **Deactivated** radio button at t
 
 ### Deleting an account
 
-Metabase does not support account deletion. 
-
-The deactivation process protects the user’s activity (questions, dashboards, and collections) from disappearing when you want to revoke an account's access.
+Metabase doesn't explicitly support account deletion. Instead, Metabase deactivates accounts so people can't log in to them, while it preserves any questions, models, dashboards, and other items created by those accounts.
 
 If you want to delete an account because the account information was set up incorrectly, you can [deactivate](#deactivating-an-account) the old account and create a new one instead.
 
-1. Change the user name and email of the old account.
+1. Change the name and email associated with the old account.
 2. Deactivate the old account.
-3. Create a new account with the correct user information.
+3. Create a new account with the person's correct information.
 
 ### Editing an account
 
@@ -56,16 +54,16 @@ To reset a password for someone, just click the three dots icon next to their ac
 
 ### Resetting the admin password
 
-If you are using Metabase Cloud, contact support to have your admin password reset.
+If you're using Metabase Cloud, contact support to reset your Admin password.
 
-If you're the administrator of a Metabase instance and have access to the server console, but have forgotten the password for the admin account, you can get Metabase to send you a password reset token:
+If you're a Metabase admin and have access to the server console, you can get Metabase to send you a password reset token:
 
 1.  Stop the running Metabase application.
 2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
     ```
     java -jar metabase.jar reset-password email@example.com
     ```
-3.  This will print out a random token like this:
+3.  Metabase will print out a random token like this:
 
     ```
     ...
