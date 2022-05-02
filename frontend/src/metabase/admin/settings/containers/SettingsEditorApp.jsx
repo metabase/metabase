@@ -67,7 +67,7 @@ export default class SettingsEditorApp extends Component {
   }
 
   updateSetting = async (setting, newValue) => {
-    const { settingValues, updateSetting } = this.props;
+    const { settingValues, updateSetting, reloadSettings } = this.props;
 
     this.saveStatusRef.current.setSaving();
 
@@ -85,7 +85,9 @@ export default class SettingsEditorApp extends Component {
         );
       }
 
-      await updateSetting(setting);
+      if (!setting.disableDefaultUpdate) {
+        await updateSetting(setting);
+      }
 
       if (setting.onChanged) {
         await setting.onChanged(
@@ -94,6 +96,10 @@ export default class SettingsEditorApp extends Component {
           settingValues,
           this.handleChangeSetting,
         );
+      }
+
+      if (setting.disableDefaultUpdate) {
+        await reloadSettings();
       }
 
       this.saveStatusRef.current.setSaved();

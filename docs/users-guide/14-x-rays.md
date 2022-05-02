@@ -37,11 +37,11 @@ If you're an administrator, when you first connect a database to Metabase, Metab
 
 ![X-ray example](images/x-rays/suggestions.png)
 
-Click on one of these to see an x-ray.
+Click on one of these to see an X-ray.
 
 ![X-ray example](images/x-rays/x-rays-browse.png)
 
-You can see more suggested x-rays over on the right-hand side of the screen. Browsing through x-rays like this is a pretty fun way of getting a quick overview of your data.
+You can see more suggested X-rays over on the right-hand side of the screen. Browsing through X-rays like this is a pretty fun way of getting a quick overview of your data.
 
 ### Browsing through suggested X-rays
 

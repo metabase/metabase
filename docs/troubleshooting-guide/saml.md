@@ -35,7 +35,7 @@ This error will only occur if you're using **Signed SSO requests**. That is, in 
 - **SAML Keystore Password**: the password for opening the keystore.
 - **SAML Keystore Alias**: the alias for the key that Metabase should use for signing SAML requests.
 
-**Root cause**: The certificate in the keystore file does not have a private key.
+**Root cause**: The certificate in the keystore file lacks a private key.
 
 **Steps to take**:
 

@@ -4,6 +4,7 @@
             [metabase.config :as config]
             [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -124,7 +125,7 @@
   (let [sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
     (str/replace sql #", PRIMARY KEY \([^)]+\)" "")))
 
-(defmethod tx/format-name :presto-jdbc [_ table-or-field-name]
+(defmethod ddl.i/format-name :presto-jdbc [_ table-or-field-name]
   (u/snake-key table-or-field-name))
 
 ;; Presto doesn't support FKs, at least not adding them via DDL

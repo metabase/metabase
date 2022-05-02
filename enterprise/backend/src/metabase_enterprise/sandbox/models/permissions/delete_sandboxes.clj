@@ -30,7 +30,7 @@
                           {:group (u/the-id group-or-id), :conditions conditions}
                           e)))))))
 
-(defn- delete-gtaps-for-group-table! [{:keys [group-id table-id], :as context} changes]
+(defn- delete-gtaps-for-group-table! [{:keys [group-id table-id] :as _context} changes]
   (log/debugf "Deleting unneeded GTAPs for Group %d for Table %d. Graph changes: %s"
              group-id table-id (pr-str changes))
   (cond

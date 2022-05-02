@@ -13,7 +13,8 @@
             [metabase.driver :as driver]
             [metabase.models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field FieldValues
                                      LoginHistory Metric NativeQuerySnippet Permissions PermissionsGroup PermissionsGroupMembership
-                                     Pulse PulseCard PulseChannel Revision Segment Setting Table TaskHistory Timeline TimelineEvent User]]
+                                     PersistedInfo Pulse PulseCard PulseChannel Revision Segment Setting
+                                     Table TaskHistory Timeline TimelineEvent User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -60,6 +61,16 @@
   "Generate a random string of 20 uppercase letters."
   []
   (str/join (repeatedly 20 random-uppercase-letter)))
+
+(defn random-hash
+  "Generate a random hash of 44 characters to simulate a base64 encoded sha. Eg,
+  \"y6dkn65bbhRZkXj9Yyp0awCKi3iy/xeVIGa/eFfsszM=\""
+  []
+  (let [chars (concat (map char (range (int \a) (+ (int \a) 25)))
+                      (map char (range (int \A) (+ (int \A) 25)))
+                      (range 10)
+                      [\/ \+])]
+    (str (apply str (repeatedly 43 #(rand-nth chars))) "=")))
 
 (defn random-email
   "Generate a random email address."
@@ -148,6 +159,20 @@
    (fn [_] {:creator_id (user-id :crowberto)
             :name       (random-name)
             :content    "1 = 1"})
+
+   PersistedInfo
+   (fn [_] {:question_slug (random-name)
+            :query_hash    (random-hash)
+            :definition    {:table-name (random-name)
+                            :field-definitions (repeatedly
+                                                 4
+                                                 #(do {:field-name (random-name) :base-type "type/Text"}))}
+            :table_name    (random-name)
+            :active        true
+            :state         "persisted"
+            :refresh_begin (t/zoned-date-time)
+            :created_at    (t/zoned-date-time)
+            :creator_id    (rasta-id)})
 
    PermissionsGroup
    (fn [_] {:name (random-name)})

@@ -186,13 +186,10 @@ export default ComposedComponent =>
         // when _showNav is called for the first time
         if (window.document) {
           const nav = window.document.querySelector(".Nav");
-          const appBar = window.document.querySelector("#root > header");
-          if (show && nav && appBar) {
+          if (show && nav) {
             nav.classList.remove("hide");
-            appBar.classList.remove("hide");
-          } else if (!show && nav && appBar) {
+          } else if (!show && nav) {
             nav.classList.add("hide");
-            appBar.classList.add("hide");
           }
         }
       }
