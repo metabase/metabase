@@ -17,7 +17,7 @@ const { ALL_USERS_GROUP } = USER_GROUPS;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
 
-describeEE("scenarios > admin > permissions", () => {
+describeEE("scenarios > admin > permissions > data > downloads", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
