@@ -291,6 +291,13 @@
                                             {property ""})
                       property))))))
 
+    (testing "Don't change visibility_type when updating properties (#22287)"
+      (doseq [property [:caveats :points_of_interest :description]]
+        (mt/with-temp Table [table {:visibility_type "hidden"}]
+         (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
+                                                   {property ""})
+         (is (= :hidden (db/select-one-field :visibility_type Table :id (:id table)))))))
+
     (testing "A table can only be updated by a superuser"
       (mt/with-temp Table [table]
         (mt/user-http-request :rasta :put 403 (format "table/%d" (u/the-id table)) {:display_name "Userz"})))))
