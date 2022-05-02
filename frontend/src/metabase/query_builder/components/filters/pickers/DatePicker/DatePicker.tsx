@@ -296,6 +296,7 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onBack={onBack}
               operators={operators}
+              primaryColor={primaryColor}
               onFilterChange={onFilterChange}
             />
           ) : null}
