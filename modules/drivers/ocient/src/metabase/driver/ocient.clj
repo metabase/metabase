@@ -122,7 +122,11 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIMESTAMP]
   [_ rs _ i]
   (fn []
-    (.toLocalDateTime (.getObject rs i))))
+    (let [d (.getObject rs i)]
+      (if (nil? d)
+        nil
+        (.toLocalDateTime d)))))
+
   ;; (fn []
   ;;   (let [instant      (.toInstant (.getObject rs i))
   ;;         zone-id      (ZoneId/of "UTC")]
@@ -161,14 +165,11 @@
 
 (defmethod unprepare/unprepare-value [:ocient OffsetTime]
   [_ t]
-  (format "time('%s')" (t/format "HH:mm:ss.SSS VV" t)))
+  (format "time('%s')" (t/format "HH:mm:ss.SSS ZZZZZ" t)))
 
 (defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
   [_ t]
-  (let [s (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
-              ;; Ocient doesn't like `Z` to mean UTC
-              (str/replace #"Z$" "UTC"))]
-    (format "timestamp('%s')" s)))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)))
 
 (defmethod unprepare/unprepare-value [:ocient ZonedDateTime]
   [_ t]
