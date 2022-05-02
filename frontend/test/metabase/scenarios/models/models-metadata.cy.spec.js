@@ -218,7 +218,7 @@ describe("scenarios > models metadata", () => {
         drillFK({ id: 1 });
         cy.wait("@dataset");
         cy.findByTestId("object-detail").within(() => {
-          cy.findByText("1");
+          cy.findByRole("heading", { name: "1" });
           cy.findByText("Hudson Borer");
         });
 
@@ -230,7 +230,7 @@ describe("scenarios > models metadata", () => {
         drillFK({ id: 7 });
         cy.wait("@dataset");
         cy.findByTestId("object-detail").within(() => {
-          cy.findByText("7");
+          cy.findByRole("heading", { name: "7" });
           cy.findByText("perry.ruecker");
         });
       });
@@ -253,7 +253,7 @@ describe("scenarios > models metadata", () => {
           drillDashboardFK({ id: 1 });
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
-            cy.findByText("1");
+            cy.findByRole("heading", { name: "1" });
             cy.findByText("Hudson Borer");
           });
 
@@ -265,7 +265,7 @@ describe("scenarios > models metadata", () => {
           drillDashboardFK({ id: 7 });
           cy.wait("@dataset");
           cy.findByTestId("object-detail").within(() => {
-            cy.findByText("7");
+            cy.findByRole("heading", { name: "7" });
             cy.findByText("perry.ruecker");
           });
         });
