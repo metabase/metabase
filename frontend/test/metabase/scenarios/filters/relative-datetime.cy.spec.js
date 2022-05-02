@@ -158,6 +158,113 @@ describe("scenarios > question > relative-datetime", () => {
         cy.findByText("days").should("exist");
       });
     });
+
+    it("should change the starting from units to match (metabase#22222)", () => {
+      openOrdersTable();
+
+      openCreatedAt("Past");
+      addStartingFrom();
+      popover().within(() => cy.findByText("days").click());
+      popover()
+        .last()
+        .within(() => cy.findByText("months").click());
+      popover().within(() => {
+        cy.findByText("days ago").should("not.exist");
+        cy.findByText("months ago").should("exist");
+      });
+    });
+
+    it("should show correct datetime preview (metabase#22225)", () => {
+      openOrdersTable();
+
+      openCreatedAt("Past");
+      addStartingFrom();
+      popover().within(() => cy.findByText("days").click());
+      popover()
+        .last()
+        .within(() => cy.findByText("quarters").click());
+      popover().within(() => {
+        cy.findAllByDisplayValue("30")
+          .clear()
+          .type(1);
+        cy.findAllByDisplayValue("7")
+          .clear()
+          .type(6)
+          .blur();
+        const start = moment()
+          .startOf("quarter")
+          .add(-7, "quarter");
+        const end = start.clone().endOf("quarter");
+        cy.findByText(
+          `${start.format("MMM D, YYYY")} - ${end.format("MMM D, YYYY")}`,
+        ).should("exist");
+      });
+    });
+
+    it("should allow changing values with starting from (metabase#22227)", () => {
+      openOrdersTable();
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      openCreatedAt("Past");
+      addStartingFrom();
+      popover().within(() => cy.findByText("days").click());
+      popover()
+        .last()
+        .within(() => cy.findByText("months").click());
+      cy.findAllByDisplayValue("30")
+        .clear()
+        .type(1);
+      popover().within(() => {
+        cy.findByText("Add filter").click();
+      });
+      cy.wait("@dataset");
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.findByText("Created At Previous Month, starting 7 months ago").click();
+      popover().within(() => {
+        cy.findAllByDisplayValue("1")
+          .clear()
+          .type(3)
+          .blur();
+        cy.findByText("Update filter").click();
+      });
+      cy.wait("@dataset");
+
+      cy.findByText(
+        "Created At Previous 3 Months, starting 7 months ago",
+      ).click();
+      popover().within(() => {
+        cy.findAllByDisplayValue("7")
+          .clear()
+          .type(30)
+          .blur();
+        cy.findByText("Update filter").click();
+      });
+      cy.wait("@dataset");
+      cy.findByText(
+        "Created At Previous 3 Months, starting 30 months ago",
+      ).should("exist");
+    });
+
+    it("starting from option should set correct sign (metabase#22228)", () => {
+      openOrdersTable();
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      openCreatedAt("Next");
+      addStartingFrom();
+      popover().within(() => {
+        cy.findByText("Add filter").click();
+      });
+      cy.wait("@dataset");
+
+      cy.findByText("Created At Next 30 Days, starting 7 days ago").should(
+        "not.exist",
+      );
+      cy.findByText("Created At Next 30 Days, starting 7 days from now").should(
+        "exist",
+      );
+    });
   });
 });
 
@@ -183,23 +290,38 @@ const nativeSQL = values => {
   cy.wait("@dataset");
 };
 
+const openCreatedAt = tab => {
+  cy.findByTextEnsureVisible("Created At").click();
+  popover().within(() => {
+    cy.findByText("Filter by this column").click();
+    cy.findByText("Relative dates...").click();
+    tab && cy.findByText(tab).click();
+  });
+};
+
+const addStartingFrom = () => {
+  popover().within(() => {
+    cy.icon("ellipsis").click();
+  });
+  popover()
+    .last()
+    .within(() => cy.findByText("Starting from...").click());
+};
+
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   cy.findByText("testcol").click();
   cy.findByText("Filter by this column").click();
   cy.findByText("Relative dates...").click();
   popover().within(() => {
     cy.findByText(dir).click();
-    cy.icon("ellipsis").click();
   });
-  popover()
-    .last()
-    .within(() => cy.findByText("Starting from...").click());
+  addStartingFrom();
   popover().within(() => cy.findByText("days").click());
   popover()
     .last()
     .within(() => cy.findByText(unit).click());
   popover().within(() => {
-    cy.findByText(dir === "Past" ? "days ago" : "days from now").click();
+    cy.findByText(dir === "Past" ? `${unit} ago` : `${unit} from now`).click();
   });
   popover()
     .last()
