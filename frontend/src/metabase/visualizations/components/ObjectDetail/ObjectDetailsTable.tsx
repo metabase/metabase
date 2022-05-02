@@ -114,7 +114,7 @@ export function DetailsTable({
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
   const { rows, cols } = data;
-  const row = zoomedRow || rows[0];
+  const row = zoomedRow;
 
   return (
     <ObjectDetailsTable>

@@ -3,10 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
+import { connect } from "react-redux";
+import _ from "underscore";
+import cx from "classnames";
+import Draggable from "react-draggable";
+import { Grid, ScrollSync } from "react-virtualized";
+
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
-
 import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
@@ -25,15 +30,11 @@ import { fieldRefForColumn } from "metabase/lib/dataset";
 import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
 import { getScrollBarSize } from "metabase/lib/dom";
-
-import _ from "underscore";
-import cx from "classnames";
+import { zoomInRow } from "metabase/query_builder/actions";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import MiniBar from "./MiniBar";
 
-import { Grid, ScrollSync } from "react-virtualized";
-import Draggable from "react-draggable";
 import Ellipsified from "metabase/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
 
@@ -63,6 +64,10 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   }
   return rowIndexes;
 }
+
+const mapDispatchToProps = dispatch => ({
+  onZoomRow: objectId => dispatch(zoomInRow({ objectId })),
+});
 
 class TableInteractive extends Component {
   constructor(props) {
@@ -155,9 +160,7 @@ class TableInteractive extends Component {
       IDColumnIndex: pkIndex === -1 ? null : pkIndex,
       IDColumn: pkIndex === -1 ? null : data.cols[pkIndex],
     });
-    if (pkIndex !== -1) {
-      document.addEventListener("keydown", this.onKeyDown);
-    }
+    document.addEventListener("keydown", this.onKeyDown);
   };
 
   _getColumnSettings(props) {
@@ -432,18 +435,18 @@ class TableInteractive extends Component {
     }
   }
 
-  pkClick(rowIndex) {
-    const columnIndex = this.state.IDColumnIndex;
-    const clicked = this.getCellClickedObject(rowIndex, columnIndex);
-
-    return e => this.onVisualizationClick(clicked, e.currentTarget);
-  }
+  pkClick = rowIndex => {
+    const objectId = this.state.IDColumn
+      ? this.props.data.rows[rowIndex][this.state.IDColumnIndex]
+      : rowIndex;
+    return e => this.props.onZoomRow(objectId);
+  };
 
   onKeyDown = event => {
     const detailEl = this.detailShortcutRef.current;
     const visibleDetailButton =
       !!detailEl && Array.from(detailEl.classList).includes("show") && detailEl;
-    const canViewRowDetail = !!this.state.IDColumn && !!visibleDetailButton;
+    const canViewRowDetail = !this.props.isPivoted && !!visibleDetailButton;
 
     if (event.key === "Enter" && canViewRowDetail) {
       const hoveredRowIndex = Number(detailEl.dataset.showDetailRowindex);
@@ -452,7 +455,7 @@ class TableInteractive extends Component {
   };
 
   cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
-    const { data, settings } = this.props;
+    const { data, settings, isPivoted } = this.props;
     const { dragColIndex } = this.state;
     const { rows, cols } = data;
 
@@ -497,7 +500,7 @@ class TableInteractive extends Component {
         }}
         className={cx("TableInteractive-cellWrapper text-dark", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-          padLeft: columnIndex === 0 && !this.state.IDColumn,
+          padLeft: columnIndex === 0 && this.props.isPivoted,
           "TableInteractive-cellWrapper--lastColumn":
             columnIndex === cols.length - 1,
           "TableInteractive-emptyCell": value == null,
@@ -523,13 +526,9 @@ class TableInteractive extends Component {
             : undefined
         }
         onMouseEnter={
-          this.state.IDColumn
-            ? e => this.handleHoverRow(e, rowIndex)
-            : undefined
+          !isPivoted ? e => this.handleHoverRow(e, rowIndex) : undefined
         }
-        onMouseLeave={
-          this.state.IDColumn ? e => this.handleLeaveRow() : undefined
-        }
+        onMouseLeave={!isPivoted ? e => this.handleLeaveRow() : undefined}
         tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
@@ -558,7 +557,7 @@ class TableInteractive extends Component {
   }
 
   getColumnPositions = () => {
-    let left = this.state.IDColumn ? SIDEBAR_WIDTH : 0;
+    let left = !this.props.isPivoted ? SIDEBAR_WIDTH : 0;
     return this.props.data.cols.map((col, index) => {
       const width = this.getColumnWidth({ index });
       const pos = {
@@ -577,7 +576,7 @@ class TableInteractive extends Component {
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
-    let left = this.state.IDColumn ? SIDEBAR_WIDTH : 0;
+    let left = !this.props.isPivoted ? SIDEBAR_WIDTH : 0;
     const lefts = indexes.map(index => {
       const thisLeft = left;
       left += columnPositions[index].width;
@@ -711,7 +710,7 @@ class TableInteractive extends Component {
             "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-              padLeft: columnIndex === 0 && !this.state.IDColumn,
+              padLeft: columnIndex === 0 && !this.props.isPivoted,
               "TableInteractive-cellWrapper--lastColumn":
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
@@ -798,13 +797,13 @@ class TableInteractive extends Component {
   };
 
   getDisplayColumnWidth = ({ index: displayIndex }) => {
-    if (this.state.IDColumn && displayIndex === 0) {
+    if (!this.props.isPivoted && displayIndex === 0) {
       return SIDEBAR_WIDTH;
     }
 
-    // if we have an ID column, we've added a column of empty cells and need to shift
+    // if this is not a pivot table, we've added a column of empty cells and need to shift
     // the display index to get the data index
-    const dataIndex = this.state.IDColumn ? displayIndex - 1 : displayIndex;
+    const dataIndex = !this.props.isPivoted ? displayIndex - 1 : displayIndex;
 
     return this.getColumnWidth({ index: dataIndex });
   };
@@ -873,6 +872,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
+      isPivoted,
     } = this.props;
 
     if (!width || !height) {
@@ -880,7 +880,7 @@ class TableInteractive extends Component {
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
-    const gutterColumn = this.state.IDColumn ? 1 : 0;
+    const gutterColumn = !isPivoted ? 1 : 0;
 
     return (
       <ScrollSync>
@@ -1043,6 +1043,7 @@ export default _.compose(
   ExplicitSize({
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
+  connect(null, mapDispatchToProps),
   memoizeClass(
     "_getCellClickedObjectCached",
     "_getHeaderClickedObjectCached",

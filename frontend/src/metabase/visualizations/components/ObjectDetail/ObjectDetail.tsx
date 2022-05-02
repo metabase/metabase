@@ -3,6 +3,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Question from "metabase-lib/lib/Question";
+import { isPK } from "metabase/lib/schema_metadata";
 import { Table } from "metabase-types/types/Table";
 import { ForeignKey } from "metabase-types/api/foreignKey";
 import { DatasetData } from "metabase-types/types/Dataset";
@@ -34,7 +35,12 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { getObjectName, getIdValue, getSingleResultsRow } from "./utils";
+import {
+  getObjectName,
+  getDisplayId,
+  getIdValue,
+  getSingleResultsRow,
+} from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
@@ -214,8 +220,14 @@ export function ObjectDetailFn({
     return null;
   }
 
-  const objectName = getObjectName({ table, question });
+  const objectName = getObjectName({
+    table,
+    question,
+    cols: data.cols,
+    zoomedRow,
+  });
 
+  const displayId = getDisplayId({ cols: data.cols, zoomedRow });
   const hasRelationships = tableForeignKeys && !!tableForeignKeys.length;
 
   return (
@@ -235,7 +247,7 @@ export function ObjectDetailFn({
             <ObjectDetailHeader
               canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
-              objectId={zoomedRowID}
+              objectId={displayId}
               canZoomPreviousRow={canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
@@ -262,7 +274,7 @@ export function ObjectDetailFn({
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
-  objectId: ObjectId;
+  objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   viewPreviousObjectDetail: () => void;
@@ -284,7 +296,10 @@ export function ObjectDetailHeader({
     <div className="Grid border-bottom relative">
       <div className="Grid-cell">
         <h2 className="p3">
-          {objectName} {objectId}
+          {objectName}
+          {objectId !== null && (
+            <span className="text-medium ml1"> {objectId}</span>
+          )}
         </h2>
       </div>
       <div className="flex align-center">

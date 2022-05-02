@@ -2,22 +2,32 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { singularize } from "metabase/lib/formatting";
-import { isPK } from "metabase/lib/schema_metadata";
+import { isPK, isEntityName } from "metabase/lib/schema_metadata";
 import { Table } from "metabase-types/types/Table";
 import Question from "metabase-lib/lib/Question";
-import { DatasetData } from "metabase-types/types/Dataset";
+import { DatasetData, Column } from "metabase-types/types/Dataset";
 
 import { ObjectId } from "./types";
 
 export interface GetObjectNameArgs {
   table: Table | null;
   question: Question;
+  cols: Column[];
+  zoomedRow: unknown[] | undefined;
 }
 
 export const getObjectName = ({
   table,
   question,
+  cols,
+  zoomedRow,
 }: GetObjectNameArgs): string => {
+  const entityNameColumn = cols && cols?.findIndex(isEntityName);
+
+  if (zoomedRow?.length && zoomedRow[entityNameColumn]) {
+    return zoomedRow[entityNameColumn] as string;
+  }
+
   const tableObjectName = table && table.objectName();
   if (tableObjectName) {
     return tableObjectName;
@@ -26,7 +36,41 @@ export const getObjectName = ({
   if (questionName) {
     return singularize(questionName);
   }
-  return t`Unknown`;
+  return t`Item Detail`;
+};
+
+export interface GetDisplayIdArgs {
+  table: Table | null;
+  question: Question;
+  cols: Column[];
+  zoomedRow: unknown[];
+}
+
+export const getDisplayId = ({
+  table,
+  question,
+  cols,
+  zoomedRow,
+}: GetDisplayIdArgs): ObjectId | null => {
+  const hasSinglePk =
+    cols.reduce(
+      (pks: number, col: Column) => (isPK(col) ? pks + 1 : pks),
+      0,
+    ) === 1;
+
+  if (hasSinglePk) {
+    const pkColumn = cols.findIndex(isPK);
+    return zoomedRow[pkColumn] as ObjectId;
+  }
+
+  const hasEntityName = cols && !!cols?.find(isEntityName);
+
+  if (hasEntityName) {
+    return null;
+  }
+
+  // TODO: respect user column reordering
+  return zoomedRow[0] as ObjectId;
 };
 
 export interface GetIdValueArgs {
