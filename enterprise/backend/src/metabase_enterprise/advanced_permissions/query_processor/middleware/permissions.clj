@@ -4,7 +4,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]))
 
 (def ^:private max-rows-in-limited-downloads 10000)
@@ -119,7 +119,7 @@
         (when (and (is-download? query)
                    (= download-perms-level :none))
           (throw (ex-info (tru "You do not have permissions to download the results of this query.")
-                          {:type error-type/missing-required-permissions
+                          {:type qp.error-type/missing-required-permissions
                            :permissions-error? true})))
         (qp query
             (fn [metadata] (rff (some-> metadata (assoc :download_perms download-perms-level))))

@@ -71,7 +71,9 @@
           (when (and (:refingerprint database) (should-refingerprint-fields? results))
             (analyze/refingerprint-db! database)))))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Sync and analyze the database"}
+  SyncAndAnalyzeDatabase [job-context]
   (sync-and-analyze-database! job-context))
 
 (defn- update-field-values!
@@ -87,7 +89,9 @@
         (field-values/update-field-values! database)
         (log/info (trs "Skipping update, automatic Field value updates are disabled for Database {0}." database-id))))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} UpdateFieldValues [job-context]
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Update field values"}
+  UpdateFieldValues [job-context]
   (update-field-values! job-context))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

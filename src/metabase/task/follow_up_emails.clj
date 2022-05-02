@@ -52,8 +52,7 @@
   ^java.time.temporal.Temporal []
   (db/select-one-field :date_joined User, {:order-by [[:date_joined :asc]]}))
 
-;; this sends out a general 2 week email follow up email
-(jobs/defjob FollowUpEmail [_]
+(jobs/defjob ^{:doc "Sends out a general 2 week email follow up email"} FollowUpEmail [_]
   ;; if we've already sent the follow-up email then we are done
   (when-not (follow-up-email-sent)
     ;; figure out when we consider the instance created
@@ -127,8 +126,11 @@
         (finally
           (abandonment-email-sent true))))))
 
-;; this sends out an email any time after 30 days if the instance has stopped being used for 14 days
-(jobs/defjob AbandonmentEmail [_]
+
+(jobs/defjob
+  ^{:doc "Sends out an email any time after 30 days if the instance has stopped being used for 14 days"}
+  AbandonmentEmail
+  [_]
   ;; if we've already sent the abandonment email then we are done
   (when-not (abandonment-email-sent)
     ;; we need access to email AND the instance must be opted into anonymous tracking

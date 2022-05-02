@@ -10,9 +10,9 @@
             [metabase.util.i18n :refer [trs]])
   (:import [org.graalvm.polyglot Context HostAccess Source Value]))
 
-(defn ^Context context
+(defn context
   "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
-  []
+  ^Context []
   (.. (Context/newBuilder (into-array String ["js"]))
       ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
       (option "engine.WarnInterpreterOnly" "false")
@@ -39,16 +39,16 @@
                       {:source source})))
     (.eval context (.build (Source/newBuilder "js" resource)))))
 
-(defn ^Value execute-fn-name
+(defn execute-fn-name
   "Executes `js-fn-name` in js context with args"
-  [^Context context js-fn-name & args]
+  ^Value [^Context context js-fn-name & args]
   (let [fn-ref (.eval context "js" js-fn-name)
         args   (into-array Object args)]
     (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
     (.execute fn-ref args)))
 
-(defn ^Value execute-fn
+(defn execute-fn
   "fn-ref should be an executable org.graalvm.polyglot.Value return from a js engine. Invoke this function with args."
-  [^Value fn-ref & args]
+  ^Value [^Value fn-ref & args]
   (assert (.canExecute fn-ref) "cannot execute function reference")
   (.execute fn-ref (object-array args)))
