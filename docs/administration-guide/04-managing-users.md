@@ -28,23 +28,24 @@ To reactivate a deactivated account, click the **Deactivated** radio button at t
 
 Metabase doesn't explicitly support account deletion. Instead, Metabase deactivates accounts so people can't log in to them, while it preserves any questions, models, dashboards, and other items created by those accounts.
 
-If you want to delete an account because the account information was set up incorrectly, you can [deactivate](#deactivating-an-account) the old account and create a new one instead.
+If you want to delete an account because the account information was set up incorrectly, you can deactivate the old account and create a new one instead.
 
 1. Change the name and email associated with the old account.
-2. Deactivate the old account.
-3. Create a new account with the person's correct information.
+2. [Deactivate](#deactivating-an-account) the old account.
+3. [Create a new account](#creating-accounts-for-your-team) with the person's correct information.
 
 ### Editing an account
 
 You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing someone's email address, because _this will change the address they’ll use to log in to Metabase_.
 
-### Checking an account's auth method
+### Checking someone's auth method
 
-- Search for a user and look for an icon beside their name. 
+Search for a person and look for an icon beside their name.
+
 - If they log in using Google credentials, Metabase displays a Google icon. 
 - If they log in using an email address and password stored in Metabase, no icon is shown. 
 
-Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of SSO, the latter's icon will _not_ show up next to their name.
+Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of [SSO](sso.md), the latter's icon will _not_ show up next to their name.
 
 ### Resetting someone’s password
 
@@ -54,7 +55,7 @@ To reset a password for someone, just click the three dots icon next to their ac
 
 ### Resetting the admin password
 
-If you're using Metabase Cloud, contact support to reset your Admin password.
+If you're using Metabase Cloud, [contact support](https://www.metabase.com/help-premium/) to reset your admin password.
 
 If you're a Metabase admin and have access to the server console, you can get Metabase to send you a password reset token:
 
