@@ -284,7 +284,8 @@ const setRelativeDatetimeValue = value => {
   cy.findAllByTestId("relative-datetime-value")
     .clear()
     .clear() // Included twice because it's buggy sometimes
-    .type(value);
+    .type(value)
+    .blur();
 };
 
 const setStartingFromUnit = unit => {
@@ -298,7 +299,8 @@ const setStartingFromValue = value => {
   cy.findAllByTestId("starting-from-value")
     .clear()
     .clear() // Included twice because it's buggy sometimes
-    .type(value);
+    .type(value)
+    .blur();
 };
 
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
