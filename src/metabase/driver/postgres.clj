@@ -11,6 +11,8 @@
             [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.ddl.postgres :as ddl.postgres]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -32,6 +34,9 @@
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
 
+(comment
+  ddl.postgres/keep-me)
+
 (driver/register! :postgres, :parent :sql-jdbc)
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
@@ -41,6 +46,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
+
+(defmethod driver/database-supports? [:postgres :persist-models]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:postgres :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
@@ -434,6 +447,23 @@
    (keyword "time without time zone")     :type/Time
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
+
+(doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
+                             :type/Boolean             "BOOL"
+                             :type/Date                "DATE"
+                             :type/DateTime            "TIMESTAMP"
+                             :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
+                             :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
+                             :type/Decimal             "DECIMAL"
+                             :type/Float               "FLOAT"
+                             :type/Integer             "INTEGER"
+                             :type/IPAddress           "INET"
+                             :type/Text                "TEXT"
+                             :type/Time                "TIME"
+                             :type/TimeWithTZ          "TIME WITH TIME ZONE"
+                             :type/UUID                "UUID"}]
+  ;; todo: we get DB types in the metadata, let's persist these in model metadata
+  (defmethod ddl.i/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver column]

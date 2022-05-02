@@ -35,6 +35,7 @@
      (There are several variations of this macro; see documentation below for more details.)"
   (:require [clojure.test :as t]
             [colorize.core :as colorize]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.query-processor :as qp]
             [metabase.test-runner.init :as test-runner.init]
             [metabase.test.data.impl :as data.impl]
@@ -186,7 +187,7 @@
   (assert ((some-fn keyword? string? symbol?) a-name)
     (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
          " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
-  (tx/format-name (tx/driver) (name a-name)))
+  (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
