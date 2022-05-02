@@ -114,7 +114,7 @@
                               :right-join                      true
                               :inner-join                      true
                               :nested-queries                  true
-                              :regex                           true
+                              :regex                           false
                               :binning                         true
                               :foreign-keys                    (not config/is-test?)}]
   (defmethod driver/supports? [:ocient feature] [_ _] supported?))
