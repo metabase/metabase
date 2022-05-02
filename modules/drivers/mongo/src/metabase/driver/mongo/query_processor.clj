@@ -132,8 +132,13 @@
 
       (isa? coercion :Coercion/YYYYMMDDHHMMSSString->Temporal)
       {"$dateFromString" {:dateString field-name
-                          :format "%Y%m%d%H%M%S"
-                          :onError field-name}}
+                          :format     "%Y%m%d%H%M%S"
+                          :onError    field-name}}
+
+      ;; mongo only supports datetime
+      (isa? coercion :Coercion/ISO8601->DateTime)
+      {"$dateFromString" {:dateString field-name
+                          :onError    field-name}}
 
       :else field-name)))
 

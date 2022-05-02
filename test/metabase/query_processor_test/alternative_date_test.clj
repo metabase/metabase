@@ -2,6 +2,7 @@
   "Tests for columns that mimic dates: integral types as UNIX timestamps and string columns as ISO8601DateTimeString and
   related types."
   (:require [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -154,6 +155,18 @@
      ["bar" "2008-10-19 10:23:54" "2008-10-19"]
      ["baz" "2012-10-19 10:23:54" "2012-10-19"]]]])
 
+(mt/defdataset mongo-dates
+  [["dates" [{:field-name     "name"
+              :base-type      :type/Text
+              :effective-type :type/Text}
+             {:field-name        "ts"
+              :base-type         :type/Text
+              :effective-type    :type/DateTime
+              :coercion-strategy :Coercion/ISO8601->DateTime}]
+    [["foo" "2004-10-19 10:23:54"]
+     ["bar" "2012-10-19T10:23:54Z"]
+     ["baz" "2008-10-19"]]]])
+
 (mt/defdataset string-times
   [["times" [{:field-name "name"
               :effective-type :type/Text
@@ -194,7 +207,7 @@
                  ;; order seems to be nondeterministic
                  (set (mt/rows (mt/dataset just-dates
                                  (qp/process-query
-                                   (assoc (mt/mbql-query just-dates)
+                                   (assoc (mt/mbql-query just_dates)
                                           :middleware {:format-rows? false})))))))))
       (testing "oracle doesn't have a time type"
         (mt/test-drivers #{:oracle}
@@ -204,8 +217,9 @@
                  ;; string-times dataset has three text fields, ts, d, t for timestamp, date, and time
                  (mt/rows (mt/dataset just-dates
                             (qp/process-query
-                              (assoc (mt/mbql-query just-dates)
+                              (assoc (mt/mbql-query just_dates)
                                      :middleware {:format-rows? false}))))))))
+
       (testing "sqlite returns as strings"
         (mt/test-drivers #{:sqlite}
           (is (= [[1 "foo" "2004-10-19 10:23:54" "2004-10-19" "10:23:54"]
@@ -215,16 +229,33 @@
                  (mt/rows (mt/dataset string-times
                             (qp/process-query
                               (assoc (mt/mbql-query times)
-                                     :middleware {:format-rows? false})))))))))
+                                     :middleware {:format-rows? false}))))))))
+
+     (testing "mongo only supports datetime"
+       (mt/test-drivers #{:mongo}
+         (is (= [[1 "foo" (t/instant "2004-10-19T10:23:54Z")]
+                 [2 "bar" (t/instant "2012-10-19T10:23:54Z")]
+                 [3 "baz" (t/instant "2008-10-19T00:00:00Z")]]
+                (mt/rows (mt/dataset mongo-dates
+                                     (qp/process-query
+                                      (assoc (mt/mbql-query dates)
+                                             :middleware {:format-rows? false})))))))))
+
     (testing "are queryable as dates"
-      (testing "a datetime field"
-        ;; TODO: why does this fail on oracle? gives a NPE
-        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+      (testing "a datetime field - mongo driver"
+        (mt/test-drivers #{:mongo}
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
                                    (mt/run-mbql-query times
-                                     {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
-      (testing "a date field"
+                                     {:filter [:= $ts "2008-10-19"]}))))))))
+      (testing "a datetime field - SQL drivers"
+        ;; TODO: why does this fail on oracle? gives a NPE
+        (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
+         (is (= 1
+                (count (mt/rows (mt/dataset string-times
+                                  (mt/run-mbql-query times
+                                    {:filter   [:= [:datetime-field $ts :day] "2008-10-19"]}))))))))
+      (testing "a date field - SQL drviers"
         (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :sparksql)
           (is (= 1
                  (count (mt/rows (mt/dataset string-times
