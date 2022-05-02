@@ -55,7 +55,7 @@ To test this out, we’ll open up a new incognito browser window and log in with
 
 ![Filtered table](images/sandboxing/filtered-table.png)
 
-If this user views any charts, dashboards, or even automated x-ray explorations that include this sandboxed Orders data, those will also be correctly filtered to only show the data they’re allowed to see.
+If this user views any charts, dashboards, or even automated X-ray explorations that include this sandboxed Orders data, those will also be correctly filtered to only show the data they’re allowed to see.
 
 Another great thing about sandboxing is that this user can still use all of the easy and powerful exploration and charting features of Metabase to explore this sandboxed data. For example, they can create a chart like this one to see a breakdown of their orders by product type:
 
