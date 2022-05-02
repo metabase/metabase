@@ -6,6 +6,15 @@ on:
     branches: 
       - trivy
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".circleci/**"
+
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -23,11 +32,8 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: 'docker.io/metabase/metabase:${{ github.sha }}'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
