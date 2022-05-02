@@ -245,8 +245,8 @@
       (testing "a datetime field - mongo driver"
         (mt/test-drivers #{:mongo}
           (is (= 1
-                 (count (mt/rows (mt/dataset string-times
-                                   (mt/run-mbql-query times
+                 (count (mt/rows (mt/dataset mongo-dates
+                                   (mt/run-mbql-query dates
                                      {:filter [:= $ts "2008-10-19"]}))))))))
       (testing "a datetime field - SQL drivers"
         ;; TODO: why does this fail on oracle? gives a NPE
