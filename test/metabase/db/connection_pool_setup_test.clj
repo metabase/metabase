@@ -24,7 +24,7 @@
                     :h2
                     {:subprotocol "h2"
                      :subname     (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))
-                     :classname   "org.h2_v1_4_197.Driver"})))
+                     :classname   "org.h2.Driver"})))
       (testing "from a connection URL"
         (test* :h2 (mdb.data-source/raw-connection-string->DataSource
                     (format "jdbc:h2:mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))))))))

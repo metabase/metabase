@@ -16,7 +16,7 @@
            [java.net InetSocketAddress ServerSocket Socket]
            org.apache.sshd.server.forward.AcceptAllForwardingFilter
            org.apache.sshd.server.SshServer
-           org.h2_v1_4_197.tools.Server))
+           org.h2.tools.Server))
 
 (def ^:private ssh-username "jsmith")
 (def ^:private ssh-password "supersecret")
