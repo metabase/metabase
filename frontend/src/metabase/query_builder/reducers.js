@@ -390,12 +390,17 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card } }) => ({
-        ...state,
-        display: card.display,
-        result_metadata: card.result_metadata,
-        visualization_settings: card.visualization_settings,
-      }),
+      next: (state, { payload: { card, queryResults } }) => {
+        const [result] = queryResults;
+        const { dataset } = result.data;
+        return {
+          ...state,
+          display: card.display,
+          result_metadata: card.result_metadata,
+          visualization_settings: card.visualization_settings,
+          isBasedOnModel: !!dataset,
+        };
+      },
     },
 
     [CREATE_PUBLIC_LINK]: {

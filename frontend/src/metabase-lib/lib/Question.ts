@@ -335,6 +335,14 @@ export default class Question {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }
 
+  isBasedOnModel() {
+    return this._card && this._card.isBasedOnModel;
+  }
+
+  setIsBasedOnModel(isBasedOnModel) {
+    return this.setCard(assoc(this.card(), "isBasedOnModel", isBasedOnModel));
+  }
+
   // locking the display prevents auto-selection
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);

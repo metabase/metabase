@@ -775,7 +775,7 @@ export class FieldDimension extends Dimension {
     return typeof this._fieldIdOrName === "string";
   }
 
-  _createField(fieldInfo, { hydrate = false } = {}): Field {
+  _createField(fieldInfo, { hydrate = false, isModel = false } = {}): Field {
     const field = new Field({
       ...fieldInfo,
       metadata: this._metadata,
@@ -787,7 +787,15 @@ export class FieldDimension extends Dimension {
     // we need to repeat the hydration again.
     // We should definitely move it out of there
     if (hydrate) {
-      field.table = this._metadata.table(field.table_id);
+      let tableId = field.table_id;
+      if (isModel) {
+        const query = this.query();
+        const cardId = query?.sourceTableId();
+        if (typeof cardId === "string" && cardId.startsWith("card__")) {
+          tableId = cardId;
+        }
+      }
+      field.table = this._metadata.table(tableId);
 
       if (field.isFK()) {
         field.target = this._metadata.field(field.fk_target_field_id);
@@ -824,7 +832,11 @@ export class FieldDimension extends Dimension {
 
     // Field result metadata can be overwritten for models,
     // so we need to merge regular field object with the model overwrites
-    const shouldMergeFieldResultMetadata = question?.isDataset();
+    const isJoined = !!this.joinAlias();
+    const shouldMergeFieldResultMetadata =
+      !isJoined &&
+      !!question &&
+      (question.isDataset() || question.isBasedOnModel());
 
     if (this.isIntegerFieldId()) {
       const field = this._metadata?.field(this.fieldIdOrName());
@@ -837,7 +849,10 @@ export class FieldDimension extends Dimension {
           field instanceof Field ? field.getPlainObject() : field,
           fieldMetadata,
         );
-        return this._createField(fieldObject, { hydrate: true });
+        return this._createField(fieldObject, {
+          hydrate: true,
+          isModel: shouldMergeFieldResultMetadata,
+        });
       }
 
       if (fieldMetadata) {
@@ -866,7 +881,10 @@ export class FieldDimension extends Dimension {
             field instanceof Field ? field.getPlainObject() : field,
             fieldMetadata,
           );
-          return this._createField(fieldObject, { hydrate: true });
+          return this._createField(fieldObject, {
+            hydrate: true,
+            isModel: shouldMergeFieldResultMetadata,
+          });
         }
       }
 

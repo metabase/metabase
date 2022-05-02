@@ -29,6 +29,10 @@ import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import Utils from "metabase/lib/utils";
 import { defer } from "metabase/lib/promise";
+import {
+  isVirtualCardId,
+  getQuestionIdFromVirtualTableId,
+} from "metabase/lib/saved-questions";
 
 import Question from "metabase-lib/lib/Question";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
@@ -416,6 +420,7 @@ async function verifyMatchingDashcardAndParameters({
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
+  // eslint-disable-next-line complexity
   return async (dispatch, getState) => {
     const queryParams = location.query;
     // do this immediately to ensure old state is cleared before the user sees it
@@ -665,7 +670,30 @@ export const initializeQB = (location, params) => {
       );
     }
 
+    let isBasedOnModel = false;
+    let extraMetadata = [];
+    if (question && question.isSaved() && question.isStructured()) {
+      const sourceTableId = question.query().rootTableId();
+      const isNestedQuestion = isVirtualCardId(sourceTableId);
+      if (isNestedQuestion) {
+        const sourceCard = await loadCard(
+          getQuestionIdFromVirtualTableId(sourceTableId),
+        );
+        if (sourceCard) {
+          isBasedOnModel = sourceCard.dataset;
+          if (isBasedOnModel) {
+            extraMetadata = sourceCard.result_metadata;
+          }
+        }
+      }
+    }
+
     card = question && question.card();
+    if (card) {
+      card.isBasedOnModel = isBasedOnModel;
+      const resultMetadata = card.result_metadata ?? [];
+      card.result_metadata = [...extraMetadata, ...resultMetadata];
+    }
     const metadata = getMetadata(getState());
     const parameters = getValueAndFieldIdPopulatedParametersFromCard(
       card,
@@ -1077,7 +1105,7 @@ export const updateQuestion = (
       // When the dataset query changes, we should loose the dataset flag,
       // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
-        newQuestion = newQuestion.setDataset(false);
+        newQuestion = newQuestion.setDataset(false).setIsBasedOnModel(true);
         dispatch(onCloseQuestionDetails());
       }
     }
