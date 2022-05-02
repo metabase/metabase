@@ -819,7 +819,9 @@ export const loadMetadataForCard = card => (dispatch, getState) => {
   if (question.isDataset()) {
     queries.push(question.composeDataset().query());
   }
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(queries, question.dependentMetadata()),
+  );
 };
 
 function hasNewColumns(question, queryResult) {
