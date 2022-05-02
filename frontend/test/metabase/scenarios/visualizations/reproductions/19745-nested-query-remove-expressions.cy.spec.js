@@ -1,11 +1,22 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  editDashboard,
+  getDashboardCard,
+  getNotebookStep,
+  modal,
+  openNotebook,
+  restore,
+  saveDashboard,
+  selectDashboardFilter,
+  visitDashboard,
+  visitQuestion,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   display: "table",
-  dataset_query: {
+  query: {
     "source-query": {
       "source-table": PRODUCTS_ID,
       aggregation: [
@@ -21,13 +32,48 @@ const questionDetails = {
   },
 };
 
+const filterDetails = {
+  id: "b6f1865b",
+  name: "Date filter",
+  slug: "date",
+  type: "date/month-year",
+  sectionId: "date",
+};
+
+const dashboardDetails = {
+  name: "Filters",
+  parameters: [filterDetails],
+};
+
 describe("issue 19745", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
   });
 
-  it("should remove unneeded query nesting when removing all custom expressions (metabase#19745)", () => {
-    visitQuestionAdhoc(questionDetails);
+  it("should unwrap the inner query when removing all custom expressions (metabase#19745)", () => {
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { card_id, dashboard_id } }) => {
+        visitQuestion(card_id);
+        openNotebook();
+
+        // this should modify the query and remove the second stage
+        getNotebookStep("expression", { stage: 1 }).within(() =>
+          cy.findByTestId("remove-step").click({ force: true }),
+        );
+        cy.findByText("Save").click();
+        modal().within(() => cy.button("Save").click());
+        cy.wait("@updateQuestion");
+
+        // as we select all columns in the first stage of the query,
+        // it should be possible to map a filter to a selected column
+        visitDashboard(dashboard_id);
+        editDashboard();
+        cy.findByText("Date filter").click();
+        selectDashboardFilter(getDashboardCard(), "Created At");
+        saveDashboard();
+      },
+    );
   });
 });
