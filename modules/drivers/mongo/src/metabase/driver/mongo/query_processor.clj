@@ -10,6 +10,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
@@ -140,7 +141,19 @@
       {"$dateFromString" {:dateString field-name
                           :onError    field-name}}
 
-      :else field-name)))
+
+      (isa? coercion :Coercion/ISO8601->Date)
+      (throw (ex-info (tru "Driver Mongo does not support {0}" coercion)
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+
+      (isa? coercion :Coercion/ISO8601->Time)
+      (throw (ex-info (tru "Driver Mongo does not support {0}" coercion)
+                      {:type              qp.error-type/unsupported-feature
+                       :coercion-strategy coercion}))
+
+     :else field-name)))
 
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
