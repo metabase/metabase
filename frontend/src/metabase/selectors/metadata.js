@@ -123,20 +123,15 @@ export const getMetadata = createSelector(
     hydrate(meta.tables, "db", t => meta.database(t.db_id || t.db));
     hydrate(meta.tables, "schema", t => meta.schema(t.schema));
 
-    // NOTE: special handling for schemas
-    // This is pretty hacky
-    // hydrateList(meta.databases, "schemas", meta.schemas);
     hydrate(meta.databases, "schemas", database => {
       if (database.schemas) {
-        // use the database schemas if they exist
         return database.schemas.map(s => meta.schema(s));
       }
-      // otherwise use any loaded schemas that match the database id
       return Object.values(meta.schemas).filter(
         s => s.database && s.database.id === database.id,
       );
     });
-    // hydrateList(meta.schemas, "tables", meta.tables);
+
     hydrate(meta.schemas, "tables", schema =>
       schema.tables
         ? // use the schema tables if they exist
