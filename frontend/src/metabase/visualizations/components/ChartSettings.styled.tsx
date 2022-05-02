@@ -2,11 +2,11 @@ import styled from "@emotion/styled";
 import Radio from "metabase/core/components/Radio";
 
 export const SectionContainer = styled.div`
-  ${Radio.RadioGroupVarients.join(", ")} {
+  ${Radio.RadioGroupVariants.join(", ")} {
     flex-wrap: wrap;
   }
 
-  ${Radio.RadioContainerVarients.join(", ")} {
+  ${Radio.RadioContainerVariants.join(", ")} {
     margin-bottom: 0.5rem;
   }
 `;

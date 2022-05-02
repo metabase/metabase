@@ -26,7 +26,7 @@ export const AnimatableContent = styled.div`
 const CONTENT_PADDING = "24px";
 
 const FormContainer = styled.div`
-  ${Radio.RadioGroupVarients.join(", ")} {
+  ${Radio.RadioGroupVariants.join(", ")} {
     color: ${color("text-dark")};
   }
 
