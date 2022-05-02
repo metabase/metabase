@@ -20,8 +20,6 @@ describe("issue 18512", () => {
   });
 
   it("should join two saved questions with the same implicit/explicit grouped field (metabase#18512)", () => {
-    cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-
     cy.createQuestion(question1);
     cy.createQuestion(question2);
 
@@ -30,10 +28,9 @@ describe("issue 18512", () => {
 
     cy.findByText("18512#1").click();
     cy.icon("join_left_outer").click();
-    cy.wait("@schema");
 
     popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
+      cy.findByTextEnsureVisible("Sample Database").click({ force: true });
       cy.findByTextEnsureVisible("Saved Questions").click();
       cy.findByText("18512#2").click();
     });
