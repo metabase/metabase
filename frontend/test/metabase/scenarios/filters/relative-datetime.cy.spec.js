@@ -84,23 +84,10 @@ describe("scenarios > question > relative-datetime", () => {
       cy.wait("@dataset");
 
       cy.findByText("Created At Previous 30 Days").click();
-      cy.findByDisplayValue("30")
-        .clear()
-        .type(1)
-        .blur();
-      cy.findByText("day").click();
-      popover()
-        .last()
-        .within(() => cy.findByText("year").click());
-      popover().within(() => cy.icon("ellipsis").click());
-      popover()
-        .last()
-        .within(() => cy.findByText("Starting from...").click());
-      cy.findAllByDisplayValue("1")
-        .last()
-        .clear()
-        .type(2)
-        .blur();
+      setRelativeDatetimeValue(1);
+      setRelativeDatetimeUnit("year");
+      addStartingFrom();
+      setStartingFromValue(2);
       cy.button("Add filter").should("be.enabled");
     });
   });
@@ -164,10 +151,7 @@ describe("scenarios > question > relative-datetime", () => {
 
       openCreatedAt("Past");
       addStartingFrom();
-      popover().within(() => cy.findByText("days").click());
-      popover()
-        .last()
-        .within(() => cy.findByText("months").click());
+      setRelativeDatetimeUnit("months");
       popover().within(() => {
         cy.findByText("days ago").should("not.exist");
         cy.findByText("months ago").should("exist");
@@ -179,18 +163,10 @@ describe("scenarios > question > relative-datetime", () => {
 
       openCreatedAt("Past");
       addStartingFrom();
-      popover().within(() => cy.findByText("days").click());
-      popover()
-        .last()
-        .within(() => cy.findByText("quarters").click());
+      setRelativeDatetimeUnit("quarters");
+      setRelativeDatetimeValue(1);
+      setStartingFromValue(6);
       popover().within(() => {
-        cy.findAllByDisplayValue("30")
-          .clear()
-          .type(1);
-        cy.findAllByDisplayValue("7")
-          .clear()
-          .type(6)
-          .blur();
         const start = moment()
           .startOf("quarter")
           .add(-7, "quarter");
@@ -207,13 +183,8 @@ describe("scenarios > question > relative-datetime", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       openCreatedAt("Past");
       addStartingFrom();
-      popover().within(() => cy.findByText("days").click());
-      popover()
-        .last()
-        .within(() => cy.findByText("months").click());
-      cy.findAllByDisplayValue("30")
-        .clear()
-        .type(1);
+      setRelativeDatetimeUnit("months");
+      setRelativeDatetimeValue(1);
       popover().within(() => {
         cy.findByText("Add filter").click();
       });
@@ -221,11 +192,8 @@ describe("scenarios > question > relative-datetime", () => {
 
       cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByText("Created At Previous Month, starting 7 months ago").click();
+      setRelativeDatetimeValue(3);
       popover().within(() => {
-        cy.findAllByDisplayValue("1")
-          .clear()
-          .type(3)
-          .blur();
         cy.findByText("Update filter").click();
       });
       cy.wait("@dataset");
@@ -233,11 +201,8 @@ describe("scenarios > question > relative-datetime", () => {
       cy.findByText(
         "Created At Previous 3 Months, starting 7 months ago",
       ).click();
+      setStartingFromValue(30);
       popover().within(() => {
-        cy.findAllByDisplayValue("7")
-          .clear()
-          .type(30)
-          .blur();
         cy.findByText("Update filter").click();
       });
       cy.wait("@dataset");
@@ -308,6 +273,34 @@ const addStartingFrom = () => {
     .within(() => cy.findByText("Starting from...").click());
 };
 
+const setRelativeDatetimeUnit = unit => {
+  cy.findByTestId("relative-datetime-unit").click();
+  popover()
+    .last()
+    .within(() => cy.findByText(unit).click());
+};
+
+const setRelativeDatetimeValue = value => {
+  cy.findAllByTestId("relative-datetime-value")
+    .clear()
+    .clear() // Included twice because it's buggy sometimes
+    .type(value);
+};
+
+const setStartingFromUnit = unit => {
+  cy.findByTestId("starting-from-unit").click();
+  popover()
+    .last()
+    .within(() => cy.findByText(unit).click());
+};
+
+const setStartingFromValue = value => {
+  cy.findAllByTestId("starting-from-value")
+    .clear()
+    .clear() // Included twice because it's buggy sometimes
+    .type(value);
+};
+
 const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
   cy.findByText("testcol").click();
   cy.findByText("Filter by this column").click();
@@ -316,29 +309,12 @@ const withStartingFrom = (dir, [num, unit], [startNum, startUnit]) => {
     cy.findByText(dir).click();
   });
   addStartingFrom();
-  popover().within(() => cy.findByText("days").click());
-  popover()
-    .last()
-    .within(() => cy.findByText(unit).click());
-  popover().within(() => {
-    cy.findByText(dir === "Past" ? `${unit} ago` : `${unit} from now`).click();
-  });
-  popover()
-    .last()
-    .within(() =>
-      cy
-        .findByText(startUnit + (dir === "Past" ? " ago" : " from now"))
-        .click(),
-    );
 
-  popover().within(() => {
-    cy.findAllByDisplayValue("30")
-      .clear()
-      .type(num);
-    cy.findAllByDisplayValue("7")
-      .clear()
-      .type(startNum);
-  });
+  setRelativeDatetimeValue(num);
+  setRelativeDatetimeUnit(unit);
+
+  setStartingFromValue(startNum);
+  setStartingFromUnit(startUnit + (dir === "Past" ? " ago" : " from now"));
 
   cy.intercept("POST", "/api/dataset").as("dataset");
   popover().within(() => cy.findByText("Add filter").click());

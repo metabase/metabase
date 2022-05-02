@@ -277,9 +277,10 @@ export function absolute(date) {
  */
 export function parseFieldBucketing(field, defaultUnit = null) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
+  const isStartingFromExpr = field?.[0] === "+" && field?.[1]?.[0] === "field";
   if (dimension) {
     return dimension.temporalUnit() || defaultUnit;
-  } else if (field?.[0] === "+" && field?.[1]?.[0] === "field") {
+  } else if (isStartingFromExpr) {
     return parseFieldBucketing(field[1], defaultUnit);
   }
   return defaultUnit;

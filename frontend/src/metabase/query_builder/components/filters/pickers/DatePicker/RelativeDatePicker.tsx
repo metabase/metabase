@@ -206,7 +206,11 @@ const RelativeDatePicker: React.FC<Props> = props => {
     </OptionsContainer>
   );
   return (
-    <GridContainer className={className} numColumns={numColumns}>
+    <GridContainer
+      className={className}
+      numColumns={numColumns}
+      data-testid="relative-datetime-filter"
+    >
       {startingFrom ? (
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
       ) : null}
@@ -214,6 +218,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
         className="input border-purple text-right"
         style={SELECT_STYLE}
         data-ui-tag="relative-date-input"
+        data-testid="relative-datetime-value"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
         onChange={(value: number) => {
           onFilterChange(setRelativeDatetimeValue(filter, formatter(value)));
@@ -225,6 +230,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
         onChange={value => {
           onFilterChange(setRelativeDatetimeUnit(filter, value));
         }}
+        testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
         periods={ALL_PERIODS}
@@ -251,6 +257,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
             className="input border-purple text-right"
             style={SELECT_STYLE}
             data-ui-tag="relative-date-input"
+            data-testid="starting-from-value"
             value={
               typeof startingFrom[0] === "number"
                 ? Math.abs(startingFrom[0])
@@ -278,6 +285,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
             intervals={Math.abs(startingFrom[0])}
             formatter={formatter}
             periods={ALL_PERIODS}
+            testId={"starting-from-unit"}
           />
           <MoreButton
             icon="close"
