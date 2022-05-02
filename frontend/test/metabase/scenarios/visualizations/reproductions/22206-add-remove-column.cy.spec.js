@@ -1,6 +1,6 @@
 import { restore, openOrdersTable } from "__support__/e2e/cypress";
 
-describe.skip("#22206 adding and removing columns doesn't duplicate columns", () => {
+describe("#22206 adding and removing columns doesn't duplicate columns", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
