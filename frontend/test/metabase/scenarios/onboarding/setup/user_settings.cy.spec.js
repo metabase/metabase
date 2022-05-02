@@ -108,7 +108,7 @@ describe("user > settings", () => {
     cy.icon("gear").should("exist");
   });
 
-  it("should be able to open the app with a locale from available locales (metabase#22192)", () => {
+  it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
     cy.request("GET", "/api/user/current").then(({ body: user }) => {
       cy.request("GET", "/api/session/properties").then(
         ({ body: settings }) => {
