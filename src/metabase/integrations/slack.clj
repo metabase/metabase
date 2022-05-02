@@ -301,14 +301,14 @@
           :attachments (when (seq attachments)
                          (json/generate-string attachments))}}))
 
-(defn- reconfigure-retrying "No-op. Will be overridden." [_ _])
+(declare ^:private reconfigure-retrying)
 
 (defsetting slack-post-retry-max-attempts
   (deferred-tru "The maximum number of attempts for posting a single slack message.")
   :type :integer
   :default (run-mode-val
              (:dev :test) 1
-             5)
+             7)
   :on-change #'reconfigure-retrying)
 
 (defsetting slack-post-retry-initial-interval
@@ -316,7 +316,7 @@
   :type :integer
   :default (run-mode-val
              (:dev :test) 1
-             15000)
+             2000)
   :on-change #'reconfigure-retrying)
 
 (defsetting slack-post-retry-multiplier
