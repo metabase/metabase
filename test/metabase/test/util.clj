@@ -1189,10 +1189,15 @@
       ary)))
 
 (defn works-after
-  [x f]
-  (let [a (atom x)]
+  "Returns a function which works as `f` except that on the first `n` calls an
+  exception is thrown instead.
+
+  If `n` is not positive, the returned function will not throw any exceptions
+  not thrown by `f` itself."
+  [n f]
+  (let [a (atom n)]
     (fn [& args]
-      (swap! a dec)
+      (swap! a #(dec (max 0 %)))
       (if (neg? @a)
         (apply f args)
         (throw (ex-info "Not yet" {:remaining @a}))))))
