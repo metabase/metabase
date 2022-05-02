@@ -150,7 +150,7 @@
 (deftest update-human-readable-values-test
   (testing "Test \"fixing\" of human readable values when field values change"
     ;; Create a temp warehouse database that can have it's field values change
-    (jdbc/with-db-connection [conn {:classname "org.h2_v1_4_197.Driver", :subprotocol "h2", :subname "mem:temp"}]
+    (jdbc/with-db-connection [conn {:classname "org.h2.Driver", :subprotocol "h2", :subname "mem:temp"}]
       (jdbc/execute! conn ["drop table foo if exists"])
       (jdbc/execute! conn ["create table foo (id integer primary key, category_id integer not null, desc text)"])
       (jdbc/insert-multi! conn :foo [{:id 1 :category_id 1 :desc "foo"}

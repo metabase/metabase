@@ -15,7 +15,7 @@
   [_ {:keys [db]
       :or   {db "h2.db"}
       :as   opts}]
-  (merge {:classname   "org.h2_v1_4_197.Driver"
+  (merge {:classname   "org.h2.Driver"
           :subprotocol "h2"
           :subname     db}
          (dissoc opts :db)))

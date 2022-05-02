@@ -65,7 +65,7 @@
   (testing "Check that we get proper error responses for malformed SQL"
     (tu.log/suppress-output
       (is (schema= {:status     (s/eq :failed)
-                    :class      (s/eq org.h2_v1_4_197.jdbc.JdbcSQLException)
+                    :class      (s/eq org.h2.jdbc.JdbcSQLException)
                     :error      #"^Column \"ZID\" not found"
                     :stacktrace [su/NonBlankString]
                     :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}

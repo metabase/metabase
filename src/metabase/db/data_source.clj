@@ -12,8 +12,6 @@
   (:import java.sql.DriverManager
            java.util.Properties))
 
-(def sample-url "jdbc:h2:file:/Users/braden/mb/metabase/metabase.db")
-
 (defn- h2? [url]
   (.startsWith url "jdbc:h2:"))
 
@@ -27,24 +25,47 @@
      :v2db   (str base ".v2.mv.db")
      :script (str base ".v2migration.sql")}))
 
-(comment
-  (h2? sample-url)
-  (h2-path sample-url)
-  (h2-migration-paths sample-url)
-  (.exists (io/file (:v1db (h2-migration-paths sample-url))))
-  )
-
 (defn- h2-v1-db [url]
-  {:dbtype "h2"
-   :dbname (h2-path url)
-   :classname "org.h2_v1_4_197.Driver"})
+  (let [src (.newInstance (Class/forName "org.h2_v1_4_197.jdbcx.JdbcDataSource"))]
+    (.setURL src url)
+    (.getConnection src)))
 
 (defn- h2-v2-db [url]
-  {:dbtype "h2"
-   :dbname (str (h2-path url) ".v2")
-   :classname "org.h2.Driver"})
+  (let [src (.newInstance (Class/forName "org.h2.jdbcx.JdbcDataSource"))]
+    (.setURL src (str url ".v2"))
+    (.getConnection src)))
 
-(def data-source-loading (atom false))
+(defn- h2-migrate! [url]
+  (let [{:keys [v2db script]} (h2-migration-paths url)]
+    (try
+      (log/warn "H2 migration: beginning migration")
+      (jdbc/query {:connection (h2-v1-db url)} ["SCRIPT TO ?" script])
+      (log/warn "H2 migration: v1 export complete, starting v2 import")
+      (let [conn-v2          (h2-v2-db url)]
+        (jdbc/execute! {:connection conn-v2} ["RUNSCRIPT FROM ? FROM_1X" script])
+        (log/warn "H2 migration: complete")
+        conn-v2)
+      (catch Exception e
+        (log/error "H2 migration failed: " e)
+        (.delete (io/file v2db))))))
+
+(def ^:private h2-lock (Object.))
+
+(defn- get-h2-connection
+  "H2 connections are a special case, because we transparently handle migration from H2 v1.4.x to H2 2.x.
+  v2 databases have the suffix .v2.mv.db while v1 databases are just .mv.db. That suffix is added by [[h2-v2-db]].
+  The lock is necessary to prevent Metabase from trying to open the blank v2 database before migration is complete."
+  [url]
+  (locking h2-lock
+    (log/warn "Inside H2 lock")
+    (let [{:keys [v1db v2db]} (h2-migration-paths url)]
+      (cond
+        ;; Case 1: v2 database exists - just load it.
+        (.exists (io/file v2db))   (h2-v2-db url)
+        ;; Case 2: v1 exists and not v2, so do the migration.
+        (.exists (io/file v1db))   (h2-migrate! url)
+        ;; Case 3: Nothing at all - just open a new v2 database.
+        :else                      (h2-v2-db url)))))
 
 (p/deftype+ DataSource [^String url ^Properties properties]
   pretty/PrettyPrintable
@@ -57,38 +78,13 @@
 
   javax.sql.DataSource
   (getConnection [_]
-    (if @data-source-loading
-      (do (log/warn "DSL true")
-          (if properties
-            (DriverManager/getConnection url properties)
-            (DriverManager/getConnection url)))
-      (do (reset! data-source-loading true)
-          (let [conn (delay (if properties
-                              (DriverManager/getConnection url properties)
-                              (DriverManager/getConnection url)))]
-            (if (h2? url)
-              (let [{:keys [v1db v2db script]} (h2-migration-paths url)]
-                (cond
-                  ;; Case 1: v2 database exists - just load it.
-                  (.exists (io/file v2db))   (do
-                                               (log/warn "H2 v2 database exists - using it")
-                                               @conn)
-                  ;; Case 2: Migration script exists - open the database with v2 and import the script.
-                  (.exists (io/file script)) (let [db (h2-v2-db url)]
-                                               (log/warn "H2 v2 database not found, but migration script exists - importing")
-                                               (jdbc/execute! db "RUNSCRIPT FROM ? FROM_1X" script)
-                                               @conn)
-                  ;; Case 3: No upgrade artifacts exist, so load v1 and run the export, then die.
-                  (.exists (io/file v1db))   (let [db (h2-v1-db url)]
-                                               (log/warn "H2 v1 database only - exporting")
-                                               (jdbc/execute! db "SCRIPT TO ?" script)
-                                               (log/fatal "H2 migration in progress! Restart Metabase to complete the import into H2 v2"))
-
-                  ;; Case 4: Nothing at all! Just open a new v2 database.
-                  :else                      (do
-                                               (log/warn "No existing H2 database, just creating a new v2")
-                                               @conn)))
-              @conn)))))
+    (if (h2? url)
+      ;; H2 databases are special.
+      (get-h2-connection url)
+      ;; Regular lookup for everything else.
+      (if properties
+        (DriverManager/getConnection url properties)
+        (DriverManager/getConnection url))))
 
   ;; we don't use (.getConnection this url user password) so we don't need to implement it.
   (getConnection [_ _user _password]

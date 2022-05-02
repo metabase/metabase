@@ -30,7 +30,7 @@
                            (if (= driver/*driver* :h2)
                              {:subprotocol "h2"
                               :subname     (format "mem:%s;DB_CLOSE_DELAY=10" (mt/random-name))
-                              :classname   "org.h2_v1_4_197.Driver"}
+                              :classname   "org.h2.Driver"}
                              (let [details (tx/dbdef->connection-details driver/*driver* :db {:database-name db-name})]
                                (mdb.spec/spec driver/*driver* details))))]
           (binding [setting/*disable-cache*         true
