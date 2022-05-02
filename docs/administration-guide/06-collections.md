@@ -9,8 +9,8 @@ Metabase starts out with a default top-level collection which is called **Our an
 ## Collection permission levels
 
 - **Curate access**: the user can edit, move, archive, and pin items saved in this collection, and can save or move new items into it. They can also create new sub-collections within this collection. In order to archive a sub-collection within this collection, they'll need to have Curate access for it and any and all collections within it.
-- **View access**: the user can see all the questions, dashboards, and models in the collection. If the user does not have permission to view some or all of the questions included in a given dashboard then those questions will not be visible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the user doesn't have access to the underlying data used to in the question._
-- **No access**: the user won't see this collection listed, and doesn't have access to any of the items saved within it.
+- **View access**: people in the group can see all the questions, dashboards, and models in the collection. If a person lacks permission to view some or all of the questions included in a given dashboard, then those questions will be invisible to them; but any questions that are saved in this collection _will_ be visible to them, _even if the person lacks access to the underlying data used in the question._
+- **No access**: the people in the group won't see this collection listed, and they'll lack access to any of the items saved within it.
 
 ### Setting permissions for collections
 
@@ -26,7 +26,7 @@ Just like with data access permissions, collection permissions are _additive_, m
 
 ### Permissions and sub-collections
 
-A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group does _not_ have access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
+A group can be given access to a collection located somewhere within one or more sub-collections _without_ having to have access to every collection "above" it. For example, if a group had access to the "Super Secret Collection" that's saved several layers deep within a "Marketing" collection that the group lacks access to, the "Super Secret Collection" would show up at the top-most level that the group _does_ have access to.
 
 ### Archiving collections
 

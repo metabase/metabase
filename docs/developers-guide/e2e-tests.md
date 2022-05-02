@@ -49,7 +49,8 @@ Try to avoid repeatedly testing pieces of the application incidentally. For exam
 ## Tips/Gotchas
 
 ### `contains` vs `find` vs `get`
-(TODO: talk about `@testing-library/cypress`). Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
+
+Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
 * `contains` is case-sensitive to the text *in the DOM*. If it’s not matching text you’d expect, check that CSS hasn’t updated the case.
 * `contains` matches substrings, so if you see “filter by” and “Add a filter”, `contains(“filter”)` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or pass a selector in addition to the string: `.contains(selector, content)`.
 * `find` will let you search within your previous selection. `get` will search the entire page even if chained.
