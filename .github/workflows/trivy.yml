@@ -4,13 +4,12 @@ name: Trivy
 on:
   push:
     branches: 
-      - trivy
+      - master
   pull_request:
     paths-ignore:
       - "docs/**"
       - "**.md"
       - ".circleci/**"
-
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
