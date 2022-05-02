@@ -84,7 +84,7 @@
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
-          newly-unhidden (when (nil? visibility_type)
+          newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))

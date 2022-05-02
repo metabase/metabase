@@ -292,10 +292,10 @@
                       property))))))
 
     (testing "Don't change visibility_type when updating properties (#22287)"
-      (doseq [property [:caveats :points_of_interest :description]]
+      (doseq [property [:caveats :points_of_interest :description :display_name]]
         (mt/with-temp Table [table {:visibility_type "hidden"}]
          (mt/user-http-request :crowberto :put 200 (format "table/%d" (u/the-id table))
-                                                   {property ""})
+                                                   {property (mt/random-name)})
          (is (= :hidden (db/select-one-field :visibility_type Table :id (:id table)))))))
 
     (testing "A table can only be updated by a superuser"
@@ -325,7 +325,12 @@
                                    (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
                                                          {:display_name    "Userz"
                                                           :visibility_type state
-                                                          :description     "What a nice table!"}))]
+                                                          :description     "What a nice table!"}))
+                  set-name      (fn []
+                                  (mt/user-http-request :crowberto :put 200 (format "table/%d" (:id table))
+                                                         {:display_name (mt/random-name)
+                                                          :description  "What a nice table!"}))]
+
               (set-visibility "hidden")
               (set-visibility nil)        ; <- should get synced
               (is (= 1
@@ -338,7 +343,12 @@
                      @called))
               (set-visibility "technical")
               (is (= 2
-                     @called))))))))
+                     @called))
+              (testing "Update table's properties shouldn't trigger sync"
+                (set-name)
+                (is (= 2
+                       @called)))))))))
+
   (testing "Bulk updating visibility"
     (let [unhidden-ids (atom #{})]
       (mt/with-temp* [Table [{id-1 :id} {}]
