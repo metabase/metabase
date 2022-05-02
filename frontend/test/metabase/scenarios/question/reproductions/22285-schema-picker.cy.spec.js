@@ -12,7 +12,7 @@ describe("issue 22285", () => {
     });
   });
 
-  it("should not (metabase#22285)", () => {
+  it("should not clean DB schemas list in the data selector (metabase#22285)", () => {
     startNewQuestion();
     cy.wait("@fetchDatabases");
 
