@@ -5,16 +5,27 @@
   (:import clojure.lang.ExceptionInfo))
 
 (deftest retrying-on-exception-test
-  (let [f +
-        retries-needed 3
-        flaky-f (tu/works-after (* 2 retries-needed) f)
-        retry-opts {:max-attempts retries-needed, :max-interval-millis 1}
-        retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
-        retrying-f (retry/decorate flaky-f retry)
-        params (range 6)]
-    (is (thrown? ExceptionInfo (apply flaky-f params)))
-    (is (thrown? ExceptionInfo (apply retrying-f params)))
-    (is (= (apply f params) (apply retrying-f params)))))
+  (testing "recovery possible"
+    (let [f +
+          retries-needed 3
+          flaky-f (tu/works-after (* 2 retries-needed) f)
+          retry-opts {:max-attempts retries-needed, :max-interval-millis 1}
+          retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
+          retrying-f (retry/decorate flaky-f retry)
+          params (range 6)]
+      (is (thrown? ExceptionInfo (apply flaky-f params)))
+      (is (thrown? ExceptionInfo (apply retrying-f params)))
+      (is (= (apply f params) (apply retrying-f params)))))
+  (testing "recovery impossible"
+    (let [f +
+          retries-needed 1
+          flaky-f (tu/works-after retries-needed f)
+          retry-opts {:max-attempts retries-needed, :max-interval-millis 1
+                      :retry-on-exception-pred #(-> % ex-data :remaining nil?)}
+          retry (retry/random-exponential-backoff-retry "test-retry" retry-opts)
+          retrying-f (retry/decorate flaky-f retry)
+          params (range 6)]
+      (is (thrown? ExceptionInfo (apply retrying-f params))))))
 
 (deftest retrying-on-result-test
   (testing "recovery possible"

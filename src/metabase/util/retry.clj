@@ -13,7 +13,8 @@
   [^String retry-name
    {:keys [^long max-attempts ^long initial-interval-millis
            ^double multiplier ^double randomization-factor
-           ^long max-interval-millis retry-on-result-pred]
+           ^long max-interval-millis
+           retry-on-result-pred retry-on-exception-pred]
     :or {max-attempts 3
          initial-interval-millis 500
          multiplier 1.5
@@ -27,7 +28,9 @@
                         (.intervalFunction interval-fn))
         retry-config (cond-> base-config
                        retry-on-result-pred
-                       (.retryOnResult (make-predicate retry-on-result-pred)))]
+                       (.retryOnResult (make-predicate retry-on-result-pred))
+                       retry-on-exception-pred
+                       (.retryOnException (make-predicate retry-on-exception-pred)))]
     (Retry/of retry-name (.build retry-config))))
 
 (defn decorate
