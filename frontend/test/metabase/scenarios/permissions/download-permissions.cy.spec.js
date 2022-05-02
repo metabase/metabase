@@ -6,6 +6,7 @@ import {
   modifyPermission,
   downloadAndAssert,
   assertSheetRowsCount,
+  sidebar,
   visitQuestion,
 } from "__support__/e2e/cypress";
 
@@ -22,32 +23,10 @@ describeEE("scenarios > admin > permissions", () => {
     cy.signInAsAdmin();
   });
 
-  it("allows changing download results permission for a database", () => {
-    cy.visit("/admin/permissions/data/database/1");
+  it("setting downloads permission UI flow should work", () => {
+    cy.log("allows changing download results permission for a database");
 
-    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
-    });
-
-    assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
-  });
-
-  it("allows changing download results permission for a table", () => {
-    cy.visit("/admin/permissions/data/database/1/table/1");
-
-    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
-
-    modal().within(() => {
-      cy.findByText("Change access to this database to limited?");
-      cy.button("Change").click();
-    });
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
 
@@ -60,13 +39,14 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
-  });
 
-  it("sets the download permission to `No` when the data access permission is revoked", () => {
-    cy.visit("/admin/permissions/data/database/1");
-    const groupName = "data";
+    cy.log("Make sure we can change download results permission for a table");
 
-    modifyPermission(groupName, DOWNLOAD_PERMISSION_INDEX, "1 million rows");
+    sidebar()
+      .contains("Orders")
+      .click();
+
+    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "1 million rows");
 
     cy.button("Save changes").click();
 
@@ -77,13 +57,20 @@ describeEE("scenarios > admin > permissions", () => {
     });
 
     assertPermissionForItem(
-      groupName,
+      "All Users",
       DOWNLOAD_PERMISSION_INDEX,
       "1 million rows",
     );
 
-    modifyPermission(groupName, DATA_ACCESS_PERMISSION_INDEX, "Block");
-    cy.button("Revoke access").click();
+    cy.log(
+      "Make sure the download permissions are set to `No` when data access is revoked",
+    );
+
+    cy.get("a")
+      .contains("Sample Database")
+      .click();
+
+    modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Block");
 
     cy.button("Save changes").click();
 
@@ -93,7 +80,7 @@ describeEE("scenarios > admin > permissions", () => {
       cy.button("Yes").click();
     });
 
-    assertPermissionForItem(groupName, DOWNLOAD_PERMISSION_INDEX, "No");
+    assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
   });
 
   it("restricts users from downloading questions", () => {
