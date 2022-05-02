@@ -230,8 +230,6 @@ AhHocQuestionLeftSide.propTypes = {
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isSummarized: PropTypes.bool,
-  onExpandFilters: PropTypes.func.isRequired,
-  onCollapseFilters: PropTypes.func.isRequired,
 };
 
 function AhHocQuestionLeftSide(props) {
