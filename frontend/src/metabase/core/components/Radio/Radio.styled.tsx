@@ -5,13 +5,11 @@ import { RadioColorScheme, RadioVariant } from "./types";
 export interface RadioGroupProps {
   variant: RadioVariant;
   vertical: boolean;
-  wrap: boolean;
 }
 
 export const RadioGroup = styled.div<RadioGroupProps>`
   display: flex;
   flex-direction: ${props => (props.vertical ? "column" : "row")};
-  flex-wrap: ${props => (props.wrap ? "wrap" : "nowrap")};
 `;
 
 export const RadioGroupNormal = styled(RadioGroup)`
@@ -25,12 +23,10 @@ export const RadioGroupBubble = styled(RadioGroup)`
 export interface RadioLabelProps {
   variant: RadioVariant;
   vertical: boolean;
-  wrapped: boolean;
 }
 
 export const RadioLabel = styled.label<RadioLabelProps>`
   display: block;
-  margin-bottom: ${props => (props.wrapped ? "0.5rem" : "")};
 `;
 
 export const RadioLabelNormal = styled(RadioLabel)`

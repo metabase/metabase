@@ -8,6 +8,7 @@ import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import { SectionContainer } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -242,16 +243,17 @@ class ChartSettings extends Component {
     };
 
     const sectionPicker = (
-      <Radio
-        value={currentSection}
-        onChange={this.handleShowSection}
-        options={sectionNames}
-        optionNameFn={v => v}
-        optionValueFn={v => v}
-        optionKeyFn={v => v}
-        variant="bubble"
-        wrap
-      />
+      <SectionContainer>
+        <Radio
+          value={currentSection}
+          onChange={this.handleShowSection}
+          options={sectionNames}
+          optionNameFn={v => v}
+          optionValueFn={v => v}
+          optionKeyFn={v => v}
+          variant="bubble"
+        />
+      </SectionContainer>
     );
 
     const widgetList = visibleWidgets.map(widget => (
