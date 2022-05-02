@@ -6,7 +6,12 @@ import {
   modifyPermission,
   downloadAndAssert,
   assertSheetRowsCount,
+  visitQuestion,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
+
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const DOWNLOAD_PERMISSION_INDEX = 2;
@@ -92,21 +97,17 @@ describeEE("scenarios > admin > permissions", () => {
   });
 
   it("restricts users from downloading questions", () => {
-    cy.visit("/admin/permissions/data/database/1");
-
     // Restrict downloads for All Users
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          download: { schemas: "none" },
+        },
+      },
     });
 
     cy.signInAsNormalUser();
-    cy.visit("/question/1");
+    visitQuestion("1");
 
     cy.findByText("Showing first 2,000 rows");
     cy.icon("download").should("not.exist");
@@ -114,25 +115,18 @@ describeEE("scenarios > admin > permissions", () => {
 
   it("limits users from downloading all results", () => {
     const questionId = 1;
-    cy.visit("/admin/permissions/data/database/1");
 
     // Restrict downloads for All Users
-    modifyPermission("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
-
-    // Limit downloads for "data" group
-    const groupName = "data";
-    modifyPermission(groupName, DOWNLOAD_PERMISSION_INDEX, "10 thousand rows");
-
-    cy.button("Save changes").click();
-
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          download: { schemas: "limited" },
+        },
+      },
     });
 
     cy.signInAsNormalUser();
-    cy.visit(`/question/${questionId}`);
+    visitQuestion(questionId);
 
     cy.icon("download").click();
 
