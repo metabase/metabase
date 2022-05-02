@@ -251,6 +251,12 @@
                              (sql.qp/current-datetime-honeysql-form driver)
                              (sql.qp/add-interval-honeysql-form driver (sql.qp/current-datetime-honeysql-form driver) amount unit))))
 
+(defmethod sql.qp/->honeysql [:ocient :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
 (defmethod sql.qp/add-interval-honeysql-form :ocient
   [_ hsql-form amount unit]
   (hx/+
