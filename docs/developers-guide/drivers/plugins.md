@@ -142,7 +142,7 @@ dependencies:
 # with the DriverManager, which is certainly not ideal but does not actually
 # hurt anything.
 #
-# In the near future I think I might move init steps into driver itself (or
+# In the near future I might move init steps into driver itself (or
 # at least allow them there)
 driver:
 

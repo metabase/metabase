@@ -75,7 +75,7 @@ Editing snippets is a great way to make changes to many questions at once. If, f
 
 ### Archiving snippets
 
-**Archiving** snippets can help keep dated or less relevant snippets out of the way. When you archive a snippet, the snippet no longer populates in the snippet autocomplete dropdown, and the snippet will no longer show up in the main list of of snippets in the **SQL editor** sidebar.
+**Archiving** snippets can help keep dated or less relevant snippets out of the way. When you archive a snippet, the snippet no longer populates in the snippet autocomplete dropdown, and the snippet will no longer show up in the main list of snippets in the **SQL editor** sidebar.
 
 Archiving a snippet does not affect any existing queries that use the snippet, so you can safely archive a snippet without impacting any questions.
 
@@ -87,7 +87,7 @@ Note: two snippets cannot share the same name, as even if a snippet is archived,
 
 ### Snippet permissions
 
-Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user does NOT have SQL editing access to.
+Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user lacks SQL editing access to.
 
 Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../enterprise-guide/sql-snippets.html).
 
