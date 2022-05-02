@@ -126,18 +126,20 @@ export const getMetadata = createSelector(
     // NOTE: special handling for schemas
     // This is pretty hacky
     // hydrateList(meta.databases, "schemas", meta.schemas);
-    hydrate(meta.databases, "schemas", database =>
-      database.schemas
-        ? // use the database schemas if they exist
-          database.schemas.map(s => meta.schema(s))
-        : database.tables.length > 0
-        ? // if the database has tables, use their schemas
-          _.uniq(database.tables.map(t => t.schema))
-        : // otherwise use any loaded schemas that match the database id
-          Object.values(meta.schemas).filter(
-            s => s.database && s.database.id === database.id,
-          ),
-    );
+    hydrate(meta.databases, "schemas", database => {
+      if (database.schemas) {
+        // use the database schemas if they exist
+        return database.schemas.map(s => meta.schema(s));
+      }
+      if (database.tables.length > 0) {
+        // if the database has tables, use their schemas
+        return _.uniq(database.tables.map(t => t.schema));
+      }
+      // otherwise use any loaded schemas that match the database id
+      return Object.values(meta.schemas).filter(
+        s => s.database && s.database.id === database.id,
+      );
+    });
     // hydrateList(meta.schemas, "tables", meta.tables);
     hydrate(meta.schemas, "tables", schema =>
       schema.tables
