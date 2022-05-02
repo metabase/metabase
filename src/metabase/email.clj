@@ -131,7 +131,7 @@
       (log/warn e (trs "Failed to send email"))
       {::error e})))
 
-(defn- reconfigure-retrying "No-op. Will be overridden." [_ _])
+(declare ^:private reconfigure-retrying)
 
 (defsetting email-retry-max-attempts
   (deferred-tru "The maximum number of attempts for delivering a single email.")
