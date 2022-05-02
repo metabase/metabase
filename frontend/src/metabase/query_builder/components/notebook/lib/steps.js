@@ -162,7 +162,10 @@ export function getStageSteps(stageQuery, stageIndex, openSteps) {
         STEP.valid(stageQuery, itemIndex) &&
         (STEP.active(stageQuery, itemIndex) || openSteps[id]),
       revert: STEP.revert ? query => STEP.revert(query, itemIndex) : null,
-      clean: query => STEP.clean(query, itemIndex),
+      clean: query => {
+        const newQuery = STEP.clean(query, itemIndex);
+        return newQuery.cleanNesting();
+      },
       update: datasetQuery => {
         let newQuery = stageQuery.setDatasetQuery(datasetQuery);
         // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
