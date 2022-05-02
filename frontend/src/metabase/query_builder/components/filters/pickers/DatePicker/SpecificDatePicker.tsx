@@ -15,6 +15,7 @@ import { getTimeComponent, setTimeComponent } from "metabase/lib/query_time";
 type Props = {
   className?: string;
   isSidebar?: boolean;
+  primaryColor?: string;
   calendar?: boolean;
   selectAll?: SelectAll;
 
@@ -40,6 +41,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
     onClear,
     className,
     selectAll,
+    primaryColor,
   } = props;
   const [showCalendar, setShowCalendar] = React.useState(true);
 
@@ -103,6 +105,7 @@ const SpecificDatePicker: React.FC<Props> = props => {
             onChange={value => onChange(value, hours, minutes)}
             isRangePicker={false}
             selectAll={selectAll}
+            primaryColor={primaryColor}
           />
         </ExpandingContent>
       )}
