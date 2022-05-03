@@ -347,3 +347,128 @@
 
   ([query info context]
    (process-query-and-save-execution! (add-default-constraints query) info context)))
+
+
+(comment
+
+  (mt/with-db {:id 3}
+    (mt/with-everything-store
+      (mbql->native in)))
+
+  (mt/with-db {:id 3}
+    (mt/with-everything-store
+      (generate-aggregation-pipeline (:query in))))
+
+  (second (reduce
+           (fn [[idx res] x]
+             [(inc idx) (conj res (str idx ". " x))])
+           [1 []]
+           ["oolong" "red" "black" "green"]))
+
+  ;; step fn:
+  (defn add-index-prefix [[idx res] x]
+    [(inc idx) (conj res (str idx ". " x))])
+
+  ;; reducing fn:
+  (defn add-index-prefix
+    ([] [1 []])
+    ([out] (second out))
+    ([[idx res] x]
+     [(inc idx) (conj res (str idx ". " x))]))
+
+
+  (defn enumerate [rf]
+    (let [*idx (atom 0)]
+      (fn 
+        ([] (rf))
+        ([item] (rf item))
+        ([acc item]
+         (rf acc [(swap! *idx inc) item])))))
+
+(into [] enumerate ["a" "b" "c"])
+
+
+(defn add-index-prefix [rf]
+  (let [* idx])
+  (fn
+    ([] )))
+
+  (transduce identity add-index-prefix ["oolong" "red" "black" "green"])
+
+  (transduce identity - 0 [1 2 3 4])
+
+  (transduce
+   identity
+   (completing - +)
+   0
+   [1 2 3 4])
+
+
+  ;; transducer :: rf -> rf
+
+  (let [d (atom 0)]
+    (defn id [] (swap! d inc)))
+
+  (defn print-transducer [rf]
+    (let [tag (id)
+          p #(println tag %&)]
+      (fn
+        ([]      (let [called (rf)]
+                   (p "called: " rf)
+                   called))
+        ([acc]   (let [finished (rf acc)]
+                   (p "finished: " finished)
+                   finished))
+        ([acc x]
+         (p "got acc: " acc ", x: " x)
+         (rf acc x)
+         (rf acc x)))))
+
+  (transduce identity
+             (print-transducer (completing (fn minus
+                                             ([] 0)
+                                             ([x] x)
+                                             ([a b] (- a b)))
+                                           (fn [x] (str "got " x))))
+             [1 2 3 4])
+
+  (into [] (comp count-transducer (filter even?)) [0 1 2 3 4])
+
+  range
+
+
+  (reduce
+   (fn [acc x] )
+   []
+   [1])
+
+   ;; pitfalls:
+   ;; watch "Lost in Transduction"
+
+  ;; homework:
+  ;; super-set transducer
+  ;; count transducer
+
+
+  ((comp inc #(* 2 %)) 3)
+
+
+  (let [a (transient [])]
+    (conj! a)
+    (conj! a))
+
+  transduce
+
+  
+
+
+  (sequence (comp transducer
+                  (filter even?)
+                  transducer
+                  (take 2)
+                  transducer
+                  identity
+                  transducer) [1 2 3 4 5 6])
+  
+
+)

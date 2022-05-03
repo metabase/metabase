@@ -1,6 +1,7 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
   (:require [clojure.core.match :refer [match]]
+            [clojure.math.combinatorics :as math.combo]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -630,14 +631,86 @@
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
 
-(defmethod apply-top-level-clause [:sql :breakout]
-  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
-  (as-> honeysql-form new-hsql
-    (apply hh/merge-select new-hsql (->> breakout-fields
-                                         (remove (set fields-fields))
-                                         (mapv (fn [field-clause]
-                                                 (as driver field-clause)))))
-    (apply hh/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))
+
+(defn ->bins [{:keys [strategy num-bins min-value max-value bin-width]}]
+  (vec (range min-value max-value bin-width)))
+
+(do
+  (defmethod apply-top-level-clause [:sql :breakout]
+    [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
+    (let [{binned-fields true unbinned-fields false} (group-by (comp boolean (fn [[_ _ m]] (:binning m)))
+                                                               breakout-fields)
+
+          with-merge (apply hh/merge-select honeysql-form (->> breakout-fields
+                                                               (remove (set fields-fields))
+                                                               (mapv (fn [field-clause]
+                                                                       (as driver field-clause)))))
+
+          bin-aliases (for [[_ _ {:keys [::add/source-alias]}] binned-fields] source-alias)
+
+          bins (map #(->bins (:binning (nth % 2))) binned-fields)
+
+          wrapped (apply hh/merge-select
+                         {:from [[with-merge :t]]}
+                         (->> breakout-fields
+                              (remove (set fields-fields))
+                              (mapv (fn [[_ _ {:keys [binning ::add/source-alias]} :as field-clause]]
+                                      (keyword (str (if binning "bins." "t.") source-alias))))))
+
+          with-rj (apply hh/merge-right-join wrapped
+                         [[{:values (vec (apply math.combo/cartesian-product bins))}
+                           (hsql/raw (str "bins(" (str/join ", " bin-aliases) ")"))]
+                          (into [:and] (for [bin-alias bin-aliases]
+                                         [:=
+                                          (keyword (str "t." bin-alias))
+                                          (keyword (str "bins." bin-alias))]))])]
+      with-rj
+      #_(apply hh/group with-rj (mapv (partial ->honeysql driver) breakout-fields))))
+
+  (binding [driver/*driver* :sql]
+    (mt/with-db {:id 1}
+      (mt/with-everything-store
+        (apply-top-level-clause
+            :sql
+            :breakout
+          {:from '((metabase.util.honeysql-extensions/identifier :table "PUBLIC" "PRODUCTS"))}
+          iq))))
+
+
+
+  #_{:from :customers
+   :select :*
+   :left-join [:products [:= :products.id 30]
+               :orders [:> :orders.number 10]]}
+
+
+#_  (hsql/format
+   {:select [:*]
+    :from [
+           [{:values [[1 10] [2 20] [3 30]]} (keyword "my-thing(a, b)")]
+           ]})
+
+select * from (values (1), (2), (3));
+
+select * from (values (1), (2), (3)) as x;
+
+select x.one from (values (1), (2), (3)) as x(one);
+
+select x.two, x.one from (values (1, 10), (2, 20), (3, 30)) as x(one, two);
+
+select y.one from (values (1, 10), (2, 20), (3, 30)) as x(one, two)
+right join (values (1), (2), (3)) as y(one) on y.one = x.one;
+
+;; SELECT "bins"."RATING", "t"."CATEGORY", count(*) AS "count"
+;; FROM (SELECT
+;;       ((floor((("PUBLIC"."PRODUCTS"."RATING" - 0.0) / 0.5)) * 0.5) + 0.0) AS "RATING",
+;;       "PUBLIC"."PRODUCTS"."CATEGORY" AS "CATEGORY" FROM "PUBLIC"."PRODUCTS")"t"
+;; RIGHT JOIN (VALUES (0.0), (0.5), (1.0), (1.5), (2.0), (2.5), (3.0), (3.5), (4.0), (4.5)) as bins(RATING)
+;; ON ("t"."RATING" = "bins"."RATING")
+;; ORDER BY ((floor((("PUBLIC"."PRODUCTS"."RATING" - 0.0) / 0.5)) * 0.5) + 0.0) ASC,"PUBLIC"."PRODUCTS"."CATEGORY"
+;; ASC LIMIT 10
+
+ )
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
@@ -895,8 +968,8 @@
                                        [:*])))))
 
 (defn- apply-top-level-clauses
-  "`apply-top-level-clause` for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.
-  Clauses are applied according to the order in `top-level-clause-application-order`."
+  "[[apply-top-level-clause]] for all of the top-level clauses in `inner-query`, progressively building a HoneySQL form.
+  Clauses are applied according to the order in [[top-level-clause-application-order]]."
   [driver honeysql-form inner-query]
   (->> (reduce
         (fn [honeysql-form k]
@@ -946,19 +1019,58 @@
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver {inner-query :query}]
   (let [inner-query (preprocess driver inner-query)]
-    (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+    (def iq inner-query)
+    (log/infof "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
     (u/prog1 (apply-clauses driver {} inner-query)
-      (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
+      (log/infof "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
+
+(comment
+  (binding [driver/*driver* :sql]
+    (mt/with-db {:id 1}
+      (mt/with-everything-store
+        (apply-clauses :sql {} iq))))
+
+  )
 
 ;;;; MBQL -> Native
+
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement. This is the `:sql` driver implementation
   of [[driver/mbql->native]] (actual multimethod definition is in [[metabase.driver.sql]]."
   [driver outer-query]
+  (def in [driver outer-query])
   (let [honeysql-form (mbql->honeysql driver outer-query)
         [sql & args]  (format-honeysql driver honeysql-form)]
     {:query sql, :params args}))
+
+(comment
+
+
+  (require '[metabase.test :as mt])
+  (binding [driver/*driver* :sql]
+    (mt/with-db {:id 1}
+      (mt/with-everything-store
+        (mbql->native :sql
+                        {:type :query,
+                         :query
+                         {:source-table 1,
+                          :breakout
+                          [[:field 6 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 5.0, :bin-width 1/2}}]],
+                          :aggregation [[:aggregation-options [:count] {:name "count"}]],
+                          :order-by
+                          [[:asc
+                            [:field 6 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 5.0, :bin-width 1/2}}]]]},
+                         :database 1,
+                         :middleware {:js-int-to-string? true, :add-default-userland-constraints? true},
+                         :info
+                         {:executed-by 1,
+                          :context :ad-hoc,
+                          :query-hash
+                          [-86, -19, -127, 104, 43, -108, -79, 5, -17, 89, 19, 89, 119, 4, -96, -44, -64, 126, 109, 98, -80, -124, -100, 48,
+                           6, 18, 114, 28, -1, 0, 109, -12]},
+                         :constraints {:max-results 10000, :max-results-bare-rows 2000}}))))
+  )
 
 
 
