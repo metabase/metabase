@@ -292,67 +292,7 @@ class EmptyPartition extends React.Component {
   }
 }
 
-@DropTarget(
-  "columns",
-  {
-    hover: (props, monitor, component) => {
-      const item = monitor.getItem();
-      if (props.columnFilter && props.columnFilter(item.column) === false) {
-        return;
-      }
-      const { index: dragIndex, partitionName: itemPartition } = item;
-      const hoverIndex = props.index;
-      const { value, partitionName, updateDisplayedValue } = props;
-      if (partitionName === itemPartition && dragIndex !== hoverIndex) {
-        const columns = value[itemPartition];
-        const columnsDup = [...columns];
-        columnsDup[dragIndex] = columns[hoverIndex];
-        columnsDup[hoverIndex] = columns[dragIndex];
-        updateDisplayedValue({ ...value, [itemPartition]: columnsDup });
-        item.index = hoverIndex;
-      } else if (partitionName !== itemPartition) {
-        updateDisplayedValue({
-          ...value,
-          [itemPartition]: [
-            ...value[itemPartition].slice(0, dragIndex),
-            ...value[itemPartition].slice(dragIndex + 1),
-          ],
-          [partitionName]: [
-            ...value[partitionName].slice(0, hoverIndex),
-            value[itemPartition][dragIndex],
-            ...value[partitionName].slice(hoverIndex),
-          ],
-        });
-        item.index = hoverIndex;
-        item.partitionName = partitionName;
-      }
-    },
-    drop: ({ index, column, partitionName }, monitor, component) => ({
-      index,
-      column,
-      partitionName,
-    }),
-  },
-  (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
-)
-@DragSource(
-  "columns",
-  {
-    beginDrag: ({ column, partitionName, index }) => ({
-      column,
-      partitionName,
-      index,
-    }),
-    endDrag: (props, monitor, component) => {
-      // props.commitDisplayedValue();
-    },
-  },
-  (connect, monitor) => ({
-    connectDragSource: connect.dragSource(),
-    isDragging: monitor.isDragging(),
-  }),
-)
-class Column extends React.Component {
+class ColumnInner extends React.Component {
   constructor(props) {
     super(props);
     this.state = { expanded: false };
@@ -419,5 +359,68 @@ class Column extends React.Component {
     );
   }
 }
+
+const Column = _.compose(
+  DropTarget(
+    "columns",
+    {
+      hover: (props, monitor, component) => {
+        const item = monitor.getItem();
+        if (props.columnFilter && props.columnFilter(item.column) === false) {
+          return;
+        }
+        const { index: dragIndex, partitionName: itemPartition } = item;
+        const hoverIndex = props.index;
+        const { value, partitionName, updateDisplayedValue } = props;
+        if (partitionName === itemPartition && dragIndex !== hoverIndex) {
+          const columns = value[itemPartition];
+          const columnsDup = [...columns];
+          columnsDup[dragIndex] = columns[hoverIndex];
+          columnsDup[hoverIndex] = columns[dragIndex];
+          updateDisplayedValue({ ...value, [itemPartition]: columnsDup });
+          item.index = hoverIndex;
+        } else if (partitionName !== itemPartition) {
+          updateDisplayedValue({
+            ...value,
+            [itemPartition]: [
+              ...value[itemPartition].slice(0, dragIndex),
+              ...value[itemPartition].slice(dragIndex + 1),
+            ],
+            [partitionName]: [
+              ...value[partitionName].slice(0, hoverIndex),
+              value[itemPartition][dragIndex],
+              ...value[partitionName].slice(hoverIndex),
+            ],
+          });
+          item.index = hoverIndex;
+          item.partitionName = partitionName;
+        }
+      },
+      drop: ({ index, column, partitionName }, monitor, component) => ({
+        index,
+        column,
+        partitionName,
+      }),
+    },
+    (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
+  ),
+  DragSource(
+    "columns",
+    {
+      beginDrag: ({ column, partitionName, index }) => ({
+        column,
+        partitionName,
+        index,
+      }),
+      endDrag: (props, monitor, component) => {
+        // props.commitDisplayedValue();
+      },
+    },
+    (connect, monitor) => ({
+      connectDragSource: connect.dragSource(),
+      isDragging: monitor.isDragging(),
+    }),
+  ),
+)(ColumnInner);
 
 export default ChartSettingFieldsPartition;

@@ -572,17 +572,7 @@ export class AlertEditSchedule extends Component {
   }
 }
 
-@User.loadList()
-@connect(
-  (state, props) => ({
-    user: getUser(state),
-    formInput: getPulseFormInput(state),
-  }),
-  {
-    fetchPulseFormInput,
-  },
-)
-export class AlertEditChannels extends Component {
+class AlertEditChannelsInner extends Component {
   componentDidMount() {
     this.props.fetchPulseFormInput();
   }
@@ -626,6 +616,19 @@ export class AlertEditChannels extends Component {
     );
   }
 }
+
+export const AlertEditChannels = _.compose(
+  User.loadList(),
+  connect(
+    (state, props) => ({
+      user: getUser(state),
+      formInput: getPulseFormInput(state),
+    }),
+    {
+      fetchPulseFormInput,
+    },
+  ),
+)(AlertEditChannelsInner);
 
 // TODO: Not sure how to translate text with formatting properly
 @connect(state => ({

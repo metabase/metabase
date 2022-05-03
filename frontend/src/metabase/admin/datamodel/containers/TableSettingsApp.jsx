@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -47,20 +48,7 @@ class TableSettingsApp extends Component {
 
 export default connect(mapStateToProps, mapDispatchToProps)(TableSettingsApp);
 
-@Databases.load({
-  id: (state, { databaseId }) => databaseId,
-  query: {
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  },
-})
-@Tables.load({
-  id: (state, { tableId }) => tableId,
-  query: {
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
-  },
-  selectorName: "getObjectUnfiltered",
-})
-class Nav extends Component {
+class NavInner extends Component {
   render() {
     const { database: db, table } = this.props;
     return (
@@ -82,6 +70,22 @@ class Nav extends Component {
     );
   }
 }
+
+const Nav = _.compose(
+  Databases.load({
+    id: (state, { databaseId }) => databaseId,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+  }),
+  Tables.load({
+    id: (state, { tableId }) => tableId,
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+    selectorName: "getObjectUnfiltered",
+  }),
+)(NavInner);
 
 class UpdateFieldValues extends Component {
   render() {
