@@ -62,19 +62,7 @@ const textStyle = {
   width: "162px",
 };
 
-@connect(
-  state => ({
-    question: getQuestion(state),
-    visualizationSettings: getVisualizationSettings(state),
-    isAdmin: getUserIsAdmin(state),
-    user: getUser(state),
-    hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
-    hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
-    hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state),
-  }),
-  { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
-)
-export class CreateAlertModalContent extends Component {
+class CreateAlertModalContentInner extends Component {
   constructor(props) {
     super();
 
@@ -194,6 +182,19 @@ export class CreateAlertModalContent extends Component {
   }
 }
 
+export const CreateAlertModalContent = connect(
+  state => ({
+    question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state),
+    isAdmin: getUserIsAdmin(state),
+    user: getUser(state),
+    hasLoadedChannelInfo: hasLoadedChannelInfoSelector(state),
+    hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
+    hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state),
+  }),
+  { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
+)(CreateAlertModalContentInner);
+
 export class AlertEducationalScreen extends Component {
   render() {
     const { onProceed } = this.props;
@@ -273,16 +274,7 @@ export class AlertEducationalScreen extends Component {
   }
 }
 
-@connect(
-  state => ({
-    user: getUser(state),
-    isAdmin: getUserIsAdmin(state),
-    question: getQuestion(state),
-    visualizationSettings: getVisualizationSettings(state),
-  }),
-  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
-)
-export class UpdateAlertModalContent extends Component {
+class UpdateAlertModalContentInner extends Component {
   constructor(props) {
     super();
     this.state = {
@@ -369,6 +361,16 @@ export class UpdateAlertModalContent extends Component {
   }
 }
 
+export const UpdateAlertModalContent = connect(
+  state => ({
+    user: getUser(state),
+    isAdmin: getUserIsAdmin(state),
+    question: getQuestion(state),
+    visualizationSettings: getVisualizationSettings(state),
+  }),
+  { apiUpdateQuestion, updateAlert, deleteAlert, updateUrl },
+)(UpdateAlertModalContentInner);
+
 export class DeleteAlertSection extends Component {
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
@@ -440,8 +442,7 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
-export class AlertEditForm extends Component {
+class AlertEditFormInner extends Component {
   onScheduleChange = schedule => {
     const { alert, onAlertChange } = this.props;
 
@@ -477,6 +478,11 @@ export class AlertEditForm extends Component {
     );
   }
 }
+
+export const AlertEditForm = connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)(AlertEditFormInner);
 
 export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
   const isTimeseries = alertType === ALERT_TYPE_TIMESERIES_GOAL;

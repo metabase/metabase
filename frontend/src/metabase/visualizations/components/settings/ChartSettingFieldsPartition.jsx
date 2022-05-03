@@ -200,19 +200,7 @@ class ChartSettingFieldsPartition extends React.Component {
   }
 }
 
-@DropTarget(
-  "columns",
-  {
-    // Using a drop target here is a hack to work around another issue.
-    // The version of react-dnd we're on has a bug where endDrag isn't called.
-    // Drop is still called here, so we trigger commit here.
-    drop: (props, monitor, component) => {
-      props.commitDisplayedValue();
-    },
-  },
-  (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
-)
-class Partition extends React.Component {
+class PartitionInner extends React.Component {
   render() {
     const {
       columns = [],
@@ -260,7 +248,28 @@ class Partition extends React.Component {
   }
 }
 
-@DropTarget(
+const Partition = DropTarget(
+  "columns",
+  {
+    // Using a drop target here is a hack to work around another issue.
+    // The version of react-dnd we're on has a bug where endDrag isn't called.
+    // Drop is still called here, so we trigger commit here.
+    drop: (props, monitor, component) => {
+      props.commitDisplayedValue();
+    },
+  },
+  (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
+)(PartitionInner);
+
+class EmptyPartitionInner extends React.Component {
+  render() {
+    return this.props.connectDropTarget(
+      <div className="p2 text-centered bg-light rounded text-medium">{t`Drag fields here`}</div>,
+    );
+  }
+}
+
+const EmptyPartition = DropTarget(
   "columns",
   {
     hover: (props, monitor, component) => {
@@ -283,14 +292,7 @@ class Partition extends React.Component {
     },
   },
   (connect, monitor) => ({ connectDropTarget: connect.dropTarget() }),
-)
-class EmptyPartition extends React.Component {
-  render() {
-    return this.props.connectDropTarget(
-      <div className="p2 text-centered bg-light rounded text-medium">{t`Drag fields here`}</div>,
-    );
-  }
-}
+)(EmptyPartitionInner);
 
 class ColumnInner extends React.Component {
   constructor(props) {
