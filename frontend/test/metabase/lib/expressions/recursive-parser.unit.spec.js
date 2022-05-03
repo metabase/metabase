@@ -165,6 +165,8 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   it("should parse boolean unary expressions", () => {
     expect(process("NOT C > 0")).toEqual(["not", [">", C, 0]]);
     expect(process("NOT NOT X")).toEqual(["not", ["not", X]]);
+    expect(filter("Y = NOT X")).toEqual(["=", Y, ["not", X]]);
+    expect(filter("C = NOT true")).toEqual(["=", C, ["not", true]]);
   });
 
   it("should parse boolean binary expressions", () => {

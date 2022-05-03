@@ -109,9 +109,10 @@ function recursiveParse(source) {
 
   // Unary ::= Primary |
   //           "+" Unary |
-  //           "-" Unary
+  //           "-" Unary |
+  //           "NOT" Unary
   const parseUnary = () => {
-    if (matchOps([OP.Plus, OP.Minus])) {
+    if (matchOps([OP.Plus, OP.Minus, OP.Not])) {
       const { op } = next();
       const expr = parseUnary();
       return op === OP.Minus && typeof expr === "number" ? -expr : [op, expr];
@@ -332,7 +333,11 @@ export const adjustBooleans = tree =>
         return [
           operator,
           ...operands.map((operand, index) => {
-            if (!Array.isArray(operand) || args[index] !== "boolean") {
+            if (
+              !Array.isArray(operand) ||
+              args[index] !== "boolean" ||
+              operator === "not"
+            ) {
               return operand;
             }
             const [op, _id, opts] = operand;
