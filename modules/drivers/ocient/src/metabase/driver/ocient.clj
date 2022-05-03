@@ -113,7 +113,7 @@
                               :left-join                       true
                               :right-join                      true
                               :inner-join                      true
-                              :nested-queries                  true
+                              :nested-queries                  false
                               :regex                           false
                               :binning                         true
                               :foreign-keys                    (not config/is-test?)}]
