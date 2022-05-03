@@ -620,13 +620,53 @@
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defmethod apply-top-level-clause [:sql :aggregation]
-  [driver _ honeysql-form {aggregations :aggregation}]
-  (let [honeysql-ags (vec (for [ag aggregations]
-                            [(->honeysql driver ag)
+  [driver _ honeysql-form {breakout-fields :breakout aggregations :aggregation :as iq}]
+  (let [binned-fields (filter (fn [[_ _ m]] (:binning m)) breakout-fields)
+        honeysql-ags (vec (for [ag aggregations]
+                            [(honeysql.core/call
+                              :sum
+                              (metabase.util.honeysql-extensions/with-type-info
+                                (metabase.util.honeysql-extensions/identifier :field "T" "FINGERPRINT_VERSION")
+                                #:metabase.util.honeysql-extensions{:database-type "integer"}))
                              (->honeysql driver (hx/identifier
                                                  :field-alias
                                                  (driver/escape-alias driver (annotate/aggregation-name ag))))]))]
     (reduce hh/merge-select honeysql-form honeysql-ags)))
+
+(comment
+
+  (:breakout iq)
+
+  (->honeysql
+   :sql
+   [:aggregation-options
+    [:count]
+    {:name "count",
+     :metabase.query-processor.util.add-alias-info/position 2,
+     :metabase.query-processor.util.add-alias-info/desired-alias "count"}])
+
+  (first (:aggregation iq))
+
+  (keys iq)
+
+  (mt/with-db {:id 6}
+    (mt/with-everything-store
+      (->honeysql
+       :sql
+       [:aggregation-options
+        [:sum
+         [:field 594 #:metabase.query-processor.util.add-alias-info{:source-table 80, :source-alias "FINGERPRINT_VERSION"}]]
+        {:name "sum",
+         :metabase.query-processor.util.add-alias-info/position 2,
+         :metabase.query-processor.util.add-alias-info/desired-alias "sum"}])))
+
+  '(honeysql.core/call
+    :sum
+    (metabase.util.honeysql-extensions/with-type-info
+      (metabase.util.honeysql-extensions/identifier :field "T" "FINGERPRINT_VERSION")
+      #:metabase.util.honeysql-extensions{:database-type "integer"}))
+
+  )
 
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
@@ -635,88 +675,72 @@
 (defn ->bins [{:keys [strategy num-bins min-value max-value bin-width]}]
   (vec (range min-value max-value bin-width)))
 
-(do
-  (defmethod apply-top-level-clause [:sql :breakout]
-    [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
-    (let [{binned-fields true unbinned-fields false} (group-by (comp boolean (fn [[_ _ m]] (:binning m)))
-                                                               breakout-fields)
+(defmethod apply-top-level-clause [:sql :breakout]
+  [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as _query}]
+  (let [{binned-fields true unbinned-fields false} (group-by (comp boolean (fn [[_ _ m]] (:binning m))) breakout-fields)]
+    (if (seq binned-fields)
+      (let [with-merge (apply hh/merge-select honeysql-form (->> breakout-fields
+                                                                 (remove (set fields-fields))
+                                                                 (mapv (fn [field-clause]
+                                                                         (as driver field-clause)))))
 
-          with-merge (apply hh/merge-select honeysql-form (->> breakout-fields
-                                                               (remove (set fields-fields))
-                                                               (mapv (fn [field-clause]
-                                                                       (as driver field-clause)))))
+            bin-aliases (for [[_ _ {:keys [::add/source-alias]}] binned-fields] source-alias)
 
-          bin-aliases (for [[_ _ {:keys [::add/source-alias]}] binned-fields] source-alias)
+            bins (map #(->bins (:binning (nth % 2))) binned-fields)
 
-          bins (map #(->bins (:binning (nth % 2))) binned-fields)
+            wrapped (apply hh/merge-select
+                           {:from [[with-merge :t]]}
+                           (->> breakout-fields
+                                (remove (set fields-fields))
+                                (mapv (fn [[_ _ {:keys [binning ::add/source-alias]} :as field-clause]]
+                                        (keyword (str (if binning "bins." "t.") source-alias))))))
 
-          wrapped (apply hh/merge-select
-                         {:from [[with-merge :t]]}
-                         (->> breakout-fields
-                              (remove (set fields-fields))
-                              (mapv (fn [[_ _ {:keys [binning ::add/source-alias]} :as field-clause]]
-                                      (keyword (str (if binning "bins." "t.") source-alias))))))
-
-          with-rj (apply hh/merge-right-join wrapped
-                         [[{:values (vec (apply math.combo/cartesian-product bins))}
-                           (hsql/raw (str "bins(" (str/join ", " bin-aliases) ")"))]
-                          (into [:and] (for [bin-alias bin-aliases]
-                                         [:=
-                                          (keyword (str "t." bin-alias))
-                                          (keyword (str "bins." bin-alias))]))])]
-      with-rj
-      #_(apply hh/group with-rj (mapv (partial ->honeysql driver) breakout-fields))))
-
-  (binding [driver/*driver* :sql]
-    (mt/with-db {:id 1}
-      (mt/with-everything-store
-        (apply-top-level-clause
-            :sql
-            :breakout
-          {:from '((metabase.util.honeysql-extensions/identifier :table "PUBLIC" "PRODUCTS"))}
-          iq))))
-
-
-
-  #_{:from :customers
-   :select :*
-   :left-join [:products [:= :products.id 30]
-               :orders [:> :orders.number 10]]}
-
-
-#_  (hsql/format
-   {:select [:*]
-    :from [
-           [{:values [[1 10] [2 20] [3 30]]} (keyword "my-thing(a, b)")]
-           ]})
-
-select * from (values (1), (2), (3));
-
-select * from (values (1), (2), (3)) as x;
-
-select x.one from (values (1), (2), (3)) as x(one);
-
-select x.two, x.one from (values (1, 10), (2, 20), (3, 30)) as x(one, two);
-
-select y.one from (values (1, 10), (2, 20), (3, 30)) as x(one, two)
-right join (values (1), (2), (3)) as y(one) on y.one = x.one;
-
-;; SELECT "bins"."RATING", "t"."CATEGORY", count(*) AS "count"
-;; FROM (SELECT
-;;       ((floor((("PUBLIC"."PRODUCTS"."RATING" - 0.0) / 0.5)) * 0.5) + 0.0) AS "RATING",
-;;       "PUBLIC"."PRODUCTS"."CATEGORY" AS "CATEGORY" FROM "PUBLIC"."PRODUCTS")"t"
-;; RIGHT JOIN (VALUES (0.0), (0.5), (1.0), (1.5), (2.0), (2.5), (3.0), (3.5), (4.0), (4.5)) as bins(RATING)
-;; ON ("t"."RATING" = "bins"."RATING")
-;; ORDER BY ((floor((("PUBLIC"."PRODUCTS"."RATING" - 0.0) / 0.5)) * 0.5) + 0.0) ASC,"PUBLIC"."PRODUCTS"."CATEGORY"
-;; ASC LIMIT 10
-
- )
+            with-rj (apply hh/merge-right-join wrapped
+                           [[{:values (vec (apply math.combo/cartesian-product bins))}
+                             (hsql/raw (str "\"bins\"("
+                                            (str/join ", "
+                                                      ;; wanted to use
+                                                      ;; but we are in raw
+                                                      ;; (->honeysql :sql (hx/identifier :field-alias bin-alias))
+                                                      (map
+                                                       (fn [s] (str "\"" (str/upper-case s) "\""))
+                                                       bin-aliases)) ")"))]
+                            (into [:and] (for [bin-alias bin-aliases]
+                                           [:=
+                                            (keyword (str "t." bin-alias))
+                                            (keyword (str "bins." bin-alias))]))])]
+        (apply hh/group with-rj
+               (->> breakout-fields
+                    (remove (set fields-fields))
+                    (mapv (fn [[_ _ {:keys [binning ::add/source-alias]} :as field-clause]]
+                            (keyword (str (if binning "bins." "t.") source-alias)))))))
+      (as-> honeysql-form new-hsql
+        (apply hh/merge-select new-hsql (->> breakout-fields
+                                             (remove (set fields-fields))
+                                             (mapv (fn [field-clause]
+                                                     (as driver field-clause)))))
+        (apply hh/group new-hsql (mapv (partial ->honeysql driver) breakout-fields))))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
   (apply hh/merge-select honeysql-form (vec (for [field-clause fields]
                                               (as driver field-clause)))))
 
+(require '[metabase.test :as mt])
+
+#_(binding [driver/*driver* :sql]
+    (mt/with-db {:id 3}
+      (mt/with-everything-store
+        (as :sql [:field
+          467
+          {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 20000.0, :bin-width 2000},
+           :metabase.query-processor.util.add-alias-info/source-table 66,
+           :metabase.query-processor.util.add-alias-info/source-alias "AVERAGE_EXECUTION_TIME",
+           :metabase.query-processor.util.add-alias-info/desired-alias "AVERAGE_EXECUTION_TIME",
+           :metabase.query-processor.util.add-alias-info/position 0}])
+        )))
+
+;;iq
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
 
@@ -881,8 +905,15 @@ right join (values (1), (2), (3)) as y(one) on y.one = x.one;
   [(->honeysql driver field) direction])
 
 (defmethod apply-top-level-clause [:sql :order-by]
-  [driver _ honeysql-form {subclauses :order-by}]
-  (reduce hh/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
+  [driver _ honeysql-form {fields-fields :fields, subclauses :order-by}]
+  (let [binned-fields (filter (fn [[_ [_ _ m]]] (:binning m)) subclauses)]
+    (if (seq binned-fields)
+      (reduce hh/merge-order-by honeysql-form
+              (mapv (fn [[_ [_ _ {:keys [binning ::add/source-alias]}]]]
+                      (keyword (str (if binning "bins." "t.") source-alias)))
+                    subclauses))
+      (reduce hh/merge-order-by honeysql-form
+              (mapv (partial ->honeysql driver) subclauses)))))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
@@ -1017,8 +1048,9 @@ right join (values (1), (2), (3)) as y(one) on y.one = x.one;
 
 (defn mbql->honeysql
   "Build the HoneySQL form we will compile to SQL and execute."
-  [driver {inner-query :query}]
+  [driver {inner-query :query :as fq}]
   (let [inner-query (preprocess driver inner-query)]
+    (def fq fq)
     (def iq inner-query)
     (log/infof "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
     (u/prog1 (apply-clauses driver {} inner-query)
