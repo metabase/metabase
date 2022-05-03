@@ -1,6 +1,7 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
 import { restore, popover } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
+
 const { first_name, last_name, email, password } = USERS.normal;
 
 const CURRENT_USER = {
@@ -98,15 +99,31 @@ describe("user > settings", () => {
     cy.visit("/account/profile");
 
     cy.findByText("Use site default").click();
-    popover()
-      .contains("Indonesian")
-      .click();
+    popover().within(() => cy.findByText("Indonesian").click());
 
     cy.button("Update").click();
     cy.wait("@updateUserSettings");
 
     // We need some UI element other than a string
     cy.icon("gear").should("exist");
+  });
+
+  it("should be able to open the app with every locale from the available locales (metabase#22192)", () => {
+    cy.request("GET", "/api/user/current").then(({ body: user }) => {
+      cy.intercept("GET", "/api/user/current").as("getUser");
+
+      cy.request("GET", "/api/session/properties").then(
+        ({ body: settings }) => {
+          cy.wrap(settings["available-locales"]).each(([locale]) => {
+            cy.log(`Using ${locale} locale`);
+            cy.request("PUT", `/api/user/${user.id}`, { locale });
+            cy.visit("/");
+            cy.wait("@getUser");
+            cy.icon("gear").should("exist");
+          });
+        },
+      );
+    });
   });
 
   describe("when user is authenticated via ldap", () => {
