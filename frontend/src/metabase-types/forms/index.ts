@@ -3,14 +3,31 @@ export type DefaultFieldValue = unknown;
 
 export type FieldValues = Record<FieldName, DefaultFieldValue>;
 
+type FieldValidateResultOK = undefined;
+type FieldValidateResultError = string;
+
 export type BaseFieldDefinition = {
   name: string;
   type?: string;
   title?: string;
   description?: string;
-  initial?: unknown;
-  validate?: () => void;
-  normalize?: () => void;
+  placeholder?: string;
+  hidden?: boolean;
+
+  info?: string;
+  infoLabel?: string;
+  infoLabelTooltip?: string;
+
+  align?: "left" | "right";
+  horizontal?: boolean;
+  descriptionPosition?: "top" | "bottom";
+  visibleIf?: Record<FieldName, unknown>;
+
+  initial?: (value: unknown) => DefaultFieldValue;
+  validate?: (
+    value: DefaultFieldValue,
+  ) => FieldValidateResultOK | FieldValidateResultError;
+  normalize?: (value: unknown) => DefaultFieldValue;
 };
 
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
@@ -28,6 +45,7 @@ export type FormFieldDefinition =
 export type FormField<Value = DefaultFieldValue> = {
   name: FieldName;
   value: Value;
+  error?: string;
   initialValue: Value;
 
   active: boolean;
