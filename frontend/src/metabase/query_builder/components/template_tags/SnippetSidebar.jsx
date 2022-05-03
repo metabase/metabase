@@ -283,11 +283,7 @@ export default _.compose(
   }),
 )(SnippetSidebar);
 
-@SnippetCollections.loadList({ query: { archived: true }, wrapped: true })
-@connect((state, { list }) => ({ archivedSnippetCollections: list }))
-@SnippetCollections.loadList()
-@Snippets.loadList({ query: { archived: true }, wrapped: true })
-class ArchivedSnippets extends React.Component {
+class ArchivedSnippetsInner extends React.Component {
   render() {
     const {
       onBack,
@@ -332,6 +328,13 @@ class ArchivedSnippets extends React.Component {
     );
   }
 }
+
+const ArchivedSnippets = _.compose(
+  SnippetCollections.loadList({ query: { archived: true }, wrapped: true }),
+  connect((state, { list }) => ({ archivedSnippetCollections: list })),
+  SnippetCollections.loadList(),
+  Snippets.loadList({ query: { archived: true }, wrapped: true }),
+)(ArchivedSnippetsInner);
 
 function Row(props) {
   const Component = {
