@@ -246,8 +246,8 @@
 (defn- default-format-strings
   "Default strings to use for datetime and number fields if custom format settings are not set."
   []
-  {:datetime "mmmm d, yyyy" (datetime-format-string (merge-global-settings {} :type/Temporal))
-   :date     "mmmm d, yyyy" (datetime-format-string (merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
+  {:datetime (datetime-format-string (merge-global-settings {} :type/Temporal))
+   :date     (datetime-format-string (merge-global-settings {::mb.viz/time-enabled nil} :type/Temporal))
    ;; Use a fixed format for time fields since time formatting isn't currently supported (#17357)
    :time     "h:mm am/pm"
    :integer  "#,##0"
@@ -304,8 +304,8 @@
   to format strings."
   (memoize
    (fn [^Workbook workbook cols col-settings]
-     (let [data-format   (. workbook createDataFormat)
-           col-styles    (column-style-delays workbook data-format col-settings cols)]
+     (let [data-format (. workbook createDataFormat)
+           col-styles  (column-style-delays workbook data-format col-settings cols)]
        (into col-styles
              (for [[name-keyword format-string] (seq (default-format-strings))]
                {name-keyword (format-string-delay workbook data-format format-string)}))))))
