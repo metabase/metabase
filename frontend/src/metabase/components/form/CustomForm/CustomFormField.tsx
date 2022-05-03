@@ -11,12 +11,12 @@ import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import {
   BaseFieldDefinition,
+  StandardFormFieldDefinition,
   CustomFormFieldDefinition,
   FormFieldDefinition,
-  FormLegacyContext,
-  StandardFormFieldDefinition,
-  LegacyContextTypes,
-} from "./types";
+} from "metabase-types/forms";
+
+import { FormLegacyContext, LegacyContextTypes } from "./types";
 
 function isCustomWidget(
   formField: FormFieldDefinition,
