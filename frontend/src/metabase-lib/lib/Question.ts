@@ -23,7 +23,7 @@ import {
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
 import { isFK } from "metabase/lib/schema_metadata";
-import { memoize, sortObject } from "metabase-lib/lib/utils";
+import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {
@@ -96,7 +96,7 @@ export type QuestionCreatorOpts = {
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
-export default class Question {
+class Question {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
@@ -256,7 +256,6 @@ export default class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  @memoize
   query(): AtomicQuery {
     const datasetQuery = this._card.dataset_query;
 
@@ -823,7 +822,6 @@ export default class Question {
     }
   }
 
-  @memoize
   mode(): Mode | null | undefined {
     return Mode.forQuestion(this);
   }
@@ -1340,3 +1338,5 @@ export default class Question {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
   }
 }
+
+export default memoizeClass("query", "mode")(Question);

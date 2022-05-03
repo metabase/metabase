@@ -6,7 +6,7 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 import Dimension from "metabase-lib/lib/Dimension";
 import Variable from "metabase-lib/lib/Variable";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
@@ -14,7 +14,7 @@ type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
 
-export default class Query {
+class Query {
   _metadata: Metadata;
 
   /**
@@ -34,7 +34,6 @@ export default class Query {
    * Returns a question updated with the current dataset query.
    * Can only be applied to query that is a direct child of the question.
    */
-  @memoize
   question(): Question {
     return this._originalQuestion.setQuery(this);
   }
@@ -132,3 +131,5 @@ export default class Query {
     }
   }
 }
+
+export default memoizeClass("question")(Query);

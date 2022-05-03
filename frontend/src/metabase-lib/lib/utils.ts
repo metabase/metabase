@@ -24,17 +24,42 @@ function getWithFallback(map, key, fallback) {
 }
 
 const memoized = new WeakMap();
-export function memoize(target, name, descriptor) {
-  const method = target[name];
 
-  descriptor.value = function(...args) {
-    const path = [this, method, args.length, ...args];
-    const last = path.pop();
-    const map = path.reduce(
-      (map, key) => getWithFallback(map, key, createMap),
-      memoized,
-    );
-    return getWithFallback(map, last, () => method.apply(this, args));
+type Constructor<T> = new (...args: any[]) => T;
+
+export function memoizeClass<P, T extends Constructor<P>>(...keys: string[]) {
+  return function(Class: T) {
+    const descriptors = Object.getOwnPropertyDescriptors(Class.prototype);
+
+    keys.forEach(key => {
+      if (!(key in descriptors)) {
+        throw new TypeError(`${key} is not a member of class`);
+      }
+      const descriptor = descriptors[key];
+      const method = descriptor.value;
+      if (!method) {
+        // If we don't get a decsriptor.value, it must have a getter
+        //  (i.e., ES6 class properties)
+        throw new TypeError(`Class properties cannot be memoized`);
+      }
+      if (typeof method !== "function") {
+        throw new TypeError(`${key} is not a method and cannot be memoized`);
+      }
+      Object.defineProperty(Class.prototype, key, {
+        ...descriptor,
+        value: function(...args) {
+          const path = [this, method, args.length, ...args];
+          const last = path.pop();
+          const map = path.reduce(
+            (map, key) => getWithFallback(map, key, createMap),
+            memoized,
+          );
+          return getWithFallback(map, last, () => method.apply(this, args));
+        },
+      });
+    });
+
+    return Class;
   };
 }
 

@@ -3,7 +3,7 @@
 import Question from "../Question";
 import Base from "./Base";
 import { generateSchemaId } from "metabase/lib/schema";
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import Table from "./Table";
 import Schema from "./Schema";
 import Metadata from "./Metadata";
@@ -17,7 +17,7 @@ import Metadata from "./Metadata";
  * Backed by types/Database data structure which matches the backend API contract
  */
 
-export default class Database extends Base {
+class Database extends Base {
   id: number;
   name: string;
   description: string;
@@ -56,7 +56,6 @@ export default class Database extends Base {
   }
 
   // TABLES
-  @memoize
   tablesLookup() {
     return createLookupByProperty(this.tables, "id");
   }
@@ -184,3 +183,5 @@ export default class Database extends Base {
     this.auto_run_queries = auto_run_queries;
   }
 }
+
+export default memoizeClass("tablesLookup")(Database);

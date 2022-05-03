@@ -40,7 +40,7 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 
 import Question from "metabase-lib/lib/Question";
 import Mode from "metabase-lib/lib/Mode";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
 
@@ -184,7 +184,6 @@ class Visualization extends React.PureComponent {
     }
   };
 
-  @memoize
   _getQuestionForCardCached(metadata, card) {
     if (!metadata || !card) {
       return;
@@ -559,4 +558,5 @@ export default _.compose(
     refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
   }),
   connect(),
+  memoizeClass("_getQuestionForCardCached"),
 )(Visualization);
