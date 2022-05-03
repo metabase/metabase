@@ -14,11 +14,7 @@ const PADDING = 14;
 
 const DEFAULT_GRID_SIZE = 100;
 
-@ExplicitSize({
-  wrapped: true,
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
-})
-export default class ChartWithLegend extends Component {
+class ChartWithLegend extends Component {
   static defaultProps = {
     aspectRatio: 1,
     style: {},
@@ -147,3 +143,8 @@ export default class ChartWithLegend extends Component {
     );
   }
 }
+
+export default ExplicitSize({
+  wrapped: true,
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+})(ChartWithLegend);

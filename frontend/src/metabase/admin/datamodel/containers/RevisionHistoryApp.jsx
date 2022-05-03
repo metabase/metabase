@@ -18,8 +18,7 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = { fetchRevisions };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class RevisionHistoryApp extends Component {
+class RevisionHistoryApp extends Component {
   componentDidMount() {
     const { id, objectType } = this.props;
     this.props.fetchRevisions({ entity: objectType, id });
@@ -33,6 +32,8 @@ export default class RevisionHistoryApp extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(RevisionHistoryApp);
 
 @Metrics.load({ id: (state, { id }) => id })
 class MetricRevisionHistory extends Component {

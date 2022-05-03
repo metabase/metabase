@@ -56,8 +56,7 @@ class CreateSegmentForm extends Component {
   }
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentApp extends Component {
+class SegmentApp extends Component {
   render() {
     return this.props.params.id ? (
       <UpdateSegmentForm {...this.props} />
@@ -66,3 +65,5 @@ export default class SegmentApp extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(SegmentApp);

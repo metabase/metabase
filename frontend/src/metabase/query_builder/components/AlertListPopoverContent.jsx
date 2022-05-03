@@ -20,11 +20,7 @@ import {
   UpdateAlertModalContent,
 } from "metabase/query_builder/components/AlertModals";
 
-@connect(
-  state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
-  null,
-)
-export default class AlertListPopoverContent extends Component {
+class AlertListPopoverContent extends Component {
   state = {
     adding: false,
     hasJustUnsubscribedFromOwnAlert: false,
@@ -109,6 +105,11 @@ export default class AlertListPopoverContent extends Component {
     );
   }
 }
+
+export default connect(
+  state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
+  null,
+)(AlertListPopoverContent);
 
 @connect(state => ({ user: getUser(state) }), {
   unsubscribeFromAlert,

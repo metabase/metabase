@@ -24,8 +24,7 @@ const mapDispatchToProps = {
   discardTableFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class TableSettingsApp extends Component {
+class TableSettingsApp extends Component {
   render() {
     const { tableId } = this.props;
     return (
@@ -45,6 +44,8 @@ export default class TableSettingsApp extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(TableSettingsApp);
 
 @Databases.load({
   id: (state, { databaseId }) => databaseId,

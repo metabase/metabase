@@ -14,42 +14,7 @@ import { formatValue } from "metabase/lib/formatting";
 
 import * as Q from "metabase/lib/query/query";
 
-@reduxForm(
-  {
-    form: "metric",
-    fields: [
-      "id",
-      "name",
-      "description",
-      "table_id",
-      "definition",
-      "revision_message",
-      "show_in_getting_started",
-    ],
-    validate: values => {
-      const errors = {};
-      if (!values.name) {
-        errors.name = t`Name is required`;
-      }
-      if (!values.description) {
-        errors.description = t`Description is required`;
-      }
-      if (values.id != null) {
-        if (!values.revision_message) {
-          errors.revision_message = t`Revision message is required`;
-        }
-      }
-      const aggregations =
-        values.definition && Q.getAggregations(values.definition);
-      if (!aggregations || aggregations.length === 0) {
-        errors.definition = t`Aggregation is required`;
-      }
-      return errors;
-    },
-  },
-  (state, { metric }) => ({ initialValues: metric }),
-)
-export default class MetricForm extends Component {
+class MetricForm extends Component {
   renderActionButtons() {
     const { invalid, handleSubmit } = this.props;
     return (
@@ -151,3 +116,39 @@ export default class MetricForm extends Component {
     );
   }
 }
+
+export default reduxForm(
+  {
+    form: "metric",
+    fields: [
+      "id",
+      "name",
+      "description",
+      "table_id",
+      "definition",
+      "revision_message",
+      "show_in_getting_started",
+    ],
+    validate: values => {
+      const errors = {};
+      if (!values.name) {
+        errors.name = t`Name is required`;
+      }
+      if (!values.description) {
+        errors.description = t`Description is required`;
+      }
+      if (values.id != null) {
+        if (!values.revision_message) {
+          errors.revision_message = t`Revision message is required`;
+        }
+      }
+      const aggregations =
+        values.definition && Q.getAggregations(values.definition);
+      if (!aggregations || aggregations.length === 0) {
+        errors.definition = t`Aggregation is required`;
+      }
+      return errors;
+    },
+  },
+  (state, { metric }) => ({ initialValues: metric }),
+)(MetricForm);

@@ -17,8 +17,7 @@ import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
   currentOffset: monitor.getSourceClientOffset(),
   isDragging: monitor.isDragging(),
 }))
-@BodyComponent
-export default class ItemsDragLayer extends React.Component {
+class ItemsDragLayer extends React.Component {
   render() {
     const {
       isDragging,
@@ -56,6 +55,8 @@ export default class ItemsDragLayer extends React.Component {
     );
   }
 }
+
+export default BodyComponent(ItemsDragLayer);
 
 class DraggedItems extends React.Component {
   shouldComponentUpdate(nextProps) {
