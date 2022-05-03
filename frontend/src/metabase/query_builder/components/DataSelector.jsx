@@ -565,7 +565,7 @@ export class UnconnectedDataSelector extends Component {
           database => database.id === this.props.selectedDatabaseId,
         );
         console.log("selectedDatabase:", selectedDatabase);
-        // await this.onChangeDatabase(selectedDatabase);
+        await this.onChangeDatabase(selectedDatabase);
       } else if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
       }
@@ -580,7 +580,7 @@ export class UnconnectedDataSelector extends Component {
           schema => schema.id === this.props.selectedSchemaId,
         );
         console.log("selectedSchema:", selectedSchema);
-        // await this.onChangeSchema(selectedSchema);
+        await this.onChangeSchema(selectedSchema);
       } else if (schemas && schemas.length === 1) {
         console.log("skipSteps:", activeStep);
         await this.onChangeSchema(schemas[0]);
@@ -823,7 +823,10 @@ export class UnconnectedDataSelector extends Component {
       return;
     }
 
-    if (this.props.setDatabaseFn) {
+    if (
+      this.props.setDatabaseFn &&
+      this.props.selectedDatabaseId !== database?.id
+    ) {
       this.props.setDatabaseFn(database && database.id);
     }
     if (this.state.selectedDatabaseId != null) {
