@@ -44,7 +44,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
           {isEditing ? (
             <Select
               placeholder={t`Select a field type`}
-              value={formField.semantic_type.value || field.semantic_type}
+              value={
+                formField.semantic_type.value !== ""
+                  ? formField.semantic_type.value
+                  : field.semantic_type
+              }
               onChange={({ target: { value } }) =>
                 formField.semantic_type.onChange(value)
               }
