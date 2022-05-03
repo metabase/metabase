@@ -304,7 +304,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "enable-embedding",
         description: null,
         widget: EmbeddingLegalese,
-        getHidden: settings => settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
         onChanged: async (
           oldValue,
           newValue,
@@ -326,35 +326,47 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "enable-embedding",
         display_name: t`Enable Embedding Metabase in other Applications`,
         type: "boolean",
-        getHidden: settings => !settings["enable-embedding"],
+        showActualValue: true,
+        getProps: setting => {
+          if (setting.is_env_setting) {
+            return {
+              tooltip: setting.placeholder,
+              disabled: true,
+            };
+          }
+          return null;
+        },
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         widget: EmbeddingCustomizationInfo,
-        getHidden: settings =>
-          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding"] ||
+          MetabaseSettings.isEnterprise(),
       },
       {
         key: "embedding-secret-key",
         display_name: t`Embedding secret key`,
         widget: SecretKeyWidget,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         key: "-embedded-dashboards",
         display_name: t`Embedded Dashboards`,
         widget: EmbeddedDashboardListing,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         key: "-embedded-questions",
         display_name: t`Embedded Questions`,
         widget: EmbeddedQuestionListing,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         widget: PremiumEmbeddingLinkWidget,
-        getHidden: settings =>
-          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding"] ||
+          MetabaseSettings.isEnterprise(),
       },
     ],
   },
@@ -409,6 +421,11 @@ export const getSettings = createSelector(
     ),
 );
 
+// getSettings selector returns settings for admin setting page and values specified by
+// environment variables set to "null". Actual applied setting values are coming from
+// /api/session/properties API handler and getDerivedSettingValues returns them.
+export const getDerivedSettingValues = state => state.settings?.values ?? {};
+
 export const getSettingValues = createSelector(getSettings, settings => {
   const settingValues = {};
   for (const setting of settings) {
@@ -423,8 +440,9 @@ export const getNewVersionAvailable = createSelector(getSettings, settings => {
 
 export const getSections = createSelector(
   getSettings,
+  getDerivedSettingValues,
   getUserIsAdmin,
-  (settings, isAdmin) => {
+  (settings, derivedSettingValues, isAdmin) => {
     if (!settings || _.isEmpty(settings)) {
       return {};
     }
@@ -439,11 +457,16 @@ export const getSections = createSelector(
       const settings = section.settings.map(function(setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
+
         if (apiSetting) {
+          const value = setting.showActualValue
+            ? derivedSettingValues[setting.key]
+            : apiSetting.value;
           return {
             placeholder: apiSetting.default,
             ...apiSetting,
             ...setting,
+            value,
           };
         } else {
           return setting;

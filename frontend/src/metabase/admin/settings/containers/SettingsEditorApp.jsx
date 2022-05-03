@@ -21,6 +21,7 @@ import cx from "classnames";
 import {
   getSettings,
   getSettingValues,
+  getDerivedSettingValues,
   getSections,
   getActiveSection,
   getActiveSectionName,
@@ -32,6 +33,7 @@ const mapStateToProps = (state, props) => {
   return {
     settings: getSettings(state, props),
     settingValues: getSettingValues(state, props),
+    derivedSettingValues: getDerivedSettingValues(state, props),
     sections: getSections(state, props),
     activeSection: getActiveSection(state, props),
     activeSectionName: getActiveSectionName(state, props),
@@ -130,7 +132,12 @@ export default class SettingsEditorApp extends Component {
   };
 
   renderSettingsPane() {
-    const { activeSection, settings, settingValues } = this.props;
+    const {
+      activeSection,
+      settings,
+      settingValues,
+      derivedSettingValues,
+    } = this.props;
     const isLoading = settings.length === 0;
 
     if (isLoading) {
@@ -154,7 +161,9 @@ export default class SettingsEditorApp extends Component {
         <ul>
           {activeSection.settings
             .filter(setting =>
-              setting.getHidden ? !setting.getHidden(settingValues) : true,
+              setting.getHidden
+                ? !setting.getHidden(settingValues, derivedSettingValues)
+                : true,
             )
             .map((setting, index) => (
               <SettingsSetting
