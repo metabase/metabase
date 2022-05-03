@@ -63,6 +63,7 @@ jobs:
           - "dashboard-filters"
           - "downloads"
           - "joins"
+          - "custom-column"
     services:
       maildev:
         image: maildev/maildev:1.1.0
