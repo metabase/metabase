@@ -30,23 +30,57 @@ function getFieldId(formFieldName: FieldName) {
   return `formField-${formFieldName.replace(ALL_DOT_CHARS, "-")}`;
 }
 
+function getDescriptionPositionPropValue(
+  descriptionPosition?: "top" | "bottom",
+  formField?: FormFieldDefinition,
+) {
+  return descriptionPosition ?? formField?.descriptionPosition ?? "top";
+}
+
+function getHiddenPropValue(hidden?: boolean, formField?: FormFieldDefinition) {
+  if (typeof hidden === "boolean") {
+    return hidden;
+  }
+  if (formField) {
+    return formField.hidden || formField.type === "hidden";
+  }
+  return false;
+}
+
+function getHorizontalPropValue(
+  horizontal?: boolean,
+  formField?: FormFieldDefinition,
+) {
+  if (typeof horizontal === "boolean") {
+    return horizontal;
+  }
+  if (formField) {
+    return formField.horizontal || formField.type === "boolean";
+  }
+  return false;
+}
+
 function FormField({
   className,
   formField,
   children,
   ...props
 }: FormFieldProps) {
-  const title = formField?.title;
-  const description = formField?.description;
-  const descriptionPosition =
-    props.descriptionPosition ?? formField?.descriptionPosition ?? "top";
-  const info = formField?.info;
-  const infoLabel = formField?.infoLabel;
-  const infoLabelTooltip = formField?.infoLabelTooltip;
-  const align = formField?.align ?? "right";
-  const hidden = formField && (formField.hidden || formField.type === "hidden");
-  const horizontal =
-    formField && (formField.horizontal || formField.type === "boolean");
+  const title = props.title ?? formField?.title;
+  const description = props.description ?? formField?.description;
+  const descriptionPosition = getDescriptionPositionPropValue(
+    props.descriptionPosition,
+    formField,
+  );
+
+  const info = props.info ?? formField?.info;
+  const infoLabel = props.infoLabel ?? formField?.infoLabel;
+  const infoLabelTooltip =
+    props.infoLabelTooltip ?? formField?.infoLabelTooltip;
+
+  const align = props.align ?? formField?.align ?? "right";
+  const hidden = getHiddenPropValue(props.hidden, formField);
+  const horizontal = getHorizontalPropValue(props.horizontal, formField);
 
   const isToggle = formField?.type === "boolean";
   const standAloneLabel = isToggle && align === "right" && !description;
