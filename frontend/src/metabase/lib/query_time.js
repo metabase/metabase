@@ -219,43 +219,47 @@ export function generateTimeValueDescription(value, bucketing, isExclude) {
   }
 }
 
+function formatPlural(single, plural, n) {
+  return n === 1 ? single : plural;
+}
+
 export function formatBucketing(bucketing = "", n = 1) {
   if (!bucketing) {
     return "";
   }
   switch (bucketing) {
     case "default":
-      return ngettext(msgid`Default period`, `Default periods`, n);
+      return formatPlural(t`Default period`, t`Default periods`, n);
     case "minute":
-      return ngettext(msgid`Minute`, `Minutes`, n);
+      return formatPlural(t`Minute`, t`Minutes`, n);
     case "hour":
-      return ngettext(msgid`Hour`, `Hours`, n);
+      return formatPlural(t`Hour`, t`Hours`, n);
     case "day":
-      return ngettext(msgid`Day`, `Days`, n);
+      return formatPlural(t`Day`, t`Days`, n);
     case "week":
-      return ngettext(msgid`Week`, `Weeks`, n);
+      return formatPlural(t`Week`, t`Weeks`, n);
     case "month":
-      return ngettext(msgid`Month`, `Months`, n);
+      return formatPlural(t`Month`, t`Months`, n);
     case "quarter":
-      return ngettext(msgid`Quarter`, `Quarters`, n);
+      return formatPlural(t`Quarter`, t`Quarters`, n);
     case "year":
-      return ngettext(msgid`Year`, `Years`, n);
+      return formatPlural(t`Year`, t`Years`, n);
     case "minute-of-hour":
-      return ngettext(msgid`Minute of hour`, `Minutes of hour`, n);
+      return formatPlural(t`Minute of hour`, t`Minutes of hour`, n);
     case "hour-of-day":
-      return ngettext(msgid`Hour of day`, `Hours of day`, n);
+      return formatPlural(t`Hour of day`, t`Hours of day`, n);
     case "day-of-week":
-      return ngettext(msgid`Day of week`, `Days of week`, n);
+      return formatPlural(t`Day of week`, t`Days of week`, n);
     case "day-of-month":
-      return ngettext(msgid`Day of month`, `Days of month`, n);
+      return formatPlural(t`Day of month`, t`Days of month`, n);
     case "day-of-year":
-      return ngettext(msgid`Day of year`, `Days of year`, n);
+      return formatPlural(t`Day of year`, t`Days of year`, n);
     case "week-of-year":
-      return ngettext(msgid`Week of year`, `Weeks of year`, n);
+      return formatPlural(t`Week of year`, t`Weeks of year`, n);
     case "month-of-year":
-      return ngettext(msgid`Month of year`, `Months of year`, n);
+      return formatPlural(t`Month of year`, t`Months of year`, n);
     case "quarter-of-year":
-      return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
+      return formatPlural(t`Quarter of year`, t`Quarters of year`, n);
   }
   const words = bucketing.split("-");
   words[0] = inflection.capitalize(words[0]);
