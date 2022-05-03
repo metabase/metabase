@@ -29,7 +29,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   entityQuery => entityQuery,
 );
 
-class EntityObjectLoader extends React.Component {
+class EntityObjectLoaderInner extends React.Component {
   static defaultProps = {
     loadingAndErrorWrapper: true,
     LoadingAndErrorWrapper: LoadingAndErrorWrapper,
@@ -139,7 +139,7 @@ class EntityObjectLoader extends React.Component {
   };
 }
 
-export default _.compose(
+const EntityObjectLoader = _.compose(
   entityType(),
   connect(
     (
@@ -169,7 +169,9 @@ export default _.compose(
       };
     },
   ),
-)(EntityObjectLoader);
+)(EntityObjectLoaderInner);
+
+export default EntityObjectLoader;
 
 export const entityObjectLoader = eolProps =>
   // eslint-disable-line react/display-name
