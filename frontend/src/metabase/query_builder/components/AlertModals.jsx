@@ -637,11 +637,7 @@ export const AlertEditChannels = _.compose(
 )(AlertEditChannelsInner);
 
 // TODO: Not sure how to translate text with formatting properly
-@connect(state => ({
-  question: getQuestion(state),
-  visualizationSettings: getVisualizationSettings(state),
-}))
-export class RawDataAlertTip extends Component {
+class RawDataAlertTipInner extends Component {
   render() {
     const display = this.props.question.display();
     const vizSettings = this.props.visualizationSettings;
@@ -668,6 +664,11 @@ export class RawDataAlertTip extends Component {
     );
   }
 }
+
+export const RawDataAlertTip = connect(state => ({
+  question: getQuestion(state),
+  visualizationSettings: getVisualizationSettings(state),
+}))(RawDataAlertTipInner);
 
 export const MultiSeriesAlertTip = () => (
   <div>{jt`${(

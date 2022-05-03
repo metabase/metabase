@@ -111,11 +111,7 @@ export default connect(
   null,
 )(AlertListPopoverContent);
 
-@connect(state => ({ user: getUser(state) }), {
-  unsubscribeFromAlert,
-  deleteAlert,
-})
-export class AlertListItem extends Component {
+class AlertListItemInner extends Component {
   state = {
     unsubscribingProgress: null,
     hasJustUnsubscribed: false,
@@ -238,6 +234,11 @@ export class AlertListItem extends Component {
     );
   }
 }
+
+export const AlertListItem = connect(state => ({ user: getUser(state) }), {
+  unsubscribeFromAlert,
+  deleteAlert,
+})(AlertListItemInner);
 
 export const UnsubscribedListItem = () => (
   <li className="border-bottom flex align-center py4 text-bold">
