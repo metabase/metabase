@@ -165,15 +165,15 @@
 
 (defmethod unprepare/unprepare-value [:ocient OffsetTime]
   [_ t]
-  (format "time('%s')" (t/format "HH:mm:ss.SSS ZZZZZ" t)))
+  (format "time('%s')" (t/format "HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
   [_ t]
-  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:ocient ZonedDateTime]
   [_ t]
-  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
 
 (defmethod unprepare/unprepare-value [:ocient Instant]
   [driver t]
@@ -183,44 +183,45 @@
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-;;  :cause Unsupported temporal bucketing: You can't bucket a :type/Date Field by :hour.                                                                                                                                                                                      │
-;;  :data {:type :invalid-query, :field [:field 11 {:temporal-unit :hour}], :base-type :type/Date, :unit :hour, :valid-units #{:quarter :day :week :default :day-of-week :month :month-of-year :day-of-month :year :day-of-year :week-of-year :quarter-of-year}}              │
-;;  :via                                                                                                                                                                                                                                                                      │
-;;  [{:type clojure.lang.ExceptionInfo                                                                                                                                                                                                                                        │
-;;    :message Error calculating permissions for query                                                                                                                                                                                                                        │
-;;    :data {:query {:database 1, :type :query, :query {:source-table 3, :aggregation [[:count]], :breakout [[:field 11 {:temporal-unit :hour}] [:field 11 {:temporal-unit :minute}]]}}}                                                                                      │
-;;    :at [metabase.models.query.permissions$eval59295$mbql_permissions_path_set__59300$fn__59304 invoke permissions.clj 138]}                                                                                                                                                │
-;;   {:type clojure.lang.ExceptionInfo                                                                                                                                                                                                                                        │
-;;    :message Unsupported temporal bucketing: You can't bucket a :type/Date Field by :hour.                                                                                                                                                                                  │
-;;    :data {:type :invalid-query, :field [:field 11 {:temporal-unit :hour}], :base-type :type/Date, :unit :hour, :valid-units #{:quarter :day :week :default :day-of-week :month :month-of-year :day-of-month :year :day-of-year :week-of-year :quarter-of-year}}            │
-;;    :at [metabase.query_processor.middleware.validate_temporal_bucketing$validate_temporal_bucketing invokeStatic validate_temporal_bucketing.clj 39]}]                                                                                                                     │
-;;  :trace
+;; Ocient is always in UTC
+(defmethod driver/db-default-timezone :ocient [_ _]
+  "UTC")
+
 ;; Cast time columns to timestamps
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "date" "time"} honeysql-form))
 
 (defmethod driver/db-start-of-week :ocient
   [_]
-  :sunday)
+  :monday)
 
+(defn- extract    [unit expr] (hsql/call :extract unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
 
 (defmethod sql.qp/date [:ocient :date]            [_ _ expr] (hsql/call :date expr))
 (defmethod sql.qp/date [:ocient :minute]          [_ _ expr] (date-trunc :minute expr))
-(defmethod sql.qp/date [:ocient :hour]            [_ _ expr] (date-trunc :hour expr))
-(defmethod sql.qp/date [:ocient :day]             [_ _ expr] (date-trunc :day expr))
-(defmethod sql.qp/date [:ocient :week]            [_ _ expr] (sql.qp/adjust-start-of-week :ocient (partial date-trunc :week) expr))
-(defmethod sql.qp/date [:ocient :month]           [_ _ expr] (date-trunc :month expr))
-(defmethod sql.qp/date [:ocient :quarter]         [_ _ expr] (date-trunc :quarter expr))
-(defmethod sql.qp/date [:ocient :year]            [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:ocient :minute-of-hour]  [_ _ expr] (hsql/call :minute expr))
+(defmethod sql.qp/date [:ocient :hour]            [_ _ expr] (date-trunc :hour expr))
 (defmethod sql.qp/date [:ocient :hour-of-day]     [_ _ expr] (hsql/call :hour expr))
-(defmethod sql.qp/date [:ocient :day-of-week]     [_ _ expr] (hsql/call :day_of_week expr))
-(defmethod sql.qp/date [:ocient :day-of-month]    [_ _ expr] (hsql/call :day expr))
+(defmethod sql.qp/date [:ocient :day]             [_ _ expr] (date-trunc :day expr))
+(defmethod sql.qp/date [:ocient :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
 (defmethod sql.qp/date [:ocient :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
-(defmethod sql.qp/date [:ocient :week-of-year]    [_ _ expr] (hsql/call :week expr))
+(defmethod sql.qp/date [:ocient :week]            [_ _ expr] (sql.qp/adjust-start-of-week :ocient (partial date-trunc :week) expr))
+;; (defmethod sql.qp/date [:ocient :week]            [_ _ expr] (date-trunc :week expr))
+(defmethod sql.qp/date [:ocient :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:ocient :month-of-year]   [_ _ expr] (hsql/call :month expr))
+(defmethod sql.qp/date [:ocient :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:ocient :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
+(defmethod sql.qp/date [:ocient :year]            [_ _ expr] (date-trunc :year expr))
+
+(defmethod sql.qp/date [:ocient :day-of-week]     [_ _ expr]
+  (sql.qp/adjust-day-of-week :ocient
+                             ;; Subtract 1 day because start of the week is Monday for week() 
+                             ;; and Sunday for day_of_week()...
+                             (hx/- (hsql/call :day_of_week expr) 1)))
+
+
+
 (defmethod sql.qp/date [:ocient :default]         [_ _ expr] expr)
 
 (defmethod sql.qp/current-datetime-honeysql-form :ocient [_] :%now)
