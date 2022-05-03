@@ -160,9 +160,11 @@ describe("parameters/utils/mbql", () => {
         "!=",
         ["field", null, { "temporal-unit": "month-of-year" }],
         date()
+          .date(1)
           .month(1)
           .format("YYYY-MM-DD"),
         date()
+          .date(1)
           .month(2)
           .format("YYYY-MM-DD"),
       ]);

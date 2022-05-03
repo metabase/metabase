@@ -23,9 +23,9 @@
 (def ^:private startup-job-key "metabase.task.on-startup-refresh-channel-cache.job")
 (def ^:private startup-trigger-key "metabase.task.on-startup-refresh-channel-cache.trigger")
 
-(jobs/defjob RefreshCache [_] (job))
+(jobs/defjob ^{:doc "General slack cache refresh job"} RefreshCache [_] (job))
 
-(jobs/defjob RefreshCacheOnStartup [_]
+(jobs/defjob ^{:doc "Startup cache refresh, with cleanup on failure."} RefreshCacheOnStartup [_]
   (try (job)
        (finally
          (task/delete-task! (jobs/key startup-job-key)

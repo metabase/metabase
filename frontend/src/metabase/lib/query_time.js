@@ -40,7 +40,18 @@ export function computeFilterTimeRange(filter) {
   const bucketing = parseFieldBucketing(field, "day");
 
   let start, end;
-  if (operator === "=" && values[0]) {
+  if (isStartingFrom(filter)) {
+    const [startingFrom, startingFromUnit] = getStartingFrom(filter);
+    const [value, unit] = getRelativeDatetimeInterval(filter);
+    const now = moment()
+      .startOf(unit)
+      .add(-startingFrom, startingFromUnit);
+    start = now.clone().add(value < 0 ? value : 0, unit);
+    end = now.clone().add(value < 0 ? 0 : value, unit);
+    if (["day", "week", "month", "quarter", "year"].indexOf(unit) > -1) {
+      end = end.add(-1, "day");
+    }
+  } else if (operator === "=" && values[0]) {
     const point = absolute(values[0]);
     start = point.clone().startOf(bucketing);
     end = point.clone().endOf(bucketing);
@@ -53,11 +64,6 @@ export function computeFilterTimeRange(filter) {
   } else if (operator === "between" && values[0] && values[1]) {
     start = absolute(values[0]).startOf(bucketing);
     end = absolute(values[1]).endOf(bucketing);
-  }
-  if (isStartingFrom(filter)) {
-    const [value, unit] = getStartingFrom(filter);
-    start = start.add(-value, unit);
-    end = end.add(-value, unit);
   }
 
   return [start, end];
@@ -271,8 +277,11 @@ export function absolute(date) {
  */
 export function parseFieldBucketing(field, defaultUnit = null) {
   const dimension = FieldDimension.parseMBQLOrWarn(field);
+  const isStartingFromExpr = field?.[0] === "+" && field?.[1]?.[0] === "field";
   if (dimension) {
     return dimension.temporalUnit() || defaultUnit;
+  } else if (isStartingFromExpr) {
+    return parseFieldBucketing(field[1], defaultUnit);
   }
   return defaultUnit;
 }
@@ -403,20 +412,16 @@ export function setStartingFrom(mbql, num, unit) {
   if (interval) {
     const [field, intervalNum, intervalUnit] = interval;
     const newUnit = unit || intervalUnit;
-    const expr = [
-      "+",
-      field,
-      ["interval", num ?? getDefaultDatetimeValue(newUnit), newUnit],
-    ];
-    const newInterval = ["relative-datetime", intervalNum, intervalUnit];
-    if (intervalNum === -1 || intervalNum === 1) {
-      return ["=", expr, newInterval];
-    } else {
-      const zeroed = ["relative-datetime", 0, intervalUnit];
-      const left = intervalNum < 0 ? newInterval : zeroed;
-      const right = intervalNum < 0 ? zeroed : newInterval;
-      return ["between", expr, left, right];
+    let newValue = num;
+    if (typeof newValue !== "number") {
+      newValue = (intervalNum < 0 ? 1 : -1) * getDefaultDatetimeValue(newUnit);
     }
+    const expr = ["+", field, ["interval", newValue, newUnit]];
+    const newInterval = ["relative-datetime", intervalNum, intervalUnit];
+    const zeroed = ["relative-datetime", 0, intervalUnit];
+    const left = intervalNum < 0 ? newInterval : zeroed;
+    const right = intervalNum < 0 ? zeroed : newInterval;
+    return ["between", expr, left, right];
   }
 
   return mbql;
@@ -502,10 +507,9 @@ export function updateRelativeDatetimeFilter(filter, positive) {
     const [value, unit] = getRelativeDatetimeInterval(filter);
     const absValue = Math.abs(value);
     const newValue = positive ? absValue : -absValue;
-    const newField = [fieldOp, field, [intervalOp, -intervalNum, intervalUnit]];
-    if (absValue === 1) {
-      return ["=", newField, ["relative-datetime", newValue, unit]];
-    }
+    const absInterval = Math.abs(intervalNum);
+    const newInterval = positive ? -absInterval : absInterval;
+    const newField = [fieldOp, field, [intervalOp, newInterval, intervalUnit]];
     const zeroed = ["relative-datetime", 0, unit];
     const interval = ["relative-datetime", newValue, unit];
     const left = newValue < 0 ? interval : zeroed;
@@ -519,9 +523,14 @@ export function setRelativeDatetimeUnit(filter, unit) {
   if (filter[0] === "time-interval") {
     return assoc(filter, 3, unit);
   }
-  if (isStartingFrom(filter)) {
+  const startingFrom = getStartingFrom(filter);
+  if (startingFrom) {
     const [op, field, start, end] = filter;
-    return [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end];
+    return setStartingFrom(
+      [op, field, assoc(start, 2, unit), end ? assoc(end, 2, unit) : end],
+      startingFrom[0],
+      unit,
+    );
   }
   return filter;
 }
@@ -531,15 +540,13 @@ export function setRelativeDatetimeValue(filter, value) {
     return assoc(filter, 2, value);
   }
   if (isStartingFrom(filter)) {
-    const [_op, field, start, end] = filter;
-    if (value === 1 || value === -1) {
-      return ["=", field, assoc(start, 1, value)];
-    }
+    const [_op, field] = filter;
+    const [_num, unit] = getRelativeDatetimeInterval(filter);
     return [
       "between",
       field,
-      assoc(start, 1, value < 0 ? value : 0),
-      assoc(end, 1, value < 0 ? 0 : value),
+      ["relative-datetime", value < 0 ? value : 0, unit],
+      ["relative-datetime", value < 0 ? 0 : value, unit],
     ];
   }
   return filter;
@@ -625,6 +632,7 @@ export const EXCLUDE_OPTIONS = {
   [EXCLUDE_UNITS["months"]]: () => {
     const now = moment()
       .utc()
+      .date(1)
       .hours(0)
       .minutes(0)
       .seconds(0)

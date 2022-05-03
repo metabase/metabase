@@ -152,8 +152,7 @@ function drillFK({ id }) {
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
-  cy.get("h1")
-    .parent()
+  cy.get("h2")
     .should("contain", entityName)
     .should("contain", id);
 

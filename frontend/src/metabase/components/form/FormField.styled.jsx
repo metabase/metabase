@@ -39,6 +39,7 @@ export const InfoLabel = styled.span`
 
 export const FieldContainer = styled.div`
   margin-right: ${props => (props.horizontal ? "1rem" : "")};
+  margin-left: ${props => (props.align === "left" ? "0.5rem" : "")};
 `;
 
 export const InputContainer = styled.div`

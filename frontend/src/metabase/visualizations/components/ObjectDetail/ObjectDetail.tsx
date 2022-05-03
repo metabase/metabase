@@ -283,9 +283,9 @@ export function ObjectDetailHeader({
   return (
     <div className="Grid border-bottom relative">
       <div className="Grid-cell">
-        <h1 className="p3">
+        <h2 className="p3">
           {objectName} {objectId}
-        </h1>
+        </h2>
       </div>
       <div className="flex align-center">
         <div className="flex p2">

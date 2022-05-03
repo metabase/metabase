@@ -24,7 +24,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 18573", () => {
+describe("issue 18573", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -37,15 +37,13 @@ describe.skip("issue 18573", () => {
     });
   });
 
-  ["csv", "xlsx"].forEach(fileType => {
-    it(`for the remapped columns, it should preserve renamed column name in exports for ${fileType} (metabase#18573)`, () => {
-      visitQuestionAdhoc(questionDetails);
+  it(`for the remapped columns, it should preserve renamed column name in exports for xlsx (metabase#18573)`, () => {
+    visitQuestionAdhoc(questionDetails);
 
-      cy.findByText("Foo");
-      cy.findByText("Awesome Concrete Shoes");
+    cy.findByText("Foo");
+    cy.findByText("Awesome Concrete Shoes");
 
-      downloadAndAssert({ fileType }, assertion);
-    });
+    downloadAndAssert({ fileType: "xlsx" }, assertion);
   });
 });
 

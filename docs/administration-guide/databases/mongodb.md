@@ -8,9 +8,9 @@ This article covers:
 - [General connectivity concerns](#general-connectivity-concerns).
 - [I added fields to my database but don't see them in Metabase](#i-added-fields-to-my-database-but-dont-see-them-in-metabase).
 
-## How does MongoDB work in Metabase
+## How Metabase syncs data in MongoDB
 
-Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first 200 documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/datawarehouse.html).
+Because MongoDB contains unstructured data, Metabase takes a different approach to syncing your database's metadata. To get a sense of the schema, Metabase will scan the first ten thousand documents of each collection in your MongoDB. This sampling helps Metabase do things like differentiate datetime fields from string fields, and provide people with pre-populated filters. The reason Metabase only scans a sample of the documents is because scanning every document in every collection on every sync would be put too much strain on your database. And while the sampling does a pretty good job keeping Metabase up to date, it can also mean that new fields can sometimes fall through the cracks, leading to visualization issues, or even fields failing to appear in your results. For more info, check out our [troubleshooting guide](../../troubleshooting-guide/datawarehouse.md).
 
 ## Connecting to MongoDB
 

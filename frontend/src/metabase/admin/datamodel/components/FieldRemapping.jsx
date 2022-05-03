@@ -287,7 +287,7 @@ export default class FieldRemapping extends React.Component {
           />
           {mappingType === MAP_OPTIONS.foreign && (
             <>
-              <SelectSeparator classname="flex" key="foreignKeySeparator" />,
+              <SelectSeparator classname="flex" key="foreignKeySeparator" />
               <PopoverWithTrigger
                 key="foreignKeyName"
                 ref={this.fkPopover}

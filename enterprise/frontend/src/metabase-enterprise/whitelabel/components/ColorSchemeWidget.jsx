@@ -15,7 +15,7 @@ const THEMEABLE_COLORS = [
   ...Object.keys(originalColors).filter(name => name.startsWith("accent")),
 ];
 
-const COLOR_DISPLAY_PROPERTIES = {
+const getColorDisplayProperties = () => ({
   brand: {
     name: t`Primary color`,
     description: t`The main color used throughout the app for buttons, links, and the default chart color.`,
@@ -47,7 +47,7 @@ const COLOR_DISPLAY_PROPERTIES = {
   accent7: {
     name: t`Additional chart color`,
   },
-};
+});
 
 const ColorSchemeWidget = ({ setting, onChange }) => {
   const value = setting.value || {};
@@ -58,7 +58,7 @@ const ColorSchemeWidget = ({ setting, onChange }) => {
       <table>
         <tbody>
           {THEMEABLE_COLORS.map(name => {
-            const properties = COLOR_DISPLAY_PROPERTIES[name] || {};
+            const properties = getColorDisplayProperties()[name] || {};
             return (
               <tr key={name}>
                 <td>{properties.name || humanize(name)}:</td>

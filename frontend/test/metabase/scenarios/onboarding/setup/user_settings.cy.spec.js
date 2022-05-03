@@ -1,5 +1,5 @@
 // Migrated from frontend/test/metabase/user/UserSettings.integ.spec.js
-import { restore } from "__support__/e2e/cypress";
+import { restore, popover } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
 const { first_name, last_name, email, password } = USERS.normal;
 
@@ -90,6 +90,23 @@ describe("user > settings", () => {
     cy.findByLabelText("gear icon").click();
     cy.findByText("Sign out").click();
     cy.findByText("Sign in to Metabase");
+  });
+
+  it("should be able to change a language (metabase#22192)", () => {
+    cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
+
+    cy.visit("/account/profile");
+
+    cy.findByText("Use site default").click();
+    popover()
+      .contains("Indonesian")
+      .click();
+
+    cy.button("Update").click();
+    cy.wait("@updateUserSettings");
+
+    // We need some UI element other than a string
+    cy.icon("gear").should("exist");
   });
 
   describe("when user is authenticated via ldap", () => {

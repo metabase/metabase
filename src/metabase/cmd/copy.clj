@@ -14,7 +14,7 @@
                                      Dashboard DashboardBookmark DashboardCard DashboardCardSeries
                                      Database Dependency Dimension Field FieldValues
                                      LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
-                                     Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision Pulse PulseCard
+                                     Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision PersistedInfo Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
                                      Timeline TimelineEvent User ViewLog]]
             [metabase.util :as u]
@@ -78,6 +78,7 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
+   PersistedInfo
    ApplicationPermissionsRevision
    Dimension
    NativeQuerySnippet

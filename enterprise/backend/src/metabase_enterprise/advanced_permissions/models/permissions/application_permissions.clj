@@ -3,7 +3,7 @@
   details and for the code for generating and updating the *data* permissions graph."
   (:require [clojure.data :as data]
             [metabase.models :refer [ApplicationPermissionsRevision Permissions]]
-            [metabase.models.application-permissions-revision :as g-perm-revision]
+            [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.permissions :as perms]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
@@ -50,7 +50,7 @@
   This works just like the function of the same name in `metabase.models.permissions`;
   see also the documentation for that function."
   []
-  {:revision (g-perm-revision/latest-id)
+  {:revision (a-perm-revision/latest-id)
    :groups   (into {} (for [[group-id perms] (group-id->permissions-set)]
                         {group-id (permissions-set->application-perms perms)}))})
 

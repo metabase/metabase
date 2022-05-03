@@ -116,7 +116,10 @@ export const CardApi = {
   create: POST("/api/card"),
   get: GET("/api/card/:cardId"),
   update: PUT("/api/card/:id"),
-  delete: DELETE("/api/card/:cardId"),
+  delete: DELETE("/api/card/:id"),
+  persist: POST("/api/card/:id/persist"),
+  unpersist: POST("/api/card/:id/unpersist"),
+  refreshModelCache: POST("/api/card/:id/refresh"),
   query: POST("/api/card/:cardId/query"),
   query_pivot: POST("/api/card/pivot/:cardId/query"),
   bookmark: {
@@ -263,6 +266,8 @@ export const MetabaseApi = {
   db_sync_schema: POST("/api/database/:dbId/sync_schema"),
   db_rescan_values: POST("/api/database/:dbId/rescan_values"),
   db_discard_values: POST("/api/database/:dbId/discard_values"),
+  db_persist: POST("/api/database/:dbId/persist"),
+  db_unpersist: POST("/api/database/:dbId/unpersist"),
   db_get_db_ids_with_deprecated_drivers: GET("/db-ids-with-deprecated-drivers"),
   table_list: GET("/api/table"),
   // table_get:                   GET("/api/table/:tableId"),
@@ -420,6 +425,14 @@ export const PermissionsApi = {
   updateMembership: PUT("/api/permissions/membership/:id"),
   updateGroup: PUT("/api/permissions/group/:id"),
   deleteGroup: DELETE("/api/permissions/group/:id"),
+};
+
+export const PersistedModelsApi = {
+  get: GET("/api/persist/:id"),
+  getForModel: GET("/api/persist/card/:id"),
+  enablePersistence: POST("/api/persist/enable"),
+  disablePersistence: POST("/api/persist/disable"),
+  setRefreshInterval: POST("/api/persist/set-interval"),
 };
 
 export const SetupApi = {

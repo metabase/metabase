@@ -50,19 +50,18 @@
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} {:keys [visibility_type] :as body}]
+  [{:keys [id] :as existing-table} body]
   (api/check-500
    (db/update! Table id
-               (assoc (u/select-keys-when body
-                        :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                        :present [:description :caveats :points_of_interest])
-                      :visibility_type visibility_type)))
+               (u/select-keys-when body
+                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                 :present [:description :caveats :points_of_interest :visibility_type])))
   (let [updated-table        (Table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-        (table/update-field-positions! updated-table)
-        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+       (table/update-field-positions! updated-table)
+       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -85,7 +84,7 @@
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
-          newly-unhidden (when (nil? visibility_type)
+          newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))

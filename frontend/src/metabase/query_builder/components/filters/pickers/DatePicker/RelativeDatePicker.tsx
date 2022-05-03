@@ -4,7 +4,6 @@ import { t } from "ttag";
 import moment from "moment";
 import { assoc } from "icepick";
 
-import NumericInput from "metabase/components/NumericInput";
 import {
   formatBucketing,
   formatStartingFrom,
@@ -17,8 +16,6 @@ import {
 } from "metabase/lib/query_time";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 
-import DateUnitSelector from "./DateUnitSelector";
-
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import {
   CurrentButton,
@@ -29,6 +26,8 @@ import {
   MoreButton,
   OptionButton,
   OptionsContainer,
+  DateUnitSelector,
+  NumericInput,
 } from "./RelativeDatePicker.styled";
 
 export const PastPicker = (props: Props) => (
@@ -130,6 +129,7 @@ const CURRENT_INTERVAL_NAME = {
   week: t`this week`,
   month: t`this month`,
   year: t`this year`,
+  quarter: t`this quarter`,
   minute: t`this minute`,
   hour: t`this hour`,
 };
@@ -178,6 +178,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
     <OptionsContainer>
       <OptionButton
         icon="arrow_left_to_line"
+        primaryColor={primaryColor}
         reverseIconDirection={reverseIconDirection}
         onClick={() => {
           setOptionsVisible(false);
@@ -205,14 +206,20 @@ const RelativeDatePicker: React.FC<Props> = props => {
     </OptionsContainer>
   );
   return (
-    <GridContainer className={className} numColumns={numColumns}>
+    <GridContainer
+      className={className}
+      numColumns={numColumns}
+      data-testid="relative-datetime-filter"
+    >
       {startingFrom ? (
         <GridText>{intervals < 0 ? t`Past` : t`Next`}</GridText>
       ) : null}
       <NumericInput
-        className="input border-purple text-right"
+        className="input text-right"
+        primaryColor={primaryColor}
         style={SELECT_STYLE}
         data-ui-tag="relative-date-input"
+        data-testid="relative-datetime-value"
         value={typeof intervals === "number" ? Math.abs(intervals) : intervals}
         onChange={(value: number) => {
           onFilterChange(setRelativeDatetimeValue(filter, formatter(value)));
@@ -221,9 +228,11 @@ const RelativeDatePicker: React.FC<Props> = props => {
       />
       <DateUnitSelector
         value={unit}
+        primaryColor={primaryColor}
         onChange={value => {
           onFilterChange(setRelativeDatetimeUnit(filter, value));
         }}
+        testId="relative-datetime-unit"
         intervals={intervals}
         formatter={formatter}
         periods={ALL_PERIODS}
@@ -237,6 +246,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
         >
           <MoreButton
             icon="ellipsis"
+            primaryColor={primaryColor}
             onClick={() => setOptionsVisible(!optionsVisible)}
           />
         </TippyPopover>
@@ -247,9 +257,11 @@ const RelativeDatePicker: React.FC<Props> = props => {
         <>
           <GridText>{t`Starting from`}</GridText>
           <NumericInput
-            className="input border-purple text-right"
+            className="input text-right"
+            primaryColor={primaryColor}
             style={SELECT_STYLE}
             data-ui-tag="relative-date-input"
+            data-testid="starting-from-value"
             value={
               typeof startingFrom[0] === "number"
                 ? Math.abs(startingFrom[0])
@@ -268,6 +280,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
           />
           <DateUnitSelector
             value={startingFrom[1]}
+            primaryColor={primaryColor}
             onChange={value => {
               onFilterChange(setStartingFrom(filter, startingFrom[0], value));
             }}
@@ -277,9 +290,11 @@ const RelativeDatePicker: React.FC<Props> = props => {
             intervals={Math.abs(startingFrom[0])}
             formatter={formatter}
             periods={ALL_PERIODS}
+            testId={"starting-from-unit"}
           />
           <MoreButton
             icon="close"
+            primaryColor={primaryColor}
             onClick={() => {
               onFilterChange(toTimeInterval(filter));
             }}

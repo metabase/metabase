@@ -168,12 +168,15 @@ export function getOrderByDescription(tableMetadata, query, options) {
     return [
       t`Sorted by `,
       joinList(
-        orderBy.map(
-          ([direction, field]) =>
-            getFieldName(tableMetadata, field, options) +
-            " " +
-            (direction === "asc" ? "ascending" : "descending"),
-        ),
+        orderBy.map(([direction, field]) => {
+          const name = FIELD_REF.isAggregateField(field)
+            ? getAggregationDescription(tableMetadata, query, options)
+            : getFieldName(tableMetadata, field, options);
+
+          return (
+            name + " " + (direction === "asc" ? "ascending" : "descending")
+          );
+        }),
         " and ",
       ),
     ];

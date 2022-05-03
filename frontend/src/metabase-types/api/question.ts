@@ -1,0 +1,1 @@
+export type CardId = number;

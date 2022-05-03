@@ -44,7 +44,7 @@ const TYPES = {
   [STRING]: {
     base: [TYPE.Text],
     effective: [TYPE.Text],
-    semantic: [TYPE.Text],
+    semantic: [TYPE.Text, TYPE.Category],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
@@ -74,7 +74,7 @@ const TYPES = {
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [SCOPE]: {
-    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY, STRING],
     exclude: [LOCATION],
   },
   [CATEGORY]: {

@@ -1,12 +1,13 @@
 # LDAP
 
 <div class='doc-toc' markdown=1>
+- [LDAP documentation][ldap-docs]
 - [LDAP sample configuration](#ldap-sample-configuration)
 - [Related software for troubleshooting](#related-software-for-troubleshooting)
 - [Current limitations](#current-limitations)
 </div>
 
-Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. You may also want to check [our troubleshooting guide for logging in](./cant-log-in.md).
+Metabase can use LDAP for authentication. [This article][ldap-learn] explains how to set it up, and the guide below will help you troubleshoot if anything goes wrong. If your problem isn't specific to LDAP, go to [our troubleshooting guide for logging in](./cant-log-in.md).
 
 <h2 id="ldap-sample-configuration">LDAP sample configuration</h2>
 
@@ -79,3 +80,8 @@ If you run into an issue, check that you can login to your LDAP directory and is
 
 [apache-directory-studio]: https://directory.apache.org/studio/
 [ldap-learn]: /learn/permissions/ldap-auth-access-control.html
+[ldap-docs]: ../administration-guide/10-single-sign-on.html#enabling-ldap-authentication
+
+## Are you still stuck?
+
+If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
