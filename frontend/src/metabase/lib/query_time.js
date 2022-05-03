@@ -223,40 +223,49 @@ export function formatBucketing(bucketing = "", n = 1) {
   if (!bucketing) {
     return "";
   }
+
+  // ngettext requires all plural messages to have an argument
+  const arg = "";
+
   switch (bucketing) {
     case "default":
-      return ngettext(msgid`Default period`, `Default periods`, n);
+      return ngettext(msgid`Default period${arg}`, `Default periods${arg}`, n);
     case "minute":
-      return ngettext(msgid`Minute`, `Minutes`, n);
+      return ngettext(msgid`Minute${arg}`, `Minutes${arg}`, n);
     case "hour":
-      return ngettext(msgid`Hour`, `Hours`, n);
+      return ngettext(msgid`Hour${arg}`, `Hours${arg}`, n);
     case "day":
-      return ngettext(msgid`Day`, `Days`, n);
+      return ngettext(msgid`Day${arg}`, `Days${arg}`, n);
     case "week":
-      return ngettext(msgid`Week`, `Weeks`, n);
+      return ngettext(msgid`Week${arg}`, `Weeks${arg}`, n);
     case "month":
-      return ngettext(msgid`Month`, `Months`, n);
+      return ngettext(msgid`Month${arg}`, `Months${arg}`, n);
     case "quarter":
-      return ngettext(msgid`Quarter`, `Quarters`, n);
+      return ngettext(msgid`Quarter${arg}`, `Quarters${arg}`, n);
     case "year":
-      return ngettext(msgid`Year`, `Years`, n);
+      return ngettext(msgid`Year${arg}`, `Years${arg}`, n);
     case "minute-of-hour":
-      return ngettext(msgid`Minute of hour`, `Minutes of hour`, n);
+      return ngettext(msgid`Minute of hour${arg}`, `Minutes of hour${arg}`, n);
     case "hour-of-day":
-      return ngettext(msgid`Hour of day`, `Hours of day`, n);
+      return ngettext(msgid`Hour of day${arg}`, `Hours of day${arg}`, n);
     case "day-of-week":
-      return ngettext(msgid`Day of week`, `Days of week`, n);
+      return ngettext(msgid`Day of week${arg}`, `Days of week${arg}`, n);
     case "day-of-month":
-      return ngettext(msgid`Day of month`, `Days of month`, n);
+      return ngettext(msgid`Day of month${arg}`, `Days of month${arg}`, n);
     case "day-of-year":
-      return ngettext(msgid`Day of year`, `Days of year`, n);
+      return ngettext(msgid`Day of year${arg}`, `Days of year${arg}`, n);
     case "week-of-year":
-      return ngettext(msgid`Week of year`, `Weeks of year`, n);
+      return ngettext(msgid`Week of year${arg}`, `Weeks of year${arg}`, n);
     case "month-of-year":
-      return ngettext(msgid`Month of year`, `Months of year`, n);
+      return ngettext(msgid`Month of year${arg}`, `Months of year${arg}`, n);
     case "quarter-of-year":
-      return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
+      return ngettext(
+        msgid`Quarter of year${arg}`,
+        `Quarters of year${arg}`,
+        n,
+      );
   }
+
   const words = bucketing.split("-");
   words[0] = inflection.capitalize(words[0]);
   return words.join(" ");
