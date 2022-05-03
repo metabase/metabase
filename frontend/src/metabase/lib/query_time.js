@@ -4,7 +4,7 @@ import { assoc } from "icepick";
 import inflection from "inflection";
 import { t, ngettext, msgid } from "ttag";
 
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import { formatDateTimeWithUnit, formatPlural } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { FieldDimension } from "metabase-lib/lib/Dimension";
@@ -217,10 +217,6 @@ export function generateTimeValueDescription(value, bucketing, isExclude) {
     console.warn("Unknown datetime format", value);
     return `[${t`Unknown`}]`;
   }
-}
-
-function formatPlural(single, plural, n) {
-  return n === 1 ? single : plural;
 }
 
 export function formatBucketing(bucketing = "", n = 1) {

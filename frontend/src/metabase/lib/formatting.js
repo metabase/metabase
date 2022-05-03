@@ -953,3 +953,7 @@ export function formatSQL(sql) {
     return sql;
   }
 }
+
+export function formatPlural(single, plural, n) {
+  return n === 1 ? single : plural;
+}
