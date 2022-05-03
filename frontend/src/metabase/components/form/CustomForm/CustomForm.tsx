@@ -1,10 +1,10 @@
 import React from "react";
 import _ from "underscore";
 
+import { FormFieldDefinition, FormObject } from "metabase-types/forms";
+
 import {
   BaseFormProps,
-  FormObject,
-  FormFieldDefinition,
   OptionalFormViewProps,
   FormLegacyContext,
   LegacyContextTypes,
