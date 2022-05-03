@@ -10,10 +10,8 @@ import {
 
 import FormFieldView from "./FormFieldView";
 
-type ReduxFormProps = Pick<
-  FormFieldType,
-  "name" | "error" | "visited" | "active"
->;
+type ReduxFormProps = Pick<FormFieldType, "name"> &
+  Partial<Pick<FormFieldType, "error" | "visited" | "active">>;
 
 interface FormFieldProps extends BaseFieldDefinition, ReduxFormProps {
   field: FormFieldType;
