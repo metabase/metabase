@@ -85,12 +85,15 @@ function RawCustomFormField({
       values,
       onChangeField,
       formField,
-      field: {
-        ...field,
-        onChange: handleChange,
-      },
+      field:
+        typeof onChange === "function"
+          ? {
+              ...field,
+              onChange: handleChange,
+            }
+          : field,
     }),
-    [props, values, formField, field, onChangeField, handleChange],
+    [props, values, formField, field, onChange, onChangeField, handleChange],
   );
 
   if (!field || !formField) {
