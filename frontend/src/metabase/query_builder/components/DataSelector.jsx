@@ -823,12 +823,14 @@ export class UnconnectedDataSelector extends Component {
       return;
     }
 
+    // callback only if selected DB id is new
     if (
       this.props.setDatabaseFn &&
       this.props.selectedDatabaseId !== database?.id
     ) {
       this.props.setDatabaseFn(database && database.id);
     }
+
     if (this.state.selectedDatabaseId != null) {
       // If we already had a database selected, we need to go back and clear
       // data before advancing to the next step.
