@@ -552,19 +552,19 @@ export class UnconnectedDataSelector extends Component {
   async skipSteps() {
     const { activeStep } = this.state;
 
-    console.log("---> skipSteps:", activeStep, this.state);
-    console.log("Database:", this.props.selectedDatabaseId);
-    console.log("Schema:", this.props.selectedSchemaId);
+    // console.log("---> skipSteps:", activeStep, this.state);
+    // console.log("Database:", this.props.selectedDatabaseId);
+    // console.log("Schema:", this.props.selectedSchemaId);
 
     // database
     if (activeStep === DATABASE_STEP && this.props.useOnlyAvailableDatabase) {
       const databases = this.getDatabases();
-      console.log("DB:", databases);
+      // console.log("DB:", databases);
       if (this.props.selectedDatabaseId) {
         const selectedDatabase = databases.find(
           database => database.id === this.props.selectedDatabaseId,
         );
-        console.log("selectedDatabase:", selectedDatabase);
+        // console.log("selectedDatabase:", selectedDatabase);
         await this.onChangeDatabase(selectedDatabase);
       } else if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
@@ -574,20 +574,19 @@ export class UnconnectedDataSelector extends Component {
     // schema
     else if (activeStep === SCHEMA_STEP && this.props.useOnlyAvailableSchema) {
       const { schemas } = this.state;
-      console.log("SCH:", schemas);
+      // console.log("SCH:", schemas);
       if (this.props.selectedSchemaId) {
         const selectedSchema = schemas.find(
           schema => schema.id === this.props.selectedSchemaId,
         );
-        console.log("selectedSchema:", selectedSchema);
+        // console.log("selectedSchema:", selectedSchema);
         await this.onChangeSchema(selectedSchema);
       } else if (schemas && schemas.length === 1) {
-        console.log("skipSteps:", activeStep);
         await this.onChangeSchema(schemas[0]);
       }
     }
 
-    console.log("");
+    // console.log("");
   }
 
   getNextStep() {
@@ -616,37 +615,39 @@ export class UnconnectedDataSelector extends Component {
     // move to previous step
     index -= 1;
 
-    // // Database: possibly skip another step backwards
-    // const databases = this.getDatabases();
-    // // console.log(
-    // //   DATABASE_STEP,
-    // //   this.props.useOnlyAvailableDatabase,
-    // //   this.state.databases,
-    // // );
-    // if (
-    //   steps[index] === DATABASE_STEP &&
-    //   this.props.useOnlyAvailableDatabase &&
-    //   databases.length === 1
-    //   // this.state.databases.length === 1
-    // ) {
-    //   // console.log("\tskip");
-    //   index -= 1;
-    // }
-
-    // Schema: possibly skip another step backwards
-    // console.log(
-    //   SCHEMA_STEP,
-    //   this.props.useOnlyAvailableSchema,
-    //   this.state.schemas,
-    // );
+    // Schema: skip another step backwards
+    console.log(
+      steps[index] === SCHEMA_STEP,
+      this.props.useOnlyAvailableSchema,
+      this.state.schemas,
+    );
     if (
       steps[index] === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       this.state.schemas.length === 1
     ) {
-      // console.log("\tskip");
+      console.log("\tskip schema");
       index -= 1;
     }
+
+    // // Database: skip another step backwards
+    // const databases = this.getDatabases();
+    // const filteredDatabases = databases;  // .filter(db => !db.is_saved_questions);
+    // console.log(
+    //   steps[index] === DATABASE_STEP,
+    //   this.props.useOnlyAvailableDatabase,
+    //   filteredDatabases,
+    //   this.state.databases,
+    // );
+    // if (
+    //   steps[index] === DATABASE_STEP &&
+    //   this.props.useOnlyAvailableDatabase &&
+    //   filteredDatabases.length === 1
+    //   // this.state.databases.length === 1
+    // ) {
+    //   console.log("\tskip DB");
+    //   index -= 1;
+    // }
 
     if (debug) {
       console.log("");

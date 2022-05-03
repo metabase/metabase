@@ -138,7 +138,7 @@ describe("scenarios > question > joined questions", () => {
 
       popover().within(() => {
         cy.findByTextEnsureVisible("Sample Database").click({ force: true });
-        cy.findByTextEnsureVisible("Raw Data").click({ force: true });
+        // cy.findByTextEnsureVisible("Raw Data").click({ force: true });
         cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });
