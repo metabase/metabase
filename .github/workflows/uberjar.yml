@@ -151,7 +151,20 @@ jobs:
         format: sarif
         output: trivy-results.sarif
 
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: Upload Trivy scan results to GitHub Security tab if master or main (ee)
+      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'ee' }}
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab if master or main (oss)
+      if: ${{ (github.ref_name == 'master' || github.ref_name == 'main') && matrix.edition == 'oss' }}
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab  if dev branch
+      if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'main') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
       uses: github/codeql-action/upload-sarif@v2
       with:
         sarif_file: 'trivy-results.sarif'
