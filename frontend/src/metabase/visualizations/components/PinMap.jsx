@@ -130,9 +130,15 @@ export default class PinMap extends Component {
     ]);
 
     // only use points with numeric coordinates & metric
-    const points = allPoints.filter(
-      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
-    );
+    const updatedRows = [];
+    const points = allPoints.filter(([lat, lng, metric], index) => {
+      if (lat != null && lng != null && metric != null) {
+        updatedRows.push(rows[index]);
+        return true;
+      }
+
+      return false;
+    });
 
     const warnings = [];
     const filteredRows = allPoints.length - points.length;
@@ -166,7 +172,7 @@ export default class PinMap extends Component {
       bounds._northEast.lat += binHeight;
     }
 
-    return { points, bounds, min, max, binWidth, binHeight };
+    return { rows: updatedRows, points, bounds, min, max, binWidth, binHeight };
   }
 
   render() {
@@ -176,7 +182,10 @@ export default class PinMap extends Component {
 
     const Map = MAP_COMPONENTS_BY_TYPE[settings["map.pin_type"]];
 
-    const { points, bounds, min, max, binHeight, binWidth } = this.state;
+    const { rows, points, bounds, min, max, binHeight, binWidth } = this.state;
+
+    const mapProps = { ...this.props };
+    mapProps.series[0].data.rows = rows;
 
     return (
       <div
