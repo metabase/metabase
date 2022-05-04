@@ -695,7 +695,6 @@ function populateFields(aggregationOperator, fields) {
   };
 }
 
-// TODO: unit test
 export function getAggregationOperators(table) {
   return AGGREGATION_OPERATORS.filter(
     aggregationOperator =>
@@ -720,7 +719,6 @@ export function getAggregationOperatorsWithFields(table) {
   );
 }
 
-// TODO: unit test
 export function getAggregationOperator(short) {
   return _.findWhere(AGGREGATION_OPERATORS, { short: short });
 }
