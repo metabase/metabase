@@ -14,7 +14,7 @@ type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
  * An abstract class for all query types (StructuredQuery & NativeQuery)
  */
 
-class Query {
+class QueryInner {
   _metadata: Metadata;
 
   /**
@@ -132,4 +132,4 @@ class Query {
   }
 }
 
-export default memoizeClass("question")(Query);
+export default class Query extends memoizeClass("question")(QueryInner) {}

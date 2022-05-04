@@ -16,7 +16,7 @@ import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 
 /** This is the primary way people interact with tables */
 
-class Table extends Base {
+class TableInner extends Base {
   id: number;
   description?: string;
   fks?: any[];
@@ -153,8 +153,8 @@ class Table extends Base {
   }
 }
 
-export default memoizeClass(
+export default class Table extends memoizeClass(
   "aggregationOperators",
   "aggregationOperatorsLookup",
   "fieldsLookup",
-)(Table);
+)(TableInner) {}

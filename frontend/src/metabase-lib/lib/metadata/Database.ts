@@ -17,7 +17,7 @@ import Metadata from "./Metadata";
  * Backed by types/Database data structure which matches the backend API contract
  */
 
-class Database extends Base {
+class DatabaseInner extends Base {
   id: number;
   name: string;
   description: string;
@@ -184,4 +184,6 @@ class Database extends Base {
   }
 }
 
-export default memoizeClass("tablesLookup")(Database);
+export default class Database extends memoizeClass("tablesLookup")(
+  DatabaseInner,
+) {}

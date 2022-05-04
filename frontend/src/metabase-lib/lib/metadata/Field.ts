@@ -41,7 +41,7 @@ import Base from "./Base";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
-class Field extends Base {
+class FieldInner extends Base {
   name: string;
   semantic_type: string | null;
   table?: Table;
@@ -439,9 +439,9 @@ class Field extends Base {
   }
 }
 
-export default memoizeClass(
+export default class Field extends memoizeClass(
   "filterOperators",
   "filterOperatorsLookup",
   "aggregationOperators",
   "aggregationOperatorsLookup",
-)(Field);
+)(FieldInner) {}

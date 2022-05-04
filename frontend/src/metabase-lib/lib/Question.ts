@@ -96,7 +96,7 @@ export type QuestionCreatorOpts = {
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
-class Question {
+class QuestionInner {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
@@ -1339,4 +1339,7 @@ class Question {
   }
 }
 
-export default memoizeClass("query", "mode")(Question);
+export default class Question extends memoizeClass(
+  "query",
+  "mode",
+)(QuestionInner) {}
