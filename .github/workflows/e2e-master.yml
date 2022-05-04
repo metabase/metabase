@@ -3,7 +3,7 @@ name: E2E Tests
 on:
   push:
     branches:
-      - "master"
+      - "test-report"
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -53,27 +53,27 @@ jobs:
       fail-fast: false
       matrix:
         java-version: [11]
-        edition: [oss, ee]
+        edition: [ee]
         folder:
-          - "admin"
-          - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
+          # - "admin"
+          # - "binning"
+          # - "collections"
+          # - "custom-column"
+          # - "dashboard"
+          # - "dashboard-filters"
+          # - "downloads"
+          # - "embedding"
+          # - "filters"
           - "joins"
           - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
+          # - "native"
+          # - "native-filters"
+          # - "onboarding"
+          # - "organization"
+          # - "permissions"
+          # - "question"
+          # - "sharing"
+          # - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -146,3 +146,11 @@ jobs:
           ./cypress
           ./logs/test.log
         if-no-files-found: ignore
+
+    - name: Test Report
+      uses: dorny/test-reporter@v1
+      if: success() || failure()    # run this step even if previous step failed
+      with:
+        name: JEST Tests            # Name of the check run which will be created
+        path: ./cypress/results/results-*.xml    # Path to test results
+        reporter: jest-junit        # Format of test results
