@@ -39,8 +39,8 @@ describe("issue 18063", () => {
     cy.get(".leaflet-marker-icon").trigger("mousemove");
 
     popover().within(() => {
-      testPairedTooltipValues("LATITUDE", "55.6761");
-      testPairedTooltipValues("LONGITUDE", "12.5683");
+      testPairedTooltipValues("LATITUDE", "55.68");
+      testPairedTooltipValues("LONGITUDE", "12.57");
       testPairedTooltipValues("COUNT", "1");
       testPairedTooltipValues("NAME", "Copenhagen");
     });
