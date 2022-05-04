@@ -11,7 +11,7 @@ import L from "leaflet";
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
 const LeafletChoropleth = ({
-  series,
+  series = [],
   geoJson,
   minimalBounds = computeMinimalBounds(geoJson.features || [geoJson]),
   getColor = () => color("brand"),
