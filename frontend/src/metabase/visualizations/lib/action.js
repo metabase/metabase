@@ -2,7 +2,6 @@
 import _ from "underscore";
 
 import { openUrl } from "metabase/redux/app";
-import { zoomInRow } from "metabase/query_builder/actions";
 
 export function performAction(action, { dispatch, onChangeCardAndRun }) {
   let didPerform = false;
@@ -24,12 +23,12 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     const question = action.question();
     const extra = action?.extra?.() ?? {};
     if (question) {
-      onChangeCardAndRun({ nextCard: question.card(), ...extra });
+      onChangeCardAndRun({
+        nextCard: question.card(),
+        objectId: action.zoomInRow,
+        ...extra,
+      });
       didPerform = true;
-
-      if (action.zoomInRow !== undefined) {
-        dispatch(zoomInRow({ objectId: action.zoomInRow }));
-      }
     }
   }
   return didPerform;

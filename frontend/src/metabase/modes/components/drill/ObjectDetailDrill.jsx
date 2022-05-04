@@ -1,6 +1,5 @@
 import { t } from "ttag";
 import { isFK, isPK } from "metabase/lib/schema_metadata";
-import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 function hasManyPKColumns(question) {
@@ -14,26 +13,14 @@ function hasManyPKColumns(question) {
 
 function getActionForPKColumn({ question, column, objectId, extraData }) {
   if (hasManyPKColumns(question)) {
-    // Filter by a clicked value, then a user can click on the 2nd, 3d, ..., Nth PK cells
-    // to narrow down filtering and eventually enter the object detail view once all PKs are filtered
     return ["question", () => question.filter("=", column, objectId)];
   }
 
   const isDashboard = !!extraData?.dashboard;
+
+  // the question from the dashboard may have filters applied already
   if (isDashboard) {
-    const { parameterValuesBySlug = {} } = extraData;
-    const hasParameters = Object.keys(parameterValuesBySlug).length > 0;
-
-    // This should result in a metabase/dashboard/actions navigateToNewCardFromDashboard call
-    // That will convert dashboard parameters into question filters
-    // and make sure the clicked row will be present in the query results
-    if (hasParameters) {
-      const getNextQuestion = () => question;
-      const getExtraData = () => ({ objectId });
-      return ["question", getNextQuestion, getExtraData];
-    }
-
-    return ["url", () => Urls.question(question.card(), { objectId })];
+    return ["question", () => question];
   }
 
   return ["action", () => zoomInRow({ objectId })];
@@ -71,9 +58,7 @@ function getFKAction({ question, column, objectId }) {
   if (!fkField?.target) {
     return;
   }
-  const foreignTableQuestion = question.drillPK(fkField.target, objectId);
-  actionObject.question = () => foreignTableQuestion;
-  actionObject.zoomInRow = objectId;
+  actionObject.question = () => question.drillPK(fkField.target, objectId);
   return actionObject;
 }
 
@@ -89,5 +74,6 @@ export default ({ question, clicked }) => {
   const { column, value: objectId, extraData } = clicked;
   const params = { question, column, objectId, extraData };
   const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
+  actionObject.zoomInRow = objectId;
   return actionObject ? [actionObject] : [];
 };
