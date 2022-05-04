@@ -22,7 +22,7 @@ const getColorDisplayProperties = () => ({
   },
   nav: {
     name: t`Navigation bar color`,
-    description: t`The top nav bar of Metabase. Defaults to the Primary Color if not set.`,
+    description: t`The side nav bar of Metabase. Defaults to a white background if not set.`,
   },
   accent1: {
     name: t`Accent 1`,
