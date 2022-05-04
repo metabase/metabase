@@ -627,25 +627,25 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    // // Database: skip another step backwards
-    // const databases = this.getDatabases();
-    // const filteredDatabases = databases; // .filter(db => !db.is_saved_questions);
-    // console.log(
-    //   steps[index],
-    //   steps[index] === DATABASE_STEP,
-    //   this.props.useOnlyAvailableDatabase,
-    //   filteredDatabases,
-    //   this.state.databases,
-    // );
-    // if (
-    //   steps[index] === DATABASE_STEP &&
-    //   this.props.useOnlyAvailableDatabase &&
-    //   filteredDatabases.length === 1
-    //   // this.state.databases.length === 1
-    // ) {
-    //   console.log("\tskip DB");
-    //   index -= 1;
-    // }
+    // Database: skip another step backwards
+    const databases = this.getDatabases();
+    const filteredDatabases = databases; // .filter(db => !db.is_saved_questions);
+    console.log(
+      steps[index],
+      steps[index] === DATABASE_STEP,
+      this.props.useOnlyAvailableDatabase,
+      filteredDatabases,
+      this.state.databases,
+    );
+    if (
+      steps[index] === DATABASE_STEP &&
+      this.props.useOnlyAvailableDatabase &&
+      filteredDatabases.length === 1
+      // this.state.databases.length === 1
+    ) {
+      console.log("\tskip DB");
+      index -= 1;
+    }
 
     // data bucket step doesn't make a lot of sense when there're no datasets
     console.log(
