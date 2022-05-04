@@ -5,7 +5,7 @@ import Question from "../Question";
 import Schema from "./Schema";
 import Base from "./Base";
 import { singularize } from "metabase/lib/formatting";
-import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
+import { getAggregationOperators } from "metabase/lib/schema_metadata";
 import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
 /**
@@ -93,7 +93,7 @@ export default class Table extends Base {
   // AGGREGATIONS
   @memoize
   aggregationOperators() {
-    return getAggregationOperatorsWithFields(this);
+    return getAggregationOperators(this);
   }
 
   @memoize

@@ -706,7 +706,7 @@ export function getSupportedAggregationOperators(table) {
   });
 }
 
-export function getAggregationOperatorsWithFields(table) {
+export function getAggregationOperators(table) {
   return getSupportedAggregationOperators(table)
     .map(operator => populateFields(operator, table.fields))
     .filter(
@@ -733,7 +733,7 @@ export function addValidOperatorsToFields(table) {
   for (const field of table.fields) {
     field.filter_operators = getFilterOperators(field, table);
   }
-  table.aggregation_operators = getAggregationOperatorsWithFields(table);
+  table.aggregation_operators = getAggregationOperators(table);
   return table;
 }
 

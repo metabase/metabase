@@ -16,7 +16,7 @@ import {
   getOperatorByTypeAndName,
   getFilterOperators,
   getSupportedAggregationOperators,
-  getAggregationOperatorsWithFields,
+  getAggregationOperators,
   isFuzzyOperator,
   getSemanticTypeIcon,
   getSemanticTypeName,
@@ -328,7 +328,7 @@ describe("schema_metadata", () => {
     });
   });
 
-  describe("getAggregationOperatorsWithFields", () => {
+  describe("getAggregationOperators", () => {
     function setup({ fields = [] } = {}) {
       const table = {
         fields,
@@ -336,7 +336,7 @@ describe("schema_metadata", () => {
           features: ["basic-aggregations", "standard-deviation-aggregations"],
         },
       };
-      const fullOperators = getAggregationOperatorsWithFields(table);
+      const fullOperators = getAggregationOperators(table);
       return {
         fullOperators,
         operators: fullOperators.map(operator => operator.short),
