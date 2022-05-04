@@ -1,5 +1,7 @@
 import {
   restore,
+  addPostgresDatabase,
+  addMySQLDatabase,
   mockSessionProperty,
   popover,
   startNewQuestion,
@@ -12,6 +14,10 @@ describe("issue 19341", () => {
     restore();
     mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
+
+    addMySQLDatabase();
+    addPostgresDatabase();
+
     cy.createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
       native: {
@@ -37,6 +43,8 @@ describe("issue 19341", () => {
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search for a table…").type("Ord");
+      // // As there is only 1 DB
+      // cy.findByPlaceholderText("Search for a table…").should("not.exist");
       cy.findByText("Loading...").should("not.exist");
       cy.findAllByText(/Saved question in/i).should("not.exist");
       cy.findAllByText(/Table in/i).should("exist");
