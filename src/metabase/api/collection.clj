@@ -69,7 +69,7 @@
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
-  ```  
+  ```
   [{:name     \"A\"
   :below    #{:card :dataset}
   :children [{:name \"B\"}
@@ -84,7 +84,7 @@
                           :children [{:name \"G\"}]}]}]}
   {:name \"H\"}]
   ```
-  
+
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
   [exclude-archived namespace]
