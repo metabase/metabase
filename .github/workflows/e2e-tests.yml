@@ -60,6 +60,7 @@ jobs:
         edition: [ee]
         folder:
           - "binning"
+          - "dashboard"
           - "dashboard-filters"
           - "downloads"
           - "joins"
