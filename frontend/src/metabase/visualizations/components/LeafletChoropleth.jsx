@@ -5,7 +5,6 @@ import { color } from "metabase/lib/colors";
 
 import CardRenderer from "./CardRenderer";
 
-// import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
