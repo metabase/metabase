@@ -5,24 +5,28 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 const questionDetails = {
   display: "table",
-  query: {
-    "source-query": {
-      "source-table": PRODUCTS_ID,
-      aggregation: [
-        ["count"],
-        ["sum", ["field", PRODUCTS.PRICE, null]],
-        ["sum", ["field", PRODUCTS.RATING, null]],
+  dataset_query: {
+    type: "query",
+    database: 1,
+    query: {
+      "source-query": {
+        "source-table": PRODUCTS_ID,
+        aggregation: [
+          ["count"],
+          ["sum", ["field", PRODUCTS.PRICE, null]],
+          ["sum", ["field", PRODUCTS.RATING, null]],
+        ],
+        breakout: [["field", PRODUCTS.CATEGORY, null]],
+      },
+      fields: [
+        ["field", PRODUCTS.CATEGORY, null],
+        ["field", "sum", { "base-type": "type/Float" }],
+        ["field", "sum_2", { "base-type": "type/Float" }],
+        ["expression", "Custom Column"],
       ],
-      breakout: [["field", PRODUCTS.CATEGORY, null]],
-    },
-    fields: [
-      ["field", PRODUCTS.CATEGORY, null],
-      ["field", "sum", { "base-type": "type/Float" }],
-      ["field", "sum_2", { "base-type": "type/Float" }],
-      ["expression", "Custom Column"],
-    ],
-    expressions: {
-      "Custom Column": ["+", 1, 1],
+      expressions: {
+        "Custom Column": ["+", 1, 1],
+      },
     },
   },
 };
