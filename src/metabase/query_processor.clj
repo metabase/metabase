@@ -63,7 +63,10 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [clojure.tools.logging :as log]
+            [clojure.math.combinatorics :as math.combo]
+            [clojure.string :as str]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
@@ -75,6 +78,78 @@
                       '[metabase-enterprise.sandbox.query-processor.middleware
                         [column-level-perms-check :as ee.sandbox.columns]
                         [row-level-restrictions :as ee.sandbox.rows]]))
+
+(defn binning-fields [query]
+  (->> query
+       :breakout
+       (filter (fn [[_ _ {:keys [binning]}]] (some? binning)))))
+
+(defn field->bins [field]
+  (let [[_ _ {:keys [binning]}] field]
+    (when binning
+      (let [{:keys [strategy num-bins min-value max-value bin-width]} binning]
+        (vec (range min-value max-value bin-width))))))
+
+(defn field->native-query [field-alias field]
+  (let [bins (field->bins field)]
+    {:native (str "(VALUES "
+                  (str/join ", " (map (fn [n] (str "(" n ")")) bins))
+                  ") as ignoreme(\"" field-alias "\")" )}))
+
+(comment
+  (= (field->native-query "field" [:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}])
+     {:native "(VALUES (0.5), (1.0), (1.5), (2.0), (2.5), (3.0), (3.5), (4.0)) as ignoreme(\"field\")"}))
+
+(defn fill-empty-bins [{:keys [query] :as outer-query}]
+  (def oq outer-query)
+  (def q query)
+
+  ;; TODO everywhere we use 'bf', we need to lookup "which bf" to actually use (then we can do multiples)
+  (let [bin-fields (binning-fields query)
+        [bf] bin-fields
+        bin-field-ids (set (map second bin-fields))
+        table-alias "bin"
+        field-alias "price"]
+    (if (= 1
+           (count bin-fields)
+           (count (:breakout query)))
+      (-> outer-query
+          (update-in [:query :aggregation]
+                     ;; change this to add multiple?
+                     #(mapv (fn [ag] (if (= [:count] ag) [:count bf] ag)) %))
+          (assoc-in [:query :joins]
+                    [{:strategy :right-join
+                      :source-query (field->native-query field-alias bf)
+                      :alias table-alias
+                      :condition [:=
+                                  [:field "price" {:base-type :type/Number :join-alias table-alias}]
+                                  bf]}])
+          (assoc-in [:query :breakout] [[:field "price" {:base-type :type/Number :join-alias table-alias}]])
+          ;; order-by -- what if there are multiple order bys? (find the right one and replace it.)
+          (update-in [:query :order-by]
+                     #(mapv (fn fill-ob [[order ob :as ordered-by]]
+                              (if (contains? (set bin-fields) ob)
+                                [order [:field "price" {:base-type :type/Number :join-alias table-alias}]]
+                                ordered-by)) %)))
+      outer-query)))
+
+(fill-empty-bins oq)
+
+(comment
+  (mapv (juxt identity fill-empty-bins)
+        [{:aggregation [[:count]],
+          :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
+          :source-table 81}])
+
+  {:aggregation [[:count] [:sum]],
+   :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
+   :source-table 81
+   :order-by [[:asc [:field 616]]]}
+
+  {:aggregation [[:avg]],
+   :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
+   :source-table 81
+   :order-by [[:asc [:field 616]]]})
 
 (def ^:private pre-processing-middleware
   "Pre-processing middleware. Has the form
@@ -96,6 +171,9 @@
    #'qp.add-dimension-projections/add-remapped-columns
    #'qp.resolve-fields/resolve-fields
    #'binning/update-binning-strategy
+   #_(fn [query] (log/info "BEFORE" query) (clojure.pprint/pprint query))
+   #'fill-empty-bins
+   #_(fn [query] (log/info "AFTER" query) query)
    #'desugar/desugar
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins

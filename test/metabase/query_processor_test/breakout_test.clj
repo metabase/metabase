@@ -12,6 +12,27 @@
             [metabase.test :as mt]
             [metabase.util :as u]))
 
+(do
+  (deftest example
+    (let [query (mt/mbql-query VENUES
+                  {:aggregation [[:count]]
+                   :breakout [[:field %PRICE {:binning {:strategy :num-bins, :num-bins 10}}]]})]
+      (mt/with-native-query-testing-context query
+        (is (= [[0.5M 0] [1.0M 22] [1.5M 0] [2.0M 59] [2.5M 0] [3.0M 13] [3.5M 0] [4.0M 6]]
+               (mt/rows (qp/process-query query))))))
+
+        (let [query (mt/mbql-query VENUES
+                      ;; fill these
+                      {:aggregation [[:count]]
+                       :breakout [[:field %PRICE {:binning {:strategy :num-bins, :num-bins 10}}]]})]
+
+      (mt/with-native-query-testing-context query
+        (is (= [[0.5M 0] [1.0M 22] [1.5M 0] [2.0M 59] [2.5M 0] [3.0M 13] [3.5M 0] [4.0M 6]]
+               (mt/rows (qp/process-query query)))))))
+
+
+  )
+
 (deftest basic-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "single column"
