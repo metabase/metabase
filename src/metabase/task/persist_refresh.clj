@@ -5,7 +5,9 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
+            [metabase.db :as mdb]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
@@ -104,7 +106,14 @@
   "Prunes all deletable PersistInfos, should not be called from tests as
    it will orphan cache tables if refresher is replaced."
   [refresher]
-  (let [deletables (db/select PersistedInfo :state "deletable")]
+  (let [deletables (db/select PersistedInfo
+                              {:where [:and
+                                       [:= :state "deletable"]
+                                       ;; Buffer deletions for an hour if the prune job happens soon after setting state.
+                                       ;; 1. so that people have a chance to change their mind.
+                                       ;; 2. if a query is running against the cache, it doesn't get ripped out.
+                                       [:< :state_change_at
+                                        (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]})]
     (prune-deletables! refresher deletables)))
 
 (defn- refresh-tables!
