@@ -21,7 +21,7 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
-export const UNABLE_TO_DOWNLOAD_RESULTS = t`Users with Block data access can't download results`;
+export const UNABLE_TO_DOWNLOAD_RESULTS = t`Groups with Block data access can't download results`;
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
   if (isAdmin) {
