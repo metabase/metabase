@@ -20,7 +20,7 @@ describe("issue 11727", () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
-    cy.intercept("GET", "/api/dataset").as("getDataset");
+    cy.intercept("GET", "/api/database").as("getDatabases");
   });
 
   it("should cancel the native query via the keyboard shortcut (metabase#11727)", () => {
