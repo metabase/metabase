@@ -165,15 +165,15 @@
 
 (defmethod unprepare/unprepare-value [:ocient OffsetTime]
   [_ t]
-  (format "time('%s')" (t/format "HH:mm:ss.SSS" t)))
+  (format "time('%s')" (t/format "HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
 
 (defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
   [_ t]
-  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
 
 (defmethod unprepare/unprepare-value [:ocient ZonedDateTime]
   [_ t]
-  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
 
 (defmethod unprepare/unprepare-value [:ocient Instant]
   [driver t]
