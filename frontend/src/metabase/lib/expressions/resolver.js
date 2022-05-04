@@ -166,12 +166,13 @@ export function resolve(expression, type = "expression", fn = undefined) {
       return resolve(operand, args[i], fn);
     });
     return [op, ...resolvedOperands];
-  } else if (
-    !isCompatible(
-      type,
-      typeof expression === "boolean" ? "expression" : typeof expression,
-    )
-  ) {
+  }
+
+  if (type === "expression" && typeof expression === "boolean") {
+    return expression;
+  }
+
+  if (!isCompatible(type, typeof expression)) {
     throw new Error(
       t`Expecting ${type} but found ${JSON.stringify(expression)}`,
     );
