@@ -147,6 +147,10 @@ jobs:
           ./logs/test.log
         if-no-files-found: ignore
 
+    - name: Let's see what do we have here
+      run: ls -la cypress/results/
+      shell: bash
+      
     - name: Test Report
       uses: dorny/test-reporter@v1
       if: success() || failure()    # run this step even if previous step failed
