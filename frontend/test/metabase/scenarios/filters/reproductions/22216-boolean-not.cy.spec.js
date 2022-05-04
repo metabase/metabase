@@ -31,6 +31,6 @@ describe("issue 22216", () => {
     cy.wait("@dataset");
 
     cy.findByTextEnsureVisible("AWESOME = NOT TERRIBLE");
-    cy.findByText("AWESOME = NOT TERRIBLE = True").should("not.be.visible");
+    cy.findByText("AWESOME = NOT TERRIBLE = True").should("not.be.exist");
   });
 });
