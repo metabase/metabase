@@ -197,7 +197,7 @@ export default class PinMap extends Component {
       >
         {Map ? (
           <Map
-            {...this.props}
+            {...mapProps}
             ref={map => (this._map = map)}
             className="absolute top left bottom right z1"
             onMapCenterChange={this.onMapCenterChange}
