@@ -1,15 +1,4 @@
-import {
-  editDashboard,
-  getDashboardCard,
-  getNotebookStep,
-  modal,
-  openNotebook,
-  restore,
-  saveDashboard,
-  selectDashboardFilter,
-  visitDashboard,
-  visitQuestion,
-} from "__support__/e2e/cypress";
+import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -26,54 +15,25 @@ const questionDetails = {
       ],
       breakout: [["field", PRODUCTS.CATEGORY, null]],
     },
+    fields: [
+      ["field", PRODUCTS.CATEGORY, null],
+      ["field", "sum", { "base-type": "type/Float" }],
+      ["field", "sum_2", { "base-type": "type/Float" }],
+      ["expression", "Custom Column"],
+    ],
     expressions: {
       "Custom Column": ["+", 1, 1],
     },
   },
 };
 
-const filterDetails = {
-  id: "b6f1865b",
-  name: "Date filter",
-  slug: "date",
-  type: "date/month-year",
-  sectionId: "date",
-};
-
-const dashboardDetails = {
-  name: "Filters",
-  parameters: [filterDetails],
-};
-
 describe("issue 19745", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
   });
 
-  it("should unwrap the inner query when removing all custom expressions (metabase#19745)", () => {
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { card_id, dashboard_id } }) => {
-        visitQuestion(card_id);
-        openNotebook();
-
-        // this should modify the query and remove the second stage
-        getNotebookStep("expression", { stage: 1 }).within(() =>
-          cy.findByTestId("remove-step").click({ force: true }),
-        );
-        cy.findByText("Save").click();
-        modal().within(() => cy.button("Save").click());
-        cy.wait("@updateQuestion");
-
-        // as we select all columns in the first stage of the query,
-        // it should be possible to map a filter to a selected column
-        visitDashboard(dashboard_id);
-        editDashboard();
-        cy.findByText("Date filter").click();
-        selectDashboardFilter(getDashboardCard(), "Created At");
-        saveDashboard();
-      },
-    );
+  it("should unwrap the inner query when removing all non-field clauses (metabase#19745)", () => {
+    visitQuestionAdhoc(questionDetails);
   });
 });

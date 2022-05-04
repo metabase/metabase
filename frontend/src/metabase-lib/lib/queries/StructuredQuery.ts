@@ -417,7 +417,7 @@ export default class StructuredQuery extends AtomicQuery {
   cleanEmpty(): StructuredQuery {
     const sourceQuery = this.sourceQuery();
 
-    if (sourceQuery && !this.hasAnyClauses()) {
+    if (sourceQuery && !this.hasAnyNonFieldClauses()) {
       return sourceQuery;
     } else {
       return this;
@@ -506,6 +506,18 @@ export default class StructuredQuery extends AtomicQuery {
       this.hasSorts() ||
       this.hasLimit() ||
       this.hasFields()
+    );
+  }
+
+  hasAnyNonFieldClauses() {
+    return (
+      this.hasJoins() ||
+      this.hasExpressions() ||
+      this.hasFilters() ||
+      this.hasAggregations() ||
+      this.hasBreakouts() ||
+      this.hasSorts() ||
+      this.hasLimit()
     );
   }
 
