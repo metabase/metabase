@@ -696,27 +696,24 @@ function populateFields(aggregationOperator, fields) {
 }
 
 export function getAggregationOperators(table) {
-  return AGGREGATION_OPERATORS.filter(
-    aggregationOperator =>
-      !(
-        aggregationOperator.requiredDriverFeature &&
-        table.db &&
-        !_.contains(
-          table.db.features,
-          aggregationOperator.requiredDriverFeature,
-        )
-      ),
-  ).map(aggregationOperator =>
-    populateFields(aggregationOperator, table.fields),
-  );
+  return AGGREGATION_OPERATORS.filter(operator => {
+    if (!operator.requiredDriverFeature) {
+      return true;
+    }
+    return (
+      table.db && table.db.features.includes(operator.requiredDriverFeature)
+    );
+  });
 }
 
 export function getAggregationOperatorsWithFields(table) {
-  return getAggregationOperators(table).filter(
-    aggregation =>
-      !aggregation.requiresField ||
-      aggregation.fields.every(fields => fields.length > 0),
-  );
+  return getAggregationOperators(table)
+    .map(operator => populateFields(operator, table.fields))
+    .filter(
+      aggregation =>
+        !aggregation.requiresField ||
+        aggregation.fields.every(fields => fields.length > 0),
+    );
 }
 
 export function getAggregationOperator(short) {
