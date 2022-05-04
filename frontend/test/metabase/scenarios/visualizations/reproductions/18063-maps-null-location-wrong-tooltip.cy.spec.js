@@ -10,7 +10,7 @@ const questionDetails = {
   display: "map",
 };
 
-describe.skip("issue 18063", () => {
+describe("issue 18063", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -29,7 +29,6 @@ describe.skip("issue 18063", () => {
 
     // Click anywhere to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
-    cy.findByText("Map type").click();
     cy.findByText("Map type").click();
   });
 
