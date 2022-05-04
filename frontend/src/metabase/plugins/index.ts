@@ -34,6 +34,12 @@ export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
 
+export const PLUGIN_ADMIN_TOOLS = {
+  INDEX_ROUTE: "model-caching",
+  EXTRA_ROUTES_INFO: [],
+  EXTRA_ROUTES: [],
+};
+
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
 

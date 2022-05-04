@@ -4,12 +4,9 @@ import * as Urls from "metabase/lib/urls";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 function hasManyPKColumns(question) {
-  return (
-    question
-      .query()
-      .table()
-      .fields.filter(field => field.isPK()).length > 1
-  );
+  const table = question.query().table();
+  const fields = table?.fields ?? question.getResultMetadata();
+  return fields.filter(field => isPK(field)).length > 1;
 }
 
 function getActionForPKColumn({ question, column, objectId, extraData }) {
@@ -65,13 +62,25 @@ function getPKAction({ question, column, objectId, extraData }) {
   return actionObject;
 }
 
+function getFKTargetField(column, metadata) {
+  const fkField = metadata.field(column.id);
+  if (fkField?.target) {
+    return fkField.target;
+  }
+  if (column.fk_target_field_id) {
+    const targetField = metadata.field(column.fk_target_field_id);
+    return targetField;
+  }
+  return null;
+}
+
 function getFKAction({ question, column, objectId }) {
   const actionObject = getBaseActionObject();
-  const fkField = question.metadata().field(column.id);
-  if (!fkField?.target) {
+  const targetField = getFKTargetField(column, question.metadata());
+  if (!targetField) {
     return;
   }
-  actionObject.question = () => question.drillPK(fkField.target, objectId);
+  actionObject.question = () => question.drillPK(targetField, objectId);
   return actionObject;
 }
 

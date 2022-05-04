@@ -170,7 +170,7 @@
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (dotimes [n 50]
+      (dotimes [n 40]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))

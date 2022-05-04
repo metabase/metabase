@@ -109,16 +109,9 @@ export class CreateAlertModalContent extends Component {
   onAlertChange = alert => this.setState({ alert });
 
   onCreateAlert = async () => {
-    const {
-      question,
-      createAlert,
-      apiUpdateQuestion,
-      updateUrl,
-      onAlertCreated,
-    } = this.props;
+    const { question, createAlert, updateUrl, onAlertCreated } = this.props;
     const { alert } = this.state;
 
-    await apiUpdateQuestion(question);
     await createAlert(alert);
     await updateUrl(question.card(), { dirty: false });
 

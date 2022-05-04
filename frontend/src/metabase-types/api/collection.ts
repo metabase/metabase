@@ -2,6 +2,8 @@ export type CollectionId = number | "root";
 
 export type CollectionContentModel = "card" | "dataset";
 
+export type CollectionAuthorityLevel = "official" | null;
+
 export interface Collection {
   id: CollectionId;
   name: string;

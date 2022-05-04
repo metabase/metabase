@@ -4,6 +4,6 @@ Cypress.Commands.add(
     cy.log(`Create a dashboard: ${name}`);
 
     // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
-    cy.request("POST", "/api/dashboard", { name, ...dashboardDetails });
+    return cy.request("POST", "/api/dashboard", { name, ...dashboardDetails });
   },
 );

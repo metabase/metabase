@@ -18,6 +18,7 @@ import SpecificDatePicker from "./SpecificDatePicker";
 type BetweenPickerProps = {
   isSidebar?: boolean;
   className?: string;
+  primaryColor?: string;
   filter: Filter;
   onFilterChange: (filter: any[]) => void;
 
@@ -30,6 +31,7 @@ export const BetweenPicker = ({
   filter: [op, field, startValue, endValue],
   onFilterChange,
   hideTimeSelectors,
+  primaryColor,
 }: BetweenPickerProps) => {
   let endDatetime = endValue;
   if (hasTimeComponent(startValue) && !hasTimeComponent(endValue)) {
@@ -45,6 +47,7 @@ export const BetweenPicker = ({
         <div>
           <SpecificDatePicker
             value={startValue}
+            primaryColor={primaryColor}
             hideTimeSelectors={hideTimeSelectors}
             onChange={value => onFilterChange([op, field, value, endValue])}
           />
@@ -52,6 +55,7 @@ export const BetweenPicker = ({
         <div>
           <SpecificDatePicker
             value={endValue}
+            primaryColor={primaryColor}
             hideTimeSelectors={hideTimeSelectors}
             onClear={() =>
               onFilterChange([
@@ -68,6 +72,7 @@ export const BetweenPicker = ({
       <div className="Calendar--noContext">
         <Calendar
           isRangePicker
+          primaryColor={primaryColor}
           initial={startValue}
           selected={startValue && moment(startValue)}
           selectedEnd={endValue && moment(endValue)}

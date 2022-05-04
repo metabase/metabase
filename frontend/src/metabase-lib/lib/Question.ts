@@ -22,6 +22,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
+import { isFK } from "metabase/lib/schema_metadata";
 import { memoize, sortObject } from "metabase-lib/lib/utils";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
@@ -69,6 +70,7 @@ import { Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import { ClickObject } from "metabase-types/types/Visualization";
+import { DependentMetadataItem } from "metabase-types/types/Query";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_ROWS,
@@ -323,6 +325,10 @@ export default class Question {
 
   isDataset() {
     return this._card && this._card.dataset;
+  }
+
+  isPersisted() {
+    return this._card && this._card.persisted;
   }
 
   setDataset(dataset) {
@@ -619,6 +625,15 @@ export default class Question {
     const query = this.query();
 
     if (!(query instanceof StructuredQuery)) {
+      if (this.isDataset()) {
+        const drillQuery = Question.create({
+          type: "query",
+          databaseId: this.databaseId(),
+          tableId: field.table_id,
+          metadata: this.metadata(),
+        }).query();
+        return drillQuery.addFilter(["=", field.reference(), value]).question();
+      }
       return;
     }
 
@@ -1013,6 +1028,24 @@ export default class Question {
     return this.card().result_metadata ?? [];
   }
 
+  dependentMetadata(): DependentMetadataItem[] {
+    if (!this.isDataset()) {
+      return [];
+    }
+    const dependencies = [];
+
+    this.getResultMetadata().forEach(field => {
+      if (isFK(field) && field.fk_target_field_id) {
+        dependencies.push({
+          type: "field",
+          id: field.fk_target_field_id,
+        });
+      }
+    });
+
+    return dependencies;
+  }
+
   /**
    * Returns true if the questions are equivalent (including id, card, and parameters)
    */
@@ -1266,7 +1299,7 @@ export default class Question {
     return isAltered ? question.markDirty() : question;
   }
 
-  getUrlWithParameters(parameters, parameterValues, { objectId } = {}) {
+  getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
     const includeDisplayIsLocked = true;
 
     if (this.isStructured()) {
@@ -1277,6 +1310,7 @@ export default class Question {
           .setParameterValues(parameterValues)
           .convertParametersToFilters()
           .getUrl({
+            clean,
             originalQuestion: this,
             includeDisplayIsLocked,
             query: { objectId },
@@ -1284,12 +1318,14 @@ export default class Question {
       } else {
         const query = getParameterValuesBySlug(parameters, parameterValues);
         return questionWithParameters.markDirty().getUrl({
+          clean,
           query,
           includeDisplayIsLocked,
         });
       }
     } else {
       return this.getUrl({
+        clean,
         query: remapParameterValuesToTemplateTags(
           this.query().templateTags(),
           parameters,
