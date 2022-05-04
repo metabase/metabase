@@ -17,7 +17,9 @@ const LeafletChoropleth = ({
   getColor = () => color("brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
-  onRenderError,
+  onRenderError = err => {
+    console.error(err);
+  },
 }) => (
   <CardRenderer
     card={{ display: "map" }}
@@ -96,7 +98,6 @@ const LeafletChoropleth = ({
       ]).addTo(map);
 
       map.fitBounds(minimalBounds);
-      // map.fitBounds(geoFeatureGroup.getBounds());
 
       return () => {
         map.remove();
