@@ -15,7 +15,7 @@ import {
   doesOperatorExist,
   getOperatorByTypeAndName,
   getFilterOperators,
-  getAggregationOperators,
+  getSupportedAggregationOperators,
   getAggregationOperatorsWithFields,
   isFuzzyOperator,
   getSemanticTypeIcon,
@@ -285,7 +285,7 @@ describe("schema_metadata", () => {
     });
   });
 
-  describe("getAggregationOperators", () => {
+  describe("getSupportedAggregationOperators", () => {
     function getTable(features) {
       return {
         db: {
@@ -296,13 +296,13 @@ describe("schema_metadata", () => {
 
     it("returns nothing without DB features", () => {
       const table = getTable([]);
-      const operators = getAggregationOperators(table);
+      const operators = getSupportedAggregationOperators(table);
       expect(operators).toHaveLength(0);
     });
 
     it("returns correct basic aggregation operators", () => {
       const table = getTable(["basic-aggregations"]);
-      const operators = getAggregationOperators(table);
+      const operators = getSupportedAggregationOperators(table);
       expect(operators.map(o => o.short)).toEqual([
         "rows",
         "count",
@@ -318,7 +318,7 @@ describe("schema_metadata", () => {
 
     it("filters out operators not supported by database", () => {
       const table = getTable(["standard-deviation-aggregations"]);
-      const operators = getAggregationOperators(table);
+      const operators = getSupportedAggregationOperators(table);
       expect(operators).toEqual([
         expect.objectContaining({
           short: "stddev",

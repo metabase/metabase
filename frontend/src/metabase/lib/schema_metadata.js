@@ -695,7 +695,7 @@ function populateFields(aggregationOperator, fields) {
   };
 }
 
-export function getAggregationOperators(table) {
+export function getSupportedAggregationOperators(table) {
   return AGGREGATION_OPERATORS.filter(operator => {
     if (!operator.requiredDriverFeature) {
       return true;
@@ -707,7 +707,7 @@ export function getAggregationOperators(table) {
 }
 
 export function getAggregationOperatorsWithFields(table) {
-  return getAggregationOperators(table)
+  return getSupportedAggregationOperators(table)
     .map(operator => populateFields(operator, table.fields))
     .filter(
       aggregation =>
