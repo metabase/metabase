@@ -439,7 +439,7 @@ class FieldInner extends Base {
   }
 }
 
-export default class Field extends memoizeClass(
+export default class Field extends memoizeClass<FieldInner>(
   "filterOperators",
   "filterOperatorsLookup",
   "aggregationOperators",

@@ -1647,7 +1647,7 @@ class StructuredQueryInner extends AtomicQuery {
   }
 } // subclass of StructuredQuery that's returned by query.sourceQuery() to allow manipulation of source-query
 
-class StructuredQuery extends memoizeClass(
+class StructuredQuery extends memoizeClass<StructuredQueryInner>(
   "table",
   "filters",
   "sorts",

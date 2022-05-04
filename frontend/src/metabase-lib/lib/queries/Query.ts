@@ -132,4 +132,6 @@ class QueryInner {
   }
 }
 
-export default class Query extends memoizeClass("question")(QueryInner) {}
+export default class Query extends memoizeClass<QueryInner>("question")(
+  QueryInner,
+) {}

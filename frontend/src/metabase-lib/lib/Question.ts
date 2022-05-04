@@ -152,43 +152,6 @@ class QuestionInner {
     );
   }
 
-  /**
-   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
-   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
-   */
-  static create({
-    databaseId,
-    tableId,
-    collectionId,
-    metadata,
-    parameterValues,
-    type = "query",
-    name,
-    display = "table",
-    visualization_settings = {},
-    dataset_query = type === "native"
-      ? NATIVE_QUERY_TEMPLATE
-      : STRUCTURED_QUERY_TEMPLATE,
-  }: QuestionCreatorOpts = {}) {
-    let card: CardObject = {
-      name,
-      collection_id: collectionId,
-      display,
-      visualization_settings,
-      dataset_query,
-    };
-
-    if (tableId != null) {
-      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
-    }
-
-    if (databaseId != null) {
-      card = assocIn(card, ["dataset_query", "database"], databaseId);
-    }
-
-    return new Question(card, metadata, parameterValues);
-  }
-
   metadata(): Metadata {
     return this._metadata;
   }
@@ -1339,7 +1302,44 @@ class QuestionInner {
   }
 }
 
-export default class Question extends memoizeClass(
+export default class Question extends memoizeClass<QuestionInner>(
   "query",
   "mode",
-)(QuestionInner) {}
+)(QuestionInner) {
+  /**
+   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
+   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
+   */
+  static create({
+    databaseId,
+    tableId,
+    collectionId,
+    metadata,
+    parameterValues,
+    type = "query",
+    name,
+    display = "table",
+    visualization_settings = {},
+    dataset_query = type === "native"
+      ? NATIVE_QUERY_TEMPLATE
+      : STRUCTURED_QUERY_TEMPLATE,
+  }: QuestionCreatorOpts = {}) {
+    let card: CardObject = {
+      name,
+      collection_id: collectionId,
+      display,
+      visualization_settings,
+      dataset_query,
+    };
+
+    if (tableId != null) {
+      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
+    }
+
+    if (databaseId != null) {
+      card = assocIn(card, ["dataset_query", "database"], databaseId);
+    }
+
+    return new Question(card, metadata, parameterValues);
+  }
+}

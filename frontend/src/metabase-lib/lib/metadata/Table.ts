@@ -153,7 +153,7 @@ class TableInner extends Base {
   }
 }
 
-export default class Table extends memoizeClass(
+export default class Table extends memoizeClass<TableInner>(
   "aggregationOperators",
   "aggregationOperatorsLookup",
   "fieldsLookup",

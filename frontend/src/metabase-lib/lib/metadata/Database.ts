@@ -184,6 +184,6 @@ class DatabaseInner extends Base {
   }
 }
 
-export default class Database extends memoizeClass("tablesLookup")(
-  DatabaseInner,
-) {}
+export default class Database extends memoizeClass<DatabaseInner>(
+  "tablesLookup",
+)(DatabaseInner) {}
