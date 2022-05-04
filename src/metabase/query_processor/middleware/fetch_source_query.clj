@@ -68,7 +68,7 @@
   ((every-pred integer? pos?) database))
 
 (def ^:private FullyResolvedQuery
-  "Schema for a MBQL query where all `card__id` `:source-tables` have been removes and appropriate `:source-query`s have
+  "Schema for a MBQL query where all `card__id` `:source-tables` have been removed and appropriate `:source-query`s have
   been added instead, and where the top-level `:database` ID, if it was the 'source query placeholder`, is replaced by
   the actual database ID of the source query.
 

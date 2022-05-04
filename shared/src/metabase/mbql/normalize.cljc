@@ -814,6 +814,15 @@
                        {:form x, :path path}
                        e))))))
 
+(defn normalize-unary-booleans [query]
+    (walk/postwalk
+     (fn [node] (if (and
+                     (coll? node)
+                     (= 2 (count node))
+                     (= (first node) "not"))
+                  ["=" (second node) "false"]
+                  node))
+     query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
@@ -825,7 +834,8 @@
   (let [normalize* (comp remove-empty-clauses
                          perform-whole-query-transformations
                          canonicalize
-                         normalize-tokens)]
+                         normalize-tokens
+                         normalize-unary-booleans)]
     (fn [query]
       (try
         (normalize* query)
