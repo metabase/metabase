@@ -12,3 +12,8 @@ export const getOrderedGroups = createSelector(
   Groups.selectors.getList,
   (groups: Group[]) => _.partition(groups, isPinnedGroup),
 );
+
+export const getAdminGroup = createSelector(
+  Groups.selectors.getList,
+  (groups: Group[]) => groups.find(isDefaultGroup),
+);
