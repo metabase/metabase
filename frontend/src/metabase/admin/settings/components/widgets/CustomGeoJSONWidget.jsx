@@ -274,7 +274,7 @@ const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
       {Object.entries(options).map(([name, values]) => (
         <Option key={name} value={name}>
           <div>
-            <div>{name}</div>
+            <div style={{ textAlign: "left" }}>{name}</div>
             <div
               className="mt1 h6"
               style={{
@@ -381,7 +381,7 @@ const EditMap = ({
         {geoJson || geoJsonLoading || geoJsonError ? (
           <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
             {() => (
-              <div className="m4 spread relative">
+              <div className="spread relative">
                 <ChoroplethPreview geoJson={geoJson} />
               </div>
             )}
