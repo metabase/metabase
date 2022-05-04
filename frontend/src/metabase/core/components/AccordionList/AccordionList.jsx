@@ -7,12 +7,11 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import Icon from "metabase/components/Icon";
-import { memoizeClass } from "metabase-lib/lib/utils";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
 
-class AccordionList extends Component {
+export default class AccordionList extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -375,7 +374,7 @@ class AccordionList extends Component {
     }
   };
 
-  getRowsCached(
+  getRowsCached = (
     searchFilter,
     searchable,
     sections,
@@ -385,7 +384,7 @@ class AccordionList extends Component {
     itemIsSelected,
     hideEmptySectionsInSearch,
     openSection,
-  ) {
+  ) => {
     const sectionIsExpanded = sectionIndex =>
       alwaysExpanded || openSection === sectionIndex;
     const sectionIsSearchable = sectionIndex =>
@@ -484,7 +483,7 @@ class AccordionList extends Component {
     }
 
     return rows;
-  }
+  };
 
   getRows() {
     const {
@@ -666,5 +665,3 @@ class AccordionList extends Component {
     );
   }
 }
-
-export default memoizeClass("getRowsCached")(AccordionList);
