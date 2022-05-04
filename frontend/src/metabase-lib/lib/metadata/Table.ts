@@ -2,6 +2,7 @@
 // @ts-nocheck
 // NOTE: this needs to be imported first due to some cyclical dependency nonsense
 import Question from "../Question";
+import Metadata from "./Metadata";
 import Schema from "./Schema";
 import Base from "./Base";
 import { singularize } from "metabase/lib/formatting";
@@ -24,6 +25,7 @@ export default class Table extends Base {
   display_name: string;
   schema_name: string;
   db_id: number;
+  metadata: Metadata;
 
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;
@@ -131,8 +133,13 @@ export default class Table extends Base {
   }
 
   connectedTables(): Table[] {
-    const fks = this.fks || [];
-    return fks.map(fk => new Table(fk.origin.table));
+    if (Array.isArray(this.fks)) {
+      return this.fks.map(fk => new Table(fk.origin.table));
+    }
+    return this.fields
+      .filter(field => field.isFK() && field.fk_target_field_id)
+      .map(field => this.metadata.field(field.fk_target_field_id).table)
+      .filter(Boolean);
   }
 
   /**

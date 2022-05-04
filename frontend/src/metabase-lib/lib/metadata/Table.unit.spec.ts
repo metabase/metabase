@@ -1,8 +1,10 @@
-import { PRODUCTS } from "__support__/sample_database_fixture";
+import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_database_fixture";
 import Table from "./Table";
 
 describe("Table", () => {
+  const ordersTable = new Table(ORDERS);
   const productsTable = new Table(PRODUCTS);
+  const peopleTable = new Table(PEOPLE);
 
   describe("numFields", () => {
     it("should return the number of fields", () => {
@@ -26,6 +28,13 @@ describe("Table", () => {
       });
 
       expect(table.connectedTables()).toEqual([productsTable]);
+    });
+
+    it("should return a list of table instances connected to it via FK fields", () => {
+      expect(ordersTable.connectedTables()).toEqual([
+        productsTable,
+        peopleTable,
+      ]);
     });
   });
 });
