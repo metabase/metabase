@@ -12,6 +12,7 @@ import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
 
 import { DEFAULT_Z_INDEX } from "./constants";
+import { sizeToFitModifierFn, SizeToFitOptions } from "./SizeToFitModifier";
 
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
@@ -21,12 +22,13 @@ export interface ITippyPopoverProps extends TippyProps {
   disableContentSandbox?: boolean;
   lazy?: boolean;
   flip?: boolean;
-  sizeToFit?: boolean;
+  sizeToFit?: boolean | SizeToFitOptions;
   onClose?: () => void;
 }
 
 const PAGE_PADDING = 10;
 const OFFSET: [number, number] = [0, 5];
+const SIZE_TO_FIT_MIN_HEIGHT = 200;
 
 const propTypes = {
   disablContentSandbox: PropTypes.bool,
@@ -48,33 +50,15 @@ function getPopperOptions({
       modifiers: [
         {
           name: "flip",
-          enabled: flip,
+          enabled: flip && !sizeToFit,
         },
         {
           name: "sizeToFit",
           phase: "beforeWrite",
-          enabled: sizeToFit,
-          requiresIfExists: ["offset", "flip"],
-          fn: ({
-            state,
-            options,
-          }: popper.ModifierArguments<Record<string, unknown>>) => {
-            const {
-              placement,
-              rects: {
-                popper: { height },
-              },
-            } = state;
-            if (placement.startsWith("top") || placement.startsWith("bottom")) {
-              const overflow = popper.detectOverflow(state, options);
-              const distanceFromEdge = placement.startsWith("top")
-                ? overflow.top
-                : overflow.bottom;
-
-              const maxHeight = height - distanceFromEdge - PAGE_PADDING;
-              state.styles.popper.maxHeight = `${maxHeight}px`;
-            }
-          },
+          enabled: sizeToFit !== false,
+          requiresIfExists: ["offset"],
+          fn: sizeToFitModifierFn,
+          options: typeof sizeToFit === "object" ? sizeToFit : undefined,
         },
       ],
     },
