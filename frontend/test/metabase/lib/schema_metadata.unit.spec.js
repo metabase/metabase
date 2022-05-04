@@ -31,15 +31,18 @@ describe("schema_metadata", () => {
       expect(getFieldType({ effective_type: TYPE.DateTime })).toEqual(TEMPORAL);
       expect(getFieldType({ effective_type: TYPE.Time })).toEqual(TEMPORAL);
     });
+
     it("should know a number", () => {
       expect(getFieldType({ base_type: TYPE.BigInteger })).toEqual(NUMBER);
       expect(getFieldType({ base_type: TYPE.Integer })).toEqual(NUMBER);
       expect(getFieldType({ base_type: TYPE.Float })).toEqual(NUMBER);
       expect(getFieldType({ base_type: TYPE.Decimal })).toEqual(NUMBER);
     });
+
     it("should know a string", () => {
       expect(getFieldType({ base_type: TYPE.Text })).toEqual(STRING);
     });
+
     it("should know things that are types of strings", () => {
       expect(
         getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.Name }),
@@ -54,18 +57,22 @@ describe("schema_metadata", () => {
         getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.URL }),
       ).toEqual(STRING);
     });
+
     it("should know a pk", () => {
       expect(
         getFieldType({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
       ).toEqual(PRIMARY_KEY);
     });
+
     it("should know a bool", () => {
       expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN);
     });
+
     it("should know a location", () => {
       expect(getFieldType({ semantic_type: TYPE.City })).toEqual(LOCATION);
       expect(getFieldType({ semantic_type: TYPE.Country })).toEqual(LOCATION);
     });
+
     it("should know a coordinate", () => {
       expect(getFieldType({ semantic_type: TYPE.Latitude })).toEqual(
         COORDINATE,
@@ -74,16 +81,19 @@ describe("schema_metadata", () => {
         COORDINATE,
       );
     });
+
     describe("should know something that is string-like", () => {
       it("TYPE.TextLike", () => {
         expect(getFieldType({ base_type: TYPE.TextLike })).toEqual(STRING_LIKE);
       });
+
       it("TYPE.IPAddress", () => {
         expect(getFieldType({ base_type: TYPE.IPAddress })).toEqual(
           STRING_LIKE,
         );
       });
     });
+
     it("should still recognize some types as a string regardless of its base type", () => {
       // TYPE.Float can occur in a field filter
       expect(
@@ -93,6 +103,7 @@ describe("schema_metadata", () => {
         getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Category }),
       ).toEqual(STRING);
     });
+
     it("should know what it doesn't know", () => {
       expect(getFieldType({ base_type: "DERP DERP DERP" })).toEqual(undefined);
     });
@@ -102,9 +113,11 @@ describe("schema_metadata", () => {
     it("should work with null input", () => {
       expect(foreignKeyCountsByOriginTable(null)).toEqual(null);
     });
+
     it("should require an array as input", () => {
       expect(foreignKeyCountsByOriginTable({})).toEqual(null);
     });
+
     it("should count occurrences by origin.table.id", () => {
       expect(
         foreignKeyCountsByOriginTable([
@@ -196,6 +209,7 @@ describe("schema_metadata", () => {
         "not-null",
       ]);
     });
+
     it("should return proper filter operators for type/Text primary key", () => {
       expect(
         getFilterOperators({
@@ -215,6 +229,7 @@ describe("schema_metadata", () => {
         "ends-with",
       ]);
     });
+
     it("should return proper filter operators for type/TextLike foreign key", () => {
       expect(
         getFilterOperators({
