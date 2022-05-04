@@ -177,9 +177,14 @@ export default class NativeQueryEditor extends Component {
   }, 100);
 
   handleKeyDown = e => {
-    const ENTER_KEY = 13;
-    if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
-      this.runQuery();
+    const { isRunning, cancelQuery } = this.props;
+
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (isRunning) {
+        cancelQuery();
+      } else {
+        this.runQuery();
+      }
     }
   };
 
