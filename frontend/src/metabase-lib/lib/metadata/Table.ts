@@ -136,6 +136,9 @@ export default class Table extends Base {
     if (Array.isArray(this.fks)) {
       return this.fks.map(fk => new Table(fk.origin.table));
     }
+    if (!Array.isArray(this.fields)) {
+      return [];
+    }
     return this.fields
       .filter(field => field.isFK() && field.fk_target_field_id)
       .map(field => this.metadata.field(field.fk_target_field_id).table)

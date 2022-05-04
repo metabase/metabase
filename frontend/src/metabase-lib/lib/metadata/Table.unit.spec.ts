@@ -36,5 +36,9 @@ describe("Table", () => {
         peopleTable,
       ]);
     });
+
+    it("should return an empty list if has no data to find foreign tables", () => {
+      expect(new Table().connectedTables()).toEqual([]);
+    });
   });
 });
