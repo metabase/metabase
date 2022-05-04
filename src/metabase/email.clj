@@ -137,31 +137,31 @@
   (deferred-tru "The maximum number of attempts for delivering a single email.")
   :type :integer
   :default 5
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting email-retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds when delivering emails.")
   :type :integer
   :default 15000
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting email-retry-multiplier
   (deferred-tru "The delay multiplier between attempts to deliver a single email.")
   :type :double
   :default 2.0
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting email-retry-randomizaion-factor
   (deferred-tru "The randomization factor of the retry delay when delivering emails.")
   :type :double
   :default 0.1
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting email-retry-max-interval-millis
   (deferred-tru "The maximum delay beetween attempts to deliver a single email.")
   :type :integer
   :default 120000
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defn- retry-configuration []
   (cond-> {:max-attempts (email-retry-max-attempts)

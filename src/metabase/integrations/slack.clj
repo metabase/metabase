@@ -307,31 +307,31 @@
   (deferred-tru "The maximum number of attempts for posting a single slack message.")
   :type :integer
   :default 7
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting slack-post-retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds when posting slack messages.")
   :type :integer
   :default 2000
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting slack-post-retry-multiplier
   (deferred-tru "The delay multiplier between attempts to post a single slack message.")
   :type :double
   :default 2.0
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting slack-post-retry-randomizaion-factor
   (deferred-tru "The randomization factor of the retry delay when posting slack messages.")
   :type :double
   :default 0.1
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defsetting slack-post-retry-max-interval-millis
   (deferred-tru "The maximum delay beetween attempts to post a single slack message.")
   :type :integer
   :default 120000
-  :on-change #'reconfigure-retrying)
+  :on-change reconfigure-retrying)
 
 (defn- retry-configuration []
   (cond-> {:max-attempts (slack-post-retry-max-attempts)
