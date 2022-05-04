@@ -283,20 +283,24 @@
                                        email-smtp-username "lucky"
                                        email-smtp-password "d1nner3scapee!"
                                        email-smtp-port     1025
-                                       email-smtp-security :none
-                                       email-retry-max-attempts 2]
+                                       email-smtp-security :none]
       (testing "sending with retry"
-        (is (=
-             [{:from    (email/email-from-address)
-               :to      ["test@test.com"]
-               :subject "101 Reasons to use Metabase"
-               :body    [{:type    "text/html; charset=utf-8"
-                          :content "101. Metabase will make you a better person"}]}]
-             (with-redefs [fake-inbox-email-fn (tu/works-after 1 fake-inbox-email-fn)]
-               (with-fake-inbox
-                 (email/send-message-retrying!
-                  :subject      "101 Reasons to use Metabase"
-                  :recipients   ["test@test.com"]
-                  :message-type :html
-                  :message      "101. Metabase will make you a better person")
-                 (@inbox "test@test.com")))))))))
+        (let [retry-config (assoc (#'email/retry-configuration)
+                                  :max-attempts 2
+                                  :initial-interval-millis 1)]
+          (is (=
+               [{:from    (email/email-from-address)
+                 :to      ["test@test.com"]
+                 :subject "101 Reasons to use Metabase"
+                 :body    [{:type    "text/html; charset=utf-8"
+                            :content "101. Metabase will make you a better person"}]}]
+               (with-redefs [fake-inbox-email-fn (tu/works-after 1 fake-inbox-email-fn)
+                             email/retry-configuration (constantly retry-config)]
+                 (#'email/reconfigure-retrying nil nil)
+                 (with-fake-inbox
+                   (email/send-message-retrying!
+                    :subject      "101 Reasons to use Metabase"
+                    :recipients   ["test@test.com"]
+                    :message-type :html
+                    :message      "101. Metabase will make you a better person")
+                   (@inbox "test@test.com"))))))))))

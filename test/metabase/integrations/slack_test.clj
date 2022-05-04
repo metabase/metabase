@@ -243,18 +243,21 @@
 
 (deftest post-chat-message-retrying!-test
   (testing "post-chat-message-retrying!"
-    (tu/with-temporary-setting-values [slack-post-retry-max-attempts 2]
-      (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
-                                   (tu/works-after 1 (fn [_]
-                                                       (mock-200-response (slurp "./test_resources/slack_post_chat_message_response.json"))))}
-        (let [expected-schema {:ok       (s/eq true)
-                               :message  {:type     (s/eq "message")
-                                          :subtype  (s/eq "bot_message")
-                                          :text     (s/eq ":wow:")
-                                          s/Keyword s/Any}
-                               s/Keyword s/Any}]
+    (http-fake/with-fake-routes {#"^https://slack.com/api/chat\.postMessage.*"
+                                 (tu/works-after 1 (fn [_]
+                                                     (mock-200-response (slurp "./test_resources/slack_post_chat_message_response.json"))))}
+      (let [retry-config (assoc (#'slack/retry-configuration)
+                                :max-attempts 2
+                                :initial-interval-millis 1)
+            expected-schema {:ok       (s/eq true)
+                             :message  {:type     (s/eq "message")
+                                        :subtype  (s/eq "bot_message")
+                                        :text     (s/eq ":wow:")
+                                        s/Keyword s/Any}
+                             s/Keyword s/Any}]
+        (with-redefs [slack/retry-configuration (constantly retry-config)]
+          (#'slack/reconfigure-retrying nil nil)
           (tu/with-temporary-setting-values [slack-token "test-token"
-                                             slack-app-token nil
-                                             slack-post-retry-initial-interval 1]
-            (is (schema= expected-schema
-                         (slack/post-chat-message-retrying! "C94712B6X" ":wow:")))))))))
+                                            slack-app-token nil]
+           (is (schema= expected-schema
+                        (slack/post-chat-message-retrying! "C94712B6X" ":wow:")))))))))

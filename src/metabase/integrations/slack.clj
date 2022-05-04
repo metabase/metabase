@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
-            [metabase.config :as config :refer [run-mode-val]]
+            [metabase.config :as config]
             [metabase.email.messages :as messages]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
@@ -306,17 +306,13 @@
 (defsetting slack-post-retry-max-attempts
   (deferred-tru "The maximum number of attempts for posting a single slack message.")
   :type :integer
-  :default (run-mode-val
-             (:dev :test) 1
-             7)
+  :default 7
   :on-change #'reconfigure-retrying)
 
 (defsetting slack-post-retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds when posting slack messages.")
   :type :integer
-  :default (run-mode-val
-             (:dev :test) 1
-             2000)
+  :default 2000
   :on-change #'reconfigure-retrying)
 
 (defsetting slack-post-retry-multiplier
@@ -337,18 +333,20 @@
   :default 120000
   :on-change #'reconfigure-retrying)
 
+(defn- retry-configuration []
+  (cond-> {:max-attempts (slack-post-retry-max-attempts)
+           :initial-interval-millis (slack-post-retry-initial-interval)
+           :multiplier (slack-post-retry-multiplier)
+           :randomization-factor (slack-post-retry-randomizaion-factor)
+           :max-interval-millis (slack-post-retry-max-interval-millis)}
+    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
+
 (defn- make-retry-state
-  "Returns an email sender wrapping [[send-message!]] retrying according to the
-  email retry configuration."
+  "Returns a slack message poster wrapping `post-chat-message!` retrying
+  according to `retry-configuration`."
   []
-  (let [retry (retry/random-exponential-backoff-retry
-               "slack-post-retry"
-               {:max-attempts (slack-post-retry-max-attempts)
-                :initial-interval-millis (slack-post-retry-initial-interval)
-                :multiplier (slack-post-retry-multiplier)
-                :randomization-factor (slack-post-retry-randomizaion-factor)
-                :max-interval-millis (slack-post-retry-max-interval-millis)
-                :retry-on-result-pred #(and (map? %) (instance? Throwable (::error %)))})]
+  (let [retry (retry/random-exponential-backoff-retry "slack-post-retry"
+                                                      (retry-configuration))]
     {:retry retry
      :sender (retry/decorate post-chat-message! retry)}))
 

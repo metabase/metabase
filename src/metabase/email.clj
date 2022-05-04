@@ -1,6 +1,6 @@
 (ns metabase.email
   (:require [clojure.tools.logging :as log]
-            [metabase.config :as config :refer [run-mode-val]]
+            [metabase.config :as config]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -136,17 +136,13 @@
 (defsetting email-retry-max-attempts
   (deferred-tru "The maximum number of attempts for delivering a single email.")
   :type :integer
-  :default (run-mode-val
-            (:dev :test) 1
-            5)
+  :default 5
   :on-change #'reconfigure-retrying)
 
 (defsetting email-retry-initial-interval
   (deferred-tru "The initial retry delay in milliseconds when delivering emails.")
   :type :integer
-  :default (run-mode-val
-             (:dev :test) 1
-             15000)
+  :default 15000
   :on-change #'reconfigure-retrying)
 
 (defsetting email-retry-multiplier
@@ -167,18 +163,21 @@
   :default 120000
   :on-change #'reconfigure-retrying)
 
+(defn- retry-configuration []
+  (cond-> {:max-attempts (email-retry-max-attempts)
+           :initial-interval-millis (email-retry-initial-interval)
+           :multiplier (email-retry-multiplier)
+           :randomization-factor (email-retry-randomizaion-factor)
+           :max-interval-millis (email-retry-max-interval-millis)
+           :retry-on-result-pred #(and (map? %) (instance? Throwable (::error %)))}
+    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
+
 (defn- make-retry-state
-  "Returns an email sender wrapping [[send-message!]] retrying according to the
-  email retry configuration."
+  "Returns an email sender wrapping [[send-message!]] retrying according to
+  `retry-configuration`."
   []
-  (let [retry (retry/random-exponential-backoff-retry
-               "send-email-retry"
-               {:max-attempts (email-retry-max-attempts)
-                :initial-interval-millis (email-retry-initial-interval)
-                :multiplier (email-retry-multiplier)
-                :randomization-factor (email-retry-randomizaion-factor)
-                :max-interval-millis (email-retry-max-interval-millis)
-                :retry-on-result-pred #(and (map? %) (instance? Throwable (::error %)))})]
+  (let [retry (retry/random-exponential-backoff-retry "send-email-retry"
+                                                      (retry-configuration))]
     {:retry retry
      :sender (retry/decorate send-message! retry)}))
 
