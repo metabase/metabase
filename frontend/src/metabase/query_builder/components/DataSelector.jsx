@@ -598,14 +598,14 @@ export class UnconnectedDataSelector extends Component {
       return null;
     }
 
-    if (debug) {
-      console.log("<--- getPreviousStep:", activeStep);
-    }
-
     let index = steps.indexOf(activeStep);
     if (index === -1) {
       console.error(`Step ${activeStep} not found in ${steps}.`);
       return null;
+    }
+
+    if (debug) {
+      console.log("<--- getPreviousStep:", activeStep, index);
     }
 
     // move to previous step
@@ -613,6 +613,7 @@ export class UnconnectedDataSelector extends Component {
 
     // Schema: skip another step backwards
     console.log(
+      steps[index],
       steps[index] === SCHEMA_STEP,
       this.props.useOnlyAvailableSchema,
       this.state.schemas,
@@ -626,32 +627,40 @@ export class UnconnectedDataSelector extends Component {
       index -= 1;
     }
 
-    // Database: skip another step backwards
-    const databases = this.getDatabases();
-    const filteredDatabases = databases; // .filter(db => !db.is_saved_questions);
+    // // Database: skip another step backwards
+    // const databases = this.getDatabases();
+    // const filteredDatabases = databases; // .filter(db => !db.is_saved_questions);
+    // console.log(
+    //   steps[index],
+    //   steps[index] === DATABASE_STEP,
+    //   this.props.useOnlyAvailableDatabase,
+    //   filteredDatabases,
+    //   this.state.databases,
+    // );
+    // if (
+    //   steps[index] === DATABASE_STEP &&
+    //   this.props.useOnlyAvailableDatabase &&
+    //   filteredDatabases.length === 1
+    //   // this.state.databases.length === 1
+    // ) {
+    //   console.log("\tskip DB");
+    //   index -= 1;
+    // }
+
+    // data bucket step doesn't make a lot of sense when there're no datasets
     console.log(
-      steps[index] === DATABASE_STEP,
-      this.props.useOnlyAvailableDatabase,
-      filteredDatabases,
-      this.state.databases,
+      steps[index],
+      steps[index] === DATA_BUCKET_STEP,
+      !this.hasUsableDatasets(),
     );
-    if (
-      steps[index] === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase &&
-      filteredDatabases.length === 1
-      // this.state.databases.length === 1
-    ) {
-      console.log("\tskip DB");
-      index -= 1;
+    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
+      console.log("");
+      return null;
     }
 
     if (debug) {
+      console.log("index --->", index);
       console.log("");
-    }
-
-    // data bucket step doesn't make a lot of sense when there're no datasets
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
-      return null;
     }
 
     // can't go back to a previous step
@@ -934,7 +943,11 @@ export class UnconnectedDataSelector extends Component {
       hasInitialFocus: !this.showTableSearch(),
     };
 
-    console.log("activeStep:", this.state.activeStep);
+    console.log(
+      "activeStep:",
+      this.state.activeStep,
+      this.getPreviousStep(false),
+    );
     console.log("");
 
     switch (this.state.activeStep) {
@@ -1483,7 +1496,9 @@ const TablePicker = ({
         onClick={onBack}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
-        <span className="ml1 text-wrap">{selectedDatabase.name}</span>
+        <span className={`${onBack ? "ml1" : ""} text-wrap`}>
+          {selectedDatabase.name}
+        </span>
       </span>
       {selectedSchema && selectedSchema.name && schemas.length > 1 && (
         <span className="ml1 text-wrap text-slate">
