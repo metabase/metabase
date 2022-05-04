@@ -1257,7 +1257,6 @@ workflows:
                   "dashboard",
                   "embedding",
                   "filters",
-                  "joins",
                   "models",
                   "native",
                   "native-filters",
