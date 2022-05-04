@@ -552,21 +552,18 @@ export class UnconnectedDataSelector extends Component {
   async skipSteps() {
     const { activeStep } = this.state;
 
-    // console.log("---> skipSteps:", activeStep, this.state);
-    // console.log("Database:", this.props.selectedDatabaseId);
-    // console.log("Schema:", this.props.selectedSchemaId);
-
     // database
     if (activeStep === DATABASE_STEP && this.props.useOnlyAvailableDatabase) {
       const databases = this.getDatabases();
-      // console.log("DB:", databases);
+      // retrieve the selected DB
       if (this.props.selectedDatabaseId) {
         const selectedDatabase = databases.find(
           database => database.id === this.props.selectedDatabaseId,
         );
-        // console.log("selectedDatabase:", selectedDatabase);
         await this.onChangeDatabase(selectedDatabase);
-      } else if (databases && databases.length === 1) {
+      }
+      // select the only available DB
+      else if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
       }
     }
@@ -574,19 +571,18 @@ export class UnconnectedDataSelector extends Component {
     // schema
     else if (activeStep === SCHEMA_STEP && this.props.useOnlyAvailableSchema) {
       const { schemas } = this.state;
-      // console.log("SCH:", schemas);
+      // retrieve the selected schema
       if (this.props.selectedSchemaId) {
         const selectedSchema = schemas.find(
           schema => schema.id === this.props.selectedSchemaId,
         );
-        // console.log("selectedSchema:", selectedSchema);
         await this.onChangeSchema(selectedSchema);
-      } else if (schemas && schemas.length === 1) {
+      }
+      // select the only available schema
+      else if (schemas && schemas.length === 1) {
         await this.onChangeSchema(schemas[0]);
       }
     }
-
-    // console.log("");
   }
 
   getNextStep() {
