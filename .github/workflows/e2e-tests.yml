@@ -60,10 +60,11 @@ jobs:
         edition: [ee]
         folder:
           - "binning"
+          - "custom-column"
+          - "dashboard"
           - "dashboard-filters"
           - "downloads"
           - "joins"
-          - "custom-column"
     services:
       maildev:
         image: maildev/maildev:1.1.0
