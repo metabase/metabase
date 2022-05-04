@@ -329,13 +329,17 @@ describe("schema_metadata", () => {
   });
 
   describe("getAggregationOperators", () => {
-    function setup({ fields = [] } = {}) {
-      const table = {
+    function getTable(fields = []) {
+      return {
         fields,
         db: {
           features: ["basic-aggregations", "standard-deviation-aggregations"],
         },
       };
+    }
+
+    function setup({ fields = [] } = {}) {
+      const table = getTable(fields);
       const fullOperators = getAggregationOperators(table);
       return {
         fullOperators,
@@ -360,6 +364,21 @@ describe("schema_metadata", () => {
     const NUMBERS = getTypedFields(TYPE.Number);
     const STRINGS = getTypedFields(TYPE.Text);
     const TEMPORALS = getTypedFields(TYPE.Temporal);
+
+    it("should handle multiple tables", () => {
+      const field1 = { id: 1, semantic_type: TYPE.Number };
+      const field2 = { id: 2, semantic_type: TYPE.Category };
+      const table1 = getTable([field1]);
+      const table2 = getTable([field2]);
+
+      const operators = getAggregationOperators([table1, table2]);
+      const distinct = _.findWhere(operators, { short: "distinct" });
+      const sum = _.findWhere(operators, { short: "sum" });
+
+      expect(operators).toHaveLength(10);
+      expect(distinct.fields[0]).toEqual([field1, field2]);
+      expect(sum.fields[0]).toEqual([field1]);
+    });
 
     describe("count", () => {
       it("offers without fields", () => {

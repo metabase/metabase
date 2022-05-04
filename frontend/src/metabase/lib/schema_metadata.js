@@ -706,9 +706,19 @@ export function getSupportedAggregationOperators(table) {
   });
 }
 
-export function getAggregationOperators(table) {
-  return getSupportedAggregationOperators(table)
-    .map(operator => populateFields(operator, table.fields))
+export function getAggregationOperators(tableOrTableList) {
+  const tables = Array.isArray(tableOrTableList)
+    ? tableOrTableList
+    : [tableOrTableList];
+
+  const fields = tables.reduce(
+    (fields, table) => [...fields, ...table.fields],
+    [],
+  );
+
+  // taking the first table as tables should come from the same DB
+  return getSupportedAggregationOperators(tables[0])
+    .map(operator => populateFields(operator, fields))
     .filter(
       aggregation =>
         !aggregation.requiresField ||
