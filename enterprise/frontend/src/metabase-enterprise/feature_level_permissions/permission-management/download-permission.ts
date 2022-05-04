@@ -1,6 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
-import { GroupsPermissions } from "metabase-types/api";
+
+import { Group, GroupsPermissions } from "metabase-types/api";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   EntityId,
@@ -13,6 +14,10 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
+import {
+  getPermissionWarning,
+  getPermissionWarningModal,
+} from "metabase/admin/permissions/selectors/confirmations";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
@@ -44,6 +49,13 @@ export const DOWNLOAD_PERMISSION_OPTIONS = {
     iconColor: "warning",
   },
 };
+
+const DOWNLOAD_PERMISSIONS_DESC = [
+  DOWNLOAD_PERMISSION_OPTIONS.full.value,
+  DOWNLOAD_PERMISSION_OPTIONS.limited.value,
+  DOWNLOAD_PERMISSION_OPTIONS.controlled.value,
+  DOWNLOAD_PERMISSION_OPTIONS.none.value,
+];
 
 const getPermissionValue = (
   permissions: GroupsPermissions,
@@ -77,6 +89,7 @@ export const buildDownloadPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   dataAccessPermissionValue: string,
+  defaultGroup: Group,
   permissionSubject: PermissionSubject,
 ) => {
   const hasChildEntities = permissionSubject !== "fields";
@@ -87,19 +100,50 @@ export const buildDownloadPermission = (
     ? DOWNLOAD_PERMISSION_OPTIONS.none.value
     : getPermissionValue(permissions, groupId, entityId, permissionSubject);
 
+  const defaultGroupValue = getPermissionValue(
+    permissions,
+    defaultGroup.id,
+    entityId,
+    permissionSubject,
+  );
+
   const isDisabled =
     isAdmin ||
     PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(dataAccessPermissionValue);
+
+  const warning = getPermissionWarning(
+    value,
+    defaultGroupValue,
+    permissionSubject,
+    defaultGroup,
+    groupId,
+    DOWNLOAD_PERMISSIONS_DESC,
+  );
+
+  const confirmations = (newValue: string) => [
+    getPermissionWarningModal(
+      newValue,
+      defaultGroupValue,
+      permissionSubject,
+      defaultGroup,
+      groupId,
+      DOWNLOAD_PERMISSIONS_DESC,
+    ),
+  ];
 
   return {
     permission: "download",
     type: "download",
     isDisabled,
+    value,
+    warning,
+    confirmations,
+    isHighlighted: isAdmin,
     disabledTooltip: isAdmin
       ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-      : DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS,
-    isHighlighted: isAdmin,
-    value,
+      : isDisabled
+      ? DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS
+      : null,
     options: [
       DOWNLOAD_PERMISSION_OPTIONS.none,
       ...(hasChildEntities ? [DOWNLOAD_PERMISSION_OPTIONS.controlled] : []),
