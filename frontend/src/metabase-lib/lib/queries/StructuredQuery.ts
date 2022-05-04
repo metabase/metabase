@@ -509,18 +509,6 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  hasAnyNonFieldClause() {
-    return (
-      this.hasJoins() ||
-      this.hasExpressions() ||
-      this.hasFilters() ||
-      this.hasAggregations() ||
-      this.hasBreakouts() ||
-      this.hasSorts() ||
-      this.hasLimit()
-    );
-  }
-
   hasJoins() {
     return this.joins().length > 0;
   }
