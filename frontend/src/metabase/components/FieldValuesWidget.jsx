@@ -437,7 +437,7 @@ export class FieldValuesWidget extends Component {
             value={value.filter(v => v != null)}
             onChange={onChange}
             placeholder={placeholder}
-            updateOnInputChange
+            updateOnInputBlur
             // forwarded props
             multi={multi}
             autoFocus={autoFocus}

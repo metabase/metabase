@@ -360,6 +360,9 @@ export default class TokenField extends Component {
         if (value != null && (multi || value !== this.props.value[0])) {
           this.addValue(value);
           this.clearInputValue();
+          if (multi) {
+            e.preventDefault();
+          }
           return true;
         }
       }
