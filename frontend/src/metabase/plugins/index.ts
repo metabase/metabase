@@ -10,6 +10,7 @@ import {
   Bookmark,
   GroupsPermissions,
   Dataset,
+  Group,
 } from "metabase-types/api";
 import { AdminPathKey, State } from "metabase-types/store";
 import { PluginGroupManagersType } from "./types";
@@ -138,6 +139,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _isAdmin: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: string,
+    _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
   ) => {
     return [] as any;
