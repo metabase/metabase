@@ -95,7 +95,7 @@ export default class Table extends Base {
   // AGGREGATIONS
   @memoize
   aggregationOperators() {
-    return getAggregationOperators(this);
+    return getAggregationOperators([this, ...this.connectedTables()]);
   }
 
   @memoize
