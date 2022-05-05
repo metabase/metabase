@@ -84,7 +84,7 @@ export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  overrideWithCard,
+  overrideWithCard = null,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
