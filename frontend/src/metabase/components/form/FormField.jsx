@@ -62,6 +62,7 @@ function FormField(props) {
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
+    isToggle = formField && formField.type === "boolean",
     align = formField?.align || "right",
     children,
   } = props;
@@ -98,6 +99,7 @@ function FormField(props) {
                 id={`${name}-label`}
                 htmlFor={name}
                 horizontal={horizontal}
+                standAlone={isToggle && align === "right" && !description}
               >
                 {title}
                 {error && <span className="text-error">: {error}</span>}
