@@ -8,8 +8,8 @@ export type VisualizationSettings = {
   [key: string]: any;
 };
 
-export type UnsavedCard = {
-  dataset_query: DatasetQuery;
+export type UnsavedCard<Q = DatasetQuery> = {
+  dataset_query: Q;
   display: string;
   visualization_settings: VisualizationSettings;
   parameters?: Array<Parameter>;
@@ -18,16 +18,17 @@ export type UnsavedCard = {
   original_card_id?: CardId;
 };
 
-export type SavedCard = UnsavedCard & {
+export type SavedCard<Q = DatasetQuery> = UnsavedCard<Q> & {
   id: CardId;
   name?: string;
   description?: string;
   dataset?: boolean;
+  collection_id: number | null;
   can_write: boolean;
   public_uuid: string;
 };
 
-export type Card = SavedCard | UnsavedCard;
+export type Card<Q = DatasetQuery> = SavedCard<Q> | UnsavedCard<Q>;
 
 export type StructuredDatasetQuery = {
   type: "query";
