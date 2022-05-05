@@ -122,19 +122,18 @@ function getCardForBlankQuestion({ db, table, segment, metric }) {
   return question.card();
 }
 
-async function getCard({ cardId, serializedCard, dispatch, getState }) {
-  let card = {};
-  let originalCard;
-
-  if (serializedCard) {
-    card = deserializeCardFromUrl(serializedCard);
-    if (card.dataset_query.database != null) {
-      // Ensure older MBQL is supported
-      card.dataset_query = normalize(card.dataset_query);
-    }
+function deserializeCard(serializedCard) {
+  const card = deserializeCardFromUrl(serializedCard);
+  if (card.dataset_query.database != null) {
+    // Ensure older MBQL is supported
+    card.dataset_query = normalize(card.dataset_query);
   }
+  return card;
+}
 
-  const deserializedCard = card;
+async function getCard({ cardId, deserializedCard, dispatch, getState }) {
+  let card = deserializedCard || {};
+  let originalCard;
 
   if (cardId) {
     card = await loadCard(cardId);
@@ -240,15 +239,18 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     return;
   }
 
-  let card, originalCard;
+  let card;
+  let originalCard;
+  let deserializedCard;
 
   let preserveParameters = false;
   let snippetFetch;
 
   if (hasCard) {
+    deserializedCard = serializedCard ? deserializeCard(serializedCard) : null;
     const loadedCards = await getCard({
       cardId,
-      serializedCard,
+      deserializedCard,
       dispatch,
       getState,
     });
