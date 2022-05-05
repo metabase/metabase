@@ -68,9 +68,12 @@ describe("TableInfo", () => {
   });
 
   it("should fetch fks if fks are undefined on table", () => {
+    const table = new Table({ ...PRODUCTS, fields: [1, 2, 3], fks: undefined });
+    table.connectedTables = () => [];
+
     setup({
       id: PRODUCTS.id,
-      table: new Table({ ...PRODUCTS, fields: [1, 2, 3], fks: undefined }),
+      table,
     });
 
     expect(fetchMetadata).not.toHaveBeenCalled();
