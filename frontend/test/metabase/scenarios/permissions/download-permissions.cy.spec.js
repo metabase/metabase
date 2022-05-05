@@ -142,6 +142,41 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       );
     });
 
+    it("lets user download results from native queries", () => {
+      cy.signInAsNormalUser();
+
+      cy.get("@nativeQuestionId").then(id => {
+        visitQuestion(id);
+
+        cy.icon("download").click();
+
+        downloadAndAssert(
+          { fileType: "xlsx", questionId: id },
+          assertSheetRowsCount(18760),
+        );
+
+        cy.icon("download").click();
+
+        // Make sure we can download results from an ad-hoc nested query based on a native question
+        cy.findByText("Explore results").click();
+        cy.wait("@dataset");
+
+        downloadAndAssert({ fileType: "xlsx" }, assertSheetRowsCount(18760));
+
+        // Make sure we can download results from a native model
+        cy.request("PUT", `/api/card/${id}`, { name: "Native Model" });
+
+        visitQuestion(id);
+
+        cy.icon("download").click();
+
+        downloadAndAssert(
+          { fileType: "xlsx", questionId: id },
+          assertSheetRowsCount(18760),
+        );
+      });
+    });
+
     it("prevents user from downloading a native question even if only one table doesn't have download permissions", () => {
       setDownloadPermissionsForProductsTable("none");
 
