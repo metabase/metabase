@@ -351,3 +351,16 @@
                                "Skipping %s because %s env var is not set"
                                "mysql-connect-with-ssl-and-pem-cert-test"
                                "MB_MYSQL_SSL_TEST_SSL_CERT")))))
+
+(deftest json-query-test
+  (mt/test-driver :mysql
+                  some shit here...))
+
+(deftest nested-field-column-test
+  (mt/test-driver :mysql
+                  some shit here...))
+
+(deftest nested-field-column-alias-test
+  (mt/test-driver :mysql
+                  some shit here...))
+
