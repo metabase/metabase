@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [oss, ee]
+        edition: [ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -148,7 +148,7 @@ jobs:
         if-no-files-found: ignore
 
     - name: Let's see what do we have here
-      run: ls -la cypress/results/
+      run: env
       shell: bash
       
     - name: Test Report
