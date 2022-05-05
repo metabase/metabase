@@ -1,6 +1,6 @@
 (ns metabase.models.table
   (:require [honeysql.core :as hsql]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
@@ -222,7 +222,7 @@
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  (mdb.conn/memoize-for-application-db
+  (mdb.connection/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (db/select-one-field :db_id Table, :id table-id))))
