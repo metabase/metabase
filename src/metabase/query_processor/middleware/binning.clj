@@ -1,7 +1,11 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `:binning` strategy in `:field` clauses. This adds extra info to the `:binning` options maps
   that contain the information Query Processors will need in order to perform binning."
-  (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
+  (:require [clojure.math.combinatorics :as math.combo]
+            [clojure.math.numeric-tower :refer [ceil expt floor]]
+            [clojure.string :as str]
+            [honeysql.core :as hsql]
+            [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
@@ -226,3 +230,83 @@
   (if (= query-type :native)
     query
     (update query :query update-binning-strategy-in-inner-query)))
+
+(defn- bin-field->name [field]
+  (str "xxx" (second field)))
+
+(defn- bin-fields->join-value-table [bin-fields]
+  (let [bins (mapv (fn [[_ _ {:keys [binning]}]]
+                     (let [{:keys [_strategy _num-bins min-value max-value bin-width]} binning]
+                       (vec (range min-value max-value bin-width))))
+                   bin-fields)
+        rows (apply math.combo/cartesian-product bins)
+        column-names (->> bin-fields
+                          (map #(str "\"" (bin-field->name %) "\""))
+                          (str/join ", "))
+        bin-values (first (hsql/format {:values rows}))]
+    {:native (str "("
+                  bin-values
+                  ;; Needed to name this inner alias
+                  ") as bin(" column-names ")")}))
+
+(defn fill-empty-bins
+  "Rewrites breakouts to add empty bins when possible.
+
+   - Binning fields are collected and added to a VALUES statement with the cartesian product of all possible bins
+   - The VALUES are right-joined to the original source table so that empty bins are added to the sources (#12004)
+   - Calls to [:count] need to be modified to count rows in the source table (otherwise the added values would count 1)
+   - Order by needs to replace source table columns with the VALUES columns"
+  [{:keys [query] :as outer-query}]
+  (let [bin-fields (->> query
+                        :breakout
+                        (filter (fn [[_ _ {:keys [binning]}]] (some? binning))))
+        table-alias "bin"
+        join-conditions (mapv
+                          #(do [:=
+                                [:field (bin-field->name %) {:base-type :type/Number :join-alias table-alias}]
+                                %])
+                          bin-fields)
+        bin-count (count bin-fields)]
+    (if (pos? bin-count)
+      (-> outer-query
+          (m/update-existing-in [:query :aggregation]
+                                ;; Just use first one, could be any but must be a field rather than source-table.*
+                                #(mapv (fn [ag] (if (= [:count] ag) [:count (first bin-fields)] ag)) %))
+          (assoc-in [:query :joins]
+                    [{:strategy :right-join
+                      :source-query (bin-fields->join-value-table bin-fields)
+                      :alias table-alias
+                      :condition (cond->> join-conditions
+                                   (= 1 bin-count) first
+                                   (not= 1 bin-count) (into [:and]))}])
+          (update-in [:query :breakout] (fn [breakout-fields]
+                                          (mapv
+                                            #(if (contains? (set bin-fields) %)
+                                               [:field (bin-field->name %) {:base-type :type/Number :join-alias table-alias}]
+                                               %)
+                                            breakout-fields)))
+          (m/update-existing-in [:query :order-by]
+                                #(mapv (fn fill-ob [[direction order-by-field :as ordered-by]]
+                                         (if (contains? (set bin-fields) order-by-field)
+                                           [direction [:field (bin-field->name order-by-field) {:base-type :type/Number :join-alias table-alias}]]
+                                           ordered-by)) %)))
+      outer-query)))
+
+
+(comment
+(fill-empty-bins oq)
+  (do oq)
+  (mapv (juxt identity fill-empty-bins)
+        [{:aggregation [[:count]],
+          :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
+          :source-table 81}])
+
+  {:aggregation [[:count] [:sum]],
+   :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
+   :source-table 81
+   :order-by [[:asc [:field 616]]]}
+
+  {:aggregation [[:avg]],
+   :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
+   :source-table 81
+   :order-by [[:asc [:field 616]]]})
