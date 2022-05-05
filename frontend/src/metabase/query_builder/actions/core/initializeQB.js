@@ -87,6 +87,20 @@ async function getSnippetsLoader({ card, dispatch, getState }) {
   }
 }
 
+const ARCHIVED_ERROR = {
+  data: {
+    error_code: "archived",
+  },
+  context: "query-builder",
+};
+
+const NOT_FOUND_ERROR = {
+  data: {
+    error_code: "archived",
+  },
+  context: "query-builder",
+};
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
@@ -220,26 +234,12 @@ export const initializeQB = (location, params) => {
 
         if (card.archived) {
           // use the error handler in App.jsx for showing "This question has been archived" message
-          dispatch(
-            setErrorPage({
-              data: {
-                error_code: "archived",
-              },
-              context: "query-builder",
-            }),
-          );
+          dispatch(setErrorPage(ARCHIVED_ERROR));
           card = null;
         }
 
         if (!card?.dataset && location.pathname.startsWith("/model")) {
-          dispatch(
-            setErrorPage({
-              data: {
-                error_code: "not-found",
-              },
-              context: "query-builder",
-            }),
-          );
+          dispatch(setErrorPage(NOT_FOUND_ERROR));
           card = null;
         }
 
