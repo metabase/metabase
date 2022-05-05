@@ -1419,4 +1419,4 @@
       (t/is (= {:query {:filter [:<
                                  [:field "date_seen" {:base-type :type/Date}]
                                  "2021-05-01T12:30:00"]}}
-               (mbql.normalize/normalize query))))))
+               (normalize/normalize query))))))
