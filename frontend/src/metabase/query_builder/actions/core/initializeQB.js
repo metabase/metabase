@@ -94,6 +94,18 @@ async function verifyMatchingDashcardAndParameters({
   }
 }
 
+function getParameterValuesForQuestion({ card, queryParams, metadata }) {
+  const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+    card,
+    metadata,
+  );
+  return getParameterValuesByIdFromQueryParams(
+    parameters,
+    queryParams,
+    metadata,
+  );
+}
+
 async function handleDashboardParameters(
   card,
   { cardId, deserializedCard, originalCard, dispatch, getState },
@@ -321,15 +333,11 @@ async function handleQBInit(dispatch, getState, { location, params }) {
   const freshCard = question && question.card();
 
   const metadata = getMetadata(getState());
-  const parameters = getValueAndFieldIdPopulatedParametersFromCard(
-    freshCard,
-    metadata,
-  );
-  const parameterValues = getParameterValuesByIdFromQueryParams(
-    parameters,
+  const parameterValues = getParameterValuesForQuestion({
+    card,
     queryParams,
     metadata,
-  );
+  });
 
   const objectId = params?.objectId || queryParams?.objectId;
 
