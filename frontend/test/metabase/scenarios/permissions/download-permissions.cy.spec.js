@@ -170,7 +170,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       });
     });
 
-    it("limits download results for a native question even if even one table has `limited` download permissions", () => {
+    it("limits download results for a native question even if only one table has `limited` download permissions", () => {
       setDownloadPermissionsForProductsTable("limited");
 
       cy.signInAsNormalUser();
