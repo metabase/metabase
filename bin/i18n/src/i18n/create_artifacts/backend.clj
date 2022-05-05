@@ -23,10 +23,19 @@
                            :str-plural nil
                            :plural? false})))
 
+(def ^:private apostrophe-regex
+  "Regex that matches incorrectly escaped apostrophe characters.
+  Matches on a single apostrophe surrounded by any letter, number, space, or diacritical character (chars with accents like é) and is case-insensitive"
+  #"(?<![^a-zA-Z0-9\s\u00C0-\u017F])'(?![^a-zA-Z0-9\s\u00C0-\u017F])")
+
+(defn- fix-unescaped-apostrophes [message]
+  (update message :str str/replace apostrophe-regex "''"))
+
 (defn- ->edn [{:keys [messages]}]
   (eduction
    (filter backend-message?)
    (map plural->singular)
+   (map fix-unescaped-apostrophes)
    i18n/print-message-count-xform
    messages))
 
