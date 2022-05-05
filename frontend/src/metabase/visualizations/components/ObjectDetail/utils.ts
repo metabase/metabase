@@ -13,7 +13,7 @@ export interface GetObjectNameArgs {
   table: Table | null;
   question: Question;
   cols: Column[];
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
 }
 
 export const getObjectName = ({
@@ -40,15 +40,11 @@ export const getObjectName = ({
 };
 
 export interface GetDisplayIdArgs {
-  table: Table | null;
-  question: Question;
   cols: Column[];
   zoomedRow: unknown[];
 }
 
 export const getDisplayId = ({
-  table,
-  question,
   cols,
   zoomedRow,
 }: GetDisplayIdArgs): ObjectId | null => {

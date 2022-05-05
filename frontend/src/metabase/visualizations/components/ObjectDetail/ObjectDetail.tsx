@@ -229,8 +229,11 @@ export function ObjectDetailFn({
 
   const displayId = getDisplayId({ cols: data.cols, zoomedRow });
   const hasPk = !!data.cols.find(isPK);
-  const hasRelationships =
-    tableForeignKeys && !!tableForeignKeys.length && hasPk;
+  const hasRelationships = !!(
+    tableForeignKeys &&
+    !!tableForeignKeys.length &&
+    hasPk
+  );
 
   return (
     <Modal
@@ -349,7 +352,7 @@ export function ObjectDetailHeader({
 export interface ObjectDetailBodyProps {
   data: DatasetData;
   objectName: string;
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
   settings: unknown;
   hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;

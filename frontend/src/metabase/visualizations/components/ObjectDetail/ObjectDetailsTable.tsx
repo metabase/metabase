@@ -100,7 +100,7 @@ export function DetailsTableCell({
 
 export interface DetailsTableProps {
   data: DatasetData;
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
   settings: unknown;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
@@ -113,7 +113,7 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { rows, cols } = data;
+  const { cols } = data;
   const row = zoomedRow;
 
   return (
@@ -124,7 +124,7 @@ export function DetailsTable({
             <GridCell>
               <DetailsTableCell
                 column={column}
-                value={row[columnIndex]}
+                value={row[columnIndex] ?? "Empty"}
                 isColumnName
                 settings={settings}
                 className="text-bold text-medium"

@@ -60,6 +60,7 @@ describe("Object Detail", () => {
         settings={{
           column: () => null,
         }}
+        hasRelationships={false}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
         tableForeignKeys={[]}
