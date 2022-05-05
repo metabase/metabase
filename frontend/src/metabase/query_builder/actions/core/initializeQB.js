@@ -178,7 +178,7 @@ export const initializeQB = (location, params) => {
             getIn(card, ["dataset_query", "native", "template-tags"]) || {},
           ).filter(t => t.type === "snippet").length > 0
         ) {
-          const dbId = card.database_id;
+          const dbId = getIn(card, ["dataset_query", "database"]);
           let database = Databases.selectors.getObject(getState(), {
             entityId: dbId,
           });
@@ -225,7 +225,7 @@ export const initializeQB = (location, params) => {
           card = null;
         }
 
-        if (!card.dataset && location.pathname.startsWith("/model")) {
+        if (!card?.dataset && location.pathname.startsWith("/model")) {
           dispatch(
             setErrorPage({
               data: {
@@ -327,12 +327,15 @@ export const initializeQB = (location, params) => {
     const objectId = params?.objectId || queryParams?.objectId;
 
     // Update the question to Redux state together with the initial state of UI controls
-    dispatch.action(INITIALIZE_QB, {
-      card,
-      originalCard,
-      uiControls,
-      parameterValues,
-      objectId,
+    dispatch({
+      type: INITIALIZE_QB,
+      payload: {
+        card,
+        originalCard,
+        uiControls,
+        parameterValues,
+        objectId,
+      },
     });
 
     // if we have loaded up a card that we can run then lets kick that off as well
