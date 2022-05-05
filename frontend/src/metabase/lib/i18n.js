@@ -93,9 +93,8 @@ function updateMomentLocale(locale) {
 
 function mapToMomentLocale(locale = "") {
   switch (locale) {
-    case "zh-Hans":
-      return "zh-cn";
     case "zh":
+    case "zh-Hans":
       return "zh-cn";
     default:
       return locale.toLowerCase();
