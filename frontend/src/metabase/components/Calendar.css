@@ -36,11 +36,6 @@
   padding: 10px;
 }
 
-.Calendar-day:hover {
-  background-color: var(--color-accent7);
-  color: white;
-}
-
 .Calendar-day-name {
   cursor: inherit;
 }

@@ -48,13 +48,17 @@ Writing SQL queries that use variables or parameters can be very powerful, but i
 
 You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
 
+## How Metabase executes SQL queries
+
+When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
 
 ## Need help?
 
-If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshoot-sql].
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshooting-sql].
 
 ---
 
@@ -67,4 +71,5 @@ Now that you have an answer to your question, you can learn about [visualizing a
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: /glossary/sample_database
 [sql-gloss]: /glossary/sql
+[troubleshooting-sql]: ../troubleshooting-guide/sql.md
 [variable-gloss]: /glossary/variable

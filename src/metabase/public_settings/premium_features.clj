@@ -276,6 +276,7 @@
   [feature]
   (or (= feature :none)
       (if (= feature :any)
+        #_{:clj-kondo/ignore [:deprecated-var]}
         (enable-enhancements?)
         (has-feature? feature))))
 

@@ -4,7 +4,11 @@ import { css } from "@emotion/react";
 import { space } from "metabase/styled-components/theme";
 import { color } from "metabase/lib/colors";
 
-export const FormMessageStyled = styled.span`
+export const FormMessageStyled = styled.span<{
+  visible?: boolean;
+  hasSucceeded?: boolean;
+  noPadding?: boolean;
+}>`
   color: ${({ hasSucceeded }) =>
     hasSucceeded ? color("success") : color("error")};
   float: left;

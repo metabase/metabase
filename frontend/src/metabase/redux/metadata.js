@@ -306,29 +306,35 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
   },
 );
 
-export const loadMetadataForQuery = query => loadMetadataForQueries([query]);
+export const loadMetadataForQuery = (query, extraDependencies) =>
+  loadMetadataForQueries([query], extraDependencies);
 
-export const loadMetadataForQueries = queries => dispatch =>
-  Promise.all(
-    _.chain(queries)
-      .map(q => q.dependentMetadata())
-      .flatten()
-      .uniq(false, dep => dep.type + dep.id)
-      .map(({ type, id, foreignTables }) => {
-        if (type === "table") {
-          return (foreignTables
-            ? Tables.actions.fetchMetadataAndForeignTables
-            : Tables.actions.fetchMetadata)({ id });
-        } else if (type === "field") {
-          return Fields.actions.fetch({ id });
-        } else if (type === "schema") {
-          return Schemas.actions.fetchList({ dbId: id });
-        } else {
-          console.warn(`loadMetadataForQueries: type ${type} not implemented`);
-        }
-      })
-      // unrecognized types would result in undefined, so we filter that out
-      .filter(action => action !== undefined)
-      .map(dispatch)
-      .value(),
-  ).catch(e => console.error("Failed loading metadata for query", e));
+export const loadMetadataForQueries = (
+  queries,
+  extraDependencies = [],
+) => dispatch => {
+  const dependencies = _.chain(queries)
+    .map(q => q.dependentMetadata())
+    .push(...extraDependencies)
+    .flatten()
+    .uniq(false, dep => dep.type + dep.id)
+    .map(({ type, id, foreignTables }) => {
+      if (type === "table") {
+        return (foreignTables
+          ? Tables.actions.fetchMetadataAndForeignTables
+          : Tables.actions.fetchMetadata)({ id });
+      } else if (type === "field") {
+        return Fields.actions.fetch({ id });
+      } else if (type === "schema") {
+        return Schemas.actions.fetchList({ dbId: id });
+      } else {
+        console.warn(`loadMetadataForQueries: type ${type} not implemented`);
+      }
+    })
+    .filter(Boolean)
+    .value();
+
+  return Promise.all(dependencies.map(dispatch)).catch(e =>
+    console.error("Failed loading metadata for query", e),
+  );
+};

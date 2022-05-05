@@ -17,7 +17,7 @@ If they're a member of two groups — one which grants [Unrestricted][unrestrict
 1. In the **People tab** of the **Admin Panel**, take a look at which groups the person is in.
 2. Either remove the person from the group with wider permissions, or adjust that group's data permissions to grant them no-self service access to the table you want restricted.
 
-Remember that everyone is a member of the **All Users** group; this is why we recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
+Remember that everyone is a member of the **All Users** group. We recommend you revoke permissions from the **All users** group, and create new groups to selectively apply permissions to your data sources.
 
 ## A person who needs to access the SQL editor can't
 

@@ -819,7 +819,9 @@ export const loadMetadataForCard = card => (dispatch, getState) => {
   if (question.isDataset()) {
     queries.push(question.composeDataset().query());
   }
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(queries, question.dependentMetadata()),
+  );
 };
 
 function hasNewColumns(question, queryResult) {
@@ -1758,3 +1760,13 @@ export const showTimelinesForCollection = collectionId => (
 
   dispatch(showTimelines(collectionTimelines));
 };
+
+export const PERSIST_DATASET = "metabase/qb/PERSIST_DATASET";
+export const persistDataset = createAction(PERSIST_DATASET, id =>
+  CardApi.persist({ id }),
+);
+
+export const UNPERSIST_DATASET = "metabase/qb/UNPERSIST_DATASET";
+export const unpersistDataset = createAction(UNPERSIST_DATASET, id =>
+  CardApi.unpersist({ id }),
+);

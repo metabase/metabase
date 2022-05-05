@@ -64,14 +64,14 @@
   [^ClassLoader classloader]
   (has-classloader-as-ancestor? classloader @shared-context-classloader))
 
-(defn ^ClassLoader the-classloader
+(defn the-classloader
   "Fetch the context classloader for the current thread; ensure it has a our shared context classloader as an ancestor
   somewhere in its hierarchy, changing the thread's context classloader when needed.
 
   This function should be used when loading classes (such as JDBC drivers) with `Class/forName`; and for side-effects
   before calling `require`, to ensure the context classloader for the current thread is one that has access to the JARs
   we've added to the classpath."
-  []
+  ^ClassLoader []
   (or
    ;; if the context classloader already has the classloader we'll add URLs to as an ancestor return it as-is
    (let [current-thread-context-classloader (.getContextClassLoader (Thread/currentThread))]

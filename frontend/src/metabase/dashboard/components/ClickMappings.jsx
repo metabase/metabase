@@ -33,11 +33,13 @@ import { getParameters } from "metabase/dashboard/selectors";
     )
       .filter(mapping => getIn(mapping, ["source", "type"]) === "parameter")
       .map(mapping => mapping.source.id);
-    parameters = parameters.filter(p => parametersUsedAsSources.includes(p.id));
+    parameters = parameters.filter(p => {
+      return parametersUsedAsSources.includes(p.id);
+    });
   }
 
   const [setTargets, unsetTargets] = _.partition(
-    getTargetsWithSourceFilters({ isDash, object, metadata }),
+    getTargetsWithSourceFilters({ isDash, dashcard, object, metadata }),
     ({ id }) =>
       getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
   );

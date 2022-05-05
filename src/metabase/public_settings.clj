@@ -200,6 +200,18 @@
   :type    :boolean
   :default false)
 
+(defsetting persisted-models-enabled
+  (deferred-tru "Allow persisting models into the source database.")
+  :type       :boolean
+  :default    false
+  :visibility :admin)
+
+(defsetting persisted-model-refresh-interval-hours
+  (deferred-tru "Hour interval to refresh persisted models.")
+  :type       :integer
+  :default    6
+  :visibility :admin)
+
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
   MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in

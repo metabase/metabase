@@ -298,7 +298,7 @@
              (mt/with-temp Collection [collection]
                (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
                (with-alert-setup
-                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+                 (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
                  [(et/with-expected-messages 1
                     (alert-response
                      ((alert-client :rasta) :post 200 "alert"
@@ -358,7 +358,7 @@
                            Card       [card {:name          "My question"
                                              :display       "line"
                                              :collection_id (u/the-id collection)}]]
-             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
                  (mt/user-http-request
@@ -380,7 +380,7 @@
                            Card       [card {:name          "My question"
                                              :display       "bar"
                                              :collection_id (u/the-id collection)}]]
-             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
                  (mt/user-http-request
@@ -567,7 +567,7 @@
                  (mt/regex-email-bodies #"https://metabase.com/testmb"
                                         #"letting you know that Crowberto Corv"))))))))
 
-(deftest permissions-test
+(deftest update-alert-permissions-test
   (testing "Non-admin users cannot update alerts for cards in a collection they don't have access to"
     (is (= "You don't have permissions to do that."
          (tu/with-non-admin-groups-no-root-collection-perms
@@ -591,8 +591,20 @@
                              PulseChannelRecipient [_     (recipient pc :crowberto)]]
                (with-alert-setup
                  ((alert-client :rasta) :put 403 (alert-url alert)
-                  (default-alert-req card pc)))))))))
+                  (default-alert-req card pc))))))))
 
+  (testing "Non-admin users can update alerts in collection they have view permisisons"
+    (tu/with-non-admin-groups-no-root-collection-perms
+      (with-alert-in-collection [_ collection alert card]
+        (mt/with-temp* [PulseCard [pc (pulse-card alert card)]]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+
+          (mt/user-http-request :rasta :put 200 (alert-url alert)
+                                (dissoc (default-alert-req card pc {} []) :card :channels))
+
+          (testing "but not allowed to edit the card"
+            (mt/user-http-request :rasta :put 403 (alert-url alert)
+                                  (dissoc (default-alert-req card pc {} []) :channels))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |
