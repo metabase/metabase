@@ -1,7 +1,7 @@
 (ns metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   (:require [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as settings.premium-features]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util.i18n :refer [tru]]))
 
@@ -19,9 +19,9 @@
   Note that this feature is Metabase© Enterprise Edition™ only and only enabled if we have a valid Enterprise Edition™
   token. [[metabase.query-processor.middleware.permissions/check-block-permissions]] invokes this function if it
   exists."
-  [{database-id :database, :as query}]
+  [{database-id :database}]
   (cond
-    (not (settings.premium-features/enable-advanced-permissions?))
+    (not (premium-features/enable-advanced-permissions?))
     ::advanced-permissions-not-enabled
 
     (not (current-user-has-block-permissions-for-database? database-id))

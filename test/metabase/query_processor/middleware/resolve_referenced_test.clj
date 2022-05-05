@@ -3,7 +3,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
-            [metabase.query-processor.middleware.resolve-referenced :as referenced]
+            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.query-processor.store :as qp.store]
             [metabase.test :as mt]
             [toucan.db :as db])
@@ -14,7 +14,7 @@
     (mt/with-temp* [Card [c1 {}]
                     Card [c2 {}]]
       (is (= [c1 c2]
-             (#'referenced/tags-referenced-cards
+             (#'qp.resolve-referenced/tags-referenced-cards
               {:native
                {:template-tags
                 {"tag-name-not-important1" {:type    :card
@@ -39,7 +39,7 @@
                                 (qp.store/field (mt/id :venues :price))))
 
           (is (= query
-                 (#'referenced/resolve-referenced-card-resources* query)))
+                 (#'qp.resolve-referenced/resolve-referenced-card-resources* query)))
 
           (is (some? (qp.store/table (mt/id :venues))))
           (is (some? (qp.store/field (mt/id :venues :price)))))))))
@@ -64,16 +64,16 @@
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'referenced/check-query-database-id= card-query query-db-id)
+                (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
                 (catch ExceptionInfo exc
                   (ex-data exc)))))
 
-        (is (nil? (#'referenced/check-query-database-id= card-query (mt/id))))
+        (is (nil? (#'qp.resolve-referenced/check-query-database-id= card-query (mt/id))))
 
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'referenced/resolve-referenced-card-resources* query)
+                (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
                 (catch ExceptionInfo exc
                   (ex-data exc))))))))
 
@@ -94,16 +94,16 @@
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'referenced/check-query-database-id= card-query query-db-id)
+                (#'qp.resolve-referenced/check-query-database-id= card-query query-db-id)
                 (catch ExceptionInfo exc
                   (ex-data exc)))))
 
-        (is (nil? (#'referenced/check-query-database-id= card-query (mt/id))))
+        (is (nil? (#'qp.resolve-referenced/check-query-database-id= card-query (mt/id))))
 
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
-                (#'referenced/resolve-referenced-card-resources* query)
+                (#'qp.resolve-referenced/resolve-referenced-card-resources* query)
                 (catch ExceptionInfo exc
                   (ex-data exc)))))))))
 
@@ -121,8 +121,8 @@
         (let [entrypoint-query (mt/native-query
                                 {:query (str "SELECT * FROM {{#" (:id card-1) "}}")
                                  :template-tags (card-template-tags [card-1-id])})]
-          (is (= (#'referenced/circular-ref-error (:id card-2) card-1-id)
+          (is (= (#'qp.resolve-referenced/circular-ref-error (:id card-2) card-1-id)
                  (try
-                  (#'referenced/check-for-circular-references! entrypoint-query)
+                  (#'qp.resolve-referenced/check-for-circular-references! entrypoint-query)
                   (catch ExceptionInfo e
                     (.getMessage e))))))))))

@@ -22,7 +22,7 @@ import {
 
 export interface TimelineEmptyStateProps {
   timeline?: Timeline;
-  collection: Collection;
+  collection?: Collection;
 }
 
 const TimelineEmptyState = ({
@@ -31,11 +31,11 @@ const TimelineEmptyState = ({
 }: TimelineEmptyStateProps): JSX.Element => {
   const date = moment();
   const link = timeline
-    ? Urls.newEventInCollection(timeline, collection)
+    ? Urls.newEventInCollection(timeline)
     : Urls.newEventAndTimelineInCollection(collection);
   const canWrite = timeline
     ? timeline.collection?.can_write
-    : collection.can_write;
+    : collection?.can_write;
 
   return (
     <EmptyStateRoot>

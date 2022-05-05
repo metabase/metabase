@@ -3,18 +3,18 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.common :as driver.common]
-            [metabase.driver.druid.js :as js]
+            [metabase.driver.druid.js :as druid.js]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results
@@ -136,11 +136,10 @@
   (merge
    {:intervals   ["1900-01-01/2100-01-01"]
     :granularity :all
-    :context     {:timeout 60000
-                  :queryId (random-query-id)}}
+    :context     {:queryId (random-query-id)}}
    (case query-type
      ::scan               {:queryType :scan
-                           :limit     i/absolute-max-results}
+                           :limit     qp.i/absolute-max-results}
      ::total              {:queryType :timeseries}
      ::grouped-timeseries {:queryType :timeseries}
      ::topN               {:queryType :topN
@@ -465,16 +464,16 @@
   [arg default-value]
   (if-not (field? arg)
     arg
-    (js/or (js/parse-float (->rvalue arg))
-           default-value)))
+    (druid.js/or (druid.js/parse-float (->rvalue arg))
+                 default-value)))
 
 (defn- expression->js
   [[operator & args] default-value]
   (apply (case operator
-           :+ js/+
-           :- js/-
-           :* js/*
-           :/ js//)
+           :+ druid.js/+
+           :- druid.js/-
+           :* druid.js/*
+           :/ druid.js//)
          (for [arg args]
            (expression-arg->js arg default-value))))
 
@@ -484,12 +483,12 @@
     {:type        :javascript
      :name        output-name
      :fieldNames  field-names
-     :fnReset     (js/function []
-                    (js/return 0))
-     :fnAggregate (js/function (cons :current field-names)
-                    (js/return (js/+ :current (expression->js expression (if (= operator :/) 1 0)))))
-     :fnCombine   (js/function [:x :y]
-                    (js/return (js/+ :x :y)))}))
+     :fnReset     (druid.js/function []
+                    (druid.js/return 0))
+     :fnAggregate (druid.js/function (cons :current field-names)
+                    (druid.js/return (druid.js/+ :current (expression->js expression (if (= operator :/) 1 0)))))
+     :fnCombine   (druid.js/function [:x :y]
+                    (druid.js/return (druid.js/+ :x :y)))}))
 
 (defn- ag:doubleSum
   [field-clause output-name]
@@ -514,12 +513,13 @@
     {:type        :javascript
      :name        output-name
      :fieldNames  field-names
-     :fnReset     (js/function []
-                    (js/return "Number.MAX_VALUE"))
-     :fnAggregate (js/function (cons :current field-names)
-                    (js/return (js/fn-call :Math.min :current (expression->js expression :Number.MAX_VALUE))))
-     :fnCombine   (js/function [:x :y]
-                    (js/return (js/fn-call :Math.min :x :y)))}))
+     :fnReset     (druid.js/function []
+                    (druid.js/return "Number.MAX_VALUE"))
+     :fnAggregate (druid.js/function (cons :current field-names)
+                    (druid.js/return (druid.js/fn-call :Math.min :current
+                                                       (expression->js expression :Number.MAX_VALUE))))
+     :fnCombine   (druid.js/function [:x :y]
+                    (druid.js/return (druid.js/fn-call :Math.min :x :y)))}))
 
 (defn- ag:doubleMin
   [field-clause output-name]
@@ -542,12 +542,13 @@
     {:type        :javascript
      :name        output-name
      :fieldNames  field-names
-     :fnReset     (js/function []
-                    (js/return "Number.MIN_VALUE"))
-     :fnAggregate (js/function (cons :current field-names)
-                    (js/return (js/fn-call :Math.max :current (expression->js expression :Number.MIN_VALUE))))
-     :fnCombine   (js/function [:x :y]
-                    (js/return (js/fn-call :Math.max :x :y)))}))
+     :fnReset     (druid.js/function []
+                    (druid.js/return "Number.MIN_VALUE"))
+     :fnAggregate (druid.js/function (cons :current field-names)
+                    (druid.js/return (druid.js/fn-call :Math.max :current
+                                                       (expression->js expression :Number.MIN_VALUE))))
+     :fnCombine   (druid.js/function [:x :y]
+                    (druid.js/return (druid.js/fn-call :Math.max :x :y)))}))
 
 (defn- ag:doubleMax
   [field output-name]
@@ -1101,7 +1102,7 @@
   #15414, adjust it back to the old known working value. had to work around."
   [limit]
   (cond-> limit
-    (= limit i/absolute-max-results) inc))
+    (= limit qp.i/absolute-max-results) inc))
 
 (defmethod handle-limit ::scan
   [_ {limit :limit} druid-query]

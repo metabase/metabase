@@ -2,12 +2,14 @@
 import React from "react";
 import { Motion, spring } from "react-motion";
 import _ from "underscore";
+import { t } from "ttag";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import QueryValidationError from "metabase/query_builder/components/QueryValidationError";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Toaster from "metabase/components/Toaster";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -55,7 +57,7 @@ const DEFAULT_POPOVER_STATE = {
   breakoutPopoverTarget: null,
 };
 
-@ExplicitSize()
+@ExplicitSize({ refreshMode: "debounceLeading" })
 export default class View extends React.Component {
   state = {
     ...DEFAULT_POPOVER_STATE,
@@ -130,6 +132,8 @@ export default class View extends React.Component {
       onCloseChartType,
       isBookmarked,
       toggleBookmark,
+      persistDataset,
+      unpersistDataset,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -149,6 +153,8 @@ export default class View extends React.Component {
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
+          persistDataset={persistDataset}
+          unpersistDataset={unpersistDataset}
         />
       );
     }
@@ -219,9 +225,15 @@ export default class View extends React.Component {
       isShowingTemplateTagsEditor,
       isShowingDataReference,
       isShowingSnippetSidebar,
+      isShowingTimelineSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
+      showTimelines,
+      hideTimelines,
+      selectTimelineEvents,
+      deselectTimelineEvents,
+      onCloseTimelines,
     } = this.props;
 
     if (isShowingTemplateTagsEditor) {
@@ -236,6 +248,19 @@ export default class View extends React.Component {
 
     if (isShowingSnippetSidebar) {
       return <SnippetSidebar {...this.props} onClose={toggleSnippetSidebar} />;
+    }
+
+    if (isShowingTimelineSidebar) {
+      return (
+        <TimelineSidebar
+          {...this.props}
+          onShowTimelines={showTimelines}
+          onHideTimelines={hideTimelines}
+          onSelectTimelineEvents={selectTimelineEvents}
+          onDeselectTimelineEvents={deselectTimelineEvents}
+          onClose={onCloseTimelines}
+        />
+      );
     }
 
     return null;
@@ -276,17 +301,40 @@ export default class View extends React.Component {
     );
   };
 
+  renderNativeQueryEditor = () => {
+    const { question, query, card, height, isDirty } = this.props;
+
+    // Normally, when users open native models,
+    // they open an ad-hoc GUI question using the model as a data source
+    // (using the `/dataset` endpoint instead of the `/card/:id/query`)
+    // However, users without data permission open a real model as they can't use the `/dataset` endpoint
+    // So the model is opened as an underlying native question and the query editor becomes visible
+    // This check makes it hide the editor in this particular case
+    // More details: https://github.com/metabase/metabase/pull/20161
+    if (question.isDataset() && !query.isEditable()) {
+      return null;
+    }
+
+    return (
+      <NativeQueryEditorContainer>
+        <NativeQueryEditor
+          {...this.props}
+          viewHeight={height}
+          isOpen={!card.dataset_query.native.query || isDirty}
+          datasetQuery={card && card.dataset_query}
+        />
+      </NativeQueryEditorContainer>
+    );
+  };
+
   renderMain = ({ leftSidebar, rightSidebar }) => {
     const {
       query,
-      card,
       mode,
       parameters,
-      isDirty,
       isLiveResizable,
       isPreviewable,
       isPreviewing,
-      height,
       setParameterValue,
       setIsPreviewing,
     } = this.props;
@@ -313,14 +361,7 @@ export default class View extends React.Component {
     return (
       <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
         {isNative ? (
-          <NativeQueryEditorContainer>
-            <NativeQueryEditor
-              {...this.props}
-              viewHeight={height}
-              isOpen={!card.dataset_query.native.query || isDirty}
-              datasetQuery={card && card.dataset_query}
-            />
-          </NativeQueryEditorContainer>
+          this.renderNativeQueryEditor()
         ) : (
           <StyledSyncedParametersList
             parameters={parameters}
@@ -410,13 +451,15 @@ export default class View extends React.Component {
       isShowingNewbModal,
       isShowingTimelineSidebar,
       queryBuilderMode,
-      fitClassNames,
       closeQbNewbModal,
+      onDismissToast,
+      onConfirmToast,
+      isShowingToaster,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
-      return <LoadingAndErrorWrapper className={fitClassNames} loading />;
+      return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
     const isStructured = query instanceof StructuredQuery;
@@ -425,7 +468,7 @@ export default class View extends React.Component {
       isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return <NewQuestionView query={query} fitClassNames={fitClassNames} />;
+      return <NewQuestionView query={query} className="full-height" />;
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
@@ -442,7 +485,7 @@ export default class View extends React.Component {
       : SIDEBAR_SIZES.NORMAL;
 
     return (
-      <div className={fitClassNames}>
+      <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
           {this.renderHeader()}
           <QueryBuilderContentContainer>
@@ -477,6 +520,13 @@ export default class View extends React.Component {
 
         {isStructured && this.renderAggregationPopover()}
         {isStructured && this.renderBreakoutPopover()}
+        <Toaster
+          message={t`Would you like to be notified when this question is done loading?`}
+          isShown={isShowingToaster}
+          onDismiss={onDismissToast}
+          onConfirm={onConfirmToast}
+          fixed
+        />
       </div>
     );
   }

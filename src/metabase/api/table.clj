@@ -9,13 +9,14 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.table :as table :refer [Table]]
             [metabase.related :as related]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
-            [metabase.sync.field-values :as sync-field-values]
+            #_:clj-kondo/ignore
+            [metabase.sync.field-values :as sync.field-values]
             [metabase.types :as types]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -49,19 +50,18 @@
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} {:keys [visibility_type] :as body}]
+  [{:keys [id] :as existing-table} body]
   (api/check-500
    (db/update! Table id
-               (assoc (u/select-keys-when body
-                        :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                        :present [:description :caveats :points_of_interest])
-                      :visibility_type visibility_type)))
+               (u/select-keys-when body
+                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                 :present [:description :caveats :points_of_interest :visibility_type])))
   (let [updated-table        (Table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-        (table/update-field-positions! updated-table)
-        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+       (table/update-field-positions! updated-table)
+       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -84,7 +84,7 @@
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
-          newly-unhidden (when (nil? visibility_type)
+          newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
@@ -96,9 +96,9 @@
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)
    field_order             (s/maybe FieldOrder)}
   (first (update-tables! [id] body)))
@@ -111,9 +111,9 @@
    display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
+   description             (s/maybe s/Str)
+   caveats                 (s/maybe s/Str)
+   points_of_interest      (s/maybe s/Str)
    show_in_getting_started (s/maybe s/Bool)}
   (update-tables! ids body))
 
@@ -264,7 +264,7 @@
           (fn [fields]
             (for [{:keys [values] :as field} fields]
               (if (seq values)
-                (update field :values fv/field-values->pairs)
+                (update field :values field-values/field-values->pairs)
                 field)))))
 
 (defn fetch-query-metadata
@@ -406,12 +406,15 @@
   "Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues."
   [id]
-  (let [table (Table id)]
-    (api/write-check table)
-    ;; async so as not to block the UI
-    (sync.concurrent/submit-task
-      (fn []
-        (sync-field-values/update-field-values-for-table! table)))
+  (let [table (api/write-check (Table id))]
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      ;; async so as not to block the UI
+      (sync.concurrent/submit-task
+       (fn []
+         (sync.field-values/update-field-values-for-table! table))))
     {:status :success}))
 
 (api/defendpoint POST "/:id/discard_values"

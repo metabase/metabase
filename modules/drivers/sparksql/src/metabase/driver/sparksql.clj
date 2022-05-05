@@ -2,22 +2,22 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [medley.core :as m]
-            [metabase.connection-pool :as pool]
+            [metabase.connection-pool :as connection-pool]
             [metabase.driver :as driver]
             [metabase.driver.hive-like :as hive-like]
             [metabase.driver.hive-like.fixed-hive-connection :as fixed-hive-connection]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql.parameters.substitution :as params.substitution]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql Connection ResultSet]))
@@ -31,7 +31,7 @@
   "t1")
 
 (defmethod sql.qp/->honeysql [:sparksql :field]
-  [driver [_ _ {::params.substitution/keys [compiling-field-filter?]} :as field-clause]]
+  [driver [_ _ {::sql.params.substitution/keys [compiling-field-filter?]} :as field-clause]]
   ;; use [[source-table-alias]] instead of the usual `schema.table` to qualify fields e.g. `t1.field` instead of the
   ;; normal `schema.table.field`
   (let [parent-method (get-method sql.qp/->honeysql [:hive-like :field])
@@ -56,25 +56,30 @@
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
-      (h/limit honeysql-form items)
+      (hh/limit honeysql-form items)
       ;; if we need to do an offset we have to do nesting to generate a row number and where on that
       (let [over-clause (format "row_number() OVER (%s)"
                                 (first (hsql/format (select-keys honeysql-form [:order-by])
                                                     :allow-dashed-names? true
                                                     :quoting :mysql)))]
-        (-> (apply h/select (map last (:select honeysql-form)))
-            (h/from (h/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
-            (h/where [:> :__rownum__ offset])
-            (h/limit items))))))
+        (-> (apply hh/select (map last (:select honeysql-form)))
+            (hh/from (hh/merge-select honeysql-form [(hsql/raw over-clause) :__rownum__]))
+            (hh/where [:> :__rownum__ offset])
+            (hh/limit items))))))
 
 (defmethod sql.qp/apply-top-level-clause [:sparksql :source-table]
   [driver _ honeysql-form {source-table-id :source-table}]
   (let [{table-name :name, schema :schema} (qp.store/table source-table-id)]
-    (h/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
-                           (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
+    (hh/from honeysql-form [(sql.qp/->honeysql driver (hx/identifier :table schema table-name))
+                            (sql.qp/->honeysql driver (hx/identifier :table-alias source-table-alias))])))
 
 
 ;;; ------------------------------------------- Other Driver Method Impls --------------------------------------------
+
+(defrecord SparkSQLDataSource [url properties]
+  javax.sql.DataSource
+  (getConnection [_this]
+    (fixed-hive-connection/fixed-hive-connection url properties)))
 
 (defmethod sql-jdbc.conn/connection-details->spec :sparksql
   [_driver {:keys [host port db jdbc-flags dbname]
@@ -84,10 +89,8 @@
                       (string? port) Integer/parseInt)
         db          (or dbname db)
         url         (format "jdbc:hive2://%s:%s/%s%s" host port db jdbc-flags)
-        properties  (pool/map->properties (dissoc opts :host :port :jdbc-flags))
-        data-source (reify javax.sql.DataSource
-                      (getConnection [_this]
-                        (fixed-hive-connection/fixed-hive-connection url properties)))]
+        properties  (connection-pool/map->properties (dissoc opts :host :port :jdbc-flags))
+        data-source (->SparkSQLDataSource url properties)]
     {:datasource data-source}))
 
 (defn- dash-to-underscore [s]
@@ -135,7 +138,7 @@
 (defmethod driver/execute-reducible-query :sparksql
   [driver {{sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
-                               :remark (qputil/query->remark :sparksql outer-query)
+                               :remark (qp.util/query->remark :sparksql outer-query)
                                :query  (if (seq params)
                                          (binding [hive-like/*param-splice-style* :paranoid]
                                            (unprepare/unprepare driver (cons sql params)))

@@ -32,7 +32,7 @@ const buildAccessPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database | null,
+  database: Database,
 ) => {
   const value = getFieldsPermission(permissions, groupId, entityId, "data");
   const defaultGroupValue = getFieldsPermission(
@@ -115,7 +115,7 @@ export const buildFieldsPermissions = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   defaultGroup: Group,
-  database: Database | null,
+  database: Database,
 ) => {
   const accessPermission = buildAccessPermission(
     entityId,
@@ -142,6 +142,7 @@ export const buildFieldsPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "fields",
     ),
   ];

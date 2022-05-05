@@ -5,7 +5,7 @@
             [clojure.test :refer :all]
             [metabase.api.session :as api.session]
             [metabase.driver.h2 :as h2]
-            [metabase.http-client :as http-client]
+            [metabase.http-client :as client]
             [metabase.models :refer [LoginHistory]]
             [metabase.models.session :refer [Session]]
             [metabase.models.setting :as setting]
@@ -13,7 +13,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util :as u]
@@ -53,7 +53,7 @@
           (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          http-client/UUIDString
+                        :device_id          client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
@@ -125,7 +125,7 @@
 
 (defn- send-login-request [username & [{:or {} :as headers}]]
   (try
-    (http/post (http-client/build-url "session" {})
+    (http/post (client/build-url "session" {})
                {:form-params {"username" username,
                               "password" "incorrect-password"}
                 :content-type :json
@@ -170,7 +170,7 @@
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (dotimes [n 50]
+      (dotimes [n 40]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
@@ -189,8 +189,8 @@
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
-      (test-users/clear-cached-session-tokens!)
-      (let [session-id       (test-users/username->token :rasta)
+      (test.users/clear-cached-session-tokens!)
+      (let [session-id       (test.users/username->token :rasta)
             login-history-id (db/select-one-id LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
@@ -204,7 +204,7 @@
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          http-client/UUIDString
+                        :device_id          client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)

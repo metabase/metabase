@@ -14,12 +14,15 @@ import {
   ModerationSectionContainer,
 } from "./QuestionDetailsSidebarPanel.styled";
 import DatasetManagementSection from "./DatasetManagementSection";
+import ModelCacheSection from "./ModelCacheSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
+  persistDataset: PropTypes.func.isRequired,
+  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebarPanel({
@@ -27,6 +30,8 @@ function QuestionDetailsSidebarPanel({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
+  persistDataset,
+  unpersistDataset,
 }) {
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
@@ -38,6 +43,9 @@ function QuestionDetailsSidebarPanel({
       }
     : undefined;
 
+  const hasSecondarySection =
+    (isDataset && canWrite) || (!isDataset && PLUGIN_MODERATION.isEnabled());
+
   return (
     <Container>
       <SidebarPaddedContent>
@@ -47,24 +55,29 @@ function QuestionDetailsSidebarPanel({
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
+          persistDataset={persistDataset}
+          unpersistDataset={unpersistDataset}
         />
         <ClampedDescription
           visibleLines={8}
           description={description}
           onEdit={onDescriptionEdit}
         />
-        <BorderedSectionContainer>
-          {isDataset && canWrite && (
-            <DatasetManagementSection dataset={question} />
-          )}
-          {!isDataset && (
-            <ModerationSectionContainer>
-              <PLUGIN_MODERATION.QuestionModerationSection
-                question={question}
-              />
-            </ModerationSectionContainer>
-          )}
-        </BorderedSectionContainer>
+        {isDataset && <ModelCacheSection model={question} />}
+        {hasSecondarySection && (
+          <BorderedSectionContainer>
+            {isDataset && canWrite && (
+              <DatasetManagementSection dataset={question} />
+            )}
+            {!isDataset && (
+              <ModerationSectionContainer>
+                <PLUGIN_MODERATION.QuestionModerationSection
+                  question={question}
+                />
+              </ModerationSectionContainer>
+            )}
+          </BorderedSectionContainer>
+        )}
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
     </Container>

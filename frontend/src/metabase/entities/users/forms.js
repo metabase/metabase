@@ -7,7 +7,7 @@ import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
-const NAME_FIELDS = [
+const getNameFields = () => [
   {
     name: "first_name",
     title: t`First name`,
@@ -23,14 +23,14 @@ const NAME_FIELDS = [
   },
 ];
 
-const EMAIL_FIELD = {
+const getEmailField = () => ({
   name: "email",
   title: t`Email`,
   placeholder: "youlooknicetoday@email.com",
   validate: validate.required().email(),
-};
+});
 
-const LOCALE_FIELD = {
+const getLocaleField = () => ({
   name: "locale",
   title: t`Language`,
   type: "select",
@@ -41,9 +41,9 @@ const LOCALE_FIELD = {
       ([code, name]) => name,
     ),
   ].map(([code, name]) => ({ name, value: code })),
-};
+});
 
-const PASSWORD_FORM_FIELDS = [
+const getPasswordFields = () => [
   {
     name: "password",
     title: t`Create a password`,
@@ -69,10 +69,10 @@ const PASSWORD_FORM_FIELDS = [
 export default {
   admin: {
     fields: [
-      ...NAME_FIELDS,
-      EMAIL_FIELD,
+      ...getNameFields(),
+      getEmailField(),
       {
-        name: "group_ids",
+        name: "user_group_memberships",
         title: t`Groups`,
         type: FormGroupsWidget,
       },
@@ -80,25 +80,25 @@ export default {
     ],
   },
   user: {
-    fields: [...NAME_FIELDS, EMAIL_FIELD, LOCALE_FIELD],
+    fields: [...getNameFields(), getEmailField(), getLocaleField()],
     disablePristineSubmit: true,
   },
-  setup: {
+  setup: () => ({
     fields: [
-      ...NAME_FIELDS,
-      EMAIL_FIELD,
+      ...getNameFields(),
+      getEmailField(),
       {
         name: "site_name",
         title: t`Company or team name`,
         placeholder: t`Department of Awesome`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS,
+      ...getPasswordFields(),
     ],
-  },
+  }),
   setup_invite: user => ({
     fields: [
-      ...NAME_FIELDS,
+      ...getNameFields(),
       {
         name: "email",
         title: t`Email`,
@@ -143,6 +143,7 @@ export default {
           initial: true,
           hidden: cookies,
           horizontal: true,
+          align: "left",
         },
       ],
     };
@@ -156,7 +157,7 @@ export default {
         placeholder: t`Shhh...`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS,
+      ...getPasswordFields(),
     ],
   },
   password_forgot: {
@@ -170,7 +171,7 @@ export default {
     ],
   },
   password_reset: {
-    fields: [...PASSWORD_FORM_FIELDS],
+    fields: [...getPasswordFields()],
   },
   newsletter: {
     fields: [

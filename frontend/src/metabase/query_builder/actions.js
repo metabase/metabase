@@ -819,7 +819,9 @@ export const loadMetadataForCard = card => (dispatch, getState) => {
   if (question.isDataset()) {
     queries.push(question.composeDataset().query());
   }
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(queries, question.dependentMetadata()),
+  );
 };
 
 function hasNewColumns(question, queryResult) {
@@ -858,10 +860,12 @@ export const updateCardVisualizationSettings = settings => async (
     return;
   }
 
+  // The check allows users without data permission to resize/rearrange columns
+  const hasWritePermissions = question.query().isEditable();
   await dispatch(
     updateQuestion(question.updateSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
+      run: hasWritePermissions ? "auto" : false,
+      shouldUpdateUrl: hasWritePermissions,
     }),
   );
 };
@@ -871,10 +875,13 @@ export const replaceAllCardVisualizationSettings = settings => async (
   getState,
 ) => {
   const question = getQuestion(getState());
+
+  // The check allows users without data permission to resize/rearrange columns
+  const hasWritePermissions = question.query().isEditable();
   await dispatch(
     updateQuestion(question.setSettings(settings), {
-      run: "auto",
-      shouldUpdateUrl: true,
+      run: hasWritePermissions ? "auto" : false,
+      shouldUpdateUrl: hasWritePermissions,
     }),
   );
 };
@@ -1049,16 +1056,18 @@ export const navigateToNewCardInsideQB = createThunkAction(
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion,
-  { doNotClearNameAndId = false, run = false, shouldUpdateUrl = false } = {},
+  { run = false, shouldUpdateUrl = false } = {},
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
     const mode = getQueryBuilderMode(getState());
 
+    const shouldConvertIntoAdHoc = newQuestion.query().isEditable();
+
     // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
     // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
-      !doNotClearNameAndId &&
+      shouldConvertIntoAdHoc &&
       !getIsEditing(getState()) &&
       newQuestion.isSaved() &&
       mode !== "dataset"
@@ -1386,11 +1395,11 @@ export const queryCompleted = (question, queryResults) => {
     const [{ data }] = queryResults;
     const [{ data: prevData }] = getQueryResults(getState()) || [{}];
     const originalQuestion = getOriginalQuestion(getState());
-    const dirty =
-      !originalQuestion ||
-      (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    const isDirty =
+      question.query().isEditable() &&
+      question.isDirtyComparedTo(originalQuestion);
 
-    if (dirty) {
+    if (isDirty) {
       if (question.isNative()) {
         question = question.syncColumnsAndSettings(
           originalQuestion,
@@ -1510,60 +1519,61 @@ export const resetRowZoom = () => dispatch => {
   dispatch(updateUrl());
 };
 
-// We use this for two things:
-// - counting the rows with this as an FK (loadObjectDetailFKReferences)
-// - following those links to a new card that's filtered (followForeignKey)
-function getFilterForFK({ cols, rows }, fk) {
+function getFilterForFK(zoomedObjectId, fk) {
   const field = new FieldDimension(fk.origin.id);
-  const colIndex = cols.findIndex(c => c.id === fk.destination.id);
-  const objectValue = rows[0][colIndex];
-  return ["=", field.mbql(), objectValue];
+  return ["=", field.mbql(), zoomedObjectId];
 }
 
 export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
-export const followForeignKey = createThunkAction(FOLLOW_FOREIGN_KEY, fk => {
-  return async (dispatch, getState) => {
-    // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-    const {
-      qb: { card },
-    } = getState();
-    const queryResult = getFirstQueryResult(getState());
+export const followForeignKey = createThunkAction(
+  FOLLOW_FOREIGN_KEY,
+  ({ objectId, fk }) => {
+    return async (dispatch, getState) => {
+      const state = getState();
 
-    if (!queryResult || !fk) {
-      return false;
-    }
+      const card = getCard(state);
+      const queryResult = getFirstQueryResult(state);
 
-    // action is on an FK column
-    const newCard = startNewCard("query", card.dataset_query.database);
+      if (!queryResult || !fk) {
+        return false;
+      }
 
-    newCard.dataset_query.query["source-table"] = fk.origin.table.id;
-    newCard.dataset_query.query.filter = getFilterForFK(queryResult.data, fk);
+      const newCard = startNewCard("query", card.dataset_query.database);
 
-    // run it
-    dispatch(setCardAndRun(newCard));
-  };
-});
+      newCard.dataset_query.query["source-table"] = fk.origin.table.id;
+      newCard.dataset_query.query.filter = getFilterForFK(objectId, fk);
+
+      dispatch(resetRowZoom());
+      dispatch(setCardAndRun(newCard));
+    };
+  },
+);
 
 export const LOAD_OBJECT_DETAIL_FK_REFERENCES =
   "metabase/qb/LOAD_OBJECT_DETAIL_FK_REFERENCES";
 export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
-  () => {
+  ({ objectId }) => {
     return async (dispatch, getState) => {
       dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
-      // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
-      const {
-        qb: { card },
-      } = getState();
-      const queryResult = getFirstQueryResult(getState());
-      const tableForeignKeys = getTableForeignKeys(getState());
+
+      const state = getState();
+      const tableForeignKeys = getTableForeignKeys(state);
+
+      if (!Array.isArray(tableForeignKeys)) {
+        return null;
+      }
+
+      const card = getCard(state);
+      const queryResult = getFirstQueryResult(state);
 
       async function getFKCount(card, queryResult, fk) {
         const fkQuery = Q_DEPRECATED.createQuery("query");
+
         fkQuery.database = card.dataset_query.database;
         fkQuery.query["source-table"] = fk.origin.table_id;
         fkQuery.query.aggregation = ["count"];
-        fkQuery.query.filter = getFilterForFK(queryResult.data, fk);
+        fkQuery.query.filter = getFilterForFK(objectId, fk);
 
         const info = { status: 0, value: null };
 
@@ -1578,8 +1588,6 @@ export const loadObjectDetailFKReferences = createThunkAction(
           } else {
             info["value"] = "Unknown";
           }
-        } catch (error) {
-          console.error("error getting fk count", error, fkQuery);
         } finally {
           info["status"] = 1;
         }
@@ -1630,6 +1638,8 @@ export const viewPreviousObjectDetail = () => {
     }
   };
 };
+
+export const closeObjectDetail = () => dispatch => dispatch(resetRowZoom());
 
 export const SHOW_CHART_SETTINGS = "metabase/query_builder/SHOW_CHART_SETTINGS";
 export const showChartSettings = createAction(SHOW_CHART_SETTINGS);
@@ -1747,3 +1757,13 @@ export const showTimelinesForCollection = collectionId => (
 
   dispatch(showTimelines(collectionTimelines));
 };
+
+export const PERSIST_DATASET = "metabase/qb/PERSIST_DATASET";
+export const persistDataset = createAction(PERSIST_DATASET, id =>
+  CardApi.persist({ id }),
+);
+
+export const UNPERSIST_DATASET = "metabase/qb/UNPERSIST_DATASET";
+export const unpersistDataset = createAction(UNPERSIST_DATASET, id =>
+  CardApi.unpersist({ id }),
+);

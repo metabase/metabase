@@ -99,6 +99,7 @@ export class WindowModal extends Component {
         enableMouseEvents={enableMouseEvents}
       >
         <CSSTransitionGroup
+          component="div"
           transitionName="Modal"
           transitionAppear={enableTransition}
           transitionAppearTimeout={250}
@@ -214,7 +215,7 @@ export class FullPageModal extends Component {
 // the "routeless" version should only be used for non-inline modals
 const RoutelessFullPageModal = routeless(FullPageModal);
 
-const Modal = ({ full, ...props }) =>
+const Modal = ({ full = false, ...props }) =>
   full ? (
     props.isOpen ? (
       <RoutelessFullPageModal {...props} />

@@ -1,5 +1,8 @@
 (ns metabase.task.sync-databases
-  "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases."
+  "Scheduled tasks for syncing metadata/analyzing and caching FieldValues for connected Databases.
+
+  There always UpdateFieldValues and SyncAndAnalyzeDatabase jobs present. Databases add triggers to these jobs. And
+  those triggers include a database id."
   (:require [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.conversion :as qc]
             [clojurewerkz.quartzite.jobs :as jobs]
@@ -13,7 +16,7 @@
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.task :as task]
             [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
+            [metabase.util.cron :as u.cron]
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -71,7 +74,9 @@
           (when (and (:refingerprint database) (should-refingerprint-fields? results))
             (analyze/refingerprint-db! database)))))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} SyncAndAnalyzeDatabase [job-context]
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Sync and analyze the database"}
+  SyncAndAnalyzeDatabase [job-context]
   (sync-and-analyze-database! job-context))
 
 (defn- update-field-values!
@@ -87,7 +92,9 @@
         (field-values/update-field-values! database)
         (log/info (trs "Skipping update, automatic Field value updates are disabled for Database {0}." database-id))))))
 
-(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true} UpdateFieldValues [job-context]
+(jobs/defjob ^{org.quartz.DisallowConcurrentExecution true
+               :doc "Update field values"}
+  UpdateFieldValues [job-context]
   (update-field-values! job-context))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -124,7 +131,7 @@
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (triggers/key (format "metabase.task.%s.trigger.%d" (name (:key task-info)) (u/the-id database))))
 
-(s/defn ^:private cron-schedule :- cron-util/CronScheduleString
+(s/defn ^:private cron-schedule :- u.cron/CronScheduleString
   "Fetch the appropriate cron schedule string for `database` and `task-info`."
   [database :- DatabaseInstance, task-info :- TaskInfo]
   (get database (:db-schedule-column task-info)))

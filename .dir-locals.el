@@ -33,6 +33,7 @@
   ;;
   ;; `put-clojure-indent' is a safe-local-eval-function, so use a bunch of calls to that
   ;; instead of one call to `define-clojure-indent'
+  (eval . (put-clojure-indent 'api/let-404 1))
   (eval . (put-clojure-indent 'c/step 1))
   (eval . (put-clojure-indent 'db/insert-many! 1))
   (eval . (put-clojure-indent 'db/update! 2))
@@ -48,6 +49,7 @@
   (eval . (put-clojure-indent 'mt/format-rows-by 1))
   (eval . (put-clojure-indent 'mt/query 1))
   (eval . (put-clojure-indent 'mt/test-drivers 1))
+  (eval . (put-clojure-indent 'mt/test-driver 1))
   (eval . (put-clojure-indent 'prop/for-all 1))
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
   (eval . (put-clojure-indent 'u/select-keys-when 1))

@@ -11,7 +11,7 @@
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
-            [metabase.util.password :as password]
+            [metabase.util.password :as u.password]
             [toucan.db :as db])
   (:import java.util.UUID))
 
@@ -200,6 +200,18 @@
   :type    :boolean
   :default false)
 
+(defsetting persisted-models-enabled
+  (deferred-tru "Allow persisting models into the source database.")
+  :type       :boolean
+  :default    false
+  :visibility :admin)
+
+(defsetting persisted-model-refresh-interval-hours
+  (deferred-tru "Hour interval to refresh persisted models.")
+  :type       :integer
+  :default    6
+  :visibility :admin)
+
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
   MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
@@ -374,7 +386,7 @@
   "Current password complexity requirements"
   :visibility :public
   :setter     :none
-  :getter     password/active-password-complexity)
+  :getter     u.password/active-password-complexity)
 
 (defsetting session-cookies
   (deferred-tru "When set, enforces the use of session cookies for all users which expire when the browser is closed.")

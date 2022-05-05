@@ -8,6 +8,12 @@ global.window.matchMedia = () => ({
   removeListener: () => {},
 });
 
+global.window.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 jest.mock("metabase/lib/analytics");
 
 jest.mock("ace/ace", () => {}, { virtual: true });

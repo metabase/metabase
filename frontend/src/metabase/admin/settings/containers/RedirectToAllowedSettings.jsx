@@ -1,24 +1,22 @@
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
-import { getUser } from "metabase/selectors/user";
-import { getAllowedMenuItems } from "metabase/nav/utils";
+import { push, replace } from "react-router-redux";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 
 const mapStateToProps = (state, props) => ({
-  user: getUser(state),
+  adminItems: getAdminPaths(state),
   path: props.location.pathname,
 });
 
 const mapDispatchToProps = {
   push,
+  replace,
 };
 
-const RedirectToAllowedSettings = ({ user, push }) => {
-  const allowedNavItems = getAllowedMenuItems(user);
-
-  if (allowedNavItems.length === 0) {
-    push("/unauthorized");
+const RedirectToAllowedSettings = ({ adminItems, replace }) => {
+  if (adminItems.length === 0) {
+    replace("/unauthorized");
   } else {
-    push(allowedNavItems[0].path);
+    replace(adminItems[0].path);
   }
 
   return null;

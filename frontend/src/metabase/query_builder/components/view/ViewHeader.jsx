@@ -230,8 +230,6 @@ AhHocQuestionLeftSide.propTypes = {
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isSummarized: PropTypes.bool,
-  onExpandFilters: PropTypes.func.isRequired,
-  onCollapseFilters: PropTypes.func.isRequired,
 };
 
 function AhHocQuestionLeftSide(props) {
@@ -398,19 +396,25 @@ function ViewTitleHeaderRightSide(props) {
     onCollapseFilters,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const canRunAdhocQueries = !question.query().readOnly();
+  const query = question.query();
+  const isReadOnlyQuery = query.readOnly();
+  const canEditQuery = !isReadOnlyQuery;
+  const canRunAdhocQueries = !isReadOnlyQuery;
   const hasExploreResultsLink =
     isNative &&
     isSaved &&
     canRunAdhocQueries &&
     MetabaseSettings.get("enable-nested-queries");
 
+  const isNewQuery = !query.hasData();
+  const hasSaveButton = !isDataset && !!isDirty && (isNewQuery || canEditQuery);
+
   return (
     <div
       className="ml-auto flex align-center"
       data-testid="qb-header-action-panel"
     >
-      {!!isDirty && !isDataset && (
+      {hasSaveButton && (
         <SaveButton
           disabled={!question.canRun()}
           data-metabase-event={

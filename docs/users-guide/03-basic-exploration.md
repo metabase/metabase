@@ -24,11 +24,11 @@ Collections have a list of any other items that are saved within them, and you c
 
 ## Models
 
-You can use Models to create derived tables on the fly. See [Models][models]. 
+You can use Models to create derived tables on the fly. See [Models][models].
 
 ## Exploring dashboards
 
-[Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer back to regularly.
+[Dashboards][dashboards] are a set of questions and text cards that you want to be able to refer to regularly.
 
 If you click on a part of a chart, such as a bar in a bar chart, or a dot on a line chart, you'll see a the **Action menu**, with actions you can take to dive deeper into that result, branch off from it in a different direction, or create an [X-ray](14-x-rays.md) to see an automatic exploration of the data.
 ![Drill through](images/drill-through/drill-through.png)
@@ -37,7 +37,7 @@ In this example of orders by product category over time, clicking on a dot on th
 
 - **Zoom in**: See orders for a particular category over a shorter time range.
 - **View these Orders**: See a list of the orders for a particular month
-- **Break out by a category**:  See things like the Gizmo orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`). Different charts will have different breakout options, such as **Location** and **Time**.
+- **Break out by a category**: See things like the Gizmo orders in June 2017 broken out by the status of the customer (e.g., `new` or `VIP`). Different charts will have different breakout options, such as **Location** and **Time**.
 
 > Note that while charts created with SQL don't currently have the action menu, you can add SQL questions to a dashboard and customize their click behavior. You can send people to a [custom destination](https://www.metabase.com/learn/building-analytics/dashboards/custom-destinations.html) (like another dashboard or an external URL), or have the clicked value [update a dashboard filter](https://www.metabase.com/learn/building-analytics/dashboards/cross-filtering.html).
 
@@ -69,11 +69,25 @@ Searches take into account items’ titles, descriptions, and other metadata —
 
 ![Search results](./images/basic-exploration/search-results.png)
 
----
+## Bookmarks
 
-## Next: Asking questions
+**Bookmarks** are a way to quickly get back to things you visit frequently (or have been working on recently). Bookmarked items show up in the main navigation sidebar above [collections][collections].
 
-So what do you do if you can't find an existing dashboard or question that's exactly what you're looking for? Let's learn about [asking our own new questions](04-asking-questions.md).
+To bookmark an item, look for the **ribbon** icon. If you don't immediately see the ribbon, open up the settings for that item. You can bookmark:
+
+- Questions (ribbon's in the editing sidebar)
+- Models (ribbon's in the editing sidebar)
+- Dashboards (ribbon's in the **...** menu)
+- Collections (ribbon's in the upper right of the collection's page)
+
+When viewing a collection, you can also click on the **...** next to an item to add or remove a bookmark from the item.
+
+Some things to remember with bookmarks:
+
+- Bookmarks are personal; other people can't see your bookmarks. If you want to highlight something for everyone, you'll want to put it in an official collection and/or pin the item in the collection (see [collections][collections]).
+- If you end up bookmarking a lot of items, you can collapse the bookmarks section in the sidebar (or remove the bookmarks that are just getting in your way).
+- Items that you bookmark will get a boost in your search results (but not the search results of other people).
+- To reorder bookmarks, simply drag and drop them in the sidebar.
 
 [collections]: collections.md
 [dashboards]: 07-dashboards.md

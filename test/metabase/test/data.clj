@@ -35,9 +35,10 @@
      (There are several variations of this macro; see documentation below for more details.)"
   (:require [clojure.test :as t]
             [colorize.core :as colorize]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.query-processor :as qp]
             [metabase.test-runner.init :as test-runner.init]
-            [metabase.test.data.impl :as impl]
+            [metabase.test.data.impl :as data.impl]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.mbql-query-impl :as mbql-query-impl]
             [metabase.util :as u]))
@@ -51,12 +52,12 @@
   "Return the current database.
    Relies on the dynamic variable `*get-db*`, which can be rebound with `with-db`."
   []
-  (impl/*get-db*))
+  (data.impl/*get-db*))
 
 (defmacro with-db
   "Run body with `db` as the current database. Calls to `db` and `id` use this value."
   [db & body]
-  `(impl/do-with-db ~db (fn [] ~@body)))
+  `(data.impl/do-with-db ~db (fn [] ~@body)))
 
 (defmacro $ids
   "Convert symbols like `$field` to `id` fn calls. Input is split into separate args by splitting the token on `.`.
@@ -186,7 +187,7 @@
   (assert ((some-fn keyword? string? symbol?) a-name)
     (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
          " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
-  (tx/format-name (tx/driver) (name a-name)))
+  (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id
   "Get the ID of the current database or one of its Tables or Fields. Relies on the dynamic variable `*get-db*`, which
@@ -196,10 +197,10 @@
    (u/the-id (db)))
 
   ([table-name]
-   (impl/the-table-id (id) (format-name table-name)))
+   (data.impl/the-table-id (id) (format-name table-name)))
 
   ([table-name field-name & nested-field-names]
-   (apply impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
+   (apply data.impl/the-field-id (id table-name) (map format-name (cons field-name nested-field-names)))))
 
 (defmacro dataset
   "Create a database and load it with the data defined by `dataset`, then do a quick metadata-only sync; make it the
@@ -230,15 +231,15 @@
                                         (format "using %s dataset" dataset)
                                         "using inline dataset")
                                       \newline))
-     (impl/do-with-dataset ~(if (and (symbol? dataset)
-                                     (not (get &env dataset)))
-                              `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
-                              dataset)
-       (fn [] ~@body))))
+     (data.impl/do-with-dataset ~(if (and (symbol? dataset)
+                                          (not (get &env dataset)))
+                                   `(data.impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
+                                   dataset)
+                                (fn [] ~@body))))
 
 (defmacro with-temp-copy-of-db
   "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the
   current DB. Tables and Fields are copied as well."
   {:style/indent 0}
   [& body]
-  `(impl/do-with-temp-copy-of-db (fn [] ~@body)))
+  `(data.impl/do-with-temp-copy-of-db (fn [] ~@body)))

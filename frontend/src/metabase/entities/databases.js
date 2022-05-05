@@ -56,8 +56,10 @@ const Databases = createEntity({
 
     fetchIdfields: createThunkAction(
       FETCH_DATABASE_IDFIELDS,
-      ({ id }) => async () =>
-        normalize(await MetabaseApi.db_idfields({ dbId: id }), [Fields.schema]),
+      ({ id }, params = {}) => async () =>
+        normalize(await MetabaseApi.db_idfields({ dbId: id, ...params }), [
+          Fields.schema,
+        ]),
     ),
 
     fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),

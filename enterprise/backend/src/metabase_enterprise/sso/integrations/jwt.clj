@@ -6,12 +6,12 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.api.common :as api]
-            [metabase.api.session :as session]
+            [metabase.api.session :as api.session]
             [metabase.integrations.common :as integrations.common]
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]
-            [ring.util.response :as resp])
+            [ring.util.response :as response])
   (:import java.net.URLEncoder))
 
 (defn fetch-or-create-user!
@@ -81,10 +81,10 @@
         first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
         last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
         user         (fetch-or-create-user! first-name last-name email login-attrs)
-        session      (session/create-session! :sso user (request.u/device-info request))
+        session      (api.session/create-session! :sso user (request.u/device-info request))
         redirect-url (or redirect (URLEncoder/encode "/"))]
     (sync-groups! user jwt-data)
-    (mw.session/set-session-cookie request (resp/redirect redirect-url) session)))
+    (mw.session/set-session-cookie request (response/redirect redirect-url) session)))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-configured?)
@@ -97,9 +97,9 @@
     (login-jwt-user jwt request)
     (let [idp (sso-settings/jwt-identity-provider-uri)
           return-to-param (if (str/includes? idp "?") "&return_to=" "?return_to=")]
-      (resp/redirect (str idp (when redirect
+      (response/redirect (str idp (when redirect
                                 (str return-to-param redirect)))))))
 
 (defmethod sso.i/sso-post :jwt
-  [req]
+  [_]
   (throw (ex-info "POST not valid for JWT SSO requests" {:status-code 400})))

@@ -9,7 +9,7 @@
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
@@ -52,7 +52,11 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (throw (Exception. (str (driver/humanize-connection-error-message driver (.getMessage e))) e))))
+        (throw (if-let [message (some->> (.getMessage e)
+                                         (driver/humanize-connection-error-message driver)
+                                         str)]
+                 (Exception. message e)
+                 e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
@@ -260,7 +264,7 @@
                                  (recur transitive-props next-acc)
                                  (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
                                      (trs driver cyclic-props)
-                                     (ex-info {:type               error-type/driver
+                                     (ex-info {:type               qp.error-type/driver
                                                :driver             driver
                                                :cyclic-visible-ifs cyclic-props})
                                      throw)))
@@ -326,7 +330,7 @@
 
 (def official-drivers
   "The set of all official drivers"
-  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver"})
+  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "oracle" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver" "vertica"})
 
 (def partner-drivers
   "The set of other drivers in the partnership program"

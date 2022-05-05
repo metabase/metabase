@@ -10,19 +10,19 @@ During development you will want to run `yarn build-hot` to continuously build t
 
 To run all Cypress tests programmatically in the terminal:
 ```
-yarn run test-cypress-no-build
+yarn run test-cypress-run
 ```
 
 You can run a specific set of scenarios by using the `--folder` flag, which will pick up the chosen scenarios under `frontend/test/metabase/scenarios/`.
 
 ```
-yarn run test-cypress-no-build --folder sharing
+yarn run test-cypress-run --folder sharing
 ```
 
 You can quickly test a single file only by using the `--spec` flag.
 
 ```
-yarn test-cypress-no-build --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
+yarn test-cypress-run --spec frontend/test/metabase/scenarios/question/new.cy.spec.js
 ```
 
 Cypress test files are structured like Mocha tests, where `describe` blocks are used to group related tests, and `it` blocks are the tests themselves.
@@ -49,7 +49,8 @@ Try to avoid repeatedly testing pieces of the application incidentally. For exam
 ## Tips/Gotchas
 
 ### `contains` vs `find` vs `get`
-(TODO: talk about `@testing-library/cypress`). Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
+
+Cypress has a set of similar commands for selecting elements. Here are some tips for using them:
 * `contains` is case-sensitive to the text *in the DOM*. If it’s not matching text you’d expect, check that CSS hasn’t updated the case.
 * `contains` matches substrings, so if you see “filter by” and “Add a filter”, `contains(“filter”)` will match both. To avoid these issues, you can either pass a regexp that pins the start/end of the string or pass a selector in addition to the string: `.contains(selector, content)`.
 * `find` will let you search within your previous selection. `get` will search the entire page even if chained.

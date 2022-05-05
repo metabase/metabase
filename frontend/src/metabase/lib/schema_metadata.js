@@ -44,7 +44,7 @@ const TYPES = {
   [STRING]: {
     base: [TYPE.Text],
     effective: [TYPE.Text],
-    semantic: [TYPE.Text],
+    semantic: [TYPE.Text, TYPE.Category],
   },
   [STRING_LIKE]: {
     base: [TYPE.TextLike],
@@ -74,7 +74,7 @@ const TYPES = {
     exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [SCOPE]: {
-    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY],
+    include: [NUMBER, TEMPORAL, CATEGORY, ENTITY, STRING],
     exclude: [LOCATION],
   },
   [CATEGORY]: {
@@ -137,9 +137,9 @@ export function getFieldType(field) {
     COORDINATE,
     FOREIGN_KEY,
     PRIMARY_KEY,
-    NUMBER,
     STRING,
     STRING_LIKE,
+    NUMBER,
     BOOLEAN,
   ]) {
     if (isFieldType(type, field)) {
@@ -462,12 +462,13 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-empty", verboseName: t`Not empty` },
   ],
   [TEMPORAL]: [
+    { name: "!=", verboseName: t`Excludes` },
     { name: "=", verboseName: t`Is` },
     { name: "<", verboseName: t`Before` },
     { name: ">", verboseName: t`After` },
     { name: "between", verboseName: t`Between` },
     { name: "is-null", verboseName: t`Is empty` },
-    { name: "not-null", verboseName: t`Not empty` },
+    { name: "not-null", verboseName: t`Is not empty` },
   ],
   [LOCATION]: [
     { name: "=", verboseName: t`Is` },

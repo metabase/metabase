@@ -18,7 +18,7 @@ describeEE("scenarios > admin > permissions", () => {
     cy.intercept("PUT", "/api/field/*").as("fieldUpdate");
     cy.intercept(
       "GET",
-      "/api/table/2/query_metadata?include_sensitive_fields=true",
+      "/api/table/2/query_metadata?include_sensitive_fields=true&include_editable_data_model=true",
     ).as("tableMetadataFetch");
   });
 
@@ -27,18 +27,12 @@ describeEE("scenarios > admin > permissions", () => {
 
     // Change permission
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Granular");
-    modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
-    // Save permission graph
-    cy.button("Save changes").click();
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
-    });
+    savePermissionsGraph();
 
     // Assert the permission has changed
-    assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    assertPermissionForItem("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Check limited access as a non-admin user
     cy.signInAsNormalUser();
@@ -75,18 +69,12 @@ describeEE("scenarios > admin > permissions", () => {
     cy.visit("/admin/permissions/data/database/1");
 
     // Change data model permission
-    modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
-    // Save permission graph
-    cy.button("Save changes").click();
-    modal().within(() => {
-      cy.findByText("Save permissions?");
-      cy.findByText("Are you sure you want to do this?");
-      cy.button("Yes").click();
-    });
+    savePermissionsGraph();
 
     // Assert the permission has changed
-    assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Edit");
+    assertPermissionForItem("All Users", DATA_MODEL_PERMISSION_INDEX, "Yes");
 
     // Check limited access as a non-admin user
     cy.signInAsNormalUser();
@@ -104,4 +92,34 @@ describeEE("scenarios > admin > permissions", () => {
     cy.findByText("People");
     cy.findByText("Reviews");
   });
+
+  it("shows `Field access denied` for foreign keys from tables user does not have access to (metabase#21762)", () => {
+    cy.visit("/admin/permissions/data/database/1");
+
+    // Change data model permission
+    modifyPermission("All Users", DATA_MODEL_PERMISSION_INDEX, "Granular");
+    modifyPermission("Orders", DATA_MODEL_PERMISSION_INDEX, "Yes");
+    modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Unrestricted");
+    cy.button("Change").click();
+
+    savePermissionsGraph();
+
+    // Check limited access as a non-admin user
+    cy.signIn("none");
+    cy.visit("/admin/datamodel/database/1/table/2");
+
+    // Find foreign key from table the user does not have access to
+    cy.findByTestId("column-USER_ID").within(() => {
+      cy.findByText("Field access denied");
+    });
+  });
 });
+
+function savePermissionsGraph() {
+  cy.button("Save changes").click();
+  modal().within(() => {
+    cy.findByText("Save permissions?");
+    cy.findByText("Are you sure you want to do this?");
+    cy.button("Yes").click();
+  });
+}

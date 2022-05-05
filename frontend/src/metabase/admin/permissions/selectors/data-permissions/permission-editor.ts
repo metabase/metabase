@@ -159,10 +159,12 @@ export const getDatabasesPermissionEditor = createSelector(
 
     let entities: any = [];
 
-    if (schemaName != null || hasSingleSchema) {
+    const database = metadata?.database(databaseId);
+
+    if (database && (schemaName != null || hasSingleSchema)) {
       const schema: Schema = hasSingleSchema
-        ? metadata?.database(databaseId)?.getSchemas()[0]
-        : metadata?.database(databaseId)?.schema(schemaName);
+        ? database.getSchemas()[0]
+        : database.schema(schemaName);
 
       entities = schema
         .getTables()
@@ -179,7 +181,7 @@ export const getDatabasesPermissionEditor = createSelector(
               isAdmin,
               permissions,
               defaultGroup,
-              metadata.database(databaseId),
+              database,
             ),
           };
         });
@@ -207,7 +209,6 @@ export const getDatabasesPermissionEditor = createSelector(
     } else if (groupId != null) {
       entities = metadata
         .databasesList({ savedQuestions: false })
-        .sort((a, b) => a.name.localeCompare(b.name))
         .map(database => {
           const entityId = getDatabaseEntityId(database);
           return {
@@ -254,8 +255,9 @@ export const getGroupsDataPermissionEditor = createSelector(
   getOrderedGroups,
   (metadata, params, permissions, groups: Group[][]) => {
     const { databaseId, schemaName, tableId } = params;
+    const database = metadata?.database(databaseId);
 
-    if (!permissions || databaseId == null) {
+    if (!permissions || databaseId == null || !database) {
       return null;
     }
 
@@ -290,7 +292,7 @@ export const getGroupsDataPermissionEditor = createSelector(
           isAdmin,
           permissions,
           defaultGroup,
-          metadata.database(databaseId),
+          database,
         );
       } else if (schemaName != null) {
         groupPermissions = buildTablesPermissions(

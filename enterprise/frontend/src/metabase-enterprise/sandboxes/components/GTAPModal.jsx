@@ -19,8 +19,6 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { GTAPApi } from "metabase/services";
 
-import { UNKNOWN_ERROR_MESSAGE } from "metabase/components/form/FormMessage";
-
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 
@@ -109,7 +107,7 @@ export default class GTAPModal extends React.Component {
         ? error.data
           ? error.data.message || JSON.stringify(error.data)
           : JSON.stringify(error)
-        : UNKNOWN_ERROR_MESSAGE;
+        : t`Unknown error encountered`;
       this.setState({ error: message });
       throw new Error(message);
     }

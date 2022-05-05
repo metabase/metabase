@@ -58,8 +58,8 @@ const ViewFooter = ({
   isPreviewing,
   isResultDirty,
   isVisualized,
+  isTimeseries,
   queryBuilderMode,
-
   isShowingFilterSidebar,
   onAddFilter,
   onCloseFilter,
@@ -70,11 +70,9 @@ const ViewFooter = ({
   onOpenTimelines,
   onCloseTimelines,
 }) => {
-  if (!result || isObjectDetail) {
+  if (!result) {
     return null;
   }
-
-  const hasDataPermission = question.query().isEditable();
 
   return (
     <ViewFooterRoot
@@ -107,30 +105,26 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          hasDataPermission && (
-            <VizTypeButton
-              key="viz-type"
-              question={question}
-              result={result}
-              active={isShowingChartTypeSidebar}
-              onClick={
-                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-              }
-            />
-          ),
-          hasDataPermission && (
-            <VizSettingsButton
-              key="viz-settings"
-              ml={1}
-              mr={[3, 0]}
-              active={isShowingChartSettingsSidebar}
-              onClick={
-                isShowingChartSettingsSidebar
-                  ? onCloseChartSettings
-                  : onOpenChartSettings
-              }
-            />
-          ),
+          <VizTypeButton
+            key="viz-type"
+            question={question}
+            result={result}
+            active={isShowingChartTypeSidebar}
+            onClick={
+              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+            }
+          />,
+          <VizSettingsButton
+            key="viz-settings"
+            ml={1}
+            mr={[3, 0]}
+            active={isShowingChartSettingsSidebar}
+            onClick={
+              isShowingChartSettingsSidebar
+                ? onCloseChartSettings
+                : onOpenChartSettings
+            }
+          />,
         ]}
         center={
           isVisualized && (
@@ -199,7 +193,7 @@ const ViewFooter = ({
               }
             />
           ),
-          QuestionTimelineWidget.shouldRender({ question }) && (
+          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"
               className="mx1 hide sm-show"

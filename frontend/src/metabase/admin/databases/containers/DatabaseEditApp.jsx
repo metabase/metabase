@@ -16,6 +16,9 @@ import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
+import { getSetting } from "metabase/selectors/settings";
+
+import Database from "metabase-lib/lib/metadata/Database";
 
 import {
   getEditingDatabase,
@@ -32,6 +35,8 @@ import {
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
+  persistDatabase,
+  unpersistDatabase,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -47,12 +52,14 @@ const DATABASE_FORM_NAME = "database";
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
   const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+
   return {
-    database,
+    database: database ? new Database(database) : undefined,
     databaseCreationStep: getDatabaseCreationStep(state),
     selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
+    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
 
@@ -63,6 +70,8 @@ const mapDispatchToProps = {
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  persistDatabase,
+  unpersistDatabase,
   deleteDatabase,
   selectEngine,
 };
@@ -76,6 +85,7 @@ export default class DatabaseEditApp extends Component {
 
   static propTypes = {
     database: PropTypes.object,
+    metadata: PropTypes.object,
     databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
@@ -83,11 +93,14 @@ export default class DatabaseEditApp extends Component {
     syncDatabaseSchema: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
+    persistDatabase: PropTypes.func.isRequired,
+    unpersistDatabase: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
+    isModelPersistenceEnabled: PropTypes.bool,
   };
 
   async componentDidMount() {
@@ -104,7 +117,10 @@ export default class DatabaseEditApp extends Component {
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
+      persistDatabase,
+      unpersistDatabase,
       isAdmin,
+      isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -187,12 +203,15 @@ export default class DatabaseEditApp extends Component {
 
           {editingExistingDatabase && (
             <Sidebar
-              isAdmin={isAdmin}
               database={database}
+              isAdmin={isAdmin}
+              isModelPersistenceEnabled={isModelPersistenceEnabled}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
+              persistDatabase={persistDatabase}
+              unpersistDatabase={unpersistDatabase}
             />
           )}
         </DatabaseEditMain>

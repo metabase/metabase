@@ -10,4 +10,5 @@ export const HeadingContainer = styled.div`
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 1rem;
+  min-height: 42px;
 `;

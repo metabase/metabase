@@ -7,12 +7,12 @@
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.automagic-dashboards :refer :all]
-            [metabase.test.domain-entities :as de.test]
+            [metabase.test.domain-entities :as test.de]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.transforms :as transforms.test]
-            [metabase.transforms.core :as transforms]
-            [metabase.transforms.materialize :as transforms.materialize]
-            [metabase.transforms.specs :as transforms.specs]
+            [metabase.transforms.core :as tf]
+            [metabase.transforms.materialize :as tf.materialize]
+            [metabase.transforms.specs :as tf.specs]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections))
@@ -154,15 +154,15 @@
   (testing "GET /api/automagic-dashboards/transform/:id"
     (mt/with-test-user :rasta
       (transforms.test/with-test-transform-specs
-        (de.test/with-test-domain-entity-specs
+        (test.de/with-test-domain-entity-specs
           (mt/with-model-cleanup [Card Collection]
-            (transforms/apply-transform! (mt/id) "PUBLIC" (first @transforms.specs/transform-specs))
+            (tf/apply-transform! (mt/id) "PUBLIC" (first @tf.specs/transform-specs))
             (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 1.5 4 3 2 1]
                     [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 2.0 11 2 1 1]
                     [3 "The Apple Pan" 11 34.0406 -118.428 2 2.0 11 2 1 1]]
                    (api-call "transform/%s" ["Test transform"]
                              #(revoke-collection-permissions!
-                               (transforms.materialize/get-collection "Test transform"))
+                               (tf.materialize/get-collection "Test transform"))
                              (fn [dashboard]
                                (->> dashboard
                                     :ordered_cards

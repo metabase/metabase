@@ -1,6 +1,6 @@
 (ns metabase.pulse.render.common
   (:require [clojure.pprint :refer [cl-format]]
-            [hiccup.util :as hutil]
+            hiccup.util
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.shared.util.currency :as currency]
             [metabase.util.ui-logic :as ui-logic]
@@ -10,7 +10,7 @@
            (java.text DecimalFormat DecimalFormatSymbols)))
 
 ;; Fool Eastwood into thinking this namespace is used
-(comment hutil/keep-me)
+(comment hiccup.util/keep-me)
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -19,7 +19,7 @@
    (s/optional-key :render/text) (s/maybe s/Str)})
 
 (p.types/defrecord+ NumericWrapper [num-str]
-  hutil/ToString
+  hiccup.util/ToString
   (to-str [_] num-str)
 
   Object

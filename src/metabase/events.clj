@@ -8,7 +8,7 @@
   `events-init` function which accepts zero arguments. This function is dynamically resolved and called exactly once
   when the application goes through normal startup procedures. Inside this function you can do any work needed and add
   your events subscribers to the bus as usual via `start-event-listener!`."
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.plugins.classloader :as classloader]
@@ -54,11 +54,11 @@
 
 
 (defonce ^:private ^{:doc "Channel to host events publications."} events-channel
-  (async/chan))
+  (a/chan))
 
 (defonce ^:private ^{:doc "Publication for general events channel. Expects a map as input and the map must have a
   `:topic` key."} events-publication
-  (async/pub events-channel :topic))
+  (a/pub events-channel :topic))
 
 (defn publish-event!
   "Publish an item into the events stream. Returns the published item to allow for chaining."
@@ -67,7 +67,7 @@
   {:pre [(keyword topic)]}
   (let [event {:topic (keyword topic), :item event-item}]
     (log/tracef "Publish event %s" (pr-str event))
-    (async/put! events-channel event))
+    (a/put! events-channel event))
   event-item)
 
 
@@ -78,7 +78,7 @@
   Returns the channel to allow for chaining."
   [topic channel]
   {:pre [(keyword topic)]}
-  (async/sub events-publication (keyword topic) channel)
+  (a/sub events-publication (keyword topic) channel)
   channel)
 
 (defn subscribe-to-topics!
@@ -95,9 +95,9 @@
   ;; create the core.async subscription for each of our topics
   (subscribe-to-topics! topics channel)
   ;; start listening for events we care about and do something with them
-  (async/go-loop []
+  (a/go-loop []
     ;; try/catch here to get possible exceptions thrown by core.async trying to read from the channel
-    (when-let [val (async/<! channel)]
+    (when-let [val (a/<! channel)]
       (try
         (handler-fn val)
         (catch Throwable e

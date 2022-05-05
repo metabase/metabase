@@ -12,7 +12,7 @@ To add a filter to a dashboard, first click the **pencil icon** to enter dashboa
 
 ![Add a Filter](images/dashboard-filters/01-add-filter.png)
 
-You can choose from a number of filter types: 
+You can choose from a number of filter types:
 
 - [Time](#time-filters)
 - [Location](#location-filters)
@@ -32,12 +32,12 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 - Relative Date
 - All Options
 
-Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the graphical query builder, choose All options.
+Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
 
 #### Location filters
 
 There are four types of Location filters to choose from:
-  
+
 - City
 - State
 - ZIP or Postal Code
@@ -59,7 +59,7 @@ Let's add a filter widget to our dashboard. We'll select a **Time** filter, and 
 
 ![Choose filter type](images/dashboard-filters/02-filter-type.png)
 
-Metabase will display a filter editing interface where you can wire up your new filter to each applicable card. 
+Metabase will display a filter editing interface where you can wire up your new filter to each applicable card.
 
 ![Wiring up the cards](images/dashboard-filters/03-wiring-cards.png)
 
@@ -78,11 +78,11 @@ When you're finished wiring up the filter, click **Done** at the bottom of the s
 - **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
 - **To reorder your filters**: click on the grabber handle on the left side of a filter, then drag the filter to a different position.
 - **To set a default value**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
-- **To remove a filter**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes. 
+- **To remove a filter**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
 
 ### Using filters
 
-Once you’ve added a filter to your dashboard, just click on the filter to select a value and activate the filter. To stop filtering, just click the blue X. 
+Once you’ve added a filter to your dashboard, just click on the filter to select a value and activate the filter. To stop filtering, just click the blue X.
 
 ![Using a filter](images/dashboard-filters/08-use-filter.png)
 
@@ -112,7 +112,7 @@ You can also **link filters** so that a child filter knows to limit its choices 
 
 Say you have two filters, one to filter by state, the other to filter by city. You can link the city filter to the state filter so that when someone filters by California, the city filter will "know" to only show cities in California. In this case, state is the parent filter, and city is the child filter.
 
-To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab. 
+To link filters, you'll need to set up this parent-child relationship. And you set up this relationship through the child filter. In the above scenario, with a state and city filter, we'd edit the child filter, city, by clicking on the **gears** icon on the city filter. From the filter sidebar on the right, select the **Linked filters** tab.
 
 ![Linked filters](images/dashboard-filters/linked-filter.png)
 
@@ -128,8 +128,8 @@ Here are a few tips to get the most out of dashboard filters:
 - **Start with a new dashboard**. While you can add dashboard filters to an existing dashboard with a bunch of cards in it, it can be easier to start a new dashboard and think about what filters you intend to add to it. That way you can make sure that you only put cards in that dashboard that can be used with the filters. Alternatively, you could duplicate an existing dashboard, and pare down the number of cards.
 - **Link filters** so people don't have to sift through irrelevant filter options (like cities not in a filtered state).
 
----
+## Further reading
 
-## Next: Interactive dashboards
-
-We'll learn how to [make our dashboards interactive](interactive-dashboards.md).
+- [Dashboards intro](07-dashboards.md)
+- [Interactive dashboards](interactive-dashboards.md)
+- [Learn dashboards](/learn/dashboards)

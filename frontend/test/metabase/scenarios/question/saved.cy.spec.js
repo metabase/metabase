@@ -76,7 +76,7 @@ describe("scenarios > question > saved", () => {
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").type("100");
       cy.findByText("100").click();
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
     });
     cy.findByText("Quantity is equal to 100");
     cy.findByText("Showing 2 rows"); // query updated
@@ -133,6 +133,7 @@ describe("scenarios > question > saved", () => {
 
     cy.findByRole("button", { name: "Revert" }).click();
 
+    cy.findByText(/Reverted to an earlier revision/i);
     cy.findByText(/This is a question/i).should("not.exist");
   });
 

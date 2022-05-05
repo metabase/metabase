@@ -1,5 +1,11 @@
 /* eslint-disable react/prop-types */
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -21,6 +27,8 @@ import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import { usePrevious } from "metabase/hooks/use-previous";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
 
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
@@ -77,6 +85,8 @@ import {
   getIsAnySidebarOpen,
   getDocumentTitle,
   getPageFavicon,
+  getIsTimeseries,
+  getIsLoadingComplete,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -151,6 +161,7 @@ const mapStateToProps = (state, props) => {
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
+    isTimeseries: getIsTimeseries(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
@@ -176,6 +187,7 @@ const mapStateToProps = (state, props) => {
     snippetCollectionId: getSnippetCollectionId(state),
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
+    isLoadingComplete: getIsLoadingComplete(state),
   };
 };
 
@@ -211,6 +223,8 @@ function QueryBuilder(props) {
     deleteBookmark,
     allLoaded,
     showTimelinesForCollection,
+    card,
+    isLoadingComplete,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -354,6 +368,49 @@ function QueryBuilder(props) {
     }
   });
 
+  const [isShowingToaster, setIsShowingToaster] = useState(false);
+
+  const { isRunning } = uiControls;
+
+  const onTimeout = useCallback(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      setIsShowingToaster(true);
+    }
+  }, []);
+
+  useLoadingTimer(isRunning, {
+    timer: 15000,
+    onTimeout,
+  });
+
+  const [requestPermission, showNotification] = useWebNotification();
+
+  useEffect(() => {
+    if (isLoadingComplete) {
+      setIsShowingToaster(false);
+
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
+        showNotification(
+          t`All Set! Your question is ready.`,
+          t`${card.name} is loaded.`,
+        );
+      }
+    }
+  }, [isLoadingComplete, showNotification, card?.name]);
+
+  const onConfirmToast = useCallback(async () => {
+    await requestPermission();
+    setIsShowingToaster(false);
+  }, [requestPermission]);
+
+  const onDismissToast = useCallback(() => {
+    setIsShowingToaster(false);
+  }, []);
+
   return (
     <View
       {...props}
@@ -366,6 +423,9 @@ function QueryBuilder(props) {
       onCreate={handleCreate}
       handleResize={forceUpdateDebounced}
       toggleBookmark={onClickBookmark}
+      onDismissToast={onDismissToast}
+      onConfirmToast={onConfirmToast}
+      isShowingToaster={isShowingToaster}
     />
   );
 }

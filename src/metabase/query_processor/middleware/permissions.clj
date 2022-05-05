@@ -8,7 +8,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query.permissions :as query-perms]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -28,7 +28,7 @@
 
   ([message required-perms & [additional-ex-data]]
    (ex-info message
-            (merge {:type                 error-type/missing-required-permissions
+            (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
                     :actual-permissions   @*current-user-permissions-set*
                     :permissions-error?   true}
@@ -57,7 +57,7 @@
   [card-id :- su/IntGreaterThanZero]
   (let [card (or (db/select-one [Card :collection_id] :id card-id)
                  (throw (ex-info (tru "Card {0} does not exist." card-id)
-                                 {:type    error-type/invalid-query
+                                 {:type    qp.error-type/invalid-query
                                   :card-id card-id})))]
     (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
     (when-not (mi/can-read? card)

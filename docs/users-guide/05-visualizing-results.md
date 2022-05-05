@@ -47,13 +47,11 @@ The **Numbers** option is for displaying a single number, nice and big. The opti
 
 ### Trends
 
+![Trend settings](images/visualizations/trend-settings.png)
+
 The **Trend** visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Trend will show you the value of the number during the most recent period, as well as how much the number has increased or decreased compared to its value in the previous period. The period is determined by your group-by field; if you're grouping by Day, the Trend will show you the most recent day compared to the day before that.
 
-![Trend](images/visualizations/trend.png)
-
-By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
-
-![Trend settings](images/visualizations/trend-settings.png)
+By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings.
 
 ### Progress bars
 
@@ -77,13 +75,11 @@ The **Table** option is good for looking at tabular data (duh), or for lists of 
 
 #### Rearranging, adding, and removing columns
 
-![Additional fields](images/visualizations/add-fields.png)
-
 Open up the settings for your table and you'll see the Columns tab, which displays all the columns currently being shown in the table. Below that you'll see a list of more columns from linked tables, if any, that you can add to the current table view.
 
 To hide a column, click the X icon on it; that'll send it down to the **More columns** area in case you want to bring it back. To add a linked column, just click the + icon on it, which will bring it to the **Visible columns** section. Click and drag any of the columns listed there to rearrange the order in which they appear. Another super easy way to rearrange columns without having to open up the visualization settings is to simply click and drag on a column's heading to move it where you'd like it to go.
 
-> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer back to later, share with others, or add to a [dashboard](07-dashboards.md).
+> Changing these options doesn't change the actual table itself; these changes create a custom view of the table that you can save as a **question** in Metabase and refer to later, share with others, or add to a [dashboard](07-dashboards.md).
 
 #### Column formatting options
 
@@ -156,7 +152,7 @@ Pivot tables are not currently available for the following databases in Metabase
 - Google Analytics
 - MongoDB
 
-Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../administration-guide/01-managing-databases.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data. 
+Pivot tables work for simple and custom questions with summarized data for all other [officially supported databases](../administration-guide/01-managing-databases.md#officially-supported-databases). They don't work for questions that lack aggregate data, and they don't work for questions written in SQL, as Metabase would need to modify your SQL code in order to calculate subtotals. If you really need to use SQL, the workaround here is to create your question in two steps: first do all the complex things you need to do in SQL, save the results as a question, then use that saved SQL question as the starting point for a new GUI question which summarizes that data.
 
 In the settings for the Pivot Table visualization, you can assign fields to one of three "buckets":
 

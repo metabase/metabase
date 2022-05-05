@@ -19,6 +19,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { HARD_ROW_LIMIT } from "metabase/lib/query";
+import { isPositiveInteger } from "metabase/lib/number";
 
 import { t } from "ttag";
 import cx from "classnames";
@@ -27,7 +28,10 @@ import { getIn } from "icepick";
 
 import { isID, isFK } from "metabase/lib/schema_metadata";
 
-@ExplicitSize()
+@ExplicitSize({
+  refreshMode: props =>
+    props.isDashboard && !props.isEditing ? "debounce" : "throttle",
+})
 export default class TableSimple extends Component {
   constructor(props) {
     super(props);
@@ -108,9 +112,17 @@ export default class TableSimple extends Component {
     if (sortColumn != null) {
       rowIndexes = _.sortBy(rowIndexes, rowIndex => {
         let value = rows[rowIndex][sortColumn];
+        const col = cols[sortColumn];
         // for strings we should be case insensitive
         if (typeof value === "string") {
-          value = value.toLowerCase();
+          if (isID(col) && isPositiveInteger(value)) {
+            value = parseInt(value, 10);
+          } else {
+            value = value.toLowerCase();
+          }
+        }
+        if (value === null) {
+          value = undefined;
         }
         return value;
       });

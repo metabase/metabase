@@ -5,7 +5,8 @@
   then postwalk to actually perform the conversion."
   (:require [clojure.spec.alpha :as s]
             [clojure.spec.gen.alpha :as gen]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [metabase.util :as u]))
 
 (defmulti ^:private convert
   "convert values from the naively converted json to what we REALLY WANT"
@@ -19,9 +20,13 @@
   [[_ s]]
   (keyword s))
 
+;; Convert a keyword to string without excluding the namespace.
+;; e.g: :schema/name => "schema/name".
+;; Primarily used for schema-name since schema are allowed to have "/"
+;; and calling (name s) returning a substring after "/".
 (defmethod convert :kw->str
   [[_ s]]
-  (name s))
+  (u/qualified-name s))
 
 (defmethod convert :nil->none
   [[_ _]]
@@ -75,7 +80,7 @@
 
 (s/def ::data-model (s/keys :opt-un [::native ::schemas]))
 
-;; We use "yes" and "no" instead of booleans for consistency with the general perms graph, and consistency with the
+;; We use "yes" and "no" instead of booleans for consistency with the application perms graph, and consistency with the
 ;; language used on the frontend.
 (s/def ::details (s/or :str->kw #{"yes" "no"}))
 

@@ -4,7 +4,7 @@
             [clojure.set :as set]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor :as qp]
             [metabase.query-processor.util :as qp.util]
@@ -70,7 +70,7 @@
 
 ;;; --------------------------------------------------- RENDERING ----------------------------------------------------
 
-(defn- ^BufferedImage create-tile [zoom points]
+(defn- create-tile ^BufferedImage [zoom points]
   (let [num-tiles (bit-shift-left 1 zoom)
         tile      (BufferedImage. tile-size tile-size (BufferedImage/TYPE_INT_ARGB))
         graphics  (.getGraphics tile)
@@ -184,7 +184,7 @@
         lon-field-ref (field-ref lon-field)
 
         query
-        (normalize/normalize (json/parse-string query keyword))
+        (mbql.normalize/normalize (json/parse-string query keyword))
 
         updated-query (query->tiles-query query {:zoom zoom :x x :y y
                                                  :lat-field lat-field-ref

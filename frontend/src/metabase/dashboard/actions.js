@@ -70,6 +70,7 @@ import {
   getAllDashboardCards,
   getDashboardType,
   fetchDataOrError,
+  getDatasetQueryParams,
 } from "./utils";
 
 const DATASET_SLOW_TIMEOUT = 15 * 1000;
@@ -572,10 +573,12 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     if (!reload) {
       // if reload not set, check to see if the last result has the same query dict and return that
       const lastResult = getIn(dashcardData, [dashcard.id, card.id]);
-      // "constraints" is added by the backend, remove it when comparing
       if (
         lastResult &&
-        Utils.equals(_.omit(lastResult.json_query, "constraints"), datasetQuery)
+        Utils.equals(
+          getDatasetQueryParams(lastResult.json_query),
+          getDatasetQueryParams(datasetQuery),
+        )
       ) {
         return {
           dashcard_id: dashcard.id,
@@ -1032,7 +1035,7 @@ export const deletePublicLink = createAction(
 const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 export const navigateToNewCardFromDashboard = createThunkAction(
   NAVIGATE_TO_NEW_CARD,
-  ({ nextCard, previousCard, dashcard }) => (dispatch, getState) => {
+  ({ nextCard, previousCard, dashcard, objectId }) => (dispatch, getState) => {
     const metadata = getMetadata(getState());
     const { dashboardId, dashboards, parameterValues } = getState().dashboard;
     const dashboard = dashboards[dashboardId];
@@ -1059,11 +1062,23 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       dashcard,
     );
 
-    // when the query is for a specific object it does not make sense to apply parameter filters
+    // When drilling from a native model, the drill can return a new question
+    // querying a table for which we don't have any metadata for
+    // When building a question URL, it'll usually clean the query and
+    // strip clauses referencing fields from tables without metadata
+    const previousQuestion = new Question(previousCard, metadata);
+    const isDrillingFromNativeModel =
+      previousQuestion.isDataset() && previousQuestion.isNative();
+
+    // when the query is for a specific object (ie `=` filter on PK column)
+    // it does not make sense to apply parameter filters
     // because we'll be navigating to the details view of a specific row on a table
     const url = question.isObjectDetail()
       ? Urls.serializedQuestion(question.card())
-      : question.getUrlWithParameters(parametersMappedToCard, parameterValues);
+      : question.getUrlWithParameters(parametersMappedToCard, parameterValues, {
+          clean: !isDrillingFromNativeModel,
+          objectId,
+        });
 
     dispatch(openUrl(url));
   },
@@ -1072,12 +1087,17 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
-  const queries = dashCards
+  const questions = dashCards
     .filter(dc => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
     .flatMap(dc => [dc.card].concat(dc.series || []))
-    .map(card => new Question(card, metadata).query());
+    .map(card => new Question(card, metadata));
 
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(
+      questions.map(question => question.query()),
+      questions.map(question => question.dependentMetadata()),
+    ),
+  );
 };
 
 export const fetchDashboardParameterValues = createThunkAction(

@@ -32,6 +32,12 @@ export const getFavicon = state =>
   state.dashboard.loadingControls?.showLoadCompleteFavicon
     ? LOAD_COMPLETE_FAVICON
     : null;
+
+export const getIsRunning = state =>
+  state.dashboard.loadingDashCards.loadingStatus === "running";
+export const getIsLoadingComplete = state =>
+  state.dashboard.loadingDashCards.loadingStatus === "complete";
+
 export const getLoadingStartTime = state =>
   state.dashboard.loadingDashCards.startTime;
 export const getIsAddParameterPopoverOpen = state =>

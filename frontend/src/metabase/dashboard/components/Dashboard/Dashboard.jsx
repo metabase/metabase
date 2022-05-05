@@ -31,6 +31,7 @@ export default class Dashboard extends Component {
   state = {
     error: null,
     isParametersWidgetSticky: false,
+    parametersListLength: 0,
   };
 
   static propTypes = {
@@ -96,6 +97,12 @@ export default class Dashboard extends Component {
     super(props);
     this.parametersWidgetRef = React.createRef();
     this.parametersAndCardsContainerRef = React.createRef();
+  }
+
+  static getDerivedStateFromProps(props, state) {
+    return props.parameters.length !== state.parametersListLength
+      ? { parametersListLength: props.parameters.length }
+      : null;
   }
 
   throttleParameterWidgetStickiness = _.throttle(
@@ -206,9 +213,9 @@ export default class Dashboard extends Component {
       isNightMode,
       isSharing,
       parameters,
+      parameterValues,
       isNavbarOpen,
       showAddQuestionSidebar,
-      parameterValues,
       editingParameter,
       setParameterValue,
       setParameterIndex,
@@ -270,7 +277,10 @@ export default class Dashboard extends Component {
               />
 
               {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer isEditing={isEditing}>
+                <ParametersWidgetContainer
+                  data-testid="edit-dashboard-parameters-widget-container"
+                  isEditing={isEditing}
+                >
                   {parametersWidget}
                 </ParametersWidgetContainer>
               )}
@@ -283,6 +293,7 @@ export default class Dashboard extends Component {
               >
                 {shouldRenderParametersWidgetInViewMode && (
                   <ParametersWidgetContainer
+                    data-testid="dashboard-parameters-widget-container"
                     ref={element => (this.parametersWidgetRef = element)}
                     isNavbarOpen={isNavbarOpen}
                     isSticky={isParametersWidgetSticky}

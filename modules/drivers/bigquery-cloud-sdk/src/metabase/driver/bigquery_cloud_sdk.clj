@@ -10,11 +10,11 @@
             [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
             [metabase.driver.sync :as driver.s]
             [metabase.models :refer [Database Table] :rename {Table MetabaseTable}] ; Table clashes with the class below
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
@@ -55,25 +55,32 @@
 
 (defn- ^Iterable list-tables
   "Fetch all tables (new pages are loaded automatically by the API)."
-  (^Iterable [{{:keys [project-id dataset-filters-type dataset-filters-patterns]} :details, :as database}]
-    (list-tables (database->client database)
-                 (or project-id (bigquery.common/database-details->credential-project-id (:details database)))
-                 dataset-filters-type
-                 dataset-filters-patterns))
-
-  (^Iterable [^BigQuery client ^String project-id ^String filter-type ^String filter-patterns]
-    (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
-          inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
-          exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)]
-      (apply concat (for [^Dataset dataset (.iterateAll datasets)
-                          :let [^DatasetId dataset-id (.. dataset getDatasetId)]
-                          :when (driver.s/include-schema? inclusion-patterns
-                                                          exclusion-patterns
-                                                          (.getDataset dataset-id))]
-                      (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
-                          .iterateAll
-                          .iterator
-                          iterator-seq))))))
+  (^Iterable [database]
+   (list-tables database false))
+  (^Iterable [{{:keys [project-id dataset-filters-type dataset-filters-patterns]} :details, :as database} validate-dataset?]
+   (list-tables (database->client database)
+                (or project-id (bigquery.common/database-details->credential-project-id (:details database)))
+                dataset-filters-type
+                dataset-filters-patterns
+                (boolean validate-dataset?)))
+  (^Iterable [^BigQuery client ^String project-id ^String filter-type ^String filter-patterns ^Boolean validate-dataset?]
+   (let [datasets (.listDatasets client project-id (u/varargs BigQuery$DatasetListOption))
+         inclusion-patterns (when (= "inclusion" filter-type) filter-patterns)
+         exclusion-patterns (when (= "exclusion" filter-type) filter-patterns)
+         dataset-iter (for [^Dataset dataset (.iterateAll datasets)
+                            :let [^DatasetId dataset-id (.. dataset getDatasetId)]
+                            :when (driver.s/include-schema? inclusion-patterns
+                                                            exclusion-patterns
+                                                            (.getDataset dataset-id))]
+                        dataset-id)]
+     (when (and (not= filter-type "all") validate-dataset? (zero? (count dataset-iter)))
+       (throw (ex-info (tru "Looks like we cannot find any matching datasets.")
+                       {::driver/can-connect-message? true})))
+     (apply concat (for [^DatasetId dataset-id dataset-iter]
+                     (-> (.listTables client dataset-id (u/varargs BigQuery$TableListOption))
+                         .iterateAll
+                         .iterator
+                         iterator-seq))))))
 
 (defmethod driver/describe-database :bigquery-cloud-sdk
   [_ database]
@@ -86,8 +93,10 @@
 (defmethod driver/can-connect? :bigquery-cloud-sdk
   [_ details-map]
   ;; check whether we can connect by seeing whether listing tables succeeds
-  (try (some? (list-tables {:details details-map}))
+  (try (some? (list-tables {:details details-map} ::validate-dataset))
        (catch Exception e
+         (when (::driver/can-connect-message? (ex-data e))
+           (throw e))
          (log/errorf e (trs "Exception caught in :bigquery-cloud-sdk can-connect?"))
          false)))
 
@@ -162,7 +171,7 @@
 
 (defn- throw-invalid-query [e sql parameters]
   (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-           {:type error-type/invalid-query, :sql sql, :parameters parameters}
+           {:type qp.error-type/invalid-query, :sql sql, :parameters parameters}
            e)))
 
 (defn- ^TableResult execute-bigquery
@@ -278,7 +287,7 @@
       (thunk)
       (catch Throwable e
         (let [ex-data (u/all-ex-data e)]
-          (if (or (:retryable? e) (not (error-type/client-error? (:type ex-data))))
+          (if (or (:retryable? e) (not (qp.error-type/client-error? (:type ex-data))))
             (thunk)
             (throw e)))))))
 
@@ -293,9 +302,9 @@
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (if (get-in database [:details :include-user-id-and-hash] true)
-                  (str "-- " (qputil/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
+                  (str "-- " (qp.util/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
                   sql)]
-        (process-native* respond database sql params (context/canceled-chan context))))))
+        (process-native* respond database sql params (qp.context/canceled-chan context))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |
@@ -332,13 +341,18 @@
   (let [db-id (u/the-id database)]
     (log/infof (trs "DB {0} had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                     db-id))
-    (db/execute! {:update MetabaseTable
-                  :set    {:schema dataset-id}
-                  :where  [:and
-                           [:= :db_id db-id]
-                           [:or
-                            [:= :schema nil]
-                            [:not= :schema dataset-id]]]})
+    (try
+      (db/execute! {:update MetabaseTable
+                    :set    {:schema dataset-id}
+                    :where  [:and
+                             [:= :db_id db-id]
+                             [:or
+                              [:= :schema nil]
+                              [:not= :schema dataset-id]]]})
+      ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
+      ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
+      ;; leave them with nil schemas and they will get deactivated in sync.
+      (catch Exception _e))
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]

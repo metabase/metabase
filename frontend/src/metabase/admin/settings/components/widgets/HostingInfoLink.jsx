@@ -4,7 +4,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 
 const HostingInfoLink = ({ text }) => (
   <ExternalLink
-    className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 text-bold text-center"
+    className="bordered rounded border-brand bg-brand-hover text-white-hover px2 py1 text-bold text-center text-nowrap"
     href={
       "https://www.metabase.com/migrate/from/selfhosted?utm_source=admin-panel&utm_medium=in-app"
     }

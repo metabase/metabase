@@ -93,6 +93,22 @@ describe("HomeContent", () => {
     expect(screen.getByText("XraySection")).toBeInTheDocument();
   });
 
+  it("should render x-rays for the installer when there is no question and dashboard", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: true,
+        has_question_and_dashboard: false,
+        first_login: "2020-01-10T00:00:00Z",
+      }),
+      databases: [createMockDatabase()],
+      recentItems: [createMockRecentItem()],
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.getByText("XraySection")).toBeInTheDocument();
+  });
+
   it("should render nothing if there are no databases", () => {
     const props = getProps({
       user: createMockUser({
@@ -107,6 +123,21 @@ describe("HomeContent", () => {
     render(<HomeContent {...props} />);
 
     expect(screen.queryByText("XraySection")).not.toBeInTheDocument();
+  });
+
+  it("should render loading state if there is not enough data to choose a section", () => {
+    const props = getProps({
+      user: createMockUser({
+        is_installer: true,
+        has_question_and_dashboard: false,
+        first_login: "2020-01-10T00:00:00Z",
+      }),
+      databases: undefined,
+    });
+
+    render(<HomeContent {...props} />);
+
+    expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 });
 

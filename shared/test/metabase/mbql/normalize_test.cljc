@@ -1,7 +1,7 @@
 (ns metabase.mbql.normalize-test
   (:require [clojure.set :as set]
             [clojure.test :as t]
-            [metabase.mbql.normalize :as normalize]))
+            [metabase.mbql.normalize :as mbql.normalize]))
 
 (defn- tests {:style/indent 2} [f-symb f group->input->expected]
   (doseq [[group input->expected] group->input->expected]
@@ -20,7 +20,7 @@
   "Convenience for generating a bunch normalization tests. Args should alternate a [[t/testing]] context string and maps
   of input query -> expected normalized query."
   [& {:as group-and-input->expected-pairs}]
-  (tests 'normalize-tokens #'normalize/normalize-tokens group-and-input->expected-pairs))
+  (tests 'normalize-tokens #'mbql.normalize/normalize-tokens group-and-input->expected-pairs))
 
 (t/deftest ^:parallel normalize-tokens-test
   (normalize-tests
@@ -419,7 +419,7 @@
     "Make sure token normalization works correctly on source queries"
     {{:database 4
       :type     :query
-      :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+      :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                  "template_tags" {:category {:name         "category"
                                                              :display-name "Category"
                                                              :type         "text"
@@ -427,7 +427,7 @@
                                                              :default      "Widget"}}}}}
      {:database 4
       :type     :query
-      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                 :template-tags {"category" {:name         "category"
                                                             :display-name "Category"
                                                             :type         :text
@@ -437,7 +437,7 @@
      {:database 4
       :type     :query
       :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}}
-     {:database 4,
+     {:database 4
       :type     :query
       :query    {:source-query {:source-table 1, :aggregation :rows}}}}))
 
@@ -500,18 +500,18 @@
         (t/is (= (query-with-joins [{:source-query {:source-table 2}
                                      :fields       [[:field-id 1]
                                                     [:field-literal "MY_FIELD" :type/Integer]]}])
-                 (#'normalize/normalize-tokens
+                 (#'mbql.normalize/normalize-tokens
                   (query-with-joins [{"source_query" {"source_table" 2}
                                       "fields"       [["field_id" 1]
                                                       ["field_literal" :MY_FIELD "type/Integer"]]}])))))
       (t/testing "native source query in :joins"
         (t/testing "string source query"
           (t/is (= (query-with-joins [{:source-query {:native "SELECT *"}}])
-                   (#'normalize/normalize-tokens
+                   (#'mbql.normalize/normalize-tokens
                     (query-with-joins [{"source_query" {"NATIVE" "SELECT *"}}])))))
         (t/testing "map source query"
           (t/is (= (query-with-joins [{:source-query {:native {"this_is_a_native_query" "TRUE"}}}])
-                   (#'normalize/normalize-tokens
+                   (#'mbql.normalize/normalize-tokens
                     (query-with-joins [{"source_query" {"NATIVE" {"this_is_a_native_query" "TRUE"}}}])))))))))
 
 
@@ -558,7 +558,7 @@
 
    "expressions should handle datetime arithemtics"
    {{:query {:expressions {:prev_month ["+" ["field-id" 13] ["interval" -1 "month"]]}}}
-    {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}},
+    {:query {:expressions {"prev_month" [:+ [:field-id 13] [:interval -1 :month]]}}}
 
     {:query {:expressions {:prev_month ["-" ["field-id" 13] ["interval" 1 "month"] ["interval" 1 "day"]]}}}
     {:query {:expressions {"prev_month" [:- [:field-id 13] [:interval 1 :month] [:interval 1 :day]]}}}}
@@ -575,17 +575,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- canonicalize-tests {:style/indent 0} [& {:as group->input->expected}]
-  (tests 'canonicalize #'normalize/canonicalize group->input->expected))
+  (tests 'canonicalize #'mbql.normalize/canonicalize group->input->expected))
 
 (t/deftest ^:parallel wrap-implicit-field-id-test
   (t/testing "Does our `wrap-implict-field-id` fn work?"
     (doseq [input [10 [:field 10 nil]]]
       (t/testing (pr-str (list 'wrap-implicit-field-id input))
         (t/is (= [:field 10 nil]
-                 (#'normalize/wrap-implicit-field-id input)))))
+                 (#'mbql.normalize/wrap-implicit-field-id input)))))
     (t/testing "Leave legacy clauses as-is; we'll replace them elsewhere"
       (t/is (= [:field-id 10]
-               (#'normalize/wrap-implicit-field-id [:field-id 10]))))))
+               (#'mbql.normalize/wrap-implicit-field-id [:field-id 10]))))))
 
 (t/deftest ^:parallel canonicalize-field-test
   (canonicalize-tests
@@ -854,7 +854,7 @@
       :query    {:filter [:and
                           [:segment "gaid:-11"]
                           [:time-interval [:field-id 6851] -365 :day {}]]}}
-     {:database 1,
+     {:database 1
       :type     :query
       :query    {:filter
                  [:and
@@ -943,7 +943,7 @@
                                                             :default      "Widget"}}}}}
      {:database 4
       :type     :query
-      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+      :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                 :template-tags {"category" {:name         "category"
                                                             :display-name "Category"
                                                             :type         :text
@@ -964,7 +964,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (t/deftest ^:parallel whole-query-transformations-test
-  (tests 'perform-whole-query-transformations #'normalize/perform-whole-query-transformations
+  (tests 'perform-whole-query-transformations #'mbql.normalize/perform-whole-query-transformations
     {(str "If you specify a field in a breakout and in the Fields clause, we should go ahead and remove it from the "
           "Fields clause, because it is (obviously) implied that you should get that Field back.")
      {{:type  :query
@@ -1013,7 +1013,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (t/deftest ^:parallel remove-empty-clauses-test
-  (tests 'remove-empty-clauses #'normalize/remove-empty-clauses
+  (tests 'remove-empty-clauses #'mbql.normalize/remove-empty-clauses
     {"empty sequences should get removed"
      {{:x [], :y [100]}
       {:y [100]}}
@@ -1034,7 +1034,7 @@
       {:a {:b 100}}}}))
 
 (t/deftest ^:parallel remove-empty-options-from-field-clause-test
-  (tests 'remove-empty-clauses #'normalize/remove-empty-clauses
+  (tests 'remove-empty-clauses #'mbql.normalize/remove-empty-clauses
     {"We should remove empty options maps"
      {[:field 2 {}]
       [:field 2 nil]
@@ -1072,12 +1072,12 @@
                       :breakout     [[:field 10 nil] [:field 20 nil]]
                       :filter       [:= [:field 10 nil] [:field 20 {:temporal-unit :day}]]
                       :order-by     [[:desc [:field 10 nil]]]}}
-             (normalize/normalize {:type  "query"
-                                   :query {"source_table" 10
-                                           "AGGREGATION"  "ROWS"
-                                           "breakout"     [10 20]
-                                           "filter"       ["and" ["=" 10 ["datetime-field" 20 "as" "day"]]]
-                                           "order-by"     [[10 "desc"]]}})))))
+             (mbql.normalize/normalize {:type  "query"
+                                        :query {"source_table" 10
+                                                "AGGREGATION"  "ROWS"
+                                                "breakout"     [10 20]
+                                                "filter"       ["and" ["=" 10 ["datetime-field" 20 "as" "day"]]]
+                                                "order-by"     [[10 "desc"]]}})))))
 
 (t/deftest ^:parallel e2e-native-query-with-params-test
   (t/testing "let's try doing the full normalization on a native query w/ params"
@@ -1090,15 +1090,15 @@
               :parameters [{:type   :text
                             :target [:dimension [:template-tag "names_list"]]
                             :value  ["BBQ" "Bakery" "Bar"]}]}
-             (normalize/normalize
-              {:native     {:query          "SELECT * FROM CATEGORIES WHERE {{names_list}}"
-                            "template_tags" {:names_list {:name         "names_list"
-                                                          :display_name "Names List"
-                                                          :type         "dimension"
-                                                          :dimension    ["field-id" 49]}}}
-               :parameters [{:type   "text"
-                             :target ["dimension" ["template-tag" "names_list"]]
-                             :value  ["BBQ" "Bakery" "Bar"]}]})))))
+             (mbql.normalize/normalize
+               {:native     {:query          "SELECT * FROM CATEGORIES WHERE {{names_list}}"
+                             "template_tags" {:names_list {:name         "names_list"
+                                                           :display_name "Names List"
+                                                           :type         "dimension"
+                                                           :dimension    ["field-id" 49]}}}
+                :parameters [{:type   "text"
+                              :target ["dimension" ["template-tag" "names_list"]]
+                              :value  ["BBQ" "Bakery" "Bar"]}]})))))
 
 (t/deftest ^:parallel e2e-big-query-with-segments-test
   (t/testing "let's try normalizing a big query with SEGMENTS"
@@ -1109,7 +1109,7 @@
                                         [:= [:field 3 nil] "Toucan-friendly"]
                                         [:segment 4]
                                         [:segment 5]]}}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:database 1
                :type     :query
                :query    {:source-table 2
@@ -1122,16 +1122,16 @@
   (t/testing "make sure source queries get normalized properly!"
     (t/is (= {:database 4
               :type     :query
-              :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+              :query    {:source-query {:native        "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                         :template-tags {"category" {:name         "category"
                                                                     :display-name "Category"
                                                                     :type         :text
                                                                     :required     true
                                                                     :default      "Widget"}}}}}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:database 4
                :type     :query
-               :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10",
+               :query    {"source_query" {:native         "SELECT * FROM PRODUCTS WHERE CATEGORY = {{category}} LIMIT 10"
                                           "template_tags" {:category {:name         "category"
                                                                       :display-name "Category"
                                                                       :type         "text"
@@ -1143,7 +1143,7 @@
     (t/is (= {:database 4
               :type     :query
               :query    {:source-query {:source-table 1}}}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:database 4
                :type     :query
                :query    {"source_query" {"source_table" 1, "aggregation" "rows"}}})))))
@@ -1155,7 +1155,7 @@
               :query      {:source-table 1}
               :parameters [{:type :id, :target [:dimension [:field 4575 {:source-field 3265}]], :value ["field-id"]}
                            {:type :date/all-options, :target [:dimension [:field 3270 nil]], :value "thismonth"}]}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:type       :query
                :query      {:source-table 1}
                :parameters [{:type "id", :target ["dimension" ["fk->" 3265 4575]], :value ["field-id"]}
@@ -1172,7 +1172,7 @@
                                                :default ["Hudson Borer"]}} ;; default values not keyworded
                        :query "select * from PEOPLE where {{name}}"}
               :type :native}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:database 1
                :native {:template-tags {"name" {:id "1f56330b-3dcb-75a3-8f3d-5c2c2792b749"
                                                :name "name"
@@ -1198,7 +1198,7 @@
                                                                :percent-url    0.0
                                                                :percent-email  0.0
                                                                :average-length 15.63}}}}]}}
-               (normalize/normalize
+               (mbql.normalize/normalize
                 {:query {:source-metadata [{:name          "name"
                                             :display_name  "Name"
                                             :description   nil
@@ -1222,7 +1222,7 @@
                                                                :percent-url    0.0
                                                                :percent-email  0.0
                                                                :average-length 15.63}}}}]}}
-               (normalize/normalize
+               (mbql.normalize/normalize
                 {:source-metadata [{:name          "name"
                                     :display_name  "Name"
                                     :description   nil
@@ -1248,7 +1248,7 @@
                                          {:query {:joins [{:source-query native-source-query}]}}}]
                   (t/testing (str "\n" message)
                     (t/is (= query
-                             (normalize/normalize query)))))))]
+                             (mbql.normalize/normalize query)))))))]
 
       (t/testing "Keys in native query maps should not get normalized"
         (test-normalization
@@ -1270,12 +1270,12 @@
                                [:is-empty [:field 7 nil]]
                                [:= [:field 5 nil] "abc"]
                                [:between [:field 9 nil] 0 25]]}}
-             (#'normalize/canonicalize {:query {:filter [:and
-                                                         [:> [:field-id 4] 1]
-                                                         [:is-empty [:field-id 7]]
-                                                         [:and
-                                                          [:= [:field-id 5] "abc"]
-                                                          [:between [:field-id 9] 0 25]]]}})))))
+             (#'mbql.normalize/canonicalize {:query {:filter [:and
+                                                              [:> [:field-id 4] 1]
+                                                              [:is-empty [:field-id 7]]
+                                                              [:and
+                                                               [:= [:field-id 5] "abc"]
+                                                               [:between [:field-id 9] 0 25]]]}})))))
 
 (t/deftest ^:parallel modernize-fields-test
   (t/testing "some extra tests for Field clause canonicalization to the modern `:field` clause."
@@ -1291,7 +1291,7 @@
                              [:field 1 {:binning {:strategy :bin-width}}]}]
       (t/testing (pr-str form)
         (t/is (= expected
-                 (#'normalize/canonicalize-mbql-clauses form)))))))
+                 (#'mbql.normalize/canonicalize-mbql-clauses form)))))))
 
 (t/deftest ^:parallel modernize-fields-e2e-test
   (t/testing "Should be able to modernize legacy MBQL '95 Field clauses"
@@ -1300,7 +1300,7 @@
               :query    {:source-table 3
                          :breakout     [[:field 11 {:temporal-unit :month}]]
                          :aggregation  [[:count]]}}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:database 1
                :type     :query
                :query    {:source-table 3
@@ -1314,7 +1314,7 @@
                          :source-query {:source-table 2
                                         :aggregation  [[:count]]
                                         :breakout     [[:field 3 {:temporal-unit :month, :source-field 4}]]}}}
-             (normalize/normalize
+             (mbql.normalize/normalize
               {:database 1
                :type     :query
                :query    {:filter       [:> [:field "count" {:base-type :type/Integer}] 5]
@@ -1326,8 +1326,8 @@
   (t/testing "normalize-fragment"
     (t/testing "shouldn't try to do anything crazy non-standard MBQL clauses like `:dimension` (from automagic dashboards)"
       (t/is (= [:time-interval [:dimension "JoinDate"] -30 :day]
-               (normalize/normalize-fragment [:query :filter]
-                                             ["time-interval" ["dimension" "JoinDate"] -30 "day"]))))
+               (mbql.normalize/normalize-fragment [:query :filter]
+                                                  ["time-interval" ["dimension" "JoinDate"] -30 "day"]))))
 
     (t/testing "should be able to modernize Fields anywhere we find them"
       (t/is (= [[:> [:field 1 nil] 3]
@@ -1335,26 +1335,26 @@
                  [:= [:field 2 nil] 2]
                  [:segment 1]]
                 [:metric 1]]
-               (normalize/normalize-fragment nil
-                                             [[:> [:field-id 1] 3]
-                                              ["and" [:= ["FIELD-ID" 2] 2]
-                                               ["segment" 1]]
-                                              [:metric 1]]))))
+               (mbql.normalize/normalize-fragment nil
+                                                  [[:> [:field-id 1] 3]
+                                                   ["and" [:= ["FIELD-ID" 2] 2]
+                                                    ["segment" 1]]
+                                                   [:metric 1]]))))
 
     (t/testing "Should be able to modern Field options anywhere"
       (t/is (= [:field 2 {:temporal-unit :day}]
-               (normalize/normalize-fragment nil
-                                             [:field 2 {"temporal-unit" "day"}]))))))
+               (mbql.normalize/normalize-fragment nil
+                                                  [:field 2 {"temporal-unit" "day"}]))))))
 
 (t/deftest ^:parallel normalize-source-metadata-test
   (t/testing "normalize-source-metadata"
     (t/testing "should convert legacy field_refs to modern `:field` clauses"
       (t/is (= {:field_ref [:field 1 {:temporal-unit :month}]}
-               (normalize/normalize-source-metadata
+               (mbql.normalize/normalize-source-metadata
                 {:field_ref ["datetime-field" ["field-id" 1] "month"]}))))
     (t/testing "should correctly keywordize Field options"
       (t/is (= {:field_ref [:field 1 {:temporal-unit :month}]}
-               (normalize/normalize-source-metadata
+               (mbql.normalize/normalize-source-metadata
                 {:field_ref ["field" 1 {:temporal-unit "month"}]}))))))
 
 (t/deftest ^:parallel do-not-normalize-fingerprints-test
@@ -1367,7 +1367,7 @@
                                               :sd  0
                                               :avg 1}}}]
       (t/is (= fingerprint
-               (normalize/normalize fingerprint)))
+               (mbql.normalize/normalize fingerprint)))
       (let [query {:query
                    {:source-query
                     {:native     "SELECT USER_ID FROM ORDERS LIMIT 1"
@@ -1381,7 +1381,7 @@
                                        :field_ref     [:field "USER_ID" {:base-type :type/Integer}]
                                        :fingerprint   fingerprint}]}}]
         (t/is (= query
-                 (normalize/normalize query)))))))
+                 (mbql.normalize/normalize query)))))))
 
 (t/deftest ^:parallel error-messages-test
   (t/testing "Normalization error messages should be sane"
@@ -1391,9 +1391,9 @@
       (t/is (thrown-with-msg?
              #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
              #"Error normalizing query"
-             (normalize/normalize bad-query)))
+             (mbql.normalize/normalize bad-query)))
       (let [e (try
-                (normalize/normalize bad-query)
+                (mbql.normalize/normalize bad-query)
                 nil
                 (catch #?(:clj Throwable :cljs js/Error) e
                   e))]
@@ -1402,13 +1402,21 @@
           (t/is (= {:query bad-query}
                    (ex-data e))))
         (t/testing "\nParent exception(s) should be even more specific"
-          (let [cause #?(:clj (some-> ^Throwable e .getCause)
-                         :cljs (ex-cause e))]
+          (let [cause (ex-cause e)]
             (t/is (some? cause))
-            (t/is (= "Error normalizing form."
-                     #?(:clj (.getMessage cause)
-                        :cljs (ex-message cause))))
+            (t/is (re-find #"Error normalizing form:" (ex-message cause)))
             (t/is (= {:form       bad-query
                       :path       []
                       :special-fn nil}
                      (ex-data cause)))))))))
+
+(t/deftest ^:parallel remove-unsuitable-temporal-units-test
+  (t/testing "Ignore unsuitable temporal units (such as bucketing a Date by minute) rather than erroring (#16485)"
+    ;; this query is with legacy MBQL syntax. It's just copied directly from the original issue
+    (let [query {:query {:filter ["<"
+                                  ["datetime-field" ["field-literal" "date_seen" "type/Date"] "minute"]
+                                  "2021-05-01T12:30:00"]}}]
+      (t/is (= {:query {:filter [:<
+                                 [:field "date_seen" {:base-type :type/Date}]
+                                 "2021-05-01T12:30:00"]}}
+               (mbql.normalize/normalize query))))))

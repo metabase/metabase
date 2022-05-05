@@ -38,7 +38,7 @@ This is the query builder's notebook editor. It has three default steps.
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
 
 To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
- 
+
 ![Previewing results](./images/notebook/preview-table.png)
 
 ## Picking data
@@ -61,11 +61,11 @@ Broadly speaking, there are three types of columns, each with their own set of f
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
-- **Date** columns give you a calendar or input box so that you can select specific time ranges, or choose all days before or after a certain date.
+  - **Date** columns give you a lot of options to filter by specific date ranges, relative date ranges, and more.
 
-You can add subsequent filter steps after every summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
+You can add subsequent filter steps after each summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
-Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied. 
+Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
 ![An active filter](./images/notebook/filter-badge.png)
 
@@ -76,7 +76,7 @@ If you want to edit your filter, just click the little purple filter at the top 
 One important thing to understand when filtering on a date column is the difference between specific and relative dates:
 
 - **Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
-- **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you for example how many users visited your website in the last 7 days.
+- **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
 
 ### Filtering by a segment
 
@@ -175,7 +175,7 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; they'll only be present in the given question.
 
-You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. 
+You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
 
 ## Sorting results
 
@@ -189,7 +189,7 @@ The row limit step lets you limit how many rows you want from the previous resul
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../administration-guide/data-permissions.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../administration-guide/data-permissions.md#native-querying) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
 
 ## Play around with saved questions
 
@@ -199,14 +199,11 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-![The graphical query builder](./images/asking-questions/simple-mode.png)
-
 If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
 
----
+## Further reading
 
-## Next: Visualizing results
-
-Next, we'll learn how to [visualize results](05-visualizing-results.md).
+- [Visualize results](05-visualizing-results.md).
+- [Asking questions](/learn/questions)
 
 [model]: models.md

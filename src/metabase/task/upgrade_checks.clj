@@ -20,8 +20,7 @@
       (throw (Exception. (format "[%d]: %s" status body))))
     (json/parse-string body keyword)))
 
-;; simple job which looks up all databases and runs a sync on them
-(jobs/defjob CheckForNewVersions [_]
+(jobs/defjob ^{:doc "Simple job which looks up all databases and runs a sync on them"} CheckForNewVersions [_]
   (when (public-settings/check-for-updates)
     (log/debug (trs "Checking for new Metabase version info."))
     (try

@@ -3,7 +3,7 @@
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -489,25 +489,25 @@
              (perms/set-has-partial-permissions? perms path))))))
 
 
-;;; -------------------------------------- set-has-general-permission-of-type? ---------------------------------------
+;;; -------------------------------------- set-has-application-permission-of-type? ---------------------------------------
 
-(deftest set-has-general-permission-of-type?-test
+(deftest set-has-application-permission-of-type?-test
   (doseq [[expected inputs]
           {true
-           [[#{"/"}                       :subscription]
-            [#{"/"}                       :monitoring]
-            [#{"/"}                       :setting]
-            [#{"/general/subscription/"}  :subscription]
-            [#{"/general/monitoring/"}    :monitoring]
-            [#{"/general/setting/"}       :setting]]
+           [[#{"/"}                          :subscription]
+            [#{"/"}                          :monitoring]
+            [#{"/"}                          :setting]
+            [#{"/application/subscription/"} :subscription]
+            [#{"/application/monitoring/"}   :monitoring]
+            [#{"/application/setting/"}      :setting]]
            false
-           [[#{"/general/subscription/"}  :monitoring]
-            [#{"/general/subscription/"}  :setting]
-            [#{"/general/monitoring/"}    :subscription]]}
+           [[#{"/application/subscription/"} :monitoring]
+            [#{"/application/subscription/"} :setting]
+            [#{"/application/monitoring/"}   :subscription]]}
           [perms path] inputs]
-    (testing (pr-str (list 'set-has-general-permission-of-type? perms path))
+    (testing (pr-str (list 'set-has-application-permission-of-type? perms path))
       (is (= expected
-             (perms/set-has-general-permission-of-type? perms path))))))
+             (perms/set-has-application-permission-of-type? perms path))))))
 
 ;;; --------------------------------------- set-has-full-permissions-for-set? ----------------------------------------
 
@@ -685,8 +685,8 @@
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of DB `:schemas` and `:native` perms doesn't fail if only one of them changes"
     (mt/with-temp Database [{db-id :id}]
-      (perms/revoke-data-perms! (group/all-users) db-id)
-      (let [ks [:groups (u/the-id (group/all-users)) db-id :data]]
+      (perms/revoke-data-perms! (perms-group/all-users) db-id)
+      (let [ks [:groups (u/the-id (perms-group/all-users)) db-id :data]]
         (letfn [(perms []
                   (get-in (perms/data-perms-graph) ks))
                 (set-perms! [new-perms]
@@ -716,6 +716,24 @@
                    (perms)))))))))
 
 
+(deftest get-graph-should-unescape-slashes-test
+  (testing "If a schema name contains slash, getting graph should unescape it"
+    (testing "slash"
+      (mt/with-temp PermissionsGroup [group]
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema/with_slash" (mt/id :venues)))
+        (is (= "schema/with_slash"
+               (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
+                   keys
+                   first)))))
+
+    (testing "back slash"
+      (mt/with-temp PermissionsGroup [group]
+        (perms/grant-permissions! group (perms/data-perms-path (mt/id) "schema\\with_backslash" (mt/id :venues)))
+        (is (= "schema\\with_backslash"
+               (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) :data :schemas])
+                   keys
+                   first)))))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -724,7 +742,7 @@
   (testing "Make sure if you try to use the helper function to *revoke* perms for a Personal Collection, you get an Exception"
     (is (thrown? Exception
                  (perms/revoke-collection-permissions!
-                  (group/all-users)
+                  (perms-group/all-users)
                   (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
     (testing "(should apply to descendants as well)"
@@ -732,12 +750,12 @@
                                                        (collection/user->personal-collection
                                                         (mt/user->id :lucky)))}]
         (is (thrown? Exception
-                     (perms/revoke-collection-permissions! (group/all-users) collection)))))))
+                     (perms/revoke-collection-permissions! (perms-group/all-users) collection)))))))
 
 (deftest revoke-collection-permissions-test
   (testing "Should be able to revoke permissions for non-personal Collections"
     (mt/with-temp Collection [{collection-id :id}]
-      (perms/revoke-collection-permissions! (group/all-users) collection-id)
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
       (testing "Collection should still exist"
         (is (some? (db/select-one Collection :id collection-id)))))))
 
@@ -751,13 +769,13 @@
                        perms-type)
         (is (thrown?
              Exception
-             (f (group/all-users)
+             (f (perms-group/all-users)
                 (u/the-id (db/select-one Collection :personal_owner_id (mt/user->id :lucky))))))
 
         (testing "(should apply to descendants as well)"
           (is (thrown?
                Exception
-               (f (group/all-users) collection))))))))
+               (f (perms-group/all-users) collection))))))))
 
 (deftest grant-revoke-root-collection-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
@@ -792,19 +810,19 @@
         (is (= #{"/collection/root/"}
                (perms)))))))
 
-(deftest grant-revoke-general-permissions-test
+(deftest grant-revoke-application-permissions-test
   (mt/with-temp PermissionsGroup [{group-id :id}]
     (letfn [(perms []
               (db/select-field :object Permissions
                                {:where [:and [:= :group_id group-id]
-                                             [:like :object "/general/%"]]}))]
+                                             [:like :object "/application/%"]]}))]
       (is (= nil (perms)))
-      (doseq [[perm-type perm-path] [[:subscription "/general/subscription/"]
-                                     [:monitoring "/general/monitoring/"]
-                                     [:setting "/general/setting/"]]]
+      (doseq [[perm-type perm-path] [[:subscription "/application/subscription/"]
+                                     [:monitoring "/application/monitoring/"]
+                                     [:setting "/application/setting/"]]]
         (testing (format "Able to grant `%s` permission" (name perm-type))
-          (perms/grant-general-permissions! group-id perm-type)
+          (perms/grant-application-permissions! group-id perm-type)
           (is (= (perms)  #{perm-path})))
         (testing (format "Able to revoke `%s` permission" (name perm-type))
-          (perms/revoke-general-permissions! group-id perm-type)
+          (perms/revoke-application-permissions! group-id perm-type)
           (is (not (= (perms) #{perm-path}))))))))

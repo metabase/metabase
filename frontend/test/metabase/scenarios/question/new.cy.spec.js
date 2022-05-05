@@ -239,7 +239,7 @@ describe("scenarios > question > new", () => {
 
       cy.get(".TableInteractive-cellWrapper--lastColumn") // Quantity (last in the default order for Sample Database)
         .eq(1) // first table body cell
-        .should("contain", 2) // quantity for order ID#1
+        .should("contain", "2") // quantity for order ID#1
         .click();
 
       cy.log(
@@ -367,31 +367,40 @@ describe("scenarios > question > new", () => {
       // this should be among the granular selection choices
       cy.findByText("Hour of Day").click();
     });
+  });
 
-    it("'read-only' user should be able to resize column width (metabase#9772)", () => {
-      cy.signIn("readonly");
-      visitQuestion(1);
-      cy.findByText("Tax")
-        .closest(".TableInteractive-headerCellData")
-        .as("headerCell")
-        .then($cell => {
-          const originalWidth = $cell[0].getBoundingClientRect().width;
+  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
+    cy.signIn("readonly");
+    visitQuestion(1);
 
-          cy.wrap($cell)
-            .find(".react-draggable")
-            .trigger("mousedown", 0, 0, { force: true })
-            .trigger("mousemove", 100, 0, { force: true })
-            .trigger("mouseup", 100, 0, { force: true });
+    cy.findByText("Tax")
+      .closest(".TableInteractive-headerCellData")
+      .as("headerCell")
+      .then($cell => {
+        const originalWidth = $cell[0].getBoundingClientRect().width;
 
-          cy.findByText("Started from").click(); // Give DOM some time to update
-
+        // Retries the assertion a few times to ensure it waits for DOM changes
+        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+        function assertColumnResized(attempt = 0) {
           cy.get("@headerCell").then($newCell => {
             const newWidth = $newCell[0].getBoundingClientRect().width;
-
-            expect(newWidth).to.be.gt(originalWidth);
+            if (newWidth === originalWidth && attempt < 3) {
+              cy.wait(100);
+              assertColumnResized(++attempt);
+            } else {
+              expect(newWidth).to.be.gt(originalWidth);
+            }
           });
-        });
-    });
+        }
+
+        cy.wrap($cell)
+          .find(".react-draggable")
+          .trigger("mousedown", 0, 0, { force: true })
+          .trigger("mousemove", 100, 0, { force: true })
+          .trigger("mouseup", 100, 0, { force: true });
+
+        assertColumnResized();
+      });
   });
 });
 

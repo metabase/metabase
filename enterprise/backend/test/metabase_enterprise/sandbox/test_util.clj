@@ -10,14 +10,14 @@
             [metabase.server.middleware.session :as mw.session]
             [metabase.test.data :as data]
             [metabase.test.data.impl :as data.impl]
-            [metabase.test.data.users :as users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.util.test :as tt]))
 
 (defn do-with-user-attributes [test-user-name-or-user-id attributes-map thunk]
-  (let [user-id (users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
+  (let [user-id (test.users/test-user-name-or-user-id->user-id test-user-name-or-user-id)]
     (tu/with-temp-vals-in-db User user-id {:login_attributes attributes-map}
       (thunk))))
 
@@ -64,7 +64,7 @@
             ;; remove perms for All Users group
             (perms/revoke-data-perms! (perms-group/all-users) (data/db))
             ;; create new perms group
-            (users/with-group-for-user [group test-user-name-or-user-id]
+            (test.users/with-group-for-user [group test-user-name-or-user-id]
               (let [{:keys [gtaps attributes]} (s/validate WithGTAPsArgs (args-fn))]
                 ;; set user login_attributes
                 (with-user-attributes test-user-name-or-user-id attributes
@@ -74,7 +74,7 @@
                       (fn []
                         ;; bind user as current user, then run f
                         (if (keyword? test-user-name-or-user-id)
-                          (users/with-test-user test-user-name-or-user-id
+                          (test.users/with-test-user test-user-name-or-user-id
                             (f group))
                           (mw.session/with-current-user (u/the-id test-user-name-or-user-id)
                             (f group))))))))))]

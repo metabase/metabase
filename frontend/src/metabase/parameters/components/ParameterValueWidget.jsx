@@ -102,16 +102,15 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
-  updateFieldValues(props) {
+  updateFieldValues({ dashboard, parameter, fetchField, fetchFieldValues }) {
     // in a dashboard? the field values will be fetched via
     // DashboardApi.parameterValues instead and thus, no need to
     // manually update field values
-    const { dashboard } = props;
     const useChainFilter = dashboard && dashboard.id;
     if (!useChainFilter) {
-      for (const id of getFieldIds(props.parameter)) {
-        props.fetchField(id);
-        props.fetchFieldValues(id);
+      for (const id of getFieldIds(parameter)) {
+        fetchField(id);
+        fetchFieldValues(id);
       }
     }
   }
@@ -165,6 +164,7 @@ export default class ParameterValueWidget extends Component {
           isEnabled={isDashParamWithoutMapping}
         >
           <div
+            ref={this.trigger}
             className={cx(S.parameter, S.noPopover, className, {
               [S.selected]: hasValue,
               [S.isEditing]: isEditing,
@@ -173,6 +173,7 @@ export default class ParameterValueWidget extends Component {
             {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
             <Widget
               {...this.props}
+              target={this.getTargetRef()}
               onFocusChanged={this.onFocusChanged}
               onPopoverClose={this.onPopoverClose}
               disabled={isDashParamWithoutMapping}
@@ -228,6 +229,7 @@ export default class ParameterValueWidget extends Component {
           >
             <Widget
               {...this.props}
+              target={this.getTargetRef()}
               onFocusChanged={this.onFocusChanged}
               onPopoverClose={this.onPopoverClose}
               disabled={isDashParamWithoutMapping}
@@ -253,7 +255,8 @@ function getFields(metadata, parameter) {
 
 function getFieldIds(parameter) {
   const { field_ids = [], field_id } = parameter;
-  return field_id ? [field_id] : field_ids;
+  const fieldIds = field_id ? [field_id] : field_ids;
+  return fieldIds.filter(id => typeof id === "number");
 }
 
 function Widget({
@@ -270,6 +273,7 @@ function Widget({
   parameters,
   dashboard,
   disabled,
+  target,
 }) {
   const DateWidget = DATE_WIDGETS[parameter.type];
   const fields = getFields(metadata, parameter);
@@ -291,6 +295,7 @@ function Widget({
   } else if (fields.length > 0 && parameter.hasOnlyFieldTargets) {
     return (
       <ParameterFieldWidget
+        target={target}
         parameter={parameter}
         parameters={parameters}
         dashboard={dashboard}

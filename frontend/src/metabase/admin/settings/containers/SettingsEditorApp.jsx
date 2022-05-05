@@ -21,6 +21,7 @@ import cx from "classnames";
 import {
   getSettings,
   getSettingValues,
+  getDerivedSettingValues,
   getSections,
   getActiveSection,
   getActiveSectionName,
@@ -32,6 +33,7 @@ const mapStateToProps = (state, props) => {
   return {
     settings: getSettings(state, props),
     settingValues: getSettingValues(state, props),
+    derivedSettingValues: getDerivedSettingValues(state, props),
     sections: getSections(state, props),
     activeSection: getActiveSection(state, props),
     activeSectionName: getActiveSectionName(state, props),
@@ -67,7 +69,7 @@ export default class SettingsEditorApp extends Component {
   }
 
   updateSetting = async (setting, newValue) => {
-    const { settingValues, updateSetting } = this.props;
+    const { settingValues, updateSetting, reloadSettings } = this.props;
 
     this.saveStatusRef.current.setSaving();
 
@@ -85,7 +87,9 @@ export default class SettingsEditorApp extends Component {
         );
       }
 
-      await updateSetting(setting);
+      if (!setting.disableDefaultUpdate) {
+        await updateSetting(setting);
+      }
 
       if (setting.onChanged) {
         await setting.onChanged(
@@ -94,6 +98,10 @@ export default class SettingsEditorApp extends Component {
           settingValues,
           this.handleChangeSetting,
         );
+      }
+
+      if (setting.disableDefaultUpdate) {
+        await reloadSettings();
       }
 
       this.saveStatusRef.current.setSaved();
@@ -130,7 +138,17 @@ export default class SettingsEditorApp extends Component {
   };
 
   renderSettingsPane() {
-    const { activeSection, settingValues } = this.props;
+    const {
+      activeSection,
+      settings,
+      settingValues,
+      derivedSettingValues,
+    } = this.props;
+    const isLoading = settings.length === 0;
+
+    if (isLoading) {
+      return null;
+    }
 
     if (!activeSection) {
       return <NotFound />;
@@ -149,7 +167,9 @@ export default class SettingsEditorApp extends Component {
         <ul>
           {activeSection.settings
             .filter(setting =>
-              setting.getHidden ? !setting.getHidden(settingValues) : true,
+              setting.getHidden
+                ? !setting.getHidden(settingValues, derivedSettingValues)
+                : true,
             )
             .map((setting, index) => (
               <SettingsSetting
