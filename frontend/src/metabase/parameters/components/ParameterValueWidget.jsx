@@ -282,6 +282,7 @@ function Widget({
     return (
       <TextWidget
         className={cx(className, "cursor-not-allowed")}
+        value={value}
         placeholder={placeholder}
         disabled={disabled}
       />
