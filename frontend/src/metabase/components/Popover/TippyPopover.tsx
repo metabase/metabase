@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
-import * as popper from "@popperjs/core";
 import cx from "classnames";
 import { merge } from "icepick";
 
@@ -26,9 +25,7 @@ export interface ITippyPopoverProps extends TippyProps {
   onClose?: () => void;
 }
 
-const PAGE_PADDING = 10;
 const OFFSET: [number, number] = [0, 5];
-const SIZE_TO_FIT_MIN_HEIGHT = 200;
 
 const propTypes = {
   disablContentSandbox: PropTypes.bool,
