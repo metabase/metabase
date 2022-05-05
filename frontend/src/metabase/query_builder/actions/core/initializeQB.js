@@ -245,7 +245,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     return;
   }
 
-  let preserveParameters = false;
   let snippetFetch;
 
   const deserializedCard = serializedCard
@@ -300,8 +299,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     if (!card?.dataset && location.pathname.startsWith("/model")) {
       dispatch(setErrorPage(NOT_FOUND_ERROR));
     }
-
-    preserveParameters = true;
   } else {
     if (options.metric) {
       uiControls.isShowingSummarySidebar = true;
@@ -380,7 +377,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     dispatch(
       updateUrl(freshCard, {
         replaceState: true,
-        preserveParameters,
+        preserveParameters: hasCard,
         objectId,
       }),
     );
