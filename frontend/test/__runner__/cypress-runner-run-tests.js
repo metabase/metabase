@@ -38,7 +38,7 @@ const getSourceFolder = folder => {
 const getReporterConfig = isCI => {
   return isCI
     ? {
-        reporter: "junit",
+        "reporter": "junit",
         "reporter-options": "mochaFile=cypress/results/results-[hash].xml",
       }
     : null;
