@@ -256,11 +256,6 @@ export const initializeQB = (location, params) => {
 
         uiControls.isEditing = !!options.edit;
 
-        if (cardId && currentUser.is_qbnewb) {
-          uiControls.isShowingNewbModal = true;
-          MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
-        }
-
         if (card.archived) {
           dispatch(setErrorPage(ARCHIVED_ERROR));
           card = null;
@@ -313,6 +308,11 @@ export const initializeQB = (location, params) => {
     if (question && question.isSaved()) {
       // Don't set viz automatically for saved questions
       question = question.lockDisplay();
+
+      if (currentUser.is_qbnewb) {
+        uiControls.isShowingNewbModal = true;
+        MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
+      }
     }
 
     if (question && question.isNative() && snippetFetch) {
