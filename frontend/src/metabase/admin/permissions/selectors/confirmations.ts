@@ -6,19 +6,32 @@ import {
   getNativePermission,
   getSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import { EntityId } from "../types";
+import Database from "metabase-lib/lib/metadata/Database";
+
+export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
+  t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
 
 // these are all the permission levels ordered by level of access
 const PERM_LEVELS = ["write", "read", "all", "controlled", "none", "block"];
-function hasGreaterPermissions(a, b) {
-  return PERM_LEVELS.indexOf(a) - PERM_LEVELS.indexOf(b) < 0;
+function hasGreaterPermissions(
+  a: string,
+  b: string,
+  descendingPermissions = PERM_LEVELS,
+) {
+  return (
+    descendingPermissions.indexOf(a) - descendingPermissions.indexOf(b) < 0
+  );
 }
 
 export function getPermissionWarning(
-  value,
-  defaultGroupValue,
-  entityType,
-  defaultGroup,
-  groupId,
+  value: string,
+  defaultGroupValue: string,
+  entityType: string | null,
+  defaultGroup: Group,
+  groupId: Group["id"],
+  descendingPermissions?: string[],
 ) {
   if (!defaultGroup || groupId === defaultGroup.id) {
     return null;
@@ -27,18 +40,19 @@ export function getPermissionWarning(
   if (value === "controlled" && defaultGroupValue === "controlled") {
     return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
-  if (hasGreaterPermissions(defaultGroupValue, value)) {
-    return t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
+  if (hasGreaterPermissions(defaultGroupValue, value, descendingPermissions)) {
+    return getDefaultGroupHasHigherAccessText(defaultGroup);
   }
   return null;
 }
 
 export function getPermissionWarningModal(
-  value,
-  defaultGroupValue,
-  entityType,
-  defaultGroup,
-  groupId,
+  value: string,
+  defaultGroupValue: string,
+  entityType: string | null,
+  defaultGroup: Group,
+  groupId: Group["id"],
+  descendingPermissions?: string[],
 ) {
   const permissionWarning = getPermissionWarning(
     value,
@@ -46,6 +60,7 @@ export function getPermissionWarningModal(
     entityType,
     defaultGroup,
     groupId,
+    descendingPermissions,
   );
   if (permissionWarning) {
     return {
@@ -62,9 +77,9 @@ export function getPermissionWarningModal(
 }
 
 export function getControlledDatabaseWarningModal(
-  permissions,
-  groupId,
-  entityId,
+  permissions: GroupsPermissions,
+  groupId: Group["id"],
+  entityId: EntityId,
 ) {
   if (
     getSchemasPermission(permissions, groupId, entityId, "data") !==
@@ -78,7 +93,12 @@ export function getControlledDatabaseWarningModal(
   }
 }
 
-export function getRawQueryWarningModal(permissions, groupId, entityId, value) {
+export function getRawQueryWarningModal(
+  permissions: GroupsPermissions,
+  groupId: Group["id"],
+  entityId: EntityId,
+  value: string,
+) {
   if (
     value === "write" &&
     getNativePermission(permissions, groupId, entityId) !== "write" &&
@@ -97,11 +117,11 @@ export function getRawQueryWarningModal(permissions, groupId, entityId, value) {
 // warn the user that the access to raw queries will be revoked as well.
 // This warning will only be shown if the user is editing the permissions of individual tables.
 export function getRevokingAccessToAllTablesWarningModal(
-  database,
-  permissions,
-  groupId,
-  entityId,
-  value,
+  database: Database,
+  permissions: GroupsPermissions,
+  groupId: Group["id"],
+  entityId: EntityId,
+  value: string,
 ) {
   if (
     value === "none" &&
@@ -120,7 +140,7 @@ export function getRevokingAccessToAllTablesWarningModal(
     const afterChangesNoAccessToAnyTable = _.every(
       allTableEntityIds,
       id =>
-        getFieldsPermission(permissions, groupId, id) === "none" ||
+        getFieldsPermission(permissions, groupId, id, "data") === "none" ||
         _.isEqual(id, entityId),
     );
     if (afterChangesNoAccessToAnyTable) {

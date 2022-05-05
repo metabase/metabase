@@ -373,7 +373,7 @@ function QueryBuilder(props) {
   const { isRunning } = uiControls;
 
   const onTimeout = useCallback(() => {
-    if (Notification.permission === "default") {
+    if ("Notification" in window && Notification.permission === "default") {
       setIsShowingToaster(true);
     }
   }, []);
@@ -389,7 +389,11 @@ function QueryBuilder(props) {
     if (isLoadingComplete) {
       setIsShowingToaster(false);
 
-      if (Notification.permission === "granted" && document.hidden) {
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
         showNotification(
           t`All Set! Your question is ready.`,
           t`${card.name} is loaded.`,
