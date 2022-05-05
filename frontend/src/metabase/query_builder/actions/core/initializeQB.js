@@ -96,7 +96,7 @@ const ARCHIVED_ERROR = {
 
 const NOT_FOUND_ERROR = {
   data: {
-    error_code: "archived",
+    error_code: "not-found",
   },
   context: "query-builder",
 };
