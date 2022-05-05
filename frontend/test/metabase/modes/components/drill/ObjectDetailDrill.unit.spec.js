@@ -179,7 +179,7 @@ describe("ObjectDetailDrill", () => {
 
     describe("from dashboard", () => {
       describe("without parameters", () => {
-        const { actions, cellValue } = setup({
+        const { actions } = setup({
           question: SAVED_QUESTION,
           column: ORDERS.ID.column(),
           extraData: {
@@ -191,15 +191,15 @@ describe("ObjectDetailDrill", () => {
           expect(actions).toMatchObject([
             {
               name: "object-detail",
-              url: expect.any(Function),
+              question: expect.any(Function),
             },
           ]);
         });
 
         it("should return correct URL to object detail", () => {
           const [action] = actions;
-          expect(action.url()).toBe(
-            `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}/${cellValue}`,
+          expect(action.question().getUrl()).toBe(
+            `/question/${SAVED_QUESTION.id()}-${SAVED_QUESTION.displayName()}`,
           );
         });
       });
@@ -222,7 +222,7 @@ describe("ObjectDetailDrill", () => {
           {
             name: "object-detail",
             question: expect.any(Function),
-            extra: expect.any(Function),
+            zoomInRow: cellValue,
           },
         ]);
       });
@@ -230,7 +230,7 @@ describe("ObjectDetailDrill", () => {
       it("should return correct action", () => {
         const [action] = actions;
         expect(action.question()).toBe(SAVED_QUESTION);
-        expect(action.extra()).toEqual({ objectId: cellValue });
+        expect(action.zoomInRow).toEqual(cellValue);
       });
     });
   });
@@ -254,6 +254,11 @@ describe("ObjectDetailDrill", () => {
           "source-table": PRODUCTS.id,
           filter: ["=", PRODUCTS.ID.reference(), cellValue],
         });
+      });
+
+      it("should supply the foreign key as a zoomInRow parameter", () => {
+        const [action] = actions;
+        expect(action.zoomInRow).toEqual(cellValue);
       });
     });
 
