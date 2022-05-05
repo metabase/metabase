@@ -61,6 +61,32 @@ async function verifyMatchingDashcardAndParameters({
   }
 }
 
+function hasNativeSnippets(card) {
+  const tags = Object.values(
+    getIn(card, ["dataset_query", "native", "template-tags"]) || {},
+  );
+  return tags.some(t => t.type === "snippet");
+}
+
+async function getSnippetsLoader({ card, dispatch, getState }) {
+  const dbId = getIn(card, ["dataset_query", "database"]);
+
+  let database = Databases.selectors.getObject(getState(), {
+    entityId: dbId,
+  });
+
+  if (!database) {
+    await dispatch(Databases.actions.fetchList());
+    database = Databases.selectors.getObject(getState(), {
+      entityId: dbId,
+    });
+  }
+
+  if (database && database.native_permissions === "write") {
+    return dispatch(Snippets.actions.fetchList());
+  }
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
@@ -172,29 +198,9 @@ export const initializeQB = (location, params) => {
             }
           }
         }
-        // if this card has any snippet tags we might need to fetch snippets pending permissions
-        if (
-          Object.values(
-            getIn(card, ["dataset_query", "native", "template-tags"]) || {},
-          ).filter(t => t.type === "snippet").length > 0
-        ) {
-          const dbId = getIn(card, ["dataset_query", "database"]);
-          let database = Databases.selectors.getObject(getState(), {
-            entityId: dbId,
-          });
-          // if we haven't already loaded this database, block on loading dbs now so we can check write permissions
-          if (!database) {
-            await dispatch(Databases.actions.fetchList());
-            database = Databases.selectors.getObject(getState(), {
-              entityId: dbId,
-            });
-          }
 
-          // database could still be missing if the user doesn't have any permissions
-          // if the user has native permissions against this db, fetch snippets
-          if (database && database.native_permissions === "write") {
-            snippetFetch = dispatch(Snippets.actions.fetchList());
-          }
+        if (hasNativeSnippets(card)) {
+          snippetFetch = getSnippetsLoader({ card, dispatch, getState });
         }
 
         MetabaseAnalytics.trackStructEvent(
