@@ -46,6 +46,31 @@ const NOT_FOUND_ERROR = {
   context: "query-builder",
 };
 
+function checkShouldPropagateDashboardParameters({
+  cardId,
+  deserializedCard,
+  originalCard,
+}) {
+  if (!deserializedCard) {
+    return false;
+  }
+  if (cardId && deserializedCard.parameters) {
+    return true;
+  }
+  if (!originalCard) {
+    return false;
+  }
+  const equalCards = cardIsEquivalent(deserializedCard, originalCard, {
+    checkParameters: false,
+  });
+  const differentParameters = !cardIsEquivalent(
+    deserializedCard,
+    originalCard,
+    { checkParameters: true },
+  );
+  return equalCards && differentParameters;
+}
+
 async function verifyMatchingDashcardAndParameters({
   dispatch,
   dashboardId,
@@ -143,51 +168,12 @@ async function getCard({ cardId, deserializedCard, dispatch, getState }) {
     // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
     // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
     card.original_card_id = card.id;
-
-    // if there's a card in the url, it may have parameters from a dashboard
-    if (deserializedCard && deserializedCard.parameters) {
-      const metadata = getMetadata(getState());
-      const { dashboardId, dashcardId, parameters } = deserializedCard;
-      verifyMatchingDashcardAndParameters({
-        dispatch,
-        dashboardId,
-        dashcardId,
-        cardId,
-        parameters,
-        metadata,
-      });
-
-      card.parameters = parameters;
-      card.dashboardId = dashboardId;
-      card.dashcardId = dashcardId;
-    }
   } else if (card.original_card_id) {
     const deserializedCard = card;
     originalCard = await loadCard(card.original_card_id);
 
     if (cardIsEquivalent(deserializedCard, originalCard)) {
       card = Utils.copy(originalCard);
-
-      if (
-        !cardIsEquivalent(deserializedCard, originalCard, {
-          checkParameters: true,
-        })
-      ) {
-        const metadata = getMetadata(getState());
-        const { dashboardId, dashcardId, parameters } = deserializedCard;
-        verifyMatchingDashcardAndParameters({
-          dispatch,
-          dashboardId,
-          dashcardId,
-          cardId: card.id,
-          parameters,
-          metadata,
-        });
-
-        card.parameters = parameters;
-        card.dashboardId = dashboardId;
-        card.dashcardId = dashcardId;
-      }
     }
   }
 
@@ -256,6 +242,28 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     });
     card = loadedCards.card;
     originalCard = loadedCards.originalCard;
+
+    const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
+      cardId,
+      deserializedCard,
+      originalCard,
+    });
+    if (shouldPropagateParameters) {
+      const metadata = getMetadata(getState());
+      const { dashboardId, dashcardId, parameters } = deserializedCard;
+      verifyMatchingDashcardAndParameters({
+        dispatch,
+        dashboardId,
+        dashcardId,
+        cardId: card.id,
+        parameters,
+        metadata,
+      });
+
+      card.parameters = parameters;
+      card.dashboardId = dashboardId;
+      card.dashcardId = dashcardId;
+    }
 
     if (hasNativeSnippets(card)) {
       snippetFetch = getSnippetsLoader({ card, dispatch, getState });
