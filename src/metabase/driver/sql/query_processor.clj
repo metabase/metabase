@@ -154,15 +154,16 @@
   ([driver day-of-week offset]
    (adjust-day-of-week driver day-of-week offset hx/mod))
 
-  ([_driver
+  ([driver
     day-of-week
     offset :- s/Int
     mod-fn :- (s/pred fn?)]
-   (if (not= offset 0)
-     (hsql/call :case
-       (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
-       :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
-     day-of-week)))
+   (cond
+     (zero? offset) day-of-week
+     (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
+     :else          (hsql/call :case
+                      (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
+                      :else                                                 (mod-fn (hx/+ day-of-week offset) 7)))))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL

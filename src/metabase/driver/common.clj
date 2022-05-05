@@ -446,8 +446,8 @@
 
 (defn start-of-week-offset-for-day
   "Like [[start-of-week-offset]] but takes a `start-of-week` keyword like `:sunday` rather than ` driver`. Returns the
-  offset needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day of week in the range
-  1..7 with [[metabase.public-settings/start-of-week]] as 1."
+  offset (as a negative number) needed to adjust a day of week in the range 1..7 with `start-of-week` as one to a day
+  of week in the range 1..7 with [[metabase.public-settings/start-of-week]] as 1."
   [start-of-week]
   (let [db-start-of-week     (.indexOf days-of-week start-of-week)
         target-start-of-week (start-of-week->int)
