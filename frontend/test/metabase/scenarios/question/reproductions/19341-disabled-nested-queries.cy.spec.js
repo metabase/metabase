@@ -36,14 +36,10 @@ describe("issue 19341", () => {
       // So it should automatically select it as a database
       // When "Orders" table name appears, it means the picker has selected the sample database
       cy.findByText("Loading...").should("not.exist");
-      // cy.findByText("Orders");
-
-      // cy.findByText("Sample Database").click(); // go back to DB list
       cy.findByText("Saved Questions").should("not.exist");
 
       // Ensure the search doesn't list saved questions
       cy.findByPlaceholderText("Search for a table…").type("Ord");
-      // // As there is only 1 DB
       cy.findByText("Loading...").should("not.exist");
       cy.findAllByText(/Saved question in/i).should("not.exist");
       cy.findAllByText(/Table in/i).should("exist");

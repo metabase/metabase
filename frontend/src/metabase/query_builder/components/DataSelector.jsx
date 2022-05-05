@@ -591,7 +591,7 @@ export class UnconnectedDataSelector extends Component {
     return index < steps.length - 1 ? steps[index + 1] : null;
   }
 
-  getPreviousStep(debug = true) {
+  getPreviousStep() {
     const { steps } = this.props;
     const { activeStep } = this.state;
     if (this.isLoadingDatasets() || activeStep === null) {
@@ -604,63 +604,31 @@ export class UnconnectedDataSelector extends Component {
       return null;
     }
 
-    if (debug) {
-      console.log("<--- getPreviousStep:", activeStep, index);
-    }
-
     // move to previous step
     index -= 1;
 
     // Schema: skip another step backwards
-    console.log(
-      steps[index],
-      steps[index] === SCHEMA_STEP,
-      this.props.useOnlyAvailableSchema,
-      this.state.schemas,
-    );
     if (
       steps[index] === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       this.state.schemas.length === 1
     ) {
-      console.log("\tskip schema");
       index -= 1;
     }
 
     // Database: skip another step backwards
     const databases = this.getDatabases();
-    const filteredDatabases = databases; // .filter(db => !db.is_saved_questions);
-    console.log(
-      steps[index],
-      steps[index] === DATABASE_STEP,
-      this.props.useOnlyAvailableDatabase,
-      filteredDatabases,
-      this.state.databases,
-    );
     if (
       steps[index] === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
-      filteredDatabases.length === 1
-      // this.state.databases.length === 1
+      databases.length === 1
     ) {
-      console.log("\tskip DB");
       index -= 1;
     }
 
     // data bucket step doesn't make a lot of sense when there're no datasets
-    console.log(
-      steps[index],
-      steps[index] === DATA_BUCKET_STEP,
-      !this.hasUsableDatasets(),
-    );
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableDatasets()) {
-      console.log("");
       return null;
-    }
-
-    if (debug) {
-      console.log("index --->", index);
-      console.log("");
     }
 
     // can't go back to a previous step
@@ -942,13 +910,6 @@ export class UnconnectedDataSelector extends Component {
       hasFiltering: true,
       hasInitialFocus: !this.showTableSearch(),
     };
-
-    console.log(
-      "activeStep:",
-      this.state.activeStep,
-      this.getPreviousStep(false),
-    );
-    console.log("");
 
     switch (this.state.activeStep) {
       case COLLECTION_DATASET_STEP:

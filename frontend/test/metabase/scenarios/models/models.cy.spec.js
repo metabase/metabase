@@ -228,13 +228,7 @@ describe("scenarios > models", () => {
         cy.icon("chevronleft").click();
 
         cy.findByText("Raw Data").click();
-        // cy.findByText("Sample Database").click(); // go back to db list
-        // cy.findByText("Saved Questions").should("not.exist");
-        // testDataPickerSearch({
-        //   inputPlaceholderText: "Search for a table…",
-        //   query: "Ord",
-        //   tables: true,
-        // });
+        // jumped straight to the DB tables as there is only 1 DB
         cy.findByText("Orders");
       });
     });
