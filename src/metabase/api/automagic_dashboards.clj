@@ -1,6 +1,7 @@
 (ns metabase.api.automagic-dashboards
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
+            [clojure.string :as str]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]
@@ -105,8 +106,9 @@
   {show   Show
    entity Entity}
   (if (= entity "transform")
-    (transform.dashboard/dashboard ((->entity entity) entity-id-or-query))
-    (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)}))))
+    (transform.dashboard/dashboard (->entity entity entity-id-or-query))
+    (-> (->entity entity entity-id-or-query)
+        (automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
   "Return an automagic dashboard for entity `entity` with id `id` using rule `rule`."
@@ -115,8 +117,9 @@
    show   Show
    prefix Prefix
    rule   Rule}
-  (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)
-                                                                  :rule ["table" prefix rule]})))
+  (-> (->entity entity entity-id-or-query)
+      (automagic-analysis {:show (keyword show)
+                           :rule ["table" prefix rule]})))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/cell/:cell-query"
   "Return an automagic dashboard analyzing cell in  automagic dashboard for entity `entity`
@@ -126,8 +129,7 @@
   {entity     Entity
    show       Show
    cell-query Base64EncodedJSON}
-  (-> entity-id-or-query
-      ((->entity entity))
+  (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (keyword show)
                            :cell-query (decode-base64-json cell-query)})))
 
@@ -140,8 +142,7 @@
    prefix     Prefix
    rule       Rule
    cell-query Base64EncodedJSON}
-  (-> entity-id-or-query
-      ((->entity entity))
+  (-> (->entity entity entity-id-or-query)
       (automagic-analysis {:show       (keyword show)
                            :rule       ["table" prefix rule]
                            :cell-query (decode-base64-json cell-query)})))
@@ -153,8 +154,8 @@
   {show              Show
    entity            Entity
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :query-filter nil
                                             :comparison?  true})]
@@ -169,8 +170,8 @@
    prefix            Prefix
    rule              Rule
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
                                             :query-filter nil
@@ -186,8 +187,8 @@
    show              Show
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :query-filter nil
                                             :comparison?  true})]
@@ -204,8 +205,8 @@
    rule              Rule
    cell-query        Base64EncodedJSON
    comparison-entity ComparisonEntity}
-  (let [left      ((->entity entity) entity-id-or-query)
-        right     ((->entity comparison-entity) comparison-entity-id-or-query)
+  (let [left      (->entity entity entity-id-or-query)
+        right     (->entity comparison-entity comparison-entity-id-or-query)
         dashboard (automagic-analysis left {:show         (keyword show)
                                             :rule         ["table" prefix rule]
                                             :query-filter nil})]
