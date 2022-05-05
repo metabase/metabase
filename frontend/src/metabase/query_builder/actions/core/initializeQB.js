@@ -242,7 +242,11 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     });
     card = loadedCards.card;
     originalCard = loadedCards.originalCard;
+  } else {
+    card = getCardForBlankQuestion(options);
+  }
 
+  if (hasCard) {
     const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
       cardId,
       deserializedCard,
@@ -289,8 +293,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
 
     preserveParameters = true;
   } else {
-    card = getCardForBlankQuestion(options);
-
     if (options.metric) {
       uiControls.isShowingSummarySidebar = true;
     }
