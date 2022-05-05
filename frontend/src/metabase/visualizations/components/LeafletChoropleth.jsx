@@ -35,7 +35,7 @@ const LeafletChoropleth = ({
         markerZoomAnimation: false,
         trackResize: true,
         worldCopyJump: true,
-        zoomAnimation: true,
+        zoomAnimation: false,
         zoomSnap: 0,
 
         // disable zoom controls
@@ -102,11 +102,7 @@ const LeafletChoropleth = ({
       // ]).addTo(map);
 
       map.fitBounds(minimalBounds);
-      map.panTo([0, 0]);
-      // map.fitWorld(minimalBounds);
-      // map.setMaxBounds([[-50, -50], [50, 50]]);
-      // map.setMaxBounds(map.getBounds());
-      console.log(map.getBounds());
+      map.panTo([0, 0], { animate: false });
 
       return () => {
         map.remove();
