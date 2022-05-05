@@ -76,6 +76,7 @@ class TableInteractive extends Component {
     this.state = {
       columnWidths: [],
       contentWidths: null,
+      showDetailShortcut: true,
     };
     this.columnHasResized = {};
     this.headerRefs = [];
@@ -115,6 +116,7 @@ class TableInteractive extends Component {
 
     this._measure();
     this._findIDColumn(this.props.data, this.props.isPivoted);
+    this._showDetailShortcut(this.props.query, this.props.isPivoted);
   }
 
   componentWillUnmount() {
@@ -147,6 +149,7 @@ class TableInteractive extends Component {
 
     if (isDataChange) {
       this._findIDColumn(nextData, newProps.isPivoted);
+      this._showDetailShortcut(this.props.query, this.props.isPivoted);
     }
   }
 
@@ -161,6 +164,14 @@ class TableInteractive extends Component {
       IDColumn: pkIndex === -1 ? null : data.cols[pkIndex],
     });
     document.addEventListener("keydown", this.onKeyDown);
+  };
+
+  _showDetailShortcut = (query, isPivoted) => {
+    const hasAggregation = !!query.aggregations?.()?.length;
+    console.log({ hasAggregation });
+    this.setState({
+      showDetailShortcut: !(isPivoted || hasAggregation),
+    });
   };
 
   _getColumnSettings(props) {
@@ -455,8 +466,8 @@ class TableInteractive extends Component {
   };
 
   cellRenderer = ({ key, style, rowIndex, columnIndex }) => {
-    const { data, settings, isPivoted } = this.props;
-    const { dragColIndex } = this.state;
+    const { data, settings } = this.props;
+    const { dragColIndex, showDetailShortcut } = this.state;
     const { rows, cols } = data;
 
     const column = cols[columnIndex];
@@ -500,7 +511,7 @@ class TableInteractive extends Component {
         }}
         className={cx("TableInteractive-cellWrapper text-dark", {
           "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-          padLeft: columnIndex === 0 && this.props.isPivoted,
+          padLeft: columnIndex === 0 && !showDetailShortcut,
           "TableInteractive-cellWrapper--lastColumn":
             columnIndex === cols.length - 1,
           "TableInteractive-emptyCell": value == null,
@@ -526,9 +537,11 @@ class TableInteractive extends Component {
             : undefined
         }
         onMouseEnter={
-          !isPivoted ? e => this.handleHoverRow(e, rowIndex) : undefined
+          showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
         }
-        onMouseLeave={!isPivoted ? e => this.handleLeaveRow() : undefined}
+        onMouseLeave={
+          showDetailShortcut ? e => this.handleLeaveRow() : undefined
+        }
         tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
@@ -557,7 +570,7 @@ class TableInteractive extends Component {
   }
 
   getColumnPositions = () => {
-    let left = !this.props.isPivoted ? SIDEBAR_WIDTH : 0;
+    let left = this.state.showDetailShortcut ? SIDEBAR_WIDTH : 0;
     return this.props.data.cols.map((col, index) => {
       const width = this.getColumnWidth({ index });
       const pos = {
@@ -576,7 +589,7 @@ class TableInteractive extends Component {
     const { cols } = this.props.data;
     const indexes = cols.map((col, index) => index);
     indexes.splice(dragColNewIndex, 0, indexes.splice(dragColIndex, 1)[0]);
-    let left = !this.props.isPivoted ? SIDEBAR_WIDTH : 0;
+    let left = this.state.showDetailShortcut ? SIDEBAR_WIDTH : 0;
     const lefts = indexes.map(index => {
       const thisLeft = left;
       left += columnPositions[index].width;
@@ -625,7 +638,7 @@ class TableInteractive extends Component {
       getColumnTitle,
       renderTableHeaderWrapper,
     } = this.props;
-    const { dragColIndex } = this.state;
+    const { dragColIndex, showDetailShortcut } = this.state;
     const { cols } = data;
     const column = cols[columnIndex];
 
@@ -710,7 +723,7 @@ class TableInteractive extends Component {
             "TableInteractive-cellWrapper TableInteractive-headerCellData text-medium text-brand-hover",
             {
               "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-              padLeft: columnIndex === 0 && !this.props.isPivoted,
+              padLeft: columnIndex === 0 && !showDetailShortcut,
               "TableInteractive-cellWrapper--lastColumn":
                 columnIndex === cols.length - 1,
               "TableInteractive-cellWrapper--active": isDragging,
@@ -797,13 +810,15 @@ class TableInteractive extends Component {
   };
 
   getDisplayColumnWidth = ({ index: displayIndex }) => {
-    if (!this.props.isPivoted && displayIndex === 0) {
+    if (this.state.showDetailShortcut && displayIndex === 0) {
       return SIDEBAR_WIDTH;
     }
 
-    // if this is not a pivot table, we've added a column of empty cells and need to shift
+    // if the detail shortcut is visible, we've added a column of empty cells and need to shift
     // the display index to get the data index
-    const dataIndex = !this.props.isPivoted ? displayIndex - 1 : displayIndex;
+    const dataIndex = this.state.showDetailShortcut
+      ? displayIndex - 1
+      : displayIndex;
 
     return this.getColumnWidth({ index: dataIndex });
   };
@@ -872,7 +887,6 @@ class TableInteractive extends Component {
       data: { cols, rows },
       className,
       scrollToColumn,
-      isPivoted,
     } = this.props;
 
     if (!width || !height) {
@@ -880,7 +894,7 @@ class TableInteractive extends Component {
     }
 
     const headerHeight = this.props.tableHeaderHeight || HEADER_HEIGHT;
-    const gutterColumn = !isPivoted ? 1 : 0;
+    const gutterColumn = this.state.showDetailShortcut ? 1 : 0;
 
     return (
       <ScrollSync>

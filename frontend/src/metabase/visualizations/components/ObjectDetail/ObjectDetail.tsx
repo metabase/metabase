@@ -92,7 +92,7 @@ export interface ObjectDetailProps {
   data: DatasetData;
   question: Question;
   table: Table | null;
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
   zoomedRowID: ObjectId;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
@@ -228,7 +228,9 @@ export function ObjectDetailFn({
   });
 
   const displayId = getDisplayId({ cols: data.cols, zoomedRow });
-  const hasRelationships = tableForeignKeys && !!tableForeignKeys.length;
+  const hasPk = !!data.cols.find(isPK);
+  const hasRelationships =
+    tableForeignKeys && !!tableForeignKeys.length && hasPk;
 
   return (
     <Modal
@@ -259,6 +261,7 @@ export function ObjectDetailFn({
               objectName={objectName}
               zoomedRow={zoomedRow}
               settings={settings}
+              hasRelationships={hasRelationships}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
               tableForeignKeys={tableForeignKeys}
@@ -348,6 +351,7 @@ export interface ObjectDetailBodyProps {
   objectName: string;
   zoomedRow: unknown[] | undefined;
   settings: unknown;
+  hasRelationships: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: unknown) => boolean;
   tableForeignKeys: ForeignKey[];
@@ -362,6 +366,7 @@ export function ObjectDetailBody({
   objectName,
   zoomedRow,
   settings,
+  hasRelationships = false,
   onVisualizationClick,
   visualizationIsClickable,
   tableForeignKeys,
@@ -377,12 +382,14 @@ export function ObjectDetailBody({
         onVisualizationClick={onVisualizationClick}
         visualizationIsClickable={visualizationIsClickable}
       />
-      <Relationships
-        objectName={objectName}
-        tableForeignKeys={tableForeignKeys}
-        tableForeignKeyReferences={tableForeignKeyReferences}
-        foreignKeyClicked={followForeignKey}
-      />
+      {hasRelationships && (
+        <Relationships
+          objectName={objectName}
+          tableForeignKeys={tableForeignKeys}
+          tableForeignKeyReferences={tableForeignKeyReferences}
+          foreignKeyClicked={followForeignKey}
+        />
+      )}
     </ObjectDetailBodyWrapper>
   );
 }
