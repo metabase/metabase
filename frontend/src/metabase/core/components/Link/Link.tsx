@@ -12,7 +12,7 @@ export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   activeClassName?: string;
   activeStyle?: CSSProperties;
   onlyActiveOnIndex?: boolean;
-  TooltipProps: Omit<TooltipProps, "tooltip">;
+  TooltipProps?: Omit<TooltipProps, "tooltip">;
 }
 
 const Link = ({
@@ -20,7 +20,7 @@ const Link = ({
   children,
   disabled,
   tooltip,
-  TooltipProps,
+  TooltipProps = {},
   ...props
 }: LinkProps): JSX.Element => {
   const link = (
