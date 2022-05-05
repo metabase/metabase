@@ -14,6 +14,7 @@ import { DashboardApi } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getUser } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
@@ -200,8 +201,6 @@ export const initializeQB = (location, params) => {
     dispatch(resetQB());
     dispatch(cancelQuery());
 
-    const { currentUser } = getState();
-
     const cardId = Urls.extractEntityId(params.slug);
     let card, originalCard;
 
@@ -307,6 +306,7 @@ export const initializeQB = (location, params) => {
       // Don't set viz automatically for saved questions
       question = question.lockDisplay();
 
+      const currentUser = getUser(getState());
       if (currentUser.is_qbnewb) {
         uiControls.isShowingNewbModal = true;
         MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
