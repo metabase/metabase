@@ -76,23 +76,50 @@
     (Integer/parseInt x)
     x))
 
-(def ^:private ->entity
-  {"table"     (comp api/read-check Table ensure-int)
-   "segment"   (comp api/read-check Segment ensure-int)
-   "question"  (comp api/read-check Card ensure-int)
-   "adhoc"     (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
-   "metric"    (comp api/read-check Metric ensure-int)
-   "field"     (comp api/read-check Field ensure-int)
-   "transform" (fn [transform-name]
-                 (->> transform-name
-                      tf.materialize/get-collection
-                      Collection
-                      api/read-check)
-                 transform-name)})
+(defmulti ^:private ->entity
+  "Parse/decode/coerce string `s` an to an entity of `entity-type`. `s` is something like a unparsed integer row ID,
+  encoded query, or transform name."
+  {:arglists '([entity-type s])}
+  (fn [entity-type _s]
+    (keyword entity-type)))
+
+(defmethod ->entity :table
+  [_entity-type table-id-str]
+  ;; table-id can also be a source query reference like `card__1` so in that case we should pull the ID out and use the
+  ;; `:question` method instead
+  (if-let [[_ card-id-str] (when (string? table-id-str)
+                             (re-matches #"^card__(\d+$)" table-id-str))]
+    (->entity :question card-id-str)
+    (api/read-check (Table (ensure-int table-id-str)))))
+
+(defmethod ->entity :segment
+  [_entity-type segment-id-str]
+  (api/read-check (Segment (ensure-int segment-id-str))))
+
+(defmethod ->entity :question
+  [_entity-type card-id-str]
+  (api/read-check (Card (ensure-int card-id-str))))
+
+(defmethod ->entity :adhoc
+  [_entity-type encoded-query]
+  (adhoc-query-read-check (query/adhoc-query (decode-base64-json encoded-query))))
+
+(defmethod ->entity :metric
+  [_entity-type metric-id-str]
+  (api/read-check (Metric (ensure-int metric-id-str))))
+
+(defmethod ->entity :field
+  [_entity-type field-id-str]
+  (api/read-check (Field (ensure-int field-id-str))))
+
+(defmethod ->entity :transform
+  [_entity-type transform-name]
+  (api/read-check (Collection (tf.materialize/get-collection transform-name)))
+  transform-name)
 
 (def ^:private Entity
   (su/with-api-error-message
-      (apply s/enum (keys ->entity))
+      (apply s/enum (map name (keys (methods ->entity))))
     (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
