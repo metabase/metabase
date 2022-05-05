@@ -32,6 +32,20 @@ import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { loadMetadataForCard, resetQB } from "./core";
 
+const ARCHIVED_ERROR = {
+  data: {
+    error_code: "archived",
+  },
+  context: "query-builder",
+};
+
+const NOT_FOUND_ERROR = {
+  data: {
+    error_code: "not-found",
+  },
+  context: "query-builder",
+};
+
 async function verifyMatchingDashcardAndParameters({
   dispatch,
   dashboardId,
@@ -83,20 +97,6 @@ async function getSnippetsLoader({ card, dispatch, getState }) {
     return dispatch(Snippets.actions.fetchList());
   }
 }
-
-const ARCHIVED_ERROR = {
-  data: {
-    error_code: "archived",
-  },
-  context: "query-builder",
-};
-
-const NOT_FOUND_ERROR = {
-  data: {
-    error_code: "not-found",
-  },
-  context: "query-builder",
-};
 
 function getCardForBlankQuestion({ db, table, segment, metric }) {
   const databaseId = db ? parseInt(db) : undefined;
