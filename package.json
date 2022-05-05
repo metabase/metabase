@@ -36,6 +36,7 @@
     "dc": "2.1.9",
     "diff": "^3.2.0",
     "eslint-plugin-no-only-tests": "^2.4.0",
+    "formik": "^2.2.9",
     "history": "3",
     "humanize-plus": "^1.8.1",
     "icepick": "2.4.0",
