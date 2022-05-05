@@ -1,9 +1,6 @@
 import { t } from "ttag";
 
-import {
-  parse,
-  adjustBooleans,
-} from "metabase/lib/expressions/recursive-parser";
+import { parse } from "metabase/lib/expressions/recursive-parser";
 import { resolve } from "metabase/lib/expressions/resolver";
 
 import {
@@ -43,8 +40,7 @@ export function processSource(options) {
   let expression;
   let compileError;
   try {
-    const parsed = parse(source);
-    expression = adjustBooleans(resolve(parsed, startRule, resolveMBQLField));
+    expression = resolve(parse(source), startRule, resolveMBQLField);
   } catch (e) {
     console.warn("compile error", e);
     compileError = e;
