@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { getIn } from "icepick";
 import querystring from "querystring";
 import { normalize } from "cljs/metabase.mbql.js";
 
@@ -15,7 +14,6 @@ import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getUser } from "metabase/selectors/user";
 
-import Databases from "metabase/entities/databases";
 import Snippets from "metabase/entities/snippets";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
@@ -121,30 +119,6 @@ async function handleDashboardParameters(
     card.dashboardId = dashboardId;
     card.dashcardId = dashcardId;
   }
-}
-
-function hasNativeSnippets(card) {
-  const tags = Object.values(
-    getIn(card, ["dataset_query", "native", "template-tags"]) || {},
-  );
-  return tags.some(t => t.type === "snippet");
-}
-
-async function checkShouldFetchSnippets({ card, dispatch, getState }) {
-  const dbId = getIn(card, ["dataset_query", "database"]);
-
-  let database = Databases.selectors.getObject(getState(), {
-    entityId: dbId,
-  });
-
-  if (!database) {
-    await dispatch(Databases.actions.fetchList());
-    database = Databases.selectors.getObject(getState(), {
-      entityId: dbId,
-    });
-  }
-
-  return database && database.native_permissions === "write";
 }
 
 function getCardForBlankQuestion({ db, table, segment, metric }) {
@@ -290,8 +264,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     return;
   }
 
-  let shouldFetchSnippets = false;
-
   if (hasCard) {
     await handleDashboardParameters(card, {
       cardId,
@@ -300,14 +272,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
       dispatch,
       getState,
     });
-
-    if (hasNativeSnippets(card)) {
-      shouldFetchSnippets = await checkShouldFetchSnippets({
-        card,
-        dispatch,
-        getState,
-      });
-    }
   } else {
     if (options.metric) {
       uiControls.isShowingSummarySidebar = true;
@@ -340,7 +304,12 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     }
   }
 
-  if (question && question.isNative() && shouldFetchSnippets) {
+  if (
+    question &&
+    question.isNative() &&
+    question.query().hasSnippets() &&
+    !question.query().readOnly()
+  ) {
     await dispatch(Snippets.actions.fetchList());
     const snippets = Snippets.selectors.getList(getState());
     question = question.setQuery(
