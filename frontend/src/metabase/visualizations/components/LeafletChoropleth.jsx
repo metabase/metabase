@@ -30,9 +30,13 @@ const LeafletChoropleth = ({
       element.style.backgroundColor = "transparent";
 
       const map = L.map(element, {
-        zoomSnap: 0,
-        worldCopyJump: true,
         attributionControl: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
+        trackResize: true,
+        worldCopyJump: true,
+        zoomAnimation: true,
+        zoomSnap: 0,
 
         // disable zoom controls
         dragging: false,
@@ -57,7 +61,7 @@ const LeafletChoropleth = ({
         layer.on({
           mousemove: e => {
             onHoverFeature({
-              feature: feature,
+              feature,
               event: e.originalEvent,
             });
           },
@@ -66,7 +70,7 @@ const LeafletChoropleth = ({
           },
           click: e => {
             onClickFeature({
-              feature: feature,
+              feature,
               event: e.originalEvent,
             });
           },
@@ -76,28 +80,33 @@ const LeafletChoropleth = ({
       // main layer
       L.featureGroup([
         L.geoJson(geoJson, {
-          style: style,
-          onEachFeature: onEachFeature,
+          style,
+          onEachFeature,
         }),
       ]).addTo(map);
 
-      // left and right duplicates so we can pan a bit
-      L.featureGroup([
-        L.geoJson(geoJson, {
-          style: style,
-          onEachFeature: onEachFeature,
-          coordsToLatLng: ([longitude, latitude]) =>
-            L.latLng(latitude, longitude - 360),
-        }),
-        L.geoJson(geoJson, {
-          style: style,
-          onEachFeature: onEachFeature,
-          coordsToLatLng: ([longitude, latitude]) =>
-            L.latLng(latitude, longitude + 360),
-        }),
-      ]).addTo(map);
+      // // left and right duplicates so we can pan a bit
+      // L.featureGroup([
+      //   L.geoJson(geoJson, {
+      //     style,
+      //     onEachFeature,
+      //     coordsToLatLng: ([longitude, latitude]) =>
+      //       L.latLng(latitude, longitude - 360),
+      //   }),
+      //   L.geoJson(geoJson, {
+      //     style,
+      //     onEachFeature,
+      //     coordsToLatLng: ([longitude, latitude]) =>
+      //       L.latLng(latitude, longitude + 360),
+      //   }),
+      // ]).addTo(map);
 
       map.fitBounds(minimalBounds);
+      map.panTo([0, 0]);
+      // map.fitWorld(minimalBounds);
+      // map.setMaxBounds([[-50, -50], [50, 50]]);
+      // map.setMaxBounds(map.getBounds());
+      console.log(map.getBounds());
 
       return () => {
         map.remove();
