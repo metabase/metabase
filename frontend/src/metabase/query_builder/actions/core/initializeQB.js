@@ -197,8 +197,6 @@ async function getCard({ cardId, serializedCard, dispatch, getState }) {
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
-    const queryParams = location.query;
-
     dispatch(resetQB());
     dispatch(cancelQuery());
 
@@ -323,7 +321,9 @@ export const initializeQB = (location, params) => {
       );
     }
 
+    const queryParams = location.query;
     card = question && question.card();
+
     const metadata = getMetadata(getState());
     const parameters = getValueAndFieldIdPopulatedParametersFromCard(
       card,
