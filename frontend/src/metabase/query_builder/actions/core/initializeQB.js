@@ -286,12 +286,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
       });
     }
 
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Query Loaded",
-      card.dataset_query.type,
-    );
-
     uiControls.isEditing = !!options.edit;
 
     if (card.archived) {
@@ -305,13 +299,13 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     if (options.metric) {
       uiControls.isShowingSummarySidebar = true;
     }
-
-    MetabaseAnalytics.trackStructEvent(
-      "QueryBuilder",
-      "Query Started",
-      card.dataset_query.type,
-    );
   }
+
+  MetabaseAnalytics.trackStructEvent(
+    "QueryBuilder",
+    hasCard ? "Query Loaded" : "Query Started",
+    card.dataset_query.type,
+  );
 
   if (card && card.id != null) {
     dispatch(fetchAlertsForQuestion(card.id));
