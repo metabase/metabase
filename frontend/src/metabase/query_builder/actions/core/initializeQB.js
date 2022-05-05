@@ -96,6 +96,33 @@ async function verifyMatchingDashcardAndParameters({
   }
 }
 
+async function handleDashboardParameters(
+  card,
+  { cardId, deserializedCard, originalCard, dispatch, getState },
+) {
+  const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
+    cardId,
+    deserializedCard,
+    originalCard,
+  });
+  if (shouldPropagateParameters) {
+    const { dashboardId, dashcardId, parameters } = deserializedCard;
+    const metadata = getMetadata(getState());
+    await verifyMatchingDashcardAndParameters({
+      dispatch,
+      dashboardId,
+      dashcardId,
+      cardId: card.id,
+      parameters,
+      metadata,
+    });
+
+    card.parameters = parameters;
+    card.dashboardId = dashboardId;
+    card.dashcardId = dashcardId;
+  }
+}
+
 function hasNativeSnippets(card) {
   const tags = Object.values(
     getIn(card, ["dataset_query", "native", "template-tags"]) || {},
@@ -243,8 +270,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     return;
   }
 
-  let shouldFetchSnippets = false;
-
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
     : null;
@@ -255,28 +280,26 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     options,
   });
 
+  if (card.archived) {
+    dispatch(setErrorPage(ARCHIVED_ERROR));
+    return;
+  }
+
+  if (!card?.dataset && location.pathname.startsWith("/model")) {
+    dispatch(setErrorPage(NOT_FOUND_ERROR));
+    return;
+  }
+
+  let shouldFetchSnippets = false;
+
   if (hasCard) {
-    const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
+    await handleDashboardParameters(card, {
       cardId,
       deserializedCard,
       originalCard,
+      dispatch,
+      getState,
     });
-    if (shouldPropagateParameters) {
-      const metadata = getMetadata(getState());
-      const { dashboardId, dashcardId, parameters } = deserializedCard;
-      verifyMatchingDashcardAndParameters({
-        dispatch,
-        dashboardId,
-        dashcardId,
-        cardId: card.id,
-        parameters,
-        metadata,
-      });
-
-      card.parameters = parameters;
-      card.dashboardId = dashboardId;
-      card.dashcardId = dashcardId;
-    }
 
     if (hasNativeSnippets(card)) {
       shouldFetchSnippets = await checkShouldFetchSnippets({
@@ -284,16 +307,6 @@ async function handleQBInit(dispatch, getState, { location, params }) {
         dispatch,
         getState,
       });
-    }
-
-    uiControls.isEditing = !!options.edit;
-
-    if (card.archived) {
-      dispatch(setErrorPage(ARCHIVED_ERROR));
-    }
-
-    if (!card?.dataset && location.pathname.startsWith("/model")) {
-      dispatch(setErrorPage(NOT_FOUND_ERROR));
     }
   } else {
     if (options.metric) {
