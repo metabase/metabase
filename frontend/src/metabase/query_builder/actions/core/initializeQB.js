@@ -6,7 +6,6 @@ import { normalize } from "cljs/metabase.mbql.js";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
-import Utils from "metabase/lib/utils";
 
 import { cardIsEquivalent } from "metabase/meta/Card";
 
@@ -156,28 +155,49 @@ function deserializeCard(serializedCard) {
   return card;
 }
 
-async function getCard({ cardId, deserializedCard, dispatch, getState }) {
-  let card = deserializedCard || {};
-  let originalCard;
+async function fetchAndPrepareSavedQuestionCards(cardId) {
+  const card = await loadCard(cardId);
+  const originalCard = { ...card };
 
-  if (cardId) {
-    card = await loadCard(cardId);
-    // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
-    originalCard = Utils.copy(card);
-
-    // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
-    // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
-    card.original_card_id = card.id;
-  } else if (card.original_card_id) {
-    const deserializedCard = card;
-    originalCard = await loadCard(card.original_card_id);
-
-    if (cardIsEquivalent(deserializedCard, originalCard)) {
-      card = Utils.copy(originalCard);
-    }
-  }
+  // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
+  // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
+  card.original_card_id = card.id;
 
   return { card, originalCard };
+}
+
+async function fetchAndPrepareAdHocQuestionCards(deserializedCard) {
+  if (!deserializedCard.original_card_id) {
+    return {
+      card: deserializedCard,
+      originalCard: null,
+    };
+  }
+
+  const originalCard = await loadCard(deserializedCard.original_card_id);
+
+  if (cardIsEquivalent(deserializedCard, originalCard)) {
+    return {
+      card: { ...originalCard },
+      originalCard: originalCard,
+    };
+  }
+
+  return {
+    card: deserializedCard,
+    originalCard,
+  };
+}
+
+function resolveCards({ cardId, deserializedCard, options }) {
+  if (!cardId && !deserializedCard) {
+    return {
+      card: getCardForBlankQuestion(options),
+    };
+  }
+  return cardId
+    ? fetchAndPrepareSavedQuestionCards(cardId)
+    : fetchAndPrepareAdHocQuestionCards(deserializedCard);
 }
 
 function getInitialUIControls(location) {
@@ -225,26 +245,18 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     return;
   }
 
-  let card;
-  let originalCard;
-  let deserializedCard;
-
   let preserveParameters = false;
   let snippetFetch;
 
-  if (hasCard) {
-    deserializedCard = serializedCard ? deserializeCard(serializedCard) : null;
-    const loadedCards = await getCard({
-      cardId,
-      deserializedCard,
-      dispatch,
-      getState,
-    });
-    card = loadedCards.card;
-    originalCard = loadedCards.originalCard;
-  } else {
-    card = getCardForBlankQuestion(options);
-  }
+  const deserializedCard = serializedCard
+    ? deserializeCard(serializedCard)
+    : null;
+
+  const { card, originalCard } = await resolveCards({
+    cardId,
+    deserializedCard,
+    options,
+  });
 
   if (hasCard) {
     const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
@@ -283,12 +295,10 @@ async function handleQBInit(dispatch, getState, { location, params }) {
 
     if (card.archived) {
       dispatch(setErrorPage(ARCHIVED_ERROR));
-      card = null;
     }
 
     if (!card?.dataset && location.pathname.startsWith("/model")) {
       dispatch(setErrorPage(NOT_FOUND_ERROR));
-      card = null;
     }
 
     preserveParameters = true;
@@ -333,11 +343,11 @@ async function handleQBInit(dispatch, getState, { location, params }) {
   }
 
   const queryParams = location.query;
-  card = question && question.card();
+  const freshCard = question && question.card();
 
   const metadata = getMetadata(getState());
   const parameters = getValueAndFieldIdPopulatedParametersFromCard(
-    card,
+    freshCard,
     metadata,
   );
   const parameterValues = getParameterValuesByIdFromQueryParams(
@@ -351,7 +361,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
   dispatch({
     type: INITIALIZE_QB,
     payload: {
-      card,
+      card: freshCard,
       originalCard,
       uiControls,
       parameterValues,
@@ -368,7 +378,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
       );
     }
     dispatch(
-      updateUrl(card, {
+      updateUrl(freshCard, {
         replaceState: true,
         preserveParameters,
         objectId,
