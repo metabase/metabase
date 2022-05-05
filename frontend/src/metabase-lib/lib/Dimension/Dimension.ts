@@ -241,10 +241,6 @@ export default class Dimension {
     );
   }
 
-  foreign(dimension: Dimension) {
-    return null;
-  }
-
   datetime(unit: DatetimeUnit) {
     return null;
   }
