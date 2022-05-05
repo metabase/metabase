@@ -17,9 +17,7 @@ const LeafletChoropleth = ({
   getColor = () => color("brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
-  onRenderError = err => {
-    console.error(err);
-  },
+  onRenderError = () => {},
 }) => (
   <CardRenderer
     card={{ display: "map" }}
