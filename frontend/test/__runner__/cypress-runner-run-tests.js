@@ -39,9 +39,7 @@ const getReporterConfig = isCI => {
   return isCI
     ? {
         reporter: "junit",
-        "reporter-options": {
-          mochaFile: "cypress/results/results-[hash].xml",
-        },
+        "reporter-options": "cypress/results/results-[hash].xml",
       }
     : null;
 };
