@@ -17,6 +17,7 @@ import { SettingsApi, GeoJSONApi } from "metabase/services";
 import cx from "classnames";
 
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+import { getAllFeaturesPoints } from "metabase/visualizations/lib/mapping";
 
 export default class CustomGeoJSONWidget extends Component {
   constructor(props, context) {
@@ -27,6 +28,7 @@ export default class CustomGeoJSONWidget extends Component {
       geoJson: null,
       geoJsonLoading: false,
       geoJsonError: null,
+      mapRenderError: null,
     };
   }
 
@@ -90,7 +92,10 @@ export default class CustomGeoJSONWidget extends Component {
     }
 
     if (geoJson.type === "FeatureCollection") {
-      if (!geoJson.features || geoJson.features.length === 0) {
+      if (
+        !geoJson.features ||
+        getAllFeaturesPoints(geoJson.features).length === 0
+      ) {
         throw t`Invalid custom GeoJSON: does not contain features`;
       }
 
@@ -135,6 +140,12 @@ export default class CustomGeoJSONWidget extends Component {
     }
   };
 
+  _onRenderError = () => {
+    this.setState({
+      mapRenderError: t`Invalid custom GeoJSON: some error while rendering`,
+    });
+  };
+
   render() {
     const { setting } = this.props;
 
@@ -162,6 +173,7 @@ export default class CustomGeoJSONWidget extends Component {
                   geoJson: null,
                   geoJsonLoading: false,
                   geoJsonError: null,
+                  mapRenderError: null,
                 })
               }
             >
@@ -184,6 +196,7 @@ export default class CustomGeoJSONWidget extends Component {
                 geoJson: null,
                 geoJsonLoading: false,
                 geoJsonError: null,
+                mapRenderError: null,
               },
               this._loadGeoJson,
             )
@@ -200,7 +213,9 @@ export default class CustomGeoJSONWidget extends Component {
                 geoJson={this.state.geoJson}
                 geoJsonLoading={this.state.geoJsonLoading}
                 geoJsonError={this.state.geoJsonError}
+                mapRenderError={this.state.mapRenderError}
                 onLoadGeoJson={this._loadGeoJson}
+                onRenderError={this._onRenderError}
                 onCancel={this._cancel}
                 onSave={this._save}
               />
@@ -315,7 +330,9 @@ const EditMap = ({
   geoJson,
   geoJsonLoading,
   geoJsonError,
+  mapRenderError,
   onLoadGeoJson,
+  onRenderError,
   onCancel,
   onSave,
 }) => (
@@ -378,11 +395,17 @@ const EditMap = ({
         </div>
       </div>
       <div className="flex-auto ml4 relative bordered rounded flex my4">
-        {geoJson || geoJsonLoading || geoJsonError ? (
-          <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
+        {geoJson || geoJsonLoading || geoJsonError || mapRenderError ? (
+          <LoadingAndErrorWrapper
+            loading={geoJsonLoading}
+            error={geoJsonError || mapRenderError}
+          >
             {() => (
               <div className="m4 spread relative">
-                <ChoroplethPreview geoJson={geoJson} />
+                <ChoroplethPreview
+                  geoJson={geoJson}
+                  onRenderError={onRenderError}
+                />
               </div>
             )}
           </LoadingAndErrorWrapper>
@@ -413,8 +436,8 @@ const EditMap = ({
   </div>
 );
 
-const ChoroplethPreview = React.memo(({ geoJson }) => (
-  <LeafletChoropleth geoJson={geoJson} />
+const ChoroplethPreview = React.memo(({ geoJson, onRenderError }) => (
+  <LeafletChoropleth geoJson={geoJson} onRenderError={onRenderError} />
 ));
 
 ChoroplethPreview.displayName = "ChoroplethPreview";
