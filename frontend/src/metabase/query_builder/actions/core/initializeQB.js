@@ -4,11 +4,7 @@ import querystring from "querystring";
 import { normalize } from "cljs/metabase.mbql.js";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import {
-  deserializeCardFromUrl,
-  loadCard,
-  startNewCard,
-} from "metabase/lib/card";
+import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import Utils from "metabase/lib/utils";
 
@@ -100,6 +96,30 @@ const NOT_FOUND_ERROR = {
   },
   context: "query-builder",
 };
+
+function getCardForBlankQuestion({ db, table, segment, metric }) {
+  const databaseId = db ? parseInt(db) : undefined;
+  const tableId = table ? parseInt(table) : undefined;
+
+  let question = Question.create({ databaseId, tableId });
+
+  if (databaseId && tableId) {
+    if (segment) {
+      question = question
+        .query()
+        .filter(["segment", parseInt(segment)])
+        .question();
+    }
+    if (metric) {
+      question = question
+        .query()
+        .aggregate(["metric", parseInt(metric)])
+        .question();
+    }
+  }
+
+  return question.card();
+}
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
@@ -254,26 +274,10 @@ export const initializeQB = (location, params) => {
         return;
       }
 
-      const databaseId = options.db ? parseInt(options.db) : undefined;
-      card = startNewCard("query", databaseId);
+      card = getCardForBlankQuestion(options);
 
-      if (card.dataset_query.query) {
-        if (options.table != null) {
-          card.dataset_query.query["source-table"] = parseInt(options.table);
-        }
-        if (options.segment != null) {
-          card.dataset_query.query.filter = [
-            "segment",
-            parseInt(options.segment),
-          ];
-        }
-        if (options.metric != null) {
-          uiControls.isShowingSummarySidebar = true;
-          card.dataset_query.query.aggregation = [
-            "metric",
-            parseInt(options.metric),
-          ];
-        }
+      if (options.metric) {
+        uiControls.isShowingSummarySidebar = true;
       }
 
       MetabaseAnalytics.trackStructEvent(
