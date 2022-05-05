@@ -226,11 +226,21 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
+  interval: {
+    displayName: "timeInterval",
+    type: "expression",
+    args: ["number", "string"],
+  },
   "time-interval": {
     displayName: `interval`,
     type: "boolean",
     args: ["expression", "number", "string"],
     hasOptions: true,
+  },
+  "relative-datetime": {
+    displayName: "relativeDatetime",
+    type: "expression",
+    args: ["number", "string"],
   },
   "is-null": {
     displayName: `isnull`,
