@@ -6,9 +6,12 @@ import * as CardLib from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 
 import * as alert from "metabase/alert/alert";
+import Databases from "metabase/entities/databases";
+import Snippets from "metabase/entities/snippets";
 import { setErrorPage } from "metabase/redux/app";
 
 import Question from "metabase-lib/lib/Question";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -20,10 +23,14 @@ import {
 
 import { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { Card } from "metabase-types/types/Card";
+import { Card, NativeDatasetQuery } from "metabase-types/types/Card";
+import { TemplateTag } from "metabase-types/types/Query";
 import { createMockState } from "metabase-types/store/mocks";
 
-import { state as entitiesState } from "__support__/sample_database_fixture";
+import {
+  state as entitiesState,
+  metadata,
+} from "__support__/sample_database_fixture";
 
 import * as querying from "../querying";
 
@@ -103,6 +110,26 @@ async function setup({
   return { dispatch, state, result: initQBAction.payload };
 }
 
+const SNIPPET: TemplateTag = {
+  id: "id",
+  "snippet-id": 1,
+  "display-name": "foo",
+  name: "foo",
+  "snippet-name": "foo",
+  type: "snippet",
+};
+
+const NATIVE_QUESTION_WITH_SNIPPET: NativeDatasetQuery = {
+  type: "native",
+  database: 1,
+  native: {
+    query: "select * from orders {{ foo }}",
+    "template-tags": {
+      foo: SNIPPET,
+    },
+  },
+};
+
 describe("QB Actions > initializeQB", () => {
   beforeAll(() => {
     console.warn = jest.fn();
@@ -159,6 +186,21 @@ describe("QB Actions > initializeQB", () => {
   ];
 
   const MODEL_TEST_CASES = [TEST_CASE.STRUCTURED_MODEL, TEST_CASE.NATIVE_MODEL];
+
+  const NATIVE_SNIPPETS_TEST_CASES = [
+    {
+      question: getSavedNativeQuestion({
+        dataset_query: NATIVE_QUESTION_WITH_SNIPPET,
+      }),
+      questionType: "saved native question with snippets",
+    },
+    {
+      question: getUnsavedNativeQuestion({
+        dataset_query: NATIVE_QUESTION_WITH_SNIPPET,
+      }),
+      questionType: "unsaved native question with snippets",
+    },
+  ];
 
   describe("common", () => {
     ALL_TEST_CASES.forEach(testCase => {
@@ -499,6 +541,92 @@ describe("QB Actions > initializeQB", () => {
 
           expect(result.uiControls.queryBuilderMode).toBe("dataset");
           expect(result.uiControls.datasetEditorTab).toBe("metadata");
+        });
+      });
+    });
+  });
+
+  describe("native questions with snippets", () => {
+    NATIVE_SNIPPETS_TEST_CASES.forEach(testCase => {
+      const { question, questionType } = testCase;
+
+      type SnippetsSetupOpts = Omit<SetupOpts, "question"> & {
+        hasLoadedDatabase?: boolean;
+        hasDatabaseWritePermission?: boolean;
+        snippet?: unknown;
+      };
+
+      function setupSnippets({
+        hasLoadedDatabase = true,
+        hasDatabaseWritePermission = true,
+        snippet,
+        ...opts
+      }: SnippetsSetupOpts) {
+        const mockDatabase = {
+          native_permissions: hasDatabaseWritePermission ? "write" : "none",
+        };
+
+        Databases.selectors.getObject = jest
+          .fn()
+          .mockReturnValue(hasLoadedDatabase ? mockDatabase : null);
+        Databases.actions.fetchList = jest.fn();
+
+        Snippets.actions.fetchList = jest.fn();
+        Snippets.selectors.getList = jest
+          .fn()
+          .mockReturnValue(snippet ? [snippet] : []);
+
+        return setup({ question, ...opts });
+      }
+
+      describe(questionType, () => {
+        it("loads databases if has not yet loaded question DB", async () => {
+          await setupSnippets({ hasLoadedDatabase: false });
+          expect(Databases.actions.fetchList).toHaveBeenCalledTimes(1);
+        });
+
+        it("does not load databases if has already loaded question DB", async () => {
+          const { state } = await setupSnippets({
+            hasLoadedDatabase: true,
+            snippet: SNIPPET,
+          });
+
+          expect(Databases.actions.fetchList).toHaveBeenCalledTimes(0);
+          expect(Databases.selectors.getObject).toHaveBeenCalledWith(state, {
+            entityId: question.databaseId(),
+          });
+        });
+
+        it("loads snippets if have DB write permissions", async () => {
+          await setupSnippets({ hasDatabaseWritePermission: true });
+          expect(Snippets.actions.fetchList).toHaveBeenCalledTimes(1);
+        });
+
+        it("does not load snippets if missing DB write permissions", async () => {
+          Databases.selectors.getObject = jest.fn().mockReturnValue({
+            native_permissions: "none",
+          });
+          Snippets.actions.fetchList = jest.fn();
+          Snippets.selectors.getList = jest.fn().mockReturnValue([SNIPPET]);
+
+          await setupSnippets({ hasDatabaseWritePermission: false });
+
+          expect(Snippets.actions.fetchList).not.toHaveBeenCalled();
+        });
+
+        it("replaces snippet names with fresh ones from the backend", async () => {
+          const { result } = await setupSnippets({
+            snippet: {
+              id: SNIPPET["snippet-id"],
+              name: "bar",
+            },
+          });
+          const formattedQuestion = new Question(result.card, metadata);
+          const query = formattedQuestion.query() as NativeQuery;
+
+          expect(query.queryText().toLowerCase()).toBe(
+            "select * from orders {{snippet: bar}}",
+          );
         });
       });
     });
