@@ -14,7 +14,7 @@ const folder = args["--folder"];
 const isFolder = !!folder;
 
 const isOpenMode = args["--open"];
-const isCI = process.env["CI"];
+const isCI = process.env.CI;
 
 const parseArguments = async () => {
   const cliArgs = args._;
