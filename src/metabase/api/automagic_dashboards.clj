@@ -1,7 +1,6 @@
 (ns metabase.api.automagic-dashboards
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
-            [clojure.string :as str]
             [compojure.core :refer [GET]]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.comparison :refer [comparison-dashboard]]

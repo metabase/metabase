@@ -117,6 +117,7 @@
     (testing "GET /api/automagic-dashboards/adhoc/:query/cell/:cell-query/rule/example/indepth"
       (is (some? (api-call "adhoc/%s/cell/%s/rule/example/indepth" [query cell-query]))))))
 
+
 ;;; ------------------- Comparisons -------------------
 
 (def ^:private segment
