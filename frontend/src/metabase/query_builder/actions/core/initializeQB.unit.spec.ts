@@ -37,6 +37,36 @@ import * as querying from "../querying";
 import * as core from "./core";
 import { initializeQB } from "./initializeQB";
 
+type BaseSetupOpts = {
+  user?: User;
+  location: LocationDescriptorObject;
+  params: Record<string, unknown>;
+};
+
+async function baseSetup({ user, location, params }: BaseSetupOpts) {
+  jest.useFakeTimers();
+
+  const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
+
+  const state = {
+    ...createMockState(),
+    ...entitiesState,
+  };
+  if (user) {
+    state.currentUser = user;
+  }
+  const getState = () => state;
+
+  await initializeQB(location, params)(dispatch, getState);
+  jest.runAllTimers();
+
+  const [initQBAction] = dispatch.mock.calls.find(
+    call => call[0]?.type === "metabase/qb/INITIALIZE_QB",
+  );
+
+  return { dispatch, state, result: initQBAction.payload };
+}
+
 function getLocationForQuestion(
   question: Question,
   extra: LocationDescriptorObject = {},
@@ -66,21 +96,18 @@ function getQueryParamsForQuestion(
   };
 }
 
-type SetupOpts = {
+type SetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
   question: Question;
-  user?: User;
   location?: LocationDescriptorObject;
   params?: Record<string, unknown>;
 };
 
 async function setup({
   question,
-  user,
   location = getLocationForQuestion(question),
   params = getQueryParamsForQuestion(question),
+  ...opts
 }: SetupOpts) {
-  jest.useFakeTimers();
-
   const card = question.card();
 
   if ("id" in card) {
@@ -89,25 +116,7 @@ async function setup({
     });
   }
 
-  const dispatch = jest.fn().mockReturnValue({ mock: "mock" });
-
-  const state = {
-    ...createMockState(),
-    ...entitiesState,
-  };
-  if (user) {
-    state.currentUser = user;
-  }
-  const getState = () => state;
-
-  await initializeQB(location, params)(dispatch, getState);
-  jest.runAllTimers();
-
-  const [initQBAction] = dispatch.mock.calls.find(
-    call => call[0]?.type === "metabase/qb/INITIALIZE_QB",
-  );
-
-  return { dispatch, state, result: initQBAction.payload };
+  return baseSetup({ location, params, ...opts });
 }
 
 const SNIPPET: TemplateTag = {
