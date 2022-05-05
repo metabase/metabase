@@ -74,6 +74,8 @@ export default ({ question, clicked }) => {
   const { column, value: objectId, extraData } = clicked;
   const params = { question, column, objectId, extraData };
   const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
-  actionObject.zoomInRow = objectId;
+  if (!hasManyPKColumns(question)) {
+    actionObject.zoomInRow = objectId;
+  }
   return actionObject ? [actionObject] : [];
 };
