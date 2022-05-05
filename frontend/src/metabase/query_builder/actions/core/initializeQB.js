@@ -121,6 +121,79 @@ function getCardForBlankQuestion({ db, table, segment, metric }) {
   return question.card();
 }
 
+async function getCard({ cardId, serializedCard, dispatch, getState }) {
+  let card = {};
+  let originalCard;
+
+  if (serializedCard) {
+    card = deserializeCardFromUrl(serializedCard);
+    if (card.dataset_query.database != null) {
+      // Ensure older MBQL is supported
+      card.dataset_query = normalize(card.dataset_query);
+    }
+  }
+
+  const deserializedCard = card;
+
+  if (cardId) {
+    card = await loadCard(cardId);
+    // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
+    originalCard = Utils.copy(card);
+
+    // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
+    // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
+    card.original_card_id = card.id;
+
+    // if there's a card in the url, it may have parameters from a dashboard
+    if (deserializedCard && deserializedCard.parameters) {
+      const metadata = getMetadata(getState());
+      const { dashboardId, dashcardId, parameters } = deserializedCard;
+      verifyMatchingDashcardAndParameters({
+        dispatch,
+        dashboardId,
+        dashcardId,
+        cardId,
+        parameters,
+        metadata,
+      });
+
+      card.parameters = parameters;
+      card.dashboardId = dashboardId;
+      card.dashcardId = dashcardId;
+    }
+  } else if (card.original_card_id) {
+    const deserializedCard = card;
+    originalCard = await loadCard(card.original_card_id);
+
+    if (cardIsEquivalent(deserializedCard, originalCard)) {
+      card = Utils.copy(originalCard);
+
+      if (
+        !cardIsEquivalent(deserializedCard, originalCard, {
+          checkParameters: true,
+        })
+      ) {
+        const metadata = getMetadata(getState());
+        const { dashboardId, dashcardId, parameters } = deserializedCard;
+        verifyMatchingDashcardAndParameters({
+          dispatch,
+          dashboardId,
+          dashcardId,
+          cardId: card.id,
+          parameters,
+          metadata,
+        });
+
+        card.parameters = parameters;
+        card.dashboardId = dashboardId;
+        card.dashcardId = dashcardId;
+      }
+    }
+  }
+
+  return { card, originalCard };
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
@@ -162,73 +235,14 @@ export const initializeQB = (location, params) => {
     let snippetFetch;
     if (cardId || serializedCard) {
       try {
-        if (serializedCard) {
-          card = deserializeCardFromUrl(serializedCard);
-          if (card.dataset_query.database != null) {
-            // Ensure older MBQL is supported
-            card.dataset_query = normalize(card.dataset_query);
-          }
-        } else {
-          card = {};
-        }
-
-        const deserializedCard = card;
-
-        if (cardId) {
-          card = await loadCard(cardId);
-          // when we are loading from a card id we want an explicit clone of the card we loaded which is unmodified
-          originalCard = Utils.copy(card);
-
-          // for showing the "started from" lineage correctly when adding filters/breakouts and when going back and forth
-          // in browser history, the original_card_id has to be set for the current card (simply the id of card itself for now)
-          card.original_card_id = card.id;
-
-          // if there's a card in the url, it may have parameters from a dashboard
-          if (deserializedCard && deserializedCard.parameters) {
-            const metadata = getMetadata(getState());
-            const { dashboardId, dashcardId, parameters } = deserializedCard;
-            verifyMatchingDashcardAndParameters({
-              dispatch,
-              dashboardId,
-              dashcardId,
-              cardId,
-              parameters,
-              metadata,
-            });
-
-            card.parameters = parameters;
-            card.dashboardId = dashboardId;
-            card.dashcardId = dashcardId;
-          }
-        } else if (card.original_card_id) {
-          const deserializedCard = card;
-          originalCard = await loadCard(card.original_card_id);
-
-          if (cardIsEquivalent(deserializedCard, originalCard)) {
-            card = Utils.copy(originalCard);
-
-            if (
-              !cardIsEquivalent(deserializedCard, originalCard, {
-                checkParameters: true,
-              })
-            ) {
-              const metadata = getMetadata(getState());
-              const { dashboardId, dashcardId, parameters } = deserializedCard;
-              verifyMatchingDashcardAndParameters({
-                dispatch,
-                dashboardId,
-                dashcardId,
-                cardId: card.id,
-                parameters,
-                metadata,
-              });
-
-              card.parameters = parameters;
-              card.dashboardId = dashboardId;
-              card.dashcardId = dashcardId;
-            }
-          }
-        }
+        const loadedCards = await getCard({
+          cardId,
+          serializedCard,
+          dispatch,
+          getState,
+        });
+        card = loadedCards.card;
+        originalCard = loadedCards.originalCard;
 
         if (hasNativeSnippets(card)) {
           snippetFetch = getSnippetsLoader({ card, dispatch, getState });
