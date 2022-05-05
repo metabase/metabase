@@ -46,3 +46,27 @@
                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
                #"keys in template tag map must match the :name of their values"
                (mbql.s/validate-query bad-query)))))))
+
+(t/deftest filter-clause-test
+  (t/testing "valid filters are allowed"
+    (doseq [[clause expected] [[[:< 1 1] true]
+                               [[:< 1 2 3] false]
+                               [[:not [:field 1 nil]] true]
+                               [[:and [:field 1 {}] [:field 1 {}]] true]
+                               [[:not [:< 1 2]] true]
+                               [[:not [:< [:field "wow" {:base-type :type/Integer}]
+                                       [:field "wow" {:base-type :type/Integer}]]] true]
+                               [[:not [:=
+                                       [:not [:< [:field "wow" {:base-type :type/Integer}]
+                                              [:field "wow" {:base-type :type/Integer}]]]
+                                       [:field "wow" {:base-type :type/Integer}]]] true]
+                               [[:< [:field "wow" {:base-type :type/Integer}] 1] true]
+                               [[:= [:field "wow" {:base-type :type/Integer}] true] true]
+                               [[:= true [:field "wow" {:base-type :type/Integer}]] true]
+                               [[:=] false]
+                               [[:<] false]
+                               [1 false]]]
+
+      (t/testing (pr-str clause)
+        (t/is (= expected
+                 (not (s/check mbql.s/Filter clause))))))))

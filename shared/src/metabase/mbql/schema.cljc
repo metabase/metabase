@@ -598,17 +598,22 @@
 
 (declare Filter)
 
+(def FilterOrField
+  "A Filter or a Field."
+  (s/cond-pre (s/recursive #'Filter)
+              (s/recursive #'Field)))
+
 (defclause and
-  first-clause  (s/recursive #'Filter)
-  second-clause (s/recursive #'Filter)
-  other-clauses (rest (s/recursive #'Filter)))
+  first-clause  (s/recursive #'FilterOrField)
+  second-clause (s/recursive #'FilterOrField)
+  other-clauses (rest (s/recursive #'FilterOrField)))
 
 (defclause or
-  first-clause  (s/recursive #'Filter)
-  second-clause (s/recursive #'Filter)
-  other-clauses (rest (s/recursive #'Filter)))
+  first-clause  (s/recursive #'FilterOrField)
+  second-clause (s/recursive #'FilterOrField)
+  other-clauses (rest (s/recursive #'FilterOrField)))
 
-(defclause not, clause (s/recursive #'Filter))
+(defclause not clause (s/recursive #'FilterOrField))
 
 (def ^:private FieldOrRelativeDatetime
   (s/if (partial is-clause? :relative-datetime)
