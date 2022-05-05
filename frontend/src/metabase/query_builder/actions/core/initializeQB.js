@@ -103,7 +103,7 @@ function hasNativeSnippets(card) {
   return tags.some(t => t.type === "snippet");
 }
 
-async function getSnippetsLoader({ card, dispatch, getState }) {
+async function checkShouldFetchSnippets({ card, dispatch, getState }) {
   const dbId = getIn(card, ["dataset_query", "database"]);
 
   let database = Databases.selectors.getObject(getState(), {
@@ -117,9 +117,7 @@ async function getSnippetsLoader({ card, dispatch, getState }) {
     });
   }
 
-  if (database && database.native_permissions === "write") {
-    return dispatch(Snippets.actions.fetchList());
-  }
+  return database && database.native_permissions === "write";
 }
 
 function getCardForBlankQuestion({ db, table, segment, metric }) {
@@ -245,7 +243,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     return;
   }
 
-  let snippetFetch;
+  let shouldFetchSnippets = false;
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
@@ -281,7 +279,11 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     }
 
     if (hasNativeSnippets(card)) {
-      snippetFetch = getSnippetsLoader({ card, dispatch, getState });
+      shouldFetchSnippets = await checkShouldFetchSnippets({
+        card,
+        dispatch,
+        getState,
+      });
     }
 
     MetabaseAnalytics.trackStructEvent(
@@ -331,8 +333,8 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     }
   }
 
-  if (question && question.isNative() && snippetFetch) {
-    await snippetFetch;
+  if (question && question.isNative() && shouldFetchSnippets) {
+    await dispatch(Snippets.actions.fetchList());
     const snippets = Snippets.selectors.getList(getState());
     question = question.setQuery(
       question.query().updateQueryTextWithNewSnippetNames(snippets),
