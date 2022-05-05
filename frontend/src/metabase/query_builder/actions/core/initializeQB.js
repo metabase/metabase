@@ -227,12 +227,25 @@ export const initializeQB = (location, params) => {
     const cardId = Urls.extractEntityId(params.slug);
     const uiControls = getInitialUIControls(location);
     const { options, serializedCard } = parseHash(location.hash);
+    const hasCard = cardId || serializedCard;
+
+    if (
+      !hasCard &&
+      !options.db &&
+      !options.table &&
+      !options.segment &&
+      !options.metric
+    ) {
+      dispatch(redirectToNewQuestionFlow());
+      return;
+    }
 
     let card, originalCard;
 
     let preserveParameters = false;
     let snippetFetch;
-    if (cardId || serializedCard) {
+
+    if (hasCard) {
       try {
         const loadedCards = await getCard({
           cardId,
@@ -272,16 +285,6 @@ export const initializeQB = (location, params) => {
         dispatch(setErrorPage(error));
       }
     } else {
-      if (
-        !options.db &&
-        !options.table &&
-        !options.segment &&
-        !options.metric
-      ) {
-        await dispatch(redirectToNewQuestionFlow());
-        return;
-      }
-
       card = getCardForBlankQuestion(options);
 
       if (options.metric) {
