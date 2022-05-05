@@ -12,6 +12,7 @@ import { setErrorPage } from "metabase/redux/app";
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import {
   getAdHocQuestion,
   getSavedStructuredQuestion,
@@ -28,10 +29,13 @@ import { TemplateTag } from "metabase-types/types/Query";
 import { createMockState } from "metabase-types/store/mocks";
 
 import {
+  SAMPLE_DATABASE,
+  ORDERS,
   state as entitiesState,
   metadata,
 } from "__support__/sample_database_fixture";
 
+import * as navigation from "../navigation";
 import * as querying from "../querying";
 
 import * as core from "./core";
@@ -60,11 +64,13 @@ async function baseSetup({ user, location, params }: BaseSetupOpts) {
   await initializeQB(location, params)(dispatch, getState);
   jest.runAllTimers();
 
-  const [initQBAction] = dispatch.mock.calls.find(
+  const actions = dispatch.mock.calls.find(
     call => call[0]?.type === "metabase/qb/INITIALIZE_QB",
   );
+  const hasDispatchedInitAction = Array.isArray(actions);
+  const result = hasDispatchedInitAction ? actions[0].payload : null;
 
-  return { dispatch, state, result: initQBAction.payload };
+  return { dispatch, state, result };
 }
 
 function getLocationForQuestion(
@@ -638,6 +644,161 @@ describe("QB Actions > initializeQB", () => {
           );
         });
       });
+    });
+  });
+
+  describe("blank question", () => {
+    type BlankSetupOpts = Omit<BaseSetupOpts, "location" | "params"> & {
+      db?: number;
+      table?: number;
+      segment?: number;
+      metric?: number;
+    };
+
+    function setupBlank({
+      db,
+      table,
+      segment,
+      metric,
+      ...opts
+    }: BlankSetupOpts = {}) {
+      const hashParams = [
+        db ? `db=${db}` : "",
+        table ? `table=${table}` : "",
+        segment ? `segment=${segment}` : "",
+        metric ? `metric=${metric}` : "",
+      ].filter(Boolean);
+
+      let hash = hashParams.join("&");
+      if (hash) {
+        hash = "#?" + hash;
+      }
+
+      const location: LocationDescriptorObject = {
+        pathname: "/question",
+        hash,
+      };
+
+      const params = {
+        db: db ? String(db) : undefined,
+        table: table ? String(table) : undefined,
+        segment: segment ? String(segment) : undefined,
+        metric: metric ? String(metric) : undefined,
+      };
+
+      return baseSetup({ location, params, ...opts });
+    }
+
+    async function setupOrdersTable(
+      opts: Omit<BlankSetupOpts, "db" | "table"> = {},
+    ) {
+      const { result, ...rest } = await setupBlank({
+        db: SAMPLE_DATABASE?.id,
+        table: ORDERS.id,
+        ...opts,
+      });
+
+      const question = new Question(result.card, metadata);
+      const query = question.query() as StructuredQuery;
+
+      return {
+        question,
+        query,
+        result,
+        ...rest,
+      };
+    }
+
+    it("redirects to new question flow if missing any options", async () => {
+      const redirectSpy = jest.spyOn(navigation, "redirectToNewQuestionFlow");
+      await setupBlank();
+      expect(redirectSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("constructs a card based on provided 'db' and 'table' params", async () => {
+      const expectedCard = {
+        ...ORDERS.question().card(),
+        name: null,
+        collection_id: undefined,
+      };
+
+      const { result } = await setupOrdersTable();
+
+      expect(result.card).toEqual(expectedCard);
+      expect(result.originalCard).toBeUndefined();
+    });
+
+    it("applies 'segment' param correctly", async () => {
+      const SEGMENT_ID = 777;
+
+      const { query } = await setupOrdersTable({ segment: SEGMENT_ID });
+      const [filter] = query.filters();
+
+      expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
+    });
+
+    it("applies 'metric' param correctly", async () => {
+      const METRIC_ID = 777;
+
+      const { query } = await setupOrdersTable({ metric: METRIC_ID });
+      const [aggregation] = query.aggregations();
+
+      expect(aggregation.raw()).toEqual(["metric", METRIC_ID]);
+    });
+
+    it("applies both 'metric' and 'segment' params", async () => {
+      const SEGMENT_ID = 111;
+      const METRIC_ID = 222;
+
+      const { query } = await setupOrdersTable({
+        segment: SEGMENT_ID,
+        metric: METRIC_ID,
+      });
+      const [filter] = query.filters();
+      const [aggregation] = query.aggregations();
+
+      expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
+      expect(aggregation.raw()).toEqual(["metric", METRIC_ID]);
+    });
+
+    it("fetches question metadata", async () => {
+      const loadMetadataForCardSpy = jest.spyOn(core, "loadMetadataForCard");
+
+      const { question } = await setupOrdersTable();
+
+      expect(loadMetadataForCardSpy).toHaveBeenCalledTimes(1);
+      expect(loadMetadataForCardSpy).toHaveBeenCalledWith(
+        expect.objectContaining(question.card()),
+      );
+    });
+
+    it("runs question query", async () => {
+      const runQuestionQuerySpy = jest.spyOn(querying, "runQuestionQuery");
+      await setupOrdersTable();
+      expect(runQuestionQuerySpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not lock question display", async () => {
+      const { result } = await setupOrdersTable();
+      expect(result.card.displayIsLocked).toBeFalsy();
+    });
+
+    it("does not try to fetch alerts", async () => {
+      const fetchAlertsForQuestionSpy = jest.spyOn(
+        alert,
+        "fetchAlertsForQuestion",
+      );
+
+      await setupOrdersTable();
+
+      expect(fetchAlertsForQuestionSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not show qbnewb modal", async () => {
+      const { result } = await setupOrdersTable({
+        user: createMockUser({ is_qbnewb: true }),
+      });
+      expect(result.uiControls.isShowingNewbModal).toBeFalsy();
     });
   });
 });
