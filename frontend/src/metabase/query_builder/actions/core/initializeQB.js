@@ -219,155 +219,160 @@ function parseHash(hash) {
 }
 
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-export const initializeQB = (location, params) => {
-  return async (dispatch, getState) => {
-    dispatch(resetQB());
-    dispatch(cancelQuery());
 
-    const cardId = Urls.extractEntityId(params.slug);
-    const uiControls = getInitialUIControls(location);
-    const { options, serializedCard } = parseHash(location.hash);
-    const hasCard = cardId || serializedCard;
+async function handleQBInit(dispatch, getState, { location, params }) {
+  dispatch(resetQB());
+  dispatch(cancelQuery());
 
-    if (
-      !hasCard &&
-      !options.db &&
-      !options.table &&
-      !options.segment &&
-      !options.metric
-    ) {
-      dispatch(redirectToNewQuestionFlow());
-      return;
-    }
+  const cardId = Urls.extractEntityId(params.slug);
+  const uiControls = getInitialUIControls(location);
+  const { options, serializedCard } = parseHash(location.hash);
+  const hasCard = cardId || serializedCard;
 
-    let card, originalCard;
+  if (
+    !hasCard &&
+    !options.db &&
+    !options.table &&
+    !options.segment &&
+    !options.metric
+  ) {
+    dispatch(redirectToNewQuestionFlow());
+    return;
+  }
 
-    let preserveParameters = false;
-    let snippetFetch;
+  let card, originalCard;
 
-    if (hasCard) {
-      try {
-        const loadedCards = await getCard({
-          cardId,
-          serializedCard,
-          dispatch,
-          getState,
-        });
-        card = loadedCards.card;
-        originalCard = loadedCards.originalCard;
+  let preserveParameters = false;
+  let snippetFetch;
 
-        if (hasNativeSnippets(card)) {
-          snippetFetch = getSnippetsLoader({ card, dispatch, getState });
-        }
-
-        MetabaseAnalytics.trackStructEvent(
-          "QueryBuilder",
-          "Query Loaded",
-          card.dataset_query.type,
-        );
-
-        uiControls.isEditing = !!options.edit;
-
-        if (card.archived) {
-          dispatch(setErrorPage(ARCHIVED_ERROR));
-          card = null;
-        }
-
-        if (!card?.dataset && location.pathname.startsWith("/model")) {
-          dispatch(setErrorPage(NOT_FOUND_ERROR));
-          card = null;
-        }
-
-        preserveParameters = true;
-      } catch (error) {
-        console.warn("initializeQb failed because of an error:", error);
-        card = null;
-        dispatch(setErrorPage(error));
-      }
-    } else {
-      card = getCardForBlankQuestion(options);
-
-      if (options.metric) {
-        uiControls.isShowingSummarySidebar = true;
-      }
-
-      MetabaseAnalytics.trackStructEvent(
-        "QueryBuilder",
-        "Query Started",
-        card.dataset_query.type,
-      );
-    }
-
-    if (card && card.id != null) {
-      dispatch(fetchAlertsForQuestion(card.id));
-    }
-
-    if (card) {
-      await dispatch(loadMetadataForCard(card));
-    }
-
-    let question = card && new Question(card, getMetadata(getState()));
-    if (question && question.isSaved()) {
-      // Don't set viz automatically for saved questions
-      question = question.lockDisplay();
-
-      const currentUser = getUser(getState());
-      if (currentUser.is_qbnewb) {
-        uiControls.isShowingNewbModal = true;
-        MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
-      }
-    }
-
-    if (question && question.isNative() && snippetFetch) {
-      await snippetFetch;
-      const snippets = Snippets.selectors.getList(getState());
-      question = question.setQuery(
-        question.query().updateQueryTextWithNewSnippetNames(snippets),
-      );
-    }
-
-    const queryParams = location.query;
-    card = question && question.card();
-
-    const metadata = getMetadata(getState());
-    const parameters = getValueAndFieldIdPopulatedParametersFromCard(
-      card,
-      metadata,
-    );
-    const parameterValues = getParameterValuesByIdFromQueryParams(
-      parameters,
-      queryParams,
-      metadata,
-    );
-
-    const objectId = params?.objectId || queryParams?.objectId;
-
-    dispatch({
-      type: INITIALIZE_QB,
-      payload: {
-        card,
-        originalCard,
-        uiControls,
-        parameterValues,
-        objectId,
-      },
+  if (hasCard) {
+    const loadedCards = await getCard({
+      cardId,
+      serializedCard,
+      dispatch,
+      getState,
     });
+    card = loadedCards.card;
+    originalCard = loadedCards.originalCard;
 
-    if (question && uiControls.queryBuilderMode !== "notebook") {
-      if (question.canRun()) {
-        // Timeout to allow Parameters widget to set parameterValues
-        setTimeout(
-          () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
-          0,
-        );
-      }
-      dispatch(
-        updateUrl(card, {
-          replaceState: true,
-          preserveParameters,
-          objectId,
-        }),
+    if (hasNativeSnippets(card)) {
+      snippetFetch = getSnippetsLoader({ card, dispatch, getState });
+    }
+
+    MetabaseAnalytics.trackStructEvent(
+      "QueryBuilder",
+      "Query Loaded",
+      card.dataset_query.type,
+    );
+
+    uiControls.isEditing = !!options.edit;
+
+    if (card.archived) {
+      dispatch(setErrorPage(ARCHIVED_ERROR));
+      card = null;
+    }
+
+    if (!card?.dataset && location.pathname.startsWith("/model")) {
+      dispatch(setErrorPage(NOT_FOUND_ERROR));
+      card = null;
+    }
+
+    preserveParameters = true;
+  } else {
+    card = getCardForBlankQuestion(options);
+
+    if (options.metric) {
+      uiControls.isShowingSummarySidebar = true;
+    }
+
+    MetabaseAnalytics.trackStructEvent(
+      "QueryBuilder",
+      "Query Started",
+      card.dataset_query.type,
+    );
+  }
+
+  if (card && card.id != null) {
+    dispatch(fetchAlertsForQuestion(card.id));
+  }
+
+  if (card) {
+    await dispatch(loadMetadataForCard(card));
+  }
+
+  let question = card && new Question(card, getMetadata(getState()));
+  if (question && question.isSaved()) {
+    // Don't set viz automatically for saved questions
+    question = question.lockDisplay();
+
+    const currentUser = getUser(getState());
+    if (currentUser.is_qbnewb) {
+      uiControls.isShowingNewbModal = true;
+      MetabaseAnalytics.trackStructEvent("QueryBuilder", "Show Newb Modal");
+    }
+  }
+
+  if (question && question.isNative() && snippetFetch) {
+    await snippetFetch;
+    const snippets = Snippets.selectors.getList(getState());
+    question = question.setQuery(
+      question.query().updateQueryTextWithNewSnippetNames(snippets),
+    );
+  }
+
+  const queryParams = location.query;
+  card = question && question.card();
+
+  const metadata = getMetadata(getState());
+  const parameters = getValueAndFieldIdPopulatedParametersFromCard(
+    card,
+    metadata,
+  );
+  const parameterValues = getParameterValuesByIdFromQueryParams(
+    parameters,
+    queryParams,
+    metadata,
+  );
+
+  const objectId = params?.objectId || queryParams?.objectId;
+
+  dispatch({
+    type: INITIALIZE_QB,
+    payload: {
+      card,
+      originalCard,
+      uiControls,
+      parameterValues,
+      objectId,
+    },
+  });
+
+  if (question && uiControls.queryBuilderMode !== "notebook") {
+    if (question.canRun()) {
+      // Timeout to allow Parameters widget to set parameterValues
+      setTimeout(
+        () => dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
+        0,
       );
     }
-  };
+    dispatch(
+      updateUrl(card, {
+        replaceState: true,
+        preserveParameters,
+        objectId,
+      }),
+    );
+  }
+}
+
+export const initializeQB = (location, params) => async (
+  dispatch,
+  getState,
+) => {
+  try {
+    await handleQBInit(dispatch, getState, { location, params });
+  } catch (error) {
+    console.warn("initializeQB failed because of an error:", error);
+    dispatch(setErrorPage(error));
+  }
 };
