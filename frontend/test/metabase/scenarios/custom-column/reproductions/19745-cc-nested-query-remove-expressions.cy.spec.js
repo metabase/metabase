@@ -57,27 +57,35 @@ describe("issue 19745", () => {
     cy.signInAsAdmin();
   });
 
-  it("should unwrap the inner query when removing all non-field clauses (metabase#19745)", () => {
-    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
-      ({ body: { card_id, dashboard_id } }) => {
-        visitQuestion(card_id);
+  it("should unwrap the nested query when removing the last expression (metabase#19745)", () => {
+    updateQuestionAndSelectFilter(() => removeExpression("Custom Column"));
+  });
 
-        // this should modify the query and remove the second stage
-        openNotebook();
-        removeExpression("Custom Column");
-        saveQuestion();
-
-        // as we select all columns in the first stage of the query,
-        // it should be possible to map a filter to a selected column
-        visitDashboard(dashboard_id);
-        editDashboard();
-        cy.findByText("Date filter").click();
-        selectDashboardFilter(getDashboardCard(), "Created At");
-        saveDashboard();
-      },
-    );
+  it("should unwrap the nested query when removing all expressions (metabase#19745)", () => {
+    updateQuestionAndSelectFilter(() => removeAllExpressions());
   });
 });
+
+function updateQuestionAndSelectFilter(updateExpressions) {
+  cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+    ({ body: { card_id, dashboard_id } }) => {
+      visitQuestion(card_id);
+
+      // this should modify the query and remove the second stage
+      openNotebook();
+      updateExpressions();
+      updateQuestion();
+
+      // as we select all columns in the first stage of the query,
+      // it should be possible to map a filter to a selected column
+      visitDashboard(dashboard_id);
+      editDashboard();
+      cy.findByText("Date filter").click();
+      selectDashboardFilter(getDashboardCard(), "Created At");
+      saveDashboard();
+    },
+  );
+}
 
 function removeExpression(name) {
   getNotebookStep("expression", { stage: 1 }).within(() => {
@@ -87,9 +95,15 @@ function removeExpression(name) {
   });
 }
 
-function saveQuestion() {
-  cy.intercept("PUT", "/api/card/*").as("saveQuestion");
+function removeAllExpressions() {
+  getNotebookStep("expression", { stage: 1 }).within(() => {
+    cy.findByTestId("remove-step").click({ force: true });
+  });
+}
+
+function updateQuestion() {
+  cy.intercept("PUT", "/api/card/*").as("updateQuestion");
   cy.findByText("Save").click();
   modal().within(() => cy.button("Save").click());
-  cy.wait("@saveQuestion");
+  cy.wait("@updateQuestion");
 }

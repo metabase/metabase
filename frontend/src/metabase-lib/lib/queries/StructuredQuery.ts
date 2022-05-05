@@ -1119,6 +1119,10 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
+    if (this.isRaw()) {
+      query = query.clearFields();
+    }
+
     return query;
   }
 
