@@ -195,6 +195,29 @@ async function getCard({ cardId, serializedCard, dispatch, getState }) {
   return { card, originalCard };
 }
 
+function getInitialUIControls(location) {
+  const { mode, ...uiControls } = getQueryBuilderModeFromLocation(location);
+  uiControls.queryBuilderMode = mode;
+  return uiControls;
+}
+
+function parseHash(hash) {
+  let options = {};
+  let serializedCard;
+
+  // hash can contain either query params starting with ? or a base64 serialized card
+  if (hash) {
+    const cleanHash = hash.replace(/^#/, "");
+    if (cleanHash.charAt(0) === "?") {
+      options = querystring.parse(cleanHash.substring(1));
+    } else {
+      serializedCard = cleanHash;
+    }
+  }
+
+  return { options, serializedCard };
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 export const initializeQB = (location, params) => {
   return async (dispatch, getState) => {
@@ -202,31 +225,10 @@ export const initializeQB = (location, params) => {
     dispatch(cancelQuery());
 
     const cardId = Urls.extractEntityId(params.slug);
+    const uiControls = getInitialUIControls(location);
+    const { options, serializedCard } = parseHash(location.hash);
+
     let card, originalCard;
-
-    const {
-      mode: queryBuilderMode,
-      ...otherUiControls
-    } = getQueryBuilderModeFromLocation(location);
-    const uiControls = {
-      isEditing: false,
-      isShowingTemplateTagsEditor: false,
-      queryBuilderMode,
-      ...otherUiControls,
-    };
-
-    let options = {};
-    let serializedCard;
-
-    // hash can contain either query params starting with ? or a base64 serialized card
-    if (location.hash) {
-      const hash = location.hash.replace(/^#/, "");
-      if (hash.charAt(0) === "?") {
-        options = querystring.parse(hash.substring(1));
-      } else {
-        serializedCard = hash;
-      }
-    }
 
     let preserveParameters = false;
     let snippetFetch;
