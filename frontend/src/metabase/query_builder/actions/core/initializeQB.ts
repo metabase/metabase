@@ -187,11 +187,11 @@ function parseHash(hash?: string) {
   return { options, serializedCard };
 }
 
-export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
-
 function isSavedCard(card: Card): card is SavedCard {
   return !!(card as SavedCard).id;
 }
+
+export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
 async function handleQBInit(
   dispatch: Dispatch,
