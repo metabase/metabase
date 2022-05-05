@@ -379,7 +379,11 @@ const EditMap = ({
       </div>
       <div className="flex-auto ml4 relative bordered rounded flex my4 overflow-hidden">
         {geoJson || geoJsonLoading || geoJsonError ? (
-          <LoadingAndErrorWrapper loading={geoJsonLoading} error={geoJsonError}>
+          <LoadingAndErrorWrapper
+            className="flex full-height full-width"
+            loading={geoJsonLoading}
+            error={geoJsonError}
+          >
             {() => (
               <div className="spread relative">
                 <ChoroplethPreview geoJson={geoJson} />
