@@ -416,7 +416,12 @@ function ViewTitleHeaderRightSide(props) {
     >
       {hasSaveButton && (
         <SaveButton
-          disabled={!question.canRun()}
+          tooltip={t`You don't have permission to save this question.`}
+          disabled={!question.canRun() || !canEditQuery}
+          TooltipProps={{
+            isEnabled: !canEditQuery,
+            placement: "left",
+          }}
           data-metabase-event={
             isShowingNotebook
               ? `Notebook Mode; Click Save`
