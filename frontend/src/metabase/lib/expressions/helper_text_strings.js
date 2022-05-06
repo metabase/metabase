@@ -442,9 +442,9 @@ const helperTextStrings = [
   },
   {
     name: "interval",
-    structure: "timeInterval(" + t`number` + ", " + t`text` + ")",
+    structure: "timespan(" + t`number` + ", " + t`text` + ")",
     description: t`Gets a time interval of specified length`,
-    example: 'timeInterval(7, "day")',
+    example: 'timespan(7, "day")',
     args: [
       {
         name: t`number`,

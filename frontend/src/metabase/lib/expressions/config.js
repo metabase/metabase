@@ -227,7 +227,7 @@ export const MBQL_CLAUSES = {
     args: ["expression", "expression", "expression"],
   },
   interval: {
-    displayName: "timeInterval",
+    displayName: "timespan",
     type: "number",
     args: ["number", "string"],
   },
