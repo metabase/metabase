@@ -14,10 +14,9 @@ describe("issue 9339", () => {
     cy.findByText("Equal to").click();
     cy.findByText("Greater than").click();
 
-    paste(cy.findByPlaceholderText("Enter a number"), "12,12");
-    cy.button("Add filter").should("be.disabled");
-
-    paste(cy.findByPlaceholderText("Enter a number"), "12.12");
+    paste(cy.findByPlaceholderText("Enter a number"), "9339,1234");
+    cy.findByText("9,339").should("be.visible");
+    cy.findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
   });
 });
