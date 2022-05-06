@@ -108,7 +108,7 @@ describe("scenarios > x-rays", () => {
 
       cy.findByTextEnsureVisible("A look at the number of 15655");
 
-      cy.findByRole("heading", { name: /^A closer look at the number of/ });
+      cy.findByRole("heading", { name: /^A look at the number of/ });
       cy.get(".DashCard");
     });
 
