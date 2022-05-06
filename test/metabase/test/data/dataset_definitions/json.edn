@@ -3,6 +3,7 @@
   [{:field-name    "bloop"
     :base-type     :type/Text}
    {:field-name    "json_bit"
+    :database-type "JSON"
     :base-type     :type/Text
     :semantic-type :type/SerializedJSON}]
   [["doopyboop" "{\"boop\": \"2012-04-23T18:44:43.511Z\", \"title\": \"meep meep weep\", \"genres\": [\"Productivity\", \"Reference\"], \"published\": true}"]
@@ -14,6 +15,7 @@
   [{:field-name    "bloop"
     :base-type     :type/Text}
    {:field-name    "json_bit"
+    :database-type "JSON"
     :base-type     :type/Text
     :semantic-type :type/SerializedJSON}]
   [["woopywoop"

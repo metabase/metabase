@@ -9,6 +9,7 @@
             [metabase.driver :as driver]
             [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -353,18 +354,24 @@
                                "MB_MYSQL_SSL_TEST_SSL_CERT")))))
 
 
-(deftest json-query-test
+(deftest nested-field-column-test
   (mt/test-driver :mysql
-    (mt/dataset json (println (mt/db)))))
+    (mt/dataset json
+                (testing "Nested field column listing"
+                (is (= {} (sql-jdbc.sync/describe-nested-field-columns
+                            :mysql
+                            (mt/db)
+                            {:name "json"})))))))
 
-(json-query-test)
-;;                   (println (mt/db)))))
+(nested-field-column-test)
 
-;; (deftest nested-field-column-test
+;; (deftest nested-field-column-alias-test
 ;;   (mt/test-driver :mysql
 ;;                   some shit here...))
 ;; 
-;; (deftest nested-field-column-alias-test
+;;                   (println (mt/db)))))
+
+;; (deftest json-query-test
 ;;   (mt/test-driver :mysql
 ;;                   some shit here...))
 ;; 

@@ -334,6 +334,7 @@
                                                   (for [[k v] %]
                                                     [k (f v)])) xs))
           table-fields     (describe-table-fields driver conn table)
+          printo           (println table-fields)
           json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
