@@ -2,7 +2,7 @@
 import React from "react";
 import { t } from "ttag";
 
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import ModalContent from "metabase/components/ModalContent";
 
 import entityType from "./EntityType";
