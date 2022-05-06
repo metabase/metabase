@@ -224,7 +224,7 @@
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/json-query :mysql
-  [driver identifier stored-field]
+  [_ identifier stored-field]
   (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
     (let [nfc-path             (:nfc_path stored-field)
           unwrapped-identifier (:form identifier)
