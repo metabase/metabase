@@ -26,7 +26,7 @@ interface FormRenderProps extends BaseFormProps {
   FormFooter: React.ComponentType<CustomFormFooterProps>;
 }
 
-interface CustomFormProps extends BaseFormProps, OptionalFormViewProps {
+export interface CustomFormProps extends BaseFormProps, OptionalFormViewProps {
   children: React.ReactNode | ((props: FormRenderProps) => JSX.Element);
 }
 
