@@ -190,7 +190,7 @@
 
 (defn- filter-databases-by-data-model-perms
   "Filters the provided list of databases by data model perms, returning only the databases for which the current user
-  can fully or partially edit the data model. If the user also has block permissions for any databases, returns only the
+  can fully or partially edit the data model. If the user does not have data access for any databases, returns only the
   name and ID of these databases, removing all other fields."
   [dbs]
   (let [filtered-dbs
@@ -213,22 +213,19 @@
         (first filtered-dbs)))
     db))
 
-(defn- dbs-list [& {:keys [include-tables?
-                           include-saved-questions-db?
-                           include-saved-questions-tables?
-                           include-editable-data-model?
-                           exclude-uneditable-details?]}]
+(defn- dbs-list
+  [& {:keys [include-tables?
+             include-saved-questions-db?
+             include-saved-questions-tables?
+             include-editable-data-model?
+             exclude-uneditable-details?]}]
   (let [dbs (db/select Database {:order-by [:%lower.name :%lower.engine]})
-        dbs (if include-editable-data-model?
-              ;; Since users can have *data model* perms even if they have no *data* perms for a DB, we don't filter by
-              ;; read permissions here if `include-editable-data-model?` is true. Instead, we only return ID, name
-              ;; and tables for DBs for which the user has no data perms, to avoid exposing unecessary DB metadata.
-              dbs
-              (filter mi/can-read? dbs))
-        dbs (if exclude-uneditable-details? (filter mi/can-write? dbs) dbs)]
+        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (add-native-perms-info dbs)
       include-tables?              add-tables
       include-editable-data-model? filter-databases-by-data-model-perms
+      exclude-uneditable-details?  (#(filter mi/can-write? %))
+      filter-by-data-access?       (#(filter mi/can-read? %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (def FetchAllIncludeValues
@@ -252,7 +249,7 @@
     questions virtual DB). Prefer using `include` and `saved` instead.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
-    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
