@@ -81,8 +81,6 @@ const BackendResource = createSharedResource("BackendResource", {
             }),
             MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
             MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
-            MB_EMAIL_RETRY_MAX_ATTEMPTS: 1,
-            MB_SLACK_POST_RETRY_MAX_ATTEMPTS: 1,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||
