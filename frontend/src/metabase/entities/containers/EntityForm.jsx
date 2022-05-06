@@ -58,12 +58,14 @@ export default class EntityForm extends React.Component {
   render() {
     const { modal, ...props } = this.props;
 
-    const eForm = <EForm {...props} />;
-
     if (modal) {
-      return <Modal {...this.props}>{eForm}</Modal>;
+      return (
+        <Modal {...this.props}>
+          <EForm {...props} isModal />
+        </Modal>
+      );
     } else {
-      return eForm;
+      return <EForm {...props} />;
     }
   }
 }
