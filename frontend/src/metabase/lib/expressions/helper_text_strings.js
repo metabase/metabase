@@ -442,9 +442,9 @@ const helperTextStrings = [
   },
   {
     name: "interval",
-    structure: "timespan(" + t`number` + ", " + t`text` + ")",
+    structure: "timeSpan(" + t`number` + ", " + t`text` + ")",
     description: t`Gets a time interval of specified length`,
-    example: 'timespan(7, "day")',
+    example: 'timeSpan(7, "day")',
     args: [
       {
         name: t`number`,
@@ -479,9 +479,9 @@ const helperTextStrings = [
   },
   {
     name: "relative-datetime",
-    structure: "relativeDatetime(" + t`number` + ", " + t`text` + ")",
+    structure: "relativeDateTime(" + t`number` + ", " + t`text` + ")",
     description: t`Gets a timestamp relative to the current time`,
-    example: 'relativeDatetime(-30, "day")',
+    example: 'relativeDateTime(-30, "day")',
     args: [
       {
         name: t`number`,

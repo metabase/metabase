@@ -147,7 +147,7 @@ describe("metabase/lib/expression/suggest", () => {
           [
             { text: "True", type: "literal" },
             { text: "[Total] ", type: "fields" },
-            { text: "timespan(", type: "functions" },
+            { text: "timeSpan(", type: "functions" },
             { text: "trim(", type: "functions" },
           ].sort(suggestionSort),
         );

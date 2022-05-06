@@ -227,7 +227,7 @@ export const MBQL_CLAUSES = {
     args: ["expression", "expression", "expression"],
   },
   interval: {
-    displayName: "timespan",
+    displayName: "timeSpan",
     type: "number",
     args: ["number", "string"],
   },
@@ -238,7 +238,7 @@ export const MBQL_CLAUSES = {
     hasOptions: true,
   },
   "relative-datetime": {
-    displayName: "relativeDatetime",
+    displayName: "relativeDateTime",
     type: "expression",
     args: ["number", "string"],
   },
