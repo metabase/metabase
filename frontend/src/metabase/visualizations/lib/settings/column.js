@@ -114,6 +114,13 @@ function getDateStyleOptionsForUnit(unit, abbreviate = false, separator) {
       abbreviate,
       separator,
     ),
+    dateStyleOption(
+      "YYYY/MM/DD",
+      unit,
+      hasDay(unit) ? "year, month, day (ISO)" : null,
+      abbreviate,
+      separator,
+    ),
   ];
   const seen = new Set();
   return options.filter(option => {
