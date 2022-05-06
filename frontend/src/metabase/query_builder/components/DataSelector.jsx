@@ -1457,7 +1457,7 @@ const TablePicker = ({
         onClick={onBack}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
-        <span className={`${onBack ? "ml1" : ""} text-wrap`}>
+        <span className={cx({ ml1: onBack }, "text-wrap")}>
           {selectedDatabase.name}
         </span>
       </span>
