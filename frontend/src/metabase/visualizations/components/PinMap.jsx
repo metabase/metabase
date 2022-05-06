@@ -130,15 +130,11 @@ export default class PinMap extends Component {
     ]);
 
     // only use points with numeric coordinates & metric
-    const updatedRows = [];
-    const points = allPoints.filter(([lat, lng, metric], index) => {
-      if (lat != null && lng != null && metric != null) {
-        updatedRows.push(rows[index]);
-        return true;
-      }
-
-      return false;
-    });
+    const validPoints = allPoints.map(
+      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
+    );
+    const points = allPoints.filter((_, i) => validPoints[i]);
+    const updatedRows = rows.filter((_, i) => validPoints[i]);
 
     const warnings = [];
     const filteredRows = allPoints.length - points.length;
