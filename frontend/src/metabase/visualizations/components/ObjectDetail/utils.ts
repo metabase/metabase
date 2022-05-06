@@ -13,7 +13,7 @@ export interface GetObjectNameArgs {
   table: Table | null;
   question: Question;
   cols: Column[];
-  zoomedRow: unknown[];
+  zoomedRow: unknown[] | undefined;
 }
 
 export const getObjectName = ({
@@ -41,7 +41,7 @@ export const getObjectName = ({
 
 export interface GetDisplayIdArgs {
   cols: Column[];
-  zoomedRow: unknown[];
+  zoomedRow: unknown[] | undefined;
 }
 
 export const getDisplayId = ({
@@ -53,6 +53,10 @@ export const getDisplayId = ({
       (pks: number, col: Column) => (isPK(col) ? pks + 1 : pks),
       0,
     ) === 1;
+
+  if (!zoomedRow) {
+    return null;
+  }
 
   if (hasSinglePk) {
     const pkColumn = cols.findIndex(isPK);

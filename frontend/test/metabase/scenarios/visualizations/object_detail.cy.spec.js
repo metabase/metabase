@@ -58,7 +58,7 @@ describe("scenarios > question > object details", () => {
 
     drillFK({ id: 1 });
 
-    assertUserDetailView({ id: 1 });
+    assertUserDetailView({ id: 1, name: "Hudson Borer" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
 
@@ -69,7 +69,7 @@ describe("scenarios > question > object details", () => {
     changeSorting("User ID", "desc");
     drillFK({ id: 2500 });
 
-    assertDetailView({ id: 2500, entityName: "Person", byFK: true });
+    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
     getPreviousObjectDetailButton().should("not.exist");
     getNextObjectDetailButton().should("not.exist");
   });
@@ -125,7 +125,8 @@ describe("scenarios > question > object details", () => {
     cy.url().should("contain", "objectId=2");
 
     cy.findByTestId("object-detail")
-      .findByText("Domenica Williamson")
+      .findAllByText("Domenica Williamson")
+      .last()
       .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
@@ -168,8 +169,8 @@ function assertOrderDetailView({ id }) {
   assertDetailView({ id, entityName: "Order" });
 }
 
-function assertUserDetailView({ id }) {
-  assertDetailView({ id, entityName: "Person", byFK: true });
+function assertUserDetailView({ id, name }) {
+  assertDetailView({ id, entityName: name, byFK: true });
 }
 
 function getPreviousObjectDetailButton() {

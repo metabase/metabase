@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import EmptyState from "metabase/components/EmptyState";
+
 import { isID } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
@@ -115,6 +117,10 @@ export function DetailsTable({
 }: DetailsTableProps): JSX.Element {
   const { cols } = data;
   const row = zoomedRow;
+
+  if (!row?.length) {
+    return <EmptyState message={t`No details found`} />;
+  }
 
   return (
     <ObjectDetailsTable>

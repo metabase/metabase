@@ -24,7 +24,7 @@ export const zoomInRow = ({ objectId }) => (dispatch, getState) => {
   dispatch({ type: ZOOM_IN_ROW, payload: { objectId } });
 
   // don't show object id in url if it is a row index
-  const hasPK = getPKColumnIndex(getState()) === -1;
+  const hasPK = getPKColumnIndex(getState()) !== -1;
   !hasPK && dispatch(updateUrl(null, { objectId, replaceState: false }));
 };
 

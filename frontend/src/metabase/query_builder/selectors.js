@@ -140,6 +140,10 @@ export const getPKColumnIndex = createSelector(
       return;
     }
     const { cols } = result.data;
+    const hasMultiplePks = cols.filter(isPK).length > 1;
+    if (hasMultiplePks) {
+      return -1;
+    }
     return cols.findIndex(isPK);
   },
 );
