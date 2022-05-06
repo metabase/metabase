@@ -308,6 +308,7 @@
     "test-visual-run": "percy exec -- yarn test-cypress-run --spec \"./frontend/test/metabase-visual/**/*.cy.spec.js\"",
     "test-visual-open": "percy exec -- yarn test-cypress-open",
     "test-visual": "yarn build && ./bin/build-for-test && yarn test-visual-run",
+    "clean:cypress:reports": "rm -R -f cypress/",
     "merge:cypress:reports": "mochawesome-merge cypress/reports/mochareports/*.json > cypress/cypress-test-report.json",
     "create:cypress:html:report": "marge cypress/cypress-test-report.json -f report -o cypress/reports/mochareports --inline",
     "generate:cypress:html:report": "npm run merge:cypress:reports && npm run create:cypress:html:report",
