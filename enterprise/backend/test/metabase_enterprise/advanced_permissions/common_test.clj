@@ -285,25 +285,25 @@
     (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
       (testing "A non-admin without self-service perms for a table cannot fetch the table normally"
         (with-all-users-data-perms {(mt/id) {:data {:native :none :schemas :none}}}
-          (mt/user-http-request :rasta :get 403 (format "table/%d" table-id))))
+          (mt/user-http-request :rasta :get 403 (format "table/%d?include_editable_data_model=true" table-id))))
 
       (testing "A non-admin without self-service perms for a table can fetch the table if they have data model perms for
                the DB"
         (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
                                              :data-model {:schemas :all}}}
-          (mt/user-http-request :rasta :get 200 (format "table/%d" table-id))))
+          (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id))))
 
       (testing "A non-admin without self-service perms for a table can fetch the table if they have data model perms for
                the schema"
         (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
                                              :data-model {:schemas {"PUBLIC" :all}}}}
-          (mt/user-http-request :rasta :get 200 (format "table/%d" table-id))))
+          (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id))))
 
       (testing "A non-admin without self-service perms for a table can fetch the table if they have data model perms for
                the table"
         (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
                                              :data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :get 200 (format "table/%d" table-id)))))))
+          (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                  Database details permission enforcement                                       |
@@ -370,20 +370,20 @@
   (mt/with-temp Database [{db-id :id}]
     (testing "A non-admin without self-service perms for a DB cannot fetch the DB normally"
       (with-all-users-data-perms {db-id {:data {:native :none :schemas :none}}}
-        (mt/user-http-request :rasta :get 403 (format "database/%d" db-id))))
+        (mt/user-http-request :rasta :get 403 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "A non-admin without self-service perms for a DB can fetch the DB if they have DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :none}
                                          :details :yes}}
-        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+        (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "A non-admin with block perms for a DB can fetch the DB if they have DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
                                          :details :yes}}
-        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+        (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "The returned database contains a :details field for a user with DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
                                          :details :yes}}
         (is (partial= {:details {}}
-             (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))))))
+             (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))

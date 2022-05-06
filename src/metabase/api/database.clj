@@ -327,15 +327,18 @@
   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata."
-  [id include include_editable_data_model]
+  [id include include_editable_data_model exclude_uneditable_details]
   {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)]
+  (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
+        exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
+        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (api/check-404 (Database id))
-      (not include-editable-data-model?) api/read-check
-      true                               add-expanded-schedules
-      true                               (get-database-hydrate-include include)
-      mi/can-write?                      secret/expand-db-details-inferred-secret-values
-      include-editable-data-model?       (check-db-data-model-perms include-editable-data-model?))))
+      filter-by-data-access?       api/read-check
+      include-editable-data-model? (check-db-data-model-perms include-editable-data-model?)
+      exclude-uneditable-details?  api/write-check
+      true                         add-expanded-schedules
+      true                         (get-database-hydrate-include include)
+      mi/can-write?                secret/expand-db-details-inferred-secret-values)))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
