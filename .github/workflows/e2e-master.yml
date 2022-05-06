@@ -57,23 +57,23 @@ jobs:
         folder:
           - "admin"
           - "binning"
-          - "collections"
-          - "custom-column"
-          - "dashboard"
-          - "dashboard-filters"
-          - "downloads"
-          - "embedding"
-          - "filters"
-          - "joins"
-          - "models"
-          - "native"
-          - "native-filters"
-          - "onboarding"
-          - "organization"
-          - "permissions"
-          - "question"
-          - "sharing"
-          - "visualizations"
+          # - "collections"
+          # - "custom-column"
+          # - "dashboard"
+          # - "dashboard-filters"
+          # - "downloads"
+          # - "embedding"
+          # - "filters"
+          # - "joins"
+          # - "models"
+          # - "native"
+          # - "native-filters"
+          # - "onboarding"
+          # - "organization"
+          # - "permissions"
+          # - "question"
+          # - "sharing"
+          # - "visualizations"
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -145,4 +145,18 @@ jobs:
         path: |
           ./cypress
           ./logs/test.log
+        if-no-files-found: ignore
+      
+    - name: Generate Mochawesome Reports
+      run: | 
+        yarn generate:cypress:html:report
+      env:
+        TERM: xterm
+
+    - name: Upload Mochawesome Reports
+      uses: actions/upload-artifact@v2
+      with:
+        name: cypress-recording-${{ matrix.folder }}-${{ matrix.edition }}
+        path: |
+          ./cypress/cypress-html
         if-no-files-found: ignore
