@@ -46,17 +46,16 @@ const CSS_CONFIG = {
   importLoaders: 1,
 };
 
-const LOADERS = [
-  { loader: "babel-loader", options: BABEL_CONFIG },
-  {
-    loader: "esbuild-loader",
-    options: {
-      loader: "tsx",
-      target: "es6",
-      jsxFactory: "_jsx",
-    },
+const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
+
+const ESBUILD_LOADER = {
+  loader: "esbuild-loader",
+  options: {
+    loader: "tsx",
+    target: "es6",
+    jsxFactory: "_jsx",
   },
-];
+};
 
 const config = (module.exports = {
   mode: devMode ? "development" : "production",
@@ -82,9 +81,14 @@ const config = (module.exports = {
   module: {
     rules: [
       {
+        test: /\.styled\.(tsx?|jsx?)$/,
+        exclude: /node_modules|cljs/,
+        use: [BABEL_LOADER, ESBUILD_LOADER],
+      },
+      {
         test: /\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [...LOADERS],
+        use: [ESBUILD_LOADER],
       },
       ...(shouldUseEslint
         ? [
