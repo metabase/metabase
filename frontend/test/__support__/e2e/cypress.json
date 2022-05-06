@@ -11,12 +11,12 @@
   "viewportWidth": 1280,
   "reporter": "mochawesome",
   "reporterOptions": {
-      "reportDir": "cypress/mochawesome-report",
-      "reportFilename": "[status]-[name]",
-      "overwrite": false,
-      "html": false,
-      "json": true,
-      "charts": true
+    "reportDir": "cypress/reports/mochareports",
+    "reportFilename": "[status]-[name]",
+    "quite": true,
+    "overwrite": false,
+    "html": false,
+    "json": true
   },
   "retries": {
     "runMode": 2,
