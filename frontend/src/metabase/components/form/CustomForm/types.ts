@@ -18,13 +18,13 @@ export interface BaseFormProps {
   errors: Record<FieldName, string>;
 
   active?: boolean;
-  asyncValidating: boolean;
+  asyncValidating?: boolean;
   dirty: boolean;
   error?: string;
   invalid: boolean;
   overwriteOnInitialValuesChange?: boolean;
   pristine: boolean;
-  readonly: boolean;
+  readonly?: boolean;
   submitFailed: boolean;
   submitting: boolean;
   valid: boolean;
@@ -36,11 +36,12 @@ export interface BaseFormProps {
   onChangeField: (fieldName: FieldName, value: DefaultFieldValue) => void;
   onSubmitSuccess: () => void;
   resetForm: () => void;
-  submitPassback: () => void;
-  touch: () => void;
-  touchAll: () => void;
-  untouch: () => void;
-  untouchAll: () => void;
+
+  submitPassback?: () => void;
+  touch?: () => void;
+  touchAll?: () => void;
+  untouch?: () => void;
+  untouchAll?: () => void;
 }
 
 type RenderSubmitProps = {
