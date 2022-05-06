@@ -565,8 +565,7 @@ export const getRawSeries = createSelector(
 
     if (isShowingRawTable) {
       display = "table";
-      settings = _.pick(settings, "column_settings");
-      settings = { "table.pivot": false, ...settings };
+      settings = { "table.pivot": false };
     }
 
     // we want to provide the visualization with a card containing the latest
