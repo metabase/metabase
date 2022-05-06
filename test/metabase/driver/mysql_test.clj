@@ -10,6 +10,7 @@
             [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -357,21 +358,108 @@
 (deftest nested-field-column-test
   (mt/test-driver :mysql
     (mt/dataset json
-                (testing "Nested field column listing"
-                (is (= {} (sql-jdbc.sync/describe-nested-field-columns
-                            :mysql
-                            (mt/db)
-                            {:name "json"})))))))
+      (testing "Nested field column listing"
+        (is (= #{{:name "json_bit → 1234123412314",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "1234123412314"]}
+                 {:name "json_bit → boop",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "boop"]}
+                 {:name "json_bit → genres",
+                  :database-type "text",
+                  :base-type :type/Array,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "genres"]}
+                 {:name "json_bit → 1234",
+                  :database-type "integer",
+                  :base-type :type/Integer,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "1234"]}
+                 {:name "json_bit → doop",
+                  :database-type "text",
+                  :base-type :type/Text,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "doop"]}
+                 {:name "json_bit → noop",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "noop"]}
+                 {:name "json_bit → zoop",
+                  :database-type "timestamp",
+                  :base-type :type/DateTime,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "zoop"]}
+                 {:name "json_bit → published",
+                  :database-type "text",
+                  :base-type :type/Text,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "published"]}
+                 {:name "json_bit → title",
+                  :database-type "text",
+                  :base-type :type/Text,
+                  :database-position 0,
+                  :visibility-type :normal,
+                  :nfc-path [:json_bit "title"]}}
+               (sql-jdbc.sync/describe-nested-field-columns
+                 :mysql
+                 (mt/db)
+                 {:name "json"})))))))
 
-(nested-field-column-test)
+(deftest big-nested-field-column-test
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (testing "Nested field column listing, but big"
+        (is (= #{}
+               (sql-jdbc.sync/describe-nested-field-columns
+                 :mysql
+                 (mt/db)
+                 {:name "big_json"})))))))
 
-;; (deftest nested-field-column-alias-test
-;;   (mt/test-driver :mysql
-;;                   some shit here...))
-;; 
-;;                   (println (mt/db)))))
+(deftest json-query-test
+  (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
+    (testing "Transforming MBQL query with JSON in it to mysql query works"
+      (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
+        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\""]
+               (hsql/format (#'sql.qp/json-query :mysql boop-identifier boop-field))))))
+    (testing "What if types are weird and we have lists"
+      (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
+        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"meh\".\"foobar\".\"1234\""]
+               (hsql/format (#'sql.qp/json-query :mysql boop-identifier weird-field))))))
+    (testing "Doesn't complain when field is boolean"
+      (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["JSON_EXTRACT(boop.bleh, ?)" "$.\"boop\".\"foobar\".\"1234\""]
+               (hsql/format (#'sql.qp/json-query :mysql boop-identifier boolean-boop-field))))))))
 
-;; (deftest json-query-test
-;;   (mt/test-driver :mysql
-;;                   some shit here...))
-;; 
+(deftest json-alias-test
+  (mt/test-driver :mysql
+    (testing "json breakouts and order bys have alias coercion"
+      (mt/dataset json
+        (let [table  (db/select-one Table :db_id (u/id (mt/db)) :name "json")]
+          (sync/sync-table! table)
+          (let [field (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")
+                compile-res (qp/compile
+                              {:database (u/the-id (mt/db))
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field (u/the-id field) nil]]}})]
+            (is (= (str "SELECT JSON_EXTRACT(`json`.`json_bit`, ?) AS `json_bit → 1234`, "
+                        "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
+                        "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
+                   (:query compile-res)))
+            (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res)))))))))
+
+(json-alias-test)
