@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useCallback, useRef } from "react";
 import PropTypes from "prop-types";
+import * as popper from "@popperjs/core";
 import * as TippyReact from "@tippyjs/react";
 import * as tippy from "tippy.js";
 import cx from "classnames";
 import { merge } from "icepick";
+import _ from "underscore";
 
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -23,12 +25,17 @@ export interface ITippyPopoverProps extends TippyProps {
   flip?: boolean;
   sizeToFit?: boolean | SizeToFitOptions;
   onClose?: () => void;
+  content?: React.ReactNode | ((args: PopoverContentArgs) => React.ReactNode);
 }
+
+export type PopoverContentArgs = {
+  maxHeight?: number;
+};
 
 const OFFSET: [number, number] = [0, 5];
 
 const propTypes = {
-  disablContentSandbox: PropTypes.bool,
+  disableContentSandbox: PropTypes.bool,
   lazy: PropTypes.bool,
   ...TippyComponent.propTypes,
 };
@@ -41,7 +48,10 @@ function getPopperOptions({
   flip,
   sizeToFit,
   popperOptions = {},
-}: Pick<ITippyPopoverProps, "flip" | "sizeToFit" | "popperOptions">) {
+  setMaxHeight,
+}: Pick<ITippyPopoverProps, "flip" | "sizeToFit" | "popperOptions"> & {
+  setMaxHeight: (height: number) => void;
+}) {
   return merge(
     {
       modifiers: [
@@ -54,7 +64,8 @@ function getPopperOptions({
           phase: "beforeWrite",
           enabled: sizeToFit !== false,
           requiresIfExists: ["offset"],
-          fn: sizeToFitModifierFn,
+          fn: (args: popper.ModifierArguments<SizeToFitOptions>) =>
+            sizeToFitModifierFn({ ...args, setMaxHeight }),
           options: typeof sizeToFit === "object" ? sizeToFit : undefined,
         },
       ],
@@ -83,6 +94,7 @@ function TippyPopover({
   const [mounted, setMounted] = useState(!lazy);
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
+  const [maxHeight, setMaxHeight] = useState<number>();
 
   const {
     setupCloseHandler,
@@ -127,9 +139,18 @@ function TippyPopover({
   const plugins = useMemo(() => [lazyPlugin], [lazyPlugin]);
 
   const computedPopperOptions = useMemo(
-    () => getPopperOptions({ flip, sizeToFit, popperOptions }),
+    () =>
+      getPopperOptions({
+        flip,
+        sizeToFit,
+        popperOptions,
+        setMaxHeight,
+      }),
     [flip, sizeToFit, popperOptions],
   );
+  const computedPopoverContent = _.isFunction(content)
+    ? content({ maxHeight })
+    : content;
 
   return (
     <TippyComponent
@@ -148,7 +169,7 @@ function TippyPopover({
       content={
         shouldShowContent ? (
           <EventSandbox disabled={disableContentSandbox}>
-            {content}
+            {computedPopoverContent}
           </EventSandbox>
         ) : null
       }

@@ -1,4 +1,8 @@
-import { popover, restore } from "__support__/e2e/cypress";
+import {
+  popover,
+  restore,
+  virtualizedContainer,
+} from "__support__/e2e/cypress";
 
 describe("issue 5276", () => {
   beforeEach(() => {
@@ -17,7 +21,11 @@ describe("issue 5276", () => {
     cy.findByText("Edit").click();
 
     cy.findByText("Score").click();
-    popover().within(() => cy.findByText("No field type").click());
+    popover().within(() => {
+      cy.findByText("Score").should("be.visible");
+      virtualizedContainer().scrollTo("bottom");
+      cy.findByText("No field type").click();
+    });
     cy.button("Save").click();
     cy.wait("@updateField");
     cy.findByText("Score").should("not.exist");

@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import SelectButton from "metabase/core/components/SelectButton";
 
 import _ from "underscore";
@@ -14,7 +14,6 @@ import { createSelector } from "reselect";
 import { color } from "metabase/lib/colors";
 
 import Uncontrollable from "metabase/hoc/Uncontrollable";
-import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
 const MIN_ICON_WIDTH = 20;
 
@@ -140,10 +139,6 @@ class Select extends Component {
       value = optionValue;
     }
     onChange({ target: { value } });
-    if (!multiple) {
-      this._popover.close();
-      this.handleClose();
-    }
   };
 
   renderItemIcon = item => {
@@ -173,14 +168,6 @@ class Select extends Component {
     return <span style={{ minWidth: MIN_ICON_WIDTH }} />;
   };
 
-  handleClose = () => {
-    // Focusing in the next tick prevents it is from reopening
-    // when closed by selecting an item with Enter
-    setTimeout(() => {
-      this.selectButtonRef.current?.focus();
-    }, 0);
-  };
-
   render() {
     const {
       buttonProps,
@@ -204,11 +191,17 @@ class Select extends Component {
       .flat()
       .filter(n => n);
 
+    const { triggerElement } = this.props;
+    const computedTriggerElement = _.isFunction(triggerElement)
+      ? triggerElement()
+      : triggerElement;
+
     return (
-      <PopoverWithTrigger
-        ref={ref => (this._popover = ref)}
-        triggerElement={
-          this.props.triggerElement || (
+      <TippyPopoverWithTrigger
+        placement="bottom-start"
+        onHide={onClose}
+        triggerContent={
+          computedTriggerElement || (
             <SelectButton
               ref={this.selectButtonRef}
               className="flex-full"
@@ -227,35 +220,38 @@ class Select extends Component {
             </SelectButton>
           )
         }
-        onClose={composeEventHandlers(onClose, this.handleClose)}
+        popoverContent={({ closePopover, maxHeight }) => (
+          <AccordionList
+            maxHeight={maxHeight}
+            hasInitialFocus
+            sections={sections}
+            className="MB-Select text-brand"
+            alwaysExpanded
+            itemIsSelected={this.itemIsSelected}
+            itemIsClickable={this.itemIsClickable}
+            renderItemName={this.props.optionNameFn}
+            getItemClassName={this.props.optionClassNameFn}
+            renderItemDescription={this.props.optionDescriptionFn}
+            renderItemIcon={this.renderItemIcon}
+            onChange={option => {
+              this.handleChange(option);
+              if (!this.props.multiple) {
+                closePopover();
+              }
+            }}
+            searchable={!!searchProp}
+            searchProp={searchProp}
+            searchCaseInsensitive={searchCaseInsensitive}
+            searchFuzzy={searchFuzzy}
+            searchPlaceholder={searchPlaceholder}
+            hideEmptySectionsInSearch={hideEmptySectionsInSearch}
+          />
+        )}
+        sizeToFit
         triggerClasses={cx("flex", className)}
-        isInitiallyOpen={isInitiallyOpen}
+        isInitiallyVisible={isInitiallyOpen}
         disabled={disabled}
-        verticalAttachments={["top", "bottom"]}
-        // keep the popover from jumping around one its been opened,
-        // this can happen when filtering items via search
-        pinInitialAttachment
-      >
-        <AccordionList
-          hasInitialFocus
-          sections={sections}
-          className="MB-Select text-brand"
-          alwaysExpanded
-          itemIsSelected={this.itemIsSelected}
-          itemIsClickable={this.itemIsClickable}
-          renderItemName={this.props.optionNameFn}
-          getItemClassName={this.props.optionClassNameFn}
-          renderItemDescription={this.props.optionDescriptionFn}
-          renderItemIcon={this.renderItemIcon}
-          onChange={this.handleChange}
-          searchable={!!searchProp}
-          searchProp={searchProp}
-          searchCaseInsensitive={searchCaseInsensitive}
-          searchFuzzy={searchFuzzy}
-          searchPlaceholder={searchPlaceholder}
-          hideEmptySectionsInSearch={hideEmptySectionsInSearch}
-        />
-      </PopoverWithTrigger>
+      />
     );
   }
 }

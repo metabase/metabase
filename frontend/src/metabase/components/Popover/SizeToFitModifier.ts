@@ -2,6 +2,7 @@ import * as popper from "@popperjs/core";
 
 const PAGE_PADDING = 10;
 const SIZE_TO_FIT_MIN_HEIGHT = 200;
+const POPOVER_BORDER = 2;
 
 export type SizeToFitOptions = {
   minHeight: number;
@@ -10,7 +11,10 @@ export type SizeToFitOptions = {
 export function sizeToFitModifierFn({
   state,
   options,
-}: popper.ModifierArguments<SizeToFitOptions>) {
+  setMaxHeight,
+}: popper.ModifierArguments<SizeToFitOptions> & {
+  setMaxHeight: (height: number) => void;
+}) {
   const {
     placement,
     rects: {
@@ -43,6 +47,7 @@ export function sizeToFitModifierFn({
       state.modifiersData.sizeToFit.flipped = true;
       state.reset = true;
     } else {
+      setMaxHeight(minnedMaxHeight - POPOVER_BORDER);
       state.styles.popper.maxHeight = `${minnedMaxHeight}px`;
     }
   }

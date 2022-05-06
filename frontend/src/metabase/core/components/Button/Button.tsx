@@ -27,7 +27,7 @@ const BUTTON_VARIANTS = [
   "fullWidth",
 ] as const;
 
-interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface Props extends React.ComponentProps<typeof ButtonRoot> {
   className?: string;
 
   icon?: string;

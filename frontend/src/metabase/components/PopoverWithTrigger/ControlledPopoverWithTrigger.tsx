@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import TippyPopover, {
   ITippyPopoverProps,
+  PopoverContentArgs,
 } from "metabase/components/Popover/TippyPopover";
 
 import { TriggerButton } from "./ControlledPopoverWithTrigger.styled";
@@ -34,7 +35,7 @@ export type PopoverWithTriggerContent =
   | ((args: PopoverWithTriggerContentArgs) => React.ReactNode);
 type PopoverWithTriggerContentArgs = {
   closePopover: () => void;
-};
+} & PopoverContentArgs;
 
 export type RenderTrigger = (
   args: RenderTriggerArgs,
@@ -68,6 +69,8 @@ function ControlledPopoverWithTrigger({
     renderTrigger({ visible, onClick: handleTriggerClick })
   ) : (
     <TriggerButton
+      as="a"
+      role="button"
       disabled={disabled}
       className={cx(
         triggerClasses,
@@ -83,7 +86,8 @@ function ControlledPopoverWithTrigger({
   );
 
   const computedPopoverContent = _.isFunction(popoverContent)
-    ? popoverContent({ closePopover: onClose })
+    ? ({ maxHeight }: PopoverContentArgs) =>
+        popoverContent({ closePopover: onClose, maxHeight })
     : popoverContent;
 
   return (

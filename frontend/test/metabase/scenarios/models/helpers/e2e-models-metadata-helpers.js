@@ -1,4 +1,4 @@
-import { popover } from "__support__/e2e/cypress";
+import { popover, virtualizedContainer } from "__support__/e2e/cypress";
 
 export function openColumnOptions(column) {
   cy.findByText(column).click();
@@ -12,6 +12,7 @@ export function renameColumn(oldName, newName) {
 
 export function setColumnType(oldType, newType) {
   cy.findByText(oldType).click();
+  virtualizedContainer().scrollTo("top");
   cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
   cy.findByPlaceholderText("Search for a special type").type(newType);
   cy.findByText(newType).click();

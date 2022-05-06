@@ -61,3 +61,7 @@ export function browse() {
 export function filterWidget() {
   return cy.get("fieldset");
 }
+
+export function virtualizedContainer() {
+  return cy.get(".ReactVirtualized__Grid.MB-Select");
+}
