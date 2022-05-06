@@ -6,8 +6,8 @@ import _ from "underscore";
 import FormField from "metabase/components/form/FormField";
 import FormWidget from "metabase/components/form/FormWidget";
 
-import { useOnMount } from "metabase/hooks/use-on-mount";
-import { useOnUnmount } from "metabase/hooks/use-on-unmount";
+// import { useOnMount } from "metabase/hooks/use-on-mount";
+// import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import {
   BaseFieldDefinition,
@@ -63,13 +63,13 @@ function RawCustomFormField({
   const field = getIn(fields, name.split("."));
   const formField = formFieldsByName[name];
 
-  useOnMount(() => {
-    registerFormField?.(getFieldDefinition(props));
-  });
+  // useOnMount(() => {
+  //   registerFormField?.(getFieldDefinition(props));
+  // });
 
-  useOnUnmount(() => {
-    unregisterFormField?.(getFieldDefinition(props));
-  });
+  // useOnUnmount(() => {
+  //   unregisterFormField?.(getFieldDefinition(props));
+  // });
 
   const handleChange = useCallback(
     e => {
