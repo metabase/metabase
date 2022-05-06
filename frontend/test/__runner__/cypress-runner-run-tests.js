@@ -14,7 +14,6 @@ const folder = args["--folder"];
 const isFolder = !!folder;
 
 const isOpenMode = args["--open"];
-const isCI = process.env["CI"];
 
 const parseArguments = async () => {
   const cliArgs = args._;
@@ -33,15 +32,6 @@ const parseArguments = async () => {
 
 const getSourceFolder = folder => {
   return `./frontend/test/metabase/scenarios/${folder}/**/*.cy.spec.js`;
-};
-
-const getReporterConfig = isCI => {
-  return isCI
-    ? {
-        reporter: "junit",
-        "reporter-options": "mochaFile=cypress/results/results-[hash].xml",
-      }
-    : null;
 };
 
 const runCypress = async (baseUrl, exitFunction) => {
@@ -66,16 +56,9 @@ const runCypress = async (baseUrl, exitFunction) => {
     spec: isFolder && getSourceFolder(folder),
   };
 
-  const reporterConfig = getReporterConfig(isCI);
-
   const userArgs = await parseArguments();
 
-  const finalConfig = Object.assign(
-    {},
-    defaultConfig,
-    reporterConfig,
-    userArgs,
-  );
+  const finalConfig = Object.assign({}, defaultConfig, userArgs);
 
   try {
     const { status, message, totalFailed, failures } = isOpenMode
