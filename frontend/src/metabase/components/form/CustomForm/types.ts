@@ -13,7 +13,7 @@ export interface BaseFormProps {
   formName: string;
   formObject: FormObject;
 
-  fields: FormField[];
+  fields: Record<string, FormField>;
   values: FieldValues;
   errors: Record<FieldName, string>;
 
