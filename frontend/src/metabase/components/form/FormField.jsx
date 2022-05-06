@@ -62,7 +62,6 @@ function FormField(props) {
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
-    isToggle = formField && formField.type === "boolean",
     align = formField?.align || "right",
     children,
   } = props;
@@ -77,6 +76,7 @@ function FormField(props) {
   };
 
   const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
+  const isToggle = formField?.type === "boolean";
 
   if (!visited || active) {
     // if the field hasn't been visited or is currently active then don't show the error
