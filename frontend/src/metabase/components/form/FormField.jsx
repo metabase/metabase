@@ -76,6 +76,7 @@ function FormField(props) {
   };
 
   const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
+  const isToggle = formField?.type === "boolean";
 
   if (!visited || active) {
     // if the field hasn't been visited or is currently active then don't show the error
@@ -98,6 +99,7 @@ function FormField(props) {
                 id={`${name}-label`}
                 htmlFor={name}
                 horizontal={horizontal}
+                standAlone={isToggle && align === "right" && !description}
               >
                 {title}
                 {error && <span className="text-error">: {error}</span>}
