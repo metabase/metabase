@@ -17,6 +17,11 @@ export const Label = styled.label`
     css`
       margin-right: auto;
     `}
+  ${props =>
+    props.standAlone &&
+    css`
+      margin-top: 0.8em;
+    `}
 `;
 
 Label.defaultProps = { className: "Form-label" };
@@ -38,6 +43,7 @@ export const InfoLabel = styled.span`
 `;
 
 export const FieldContainer = styled.div`
+  width: 100%;
   margin-right: ${props => (props.horizontal ? "1rem" : "")};
   margin-left: ${props => (props.align === "left" ? "0.5rem" : "")};
 `;
