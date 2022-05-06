@@ -65,14 +65,10 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       DOWNLOAD_PERMISSION_INDEX,
       "1 million rows",
     );
+  });
 
-    cy.log(
-      "Make sure the download permissions are set to `No` when data access is revoked",
-    );
-
-    cy.get("a")
-      .contains("Sample Database")
-      .click();
+  it("respects 'no download' permissions when 'All users' group data permissions are set to `Block` (metabase#22408)", () => {
+    cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
 
     modifyPermission("All Users", DATA_ACCESS_PERMISSION_INDEX, "Block");
 
@@ -84,7 +80,17 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
       cy.button("Yes").click();
     });
 
+    // When data permissions are set to `Block`, download permissions are automatically revoked
     assertPermissionForItem("All Users", DOWNLOAD_PERMISSION_INDEX, "No");
+
+    // Normal user belongs to both "data" and "collections" groups.
+    // They both have restricted downloads so this user shouldn't have the right to download anything.
+    cy.signIn("normal");
+
+    visitQuestion("1");
+
+    cy.findByText("Showing first 2,000 rows");
+    cy.icon("download").should("not.exist");
   });
 
   it("restricts users from downloading questions", () => {
