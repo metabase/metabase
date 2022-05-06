@@ -10,8 +10,11 @@ import {
 
 export interface BaseFormProps {
   formKey?: string;
-  formName: string;
   formObject: FormObject;
+
+  formFields: FormFieldDefinition[];
+  formFieldsByName: Record<FieldName, FormFieldDefinition>;
+  disablePristineSubmit?: boolean;
 
   fields: Record<string, FormField>;
   values: FieldValues;
@@ -61,6 +64,9 @@ export interface FormLegacyContext
   extends OptionalFormViewProps,
     Pick<
       BaseFormProps,
+      | "formFields"
+      | "formFieldsByName"
+      | "disablePristineSubmit"
       | "handleSubmit"
       | "fields"
       | "values"
@@ -69,11 +75,7 @@ export interface FormLegacyContext
       | "pristine"
       | "error"
       | "onChangeField"
-    > {
-  formFields: FormFieldDefinition[];
-  formFieldsByName: Record<FieldName, FormFieldDefinition>;
-  disablePristineSubmit?: boolean;
-}
+    > {}
 
 export const LegacyContextTypes = {
   handleSubmit: PropTypes.func,
