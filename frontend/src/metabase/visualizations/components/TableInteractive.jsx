@@ -167,7 +167,7 @@ class TableInteractive extends Component {
   };
 
   _showDetailShortcut = (query, isPivoted) => {
-    const hasAggregation = !!query.aggregations?.()?.length;
+    const hasAggregation = !!query?.aggregations?.()?.length;
     this.setState({
       showDetailShortcut: !(isPivoted || hasAggregation),
     });

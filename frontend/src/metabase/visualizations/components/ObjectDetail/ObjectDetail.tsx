@@ -92,7 +92,7 @@ export interface ObjectDetailProps {
   data: DatasetData;
   question: Question;
   table: Table | null;
-  zoomedRow: unknown[];
+  zoomedRow: unknown[] | undefined;
   zoomedRowID: ObjectId;
   tableForeignKeys: ForeignKey[];
   tableForeignKeyReferences: {
@@ -262,7 +262,7 @@ export function ObjectDetailFn({
             <ObjectDetailBody
               data={data}
               objectName={objectName}
-              zoomedRow={zoomedRow}
+              zoomedRow={zoomedRow ?? []}
               settings={settings}
               hasRelationships={hasRelationships}
               onVisualizationClick={onVisualizationClick}
