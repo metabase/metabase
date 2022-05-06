@@ -1,5 +1,4 @@
 import React from "react";
-import PropTypes from "prop-types";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -9,31 +8,26 @@ import CustomFormMessage from "./CustomFormMessage";
 import CustomFormSubmit from "./CustomFormSubmit";
 
 export interface CustomFormFooterProps {
-  submitTitle: string;
+  submitTitle?: string;
   cancelTitle?: string;
   fullWidth?: boolean;
   isModal?: boolean;
-  footerExtraButtons: React.ReactElement[];
+  footerExtraButtons?: React.ReactElement[];
   onCancel?: () => void;
 }
 
-interface LegacyContextProps {
-  isModal?: boolean;
-}
-
 function CustomFormFooter({
-  submitTitle,
+  submitTitle = t`Submit`,
   cancelTitle = t`Cancel`,
   onCancel,
   footerExtraButtons,
   fullWidth,
   isModal,
-  isContextModal,
-}: CustomFormFooterProps & { isContextModal?: boolean }) {
+}: CustomFormFooterProps) {
   return (
     <div
       className={cx("flex align-center", {
-        "flex-reverse": isModal || isContextModal,
+        "flex-reverse": isModal,
       })}
     >
       <CustomFormSubmit fullWidth={fullWidth}>{submitTitle}</CustomFormSubmit>
@@ -49,13 +43,4 @@ function CustomFormFooter({
   );
 }
 
-const CustomFormFooterLegacyContext = (
-  props: CustomFormFooterProps,
-  { isModal: isContextModal }: LegacyContextProps,
-) => <CustomFormFooter {...props} isContextModal={isContextModal} />;
-
-CustomFormFooterLegacyContext.contextTypes = {
-  isModal: PropTypes.bool,
-};
-
-export default CustomFormFooterLegacyContext;
+export default CustomFormFooter;
