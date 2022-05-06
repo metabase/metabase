@@ -481,8 +481,9 @@ export class FieldValuesWidget extends Component {
               }
               // if the field is numeric we need to parse the string into an integer
               if (fields[0].isNumeric()) {
-                if (/^-?\d+(\.\d+)?$/.test(v)) {
-                  return parseFloat(v);
+                const n = Number.parseFloat(v);
+                if (Number.isFinite(n)) {
+                  return n;
                 } else {
                   return null;
                 }
