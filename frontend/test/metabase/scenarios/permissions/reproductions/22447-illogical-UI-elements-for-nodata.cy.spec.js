@@ -1,9 +1,9 @@
-import { restore, visitQuestion, isEE } from "__support__/e2e/cypress";
+import { restore, visitQuestion, isEE, popover } from "__support__/e2e/cypress";
 import { USER_GROUPS, SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 
-describe.skip("UI elements that make no sense for users without data permissions (metabase#22447, metabase##22449, metabase#22450)", () => {
+describe("UI elements that make no sense for users without data permissions (metabase#22447, metabase##22449, metabase#22450)", () => {
   beforeEach(() => {
     restore();
   });
@@ -20,23 +20,28 @@ describe.skip("UI elements that make no sense for users without data permissions
     cy.icon("line").click();
 
     cy.findByTextEnsureVisible("Line options");
-    cy.findByText("Save").should("not.exist");
+    cy.findByText("Save")
+      .as("saveButton")
+      .invoke("css", "pointer-events")
+      .should("equal", "none");
 
-    // TODO: Please uncoment this part when metabase#22449 gets fixed
-    // cy.icon("refresh").should("not.exist");
+    cy.get("@saveButton").realHover();
+    cy.findByText("You don't have permission to save this question.");
 
-    // TODO: Please uncoment this part when metabase#22450 gets fixed
-    // cy.visit("/collection/root");
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.icon("refresh").should("not.exist");
+    });
 
-    // cy.get("main")
-    //   .find(".Icon-add")
-    //   .click();
+    cy.visit("/collection/root");
 
-    // Do not forget to import popover
-    // popover()
-    //   .should("contain", "Dashboard")
-    //   .and("contain", "Collection")
-    //   .and("not.contain", "Question");
+    cy.get("main")
+      .find(".Icon-add")
+      .click();
+
+    popover()
+      .should("contain", "Dashboard")
+      .and("contain", "Collection")
+      .and("not.contain", "Question");
   });
 
   it("should not show visualization or question settings to users with block data permissions", () => {
@@ -61,20 +66,18 @@ describe.skip("UI elements that make no sense for users without data permissions
     cy.findByText("Settings").should("not.exist");
     cy.findByText("Visualization").should("not.exist");
 
-    // TODO: Please uncoment this part when metabase#22449 gets fixed
-    // cy.icon("refresh").should("not.exist");
+    cy.findByTestId("qb-header-action-panel").within(() => {
+      cy.icon("refresh").should("not.exist");
+    });
+    cy.visit("/collection/root");
 
-    // TODO: Please uncoment this part when metabase#22450 gets fixed
-    // cy.visit("/collection/root");
+    cy.get("main")
+      .find(".Icon-add")
+      .click();
 
-    // cy.get("main")
-    //   .find(".Icon-add")
-    //   .click();
-
-    // Do not forget to import popover
-    // popover()
-    //   .should("contain", "Dashboard")
-    //   .and("contain", "Collection")
-    //   .and("not.contain", "Question");
+    popover()
+      .should("contain", "Dashboard")
+      .and("contain", "Collection")
+      .and("not.contain", "Question");
   });
 });

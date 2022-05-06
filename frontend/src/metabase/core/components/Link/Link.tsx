@@ -1,13 +1,14 @@
 import React, { CSSProperties, HTMLAttributes, ReactNode } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import { LinkRoot } from "./Link.styled";
+import { TooltipProps } from "metabase/components/Tooltip/Tooltip";
 
 export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   to: string;
   disabled?: boolean;
   className?: string;
   children?: ReactNode;
-  tooltip?: string;
+  tooltip?: string | TooltipProps;
   activeClassName?: string;
   activeStyle?: CSSProperties;
   onlyActiveOnIndex?: boolean;
@@ -32,7 +33,20 @@ const Link = ({
     </LinkRoot>
   );
 
-  return tooltip ? <Tooltip tooltip={tooltip}>{link}</Tooltip> : link;
+  const tooltipProps =
+    typeof tooltip === "string"
+      ? {
+          tooltip,
+        }
+      : tooltip;
+
+  return tooltip ? (
+    <Tooltip {...tooltipProps}>
+      <span>{link}</span>
+    </Tooltip>
+  ) : (
+    link
+  );
 };
 
 export default Object.assign(Link, {
