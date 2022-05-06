@@ -36,16 +36,13 @@ function getBaseActionObject() {
 
 function getPKAction({ question, column, objectId, extraData }) {
   const actionObject = getBaseActionObject();
-  const [actionKey, action, extra] = getActionForPKColumn({
+  const [actionKey, action] = getActionForPKColumn({
     question,
     column,
     objectId,
     extraData,
   });
   actionObject[actionKey] = action;
-  if (extra) {
-    actionObject.extra = extra;
-  }
   return actionObject;
 }
 
@@ -84,7 +81,7 @@ export default ({ question, clicked }) => {
   const params = { question, column, objectId, extraData };
   const actionObject = isPK(column) ? getPKAction(params) : getFKAction(params);
   if (!hasManyPKColumns(question)) {
-    actionObject.zoomInRow = objectId;
+    actionObject.extra = () => ({ objectId });
   }
   return actionObject ? [actionObject] : [];
 };

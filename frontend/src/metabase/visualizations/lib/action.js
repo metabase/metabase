@@ -25,8 +25,8 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
     if (question) {
       onChangeCardAndRun({
         nextCard: question.card(),
-        objectId: action.zoomInRow,
         ...extra,
+        objectId: extra.objectId,
       });
       didPerform = true;
     }

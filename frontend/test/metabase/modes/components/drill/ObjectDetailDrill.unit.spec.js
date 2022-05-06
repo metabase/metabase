@@ -222,7 +222,7 @@ describe("ObjectDetailDrill", () => {
           {
             name: "object-detail",
             question: expect.any(Function),
-            zoomInRow: cellValue,
+            extra: expect.any(Function),
           },
         ]);
       });
@@ -230,7 +230,7 @@ describe("ObjectDetailDrill", () => {
       it("should return correct action", () => {
         const [action] = actions;
         expect(action.question()).toBe(SAVED_QUESTION);
-        expect(action.zoomInRow).toEqual(cellValue);
+        expect(action.extra().objectId).toEqual(cellValue);
       });
     });
   });
@@ -256,9 +256,9 @@ describe("ObjectDetailDrill", () => {
         });
       });
 
-      it("should supply the foreign key as a zoomInRow parameter", () => {
+      it("should supply the foreign key as a return value from the extra() function", () => {
         const [action] = actions;
-        expect(action.zoomInRow).toEqual(cellValue);
+        expect(action.extra().objectId).toEqual(cellValue);
       });
     });
 
@@ -284,9 +284,9 @@ describe("ObjectDetailDrill", () => {
           filter: ["=", PRODUCTS.ID.reference(), cellValue],
         });
       });
-      it("should supply the foreign key as a zoomInRow parameter", () => {
+      it("should supply the foreign key as a return value from the extra() function", () => {
         const [action] = actions;
-        expect(action.zoomInRow).toEqual(cellValue);
+        expect(action.extra().objectId).toEqual(cellValue);
       });
     });
   });
