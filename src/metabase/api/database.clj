@@ -370,15 +370,14 @@
                                (remove :visibility_type)
                                (map #(update % :fields filter-sensitive-fields))))))
       (update :tables (fn [tables]
-                        (for [table tables
-                              :when (mi/can-read? table)]
+                        (if include-editable-data-model?
+                          (filter-tables-by-data-model-perms tables)
+                          (filter mi/can-read? tables))))
+      (update :tables (fn [tables]
+                        (for [table tables]
                           (-> table
                               (update :segments (partial filter mi/can-read?))
                               (update :metrics  (partial filter mi/can-read?))))))
-      (update :tables (fn [tables]
-                        (if include-editable-data-model?
-                          (filter-tables-by-data-model-perms tables)
-                          tables)))
       (check-db-data-model-perms include-editable-data-model?)))
 
 (api/defendpoint GET "/:id/metadata"
@@ -487,10 +486,13 @@
 
 (api/defendpoint GET "/:id/idfields"
   "Get a list of all primary key `Fields` for `Database`."
-  [id]
-  (api/read-check Database id)
-  (sort-by (comp str/lower-case :name :table) (filter mi/can-read? (-> (database/pk-fields {:id id})
-                                                                       (hydrate :table)))))
+  [id include_editable_data_model]
+  (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
+                                           [api/write-check mi/can-write?]
+                                           [api/read-check mi/can-read?])]
+    (db-perm-check Database id)
+    (sort-by (comp str/lower-case :name :table) (filter field-perm-check (-> (database/pk-fields {:id id})
+                                                                             (hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------

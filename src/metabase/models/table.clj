@@ -71,9 +71,7 @@
           :pre-delete     pre-delete})
   mi/IObjectPermissions
   (merge mi/IObjectPermissionsDefaults
-         {:can-read?         (mi/has-any-permissions?
-                              (partial mi/current-user-has-full-permissions? :read)
-                              (partial mi/current-user-has-full-permissions? :write))
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
           :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
