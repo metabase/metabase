@@ -10,11 +10,12 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 const propTypes = {
   collection: PropTypes.object,
   list: PropTypes.arrayOf(PropTypes.object),
+  canCreateQuestions: PropTypes.bool,
 };
 
-function NewCollectionItemMenu({ collection }) {
+function NewCollectionItemMenu({ collection, canCreateQuestions }) {
   const items = [
-    {
+    canCreateQuestions && {
       icon: "insight",
       title: t`Question`,
       link: newQuestion({ mode: "notebook", collectionId: collection.id }),
@@ -32,7 +33,7 @@ function NewCollectionItemMenu({ collection }) {
       link: newCollection(collection.id),
       event: `${ANALYTICS_CONTEXT};New Item Menu;Collection Click`,
     },
-  ];
+  ].filter(Boolean);
 
   return <EntityMenu items={items} triggerIcon="add" tooltip={t`New…`} />;
 }

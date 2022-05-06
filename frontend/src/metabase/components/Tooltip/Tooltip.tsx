@@ -19,7 +19,7 @@ Tooltip.propTypes = {
   maxWidth: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
 };
 
-interface TooltipProps
+export interface TooltipProps
   extends Partial<
     Pick<
       Tippy.TippyProps,
