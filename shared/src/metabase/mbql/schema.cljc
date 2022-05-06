@@ -548,10 +548,10 @@
   s StringExpressionArg, pattern s/Str)
 
 (defclause ^{:requires-features #{:expressions}} +
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+  x NumericExpressionArg, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} -
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+  x NumericExpressionArg, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
 

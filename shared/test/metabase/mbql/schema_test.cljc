@@ -46,3 +46,9 @@
                #?(:clj clojure.lang.ExceptionInfo :cljs cljs.core.ExceptionInfo)
                #"keys in template tag map must match the :name of their values"
                (mbql.s/validate-query bad-query)))))))
+
+(t/deftest unary-plus-and-minus
+  (t/testing "schema accepts plus and minus in unary"
+    (t/is (nil? (s/check mbql.s/- [:- 1])))
+    (t/is (nil? (s/check mbql.s/+ [:+ 2])))
+    (t/is (nil? (s/check mbql.s/- [:- [:- 3]])))))
