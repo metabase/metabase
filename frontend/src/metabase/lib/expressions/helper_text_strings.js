@@ -441,6 +441,22 @@ const helperTextStrings = [
     ],
   },
   {
+    name: "interval",
+    structure: "timeSpan(" + t`number` + ", " + t`text` + ")",
+    description: t`Gets a time interval of specified length`,
+    example: 'timeSpan(7, "day")',
+    args: [
+      {
+        name: t`number`,
+        description: t`Period of interval, where negative values are back in time.`,
+      },
+      {
+        name: t`text`,
+        description: t`Type of interval like "day", "month", "year".`,
+      },
+    ],
+  },
+  {
     name: "time-interval",
     structure:
       "interval(" + t`column` + ", " + t`number` + ", " + t`text` + ")",
@@ -451,6 +467,22 @@ const helperTextStrings = [
         name: t`column`,
         description: t`The date column to return interval of.`,
       },
+      {
+        name: t`number`,
+        description: t`Period of interval, where negative values are back in time.`,
+      },
+      {
+        name: t`text`,
+        description: t`Type of interval like "day", "month", "year".`,
+      },
+    ],
+  },
+  {
+    name: "relative-datetime",
+    structure: "relativeDateTime(" + t`number` + ", " + t`text` + ")",
+    description: t`Gets a timestamp relative to the current time`,
+    example: 'relativeDateTime(-30, "day")',
+    args: [
       {
         name: t`number`,
         description: t`Period of interval, where negative values are back in time.`,
