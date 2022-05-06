@@ -138,7 +138,7 @@ jobs:
         TERM: xterm
 
     - name: Generate Mochawesome Reports
-      run: | 
+      run: |
         yarn generate:cypress:html:report
       env:
         TERM: xterm
