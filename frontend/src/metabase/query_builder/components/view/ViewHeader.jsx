@@ -411,7 +411,7 @@ function ViewTitleHeaderRightSide(props) {
   const hasSaveButton = !isDataset && !!isDirty && (isNewQuery || canEditQuery);
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
-  const showRunButton =
+  const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
   return (
@@ -421,9 +421,9 @@ function ViewTitleHeaderRightSide(props) {
     >
       {hasSaveButton && (
         <SaveButton
-          tooltip={t`You don't have permission to save this question.`}
           disabled={!question.canRun() || !canEditQuery}
-          TooltipProps={{
+          tooltip={{
+            tooltip: t`You don't have permission to save this question.`,
             isEnabled: !canEditQuery,
             placement: "left",
           }}
@@ -488,7 +488,7 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
-      {showRunButton && (
+      {hasRunButton && (
         <RunButtonWithTooltip
           className={cx("text-brand-hover text-dark hide", {
             "sm-show": !isShowingNotebook || isNative,

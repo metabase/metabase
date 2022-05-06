@@ -8,11 +8,10 @@ export interface LinkProps extends HTMLAttributes<HTMLAnchorElement> {
   disabled?: boolean;
   className?: string;
   children?: ReactNode;
-  tooltip?: string;
+  tooltip?: string | TooltipProps;
   activeClassName?: string;
   activeStyle?: CSSProperties;
   onlyActiveOnIndex?: boolean;
-  TooltipProps?: Omit<TooltipProps, "tooltip">;
 }
 
 const Link = ({
@@ -20,7 +19,6 @@ const Link = ({
   children,
   disabled,
   tooltip,
-  TooltipProps = {},
   ...props
 }: LinkProps): JSX.Element => {
   const link = (
@@ -35,8 +33,15 @@ const Link = ({
     </LinkRoot>
   );
 
+  const tooltipProps =
+    typeof tooltip === "string"
+      ? {
+          tooltip,
+        }
+      : tooltip;
+
   return tooltip ? (
-    <Tooltip tooltip={tooltip} {...TooltipProps}>
+    <Tooltip {...tooltipProps}>
       <span>{link}</span>
     </Tooltip>
   ) : (
