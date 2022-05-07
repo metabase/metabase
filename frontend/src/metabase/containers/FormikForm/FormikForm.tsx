@@ -161,6 +161,7 @@ function Form({
 
   return (
     <Formik
+      validateOnBlur
       enableReinitialize={overwriteOnInitialValuesChange}
       initialValues={initialValues}
       validate={handleValidation}

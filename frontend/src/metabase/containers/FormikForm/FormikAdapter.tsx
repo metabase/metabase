@@ -34,6 +34,7 @@ function withFormikAdapter(Component: React.ComponentType<CustomFormProps>) {
     validateForm,
     handleSubmit,
     setFieldValue,
+    setFieldTouched,
     resetForm,
     initialValues,
     submitForm,
@@ -63,6 +64,7 @@ function withFormikAdapter(Component: React.ComponentType<CustomFormProps>) {
         onChange: (e: React.ChangeEvent | unknown) => {
           const isEvent = _.isObject(e) && "target" in e;
           setFieldValue(field.name, isEvent ? e.target.value : e);
+          setFieldTouched(field.name, true, false);
         },
       };
     });
