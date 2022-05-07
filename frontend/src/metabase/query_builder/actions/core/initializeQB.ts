@@ -32,7 +32,8 @@ import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
-import { loadMetadataForCard, resetQB } from "./core";
+import { resetQB } from "./core";
+import { loadMetadataForCard } from "./metadata";
 import {
   handleDashboardParameters,
   getParameterValuesForQuestion,
