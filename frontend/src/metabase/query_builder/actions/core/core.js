@@ -52,6 +52,7 @@ import { onCloseSidebars, setQueryBuilderMode } from "../ui";
 import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
+import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
