@@ -31,7 +31,7 @@ export type BaseFieldDefinition = {
 };
 
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
-  type: string;
+  type: string | (() => JSX.Element);
 };
 
 export type CustomFormFieldDefinition = BaseFieldDefinition & {

@@ -10,12 +10,20 @@ import {
   FieldName,
   FieldValues,
   FormField,
+  FormFieldDefinition,
   FormObject,
 } from "metabase-types/forms";
+
+type FormProps = {
+  formObject: FormObject;
+  registerFormField: (fieldDef: FormFieldDefinition) => void;
+  unregisterFormField: (fieldDef: FormFieldDefinition) => void;
+};
 
 function withFormikAdapter(Component: React.ComponentType<CustomFormProps>) {
   function FormWithFormikAdapter({
     formObject,
+
     errors,
     dirty,
     isValid,
@@ -30,9 +38,7 @@ function withFormikAdapter(Component: React.ComponentType<CustomFormProps>) {
     initialValues,
     submitForm,
     ...rest
-  }: FormikProps<FieldValues> & {
-    formObject: FormObject;
-  }) {
+  }: FormikProps<FieldValues> & FormProps) {
     const [active, setActive] = useState<string | null>(null);
 
     const fields = formObject.fields(values);

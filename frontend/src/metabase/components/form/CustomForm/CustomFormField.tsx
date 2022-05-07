@@ -5,8 +5,8 @@ import _ from "underscore";
 import FormField from "metabase/components/form/FormField";
 import FormWidget from "metabase/components/form/FormWidget";
 
-// import { useOnMount } from "metabase/hooks/use-on-mount";
-// import { useOnUnmount } from "metabase/hooks/use-on-unmount";
+import { useOnMount } from "metabase/hooks/use-on-mount";
+import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
 import {
   BaseFieldDefinition,
@@ -27,18 +27,19 @@ function isCustomWidget(
   );
 }
 
-interface LegacyContextProps extends FormLegacyContext {
-  registerFormField?: (field: BaseFieldDefinition) => void;
-  unregisterFormField?: (field: BaseFieldDefinition) => void;
+function isInlineField(
+  props: CustomFormFieldProps,
+): props is StandardFormFieldDefinition {
+  return !!(props as FormFieldDefinition).type;
 }
 
-export interface CustomFormFieldProps
-  extends BaseFieldDefinition,
-    LegacyContextProps {
+export interface CustomFormFieldProps extends BaseFieldDefinition {
   onChange?: (e: unknown) => void;
 }
 
-function getFieldDefinition(props: CustomFormFieldProps): BaseFieldDefinition {
+function getFieldDefinition(
+  props: StandardFormFieldDefinition,
+): FormFieldDefinition {
   return _.pick(
     props,
     "name",
@@ -55,18 +56,29 @@ function RawCustomFormField(
   props: CustomFormFieldProps & { forwardedRef?: any },
 ) {
   const { name, onChange, forwardedRef } = props;
-  const { fields, formFieldsByName, values, onChangeField } = useForm();
+  const {
+    fields,
+    formFieldsByName,
+    values,
+    onChangeField,
+    registerFormField,
+    unregisterFormField,
+  } = useForm();
 
   const field = getIn(fields, name.split("."));
   const formField = formFieldsByName[name];
 
-  // useOnMount(() => {
-  //   registerFormField?.(getFieldDefinition(props));
-  // });
+  useOnMount(() => {
+    if (isInlineField(props)) {
+      registerFormField?.(getFieldDefinition(props));
+    }
+  });
 
-  // useOnUnmount(() => {
-  //   unregisterFormField?.(getFieldDefinition(props));
-  // });
+  useOnUnmount(() => {
+    if (isInlineField(props)) {
+      unregisterFormField?.(getFieldDefinition(props));
+    }
+  });
 
   const handleChange = useCallback(
     e => {

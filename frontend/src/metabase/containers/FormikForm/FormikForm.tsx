@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+import { merge } from "icepick";
 import { Formik } from "formik";
 
 import CustomForm, {
@@ -12,9 +13,11 @@ import {
   FormFieldDefinition,
   FormObject,
   FieldValues,
+  BaseFieldDefinition,
 } from "metabase-types/forms";
 
 import withFormikAdapter from "./FormikAdapter";
+import useInlineFields from "./useInlineFields";
 import { makeFormObject } from "./utils";
 
 function FormView(
@@ -65,6 +68,7 @@ function maybeBlurActiveElement() {
 function Form({
   form,
   fields,
+  initialValues: initialValuesProp = {},
   values = {},
   overwriteOnInitialValuesChange = false,
   validate,
@@ -74,24 +78,42 @@ function Form({
   onSubmitSuccess,
   ...props
 }: FormContainerProps) {
+  const {
+    inlineFields,
+    registerFormField,
+    unregisterFormField,
+  } = useInlineFields();
+
   const formDefinition = useMemo(() => {
     const formDef = form || {
-      fields,
+      fields: fields || Object.values(inlineFields),
       validate,
       initial,
       normalize,
     };
-    return formDef;
-  }, [form, fields, validate, initial, normalize]);
+    return {
+      ...formDef,
+      fields: (values: FieldValues) => {
+        const fieldList =
+          typeof formDef.fields === "function"
+            ? (formDef.fields(values) as BaseFieldDefinition[])
+            : (formDef.fields as BaseFieldDefinition[]);
+        return fieldList.map(fieldDef => ({
+          ...fieldDef,
+          ...inlineFields[fieldDef.name],
+        }));
+      },
+    };
+  }, [form, fields, inlineFields, validate, initial, normalize]);
 
   const formObject = useMemo(() => makeFormObject(formDefinition), [
     formDefinition,
   ]);
 
-  const initialValues = useMemo(() => formObject.initial(values), [
-    values,
-    formObject,
-  ]);
+  const initialValues = useMemo(
+    () => merge(formObject.initial(values), initialValuesProp),
+    [values, initialValuesProp, formObject],
+  );
 
   const fieldNames = useMemo(
     () => formObject.fieldNames({ ...initialValues, ...values }),
@@ -147,7 +169,13 @@ function Form({
       onSubmit={handleSubmit}
     >
       {formikProps => (
-        <AdaptedFormView {...formikProps} {...props} formObject={formObject} />
+        <AdaptedFormView
+          {...formikProps}
+          {...props}
+          formObject={formObject}
+          registerFormField={registerFormField}
+          unregisterFormField={unregisterFormField}
+        />
       )}
     </Formik>
   );

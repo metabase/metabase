@@ -15,6 +15,8 @@ export const FormContext = createContext<FormLegacyContext>({
   disablePristineSubmit: true,
   handleSubmit: _.noop,
   onChangeField: _.noop,
+  registerFormField: _.noop,
+  unregisterFormField: _.noop,
 });
 
 export function useForm() {

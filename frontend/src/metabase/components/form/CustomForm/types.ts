@@ -15,6 +15,8 @@ export interface BaseFormProps {
   formFields: FormFieldDefinition[];
   formFieldsByName: Record<FieldName, FormFieldDefinition>;
   disablePristineSubmit?: boolean;
+  registerFormField: (fieldDef: FormFieldDefinition) => void;
+  unregisterFormField: (fieldDef: FormFieldDefinition) => void;
 
   fields: Record<string, FormField>;
   values: FieldValues;
@@ -66,6 +68,8 @@ export interface FormLegacyContext
       BaseFormProps,
       | "formFields"
       | "formFieldsByName"
+      | "registerFormField"
+      | "unregisterFormField"
       | "disablePristineSubmit"
       | "handleSubmit"
       | "fields"
