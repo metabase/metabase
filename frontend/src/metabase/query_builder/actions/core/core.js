@@ -13,7 +13,6 @@ import { createThunkAction } from "metabase/lib/redux";
 import { cardIsEquivalent, cardQueryIsEquivalent } from "metabase/meta/Card";
 
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
-import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import { openUrl } from "metabase/redux/app";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -53,30 +52,10 @@ import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars, setQueryBuilderMode } from "../ui";
 
+import { getQuestionWithDefaultVisualizationSettings } from "./utils";
+
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
-
-/**
- * Saves to `visualization_settings` property of a question those visualization settings that
- * 1) don't have a value yet and 2) have `persistDefault` flag enabled.
- *
- * Needed for persisting visualization columns for pulses/alerts, see #6749.
- */
-const getQuestionWithDefaultVisualizationSettings = (question, series) => {
-  const oldVizSettings = question.settings();
-  const newVizSettings = {
-    ...oldVizSettings,
-    ...getPersistableDefaultSettingsForSeries(series),
-  };
-
-  // Don't update the question unnecessarily
-  // (even if fields values haven't changed, updating the settings will make the question appear dirty)
-  if (!_.isEqual(oldVizSettings, newVizSettings)) {
-    return question.setSettings(newVizSettings);
-  } else {
-    return question;
-  }
-};
 
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
