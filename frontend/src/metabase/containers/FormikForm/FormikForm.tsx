@@ -121,9 +121,7 @@ function Form({
   );
 
   const handleValidation = useCallback(
-    (values: FieldValues) => {
-      formObject.validate(values);
-    },
+    (values: FieldValues) => formObject.validate(values, { values }),
     [formObject],
   );
 
