@@ -15,7 +15,6 @@ import {
   FormFieldDefinition,
 } from "metabase-types/forms";
 
-import { FormLegacyContext } from "./types";
 import { useForm } from "./context";
 
 function isCustomWidget(
