@@ -96,6 +96,11 @@ describe("metabase/lib/expressions/resolve", () => {
       expect(() => filter(["<=", ["lower", A], "P"])).not.toThrow();
     });
 
+    it("should allow an equality comparison on boolean values", () => {
+      // X = IsNull(Y)
+      expect(() => filter(["=", X, ["is-null", Y]])).not.toThrow();
+    });
+
     it("should reject a less/greater comparison on functions returning boolean", () => {
       // IsEmpty([A]) < 0
       expect(() => filter(["<", ["is-empty", A], 0])).toThrow();

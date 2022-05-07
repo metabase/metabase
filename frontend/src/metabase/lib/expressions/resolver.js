@@ -42,7 +42,13 @@ const isCompatible = (a, b) => {
   if (a === b) {
     return true;
   }
-  if (a === "expression" && (b === "number" || b === "string")) {
+  if (
+    a === "expression" &&
+    (b === "number" || b === "string" || b === "boolean")
+  ) {
+    return true;
+  }
+  if (a === "value" && (b === "number" || b === "string")) {
     return true;
   }
   if (a === "aggregation" && b === "number") {
@@ -85,7 +91,8 @@ export function resolve(expression, type = "expression", fn = undefined) {
     } else if (op === "true" || op === "false") {
       operandType = "expression";
     } else if (COMPARISON_OPS.includes(op)) {
-      operandType = "expression";
+      const isEquality = op === OP.Equal || op === OP.NotEqual;
+      operandType = isEquality ? "expression" : "value";
       const [firstOperand] = operands;
       if (typeof firstOperand === "number" && !Array.isArray(firstOperand)) {
         throw new ResolverError(
