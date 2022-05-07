@@ -121,7 +121,13 @@ function Form({
   );
 
   const handleValidation = useCallback(
-    (values: FieldValues) => formObject.validate(values, { values }),
+    (values: FieldValues) => {
+      const result = formObject.validate(values, { values });
+
+      // Ensure errors don't have empty strings
+      // as they will also be treated as errors
+      return _.mapObject(result, error => error || null);
+    },
     [formObject],
   );
 
