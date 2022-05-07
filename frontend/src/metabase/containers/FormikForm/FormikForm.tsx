@@ -18,7 +18,7 @@ import {
 
 import withFormikAdapter from "./FormikAdapter";
 import useInlineFields from "./useInlineFields";
-import { makeFormObject } from "./utils";
+import { makeFormObject, cleanObject } from "./utils";
 
 function FormView(
   props: CustomFormProps & {
@@ -126,7 +126,7 @@ function Form({
 
       // Ensure errors don't have empty strings
       // as they will also be treated as errors
-      return _.mapObject(result, error => error || null);
+      return cleanObject(result);
     },
     [formObject],
   );

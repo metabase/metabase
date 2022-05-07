@@ -81,3 +81,14 @@ function setValueAtPath(object, path, value, mergeFn = (a, b) => b) {
     }
   }
 }
+
+export function cleanObject(object) {
+  const result = {};
+  Object.keys(object).forEach(key => {
+    const value = object[key];
+    if (value) {
+      result[key] = value;
+    }
+  });
+  return result;
+}
