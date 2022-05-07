@@ -16,13 +16,10 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 
 import { openUrl } from "metabase/redux/app";
 import { setRequestUnloaded } from "metabase/redux/requests";
-import { loadMetadataForQueries } from "metabase/redux/metadata";
-import { getMetadata } from "metabase/selectors/metadata";
 
 import Questions from "metabase/entities/questions";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import {
@@ -52,6 +49,7 @@ import { zoomInRow } from "../object-detail";
 import { clearQueryResult, runQuestionQuery } from "../querying";
 import { onCloseSidebars, setQueryBuilderMode } from "../ui";
 
+import { loadMetadataForCard } from "./metadata";
 import { getQuestionWithDefaultVisualizationSettings } from "./utils";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
@@ -67,18 +65,6 @@ function hasNewColumns(question, queryResult) {
     query instanceof StructuredQuery ? query.columnNames() : [];
   return _.difference(nextColumns, previousColumns).length > 0;
 }
-
-export const loadMetadataForCard = card => (dispatch, getState) => {
-  const metadata = getMetadata(getState());
-  const question = new Question(card, metadata);
-  const queries = [question.query()];
-  if (question.isDataset()) {
-    queries.push(question.composeDataset().query());
-  }
-  return dispatch(
-    loadMetadataForQueries(queries, question.dependentMetadata()),
-  );
-};
 
 // refreshes the card without triggering a run of the card's query
 export const SOFT_RELOAD_CARD = "metabase/qb/SOFT_RELOAD_CARD";
