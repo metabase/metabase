@@ -153,4 +153,12 @@ function Form({
   );
 }
 
+export {
+  CustomFormField as FormField,
+  CustomFormSubmit as FormSubmit,
+  CustomFormMessage as FormMessage,
+  CustomFormFooter as FormFooter,
+  CustomFormSection as FormSection,
+} from "metabase/components/form/CustomForm";
+
 export default Form;
