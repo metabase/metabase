@@ -422,7 +422,7 @@
   :on-change reconfigure-retrying)
 
 (defsetting notification-retry-max-interval-millis
-  (deferred-tru "The maximum delay beetween attempts to deliver a single notification.")
+  (deferred-tru "The maximum delay between attempts to deliver a single notification.")
   :type :integer
   :default 30000
   :on-change reconfigure-retrying)
