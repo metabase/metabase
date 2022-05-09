@@ -618,10 +618,13 @@ export class UnconnectedDataSelector extends Component {
 
     // Database: skip another step backwards
     const databases = this.getDatabases();
+    const filteredDatabases = databases.filter(
+      database => !database.is_saved_questions,
+    );
     if (
       steps[index] === DATABASE_STEP &&
       this.props.useOnlyAvailableDatabase &&
-      databases.length === 1
+      filteredDatabases.length === 1
     ) {
       index -= 1;
     }
