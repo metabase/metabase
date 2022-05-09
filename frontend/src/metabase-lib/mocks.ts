@@ -124,3 +124,16 @@ export function getNativeModel(
     dataset: true,
   });
 }
+
+export function getComposedModel(
+  card?: Omit<Partial<StructuredSavedCard>, "dataset">,
+) {
+  const question = getStructuredModel(card).composeDataset();
+  const query = question.query() as StructuredQuery;
+
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  question._metadata.tables[query.sourceTableId()] = ORDERS;
+
+  return question;
+}

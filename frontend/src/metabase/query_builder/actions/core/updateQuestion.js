@@ -141,7 +141,10 @@ export const updateQuestion = (
     }
 
     // Replace the current question with a new one
-    await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
+    await dispatch({
+      type: UPDATE_QUESTION,
+      payload: { card: newQuestion.card() },
+    });
 
     if (shouldUpdateUrl) {
       dispatch(updateUrl(null, { dirty: true }));
