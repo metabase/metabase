@@ -3,27 +3,16 @@
   (:require [clojure
              [set :as set]]
             [clojure.tools.logging :as log]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [clj-http.client :as http]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [metabase.util.honeysql-extensions :as hx]
             [java-time :as t]
-            [medley.core :as m]
             [metabase.config :as config]
-            [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
-            [metabase.driver.sql.util :as sql.u]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [schema.core :as s]
-            [metabase.util :as u]
             [metabase.util
-             [i18n :refer [tru]]
              [date-2 :as u.date]]
-            [metabase.driver.sql-jdbc.sync.common :as sync-common]
-            [metabase.driver.sql-jdbc.sync.interface :as i]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [execute :as sql-jdbc.execute]
@@ -31,8 +20,7 @@
              [sync :as sql-jdbc.sync]])
 
   (:import [java.sql PreparedStatement Types]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime ZonedDateTime Instant OffsetTime ZoneId]
-           [java.sql DatabaseMetaData ResultSet]
+           [java.time LocalTime OffsetDateTime ZonedDateTime Instant OffsetTime ZoneId]
            [java.util Calendar TimeZone]))
 
 
