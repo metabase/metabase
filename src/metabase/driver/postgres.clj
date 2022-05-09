@@ -283,7 +283,7 @@
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
 (defmethod sql.qp/json-query :postgres
-  [driver identifier nfc-field]
+  [_ identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
@@ -297,7 +297,7 @@
           (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [_ [_ id-or-name opts :as clause]]
+  [driver [_ id-or-name opts :as clause]]
   (let [stored-field (when (integer? id-or-name)
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
