@@ -1,17 +1,12 @@
 (ns metabase.test.data.ocient
-  (:require [clj-time.core :as time]
-            [clj-time.coerce :as tc]
-            [clojure.java.jdbc :as jdbc]
-            [clojure.set :as set]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
             [clojure.tools.logging :as log]
             [java-time :as t]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [honeysql.helpers :as h]
             [medley.core :as m]
-            [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -20,11 +15,6 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.driver.sql.util :as sql.u]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.table :refer [Table]]
-            [metabase.sync.field-values :as sync-field-values]
-            [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.impl :as tx.impl]
             [metabase.test.data.sql :as sql.tx]
@@ -35,10 +25,9 @@
             [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.honeysql-extensions :as hx]
-            [schema.core :as s])
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.SQLException
-           [java.sql Connection DatabaseMetaData ResultSet]))
+           [java.sql Connection ResultSet]))
 
 (sql-jdbc.tx/add-test-extensions! :ocient)
 
