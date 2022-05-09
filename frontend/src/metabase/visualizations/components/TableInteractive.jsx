@@ -149,9 +149,10 @@ export default class TableInteractive extends Component {
   }
 
   _findIDColumn = (data, isPivoted = false) => {
-    const pkIndex = isPivoted
-      ? -1
-      : data.cols.findIndex(col => isPK(col) && col.id !== undefined);
+    const hasManyPKColumns = data.cols.filter(isPK).length > 1;
+
+    const pkIndex =
+      isPivoted || hasManyPKColumns ? -1 : data.cols.findIndex(isPK);
 
     this.setState({
       IDColumnIndex: pkIndex === -1 ? null : pkIndex,

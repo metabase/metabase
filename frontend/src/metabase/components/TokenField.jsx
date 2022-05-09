@@ -300,12 +300,8 @@ export default class TokenField extends Component {
     if (this.props.parseFreeformValue) {
       e.preventDefault();
       const string = e.clipboardData.getData("Text");
-      const values = this.props.multi
-        ? string
-            .split(/\n|,/g)
-            .map(this.props.parseFreeformValue)
-            .filter(s => s)
-        : [string];
+      const lines = this.props.multi ? string.split(/\n|,/g) : [string];
+      const values = lines.map(this.props.parseFreeformValue).filter(s => s);
       if (values.length > 0) {
         this.addValue(values);
       }

@@ -157,11 +157,17 @@
             (name id-or-name))
     temporal-unit (with-lvalue-temporal-bucketing temporal-unit)))
 
+(defn- add-start-of-week-offset [expr offset]
+  (cond
+    (zero? offset) expr
+    (neg? offset)  (recur expr (+ offset 7))
+    :else          {$mod [{$add [expr offset]}
+                          7]}))
+
 (defn- day-of-week
   [column]
-  (mongo-let [day_of_week {$mod [{$add [{$dayOfWeek column}
-                                        (driver.common/start-of-week-offset :mongo)]}
-                                 7]}]
+  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek column}
+                                                    (driver.common/start-of-week-offset :mongo))]
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
             :else day_of_week}}))

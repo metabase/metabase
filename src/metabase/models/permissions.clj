@@ -842,6 +842,15 @@
   [group-or-id & path-components]
   (delete-related-permissions! group-or-id (apply data-perms-path path-components)))
 
+(defn revoke-download-perms!
+  "Revoke all full and limited download permissions for `group-or-id` to object with `path-components`."
+  {:arglists '([group-id db-id]
+               [group-id db-id schema-name]
+               [group-id db-id schema-name table-or-id])}
+  [group-or-id & path-components]
+  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :full) path-components))
+  (delete-related-permissions! group-or-id (apply (partial feature-perms-path :download :limited) path-components)))
+
 (defn grant-permissions!
   "Grant permissions for `group-or-id`. Two-arity grants any arbitrary Permissions `path`. With > 2 args, grants the
   data permissions from calling [[data-perms-path]]."
@@ -1117,6 +1126,7 @@
                  (when-not (premium-features/has-feature? :advanced-permissions)
                    (throw (ee-permissions-exception :block)))
                  (revoke-data-perms! group-id db-id)
+                 (revoke-download-perms! group-id db-id)
                  (grant-permissions! group-id (database-block-perms-path db-id)))
         (when (map? schemas)
           (delete-block-perms-for-this-db!)

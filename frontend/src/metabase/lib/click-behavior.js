@@ -72,9 +72,14 @@ function notRelativeDateOrRange({ type }) {
   return type !== "date/range" && type !== "date/relative";
 }
 
-export function getTargetsWithSourceFilters({ isDash, object, metadata }) {
+export function getTargetsWithSourceFilters({
+  isDash,
+  dashcard,
+  object,
+  metadata,
+}) {
   return isDash
-    ? getTargetsForDashboard(object)
+    ? getTargetsForDashboard(object, dashcard)
     : getTargetsForQuestion(object, metadata);
 }
 
@@ -128,7 +133,7 @@ function getTargetsForQuestion(question, metadata) {
     });
 }
 
-function getTargetsForDashboard(dashboard) {
+function getTargetsForDashboard(dashboard, dashcard) {
   return dashboard.parameters.map(parameter => {
     const { type, id, name } = parameter;
     const filter = baseTypeFilterForParameterType(type);
@@ -138,9 +143,14 @@ function getTargetsForDashboard(dashboard) {
       target: { type: "parameter", id },
       sourceFilters: {
         column: c => notRelativeDateOrRange(parameter) && filter(c.base_type),
-        parameter: sourceParam =>
-          parameter.type === sourceParam.type &&
-          parameter.id !== sourceParam.id,
+        parameter: sourceParam => {
+          // parameter IDs are generated client-side, so they might not be unique
+          // if dashboard is a clone, it will have identical parameter IDs to the original
+          const isSameParameter =
+            dashboard.id === dashcard.dashboard_id &&
+            parameter.id === sourceParam.id;
+          return parameter.type === sourceParam.type && !isSameParameter;
+        },
         userAttribute: () => !parameter.type.startsWith("date"),
       },
     };
