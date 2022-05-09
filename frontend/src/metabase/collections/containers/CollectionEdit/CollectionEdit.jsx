@@ -7,24 +7,7 @@ import { goBack, push } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
 import Collection from "metabase/entities/collections";
 
-function mapStateToProps(state, props) {
-  return {
-    form: Collection.selectors.getForm(state, props),
-  };
-}
-
-function CollectionForm({ form, collection, onSave, onClose }) {
-  return (
-    <Collection.ModalForm
-      form={form}
-      collection={collection}
-      onSaved={onSave}
-      onClose={onClose}
-    />
-  );
-}
-
-const UpdateCollectionForm = connect(mapStateToProps)(CollectionForm);
+import CollectionEditForm from "./CollectionEditForm";
 
 const mapDispatchToProps = {
   push,
@@ -42,7 +25,7 @@ class CollectionEdit extends Component {
     return (
       <Collection.Loader id={collectionId}>
         {({ collection, update }) => (
-          <UpdateCollectionForm
+          <CollectionEditForm
             collection={collection}
             onSave={this.onSave}
             onClose={this.props.goBack}
