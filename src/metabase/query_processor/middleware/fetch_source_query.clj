@@ -168,15 +168,15 @@
                 "\n"
                 (u/pprint-to-str 'yellow source-query))
 
-     (cond-> {:source-query    source-query
+     (cond-> {:source-query    (cond-> source-query
+                                 ;; This will be applied, if still appropriate, by the peristence middleware
+                                 persisted? (assoc :persisted-info/native (format "select %s from %s.%s"
+                                                                                  (str/join ", " (map :field-name (get-in card [:definition :field-definitions])))
+                                                                                  (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                                                                                  (:table_name card))))
               :database        database-id
               :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
                                  persisted? sub-cached-field-refs)}
-       ;; This will be applied, if still appropriate, by the peristence middleware
-       persisted? (assoc :persisted-info/native (format "select %s from %s.%s"
-                                                        (str/join ", " (map :field-name (get-in card [:definition :field-definitions])))
-                                                        (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                                                        (:table_name card)))
        dataset? (assoc :source-query/dataset? dataset?)))))
 
 (s/defn ^:private source-table-str->card-id :- su/IntGreaterThanZero
