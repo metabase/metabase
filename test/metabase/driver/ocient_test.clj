@@ -46,42 +46,4 @@
 ;;                                                                                                               {:col1 "B", :col2 2}
 ;;                                                                                                               {:col1 "C", :col2 3}]))))))
 
-(deftest ocient-connect-and-sync
-  ;; ridiculously hacky test; hopefully it can be simplified; see inline comments for full explanations
-  (mt/test-driver :ocient
-                  (let [database-name "test"
-                        details  (tx/dbdef->connection-details :ocient :db {:host               (tx/db-test-env-var :ocient :host "localhost")
-                                                                            :port               (tx/db-test-env-var :ocient :port "4051")
-                                                                            :user               (tx/db-test-env-var :ocient :user "admin@system")
-                                                                            :password           (tx/db-test-env-var :ocient :password "admin")
-                                                                            :database-name      (tx/format-name :ocient database-name)
-                                                                            :additional-options "loglevel=TRACE;logfile=/tmp/metabase/ocient_jdbc.log"})
-                        orig-user-id api/*current-user-id*]
-                    (testing "Ocient can-connect? with SSL connection"
-                      (is (driver/can-connect? :ocient details)))
-                    (testing "Sync works with SSL connection"
-                      (binding [metabase.sync.util/*log-exceptions-and-continue?* false
-                                api/*current-user-id* (mt/user->id :crowberto)]
-                        (mt/with-temp Database [database {:engine  :ocient,
-                                                          :name    database-name,
-                                                          :details details}]
-                          (mt/with-db database
-                            (testing " can sync correctly"
-                              (sync/sync-database! database {:scan :schema})
-                        ;; should be four tables from test-data
-                              (is (= 4 (db/count Table :db_id (u/the-id database) :name [:like (str database-name "%")])))
-                              (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
-                                  ;; we also need to rebind this dynamic var so that we can pretend "test-data" is
-                                  ;; actually the name of the database, and not some variation on the :name specified
-                                  ;; above, so that the table names resolve correctly in the generated query we can't
-                                  ;; simply call this new temp database "test-data", because then it will no longer be
-                                  ;; unique compared to the "real" "test-data" DB associated with the non-SSL (default)
-                                  ;; database, and the logic within metabase.test.data.interface/metabase-instance would
-                                  ;; be wrong (since we would end up with two :oracle Databases both named "test-data",
-                                  ;; violating its assumptions, in case the app DB ends up in an inconsistent state)
-                                        tx/*database-name-override* database-name]
-                                (testing " and execute a query correctly"
-                                  (qp-test.order-by-test/order-by-test)))))))))))
-
-
 ;; tx/defdataset-edn :sample-dataset
