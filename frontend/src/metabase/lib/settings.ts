@@ -271,6 +271,10 @@ class Settings {
     return "https://www.metabase.com/upgrade/";
   }
 
+  migrateToCloudGuideUrl() {
+    return "https://www.metabase.com/cloud/docs/migrate/guide";
+  }
+
   newVersionAvailable() {
     const result = MetabaseUtils.compareVersions(
       this.currentVersion(),

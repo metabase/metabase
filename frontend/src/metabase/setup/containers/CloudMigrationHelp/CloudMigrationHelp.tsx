@@ -3,9 +3,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import { State } from "metabase-types/store";
 import HelpCard from "metabase/components/HelpCard";
+import { SetupCardContainer } from "metabase/setup/components/SetupCardContainer";
+import MetabaseSettings from "metabase/lib/settings";
 import { COMPLETED_STEP } from "../../constants";
 import { isStepActive } from "../../selectors";
-import { SetupCardContainer } from "metabase/setup/components/SetupCardContainer";
 
 const mapStateToProps = (state: State) => ({
   isHosted: state.settings.values["is-hosted?"],
@@ -27,7 +28,7 @@ const CloudMigrationHelp = ({
     <SetupCardContainer isVisible={isVisible}>
       <HelpCard
         title={t`Migrating from self-hosted?`}
-        helpUrl={"https://metabase.com"}
+        helpUrl={MetabaseSettings.migrateToCloudGuideUrl()}
       >{t`Check out our docs for how to migrate your self-hosted instance to Cloud.`}</HelpCard>
     </SetupCardContainer>
   );
