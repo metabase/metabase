@@ -266,11 +266,11 @@
   ;;    clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test (for EE)
   :drivers-dev
   {:extra-paths ["modules/drivers/bigquery/test"
-                 "modules/drivers/ocient/test"
                  "modules/drivers/bigquery-cloud-sdk/test"
                  "modules/drivers/druid/test"
                  "modules/drivers/googleanalytics/test"
                  "modules/drivers/mongo/test"
+                 "modules/drivers/ocient/test"
                  "modules/drivers/oracle/test"
                  "modules/drivers/presto/test"
                  "modules/drivers/presto-common/test"
@@ -308,6 +308,7 @@
                                  "modules/drivers/druid/src"
                                  "modules/drivers/googleanalytics/src"
                                  "modules/drivers/mongo/src"
+                                 "modules/drivers/ocient/src"
                                  "modules/drivers/oracle/src"
                                  "modules/drivers/presto/src"
                                  "modules/drivers/presto-common/src"
