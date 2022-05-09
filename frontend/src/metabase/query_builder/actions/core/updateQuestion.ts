@@ -75,7 +75,7 @@ function checkShouldRerunPivotTableQuestion({
 
 type NextTemplateTagEditorState = "visible" | "hidden" | undefined;
 
-export function getNextTemplateTagEditorState({
+function getNextTemplateTagEditorState({
   currentQuestion,
   newQuestion,
   isVisible,
