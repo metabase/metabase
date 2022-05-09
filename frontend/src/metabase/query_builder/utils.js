@@ -3,26 +3,6 @@ import { isSupportedTemplateTagForModel } from "metabase/lib/data-modeling/utils
 import * as Urls from "metabase/lib/urls";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-// Query Builder Mode
-
-export function getQueryBuilderModeFromLocation(location) {
-  const { pathname } = location;
-  if (pathname.endsWith("/notebook")) {
-    return {
-      mode: "notebook",
-    };
-  }
-  if (pathname.endsWith("/query") || pathname.endsWith("/metadata")) {
-    return {
-      mode: "dataset",
-      datasetEditorTab: pathname.endsWith("/query") ? "query" : "metadata",
-    };
-  }
-  return {
-    mode: "view",
-  };
-}
-
 export function getPathNameFromQueryBuilderMode({
   pathname,
   queryBuilderMode,

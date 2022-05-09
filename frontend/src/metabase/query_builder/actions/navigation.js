@@ -20,10 +20,10 @@ import {
   getQueryBuilderMode,
   getQuestion,
 } from "../selectors";
+import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
   getPathNameFromQueryBuilderMode,
-  getQueryBuilderModeFromLocation,
   getURLForCardState,
 } from "../utils";
 
@@ -68,7 +68,7 @@ export const popState = createThunkAction(
     }
 
     const {
-      mode: queryBuilderModeFromURL,
+      queryBuilderMode: queryBuilderModeFromURL,
       ...uiControls
     } = getQueryBuilderModeFromLocation(location);
 
