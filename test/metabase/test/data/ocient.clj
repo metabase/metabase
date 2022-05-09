@@ -360,47 +360,7 @@
         (jdbc/print-sql-exception-chain e)
         (throw e)))))
 
-
-;; (defn- add-ids
-;;   "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
-;;   specified. (This isn't meant for composition with `load-data-get-rows`; "
-;;   [rows]
-;;   (for [[i row] (m/indexed rows)]
-;;     (apply array-map (keyword id-column-key) (inc i) (flatten (vec row)))))
-
-;; (defn- load-data-add-ids
-;;   "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
-;;   insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
-;;   args."
-;;   [insert!]
-;;   (fn [rows]
-;;     (insert! (vec (add-ids rows)))))
-
-
-;; (defn- load-data [dbdef tabledef]
-;;   ;; the JDBC driver statements fail with a cryptic status 500 error if there are too many
-;;   ;; parameters being set in a single statement; these numbers were arrived at empirically
-;;   (let [chunk-size (case (:table-name tabledef)
-;;                      "people" 100
-;;                      "reviews" 100
-;;                      "orders" 100
-;;                      "venues" 100
-;;                      "products" 100
-;;                      "cities" 50
-;;                      "sightings" 50
-;;                      "incidents" 100
-;;                      "checkins" 25
-;;                      "airport" 50
-;;                      100)
-;;         load-fn    (load-data/make-load-data-fn load-data-add-ids
-;;                                                 (partial load-data/load-data-chunked pmap chunk-size))]
-;;     (load-fn :ocient dbdef tabledef)))
-
-;; ;; Ocient requires an id and a timestamp for each row
-;; (defmethod load-data/load-data! :ocient [_ dbdef tabledef]
-;;   (load-data dbdef tabledef))
-
-;; FIXME So this is really f'ing stupid - the column order in each row provided 
+;; So this is kind of stupid - but the column order in each row provided 
 ;; will match the order of the table definition IFF the number of columns in the 
 ;; table is <9. 
 ;; 
@@ -411,10 +371,60 @@
 ;; but when >9, the value is a PersistentHashMap. Ocient requires the order of the 
 ;; values in INSERT INTO statement to match the table definition. 
 ;; https://clojuredocs.org/clojure.core/zipmap#example-5de00830e4b0ca44402ef7ed
+
+(defn- add-ids-preserve-field-order
+  "Add an `:id` column to each row in `rows`, for databases that should have data inserted with the ID explicitly
+  specified. (This isn't meant for composition with `load-data-get-rows`; "
+  [rows]
+  (for [[i row] (m/indexed rows)]
+    (apply array-map (keyword "id") (inc i) (flatten (vec row)))))
+
+(defn- load-data-add-ids-preserve-field-order
+  "Middleware function intended for use with `make-load-data-fn`. Add IDs to each row, presumabily for doing a parallel
+  insert. This function should go before `load-data-chunked` or `load-data-one-at-a-time` in the `make-load-data-fn`
+  args."
+  [insert!]
+  (fn [rows]
+    (insert! (vec (add-ids-preserve-field-order rows)))))
+
+(defn- load-data-get-rows-preserve-field-order
+  "Used by `make-load-data-fn`; get a sequence of row maps for use in a `insert!` when loading table data."
+  [_ _ tabledef]
+  (let [fields-for-insert (mapv (comp keyword :field-name)
+                                (:field-definitions tabledef))]
+    ;; TIMEZONE FIXME
+    (for [row (:rows tabledef)]
+      (apply array-map (interleave fields-for-insert row)))))
+
+(defn- make-insert!
+  "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
+  described above."
+  [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
+  (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
+                           (tx/format-name driver (u/qualified-name component)))
+        table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
+    (partial load-data/do-insert! driver conn table-identifier)))
+
+(defn make-load-data-fn-preserve-field-order
+  "Create an implementation of `load-data!`. This creates a function to actually insert a row or rows, wraps it with any
+  `insert-middleware-fns`, the calls the resulting function with the rows to insert."
+  [& insert-middleware-fns]
+  (let [insert-middleware (apply comp insert-middleware-fns)]
+    (fn [driver dbdef tabledef]
+      (jdbc/with-db-connection [conn (spec/dbdef->spec driver :db dbdef)]
+        (.setAutoCommit (jdbc/get-connection conn) false)
+        (let [insert! (insert-middleware (make-insert! driver conn dbdef tabledef))
+              rows    (load-data-get-rows-preserve-field-order driver dbdef tabledef)]
+          (log/tracef "Inserting rows like: %s" (first rows))
+          (insert! rows))))))
+
+(def ^{:arglists '([driver dbdef tabledef])} load-data-chunked-parallel!
+  "Insert rows in chunks of 200 at a time, in parallel."
+  (make-load-data-fn-preserve-field-order load-data-add-ids-preserve-field-order (partial load-data/load-data-chunked pmap)))
+
 (defmethod load-data/load-data! :ocient
   [& args]
-  (apply load-data/load-data-chunked-parallel! args))
-
+  (apply load-data-chunked-parallel! args))
 
 (defmethod sql.tx/drop-table-if-exists-sql :ocient
   [driver {:keys [database-name]} {:keys [table-name]}]
