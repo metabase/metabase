@@ -230,7 +230,7 @@
                 (for [{:keys [field-name base-type field-comment] :as field} field-definitions]
                   (str (format
                         ;; The table contains a TIMESTAMP column
-                        "%s %s"
+                        "%s %s NULL"
                         (quot field-name)
                         (or (cond
                               (and (map? base-type) (contains? base-type :native))
@@ -251,22 +251,8 @@
                          (str " " comment))))),
                ",",
                (format "  CLUSTERING INDEX idx01 (%s)" id-column-key),
-               ")"
-               "REDUNDANCY index (PARITY),
-                REDUNDANCY stats (PARITY),
-                REDUNDANCY summary_stats (PARITY),
-                REDUNDANCY cde (PARITY),
-                REDUNDANCY data (PARITY),
-                REDUNDANCY pdf (PARITY)
-                STREAMLOADER_PROPERTIES '{
-                  \"pageQueryExclusionDuration\" : \"0s\",
-                  \"streamLoaderParameters\" : {
-                      \"segmentGenerationWatermark\": \"1GB\",
-                      \"maxBatchSize\": \"10GB\",
-                      \"segmentGenerationTimeout\": \"30s\"
-                  }
-                }'"
-               (format "AS SELECT 0, %s LIMIT 0" (str/join  ", " (map (fn nullify [_] "NULL") field-definitions)))))))
+               (format ") AS SELECT 0, %s LIMIT 0"
+                       (str/join  ", " (map (fn nullify [_] "NULL") field-definitions)))))))
 
 (defmethod ddl/create-db-tables-ddl-statements :ocient
   [driver {:keys [database-name, table-definitions], :as dbdef} & _]
@@ -370,8 +356,6 @@
           " UNION ALL SELECT "
           (map (fn [row] (str/join  ", " row)) values)))))))
 
-
-
 (defmethod load-data/do-insert! :ocient
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
@@ -442,21 +426,13 @@
   [& args]
   (apply load-data/load-data-chunked-parallel! args))
 
-(defmethod tx/destroy-db! :ocient [driver dbdef]
-  (println "Ocient destroy-db! entered")
-  nil)
 
 (defmethod sql.tx/drop-table-if-exists-sql :ocient
   [driver {:keys [database-name]} {:keys [table-name]}]
   (format "DROP TABLE IF EXISTS %s" (sql.tx/qualify-and-quote driver database-name table-name)))
 
-(defmethod tx.impl/verify-data-loaded-correctly :ocient
+(defmethod sql-jdbc.sync/filtered-syncable-schemas :ocient
   [_ _ _]
-  (println "Ocient verify data loaded")
-  nil)
-
-(defmethod sql-jdbc.sync/syncable-schemas :ocient
-  [driver conn metadata]
   #{session-schema})
 
 (defmethod sql.tx/drop-db-if-exists-sql :ocient [driver {:keys [database-name]}]
@@ -464,7 +440,3 @@
 
 (defmethod sql.tx/create-db-sql :ocient [driver {:keys [database-name]}]
   (format "CREATE DATABASE %s" (sql.tx/qualify-and-quote driver database-name)))
-
-(defmethod sql-jdbc.sync/syncable-schemas :ocient
-  [driver conn metadata]
-  #{session-schema})
