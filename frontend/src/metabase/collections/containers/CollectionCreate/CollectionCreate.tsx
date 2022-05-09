@@ -4,12 +4,16 @@ import { withRouter } from "react-router";
 import { goBack } from "react-router-redux";
 import _ from "underscore";
 
-import { Collection, CollectionId } from "metabase-types/api";
+import { Collection as BaseCollection, CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import Collections from "metabase/entities/collections";
 
 import CollectionCreateForm from "./CollectionCreateForm";
+
+type Collection = BaseCollection & {
+  parent_id: CollectionId;
+};
 
 interface CollectionCreateOwnProps {
   goBack?: () => void;
@@ -55,12 +59,15 @@ function CollectionCreate({
     }
   }, [initialCollectionId, hasSetParentCollection]);
 
-  const onChangeField = useCallback((fieldName: string, value: unknown) => {
-    if (fieldName === "collection_id") {
-      setParentCollectionId(value as CollectionId);
-      setHasSetParentCollection(true);
-    }
-  }, []);
+  const onChangeValues = useCallback(
+    (collection: Collection) => {
+      if (collection.parent_id !== parentCollectionId) {
+        setParentCollectionId(collection.parent_id);
+        setHasSetParentCollection(true);
+      }
+    },
+    [parentCollectionId],
+  );
 
   const handleClose = useCallback(() => {
     if (onClose) {
@@ -84,7 +91,7 @@ function CollectionCreate({
   return (
     <CollectionCreateForm
       parentCollectionId={parentCollectionId}
-      onChangeField={onChangeField}
+      onChange={onChangeValues}
       onSaved={handleSave}
       onClose={handleClose}
     />

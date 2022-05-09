@@ -63,7 +63,7 @@ function isPersonalOrPersonalChild(collection, collectionList) {
 export const getFormSelector = createSelector(
   [
     (state, props) => props.collection || {},
-    (state, props) => props.parentCollectionId || {},
+    (state, props) => props.parentCollectionId,
     state => state.entities.collections || {},
     getUser,
   ],
@@ -71,7 +71,8 @@ export const getFormSelector = createSelector(
     const collectionList = Object.values(allCollections);
     const extraFields = [];
 
-    const parentCollection = allCollections[parentCollectionId];
+    const parentId = parentCollectionId || collection?.parent_id;
+    const parentCollection = allCollections[parentId];
     const canManageAuthorityLevel =
       user.is_superuser &&
       !isPersonalCollection(collection) &&

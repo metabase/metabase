@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import _ from "underscore";
 
-import { Collection, CollectionId } from "metabase-types/api";
+import { Collection as BaseCollection, CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import Collections from "metabase/entities/collections";
@@ -11,9 +11,13 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 const { REGULAR_COLLECTION } = PLUGIN_COLLECTIONS;
 
+type Collection = BaseCollection & {
+  parent_id: CollectionId;
+};
+
 interface CollectionCreateFormOwnProps {
   parentCollectionId: CollectionId;
-  onChangeField: (fieldName: string, value: unknown) => void;
+  onChange: (collection: Collection) => void;
   onSaved?: (collection: Collection) => void;
   onClose?: () => void;
 }
@@ -35,7 +39,7 @@ function mapStateToProps(state: State, props: CollectionCreateFormOwnProps) {
 function CollectionCreateForm({
   form,
   parentCollectionId,
-  onChangeField,
+  onChange,
   onSaved,
   onClose,
 }: CollectionCreateFormProps) {
@@ -47,7 +51,7 @@ function CollectionCreateForm({
         authority_level: REGULAR_COLLECTION.type,
       }}
       overwriteOnInitialValuesChange
-      onChangeField={onChangeField}
+      onChange={onChange}
       onSaved={onSaved}
       onClose={onClose}
     />

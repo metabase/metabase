@@ -170,6 +170,7 @@ export default class Form extends React.Component {
         initialize(this.props.formName, this._getInitialValues(), newFields),
       );
     }
+    this.props?.onChange(this.props.values);
   }
 
   _registerFormField = field => {
@@ -254,7 +255,6 @@ export default class Form extends React.Component {
   };
 
   _handleChangeField = (fieldName, value) => {
-    this.props.onChangeField?.(fieldName, value);
     return this.props.dispatch(change(this.props.formName, fieldName, value));
   };
 
