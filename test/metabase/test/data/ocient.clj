@@ -377,6 +377,9 @@
   specified. (This isn't meant for composition with `load-data-get-rows`; "
   [rows]
   (for [[i row] (m/indexed rows)]
+    ;; Field order is preserved by supplying all KV args to the array-map constructor.
+    ;; The default impl uses the into operator which may output an unsorted hash map.
+    ;; (see load-data/add-ids)
     (apply array-map (keyword "id") (inc i) (flatten (vec row)))))
 
 (defn- load-data-add-ids-preserve-field-order
@@ -394,6 +397,13 @@
                                 (:field-definitions tabledef))]
     ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
+      ;; Field order is preserved by using array-map supplying all KV pairs to the
+      ;; array-map constructor. The key list is first interleaved with the value list 
+      ;; producing a flat KV list (i.e. [k1, v1, ..., kN, vN]) which is then piped 
+      ;; through to the array-map constructor.
+      ;;
+      ;; The default implementation uses zipmap which may produce an unordered 
+      ;; hash map (see load-data/load-data-get-rows).
       (apply array-map (interleave fields-for-insert row)))))
 
 (defn- make-insert!
