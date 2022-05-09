@@ -180,10 +180,6 @@
   ;; Instant is already in UTC, convert the object to a ZonedDateTime
   (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
 
-(defmethod sql.qp/->honeysql [:ocient :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
-
 (defmethod driver/db-default-timezone :ocient [_ _]
   ;; Ocient is always in UTC
   "UTC")
