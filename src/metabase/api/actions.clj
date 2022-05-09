@@ -15,17 +15,10 @@
   "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
   returns a 403 Unauthorized response "
   [handler]
-  (letfn [(actions-exception []
-            (ex-info (i18n/tru "Actions are not enabled.")
-                     {:status-code 400}))]
-    (fn
-      ([request]
-       (when-not (actions/experimental-enable-actions)
-         (throw (actions-exception)))
-       (handler request))
-      ([request respond raise]
-       (if (actions/experimental-enable-actions)
-         (handler request respond raise)
-         (raise (actions-exception)))))))
+  (fn [request respond raise]
+    (if (actions/experimental-enable-actions)
+      (handler request respond raise)
+      (raise (ex-info (i18n/tru "Actions are not enabled.")
+                      {:status-code 400})))))
 
 (api/define-routes +check-actions-enabled)
