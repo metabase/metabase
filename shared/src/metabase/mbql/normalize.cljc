@@ -365,7 +365,7 @@
         :else
         x)
       (catch #?(:clj Throwable :cljs js/Error) e
-        (throw (ex-info (i18n/tru "Error normalizing form.")
+        (throw (ex-info (i18n/tru "Error normalizing form: {0}" (ex-message e))
                         {:form x, :path path, :special-fn special-fn}
                         e))))))
 
@@ -589,7 +589,7 @@
          (canonicalize-mbql-clause x)
          (catch #?(:clj Throwable :cljs js/Error) e
            (log/error (i18n/tru "Invalid clause:") x)
-           (throw (ex-info (i18n/tru "Invalid MBQL clause")
+           (throw (ex-info (i18n/tru "Invalid MBQL clause: {0}" (ex-message e))
                            {:clause x}
                            e))))))
    mbql-query))
