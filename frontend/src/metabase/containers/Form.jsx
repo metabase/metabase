@@ -254,6 +254,7 @@ export default class Form extends React.Component {
   };
 
   _handleChangeField = (fieldName, value) => {
+    this.props.onChangeField?.(fieldName, value);
     return this.props.dispatch(change(this.props.formName, fieldName, value));
   };
 
