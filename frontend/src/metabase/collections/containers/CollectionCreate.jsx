@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { getValues } from "redux-form";
 import { withRouter } from "react-router";
@@ -28,33 +28,45 @@ const mapDispatchToProps = {
   goBack,
 };
 
-class CollectionCreate extends Component {
-  handleClose = () => {
-    const { goBack, onClose } = this.props;
-    return onClose ? onClose() : goBack();
-  };
+function CollectionCreate({
+  form,
+  initialCollectionId,
+  goBack,
+  onClose,
+  onSaved,
+}) {
+  const handleClose = useCallback(() => {
+    if (onClose) {
+      onClose();
+    } else {
+      goBack();
+    }
+  }, [goBack, onClose]);
 
-  handleSaved = collection => {
-    const { goBack, onSaved } = this.props;
-    return onSaved ? onSaved(collection) : goBack();
-  };
+  const handleSave = useCallback(
+    collection => {
+      if (onSaved) {
+        onSaved(collection);
+      } else {
+        goBack();
+      }
+    },
+    [goBack, onSaved],
+  );
 
-  render() {
-    const { form, initialCollectionId } = this.props;
-    return (
-      <Collection.ModalForm
-        overwriteOnInitialValuesChange
-        formName={FORM_NAME}
-        form={form}
-        collection={{
-          parent_id: initialCollectionId,
-          authority_level: REGULAR_COLLECTION.type,
-        }}
-        onSaved={this.handleSaved}
-        onClose={this.handleClose}
-      />
-    );
-  }
+  return (
+    <Collection.ModalForm
+      overwriteOnInitialValuesChange
+      formName={FORM_NAME}
+      form={form}
+      collection={{
+        parent_id: initialCollectionId,
+        authority_level: REGULAR_COLLECTION.type,
+      }}
+      onSaved={handleSave}
+      onClose={handleClose}
+    />
+  );
 }
 
 export default _.compose(
