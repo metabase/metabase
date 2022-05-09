@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 
 import _ from "underscore";
 
@@ -30,32 +30,38 @@ interface ArchiveCollectionModalProps {
   collection: ICollection;
 }
 
-const ArchiveCollectionModal = (props: ArchiveCollectionModalProps) => {
+const ArchiveCollectionModal = ({
+  params,
+  onClose,
+  object,
+  push,
+  collection,
+  setCollectionArchived,
+}: ArchiveCollectionModalProps) => {
   const archive = useCallback(async () => {
-    const { setCollectionArchived, params } = props;
     const id = Urls.extractCollectionId(params.slug);
     await setCollectionArchived({ id }, true);
-  }, [props]);
+  }, [params, setCollectionArchived]);
 
-  const close = useCallback(() => {
-    const { onClose, object, push } = props;
-    onClose();
-
-    if (object.archived) {
-      const parent =
-        object.effective_ancestors.length > 0
-          ? object.effective_ancestors.pop()
-          : null;
-      push(Urls.collection(parent));
-    }
-  }, [props]);
+  const close = useCallback(
+    (archived?: boolean) => {
+      onClose();
+      if (archived) {
+        const parent =
+          object.effective_ancestors.length > 0
+            ? object.effective_ancestors.pop()
+            : null;
+        push(Urls.collection(parent));
+      }
+    },
+    [object, push, onClose],
+  );
 
   useEffect(() => {
-    const { collection } = props;
     if (isPersonalCollection(collection) || !collection.can_write) {
       close();
     }
-  }, [props, close]);
+  }, [collection, close]);
 
   return (
     <ArchiveModal
@@ -71,6 +77,7 @@ export default _.compose(
   connect(undefined, mapDispatchToProps),
   withRouter,
   Collection.load({
-    id: (state: any, props: any) => Urls.extractCollectionId(props.params.slug),
+    id: (state: any, props: ArchiveCollectionModalProps) =>
+      Urls.extractCollectionId(props.params.slug),
   }),
 )(ArchiveCollectionModal);

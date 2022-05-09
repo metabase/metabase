@@ -19,7 +19,7 @@ class ArchiveModal extends React.Component {
       // Note - if using this component inside of a modal route, make sure onClose is called in that component and not here, otherwise any attmempts to push to a new location won't work properly
       // Currently the only place we don't use this in a modal route is archiving a question
       if (onClose) {
-        onClose();
+        onClose(true);
       }
     } catch (error) {
       this.setState({ error });
