@@ -61,7 +61,7 @@ function checkShouldRerunPivotTableQuestion({
   );
 }
 
-export function getNextTemplateTagState({
+function getNextTemplateTagEditorState({
   currentQuestion,
   newQuestion,
   isVisible,
@@ -187,7 +187,7 @@ export const updateQuestion = (
 
     if (currentQuestion.isNative() && newQuestion.isNative()) {
       const isVisible = getIsShowingTemplateTagsEditor(getState());
-      const nextState = getNextTemplateTagState({
+      const nextState = getNextTemplateTagEditorState({
         currentQuestion,
         newQuestion,
         queryBuilderMode,
