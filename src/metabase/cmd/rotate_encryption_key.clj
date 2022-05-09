@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [metabase.db :as mdb]
             [metabase.db.connection :as mdb.conn]
+            [metabase.db.env :as mdb.env]
             [metabase.models :refer [Database Secret Setting]]
             [metabase.models.setting.cache :as cache]
             [metabase.util.encryption :as encrypt]
