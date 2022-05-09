@@ -110,10 +110,18 @@ function Form({
     formDefinition,
   ]);
 
-  const initialValues = useMemo(
-    () => merge(formObject.initial(values), initialValuesProp),
-    [values, initialValuesProp, formObject],
-  );
+  const initialValues = useMemo(() => {
+    const fieldNames = formObject.fieldNames();
+
+    const filteredInitialValues: FieldValues = {};
+    Object.keys(initialValuesProp).forEach(fieldName => {
+      if (fieldNames.includes(fieldName)) {
+        filteredInitialValues[fieldName] = initialValuesProp[fieldName];
+      }
+    });
+
+    return merge(formObject.initial(values), filteredInitialValues);
+  }, [values, initialValuesProp, formObject]);
 
   const fieldNames = useMemo(
     () => formObject.fieldNames({ ...initialValues, ...values }),
