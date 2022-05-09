@@ -1,8 +1,8 @@
 (ns metabase.api.actions
   "`/api/actions/` endpoints."
   (:require [compojure.core :refer [GET]]
-            [metabase.api.common :as api]
             [metabase.actions :as actions]
+            [metabase.api.common :as api]
             [metabase.util.i18n :as i18n]))
 
 (api/defendpoint GET "/dummy"

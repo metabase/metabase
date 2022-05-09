@@ -1,5 +1,5 @@
 (ns metabase.actions
-  "Code related to the new write Actions "
+  "Code related to the new writeback Actions."
   (:require [metabase.models.setting :as setting]
             [metabase.util.i18n :as i18n]))
 
