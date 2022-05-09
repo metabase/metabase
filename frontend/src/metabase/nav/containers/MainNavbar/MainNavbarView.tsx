@@ -40,7 +40,7 @@ interface CollectionTreeItem extends Collection {
 }
 
 type Props = {
-  canAccessAdmin: boolean;
+  isAdmin: boolean;
   isOpen: boolean;
   currentUser: User;
   bookmarks: BookmarksType;
@@ -66,7 +66,7 @@ const ARCHIVE_URL = "/archive";
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
-  canAccessAdmin,
+  isAdmin,
   isOpen,
   currentUser,
   bookmarks,
@@ -149,7 +149,7 @@ function MainNavbarView({
               >
                 {t`Browse data`}
               </BrowseLink>
-              {!hasOwnDatabase && canAccessAdmin && (
+              {!hasOwnDatabase && isAdmin && (
                 <AddYourOwnDataLink
                   icon="add"
                   url={ADD_YOUR_OWN_DATA_URL}
