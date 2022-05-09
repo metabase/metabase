@@ -162,7 +162,9 @@ const loadStartUIControls = createThunkAction(
   () => (dispatch, getState) => {
     dispatch(setDocumentTitle(t`Doing Science...`));
     const timeoutId = setTimeout(() => {
-      dispatch(setDocumentTitle(t`Still Here...`));
+      if (document.title.includes(t`Doing Science...`)) {
+        dispatch(setDocumentTitle(t`Still Here...`));
+      }
     }, 10000);
     dispatch(setDocumentTitleTimeoutId(timeoutId));
   },
@@ -234,6 +236,8 @@ export const cancelQuery = () => (dispatch, getState) => {
     if (cancelQueryDeferred) {
       cancelQueryDeferred.resolve();
     }
+    dispatch(setDocumentTitle(""));
+
     return { type: CANCEL_QUERY };
   }
 };
