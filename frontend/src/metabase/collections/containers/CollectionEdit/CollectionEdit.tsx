@@ -1,19 +1,28 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
 import { goBack, push, LocationAction } from "react-router-redux";
+import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
 import Collections from "metabase/entities/collections";
 
-import { Collection } from "metabase-types/api";
+import { Collection as BaseCollection, CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import CollectionEditForm from "./CollectionEditForm";
+
+type Collection = BaseCollection & {
+  parent_id: CollectionId;
+};
 
 interface CollectionEditOwnProps {
   params: {
     slug: string;
   };
+}
+
+interface CollectionEditLoaderProps {
+  collection: Collection;
 }
 
 interface CollectionEditDispatchProps {
@@ -23,6 +32,7 @@ interface CollectionEditDispatchProps {
 
 interface CollectionEditProps
   extends CollectionEditOwnProps,
+    CollectionEditLoaderProps,
     CollectionEditDispatchProps {}
 
 const mapDispatchToProps = {
@@ -30,8 +40,27 @@ const mapDispatchToProps = {
   goBack,
 };
 
-function CollectionEdit({ params, push, goBack }: CollectionEditProps) {
-  const collectionId = Urls.extractCollectionId(params.slug);
+function CollectionEdit({ collection, push, goBack }: CollectionEditProps) {
+  const [parentCollectionId, setParentCollectionId] = useState<CollectionId>(
+    collection?.parent_id,
+  );
+  const [hasSetParentCollection, setHasSetParentCollection] = useState(false);
+
+  useEffect(() => {
+    if (collection && !hasSetParentCollection) {
+      setParentCollectionId(collection.parent_id);
+    }
+  }, [collection, hasSetParentCollection]);
+
+  const onChangeValues = useCallback(
+    (collection: Collection) => {
+      if (collection.parent_id !== parentCollectionId) {
+        setParentCollectionId(collection.parent_id);
+        setHasSetParentCollection(true);
+      }
+    },
+    [parentCollectionId],
+  );
 
   const onSave = useCallback(
     collection => {
@@ -41,24 +70,23 @@ function CollectionEdit({ params, push, goBack }: CollectionEditProps) {
   );
 
   return (
-    <Collections.Loader id={collectionId}>
-      {({ collection }: { collection: Collection }) => (
-        <CollectionEditForm
-          collection={collection}
-          onSave={onSave}
-          onClose={goBack}
-        />
-      )}
-    </Collections.Loader>
+    <CollectionEditForm
+      collection={collection}
+      parentCollectionId={parentCollectionId}
+      onChange={onChangeValues}
+      onSave={onSave}
+      onClose={goBack}
+    />
   );
 }
 
-export default connect<
-  unknown,
-  CollectionEditDispatchProps,
-  CollectionEditOwnProps,
-  State
->(
-  null,
-  mapDispatchToProps,
+export default _.compose(
+  connect<unknown, CollectionEditDispatchProps, CollectionEditOwnProps, State>(
+    null,
+    mapDispatchToProps,
+  ),
+  Collections.load({
+    id: (state: State, props: CollectionEditOwnProps) =>
+      Urls.extractCollectionId(props.params.slug),
+  }),
 )(CollectionEdit);

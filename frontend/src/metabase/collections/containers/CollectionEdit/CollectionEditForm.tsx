@@ -3,11 +3,17 @@ import { connect } from "react-redux";
 
 import Collections from "metabase/entities/collections";
 
-import { Collection } from "metabase-types/api";
+import { Collection as BaseCollection, CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
+
+type Collection = BaseCollection & {
+  parent_id: CollectionId;
+};
 
 interface CollectionEditFormOwnProps {
   collection: Collection;
+  parentCollectionId: CollectionId;
+  onChange: (collection: Collection) => void;
   onSave: (collection: Collection) => void;
   onClose: () => void;
 }
@@ -29,6 +35,7 @@ function mapStateToProps(state: State, props: CollectionEditFormOwnProps) {
 function CollectionEditForm({
   form,
   collection,
+  onChange,
   onSave,
   onClose,
 }: CollectionEditProps) {
@@ -36,6 +43,8 @@ function CollectionEditForm({
     <Collections.ModalForm
       form={form}
       collection={collection}
+      overwriteOnInitialValuesChange
+      onChange={onChange}
       onSaved={onSave}
       onClose={onClose}
     />
