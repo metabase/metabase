@@ -21,11 +21,15 @@ import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import { Dispatch, GetState } from "metabase-types/store";
+import {
+  Dispatch,
+  GetState,
+  QueryBuilderUIControls,
+} from "metabase-types/store";
 
 import { Card, SavedCard } from "metabase-types/types/Card";
 
-import { getQueryBuilderModeFromLocation } from "../../utils";
+import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
@@ -47,14 +51,7 @@ type QueryParams = BlankQueryOptions & {
   objectId?: string;
 };
 
-type QueryBuilderMode = "view" | "notebook" | "dataset";
-
-type UIControls = {
-  isShowingNewbModal?: boolean;
-  isShowingSummarySidebar?: boolean;
-  datasetEditorTab?: string;
-  queryBuilderMode?: QueryBuilderMode;
-};
+type UIControls = Partial<QueryBuilderUIControls>;
 
 const ARCHIVED_ERROR = {
   data: {
@@ -164,12 +161,6 @@ async function resolveCards({
     : fetchAndPrepareAdHocQuestionCards(deserializedCard as Card);
 }
 
-function getInitialUIControls(location: LocationDescriptorObject) {
-  const { mode, ...uiControls } = getQueryBuilderModeFromLocation(location);
-  (uiControls as UIControls).queryBuilderMode = mode as QueryBuilderMode;
-  return uiControls;
-}
-
 function parseHash(hash?: string) {
   let options: BlankQueryOptions = {};
   let serializedCard;
@@ -206,7 +197,7 @@ async function handleQBInit(
 
   const queryParams = location.query;
   const cardId = Urls.extractEntityId(params.slug);
-  const uiControls: UIControls = getInitialUIControls(location);
+  const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
 
