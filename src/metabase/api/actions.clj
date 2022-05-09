@@ -1,0 +1,31 @@
+(ns metabase.api.actions
+  "`/api/actions/` endpoints."
+  (:require [compojure.core :refer [GET]]
+            [metabase.api.common :as api]
+            [metabase.actions :as actions]
+            [metabase.util.i18n :as i18n]))
+
+(api/defendpoint GET "/dummy"
+  "Dummy API endpoint to test feature flagging with the [[metabase.actions/experimental-enable-actions]] feature flag.
+  We can remove this and test other endpoints once we have other endpoints."
+  []
+  {:dummy true})
+
+(defn- +check-actions-enabled
+  "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
+  returns a 403 Unauthorized response "
+  [handler]
+  (letfn [(actions-exception []
+            (ex-info (i18n/tru "Actions are not enabled.")
+                     {:status-code 400}))]
+    (fn
+      ([request]
+       (when-not (actions/experimental-enable-actions)
+         (throw (actions-exception)))
+       (handler request))
+      ([request respond raise]
+       (if (actions/experimental-enable-actions)
+         (handler request respond raise)
+         (raise (actions-exception)))))))
+
+(api/define-routes +check-actions-enabled)
