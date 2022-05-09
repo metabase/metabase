@@ -49,14 +49,13 @@ export const updateQuestion = (
     const currentQuestion = getQuestion(getState());
     const queryBuilderMode = getQueryBuilderMode(getState());
 
-    const shouldConvertIntoAdHoc = newQuestion.query().isEditable();
-
-    if (
-      shouldConvertIntoAdHoc &&
-      !getIsEditing(getState()) &&
+    const shouldTurnIntoAdHoc =
       newQuestion.isSaved() &&
-      queryBuilderMode !== "dataset"
-    ) {
+      newQuestion.query().isEditable() &&
+      queryBuilderMode !== "dataset" &&
+      !getIsEditing(getState());
+
+    if (shouldTurnIntoAdHoc) {
       newQuestion = newQuestion.withoutNameAndId();
 
       // When the dataset query changes, we should loose the dataset flag,
