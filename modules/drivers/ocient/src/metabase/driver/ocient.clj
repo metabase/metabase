@@ -132,12 +132,14 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIME]
   [_ rs _ i]
+  ;; XGTime values are ALWAYS in UTC
   (fn []
     (let [utc-str (.toString (.getObject rs i))]
       (LocalTime/parse utc-str))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIMESTAMP_WITH_TIMEZONE]
   [_ rs _ i]
+  ;; XGTimestamp values are ALWAYS in UTC
   (fn []
     (let [local-date-time    (.toLocalDateTime (.getObject rs i))
           zone-id            (ZoneId/of "UTC")]
@@ -145,6 +147,7 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIME_WITH_TIMEZONE]
   [_ rs _ i]
+  ;; XGTime values are ALWAYS in UTC
   (fn []
     (let [utc-str (.toString (.getObject rs i))]
       (LocalTime/parse utc-str))))
@@ -156,39 +159,53 @@
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
+
 (defmethod unprepare/unprepare-value [:ocient OffsetTime]
   [_ t]
+  ;; Ocient doesn't support TIME WITH TIME ZONE so convert OffsetTimes to LocalTimes in UTC.
   (format "time('%s')" (t/format "HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
 
 (defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
   [_ t]
+  ;; Ocient doesn't support TIMESTAMP WITH TIME ZONE so convert OffsetDateTimes to LocalTimestamps in UTC.
   (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
 
 (defmethod unprepare/unprepare-value [:ocient ZonedDateTime]
   [_ t]
+  ;; Ocient doesn't support TIMESTAMP WITH TIME ZONE so convert OffsetDateTimes to LocalTimestamps in UTC.
   (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
 
 (defmethod unprepare/unprepare-value [:ocient Instant]
   [driver t]
+  ;; Instant is already in UTC, convert the object to a ZonedDateTime
   (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
 
 (defmethod sql.qp/->honeysql [:ocient :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
-;; Ocient is always in UTC
 (defmethod driver/db-default-timezone :ocient [_ _]
+  ;; Ocient is always in UTC
   "UTC")
 
-;; Cast time columns to timestamps
 (defn- ->timestamp [honeysql-form]
+  ;; Cast time columns to timestamps
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "date" "time"} honeysql-form))
 
 (defmethod driver/db-start-of-week :ocient
   [_]
+  ;; From the Ocient user docs for WEEK()
+  ;;
+  ;; The ISO-8601 week number that the timestamp / day is in. 
+  ;; The week starts on Monday and the first week of a year contains 
+  ;; January 4 of that year. See https://en.wikipedia.org/wiki/ISO_week_date 
+  ;; for more details.
   :monday)
 
+;; Extract a component from a timestamp or date.
 (defn- extract    [unit expr] (hsql/call :extract unit (hx/->timestamp expr)))
+
+;; Returns the date or timestamp entered, truncated to the specified precision.
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
 
 (defmethod sql.qp/date [:ocient :date]            [_ _ expr] (hsql/call :date expr))
@@ -200,13 +217,11 @@
 (defmethod sql.qp/date [:ocient :day-of-month]    [_ _ expr] (hsql/call :day_of_month expr))
 (defmethod sql.qp/date [:ocient :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 (defmethod sql.qp/date [:ocient :week]            [_ _ expr] (sql.qp/adjust-start-of-week :ocient (partial date-trunc :week) expr))
-;; (defmethod sql.qp/date [:ocient :week]            [_ _ expr] (date-trunc :week expr))
 (defmethod sql.qp/date [:ocient :month]           [_ _ expr] (date-trunc :month expr))
 (defmethod sql.qp/date [:ocient :month-of-year]   [_ _ expr] (hsql/call :month expr))
 (defmethod sql.qp/date [:ocient :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:ocient :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
 (defmethod sql.qp/date [:ocient :year]            [_ _ expr] (date-trunc :year expr))
-
 (defmethod sql.qp/date [:ocient :day-of-week]     [_ _ expr]
   (sql.qp/adjust-day-of-week :ocient
                              ;; Subtract 1 day because start of the week is Monday for week() 
@@ -214,7 +229,7 @@
                              (hx/- (hsql/call :day_of_week expr) 1)))
 
 
-
+;; Passthrough by default
 (defmethod sql.qp/date [:ocient :default]         [_ _ expr] expr)
 
 (defmethod sql.qp/current-datetime-honeysql-form :ocient [_] :%now)
@@ -227,17 +242,17 @@
   [_]
   :%current_timestamp)
 
-;; TODO So this seems to work, but the query should really have a LIMIT 1 tacked onto the end of it...
 (defmethod sql.qp/->honeysql [:ocient :percentile]
   [driver [_ field p]]
+  ;; TODO This works but the query should really have a LIMIT 1 tacked onto the end of it...
   (hsql/raw (format "percentile(%s, %s) over (order by %s)"
                     (hformat/to-sql (sql.qp/->honeysql driver field))
                     (hformat/to-sql (sql.qp/->honeysql driver p))
                     (hformat/to-sql (sql.qp/->honeysql driver field)))))
 
-;; Ocient does not have a median() function, use :percentile
 (defmethod sql.qp/->honeysql [:ocient :median]
   [driver [_ arg]]
+  ;; Ocient does not have a MEDIAN() function, use PERCENTILE()
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod sql.qp/->honeysql [:ocient :relative-datetime]
