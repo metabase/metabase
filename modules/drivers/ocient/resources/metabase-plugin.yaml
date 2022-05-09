@@ -10,7 +10,10 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
+    - name: host
+      display-name: The hostname of a SQL node in your Ocient cluster
+      placeholder: localhost
+      required: true
     - merge:
         - port
         - default: 4050
