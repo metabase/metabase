@@ -37,6 +37,30 @@ function hasNewColumns(question, queryResult) {
   return _.difference(nextColumns, previousColumns).length > 0;
 }
 
+function checkShouldRerunPivotTableQuestion({
+  isPivot,
+  wasPivot,
+  hasBreakouts,
+  currentQuestion,
+  newQuestion,
+}) {
+  const isValidPivotTable = isPivot && hasBreakouts;
+  const displayChange =
+    (!wasPivot && isValidPivotTable) || (wasPivot && !isPivot);
+
+  if (displayChange) {
+    return true;
+  }
+
+  const currentPivotSettings = currentQuestion.setting(
+    "pivot_table.column_split",
+  );
+  const newPivotSettings = newQuestion.setting("pivot_table.column_split");
+  return (
+    isValidPivotTable && !_.isEqual(currentPivotSettings, newPivotSettings)
+  );
+}
+
 /**
  * Replaces the currently active question with the given Question object.
  */
@@ -82,38 +106,30 @@ export const updateQuestion = (
 
     const isPivot = newQuestion.display() === "pivot";
     const wasPivot = currentQuestion.display() === "pivot";
-    const queryHasBreakouts =
-      isPivot &&
-      newQuestion.isStructured() &&
-      newQuestion.query().breakouts().length > 0;
 
-    if (isPivot && queryHasBreakouts) {
+    if (wasPivot || isPivot) {
+      const hasBreakouts =
+        newQuestion.isStructured() && newQuestion.query().hasBreakouts();
+
       // compute the pivot setting now so we can query the appropriate data
-      const series = assocIn(
-        getRawSeries(getState()),
-        [0, "card"],
-        newQuestion.card(),
-      );
-      const key = "pivot_table.column_split";
-      const setting = getQuestionWithDefaultVisualizationSettings(
-        newQuestion,
-        series,
-      ).setting(key);
-      newQuestion = newQuestion.updateSettings({ [key]: setting });
-    }
+      if (isPivot && hasBreakouts) {
+        const key = "pivot_table.column_split";
+        const rawSeries = getRawSeries(getState());
+        const series = assocIn(rawSeries, [0, "card"], newQuestion.card());
+        const setting = getQuestionWithDefaultVisualizationSettings(
+          newQuestion,
+          series,
+        ).setting(key);
+        newQuestion = newQuestion.updateSettings({ [key]: setting });
+      }
 
-    if (
-      (isPivot && !wasPivot && queryHasBreakouts) ||
-      (!isPivot && wasPivot) ||
-      // updating the pivot rows/cols
-      (isPivot &&
-        queryHasBreakouts &&
-        !_.isEqual(
-          newQuestion.setting("pivot_table.column_split"),
-          currentQuestion.setting("pivot_table.column_split"),
-        ))
-    ) {
-      run = true; // force a run when switching to/from pivot or updating it's setting
+      run = checkShouldRerunPivotTableQuestion({
+        isPivot,
+        wasPivot,
+        hasBreakouts,
+        currentQuestion,
+        newQuestion,
+      });
     }
 
     // Native query should never be in notebook mode (metabase#12651)
