@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import React, { useCallback } from "react";
 import { connect } from "react-redux";
 import { getValues } from "redux-form";
@@ -6,23 +5,45 @@ import { withRouter } from "react-router";
 import { goBack } from "react-router-redux";
 import _ from "underscore";
 
-import Collection from "metabase/entities/collections";
+import { Collection } from "metabase-types/api";
+import { State } from "metabase-types/store";
+
+import Collections from "metabase/entities/collections";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
 const { REGULAR_COLLECTION } = PLUGIN_COLLECTIONS;
 
 const FORM_NAME = "create-collection";
 
-const mapStateToProps = (state, props) => {
-  const formValues = getValues(state.form[FORM_NAME]);
+interface CollectionCreateOwnProps {
+  goBack?: () => void;
+  onClose?: () => void;
+  onSaved?: (collection: Collection) => void;
+}
+
+interface CollectionCreateStateProps {
+  form: unknown;
+  initialCollectionId?: number | null;
+}
+
+interface CollectionCreateProps
+  extends CollectionCreateOwnProps,
+    CollectionCreateStateProps {}
+
+function mapStateToProps(state: State, props: CollectionCreateOwnProps) {
+  const formValues = getValues(
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    state.form[FORM_NAME],
+  );
   return {
-    form: Collection.selectors.getForm(state, { ...props, formValues }),
-    initialCollectionId: Collection.selectors.getInitialCollectionId(
+    form: Collections.selectors.getForm(state, { ...props, formValues }),
+    initialCollectionId: Collections.selectors.getInitialCollectionId(
       state,
       props,
     ),
   };
-};
+}
 
 const mapDispatchToProps = {
   goBack,
@@ -34,28 +55,28 @@ function CollectionCreate({
   goBack,
   onClose,
   onSaved,
-}) {
+}: CollectionCreateProps) {
   const handleClose = useCallback(() => {
     if (onClose) {
       onClose();
     } else {
-      goBack();
+      goBack?.();
     }
   }, [goBack, onClose]);
 
   const handleSave = useCallback(
-    collection => {
+    (collection: Collection) => {
       if (onSaved) {
         onSaved(collection);
       } else {
-        goBack();
+        goBack?.();
       }
     },
     [goBack, onSaved],
   );
 
   return (
-    <Collection.ModalForm
+    <Collections.ModalForm
       overwriteOnInitialValuesChange
       formName={FORM_NAME}
       form={form}
