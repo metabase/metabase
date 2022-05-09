@@ -9,6 +9,7 @@ import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
+import DatabaseHelp from "../DatabaseHelp";
 import {
   StepActions,
   StepDescription,
@@ -65,34 +66,37 @@ const DatabaseStep = ({
   }
 
   return (
-    <ActiveStep
-      title={getStepTitle(database, invite, isStepCompleted)}
-      label={3}
-    >
-      <StepDescription>
-        <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
-      </StepDescription>
-      <DatabaseForm
-        database={database}
-        engine={engine}
-        onSubmit={onDatabaseSubmit}
-        onEngineChange={onEngineChange}
-      />
-      <StepActions>
-        <StepButton onClick={handleCancel}>
-          {t`I'll add my data later`}
-        </StepButton>
-      </StepActions>
-      {isEmailConfigured && (
-        <SetupSection
-          title={t`Need help connecting to your data?`}
-          description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
-        >
-          <InviteForm user={user} invite={invite} onSubmit={onInviteSubmit} />
-        </SetupSection>
-      )}
-    </ActiveStep>
+    <>
+      <ActiveStep
+        title={getStepTitle(database, invite, isStepCompleted)}
+        label={3}
+      >
+        <StepDescription>
+          <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
+          <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
+        </StepDescription>
+        <DatabaseForm
+          database={database}
+          engine={engine}
+          onSubmit={onDatabaseSubmit}
+          onEngineChange={onEngineChange}
+        />
+        <StepActions>
+          <StepButton onClick={handleCancel}>
+            {t`I'll add my data later`}
+          </StepButton>
+        </StepActions>
+        {isEmailConfigured && (
+          <SetupSection
+            title={t`Need help connecting to your data?`}
+            description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
+          >
+            <InviteForm user={user} invite={invite} onSubmit={onInviteSubmit} />
+          </SetupSection>
+        )}
+      </ActiveStep>
+      <DatabaseHelp engine={engine} isStepActive />
+    </>
   );
 };
 

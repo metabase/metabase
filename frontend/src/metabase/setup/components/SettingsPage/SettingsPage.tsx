@@ -4,7 +4,6 @@ import { PageHeader, PageBody } from "./SettingsPage.styled";
 import LanguageStep from "../../containers/LanguageStep";
 import UserStep from "../../containers/UserStep";
 import DatabaseStep from "../../containers/DatabaseStep";
-import DatabaseHelp from "../../containers/DatabaseHelp";
 import PreferencesStep from "../../containers/PreferencesStep";
 import CompletedStep from "../../containers/CompletedStep";
 import SetupHelp from "../SetupHelp";
@@ -32,7 +31,6 @@ const SettingsPage = ({
         <LanguageStep {...props} />
         <UserStep {...props} />
         <DatabaseStep {...props} />
-        <DatabaseHelp {...props} />
         <PreferencesStep {...props} />
         <CompletedStep {...props} />
         <SetupHelp {...props} />
