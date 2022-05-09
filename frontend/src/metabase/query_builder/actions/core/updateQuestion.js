@@ -39,7 +39,6 @@ function hasNewColumns(question, queryResult) {
 
 /**
  * Replaces the currently active question with the given Question object.
- * Also shows/hides the template tag editor if the number of template tags has changed.
  */
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
@@ -52,8 +51,6 @@ export const updateQuestion = (
 
     const shouldConvertIntoAdHoc = newQuestion.query().isEditable();
 
-    // TODO Atte Keinänen 6/2/2017 Ways to have this happen automatically when modifying a question?
-    // Maybe the Question class or a QB-specific question wrapper class should know whether it's being edited or not?
     if (
       shouldConvertIntoAdHoc &&
       !getIsEditing(getState()) &&
@@ -81,8 +78,6 @@ export const updateQuestion = (
       run = false;
     }
 
-    // <PIVOT LOGIC>
-    // We have special logic when going to, coming from, or updating a pivot table.
     const isPivot = newQuestion.display() === "pivot";
     const wasPivot = oldQuestion.display() === "pivot";
     const queryHasBreakouts =
@@ -90,7 +85,6 @@ export const updateQuestion = (
       newQuestion.isStructured() &&
       newQuestion.query().breakouts().length > 0;
 
-    // we can only pivot queries with breakouts
     if (isPivot && queryHasBreakouts) {
       // compute the pivot setting now so we can query the appropriate data
       const series = assocIn(
@@ -107,9 +101,7 @@ export const updateQuestion = (
     }
 
     if (
-      // switching to pivot
       (isPivot && !wasPivot && queryHasBreakouts) ||
-      // switching away from pivot
       (!isPivot && wasPivot) ||
       // updating the pivot rows/cols
       (isPivot &&
@@ -121,7 +113,6 @@ export const updateQuestion = (
     ) {
       run = true; // force a run when switching to/from pivot or updating it's setting
     }
-    // </PIVOT LOGIC>
 
     // Native query should never be in notebook mode (metabase#12651)
     if (mode === "notebook" && newQuestion.isNative()) {
@@ -140,7 +131,6 @@ export const updateQuestion = (
       newQuestion = newQuestion.setParameters(parameters);
     }
 
-    // Replace the current question with a new one
     await dispatch({
       type: UPDATE_QUESTION,
       payload: { card: newQuestion.card() },
@@ -150,7 +140,6 @@ export const updateQuestion = (
       dispatch(updateUrl(null, { dirty: true }));
     }
 
-    // See if the template tags editor should be shown/hidden
     const isTemplateTagEditorVisible = getIsShowingTemplateTagsEditor(
       getState(),
     );
@@ -191,7 +180,6 @@ export const updateQuestion = (
       console.warn("Couldn't load metadata", e);
     }
 
-    // run updated query
     if (run) {
       dispatch(runQuestionQuery());
     }
