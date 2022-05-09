@@ -51,6 +51,9 @@
 ;; Define the primary key type
 (defmethod sql.tx/pk-sql-type :ocient [_] "INT NOT NULL")
 
+;; Ocient sorts NULLs last
+(defmethod tx/sorts-nil-first? :ocient [_ _] false)
+
 ;; Lowercase and replace hyphens/spaces with underscores
 (defmethod tx/format-name :ocient
   [_ s]
