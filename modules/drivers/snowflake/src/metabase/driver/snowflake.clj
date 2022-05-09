@@ -351,31 +351,25 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         metabase.driver.sql-jdbc.execute impls                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 ;; Metabase attempts to display all timestamps into either the local time of the server, or the :report-timezone 
-;; setting's value if it's set in the Amin console. We prefer to have timestamps displayed in the wall clock time
+;; setting's value if it's set in the Admin console. We prefer to have timestamps displayed in the wall clock time
 ;; of their respective timezones. The below methods accomplish that (somewhat hackily)
 
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME] [_ _, ^ResultSet resultset, _, ^Integer i]
-  (let [result (.getString resultset i)]
-    (if result
-      (let [timestamp-string (clojure.string/join " " (take 2 (clojure.string/split (.getString resultset i) #" ")))]
-        (u.date/parse timestamp-string))
-      nil)))
-
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIMESTAMP] [_ calendar resultset _ i]
-  (let [result (.getString resultset i)]
-    (if result
-      (let [timestamp-string (clojure.string/join " " (take 2 (clojure.string/split (.getString resultset i) #" ")))]
-        (u.date/parse timestamp-string))
-      nil)))
-
-(defmethod sql-jdbc.execute/read-column [:snowflake Types/DATE] [_ calendar resultset _ i]
-  (let [result (.getString resultset i)]
-    (if result
-      (let [timestamp-string (clojure.string/join " " (take 2 (clojure.string/split (.getString resultset i) #" ")))]
-        (u.date/parse timestamp-string))
-      nil)))
+(defn- read-timestamp-column-thunk [^ResultSet rs ^Integer i]
+	  (fn []
+	    (when-let [s (.getString rs i)]
+	      (let [timestamp-string (str/join " " (take 2 (str/split s #" ")))]
+	        (u.date/parse timestamp-string)))))
+	
+	(defmethod sql-jdbc.execute/read-column-thunk
+	  [:snowflake Types/TIME]
+	  [_driver rs _rsmeta i]
+	  (read-timestamp-column-thunk rs i))
+	
+	(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/TIMESTAMP]
+	  [_driver rs _rsmeta i]
+	  (read-timestamp-column-thunk rs i))
+	
+	(defmethod sql-jdbc.execute/read-column-thunk [:snowflake Types/DATE]
+	  [_driver rs _rsmeta i]
+	  (read-timestamp-column-thunk rs i))
