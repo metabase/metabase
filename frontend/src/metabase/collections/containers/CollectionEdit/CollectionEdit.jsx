@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React, { useCallback } from "react";
 
 import { connect } from "react-redux";
 import { goBack, push } from "react-router-redux";
@@ -14,26 +14,27 @@ const mapDispatchToProps = {
   goBack,
 };
 
-class CollectionEdit extends Component {
-  onSave = updatedCollection => {
-    const url = Urls.collection(updatedCollection);
-    this.props.push(url);
-  };
+function CollectionEdit({ params, push, goBack }) {
+  const collectionId = Urls.extractCollectionId(params.slug);
 
-  render() {
-    const collectionId = Urls.extractCollectionId(this.props.params.slug);
-    return (
-      <Collection.Loader id={collectionId}>
-        {({ collection, update }) => (
-          <CollectionEditForm
-            collection={collection}
-            onSave={this.onSave}
-            onClose={this.props.goBack}
-          />
-        )}
-      </Collection.Loader>
-    );
-  }
+  const onSave = useCallback(
+    collection => {
+      push(Urls.collection(collection));
+    },
+    [push],
+  );
+
+  return (
+    <Collection.Loader id={collectionId}>
+      {({ collection }) => (
+        <CollectionEditForm
+          collection={collection}
+          onSave={onSave}
+          onClose={goBack}
+        />
+      )}
+    </Collection.Loader>
+  );
 }
 
 export default connect(null, mapDispatchToProps)(CollectionEdit);
