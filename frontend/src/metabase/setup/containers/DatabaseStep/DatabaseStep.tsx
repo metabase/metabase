@@ -14,7 +14,6 @@ import {
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
-  getDatabaseEngine,
   getInvite,
   getUser,
   isLocaleLoaded,
@@ -23,7 +22,6 @@ import {
 const mapStateToProps = (state: State) => ({
   user: getUser(state),
   database: getDatabase(state),
-  engine: getDatabaseEngine(state),
   invite: getInvite(state),
   isEmailConfigured: Settings.isEmailConfigured(),
   isStepActive: isStepActive(state, DATABASE_STEP),

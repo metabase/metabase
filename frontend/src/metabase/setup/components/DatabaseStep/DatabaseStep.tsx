@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
@@ -37,7 +37,6 @@ export interface DatabaseStepProps {
 const DatabaseStep = ({
   user,
   database,
-  engine,
   invite,
   isEmailConfigured,
   isStepActive,
@@ -49,9 +48,19 @@ const DatabaseStep = ({
   onInviteSubmit,
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
+  const [engine, setEngine] = useState();
+
   const handleCancel = () => {
     onStepCancel(engine);
   };
+
+  const handleEngineChange = useCallback(
+    engine => {
+      setEngine(engine);
+      onEngineChange(engine);
+    },
+    [onEngineChange],
+  );
 
   if (!isStepActive) {
     return (
@@ -79,7 +88,7 @@ const DatabaseStep = ({
           database={database}
           engine={engine}
           onSubmit={onDatabaseSubmit}
-          onEngineChange={onEngineChange}
+          onEngineChange={handleEngineChange}
         />
         <StepActions>
           <StepButton onClick={handleCancel}>
@@ -144,7 +153,10 @@ const DatabaseForm = ({
           <FormField name="engine" onChange={handleEngineChange} />
           <DriverWarning
             engine={values.engine}
-            onChange={engine => onChangeField("engine", engine)}
+            onChange={engine => {
+              onChangeField("engine", engine);
+              onEngineChange(engine);
+            }}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />

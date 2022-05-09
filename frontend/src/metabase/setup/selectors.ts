@@ -1,5 +1,3 @@
-import { getValues } from "redux-form";
-import { createSelector } from "reselect";
 import {
   DatabaseInfo,
   InviteInfo,
@@ -52,13 +50,3 @@ export const isStepCompleted = (state: State, step: number): boolean => {
 export const isSetupCompleted = (state: State): boolean => {
   return getStep(state) === COMPLETED_STEP;
 };
-
-export const getDatabaseFields = createSelector(
-  (state: State) => state.form.database,
-  form => getValues(form),
-);
-
-export const getDatabaseEngine = createSelector(
-  [getDatabaseFields],
-  fields => fields?.engine,
-);
