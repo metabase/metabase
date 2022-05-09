@@ -103,6 +103,9 @@
                               :left-join                       (not config/is-test?)
                               :right-join                      true
                               :inner-join                      true
+                              :full-join                       true
+                              :expressions                     true
+                              :percentile-aggregations         true
                               :nested-queries                  false
                               :regex                           false
                               :binning                         true
