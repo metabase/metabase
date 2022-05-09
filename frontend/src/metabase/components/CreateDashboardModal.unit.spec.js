@@ -1,5 +1,10 @@
 import React from "react";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { setupEnterpriseTest } from "__support__/enterprise";
@@ -113,9 +118,12 @@ describe("CreateDashboardModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("can't submit if name is empty", () => {
+  it("can't submit if name is empty", async () => {
     setup();
-    expect(screen.queryByRole("button", { name: "Create" })).toBeDisabled();
+    const submitButton = await waitFor(() =>
+      screen.queryByRole("button", { name: "Create" }),
+    );
+    expect(submitButton).toBeDisabled();
   });
 
   it("calls onClose when Cancel button is clicked", () => {
