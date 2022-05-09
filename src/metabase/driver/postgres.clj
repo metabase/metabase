@@ -247,8 +247,14 @@
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :postgres (extract-integer :dow expr)))
+  [_ driver expr]
+  ;; Postgres extract(dow ...) returns Sunday(0)...Saturday(6)
+  ;;
+  ;; Since that's different than what we normally consider the [[metabase.driver/db-start-of-week]] for Postgres
+  ;; (Monday) we need to pass in a custom offset here
+  (sql.qp/adjust-day-of-week driver
+                             (hx/+ (extract-integer :dow expr) 1)
+                             (driver.common/start-of-week-offset-for-day :sunday)))
 
 (defmethod sql.qp/date [:postgres :week]
   [_ _ expr]

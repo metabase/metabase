@@ -10,7 +10,7 @@ const questionDetails = {
   display: "map",
 };
 
-describe.skip("issue 18063", () => {
+describe("issue 18063", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -30,7 +30,6 @@ describe.skip("issue 18063", () => {
     // Click anywhere to close both popovers that open automatically.
     // Please see: https://github.com/metabase/metabase/issues/18063#issuecomment-927836691
     cy.findByText("Map type").click();
-    cy.findByText("Map type").click();
   });
 
   it("should show the correct tooltip details for pin map even when some locations are null (metabase#18063)", () => {
@@ -40,8 +39,8 @@ describe.skip("issue 18063", () => {
     cy.get(".leaflet-marker-icon").trigger("mousemove");
 
     popover().within(() => {
-      testPairedTooltipValues("LATITUDE", "55.6761");
-      testPairedTooltipValues("LONGITUDE", "12.5683");
+      testPairedTooltipValues("LATITUDE", "55.68");
+      testPairedTooltipValues("LONGITUDE", "12.57");
       testPairedTooltipValues("COUNT", "1");
       testPairedTooltipValues("NAME", "Copenhagen");
     });

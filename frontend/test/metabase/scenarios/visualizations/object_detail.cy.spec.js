@@ -63,6 +63,7 @@ describe("scenarios > question > object details", () => {
     getNextObjectDetailButton().should("not.exist");
 
     cy.go("back");
+    cy.go("back");
     cy.wait("@dataset");
 
     changeSorting("User ID", "desc");

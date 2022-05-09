@@ -222,7 +222,9 @@ describe("scenarios > models metadata", () => {
           cy.findByText("Hudson Borer");
         });
 
-        cy.go("back");
+        cy.go("back"); // close modal
+        cy.wait("@dataset");
+        cy.go("back"); // navigate away from drilled table
         cy.wait("@dataset");
 
         // Drill to Reviews table

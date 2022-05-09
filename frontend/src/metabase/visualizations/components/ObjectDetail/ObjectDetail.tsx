@@ -233,7 +233,7 @@ export function ObjectDetailFn({
         ) : (
           <div className="ObjectDetail" data-testid="object-detail">
             <ObjectDetailHeader
-              canZoom={canZoom}
+              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
               objectId={zoomedRowID}
               canZoomPreviousRow={canZoomPreviousRow}
@@ -317,7 +317,6 @@ export function ObjectDetailHeader({
               data-testId="object-detail-close-button"
               onlyIcon
               borderless
-              disabled={!canZoomNextRow}
               onClick={closeObjectDetail}
               icon="close"
               iconSize={20}

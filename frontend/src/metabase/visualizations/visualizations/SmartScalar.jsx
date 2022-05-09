@@ -135,7 +135,9 @@ export default class Smart extends React.Component {
         {formatNumber(Math.abs(lastChange), { number_style: "percent" })}
       </span>
     );
-    const separator = <PreviousValueSeparator>•</PreviousValueSeparator>;
+    const separator = (
+      <PreviousValueSeparator gridSize={gridSize}>•</PreviousValueSeparator>
+    );
     const granularityDisplay = (
       <span style={{ marginLeft: 5 }}>{jt`last ${granularity}`}</span>
     );
@@ -201,7 +203,7 @@ export default class Smart extends React.Component {
           ) : lastChange === 0 ? (
             t`No change from last ${granularity}`
           ) : (
-            <PreviousValueContainer>
+            <PreviousValueContainer gridSize={gridSize}>
               <Variation color={changeColor}>
                 <Icon
                   size={13}

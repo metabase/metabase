@@ -7,10 +7,12 @@ import RecentItems from "metabase/entities/recent-items";
 import Text from "metabase/components/type/Text";
 import * as Urls from "metabase/lib/urls";
 import { isSyncCompleted } from "metabase/lib/syncing";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   ResultLink,
   ResultSpinner,
   Title,
+  TitleWrapper,
 } from "metabase/search/components/SearchResult.styled";
 import { ItemIcon } from "metabase/search/components/SearchResult";
 import EmptyState from "metabase/components/EmptyState";
@@ -64,6 +66,7 @@ function RecentsList({ list, loading }) {
                 const active = isItemActive(item);
                 const loading = isItemLoading(item);
                 const url = active ? Urls.modelToUrl(item) : "";
+                const moderatedStatus = getModeratedStatus(item);
 
                 return (
                   <li key={key}>
@@ -78,12 +81,18 @@ function RecentsList({ list, loading }) {
                           active={active}
                         />
                         <div>
-                          <Title
-                            active={active}
-                            data-testid="recently-viewed-item-title"
-                          >
-                            {title}
-                          </Title>
+                          <TitleWrapper>
+                            <Title
+                              active={active}
+                              data-testid="recently-viewed-item-title"
+                            >
+                              {title}
+                            </Title>
+                            <PLUGIN_MODERATION.ModerationStatusIcon
+                              status={moderatedStatus}
+                              size={12}
+                            />
+                          </TitleWrapper>
                           <Text data-testid="recently-viewed-item-type">
                             {type}
                           </Text>
@@ -116,6 +125,10 @@ const getItemKey = ({ model, model_id }) => {
 
 const getItemName = ({ model_object }) => {
   return model_object.display_name || model_object.name;
+};
+
+const getModeratedStatus = ({ model_object }) => {
+  return model_object.moderated_status;
 };
 
 const isItemActive = ({ model, model_object }) => {
