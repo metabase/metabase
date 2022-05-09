@@ -1,19 +1,15 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { connect } from "react-redux";
-import { getValues } from "redux-form";
 import { withRouter } from "react-router";
 import { goBack } from "react-router-redux";
 import _ from "underscore";
 
-import { Collection } from "metabase-types/api";
+import { Collection, CollectionId } from "metabase-types/api";
 import { State } from "metabase-types/store";
 
 import Collections from "metabase/entities/collections";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 
-const { REGULAR_COLLECTION } = PLUGIN_COLLECTIONS;
-
-const FORM_NAME = "create-collection";
+import CollectionCreateForm from "./CollectionCreateForm";
 
 interface CollectionCreateOwnProps {
   goBack?: () => void;
@@ -22,8 +18,7 @@ interface CollectionCreateOwnProps {
 }
 
 interface CollectionCreateStateProps {
-  form: unknown;
-  initialCollectionId?: number | null;
+  initialCollectionId: CollectionId;
 }
 
 interface CollectionCreateProps
@@ -31,13 +26,7 @@ interface CollectionCreateProps
     CollectionCreateStateProps {}
 
 function mapStateToProps(state: State, props: CollectionCreateOwnProps) {
-  const formValues = getValues(
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    state.form[FORM_NAME],
-  );
   return {
-    form: Collections.selectors.getForm(state, { ...props, formValues }),
     initialCollectionId: Collections.selectors.getInitialCollectionId(
       state,
       props,
@@ -50,12 +39,29 @@ const mapDispatchToProps = {
 };
 
 function CollectionCreate({
-  form,
   initialCollectionId,
   goBack,
   onClose,
   onSaved,
 }: CollectionCreateProps) {
+  const [parentCollectionId, setParentCollectionId] = useState<CollectionId>(
+    initialCollectionId,
+  );
+  const [hasSetParentCollection, setHasSetParentCollection] = useState(false);
+
+  useEffect(() => {
+    if (!hasSetParentCollection) {
+      setParentCollectionId(initialCollectionId);
+    }
+  }, [initialCollectionId, hasSetParentCollection]);
+
+  const onChangeField = useCallback((fieldName: string, value: unknown) => {
+    if (fieldName === "collection_id") {
+      setParentCollectionId(value as CollectionId);
+      setHasSetParentCollection(true);
+    }
+  }, []);
+
   const handleClose = useCallback(() => {
     if (onClose) {
       onClose();
@@ -76,14 +82,9 @@ function CollectionCreate({
   );
 
   return (
-    <Collections.ModalForm
-      overwriteOnInitialValuesChange
-      formName={FORM_NAME}
-      form={form}
-      collection={{
-        parent_id: initialCollectionId,
-        authority_level: REGULAR_COLLECTION.type,
-      }}
+    <CollectionCreateForm
+      parentCollectionId={parentCollectionId}
+      onChangeField={onChangeField}
       onSaved={handleSave}
       onClose={handleClose}
     />
