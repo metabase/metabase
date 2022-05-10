@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import { SubscribeInfo } from "metabase-types/store";
 import {
   FormContainer,
@@ -47,7 +47,7 @@ const NewsletterForm = ({
         {t`Get infrequent emails about new releases and feature updates.`}
       </FormHeader>
       {!isSubscribed && (
-        <Form
+        <Form<{ email: string }>
           form={Users.forms.newsletter}
           initialValues={initialValues}
           submitTitle={t`Subscribe`}
