@@ -14,7 +14,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;;; ----------------------------------------------- Extracting Bounds ------------------------------------------------
 
@@ -232,7 +233,8 @@
     (update query :query update-binning-strategy-in-inner-query)))
 
 (defn- bin-field->name [field]
-  (str "xxx" (second field)))
+  (let [[_ field-id _] field]
+    (db/select-one-field :name Field :id field-id)))
 
 (defn- bin-fields->join-value-table [bin-fields]
   (let [bins (mapv (fn [[_ _ {:keys [binning]}]]
@@ -250,10 +252,10 @@
                   ") as bin(" column-names ")")}))
 
 (defn fill-empty-bins
-  "Rewrites breakouts to add empty bins when possible.
+  "Rewrites breakouts to add empty bins when possible. (#12004)
 
    - Binning fields are collected and added to a VALUES statement with the cartesian product of all possible bins
-   - The VALUES are right-joined to the original source table so that empty bins are added to the sources (#12004)
+   - The VALUES are right-joined to the original source table so that empty bins are added to the sources
    - Calls to [:count] need to be modified to count rows in the source table (otherwise the added values would count 1)
    - Order by needs to replace source table columns with the VALUES columns"
   [{:keys [query] :as outer-query}]
@@ -276,9 +278,7 @@
                     [{:strategy :right-join
                       :source-query (bin-fields->join-value-table bin-fields)
                       :alias table-alias
-                      :condition (cond->> join-conditions
-                                   (= 1 bin-count) first
-                                   (not= 1 bin-count) (into [:and]))}])
+                      :condition (if (= bin-count 1) (first join-conditions) (into [:and] join-conditions))}])
           (update-in [:query :breakout] (fn [breakout-fields]
                                           (mapv
                                             #(if (contains? (set bin-fields) %)
@@ -291,22 +291,3 @@
                                            [direction [:field (bin-field->name order-by-field) {:base-type :type/Number :join-alias table-alias}]]
                                            ordered-by)) %)))
       outer-query)))
-
-
-(comment
-(fill-empty-bins oq)
-  (do oq)
-  (mapv (juxt identity fill-empty-bins)
-        [{:aggregation [[:count]],
-          :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
-          :source-table 81}])
-
-  {:aggregation [[:count] [:sum]],
-   :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
-   :source-table 81
-   :order-by [[:asc [:field 616]]]}
-
-  {:aggregation [[:avg]],
-   :breakout [[:field 615 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.5, :max-value 4.5, :bin-width 1/2}}]],
-   :source-table 81
-   :order-by [[:asc [:field 616]]]})
