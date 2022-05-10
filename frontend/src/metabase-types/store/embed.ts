@@ -1,5 +1,3 @@
-export type EmbedTheme = "light" | "dark";
-
 export interface EmbedOptions {
   top_nav?: boolean;
   search?: boolean;
