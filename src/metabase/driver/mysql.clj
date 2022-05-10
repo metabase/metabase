@@ -37,7 +37,7 @@
 
 ;; MariaDB doesn't like JSON at all, it turns out
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (not (db-mariadb? database))
+  (not (db-mariadb? database)))
 
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
@@ -53,7 +53,7 @@
 (defn- db-mariadb? [database]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
     (jdbc/with-db-metadata [metadata jdbc-spec]
-      (mariadb? metadata)))
+      (mariadb? metadata))))
 
 (defn- db-version [^DatabaseMetaData metadata]
   (Double/parseDouble
