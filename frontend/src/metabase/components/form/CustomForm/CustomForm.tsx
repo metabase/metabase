@@ -2,7 +2,7 @@ import React from "react";
 import _ from "underscore";
 import { Form } from "formik";
 
-import { FormFieldDefinition, FormObject } from "metabase-types/forms";
+import { FormFieldDefinition, PopulatedFormObject } from "metabase-types/forms";
 
 import { BaseFormProps, OptionalFormViewProps } from "./types";
 
@@ -14,7 +14,7 @@ import CustomFormSubmit from "./CustomFormSubmit";
 import { FormContext } from "./context";
 
 interface FormRenderProps extends BaseFormProps {
-  form: FormObject;
+  form: PopulatedFormObject;
   formFields: FormFieldDefinition[];
   Form: React.ComponentType<{ children: React.ReactNode }>;
   FormField: React.ComponentType<CustomFormFieldProps>;
