@@ -29,9 +29,15 @@ const getReloadInterval = (_state, _props, databases = []) => {
   return databases.some(d => isSyncInProgress(d)) ? RELOAD_INTERVAL : 0;
 };
 
+const query = {
+  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
+};
+
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state),
-  hasSampleDatabase: Database.selectors.getHasSampleDatabase(state),
+  hasSampleDatabase: Database.selectors.getHasSampleDatabase(state, {
+    entityQuery: query,
+  }),
   isAddingSampleDatabase: getIsAddingSampleDatabase(state),
   addSampleDatabaseError: getAddSampleDatabaseError(state),
 
@@ -42,10 +48,6 @@ const mapStateToProps = (state, props) => ({
   deletes: getDeletes(state),
   deletionError: getDeletionError(state),
 });
-
-const query = {
-  ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDetailsQueryProps,
-};
 
 const mapDispatchToProps = {
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
