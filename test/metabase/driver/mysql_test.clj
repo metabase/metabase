@@ -465,4 +465,4 @@
                           "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
                           "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
                      (:query compile-res)))
-              (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res)))))))))
+              (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
