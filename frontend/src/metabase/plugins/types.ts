@@ -29,6 +29,7 @@ export type PluginGroupManagersType = {
   getChangeMembershipConfirmation: GetChangeMembershipConfirmation;
   getRemoveMembershipConfirmation: GetRemoveMembershipConfirmation;
 
+  deleteGroup: any;
   confirmDeleteMembershipAction: any;
   confirmUpdateMembershipAction: any;
 };
