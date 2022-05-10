@@ -84,11 +84,6 @@
                              :type/UUID                   "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:ocient base-type] [_ _] db-type))
 
-(defn in?
-  "true if coll contains elm"
-  [coll elm]
-  (some #(= elm %) coll))
-
 ;; The Ocient JDBC driver barfs when trailing semicolons are tacked onto SQL statments
 (defn- execute-sql-spec!
   [spec sql & {:keys [execute!]
@@ -441,7 +436,7 @@
   (format "DROP TABLE IF EXISTS %s" (sql.tx/qualify-and-quote driver database-name table-name)))
 
 (defmethod sql-jdbc.sync/filtered-syncable-schemas :ocient
-  [_ _ _]
+  [_ _ _ _ _]
   #{session-schema})
 
 (defmethod sql.tx/drop-db-if-exists-sql :ocient [driver {:keys [database-name]}]
