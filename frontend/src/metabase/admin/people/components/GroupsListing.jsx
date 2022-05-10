@@ -30,7 +30,7 @@ import { AddRow } from "./AddRow";
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
 function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
-  const textIsValid = text && text.length;
+  const textIsValid = text?.trim().length;
   return (
     <tr>
       <td colSpan="3" style={{ padding: 0 }}>
@@ -271,7 +271,7 @@ export default class GroupsListing extends Component {
     MetabaseAnalytics.trackStructEvent("People Groups", "Group Added");
 
     try {
-      await this.props.create({ name: this.state.text });
+      await this.props.create({ name: this.state.text.trim() });
       this.setState({
         showAddGroupRow: false,
         text: "",
