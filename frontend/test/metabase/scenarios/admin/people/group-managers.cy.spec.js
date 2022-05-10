@@ -12,16 +12,15 @@ describeEE("scenarios > admin > people", () => {
       .click();
 
     cy.findAllByTestId("user-type-toggle").click({ multiple: true });
+
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.icon("gear").click();
+    cy.findByText("Admin settings").click();
   });
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.signInAsNormalUser();
-      cy.visit("/");
-
-      cy.icon("gear").click();
-      cy.findByText("Admin settings").click();
-
       cy.findByText("Groups").click();
 
       // Edit group name
@@ -91,11 +90,6 @@ describeEE("scenarios > admin > people", () => {
     });
 
     it("can manage members from the people page", () => {
-      cy.signInAsNormalUser();
-      cy.visit("/");
-      cy.icon("gear").click();
-      cy.findByText("Admin settings").click();
-
       // Open membership select for a user
       cy.findByText("No Collection Tableton")
         .closest("tr")
@@ -151,6 +145,16 @@ describeEE("scenarios > admin > people", () => {
       cy.url().should("match", /\/$/);
     });
   });
+
+  it("after removing the last group redirects to the home page", () => {
+    cy.findByText("Groups").click();
+
+    removeFirstGroup();
+    cy.url().should("match", /\/admin\/people\/groups$/);
+
+    removeFirstGroup();
+    cy.url().should("match", /\/$/);
+  });
 });
 
 function confirmLosingAbilityToManageGroup() {
@@ -160,4 +164,12 @@ function confirmLosingAbilityToManageGroup() {
     );
     cy.button("Confirm").click();
   });
+}
+
+function removeFirstGroup() {
+  cy.icon("ellipsis")
+    .eq(0)
+    .click();
+  cy.findByText("Remove Group").click();
+  cy.button("Yes").click();
 }
