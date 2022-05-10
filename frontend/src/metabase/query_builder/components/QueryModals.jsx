@@ -24,7 +24,7 @@ import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 
-import WritebackForm from "metabase/writeback/containers/WritebackForm";
+import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
@@ -249,7 +249,11 @@ export default class QueryModals extends React.Component {
       </Modal>
     ) : modal === MODAL_TYPES.INSERT_ROW ? (
       <Modal onClose={onCloseModal}>
-        <WritebackForm table={question.table()} />
+        <WritebackModalForm
+          table={question.table()}
+          onSubmit={onCloseModal}
+          onClose={onCloseModal}
+        />
       </Modal>
     ) : null;
   }
