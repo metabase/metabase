@@ -38,7 +38,7 @@ Template.args = {
       source: {
         type: "partner",
         contact: {
-          name: "Parners Incorporated",
+          name: "Partners Incorporated",
           address: "https://example.com/contact",
         },
       },
