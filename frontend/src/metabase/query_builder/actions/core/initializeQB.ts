@@ -2,10 +2,9 @@ import _ from "underscore";
 import querystring from "querystring";
 import { LocationDescriptorObject } from "history";
 
-import { normalize } from "cljs/metabase.mbql.js";
-
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
+import { normalize } from "metabase/lib/query/normalize";
 import * as Urls from "metabase/lib/urls";
 
 import { cardIsEquivalent } from "metabase/meta/Card";
