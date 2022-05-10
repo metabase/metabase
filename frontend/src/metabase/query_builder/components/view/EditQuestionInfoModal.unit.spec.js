@@ -1,5 +1,11 @@
 import React from "react";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  act,
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import xhrMock from "xhr-mock";
 import { setupEnterpriseTest } from "__support__/enterprise";
@@ -41,7 +47,7 @@ function mockCachingSettings({ enabled = true } = {}) {
   });
 }
 
-function setup({ cachingEnabled = true } = {}) {
+async function setup({ cachingEnabled = true } = {}) {
   mockCachingSettings({
     enabled: cachingEnabled,
   });
@@ -65,6 +71,8 @@ function setup({ cachingEnabled = true } = {}) {
     />,
   );
 
+  await waitFor(() => screen.queryByRole("button", { name: /Create/i }));
+
   return {
     onSave,
     onClose,
@@ -77,20 +85,20 @@ function fillNumericInput(input, value) {
   input.blur();
 }
 
-function fillForm({ name, description, cache_ttl } = {}) {
-  if (name) {
+async function fillForm({ name, description, cache_ttl } = {}) {
+  if (name != null) {
     const input = screen.getByLabelText("Name");
-    userEvent.clear(input);
-    userEvent.type(input, name);
+    await userEvent.clear(input);
+    await userEvent.type(input, name);
   }
-  if (description) {
+  if (description != null) {
     const input = screen.getByLabelText("Description");
-    userEvent.clear(input);
-    userEvent.type(input, description);
+    await userEvent.clear(input);
+    await userEvent.type(input, description);
   }
-  if (cache_ttl) {
+  if (cache_ttl != null) {
     const input = screen.getByLabelText("Caching");
-    fillNumericInput(input, cache_ttl);
+    await fillNumericInput(input, cache_ttl);
   }
 }
 
@@ -112,8 +120,8 @@ describe("EditQuestionInfoModal", () => {
     xhrMock.teardown();
   });
 
-  it("displays fields with filled values", () => {
-    setup();
+  it("displays fields with filled values", async () => {
+    await setup();
 
     expect(screen.queryByLabelText("Name")).toBeInTheDocument();
     expect(screen.queryByLabelText("Name")).toHaveValue(QUESTION.name);
@@ -129,30 +137,33 @@ describe("EditQuestionInfoModal", () => {
     ).toBeInTheDocument();
   });
 
-  it("calls onClose when Cancel button is clicked", () => {
-    const { onClose } = setup();
+  it("calls onClose when Cancel button is clicked", async () => {
+    const { onClose } = await setup();
     fireEvent.click(screen.queryByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("can't submit if name is empty", () => {
-    setup();
+  it("can't submit if name is empty", async () => {
+    await setup();
 
-    fillForm({ name: "" });
-    fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+    await act(async () => {
+      await fillForm({ name: "" });
+    });
 
-    expect(screen.queryByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
-  it("calls onSave callback on successful update", () => {
+  it("calls onSave callback on successful update", async () => {
     const UPDATES = {
       name: "New fancy question name",
       description: "Just testing if updates work correctly",
     };
-    const { onSave } = setup();
+    const { onSave } = await setup();
 
-    fillForm(UPDATES);
-    fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+    await act(async () => {
+      await fillForm(UPDATES);
+      await fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    });
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledWith({
@@ -163,8 +174,8 @@ describe("EditQuestionInfoModal", () => {
 
   describe("Cache TTL field", () => {
     describe("OSS", () => {
-      it("is not shown", () => {
-        setup();
+      it("is not shown", async () => {
+        await setup();
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -178,18 +189,22 @@ describe("EditQuestionInfoModal", () => {
       });
 
       describe("caching enabled", () => {
-        it("is shown", () => {
-          setup();
+        it("is shown", async () => {
+          await setup();
           fireEvent.click(screen.queryByText("More options"));
           expect(screen.getByDisplayValue("0")).toBeInTheDocument();
         });
 
-        it("can be changed", () => {
-          const { onSave } = setup();
+        it("can be changed", async () => {
+          const { onSave } = await setup();
 
-          fireEvent.click(screen.queryByText("More options"));
-          fillNumericInput(screen.getByDisplayValue("0"), 10);
-          fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+          await act(async () => {
+            await fireEvent.click(screen.queryByText("More options"));
+            await fillNumericInput(screen.getByDisplayValue("0"), 10);
+            await fireEvent.click(
+              screen.queryByRole("button", { name: "Save" }),
+            );
+          });
 
           expect(onSave).toHaveBeenCalledWith({
             ...QUESTION,
@@ -199,21 +214,25 @@ describe("EditQuestionInfoModal", () => {
       });
 
       describe("caching disabled", () => {
-        it("is not shown if caching is disabled", () => {
-          setup({ cachingEnabled: false });
+        it("is not shown if caching is disabled", async () => {
+          await setup({ cachingEnabled: false });
           expect(screen.queryByText("More options")).not.toBeInTheDocument();
           expect(
             screen.queryByText("Cache all question results for"),
           ).not.toBeInTheDocument();
         });
 
-        it("can still submit the form", () => {
-          const { onSave } = setup({
+        it("can still submit the form", async () => {
+          const { onSave } = await setup({
             cachingEnabled: false,
           });
 
-          fillForm({ name: "Test" });
-          fireEvent.click(screen.queryByRole("button", { name: "Save" }));
+          await act(async () => {
+            await fillForm({ name: "Test" });
+            await fireEvent.click(
+              await screen.getByRole("button", { name: "Save" }),
+            );
+          });
 
           expect(onSave).toHaveBeenCalledWith({
             ...QUESTION,
