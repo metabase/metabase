@@ -18,7 +18,7 @@ import {
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
-import RootForm from "metabase/containers/Form";
+import RootForm from "metabase/containers/FormikForm";
 import { usePrevious } from "metabase/hooks/use-previous";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
@@ -76,7 +76,7 @@ function getFormFields({ dataset }) {
       value: type.id,
     }));
 
-  return fieldFormValues =>
+  return formFieldValues =>
     [
       { name: "display_name", title: t`Display name` },
       {
@@ -96,11 +96,11 @@ function getFormFields({ dataset }) {
         title: t`Column type`,
         widget: SemanticTypePicker,
         options: getSemanticTypeOptions(),
-        icon: getSemanticTypeIcon(fieldFormValues.semantic_type, "ellipsis"),
+        icon: getSemanticTypeIcon(formFieldValues?.semantic_type, "ellipsis"),
       },
       {
         name: "fk_target_field_id",
-        hidden: !isFK(fieldFormValues),
+        hidden: !isFK(formFieldValues),
         widget: FKTargetPicker,
         databaseId: dataset.databaseId(),
       },
