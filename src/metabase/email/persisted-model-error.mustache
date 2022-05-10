@@ -1,0 +1,24 @@
+{{> metabase/email/_header }}
+  <div style="padding: 2em 4em; border: 1px solid #dddddd; border-radius: 2px; background-color: white; box-shadow: 0 1px 2px rgba(0, 0, 0, .08); text-align: center;">
+    <p>
+      <h2 style="margin: 0; padding: 0; padding-bottom: .4em; font-weight: normal; color: #4C545B;">Model refresh for {{database-name}} failed</h2>
+    </p>
+    <p>
+      {{#errors}}
+      <div style="padding-bottom: 1em;">
+      <p>We ran into some trouble refreshing the model {{card-name}}. You can see the error description below:</p>
+      <code>{{error}}</code>
+      <dd>Model name</dd>
+      <dt><a href="/{{card-id}}">{{card-name}}</a></dt>
+      <dd>Collection</dd>
+      <dt><a href="/{{collection-id}}">{{collection-name}}</a></dt>
+      <dd>Last run at</dd>
+      <dt>{{last-run-at}}</dt>
+      <dd>Last run trigger</dd>
+      <dt>{{last-run-trigger}}</dt>
+      <a href="/admin/tools/model-caching/{{persisted-info-id}}"><button>Review in Tools page</button></a>
+      </div>
+      {{/errors}}
+    </p>
+  </div>
+{{> metabase/email/_footer }}

@@ -246,6 +246,34 @@
      :message-type :html
      :message      message-body)))
 
+(defn send-persistent-model-error-email!
+  "Format and send an email informing the user about errors in the persistent "
+  [persisted-infos trigger]
+  {:pre [(seq persisted-infos)]}
+  (let [emails []
+        context {:errors
+                 (for [persisted-info persisted-infos
+                       :let [database (:database persisted-info)
+                             card (:card persisted-info)
+                             collection (:collection card)]]
+                   {:error (:error persisted-info)
+                    :card-id (:id card)
+                    :card-name (:name card)
+                    :collection-id (:id collection)
+                    :collection-name (:name collection)
+                    :database-name (:name database)
+                    :last-run-at (:refresh_begin persisted-info)
+                    :last-run-trigger trigger
+                    :persisted-info-id (:id persisted-info)})}
+        message-body (stencil/render-file "metabase/email/persisted-model-error"
+                                          (merge (common-context) context))]
+    (when (seq emails)
+      (email/send-message!
+        :subject      (trs "[{0}] Model cache refresh failed" (app-name-trs))
+        :recipients   emails
+        :message-type :html
+        :message      message-body))))
+
 (defn send-follow-up-email!
   "Format and send an email to the system admin following up on the installation."
   [email msg-type]

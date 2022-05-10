@@ -8,6 +8,7 @@
             [metabase.db :as mdb]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.email.messages :as messages]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :refer [Database]]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
@@ -17,7 +18,8 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.hydrate :refer [hydrate]])
   (:import [org.quartz ObjectAlreadyExistsException Trigger]))
 
 (defn- job-context->job-type
@@ -65,7 +67,8 @@
         :refresh_end :%now,
         :state (if (= state :success) "persisted" "error")
         :state_change_at :%now
-        :error (when (= state :error) (:error results))))))
+        :error (when (= state :error) (:error results)))
+      results)))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
@@ -74,12 +77,19 @@
   (let [start-time   (t/zoned-date-time)
         task-details (f)
         end-time     (t/zoned-date-time)]
+    (when-let [error-ids (seq (:error-ids task-details))]
+      (let [persisted-infos (hydrate (db/select PersistedInfo :id [:in error-ids])
+                                     [:card :collection]
+                                     :database)]
+        (messages/send-persistent-model-error-email!
+          persisted-infos
+          (:trigger task-details))))
     (db/insert! TaskHistory {:task         task-type
                              :db_id        db-id
                              :started_at   start-time
                              :ended_at     end-time
                              :duration     (.toMillis (t/duration start-time end-time))
-                             :task_details task-details})))
+                             :task_details (dissoc task-details :error-ids)})))
 
 (defn- prune-deletables!
   "Seam for tests to pass in specific deletables to drop."
@@ -100,7 +110,7 @@
                                          (update stats :error inc)))))
                                  {:success 0, :error 0}
                                  deletables))]
-      (save-task-history! "unpersist-tables" nil unpersist-fn))) )
+      (save-task-history! "unpersist-tables" nil unpersist-fn))))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -116,6 +126,19 @@
                                         (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]})]
     (prune-deletables! refresher deletables)))
 
+(defn- refresh-with-results! [refresher database stats persisted-info]
+  (let [results (try
+                  (refresh-with-state! refresher database persisted-info)
+                  (catch Exception e
+                    (log/info e (trs "Error refreshing persisting model with card-id {0}"
+                                     (:card_id persisted-info)))
+                    {:state :error}))]
+    (if (= :success (:state results))
+      (update stats :success inc)
+      (-> stats
+          (update :error-ids conj (:id persisted-info))
+          (update :error inc)))) )
+
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
@@ -125,14 +148,8 @@
         persisted (db/select PersistedInfo
                              :database_id database-id, :state [:in refreshable-states])
         thunk     (fn []
-                    (reduce (fn [stats p]
-                              (try
-                                (refresh-with-state! refresher database p)
-                                (update stats :success inc)
-                                (catch Exception e
-                                  (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id p)))
-                                  (update stats :error inc))))
-                            {:success 0, :error 0}
+                    (reduce (partial refresh-with-results! refresher database)
+                            {:success 0, :error 0, :error-ids [], :trigger "Scheduled"}
                             persisted))]
     (save-task-history! "persist-refresh" database-id thunk))
   (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
@@ -147,17 +164,15 @@
                          (Database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
-       (save-task-history! "persist-refresh" (u/the-id database)
-                            (fn []
-                              (try (refresh-with-state! refresher database persisted-info)
-                                   {:success 1 :error 0}
-                                   (catch Exception e
-                                     (log/info e (trs "Error refreshing persisting model with card-id {0}"
-                                                      (:card_id persisted-info)))
-                                     {:success 0 :error 1}))))
-       (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
-                      (:card_id persisted-info)
-                      (u/the-id persisted-info))))
+        (save-task-history! "persist-refresh" (u/the-id database)
+                            (partial refresh-with-results!
+                                     refresher
+                                     database
+                                     {:success 0 :error 0, :error-ids [], :trigger "Manual"}
+                                     persisted-info))
+        (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
+                       (:card_id persisted-info)
+                       (u/the-id persisted-info))))
       (log/info (trs "Unable to refresh model with card-id {0}" (:card_id persisted-info))))))
 
 (defn- refresh-job-fn!
