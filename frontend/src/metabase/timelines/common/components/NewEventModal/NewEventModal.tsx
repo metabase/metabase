@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getDefaultTimezone } from "metabase/lib/time";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
-import Form from "metabase/containers/Form";
+import Form from "metabase/containers/FormikForm";
 import forms from "metabase/entities/timeline-events/forms";
 import {
   Collection,
@@ -51,7 +51,7 @@ const NewEventModal = ({
     const hasOneTimeline = availableTimelines.length === 1;
 
     return {
-      timeline_id: defaultTimeline ? defaultTimeline.id : null,
+      timeline_id: defaultTimeline ? defaultTimeline.id : undefined,
       icon: hasOneTimeline ? defaultTimeline.icon : getDefaultTimelineIcon(),
       timezone: getDefaultTimezone(),
       source,
@@ -73,7 +73,7 @@ const NewEventModal = ({
     <div>
       <ModalHeader title={t`New event`} onClose={onClose} />
       <ModalBody>
-        <Form
+        <Form<Partial<TimelineEvent>>
           form={form}
           initialValues={initialValues}
           isModal={true}
