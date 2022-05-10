@@ -86,6 +86,9 @@ export default class Dashboard extends Component {
     closeSidebar: PropTypes.func.isRequired,
     openAddQuestionSidebar: PropTypes.func.isRequired,
     showAddQuestionSidebar: PropTypes.bool.isRequired,
+
+    isEmbedded: PropTypes.bool,
+    embedOptions: PropTypes.object,
   };
 
   static defaultProps = {
@@ -220,6 +223,8 @@ export default class Dashboard extends Component {
       setParameterValue,
       setParameterIndex,
       setEditingParameter,
+      isEmbedded,
+      embedOptions,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -241,6 +246,8 @@ export default class Dashboard extends Component {
       />
     );
 
+    const shouldRenderHeader = !isEmbedded || embedOptions.header;
+
     const shouldRenderParametersWidgetInViewMode =
       !isEditing && !isFullscreen && parameters.length > 0;
 
@@ -261,30 +268,32 @@ export default class Dashboard extends Component {
       >
         {() => (
           <DashboardStyled>
-            <HeaderContainer
-              isFullscreen={isFullscreen}
-              isNightMode={shouldRenderAsNightMode}
-            >
-              <DashboardHeader
-                {...this.props}
-                onEditingChange={this.setEditing}
-                setDashboardAttribute={this.setDashboardAttribute}
-                addParameter={addParameter}
-                parametersWidget={parametersWidget}
-                onSharingClick={this.onSharingClick}
-                onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
-                showAddQuestionSidebar={showAddQuestionSidebar}
-              />
+            {shouldRenderHeader && (
+              <HeaderContainer
+                isFullscreen={isFullscreen}
+                isNightMode={shouldRenderAsNightMode}
+              >
+                <DashboardHeader
+                  {...this.props}
+                  onEditingChange={this.setEditing}
+                  setDashboardAttribute={this.setDashboardAttribute}
+                  addParameter={addParameter}
+                  parametersWidget={parametersWidget}
+                  onSharingClick={this.onSharingClick}
+                  onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
+                  showAddQuestionSidebar={showAddQuestionSidebar}
+                />
 
-              {shouldRenderParametersWidgetInEditMode && (
-                <ParametersWidgetContainer
-                  data-testid="edit-dashboard-parameters-widget-container"
-                  isEditing={isEditing}
-                >
-                  {parametersWidget}
-                </ParametersWidgetContainer>
-              )}
-            </HeaderContainer>
+                {shouldRenderParametersWidgetInEditMode && (
+                  <ParametersWidgetContainer
+                    data-testid="edit-dashboard-parameters-widget-container"
+                    isEditing={isEditing}
+                  >
+                    {parametersWidget}
+                  </ParametersWidgetContainer>
+                )}
+              </HeaderContainer>
+            )}
 
             <DashboardBody isEditingOrSharing={isEditing || isSharing}>
               <ParametersAndCardsContainer

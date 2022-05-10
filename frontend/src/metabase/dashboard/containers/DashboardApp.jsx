@@ -47,9 +47,11 @@ import {
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
+import { getEmbedOptions } from "metabase/selectors/embed";
 
 import * as dashboardActions from "../actions";
 import { parseHashOptions } from "metabase/lib/browser";
+import { IFRAMED } from "metabase/lib/dom";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
@@ -83,6 +85,8 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     isRunning: getIsRunning(state),
     isLoadingComplete: getIsLoadingComplete(state),
+    isEmbedded: IFRAMED,
+    embedOptions: getEmbedOptions(state),
   };
 };
 
