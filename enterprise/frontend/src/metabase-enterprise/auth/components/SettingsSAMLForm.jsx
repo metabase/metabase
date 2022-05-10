@@ -22,8 +22,7 @@ import GroupMappingsWidget from "metabase/admin/settings/components/widgets/Grou
 import MetabaseSettings from "metabase/lib/settings";
 import { SAMLFormSection } from "./SettingsSAMLForm.styled";
 
-@connect(null, { updateSettings })
-export default class SettingsSAMLForm extends Component {
+class SettingsSAMLForm extends Component {
   render() {
     const { elements, settingValues, updateSettings } = this.props;
     // TODO: move these to an outer component so we don't have to do it in every form page
@@ -185,3 +184,5 @@ export default class SettingsSAMLForm extends Component {
     );
   }
 }
+
+export default connect(null, { updateSettings })(SettingsSAMLForm);

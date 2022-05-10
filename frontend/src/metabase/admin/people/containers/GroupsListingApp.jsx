@@ -1,4 +1,5 @@
 import React from "react";
+import _ from "underscore";
 import { connect } from "react-redux";
 
 import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
@@ -16,10 +17,13 @@ const mapDispatchToProps = {
   delete: PLUGIN_GROUP_MANAGERS.deleteGroup ?? Group.actions.delete,
 };
 
-@Group.loadList({ reload: true })
-@connect(mapStateToProps, mapDispatchToProps)
-export default class GroupsListingApp extends React.Component {
+class GroupsListingApp extends React.Component {
   render() {
     return <GroupsListing {...this.props} />;
   }
 }
+
+export default _.compose(
+  Group.loadList({ reload: true }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(GroupsListingApp);

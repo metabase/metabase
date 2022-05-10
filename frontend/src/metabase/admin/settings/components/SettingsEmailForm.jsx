@@ -24,8 +24,7 @@ const SEND_TEST_BUTTON_STATES = {
   success: t`Sent!`,
 };
 
-@connect(null, { sendTestEmail, updateEmailSettings, clearEmailSettings })
-export default class SettingsEmailForm extends Component {
+class SettingsEmailForm extends Component {
   state = {
     sendingEmail: "default",
   };
@@ -112,3 +111,9 @@ export default class SettingsEmailForm extends Component {
     );
   }
 }
+
+export default connect(null, {
+  sendTestEmail,
+  updateEmailSettings,
+  clearEmailSettings,
+})(SettingsEmailForm);

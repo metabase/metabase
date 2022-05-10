@@ -21,8 +21,7 @@ const DEFAULT_OPTIONS = {
   titled: true,
 };
 
-@withRouter
-export default class EmbedFrame extends Component {
+class EmbedFrame extends Component {
   state = {
     innerScroll: true,
   };
@@ -107,3 +106,5 @@ export default class EmbedFrame extends Component {
     );
   }
 }
+
+export default withRouter(EmbedFrame);
