@@ -40,7 +40,8 @@
 
 (defn- db-mariadb? [database]
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/with-db-metadata [metadata jdbc-spec]
+    (jdbc/with-db-metadata [metadata spec]
+      (mariadb? metadata))))
 
 ;; MariaDB doesn't like JSON at all, it turns out
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
@@ -53,7 +54,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-      (mariadb? metadata))))
 
 (defn- db-version [^DatabaseMetaData metadata]
   (Double/parseDouble
