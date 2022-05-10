@@ -10,6 +10,7 @@ const DEFAULT_OPTIONS = {
   search: false,
   new_button: false,
   header: true,
+  additional_info: true,
 };
 
 export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
