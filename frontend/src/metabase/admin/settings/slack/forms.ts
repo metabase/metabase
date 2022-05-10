@@ -1,6 +1,10 @@
 import { t } from "ttag";
+import { SlackSettings } from "metabase-types/api";
+import { FormObject } from "metabase-types/forms";
 
-export const getSlackForm = (readOnly?: boolean) => ({
+export const getSlackForm = (
+  readOnly?: boolean,
+): FormObject<SlackSettings> => ({
   fields: [
     {
       name: "slack-app-token",
