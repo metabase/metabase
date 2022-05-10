@@ -68,6 +68,7 @@ function AppBar({
   const [isSearchActive, setSearchActive] = useState(false);
   const hasSearch = !isEmbedded || embedOptions.search;
   const hasNewButton = !isEmbedded || embedOptions.new_button;
+  const hasSidebar = !isEmbedded || embedOptions.side_nav;
 
   const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
@@ -96,16 +97,21 @@ function AppBar({
 
   return (
     <AppBarRoot>
-      <LeftContainer isSearchActive={isSearchActive}>
+      <LeftContainer isLogoActive={!hasSidebar} isSearchActive={isSearchActive}>
         <HomepageLink handleClick={onLogoClick} />
-        <SidebarButtonContainer>
-          <Tooltip tooltip={sidebarButtonTooltip} isEnabled={!isSmallScreen()}>
-            <SidebarButton
-              isSidebarOpen={isNavbarOpen}
-              onClick={toggleNavbar}
-            />
-          </Tooltip>
-        </SidebarButtonContainer>
+        {hasSidebar && (
+          <SidebarButtonContainer>
+            <Tooltip
+              tooltip={sidebarButtonTooltip}
+              isEnabled={!isSmallScreen()}
+            >
+              <SidebarButton
+                isSidebarOpen={isNavbarOpen}
+                onClick={toggleNavbar}
+              />
+            </Tooltip>
+          </SidebarButtonContainer>
+        )}
       </LeftContainer>
       {!isSearchActive && (
         <MiddleContainer>
