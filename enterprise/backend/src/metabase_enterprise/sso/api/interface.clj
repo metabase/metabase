@@ -6,10 +6,11 @@
   "Function that powers the defmulti in figuring out which SSO backend to use. It might be that we need to have more
   complex logic around this, but now it's just a simple priority. If SAML is configured use that otherwise JWT"
   [_]
+  (println "fuck shit damn")
   (cond
     (sso-settings/saml-configured?) :saml
-    (sso-settings/jwt-enabled)      :jwt
-    :else                           nil))
+    ;; (sso-settings/jwt-enabled)      :jwt
+    :else                           :jwt))
 
 (defmulti sso-get
   "Multi-method for supporting the first part of an SSO signin request. An implementation of this method will usually

@@ -23,14 +23,10 @@
     (throw (ex-info (str (tru "SSO requires a valid token"))
              {:status-code 403}))))
 
-(defn- throw-if-bad-redirect-url [req]
-  (println req "should be throwin here lol"))
-
 (api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
   (throw-if-no-premium-features-token)
-  (throw-if-bad-redirect-url req)
   (try
     (sso.i/sso-get req)
     (catch Throwable e
@@ -48,13 +44,13 @@
                  :additionalData data}))})
 
 (api/defendpoint POST "/"
-   "Route the SSO backends call with successful login details"
-   [:as req]
-   (throw-if-no-premium-features-token)
-   (try
-     (sso.i/sso-post req)
-     (catch Throwable e
-       (log/error e (trs "Error logging in"))
-       (sso-error-page e))))
+  "Route the SSO backends call with successful login details"
+  [:as req]
+  (throw-if-no-premium-features-token)
+  (try
+    (sso.i/sso-post req)
+    (catch Throwable e
+      (log/error e (trs "Error logging in"))
+      (sso-error-page e))))
 
 (api/define-routes)
