@@ -2,16 +2,15 @@
 <Configuration>
   <Appenders>
     <Console name="Console" target="SYSTEM_OUT" follow="true">
-      <PatternLayout pattern="%d{ISO8601} [%level] %logger{2} :: %message%n%throwable"/>
+      <PatternLayout pattern="[%t] %-5level %logger{36} - %msg%n"/>
     </Console>
   </Appenders>
   <Loggers>
-    <Logger name="metabase" level="TRACE"/>
-    <Logger name="metabase-enterprise" level="TRACE"/>
-    <Logger name="metabase.plugins" level="TRACE"/>
-    <Logger name="liquibase" level="TRACE"/>
+    <Logger name="metabase" level="FATAL"/>
+    <Logger name="metabase-enterprise" level="FATAL"/>
+    <Logger name="liquibase" level="FATAL"/>
 
-    <Root level="TRACE">
+    <Root level="ERROR">
       <AppenderRef ref="Console"/>
     </Root>
   </Loggers>
