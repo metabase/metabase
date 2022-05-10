@@ -7,7 +7,7 @@ import {
   FormFieldDefinition,
   FormField,
   PopulatedFormObject,
-} from "metabase-types/forms";
+} from "metabase-types/forms/legacy";
 
 export interface BaseFormProps {
   formKey?: string;

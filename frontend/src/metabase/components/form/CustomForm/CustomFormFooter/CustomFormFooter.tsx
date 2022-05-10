@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
