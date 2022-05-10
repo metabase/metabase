@@ -18,7 +18,7 @@ import {
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 import { isFK, getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 
-import RootForm from "metabase/containers/FormikForm";
+import RootForm from "metabase/containers/Form";
 import { usePrevious } from "metabase/hooks/use-previous";
 
 import SidebarContent from "metabase/query_builder/components/SidebarContent";

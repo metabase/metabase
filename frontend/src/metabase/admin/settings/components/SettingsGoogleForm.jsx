@@ -8,7 +8,7 @@ import Form, {
   FormField,
   FormSubmit,
   FormMessage,
-} from "metabase/containers/FormikForm";
+} from "metabase/containers/Form";
 
 import { updateSettings } from "metabase/admin/settings/settings";
 import { settingToFormField } from "metabase/admin/settings/utils";

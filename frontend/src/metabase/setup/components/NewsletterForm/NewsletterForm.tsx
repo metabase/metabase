@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import Users from "metabase/entities/users";
-import Form from "metabase/containers/FormikForm";
+import Form from "metabase/containers/Form";
 import { SubscribeInfo } from "metabase-types/store";
 import {
   FormContainer,

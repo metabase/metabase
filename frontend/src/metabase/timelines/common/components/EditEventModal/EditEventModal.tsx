@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Form from "metabase/containers/FormikForm";
+import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import { Timeline, TimelineEvent } from "metabase-types/api";
 import ModalBody from "../ModalBody";

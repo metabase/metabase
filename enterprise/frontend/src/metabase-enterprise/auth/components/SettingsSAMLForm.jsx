@@ -12,7 +12,7 @@ import Form, {
   FormSubmit,
   FormMessage,
   FormSection,
-} from "metabase/containers/FormikForm";
+} from "metabase/containers/Form";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import CopyWidget from "metabase/components/CopyWidget";

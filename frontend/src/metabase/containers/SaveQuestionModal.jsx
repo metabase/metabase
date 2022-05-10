@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { CSSTransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
-import Form, { FormField, FormFooter } from "metabase/containers/FormikForm";
+import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/core/components/Radio";
 import * as Q_DEPRECATED from "metabase/lib/query";

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { getDefaultTimezone } from "metabase/lib/time";
 import { getDefaultTimelineIcon } from "metabase/lib/timelines";
-import Form from "metabase/containers/FormikForm";
+import Form from "metabase/containers/Form";
 import forms from "metabase/entities/timeline-events/forms";
 import {
   Collection,

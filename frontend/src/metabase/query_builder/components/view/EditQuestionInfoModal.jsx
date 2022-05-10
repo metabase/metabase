@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Form from "metabase/containers/FormikForm";
+import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import CollapseSection from "metabase/components/CollapseSection";
 
