@@ -3,7 +3,11 @@ export type DefaultFieldValue = unknown;
 
 export type FieldValues = Record<FieldName, DefaultFieldValue>;
 
-type FieldValidateResultOK = undefined;
+export type BaseFieldValues = {
+  [field: string]: any;
+};
+
+type FieldValidateResultOK = undefined | null | false;
 type FieldValidateResultError = string;
 
 // Extending Record type here as field definition's props
@@ -26,11 +30,9 @@ export type BaseFieldDefinition = Record<string, unknown> & {
   descriptionPosition?: "top" | "bottom";
   visibleIf?: Record<FieldName, unknown>;
 
-  initial?: (value: unknown) => DefaultFieldValue;
-  validate?: (
-    value: DefaultFieldValue,
-  ) => FieldValidateResultOK | FieldValidateResultError;
-  normalize?: (value: unknown) => DefaultFieldValue;
+  initial?: (value: any) => DefaultFieldValue;
+  validate?: (value: any) => FieldValidateResultOK | FieldValidateResultError;
+  normalize?: (value: any) => DefaultFieldValue;
 };
 
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
@@ -46,8 +48,8 @@ export type FormFieldDefinition =
   | StandardFormFieldDefinition
   | CustomFormFieldDefinition;
 
-export type FormField<Value = DefaultFieldValue> = {
-  name: FieldName;
+export type FormField<Values, Value = DefaultFieldValue> = {
+  name: keyof Values;
   value: Value;
   error?: string;
   initialValue: Value;
@@ -65,18 +67,16 @@ export type FormField<Value = DefaultFieldValue> = {
   onChange: (value: Value) => void;
 };
 
-export type FormObject = {
-  fields:
-    | FormFieldDefinition[]
-    | ((values?: FieldValues) => FormFieldDefinition[]);
+export type FormObject<Values> = {
+  fields: FormFieldDefinition[] | ((values?: Values) => FormFieldDefinition[]);
 };
 
-export type PopulatedFormObject = {
-  fields: (values?: FieldValues) => FormFieldDefinition[];
-  fieldNames: (values: FieldValues) => FieldName[];
+export type PopulatedFormObject<Values extends BaseFieldValues> = {
+  fields: (values?: Values) => FormFieldDefinition[];
+  fieldNames: (values?: Values) => (keyof Values)[];
   hidden: (obj: unknown) => void;
-  initial: (obj: unknown) => void;
-  normalize: (obj: unknown) => void;
-  validate: (obj: unknown) => void;
+  initial: (values: Partial<Values>) => Values;
+  normalize: (values: Values) => Values;
+  validate: (obj: unknown, opts: { values: Values }) => void;
   disablePristineSubmit?: boolean;
 };
