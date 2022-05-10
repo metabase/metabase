@@ -8,7 +8,7 @@ import { Formik, FormikProps, FormikHelpers } from "formik";
 
 import {
   FormFieldDefinition,
-  PopulatedFormObject,
+  FormObject,
   FieldValues,
   BaseFieldDefinition,
 } from "metabase-types/forms";
@@ -18,7 +18,7 @@ import useInlineFields from "./useInlineFields";
 import { makeFormObject, cleanObject } from "../formUtils";
 
 interface FormContainerProps {
-  form?: PopulatedFormObject;
+  form?: FormObject;
 
   fields?: FormFieldDefinition[];
   initialValues?: FieldValues;

@@ -61,8 +61,14 @@ export type FormField<Value = DefaultFieldValue> = {
   onChange: (value: Value) => void;
 };
 
+export type FormObject = {
+  fields:
+    | FormFieldDefinition[]
+    | ((values?: FieldValues) => FormFieldDefinition[]);
+};
+
 export type PopulatedFormObject = {
-  fields: (values: FieldValues) => FormFieldDefinition[];
+  fields: (values?: FieldValues) => FormFieldDefinition[];
   fieldNames: (values: FieldValues) => FieldName[];
   hidden: (obj: unknown) => void;
   initial: (obj: unknown) => void;
