@@ -96,9 +96,7 @@
    #'qp.add-dimension-projections/add-remapped-columns
    #'qp.resolve-fields/resolve-fields
    #'binning/update-binning-strategy
-   #_(fn [query] (log/info "BEFORE" query) (clojure.pprint/pprint query))
    #'binning/fill-empty-bins
-   #_(fn [query] (log/info "AFTER" query) query)
    #'desugar/desugar
    #'qp.add-default-temporal-unit/add-default-temporal-unit
    #'qp.add-implicit-joins/add-implicit-joins
