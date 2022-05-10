@@ -57,8 +57,9 @@ const EMBEDDED_ROUTES_WITH_NAVBAR = [
 interface AppStateProps {
   currentUser?: User;
   errorPage: AppErrorDescriptor | null;
-  embedOptions: EmbedOptions;
   isEditingDashboard: boolean;
+  isEmbedded: boolean;
+  embedOptions: EmbedOptions;
 }
 
 interface AppRouterOwnProps {
@@ -72,8 +73,9 @@ function mapStateToProps(state: State): AppStateProps {
   return {
     currentUser: getUser(state),
     errorPage: getErrorPage(state),
-    embedOptions: getEmbedOptions(state),
     isEditingDashboard: getIsEditingDashboard(state),
+    isEmbedded: IFRAMED,
+    embedOptions: getEmbedOptions(state),
   };
 }
 
@@ -93,8 +95,9 @@ function App({
   currentUser,
   errorPage,
   location: { pathname, hash },
-  embedOptions,
   isEditingDashboard,
+  isEmbedded,
+  embedOptions,
   children,
 }: AppProps) {
   const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
@@ -109,22 +112,22 @@ function App({
     if (!currentUser || isEditingDashboard) {
       return false;
     }
-    if (IFRAMED && !embedOptions.side_nav) {
+    if (isEmbedded && !embedOptions.side_nav) {
       return false;
     }
-    if (IFRAMED && embedOptions.side_nav === "default") {
+    if (isEmbedded && embedOptions.side_nav === "default") {
       return EMBEDDED_ROUTES_WITH_NAVBAR.some(pattern =>
         pattern.test(pathname),
       );
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  }, [currentUser, pathname, embedOptions, isEditingDashboard]);
+  }, [currentUser, pathname, isEditingDashboard, isEmbedded, embedOptions]);
 
   const hasAppBar = useMemo(() => {
     const isFullscreen = hash.includes("fullscreen");
     if (
       !currentUser ||
-      (IFRAMED && !embedOptions.top_nav) ||
+      (isEmbedded && !embedOptions.top_nav) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -135,8 +138,9 @@ function App({
   }, [
     currentUser,
     pathname,
-    embedOptions,
     isEditingDashboard,
+    isEmbedded,
+    embedOptions,
     isAdminApp,
     hash,
   ]);

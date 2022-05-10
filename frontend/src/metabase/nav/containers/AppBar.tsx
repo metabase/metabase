@@ -31,6 +31,7 @@ import {
 
 type Props = {
   isNavbarOpen: boolean;
+  isEmbedded: boolean;
   embedOptions: EmbedOptions;
   toggleNavbar: () => void;
   closeNavbar: () => void;
@@ -39,6 +40,7 @@ type Props = {
 function mapStateToProps(state: State) {
   return {
     isNavbarOpen: getIsNavbarOpen(state),
+    isEmbedded: IFRAMED,
     embedOptions: getEmbedOptions(state),
   };
 }
@@ -58,13 +60,14 @@ function HomepageLink({ handleClick }: { handleClick: () => void }) {
 
 function AppBar({
   isNavbarOpen,
+  isEmbedded,
   embedOptions,
   toggleNavbar,
   closeNavbar,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
-  const hasSearch = !IFRAMED || embedOptions.search;
-  const hasNewButton = !IFRAMED || embedOptions.new_button;
+  const hasSearch = !isEmbedded || embedOptions.search;
+  const hasNewButton = !isEmbedded || embedOptions.new_button;
 
   const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
