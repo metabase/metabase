@@ -25,7 +25,7 @@ export default class SaveQuestionModal extends Component {
     multiStep: PropTypes.bool,
   };
 
-  validateName = (name, values) => {
+  validateName = (name, { values }) => {
     if (values.saveType !== "overwrite") {
       // We don't care if the form is valid when overwrite mode is enabled,
       // as original question's data will be submitted instead of the form values
