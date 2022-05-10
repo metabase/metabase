@@ -8,6 +8,7 @@
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.field :refer [Field]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
