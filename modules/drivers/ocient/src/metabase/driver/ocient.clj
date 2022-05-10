@@ -112,6 +112,8 @@
                               :foreign-keys                    (not config/is-test?)}]
   (defmethod driver/supports? [:ocient feature] [_ _] supported?))
 
+(def zone-id-utc (t/zone-id "UTC"))
+
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIMESTAMP]
   [_ rs _ i]
   (fn []
@@ -163,22 +165,22 @@
 (defmethod unprepare/unprepare-value [:ocient OffsetTime]
   [_ t]
   ;; Ocient doesn't support TIME WITH TIME ZONE so convert OffsetTimes to LocalTimes in UTC.
-  (format "time('%s')" (t/format "HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
+  (format "time('%s')" (t/format "HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t zone-id-utc))))
 
 (defmethod unprepare/unprepare-value [:ocient OffsetDateTime]
   [_ t]
   ;; Ocient doesn't support TIMESTAMP WITH TIME ZONE so convert OffsetDateTimes to LocalTimestamps in UTC.
-  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t zone-id-utc))))
 
 (defmethod unprepare/unprepare-value [:ocient ZonedDateTime]
   [_ t]
   ;; Ocient doesn't support TIMESTAMP WITH TIME ZONE so convert OffsetDateTimes to LocalTimestamps in UTC.
-  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t "UTC"))))
+  (format "timestamp('%s')" (t/format "yyyy-MM-dd HH:mm:ss.SSS" (u.date/with-time-zone-same-instant t zone-id-utc))))
 
 (defmethod unprepare/unprepare-value [:ocient Instant]
   [driver t]
   ;; Instant is already in UTC, convert the object to a ZonedDateTime
-  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
+  (unprepare/unprepare-value driver (t/zoned-date-time t zone-id-utc)))
 
 (defmethod driver/db-default-timezone :ocient [_ _]
   ;; Ocient is always in UTC
