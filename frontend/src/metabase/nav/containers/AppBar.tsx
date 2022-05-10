@@ -11,11 +11,12 @@ import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
 
-import { State } from "metabase-types/store";
+import { EmbedOptions, State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import { isMac } from "metabase/lib/browser";
-import { isSmallScreen } from "metabase/lib/dom";
+import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
+import { getEmbedOptions } from "metabase/selectors/embed";
 
 import {
   AppBarRoot,
@@ -30,6 +31,7 @@ import {
 
 type Props = {
   isNavbarOpen: boolean;
+  embedOptions: EmbedOptions;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
@@ -37,6 +39,7 @@ type Props = {
 function mapStateToProps(state: State) {
   return {
     isNavbarOpen: getIsNavbarOpen(state),
+    embedOptions: getEmbedOptions(state),
   };
 }
 
@@ -53,8 +56,15 @@ function HomepageLink({ handleClick }: { handleClick: () => void }) {
   );
 }
 
-function AppBar({ isNavbarOpen, toggleNavbar, closeNavbar }: Props) {
+function AppBar({
+  isNavbarOpen,
+  embedOptions,
+  toggleNavbar,
+  closeNavbar,
+}: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
+  const hasSearch = !IFRAMED || embedOptions.search;
+  const hasNewButton = !IFRAMED || embedOptions.new_button;
 
   const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
@@ -99,17 +109,21 @@ function AppBar({ isNavbarOpen, toggleNavbar, closeNavbar }: Props) {
           <HomepageLink handleClick={onLogoClick} />
         </MiddleContainer>
       )}
-      <RightContainer>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              onSearchActive={onSearchActive}
-              onSearchInactive={onSearchInactive}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
-        <NewButton />
-      </RightContainer>
+      {(hasSearch || hasNewButton) && (
+        <RightContainer>
+          {hasSearch && (
+            <SearchBarContainer>
+              <SearchBarContent>
+                <SearchBar
+                  onSearchActive={onSearchActive}
+                  onSearchInactive={onSearchInactive}
+                />
+              </SearchBarContent>
+            </SearchBarContainer>
+          )}
+          {hasNewButton && <NewButton />}
+        </RightContainer>
+      )}
     </AppBarRoot>
   );
 }

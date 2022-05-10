@@ -7,6 +7,8 @@ import {
 const DEFAULT_OPTIONS = {
   top_nav: false,
   side_nav: "default",
+  search: false,
+  new_button: false,
 };
 
 export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";
