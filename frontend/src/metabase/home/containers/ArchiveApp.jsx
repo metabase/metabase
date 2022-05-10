@@ -93,14 +93,6 @@ export default class ArchiveApp extends Component {
                           }
                         : null
                     }
-                    onDelete={
-                      item.delete
-                        ? async () => {
-                            await item.delete();
-                            reload();
-                          }
-                        : null
-                    }
                     selected={selection.has(item)}
                     onToggleSelected={() => onToggleSelected(item)}
                     showSelect={selected.length > 0}
@@ -144,17 +136,6 @@ const BulkActionControls = ({ selected, reload }) => (
         }
       }}
     >{t`Unarchive`}</Button>
-    <Button
-      ml={1}
-      medium
-      onClick={async () => {
-        try {
-          await Promise.all(selected.map(item => item.delete && item.delete()));
-        } finally {
-          reload();
-        }
-      }}
-    >{t`Delete`}</Button>
   </span>
 );
 
