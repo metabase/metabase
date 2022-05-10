@@ -14,7 +14,7 @@ import {
   StandardFormFieldDefinition,
   CustomFormFieldDefinition,
   FormFieldDefinition,
-} from "metabase-types/forms";
+} from "metabase-types/forms/legacy";
 
 import {
   CustomFormLegacyContext,

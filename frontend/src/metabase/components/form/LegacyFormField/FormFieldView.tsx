@@ -3,7 +3,7 @@ import cx from "classnames";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import { BaseFieldDefinition } from "metabase-types/forms";
+import { BaseFieldDefinition } from "metabase-types/forms/legacy";
 
 import { FormFieldDescription } from "./FormFieldDescription";
 import {
