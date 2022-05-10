@@ -1,7 +1,8 @@
 (ns metabase.server.routes
   "Main Compojure routes tables. See https://github.com/weavejester/compojure/wiki/Routes-In-Detail for details about
    how these work. `/api/` routes are in `metabase.api.routes`."
-  (:require [compojure.core :refer [context defroutes GET]]
+  (:require [clojure.tools.logging :as log]
+            [compojure.core :refer [context defroutes GET]]
             [compojure.route :as route]
             [metabase.api.dataset :as api.dataset]
             [metabase.api.routes :as api]
@@ -10,7 +11,9 @@
             [metabase.public-settings :as public-settings]
             [metabase.server.routes.index :as index]
             [metabase.util :as u]
-            [ring.util.response :as response]))
+            [metabase.util.i18n :refer [trs]]
+            [ring.util.response :as response]
+            [toucan.db :as db]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
@@ -44,7 +47,11 @@
   (GET "/favicon.ico" [] (response/resource-response (public-settings/application-favicon-url)))
   ;; ^/api/health -> Health Check Endpoint
   (GET "/api/health" [] (if (init-status/complete?)
-                          {:status 200, :body {:status "ok"}}
+                          (try (db/query {:select [[1 :working]]})
+                               {:status 200, :body {:status "ok"}}
+                               (catch Exception e
+                                 (log/warn e (trs "Error in api/health database check"))
+                                 {:status 503 :body {:status "Error getting db connection"}}))
                           {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
