@@ -1,0 +1,25 @@
+import React from "react";
+import { render, screen } from "@testing-library/react";
+
+import DateMonthYearWidget from "./DateMonthYearWidget";
+
+describe("DateMonthYearWidget", () => {
+  it("should render correctly", () => {
+    const { container } = render(
+      <DateMonthYearWidget
+        value={"2021-07"}
+        setValue={jest.fn()}
+        onClose={jest.fn()}
+      ></DateMonthYearWidget>,
+    );
+
+    expect(screen.getByText("January")).toBeDefined();
+    expect(screen.getByText("December")).toBeDefined();
+
+    // 07 = July and year 2021
+    expect(screen.getByRole("button")).toHaveTextContent("2021");
+    expect(container.querySelector('div[class*="bg-brand"]')).toHaveTextContent(
+      "July",
+    );
+  });
+});
