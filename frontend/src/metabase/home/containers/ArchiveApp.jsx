@@ -14,7 +14,7 @@ import VirtualizedList from "metabase/components/VirtualizedList";
 import Search from "metabase/entities/search";
 import listSelect from "metabase/hoc/ListSelect";
 
-import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
+import { openNavbar } from "metabase/redux/app";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { isSmallScreen } from "metabase/lib/dom";
 
@@ -29,7 +29,6 @@ import {
 
 const mapStateToProps = (state, props) => ({
   isAdmin: getUserIsAdmin(state, props),
-  isNavbarOpen: getIsNavbarOpen(state),
 });
 
 const mapDispatchToProps = {
@@ -55,7 +54,6 @@ export default class ArchiveApp extends Component {
   render() {
     const {
       isAdmin,
-      isNavbarOpen,
       list,
       reload,
 
@@ -114,10 +112,7 @@ export default class ArchiveApp extends Component {
             )}
           </Card>
         </ArchiveBody>
-        <BulkActionBar
-          showing={selected.length > 0}
-          isNavbarOpen={isNavbarOpen}
-        >
+        <BulkActionBar showing={selected.length > 0}>
           <ArchiveBarContent>
             <SelectionControls {...this.props} />
             <BulkActionControls {...this.props} />
