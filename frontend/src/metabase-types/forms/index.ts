@@ -6,7 +6,10 @@ export type FieldValues = Record<FieldName, DefaultFieldValue>;
 type FieldValidateResultOK = undefined;
 type FieldValidateResultError = string;
 
-export type BaseFieldDefinition = {
+// Extending Record type here as field definition's props
+// will be just spread to the final field widget
+// (e.g. autoFocus, placeholder)
+export type BaseFieldDefinition = Record<string, unknown> & {
   name: string;
   type?: string;
   title?: string;
@@ -31,7 +34,8 @@ export type BaseFieldDefinition = {
 };
 
 export type StandardFormFieldDefinition = BaseFieldDefinition & {
-  type: string | (() => JSX.Element);
+  // If not is not provided, we're going to use default text input
+  type?: string | (() => JSX.Element);
 };
 
 export type CustomFormFieldDefinition = BaseFieldDefinition & {
