@@ -391,11 +391,11 @@
                                     "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
         (mt/with-temp Database [database {:engine :postgres, :details details}]
           (is (= #{{:name "trivial_json → a",
-                   :database-type "integer",
-                   :base-type :type/Integer,
-                   :database-position 0,
-                   :visibility-type :normal,
-                   :nfc-path [:trivial_json "a"]}}
+                    :database-type "integer",
+                    :base-type :type/Integer,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:trivial_json "a"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres
                    database
