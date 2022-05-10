@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { FormLegacyContext } from "./types";
 
-export const FormContext = createContext<FormLegacyContext>({
+export const FormContext = createContext<FormLegacyContext<any>>({
   fields: {},
   formFields: [],
   formFieldsByName: {},
