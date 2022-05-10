@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 import _ from "underscore";
-import { FieldName, FormFieldDefinition } from "metabase-types/forms";
+import { FormFieldDefinition } from "metabase-types/forms";
 
-type FieldsMap = Record<FieldName, FormFieldDefinition>;
+type FieldsMap = Record<string, FormFieldDefinition>;
 
 function useInlineFields() {
   const [inlineFields, setInlineFields] = useState<FieldsMap>({});

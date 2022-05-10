@@ -4,24 +4,25 @@ import _ from "underscore";
 import { merge } from "icepick";
 
 // eslint-disable-next-line import/named
-import { Formik, FormikProps, FormikHelpers } from "formik";
+import { Formik, FormikProps, FormikErrors, FormikHelpers } from "formik";
 
 import {
+  BaseFieldValues,
   FormFieldDefinition,
   FormObject,
   FieldValues,
-  BaseFieldDefinition,
+  PopulatedFormObject,
 } from "metabase-types/forms";
 
 import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 import { makeFormObject, cleanObject } from "../formUtils";
 
-interface FormContainerProps {
-  form?: FormObject;
+interface FormContainerProps<Values extends BaseFieldValues> {
+  form?: FormObject<Values>;
 
   fields?: FormFieldDefinition[];
-  initialValues?: FieldValues;
+  initialValues?: Partial<Values>;
 
   overwriteOnInitialValuesChange?: boolean;
 
@@ -30,8 +31,15 @@ interface FormContainerProps {
   initial?: () => void;
   normalize?: () => void;
 
-  onSubmit: (values: FieldValues) => Promise<void>;
+  onSubmit: (values: Values) => void | Promise<void>;
   onSubmitSuccess?: (action: unknown) => void;
+
+  // various props
+  isModal?: boolean;
+  submitTitle?: string;
+  onClose?: () => void;
+  footerExtraButtons?: any;
+  children?: (opts: any) => any;
 }
 
 type ServerErrorResponse = {
@@ -69,7 +77,7 @@ function getGeneralErrorMessage(error: ServerErrorResponse) {
   }
 }
 
-function Form({
+function Form<Values extends BaseFieldValues>({
   form,
   fields,
   initialValues: initialValuesProp = {},
@@ -81,7 +89,7 @@ function Form({
   onSubmit,
   onSubmitSuccess,
   ...props
-}: FormContainerProps) {
+}: FormContainerProps<Values>) {
   const [error, setError] = useState<string | null>(null);
   const [values, setValues] = useState({});
 
@@ -97,11 +105,11 @@ function Form({
     };
     return {
       ...formDef,
-      fields: (values: FieldValues) => {
+      fields: (values: Values) => {
         const fieldList =
           typeof formDef.fields === "function"
-            ? (formDef.fields(values) as BaseFieldDefinition[])
-            : (formDef.fields as BaseFieldDefinition[]);
+            ? formDef.fields(values)
+            : formDef.fields;
         return fieldList.map(fieldDef => ({
           ...fieldDef,
           ...inlineFields[fieldDef.name],
@@ -110,7 +118,7 @@ function Form({
     };
   }, [form, fields, inlineFields, validate, initial, normalize]);
 
-  const formObject = useMemo(
+  const formObject: PopulatedFormObject<Values> = useMemo(
     () => makeFormObject(formDefinition),
     [formDefinition],
   );
@@ -134,7 +142,7 @@ function Form({
   );
 
   const handleValidation = useCallback(
-    async (values: FieldValues) => {
+    async (values: Values) => {
       const result = formObject.validate(values, { values });
 
       // Ensure errors don't have empty strings
@@ -156,7 +164,7 @@ function Form({
   );
 
   const handleError = useCallback(
-    (error: ServerErrorResponse, formikHelpers: FormikHelpers<FieldValues>) => {
+    (error: ServerErrorResponse, formikHelpers: FormikHelpers<Values>) => {
       maybeBlurActiveElement();
       const DEFAULT_ERROR_MESSAGE = t`An error occurred`;
 
@@ -172,7 +180,7 @@ function Form({
           setError(generalMessage);
         }
 
-        formikHelpers.setErrors(error.data.errors);
+        formikHelpers.setErrors(error.data.errors as FormikErrors<Values>);
         return error.data.errors;
       }
 
@@ -188,7 +196,7 @@ function Form({
   );
 
   const handleSubmit = useCallback(
-    async (values: FieldValues, formikHelpers: FormikHelpers<FieldValues>) => {
+    async (values: Values, formikHelpers: FormikHelpers<Values>) => {
       try {
         const normalized = formObject.normalize(values);
         const result = await onSubmit(normalized);
@@ -204,7 +212,7 @@ function Form({
   );
 
   return (
-    <Formik
+    <Formik<Values>
       validateOnBlur
       validateOnMount
       initialValues={initialValues}
@@ -212,8 +220,8 @@ function Form({
       validate={handleValidation}
       onSubmit={handleSubmit}
     >
-      {(formikProps: FormikProps<FieldValues>) => (
-        <FormikFormViewAdapter
+      {formikProps => (
+        <FormikFormViewAdapter<Values>
           {...formikProps}
           {...props}
           formObject={formObject}
