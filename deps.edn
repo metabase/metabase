@@ -37,7 +37,7 @@
   com.google.guava/guava                    {:mvn/version "31.0.1-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.fasterxml.jackson.core/jackson-databind
                                             {:mvn/version "2.13.2.2"}           ; JSON processor used by snowplow-java-tracker (pinned version due to CVE-2020-36518)
-  com.h2database/h2                         {:mvn/version "2.1.212"}            ; embedded SQL database
+  com.h2database/h2                         {:mvn/version "1.4.197"}            ; embedded SQL database
   com.snowplowanalytics/snowplow-java-tracker
                                             {:mvn/version "0.12.0"              ; Snowplow analytics
                                              :exclusions [com.fasterxml.jackson.core/jackson-databind]}
@@ -117,7 +117,7 @@
   org.clojure/tools.namespace               {:mvn/version "1.3.0"}
   org.clojure/tools.reader                  {:mvn/version "1.3.6"}
   org.clojure/tools.trace                   {:mvn/version "0.7.11"}             ; function tracing
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.9"}             ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "9.4.44.v20210927"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.1.0"}             ; JavaScript engine
   org.liquibase/liquibase-core              {:mvn/version "4.10.0"              ; migration management (Java lib)
