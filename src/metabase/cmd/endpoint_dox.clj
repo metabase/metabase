@@ -36,8 +36,8 @@
   [ep-data]
   (let [desc (u/add-period (:doc (meta (:ns (first ep-data)))))]
     (if (str/blank? desc)
-        desc
-        (str desc "\n\n"))))
+      desc
+      (str desc "\n\n"))))
 
 ;;;; API docs section table of contents
 
@@ -110,19 +110,34 @@
            (section-toc ep-data)
            (section-endpoints ep-data))))
 
+;; (defn- dox
+;;   "Generate a Markdown string containing documentation for all Metabase API endpoints."
+;;   []
+;;   (str (api-docs-intro)
+;;        (str/join "\n\n\n"
+;;                  (->> (collect-endpoints)
+;;                       (map process-endpoint)
+;;                       (group-by :ns-name)
+;;                       (into (sorted-map))
+;;                       endpoint-section))))
+
 (defn- dox
   "Generate a Markdown string containing documentation for all Metabase API endpoints."
   []
-  (str (api-docs-intro)
-       (str/join "\n\n\n"
-                 (->> (collect-endpoints)
-                      (map process-endpoint)
-                      (group-by :ns-name)
-                      (into (sorted-map))
-                      endpoint-section))))
+  (let [endpoints (->> (collect-endpoints)
+                       (map process-endpoint)
+                       (group-by :ns-name)
+                       (into (sorted-map)))]
+
+    (doseq [endpoint endpoints]
+      (spit (str "docs/api/" (str/lower-case (key endpoint)) ".md") (apply str
+                                                                           (section-title (key endpoint))
+                                                                           (section-description (val endpoint))
+                                                                           (section-toc (val endpoint))
+                                                                           (section-endpoints (val endpoint)))))))
 
 (defn generate-dox!
   "Write markdown file containing documentation for all the API endpoints to `docs/api-documentation.md`."
   []
-  (spit (io/file "docs/api-documentation.md") (dox))
+  (dox) ;; (spit (io/file "docs/api-documentation.md") (dox))
   (println "Documentation generated at docs/api-documentation.md."))
