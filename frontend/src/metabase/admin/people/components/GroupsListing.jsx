@@ -331,7 +331,7 @@ export default class GroupsListing extends Component {
       // ok, fire off API call to change the group
       MetabaseAnalytics.trackStructEvent("People Groups", "Group Updated");
       try {
-        await this.props.update({ id: group.id, name: group.name });
+        await this.props.update({ id: group.id, name: group.name.trim() });
         this.setState({ groupBeingEdited: null });
       } catch (error) {
         console.error("Error updating group name:", error);
