@@ -23,10 +23,14 @@
     (throw (ex-info (str (tru "SSO requires a valid token"))
              {:status-code 403}))))
 
+(defn- throw-if-bad-redirect-url [req]
+  (println req "should be throwin here lol"))
+
 (api/defendpoint GET "/"
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
   (throw-if-no-premium-features-token)
+  (throw-if-bad-redirect-url req)
   (try
     (sso.i/sso-get req)
     (catch Throwable e
