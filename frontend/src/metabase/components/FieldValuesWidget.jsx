@@ -254,10 +254,11 @@ export class FieldValuesWidget extends Component {
       dashboard,
       disablePKRemappingForSearch,
       formatOptions,
+      placeholder,
     } = this.props;
     const { loadingState, options: stateOptions } = this.state;
 
-    const placeholder = getTokenFieldPlaceholder({
+    const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
       disableSearch,
       dashboard,
@@ -312,7 +313,7 @@ export class FieldValuesWidget extends Component {
         {hasListData && (
           <ListField
             isDashboardFilter={parameter}
-            placeholder={placeholder}
+            placeholder={tokenFieldPlaceholder}
             value={value.filter(v => v != null)}
             onChange={onChange}
             options={options}
@@ -328,7 +329,7 @@ export class FieldValuesWidget extends Component {
             prefix={prefix}
             value={value.filter(v => v != null)}
             onChange={onChange}
-            placeholder={placeholder}
+            placeholder={tokenFieldPlaceholder}
             updateOnInputChange
             // forwarded props
             multi={multi}
