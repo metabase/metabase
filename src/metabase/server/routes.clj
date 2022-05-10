@@ -7,13 +7,14 @@
             [metabase.api.dataset :as api.dataset]
             [metabase.api.routes :as api]
             [metabase.core.initialization-status :as init-status]
+            [metabase.db.connection :as mdb.connection]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.server.routes.index :as index]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
-            [ring.util.response :as response]
-            [toucan.db :as db]))
+            [ring.util.response :as response]))
 
 (u/ignore-exceptions (classloader/require '[metabase-enterprise.sso.api.routes :as ee.sso.routes]))
 
@@ -46,13 +47,15 @@
   (GET "/" [] index/index)
   (GET "/favicon.ico" [] (response/resource-response (public-settings/application-favicon-url)))
   ;; ^/api/health -> Health Check Endpoint
-  (GET "/api/health" [] (if (init-status/complete?)
-                          (try (db/query {:select [[1 :working]]})
-                               {:status 200, :body {:status "ok"}}
-                               (catch Exception e
-                                 (log/warn e (trs "Error in api/health database check"))
-                                 {:status 503 :body {:status "Error getting db connection"}}))
-                          {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
+  (GET "/api/health" []
+       (if (init-status/complete?)
+         (try (if (sql-jdbc.conn/can-connect-with-spec? {:datasource (mdb.connection/data-source)})
+                {:status 200, :body {:status "ok"}}
+                {:status 503 :body {:status "Unable to get app-db connection"}})
+              (catch Exception e
+                (log/warn e (trs "Error in api/health database check"))
+                {:status 503 :body {:status "Error getting app-db connection"}}))
+         {:status 503, :body {:status "initializing", :progress (init-status/progress)}}))
   ;; ^/api/ -> All other API routes
   (context "/api" [] (fn [& args]
                        ;; Redirect naughty users who try to visit a page other than setup if setup is not yet complete
