@@ -89,7 +89,7 @@
                                      (.url (snowplow-url)))
                          adapter (.build ^ApacheHttpClientAdapter$Builder builder)
                          batch-emitter-builder (-> (BatchEmitter/builder)
-                                                   (.bufferSize 1)
+                                                   (.batchSize 1)
                                                    (.httpClientAdapter adapter))]
                      (.build ^BatchEmitter$Builder batch-emitter-builder)))]
      (fn [] @emitter*)))
