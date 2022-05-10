@@ -35,6 +35,13 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defn- mariadb? [^DatabaseMetaData metadata]
+  (= (.getDatabaseProductName metadata) "MariaDB"))
+
+(defn- db-mariadb? [database]
+  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/with-db-metadata [metadata jdbc-spec]
+
 ;; MariaDB doesn't like JSON at all, it turns out
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
   (not (db-mariadb? database)))
@@ -46,13 +53,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- mariadb? [^DatabaseMetaData metadata]
-  (= (.getDatabaseProductName metadata) "MariaDB"))
-
-(defn- db-mariadb? [database]
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/with-db-metadata [metadata jdbc-spec]
       (mariadb? metadata))))
 
 (defn- db-version [^DatabaseMetaData metadata]
