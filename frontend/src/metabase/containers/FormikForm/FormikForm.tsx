@@ -2,12 +2,9 @@ import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { merge } from "icepick";
-import { Formik } from "formik";
 
-import CustomForm, {
-  CustomFormProps,
-} from "metabase/components/form/CustomForm";
-import StandardForm from "metabase/components/form/StandardForm";
+// eslint-disable-next-line import/named
+import { Formik, FormikProps } from "formik";
 
 import {
   FormFieldDefinition,
@@ -16,22 +13,9 @@ import {
   BaseFieldDefinition,
 } from "metabase-types/forms";
 
-import withFormikAdapter from "./FormikAdapter";
+import FormikFormViewAdapter from "./FormikFormViewAdapter";
 import useInlineFields from "./useInlineFields";
 import { makeFormObject, cleanObject } from "./utils";
-
-function FormView(
-  props: CustomFormProps & {
-    formComponent?: React.ComponentType<CustomFormProps>;
-  },
-) {
-  const FormComponent =
-    props.formComponent || (props.children ? CustomForm : StandardForm);
-
-  return <FormComponent {...props} />;
-}
-
-const AdaptedFormView = withFormikAdapter(FormView);
 
 interface FormContainerProps {
   form?: FormObject;
@@ -182,8 +166,8 @@ function Form({
       validate={handleValidation}
       onSubmit={handleSubmit}
     >
-      {formikProps => (
-        <AdaptedFormView
+      {(formikProps: FormikProps<FieldValues>) => (
+        <FormikFormViewAdapter
           {...formikProps}
           {...props}
           formObject={formObject}
