@@ -1,6 +1,5 @@
 import React, { ErrorInfo, ReactNode, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import _ from "underscore";
 import { Location } from "history";
 
 import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
@@ -15,6 +14,7 @@ import {
 import UndoListing from "metabase/containers/UndoListing";
 
 import { getErrorPage } from "metabase/selectors/app";
+import { getEmbedOptions } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
 import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -25,7 +25,7 @@ import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
 
 import { User } from "metabase-types/api";
-import { AppErrorDescriptor, State } from "metabase-types/store";
+import { AppErrorDescriptor, EmbedOptions, State } from "metabase-types/store";
 
 import { AppContentContainer, AppContent } from "./App.styled";
 
@@ -57,6 +57,7 @@ const EMBEDDED_ROUTES_WITH_NAVBAR = [
 interface AppStateProps {
   currentUser?: User;
   errorPage: AppErrorDescriptor | null;
+  embedOptions: EmbedOptions;
   isEditingDashboard: boolean;
 }
 
@@ -71,6 +72,7 @@ function mapStateToProps(state: State): AppStateProps {
   return {
     currentUser: getUser(state),
     errorPage: getErrorPage(state),
+    embedOptions: getEmbedOptions(state),
     isEditingDashboard: getIsEditingDashboard(state),
   };
 }
@@ -91,6 +93,7 @@ function App({
   currentUser,
   errorPage,
   location: { pathname, hash },
+  embedOptions,
   isEditingDashboard,
   children,
 }: AppProps) {
@@ -106,19 +109,22 @@ function App({
     if (!currentUser || isEditingDashboard) {
       return false;
     }
-    if (IFRAMED) {
+    if (IFRAMED && !embedOptions.side_nav) {
+      return false;
+    }
+    if (IFRAMED && embedOptions.side_nav === "default") {
       return EMBEDDED_ROUTES_WITH_NAVBAR.some(pattern =>
         pattern.test(pathname),
       );
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  }, [currentUser, pathname, isEditingDashboard]);
+  }, [currentUser, pathname, embedOptions, isEditingDashboard]);
 
   const hasAppBar = useMemo(() => {
     const isFullscreen = hash.includes("fullscreen");
     if (
       !currentUser ||
-      IFRAMED ||
+      (IFRAMED && !embedOptions.top_nav) ||
       isAdminApp ||
       isEditingDashboard ||
       isFullscreen
@@ -126,7 +132,14 @@ function App({
       return false;
     }
     return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  }, [currentUser, pathname, isEditingDashboard, isAdminApp, hash]);
+  }, [
+    currentUser,
+    pathname,
+    embedOptions,
+    isEditingDashboard,
+    isAdminApp,
+    hash,
+  ]);
 
   return (
     <ErrorBoundary onError={setErrorInfo}>
