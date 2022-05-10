@@ -26,14 +26,14 @@
                                                                :where  (pk-where-clause pk)})
         delete-sql-args        (sql.qp/format-honeysql driver {:delete-from (hx/identifier :table table-schema table-name)
                                                                :where       (pk-where-clause pk)})]
-    (println (u/pprint-to-str (list `jdbc/execute! connection-spec select-sql-args))) ; NOCOMMIT
-    (let [[{:keys [row-count]}] (jdbc/query connection-spec select-sql-args)]
+    #_(println (u/pprint-to-str (list `jdbc/execute! connection-spec select-sql-args))) ; NOCOMMIT
+    #_(let [[{:keys [row-count]}] (jdbc/query connection-spec select-sql-args)]
       (println "row-count:" row-count) ; NOCOMMIT
       (when (> row-count 1)
         (throw (ex-info (i18n/tru "Hey buddy this would delete {0} rows!!!" row-count)
                         {:sql select-sql-args})))
       )
-    #_(println (u/pprint-to-str (list `jdbc/execute! connection-spec delete-sql-args))) ; NOCOMMIT
+    (println (u/pprint-to-str (list `jdbc/execute! connection-spec delete-sql-args))) ; NOCOMMIT
     #_(jdbc/execute! connection-spec delete-sql-args))
   ;; placeholder until we really implement it.
   )
@@ -47,3 +47,11 @@
 ;; TODO -- should we do the conditions with this ???
 #_(#'toucan.db/where {} {:id 1, :user_id [:> 2]})
 #_{:where [:and [:= :id 1] [:> :user_id 2]]}
+
+;; TODO -- need to parse the values in case they're not integers or whatever THANX
+#_(metabase.driver.sql.query-processor/->honeysql :postgres
+                                                [:value
+                                                 "232333d9-1434-4b1e-973d-4536d1dc8411"
+                                                 {:base_type :type/UUID
+                                                  :database_type "uuid"}])
+#_#uuid "232333d9-1434-4b1e-973d-4536d1dc8411"
