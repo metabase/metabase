@@ -10,6 +10,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
+            [metabase.util.fonts :as u.fonts]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as u.password]
             [toucan.db :as db])
@@ -279,6 +280,12 @@
   :type       :json
   :default    {})
 
+(defsetting application-font
+  (deferred-tru "This is the primary font used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  :visibility :public
+  :type       :string
+  :default    "Lato")
+
 (defn application-color
   "The primary color, a.k.a. brand color"
   []
@@ -369,6 +376,12 @@
            (not (enable-public-sharing)))
     (assoc object :public_uuid nil)
     object))
+
+(defsetting available-fonts
+  "Available fonts"
+  :visibility :public
+  :setter     :none
+  :getter     u.fonts/available-fonts)
 
 (defsetting available-locales
   "Available i18n locales"
