@@ -2,9 +2,17 @@ import React from "react";
 import _ from "underscore";
 import { Form } from "formik";
 
-import { FormFieldDefinition, PopulatedFormObject } from "metabase-types/forms";
+import {
+  BaseFieldValues,
+  FormFieldDefinition,
+  PopulatedFormObject,
+} from "metabase-types/forms";
 
-import { BaseFormProps, OptionalFormViewProps } from "./types";
+import {
+  BaseFormProps,
+  OptionalFormViewProps,
+  FormLegacyContext,
+} from "./types";
 
 import CustomFormField, { CustomFormFieldProps } from "./CustomFormField";
 import CustomFormFooter, { CustomFormFooterProps } from "./CustomFormFooter";
@@ -13,8 +21,9 @@ import CustomFormSubmit from "./CustomFormSubmit";
 
 import { FormContext } from "./context";
 
-interface FormRenderProps extends BaseFormProps {
-  form: PopulatedFormObject;
+interface FormRenderProps<Values extends BaseFieldValues>
+  extends BaseFormProps<Values> {
+  form: PopulatedFormObject<Values>;
   formFields: FormFieldDefinition[];
   Form: React.ComponentType<{ children: React.ReactNode }>;
   FormField: React.ComponentType<CustomFormFieldProps>;
@@ -23,11 +32,17 @@ interface FormRenderProps extends BaseFormProps {
   FormFooter: React.ComponentType<CustomFormFooterProps>;
 }
 
-export interface CustomFormProps extends BaseFormProps, OptionalFormViewProps {
-  children?: React.ReactNode | ((props: FormRenderProps) => JSX.Element);
+export interface CustomFormProps<Values extends BaseFieldValues>
+  extends BaseFormProps<Values>,
+    OptionalFormViewProps {
+  children?:
+    | React.ReactNode
+    | ((props: FormRenderProps<Values>) => JSX.Element);
 }
 
-function CustomForm(props: CustomFormProps) {
+function CustomForm<Values extends BaseFieldValues>(
+  props: CustomFormProps<Values>,
+) {
   const { formObject: form, values, children } = props;
   if (typeof children === "function") {
     return (

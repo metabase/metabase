@@ -1,26 +1,26 @@
 import PropTypes from "prop-types";
+
 import {
-  FieldName,
+  BaseFieldValues,
   DefaultFieldValue,
-  FieldValues,
   FormFieldDefinition,
   FormField,
   PopulatedFormObject,
 } from "metabase-types/forms";
 
-export interface BaseFormProps {
+export interface BaseFormProps<Values extends BaseFieldValues> {
   formKey?: string;
-  formObject: PopulatedFormObject;
+  formObject: PopulatedFormObject<Values>;
 
   formFields: FormFieldDefinition[];
-  formFieldsByName: Record<FieldName, FormFieldDefinition>;
+  formFieldsByName: Record<string, FormFieldDefinition>;
   disablePristineSubmit?: boolean;
   registerFormField: (fieldDef: FormFieldDefinition) => void;
   unregisterFormField: (fieldDef: FormFieldDefinition) => void;
 
-  fields: Record<string, FormField>;
-  values: FieldValues;
-  errors: Record<FieldName, string>;
+  fields: Record<keyof Values, FormField<Values>>;
+  values: Values;
+  errors: Record<keyof Values, string>;
 
   active?: boolean;
   asyncValidating?: boolean;
@@ -38,7 +38,7 @@ export interface BaseFormProps {
   destroyForm: () => void;
   handleSubmit: () => void;
   initializeForm: () => void;
-  onChangeField: (fieldName: FieldName, value: DefaultFieldValue) => void;
+  onChangeField: (fieldName: string, value: DefaultFieldValue) => void;
   onSubmitSuccess: () => void;
   resetForm: () => void;
 
@@ -62,10 +62,12 @@ export interface OptionalFormViewProps {
   style?: React.CSSProperties;
 }
 
-export interface FormLegacyContext
+export interface FormLegacyContext<
+  Values extends BaseFieldValues = BaseFieldValues
+>
   extends OptionalFormViewProps,
     Pick<
-      BaseFormProps,
+      BaseFormProps<Values>,
       | "formFields"
       | "formFieldsByName"
       | "registerFormField"
