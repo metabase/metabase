@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { getValues } from "redux-form";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -51,12 +50,10 @@ const DATABASE_FORM_NAME = "database";
 
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
-  const formValues = getValues(state.form[DATABASE_FORM_NAME]);
 
   return {
     database: database ? new Database(database) : undefined,
     databaseCreationStep: getDatabaseCreationStep(state),
-    selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
@@ -113,7 +110,6 @@ export default class DatabaseEditApp extends Component {
       database,
       deleteDatabase,
       discardSavedFieldValues,
-      selectedEngine,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
@@ -187,11 +183,7 @@ export default class DatabaseEditApp extends Component {
                               </div>
                             </Form>
                           </DatabaseEditForm>
-                          <div>
-                            {addingNewDatabase && (
-                              <DatabaseEditHelp engine={selectedEngine} />
-                            )}
-                          </div>
+                          <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
                         </DatabaseEditContent>
                       );
                     }}
