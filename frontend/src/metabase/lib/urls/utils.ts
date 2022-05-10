@@ -1,5 +1,3 @@
-import { PLUGIN_URL_UPDATES } from "metabase/plugins";
-
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
 }
