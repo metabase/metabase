@@ -1,3 +1,9 @@
+import { PLUGIN_URL_UPDATES } from "metabase/plugins";
+
+export const getUrl = (url: string): string => {
+  return PLUGIN_URL_UPDATES.reduce((url, callback) => callback(url), url);
+};
+
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
 }

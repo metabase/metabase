@@ -1,33 +1,34 @@
 import { DatabaseId, UserId } from "metabase-types/api";
+import { getUrl } from "./utils";
 
 export function newUser() {
-  return `/admin/people/new`;
+  return getUrl(`/admin/people/new`);
 }
 
 export function editUser(userId: UserId) {
-  return `/admin/people/${userId}/edit`;
+  return getUrl(`/admin/people/${userId}/edit`);
 }
 
 export function resetPassword(userId: UserId) {
-  return `/admin/people/${userId}/reset`;
+  return getUrl(`/admin/people/${userId}/reset`);
 }
 
 export function newUserSuccess(userId: UserId) {
-  return `/admin/people/${userId}/success`;
+  return getUrl(`/admin/people/${userId}/success`);
 }
 
 export function deactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/deactivate`;
+  return getUrl(`/admin/people/${userId}/deactivate`);
 }
 
 export function reactivateUser(userId: UserId) {
-  return `/admin/people/${userId}/reactivate`;
+  return getUrl(`/admin/people/${userId}/reactivate`);
 }
 
 export function newDatabase() {
-  return `/admin/databases/create`;
+  return getUrl(`/admin/databases/create`);
 }
 
 export function editDatabase(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}`;
+  return getUrl(`/admin/databases/${databaseId}`);
 }

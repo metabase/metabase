@@ -22,6 +22,9 @@ const array = () => [];
 // functions called when the application is started
 export const PLUGIN_APP_INIT_FUCTIONS = [];
 
+// functions that update the url
+export const PLUGIN_URL_UPDATES: ((url: string) => string)[] = [];
+
 // function to determine the landing page
 export const PLUGIN_LANDING_PAGE = [];
 
