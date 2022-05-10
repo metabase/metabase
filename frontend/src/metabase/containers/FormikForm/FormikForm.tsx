@@ -31,7 +31,7 @@ interface FormContainerProps {
   normalize?: () => void;
 
   onSubmit: (values: FieldValues) => Promise<void>;
-  onSubmitSuccess: (action: unknown) => void;
+  onSubmitSuccess?: (action: unknown) => void;
 }
 
 type ServerErrorResponse = {
