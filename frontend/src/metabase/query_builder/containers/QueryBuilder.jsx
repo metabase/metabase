@@ -11,6 +11,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { IFRAMED } from "metabase/lib/dom";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
@@ -22,6 +23,7 @@ import {
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
+import { getEmbedOptions } from "metabase/selectors/embed";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -188,6 +190,9 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
+
+    isEmbedded: IFRAMED,
+    embedOptions: getEmbedOptions(state),
   };
 };
 

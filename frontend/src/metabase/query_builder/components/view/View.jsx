@@ -40,12 +40,12 @@ import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 import {
-  QueryBuilderViewRoot,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
   QueryBuilderContentContainer,
   QueryBuilderMain,
   QueryBuilderViewHeaderContainer,
-  BorderedViewTitleHeader,
-  NativeQueryEditorContainer,
+  QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
@@ -275,11 +275,15 @@ export default class View extends React.Component {
   };
 
   renderHeader = () => {
-    const { query } = this.props;
+    const { query, isEmbedded, embedOptions } = this.props;
     const isStructured = query instanceof StructuredQuery;
 
     const isNewQuestion =
       isStructured && !query.sourceTableId() && !query.sourceQuery();
+
+    if (isEmbedded && !embedOptions.header) {
+      return null;
+    }
 
     return (
       <Motion
