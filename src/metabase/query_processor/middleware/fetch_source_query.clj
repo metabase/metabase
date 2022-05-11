@@ -25,7 +25,10 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -105,6 +108,23 @@
          (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
        metadata))
 
+(defn- persisted-info-native-query [card database-id]
+  (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
+    (format "select %s from %s.%s"
+            (str/join ", " (map #(sql.u/quote-name
+                                   driver
+                                   :field
+                                   (:field-name %))
+                                (get-in card [:definition :field-definitions])))
+            (sql.u/quote-name
+              driver
+              :table
+              (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
+            (sql.u/quote-name
+              driver
+              :table
+              (:table_name card)))))
+
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
@@ -170,10 +190,7 @@
 
      (cond-> {:source-query    (cond-> source-query
                                  ;; This will be applied, if still appropriate, by the peristence middleware
-                                 persisted? (assoc :persisted-info/native (format "select %s from %s.%s"
-                                                                                  (str/join ", " (map :field-name (get-in card [:definition :field-definitions])))
-                                                                                  (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                                                                                  (:table_name card))))
+                                 persisted? (assoc :persisted-info/native (persisted-info-native-query card database-id)))
               :database        database-id
               :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
                                  persisted? sub-cached-field-refs)}
