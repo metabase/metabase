@@ -17,7 +17,7 @@ export const ArchiveBody = styled.div`
 export const ArchiveBarContent = styled.div`
   display: flex;
   align-items: center;
-  padding: 0.46rem 4rem;
+  padding: 8px 4rem 7px;
 `;
 
 export const ArchiveBarText = styled.div`
