@@ -107,9 +107,9 @@
     [400 (tru "SAML has not been enabled and/or configured")]))
 
 (defn- check-saml-redirect [continue-url]
-  (let [decoded-url (URLDecoder/decode continue-url)
-        given-host  (.getHost (new URL decoded-url))
-        our-host    (.getHost (new URL (public-settings/site-url)))]
+  (let [decoded-url (some-> continue-url (URLDecoder/decode))
+        given-host  (some-> decoded-url (URL.) (.getHost))
+        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
     (api/check (= given-host our-host)
       [400 (tru "SAML SSO is trying to do an open redirect to an untrusted site")])))
 
@@ -184,21 +184,21 @@
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) base64-decode)]
                           (when-not (str/blank? s)
-                            s)))
-        check         (check-saml-redirect continue-url)
-        xml-string    (base64-decode (:SAMLResponse params))
-        saml-response (xml-string->saml-response xml-string)
-        attrs         (saml-response->attributes saml-response)
-        email         (get attrs (sso-settings/saml-attribute-email))
-        first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
-        last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
-        groups        (get attrs (sso-settings/saml-attribute-group))
-        session       (fetch-or-create-user!
-                       {:first-name      first-name
-                        :last-name       last-name
-                        :email           email
-                        :group-names     groups
-                        :user-attributes attrs
-                        :device-info     (request.u/device-info request)})
-        response      (response/redirect (or continue-url (public-settings/site-url)))]
-    (mw.session/set-session-cookie request response session)))
+                            s)))]
+    (check-saml-redirect continue-url)
+    (let [xml-string    (base64-decode (:SAMLResponse params))
+          saml-response (xml-string->saml-response xml-string)
+          attrs         (saml-response->attributes saml-response)
+          email         (get attrs (sso-settings/saml-attribute-email))
+          first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
+          last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
+          groups        (get attrs (sso-settings/saml-attribute-group))
+          session       (fetch-or-create-user!
+                          {:first-name      first-name
+                           :last-name       last-name
+                           :email           email
+                           :group-names     groups
+                           :user-attributes attrs
+                           :device-info     (request.u/device-info request)})
+          response      (response/redirect (or continue-url (public-settings/site-url)))]
+      (mw.session/set-session-cookie request response session))))

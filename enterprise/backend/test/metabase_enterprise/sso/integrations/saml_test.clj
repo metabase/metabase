@@ -373,11 +373,12 @@
   (testing "if the RelayState leads us to the wrong host, avoid the open redirect"
     (let [relay-state "https://badsite.com"]
       (with-saml-default-setup
-        (do-with-some-validators-disabled
-          (fn []
-            (let [req-options (saml-post-request-options (saml-test-response) relay-state)
-                  response    (client-full-response :post 400 "/auth/sso" req-options)]
-              (is (= (:message response) "SAML SSO is trying to do an open redirect to an untrusted site")))))))))
+        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+          (do-with-some-validators-disabled
+            (fn []
+              (let [req-options (saml-post-request-options (saml-test-response) relay-state)
+                    response    (client-full-response :post 400 "/auth/sso" req-options)]
+                (is (not (successful-login? response))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
