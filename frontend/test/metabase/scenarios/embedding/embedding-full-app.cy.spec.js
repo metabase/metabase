@@ -11,24 +11,24 @@ describe("scenarios > embedding > full app", () => {
 
   describe("navigation", () => {
     it("should hide the top nav by default", () => {
-      visitApp("/");
+      visitAppUrl("/");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
-      visitApp("/?top_nav=true");
+      visitAppUrl("/?top_nav=true");
       cy.findAllByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
-      visitApp("/?top_nav=true&new_button=true");
+      visitAppUrl("/?top_nav=true&new_button=true");
       cy.button(/New/).should("be.visible");
     });
 
     it("should show search controls by a param", () => {
-      visitApp("/?top_nav=true&search=true");
+      visitAppUrl("/?top_nav=true&search=true");
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
   });
@@ -95,7 +95,7 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitApp = url => {
+const visitAppUrl = url => {
   cy.visit(url, {
     onBeforeLoad(window) {
       window.Cypress = undefined;
@@ -104,12 +104,12 @@ const visitApp = url => {
 };
 
 const visitQuestionUrl = url => {
-  visitApp(url);
+  visitAppUrl(url);
   cy.wait("@getCardQuery");
 };
 
 const visitDashboardUrl = url => {
-  visitApp(url);
+  visitAppUrl(url);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
