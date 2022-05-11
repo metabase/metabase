@@ -8,6 +8,7 @@
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -44,7 +45,7 @@
 (defmethod tx/sorts-nil-first? :ocient [_ _] false)
 
 ;; Lowercase and replace hyphens/spaces with underscores
-(defmethod tx/format-name :ocient
+(defmethod ddl.i/format-name :ocient
   [_ s]
   (str/replace (str/lower-case s) #"-| " "_"))
 
@@ -68,7 +69,7 @@
          (when (= context :server)
            {:db "system"})
          (when (= context :db)
-           {:db (tx/format-name driver database-name)})))
+           {:db (ddl.i/format-name driver database-name)})))
 
 (doseq [[base-type db-type] {:type/BigInteger             "BIGINT"
                              :type/Boolean                "BOOL"
@@ -165,7 +166,7 @@
     (let [fks-table-name (str/join "-" [table-name fks-table-name-suffix])
           [sql & params] (hsql/format {:select [[(keyword fks-table-field-name) (keyword fks-table-field-name)]
                                                 [(keyword fks-table-dest-table-name) (keyword fks-table-dest-table-name)]]
-                                       :from   [(keyword (str session-schema \. (tx/format-name :ocient fks-table-name)))]}
+                                       :from   [(keyword (str session-schema \. (ddl.i/format-name :ocient fks-table-name)))]}
                                       nil)]
       (.setSchema conn session-schema)
       (with-open [stmt (sql-jdbc.execute/prepared-statement :ocient conn sql params)]
@@ -202,7 +203,7 @@
 ;; Ocient requires a timestamp column and a clustering index key. These fields are prepended to the field definitions
 (defmethod sql.tx/create-table-sql :ocient
   [driver {:keys [database-name]} {:keys [table-name field-definitions]}]
-  (let [quot                  #(sql.u/quote-name driver :field (tx/format-name driver %))]
+  (let [quot                  #(sql.u/quote-name driver :field (ddl.i/format-name driver %))]
     (str/join "\n"
               (list
                (format "CREATE TABLE %s (" (sql.tx/qualify-and-quote driver database-name table-name)),
@@ -406,7 +407,7 @@
   described above."
   [driver conn {:keys [database-name], :as dbdef} {:keys [table-name], :as tabledef}]
   (let [components       (for [component (sql.tx/qualified-name-components driver database-name table-name)]
-                           (tx/format-name driver (u/qualified-name component)))
+                           (ddl.i/format-name driver (u/qualified-name component)))
         table-identifier (sql.qp/->honeysql driver (apply hx/identifier :table components))]
     (partial load-data/do-insert! driver conn table-identifier)))
 
