@@ -44,7 +44,7 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByTestId("qb-header").should("be.visible");
 
-      cy.findByText(/Editied/).should("be.visible");
+      cy.findByText(/Edited/).should("be.visible");
       cy.findByText("Our analytics").should("be.visible");
 
       cy.icon("refresh").should("be.visible");
@@ -65,7 +65,7 @@ describe("scenarios > embedding > full app", () => {
       cy.wait("@getCardQuery");
 
       cy.findByText("Our analytics").should("not.exist");
-      cy.findByText(/Editied/).should("not.exist");
+      cy.findByText(/Edited/).should("not.exist");
     });
 
     it("should hide the question's action buttons by a param", () => {
