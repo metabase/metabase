@@ -27,7 +27,7 @@
 (defn- section-title
   "Creates a section title for a set of endpoints."
   [ep-title]
-  (str/replace (str "## " ep-title "\n\n") #"-" " "))
+  (str/replace (str "# " ep-title "\n\n") #"-" " "))
 
 ;;;; API docs section description
 
@@ -98,46 +98,47 @@
   (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
 ;;;; Generate API sections
+(def footer "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
 
-(defn endpoint-section
-  "Builds a section with the name, description, table of contents for endpoints in a namespace,
+(defn endpoint-page
+  "Builds a page with the name, description, table of contents for endpoints in a namespace,
   followed by the endpoint and their parameter descriptions."
-  [ep-map]
-  (for [[ep ep-data] ep-map]
-    (apply str
-           (section-title ep)
-           (section-description ep-data)
-           (section-toc ep-data)
-           (section-endpoints ep-data))))
+  [ep ep-data]
+  (apply str
+         (section-title ep)
+         (section-description ep-data)
+         (section-toc ep-data)
+         (section-endpoints ep-data)
+         footer))
 
-;; (defn- dox
-;;   "Generate a Markdown string containing documentation for all Metabase API endpoints."
-;;   []
-;;   (str (api-docs-intro)
-;;        (str/join "\n\n\n"
-;;                  (->> (collect-endpoints)
-;;                       (map process-endpoint)
-;;                       (group-by :ns-name)
-;;                       (into (sorted-map))
-;;                       endpoint-section))))
+(defn build-endpoint-link
+  "Creates a link to the page for each endpoint. Used to build links
+  on the API index page at docs/api-documentation.md."
+  [ep]
+  (str "- [" (str/capitalize ep) "](api/" (str/lower-case ep) ".md)"))
+
+(defn build-index
+  "Creates a string that lists links to all endpoint groups,
+  e.g, - [Activity](docs/api/activity.md)."
+  [endpoints]
+  (str/join "\n" (map (fn [[ep _]] (build-endpoint-link ep)) endpoints)))
 
 (defn- dox
-  "Generate a Markdown string containing documentation for all Metabase API endpoints."
-  []
-  (let [endpoints (->> (collect-endpoints)
-                       (map process-endpoint)
-                       (group-by :ns-name)
-                       (into (sorted-map)))]
-
-    (doseq [endpoint endpoints]
-      (spit (str "docs/api/" (str/lower-case (key endpoint)) ".md") (apply str
-                                                                           (section-title (key endpoint))
-                                                                           (section-description (val endpoint))
-                                                                           (section-toc (val endpoint))
-                                                                           (section-endpoints (val endpoint)))))))
+  "Generates markdown pages for all API endpoint groups."
+  [endpoints]
+  (doseq [[ep ep-data] endpoints]
+    (spit (str "docs/api/" (str/lower-case ep) ".md") (endpoint-page ep ep-data))))
 
 (defn generate-dox!
-  "Write markdown file containing documentation for all the API endpoints to `docs/api-documentation.md`."
+  "Builds an index page and sub-pages for groups of endpoints.
+  Index page is `docs/api-documentation.md`.
+  Endpoint groups are in /docs/api/{endpoint}.md"
   []
-  (dox) ;; (spit (io/file "docs/api-documentation.md") (dox))
-  (println "Documentation generated at docs/api-documentation.md."))
+  (let [endpoint-map (->> (collect-endpoints)
+                          (map process-endpoint)
+                          (group-by :ns-name)
+                          (into (sorted-map)))]
+    (spit (io/file "docs/api-documentation.md") (str (api-docs-intro) (build-index endpoint-map)))
+    (dox endpoint-map)
+    (println "API doc index generated at docs/api-documentation.md.")
+    (println "API endpoint docs generated in docs/api/{endpoint}.")))

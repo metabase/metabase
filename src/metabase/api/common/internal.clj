@@ -62,7 +62,7 @@
           (log/warn
            (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-             (u/pprint-to-str schema) (u/add-period route-str)))))))
+                           (u/pprint-to-str schema) (u/add-period route-str)))))))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -77,14 +77,14 @@
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
   (when (seq param-symb->schema)
-    (str "\n\n##### PARAMS:\n\n"
+    (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
                             (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
   [route-str docstr param->schema]
-  (str (format "### `%s`" route-str)
+  (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
@@ -101,10 +101,9 @@
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
                     (str (u/add-period docstr) (when (contains-superuser-check? body)
-                                  "\n\nYou must be a superuser to do this."))
+                                                 "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          AUTO-PARSING + ROUTE TYPING                                           |
@@ -144,7 +143,6 @@
           (when (re-find pattern (name arg))
             type))
         auto-parse-arg-name-patterns))
-
 
 ;;; ## TYPIFY-ROUTE
 
@@ -189,7 +187,6 @@
         route
         (apply vector route arg-types)))))
 
-
 ;;; ## ROUTE ARG AUTO PARSING
 
 (defn let-form-for-arg
@@ -213,7 +210,6 @@
     `(let [~@let-forms]
        ~@body)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -224,17 +220,16 @@
   (try (s/validate schema value)
        (catch Throwable e
          (throw (ex-info (tru "Invalid field: {0}" field-name)
-                  {:status-code 400
-                   :errors      {(keyword field-name) (or (su/api-error-message schema)
-                                                          (:message (ex-data e))
-                                                          (.getMessage e))}})))))
+                         {:status-code 400
+                          :errors      {(keyword field-name) (or (su/api-error-message schema)
+                                                                 (:message (ex-data e))
+                                                                 (.getMessage e))}})))))
 
 (defn validate-params
   "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
   [param->schema]
   (for [[param schema] param->schema]
     `(validate-param '~param ~param ~schema)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |
@@ -256,7 +251,7 @@
   "Protocol for transformations that should be done to the value returned by a `defendpoint` form before it
   Compojure/Ring see it."
   (wrap-response-if-needed [this]
-    "Transform the value returned by a `defendpoint` form as needed, e.g. by adding `:status` and `:body`."))
+                           "Transform the value returned by a `defendpoint` form as needed, e.g. by adding `:status` and `:body`."))
 
 (extend-protocol EndpointResponse
   Object
