@@ -75,7 +75,7 @@
         no-host     (or (nil? decoded-url) (= (first decoded-url) \/))
         host        (try
                       (.getHost (new URL decoded-url))
-                      (catch MalformedURLException e ""))
+                      (catch MalformedURLException _ ""))
         our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
   (api/check (or no-host (= host our-host))
     [400 (tru "JWT SSO is trying to do an open redirect to an untrusted site")])))
