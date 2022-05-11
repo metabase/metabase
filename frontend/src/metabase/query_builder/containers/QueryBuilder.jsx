@@ -88,6 +88,7 @@ import {
   getIsTimeseries,
   getIsLoadingComplete,
   getIsHeaderVisible,
+  isLastEditInfoVisible,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -191,7 +192,7 @@ const mapStateToProps = (state, props) => {
     isLoadingComplete: getIsLoadingComplete(state),
 
     isHeaderVisible: getIsHeaderVisible(state),
-    isLastEditInfoVisible: getIsLoadingComplete(state),
+    isLastEditInfoVisible: isLastEditInfoVisible(state),
   };
 };
 

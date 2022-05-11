@@ -840,7 +840,7 @@ export const getIsHeaderVisible = createSelector(
 export const isLastEditInfoVisible = createSelector(
   [getQuestion, getIsEmbedded, getEmbedOptions],
   (question, isEmbedded, embedOptions) => {
-    if (!question.lastEditInfo()) {
+    if (!question || !question.lastEditInfo()) {
       return false;
     }
 
