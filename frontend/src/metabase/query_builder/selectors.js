@@ -835,18 +835,7 @@ export const getIsHeaderVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
 );
 
-export const isDataSourceVisible = createSelector(
+export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
-);
-
-export const isLastEditInfoVisible = createSelector(
-  [getQuestion, getIsEmbedded, getEmbedOptions],
-  (question, isEmbedded, embedOptions) => {
-    if (!question || !question.lastEditInfo()) {
-      return false;
-    }
-
-    return !isEmbedded || embedOptions.additional_info;
-  },
 );

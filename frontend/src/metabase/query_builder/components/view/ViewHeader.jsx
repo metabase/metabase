@@ -63,7 +63,7 @@ const viewTitleHeaderPropTypes = {
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
-  isLastEditInfoVisible: PropTypes.bool,
+  isAdditionalInfoVisible: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -163,8 +163,7 @@ export function ViewTitleHeader(props) {
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
   isObjectDetail: PropTypes.bool,
-  isDataSourceVisible: PropTypes.bool,
-  isLastEditInfoVisible: PropTypes.bool,
+  isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
@@ -175,13 +174,14 @@ function SavedQuestionLeftSide(props) {
   const {
     question,
     isObjectDetail,
-    isDataSourceVisible,
-    isLastEditInfoVisible,
+    isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
     onOpenQuestionHistory,
   } = props;
+
+  const hasLastEditInfo = question.lastEditInfo() != null;
 
   const onHeaderClick = useCallback(() => {
     if (isShowingQuestionDetailsSidebar) {
@@ -205,14 +205,14 @@ function SavedQuestionLeftSide(props) {
             onClick={onHeaderClick}
           />
         </SavedQuestionHeaderButtonContainer>
-        {isLastEditInfoVisible && (
+        {hasLastEditInfo && isAdditionalInfoVisible && (
           <StyledLastEditInfoLabel
             item={question.card()}
             onClick={onOpenQuestionHistory}
           />
         )}
       </ViewHeaderMainLeftContentContainer>
-      {isDataSourceVisible && (
+      {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
           <StyledCollectionBadge collectionId={question.collectionId()} />
           {QuestionDataSource.shouldRender(props) && (
@@ -282,7 +282,7 @@ function AhHocQuestionLeftSide(props) {
 
 DatasetLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  isDataSourceVisible: PropTypes.bool,
+  isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
@@ -291,7 +291,7 @@ DatasetLeftSide.propTypes = {
 function DatasetLeftSide(props) {
   const {
     question,
-    isDataSourceVisible,
+    isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
@@ -316,7 +316,7 @@ function DatasetLeftSide(props) {
           <HeadBreadcrumbs
             divider="/"
             parts={[
-              ...(isDataSourceVisible
+              ...(isAdditionalInfoVisible
                 ? [
                     <DatasetCollectionBadge
                       key="collection"
