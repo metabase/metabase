@@ -56,11 +56,8 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ dashboard }) => dashboard && dashboard.name)
-@DashboardControls
 // NOTE: this should use DashboardData HoC
-export default class PublicDashboard extends Component {
+class PublicDashboard extends Component {
   async UNSAFE_componentWillMount() {
     const {
       initialize,
@@ -142,3 +139,9 @@ export default class PublicDashboard extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ dashboard }) => dashboard && dashboard.name),
+  DashboardControls,
+)(PublicDashboard);

@@ -21,8 +21,7 @@ const mapStateToProps = (state, props) => ({
   previewSummary: getPreviewSummary(state),
 });
 
-@Metrics.load({ id: (state, props) => parseInt(props.params.id) })
-class UpdateMetricForm extends Component {
+class UpdateMetricFormInner extends Component {
   onSubmit = async metric => {
     await this.props.updateMetric(metric);
     MetabaseAnalytics.trackStructEvent("Data Model", "Metric Updated");
@@ -41,6 +40,10 @@ class UpdateMetricForm extends Component {
   }
 }
 
+const UpdateMetricForm = Metrics.load({
+  id: (state, props) => parseInt(props.params.id),
+})(UpdateMetricFormInner);
+
 class CreateMetricForm extends Component {
   onSubmit = async metric => {
     await this.props.createMetric({
@@ -56,8 +59,7 @@ class CreateMetricForm extends Component {
   }
 }
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class MetricApp extends Component {
+class MetricApp extends Component {
   render() {
     return this.props.params.id ? (
       <UpdateMetricForm {...this.props} />
@@ -66,3 +68,5 @@ export default class MetricApp extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(MetricApp);

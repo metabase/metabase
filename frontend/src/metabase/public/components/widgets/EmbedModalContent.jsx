@@ -34,8 +34,7 @@ const mapStateToProps = (state, props) => ({
   isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
 });
 
-@connect(mapStateToProps)
-export default class EmbedModalContent extends Component {
+class EmbedModalContent extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -240,6 +239,8 @@ export default class EmbedModalContent extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps)(EmbedModalContent);
 
 export const EmbedTitle = ({ type, onClick }) => (
   <a className="flex align-center" onClick={onClick}>

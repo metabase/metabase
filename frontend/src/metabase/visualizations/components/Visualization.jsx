@@ -43,12 +43,8 @@ import Mode from "metabase-lib/lib/Mode";
 import { memoize } from "metabase-lib/lib/utils";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize({
-  selector: ".CardVisualization",
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
-})
-@connect()
-export default class Visualization extends React.PureComponent {
+
+class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
 
@@ -556,3 +552,11 @@ export default class Visualization extends React.PureComponent {
     );
   }
 }
+
+export default _.compose(
+  ExplicitSize({
+    selector: ".CardVisualization",
+    refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+  }),
+  connect(),
+)(Visualization);
