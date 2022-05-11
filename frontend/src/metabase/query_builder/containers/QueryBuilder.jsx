@@ -164,6 +164,8 @@ const mapStateToProps = (state, props) => {
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
@@ -190,9 +192,6 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-
-    isHeaderVisible: getIsHeaderVisible(state),
-    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
   };
 };
 
