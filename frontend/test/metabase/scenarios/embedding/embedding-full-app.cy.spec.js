@@ -32,6 +32,15 @@ describe("scenarios > embedding > full app", () => {
       visitAppUrl("/?top_nav=true&search=true");
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
+
+    it("should preserve params when navigating", () => {
+      visitAppUrl("/?top_nav=true");
+      cy.findAllByTestId("main-logo").should("be.visible");
+
+      cy.findByText("Our analytics").click();
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findAllByTestId("main-logo").should("be.visible");
+    });
   });
 
   describe("questions", () => {
