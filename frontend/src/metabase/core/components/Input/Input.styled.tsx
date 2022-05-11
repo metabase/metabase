@@ -29,7 +29,8 @@ export const InputField = styled.input<InputProps>`
   outline: none;
   text-align: inherit;
 
-  &:focus {
+  &:focus,
+  &:hover {
     border-color: ${color("brand")};
     transition: border 300ms ease-in-out;
   }
