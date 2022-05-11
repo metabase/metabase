@@ -14,6 +14,9 @@ export interface WritebackFormProps {
   table: Table;
   row?: unknown[];
   onSubmit?: () => void;
+
+  // Form props
+  isModal?: boolean;
 }
 
 function getFieldTypeProps(field: Field) {
