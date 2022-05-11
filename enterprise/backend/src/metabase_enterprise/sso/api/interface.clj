@@ -8,8 +8,8 @@
   [_]
   (cond
     (sso-settings/saml-configured?) :saml
-    ;; (sso-settings/jwt-enabled)      :jwt
-    :else                           :saml))
+    (sso-settings/jwt-enabled)      :jwt
+    :else                           nil))
 
 (defmulti sso-get
   "Multi-method for supporting the first part of an SSO signin request. An implementation of this method will usually

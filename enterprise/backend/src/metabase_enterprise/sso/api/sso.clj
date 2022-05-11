@@ -27,11 +27,11 @@
   "SSO entry-point for an SSO user that has not logged in yet"
   [:as req]
   (throw-if-no-premium-features-token)
-  ;;(try
-    (sso.i/sso-get req))
-    ;; (catch Throwable e
-    ;;   (log/error #_e (trs "Error returning SSO entry point"))
-    ;;   (throw e))))
+  (try
+    (sso.i/sso-get req)
+    (catch Throwable e
+      (log/error #_e (trs "Error returning SSO entry point"))
+      (throw e))))
 
 (defn- sso-error-page [^Throwable e]
   {:status  (get (ex-data e) :status-code 500)
