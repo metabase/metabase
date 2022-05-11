@@ -47,7 +47,7 @@ class Dashboard extends Component {
     isEditingParameter: PropTypes.bool.isRequired,
     isNavbarOpen: PropTypes.bool.isRequired,
     isHeaderVisible: PropTypes.bool,
-    isLastEditInfoVisible: PropTypes.bool,
+    isAdditionalInfoVisible: PropTypes.bool,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
