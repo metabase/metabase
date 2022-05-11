@@ -30,7 +30,7 @@ import { AddRow } from "./AddRow";
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
 function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
-  const textIsValid = text && text.length;
+  const textIsValid = text?.trim().length;
   return (
     <tr>
       <td colSpan="3" style={{ padding: 0 }}>
@@ -271,7 +271,7 @@ export default class GroupsListing extends Component {
     MetabaseAnalytics.trackStructEvent("People Groups", "Group Added");
 
     try {
-      await this.props.create({ name: this.state.text });
+      await this.props.create({ name: this.state.text.trim() });
       this.setState({
         showAddGroupRow: false,
         text: "",
@@ -331,7 +331,7 @@ export default class GroupsListing extends Component {
       // ok, fire off API call to change the group
       MetabaseAnalytics.trackStructEvent("People Groups", "Group Updated");
       try {
-        await this.props.update({ id: group.id, name: group.name });
+        await this.props.update({ id: group.id, name: group.name.trim() });
         this.setState({ groupBeingEdited: null });
       } catch (error) {
         console.error("Error updating group name:", error);
