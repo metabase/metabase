@@ -832,9 +832,12 @@ export const getTimeoutId = createSelector(
 
 export const getIsHeaderVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
-  (isEmbedded, embedOptions) => {
-    return !isEmbedded || embedOptions.header;
-  },
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const isDataSourceVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
 
 export const isLastEditInfoVisible = createSelector(

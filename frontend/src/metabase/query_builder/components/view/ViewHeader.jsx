@@ -162,9 +162,10 @@ export function ViewTitleHeader(props) {
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
+  isObjectDetail: PropTypes.bool,
+  isDataSourceVisible: PropTypes.bool,
   isLastEditInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  isObjectDetail: PropTypes.bool,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
   onOpenQuestionHistory: PropTypes.func.isRequired,
@@ -174,6 +175,7 @@ function SavedQuestionLeftSide(props) {
   const {
     question,
     isObjectDetail,
+    isDataSourceVisible,
     isLastEditInfoVisible,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
@@ -210,16 +212,18 @@ function SavedQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderMainLeftContentContainer>
-      <ViewHeaderLeftSubHeading>
-        <StyledCollectionBadge collectionId={question.collectionId()} />
-        {QuestionDataSource.shouldRender(props) && (
-          <StyledQuestionDataSource
-            question={question}
-            isObjectDetail={isObjectDetail}
-            subHead
-          />
-        )}
-      </ViewHeaderLeftSubHeading>
+      {isDataSourceVisible && (
+        <ViewHeaderLeftSubHeading>
+          <StyledCollectionBadge collectionId={question.collectionId()} />
+          {QuestionDataSource.shouldRender(props) && (
+            <StyledQuestionDataSource
+              question={question}
+              isObjectDetail={isObjectDetail}
+              subHead
+            />
+          )}
+        </ViewHeaderLeftSubHeading>
+      )}
     </div>
   );
 }
