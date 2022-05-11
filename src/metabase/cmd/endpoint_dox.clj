@@ -1,5 +1,6 @@
 (ns metabase.cmd.endpoint-dox
-  "Implementation for the `api-documentation` command, which generate"
+  "Implementation for the `api-documentation` command, which generates doc pages
+  for API endpoints."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [metabase.plugins.classloader :as classloader]
