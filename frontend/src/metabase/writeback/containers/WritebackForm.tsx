@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from "react";
+import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
 
@@ -11,6 +12,7 @@ import CategoryFieldPicker from "./CategoryFieldPicker";
 
 export interface WritebackFormProps {
   table: Table;
+  row?: unknown[];
   onSubmit?: () => void;
 }
 
@@ -50,29 +52,42 @@ function getFieldTypeProps(field: Field) {
   return { type: "input" };
 }
 
-function WritebackForm({ table, onSubmit }: WritebackFormProps) {
+function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
   const editableFields = useMemo(
-    () => table.fields.filter(field => !field.isPK()),
+    () => table.fields.filter(field => field.id && !field.isPK()),
     [table],
   );
 
-  const form = useMemo(
-    () => ({
-      fields: editableFields.map(field => ({
-        name: field.name,
-        title: field.displayName(),
-        description: field.description,
-        ...getFieldTypeProps(field),
-      })),
-    }),
-    [editableFields],
-  );
+  const form = useMemo(() => {
+    return {
+      fields: editableFields.map(field => {
+        const fieldIndex = table.fields.findIndex(f => f.id === field.id);
+        const initialValue = row ? row[fieldIndex] : undefined;
+        return {
+          name: field.name,
+          title: field.displayName(),
+          description: field.description,
+          initial: initialValue,
+          ...getFieldTypeProps(field),
+        };
+      }),
+    };
+  }, [table, row, editableFields]);
 
   const handleSubmit = useCallback(() => {
     onSubmit?.();
   }, [onSubmit]);
 
-  return <Form form={form} onSubmit={handleSubmit} />;
+  const submitTitle = row ? t`Update` : t`Create`;
+
+  return (
+    <Form
+      {...props}
+      form={form}
+      onSubmit={handleSubmit}
+      submitTitle={submitTitle}
+    />
+  );
 }
 
 export default WritebackForm;
