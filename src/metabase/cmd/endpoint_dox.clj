@@ -68,7 +68,8 @@
 ;;;; API docs section endpoints
 
 (defn- endpoint-str
-  "Creates a name for an endpoint: VERB /path/to/endpoint. Used to build anchor links in the table of contents."
+  "Creates a name for an endpoint: VERB /path/to/endpoint.
+  Used to build anchor links in the table of contents."
   [endpoint]
   (-> (:doc endpoint)
       (str/split #"\n")
@@ -93,11 +94,13 @@
     (meta varr)))
 
 (defn- section-endpoints
-  "Builds a list of endpoints and their parameters. Relies on docstring generation in /api/common/internal.clj."
+  "Builds a list of endpoints and their parameters.
+  Relies on docstring generation in /api/common/internal.clj."
   [ep-data]
   (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
-;;;; Generate API sections
+;;;; Generate API pages
+
 (def footer "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
 
 (defn endpoint-page
@@ -132,7 +135,7 @@
 (defn generate-dox!
   "Builds an index page and sub-pages for groups of endpoints.
   Index page is `docs/api-documentation.md`.
-  Endpoint groups are in /docs/api/{endpoint}.md"
+  Endpoint pages are in `/docs/api/{endpoint}.md`"
   []
   (let [endpoint-map (->> (collect-endpoints)
                           (map process-endpoint)
