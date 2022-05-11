@@ -369,7 +369,15 @@
                 (is (= (public-settings/site-url)
                        (get-in response [:headers "Location"])))
                 (is (= (some-saml-attributes "rasta")
-                       (saml-login-attributes "rasta@metabase.com")))))))))))
+                       (saml-login-attributes "rasta@metabase.com"))))))))))
+  (testing "if the RelayState leads us to the wrong host, avoid the open redirect"
+    (let [relay-state "https://badsite.com"]
+      (with-saml-default-setup
+        (do-with-some-validators-disabled
+          (fn []
+            (let [req-options (saml-post-request-options (saml-test-response) relay-state)
+                  response    (client-full-response :post 400 "/auth/sso" req-options)]
+              (is (= (:message response) "SAML SSO is trying to do an open redirect to an untrusted site")))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
