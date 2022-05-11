@@ -231,12 +231,7 @@ if (WEBPACK_BUNDLE === "hot") {
         loader: "babel-loader",
         options: {
           ...BABEL_CONFIG,
-          plugins: [
-            "@emotion",
-            "@babel/plugin-proposal-export-default-from",
-            ["@babel/plugin-proposal-decorators", { legacy: true }],
-            "react-refresh/babel",
-          ],
+          plugins: ["@emotion", "react-refresh/babel"],
         },
       },
     ],
