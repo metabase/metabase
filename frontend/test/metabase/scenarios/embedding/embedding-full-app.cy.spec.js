@@ -11,35 +11,33 @@ describe("scenarios > embedding > full app", () => {
 
   describe("navigation", () => {
     it("should hide the top nav by default", () => {
-      cy.visit("/", visitOptions);
+      visitApp("/");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
-      cy.visit("/?top_nav=true", visitOptions);
+      visitApp("/?top_nav=true");
       cy.findAllByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
-      cy.visit("/?top_nav=true&new_button=true", visitOptions);
+      visitApp("/?top_nav=true&new_button=true");
       cy.button(/New/).should("be.visible");
     });
 
     it("should show search controls by a param", () => {
-      cy.visit("/?top_nav=true&search=true", visitOptions);
+      visitApp("/?top_nav=true&search=true");
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
   });
 
   describe("questions", () => {
     it("should show the question header by default", () => {
-      cy.visit("/question/1", visitOptions);
-      cy.wait("@getCardQuery");
+      visitQuestionUrl("/question/1");
 
       cy.findByTestId("qb-header").should("be.visible");
-
       cy.findByText(/Edited/).should("be.visible");
       cy.findByText("Our analytics").should("be.visible");
 
@@ -50,23 +48,20 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the question header by a param", () => {
-      cy.visit("/question/1?header=false", visitOptions);
-      cy.wait("@getCardQuery");
+      visitQuestionUrl("/question/1?header=false");
 
       cy.findByTestId("qb-header").should("not.exist");
     });
 
     it("should hide the question's additional info by a param", () => {
-      cy.visit("/question/1?additional_info=false", visitOptions);
-      cy.wait("@getCardQuery");
+      visitQuestionUrl("/question/1?additional_info=false");
 
       cy.findByText("Our analytics").should("not.exist");
       cy.findByText(/Edited/).should("not.exist");
     });
 
     it("should hide the question's action buttons by a param", () => {
-      cy.visit("/question/1?action_buttons=false", visitOptions);
-      cy.wait("@getCardQuery");
+      visitQuestionUrl("/question/1?action_buttons=false");
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("not.exist");
@@ -77,9 +72,7 @@ describe("scenarios > embedding > full app", () => {
 
   describe("dashboards", () => {
     it("should show the dashboard header by default", () => {
-      cy.visit("/dashboard/1", visitOptions);
-      cy.wait("@getDashboard");
-      cy.wait("@getDashCardQuery");
+      visitDashboardUrl("/dashboard/1");
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("be.visible");
@@ -87,17 +80,13 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the dashboard header by a param", () => {
-      cy.visit("/dashboard/1?header=false", visitOptions);
-      cy.wait("@getDashboard");
-      cy.wait("@getDashCardQuery");
+      visitDashboardUrl("/dashboard/1?header=false");
 
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
     it("should hide the dashboard's additional info by a param", () => {
-      cy.visit("/dashboard/1?additional_info=false", visitOptions);
-      cy.wait("@getDashboard");
-      cy.wait("@getDashCardQuery");
+      visitDashboardUrl("/dashboard/1?additional_info=false");
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("not.exist");
@@ -106,8 +95,21 @@ describe("scenarios > embedding > full app", () => {
   });
 });
 
-const visitOptions = {
-  onBeforeLoad(window) {
-    window.Cypress = undefined;
-  },
+const visitApp = url => {
+  cy.visit(url, {
+    onBeforeLoad(window) {
+      window.Cypress = undefined;
+    },
+  });
+};
+
+const visitQuestionUrl = url => {
+  visitApp(url);
+  cy.wait("@getCardQuery");
+};
+
+const visitDashboardUrl = url => {
+  visitApp(url);
+  cy.wait("@getDashboard");
+  cy.wait("@getDashCardQuery");
 };
