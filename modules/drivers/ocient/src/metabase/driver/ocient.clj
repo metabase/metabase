@@ -122,11 +122,6 @@
         nil
         (.toLocalDateTime d)))))
 
-  ;; (fn []
-  ;;   (let [instant      (.toInstant (.getObject rs i))
-  ;;         zone-id      (ZoneId/of "UTC")]
-  ;;     (LocalDateTime/of instant zone-id))))
-
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/DATE]
   [_ rs _ i]
   (fn []
