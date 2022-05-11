@@ -18,6 +18,7 @@ import {
   HeaderButtonsContainer,
   HeaderButtonSection,
   StyledLastEditInfoLabel,
+  HeaderCaption,
 } from "./Header.styled";
 
 const propTypes = {
@@ -34,6 +35,7 @@ const propTypes = {
   item: PropTypes.object.isRequired,
   objectType: PropTypes.string.isRequired,
   hasBadge: PropTypes.bool,
+  hasLastEditInfo: PropTypes.bool,
   children: PropTypes.node,
   setItemAttributeFn: PropTypes.func,
   onHeaderModalDone: PropTypes.func,
@@ -117,8 +119,7 @@ class Header extends Component {
   }
 
   render() {
-    const { item, hasBadge, onLastEditInfoClick } = this.props;
-    const hasLastEditInfo = !!item["last-edit-info"];
+    const { item, hasBadge, hasLastEditInfo, onLastEditInfoClick } = this.props;
 
     let titleAndDescription;
     if (this.props.item && this.props.item.id != null) {
@@ -172,7 +173,7 @@ class Header extends Component {
           ref={this.header}
         >
           <HeaderContent>
-            <span className="inline-block mb1">{titleAndDescription}</span>
+            <HeaderCaption>{titleAndDescription}</HeaderCaption>
             {attribution}
             <HeaderBadges>
               {hasBadge && (

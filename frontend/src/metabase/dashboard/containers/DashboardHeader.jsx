@@ -57,6 +57,7 @@ export default class DashboardHeader extends Component {
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
+    showAdditionalInfo: PropTypes.bool,
 
     refreshPeriod: PropTypes.number,
     setRefreshElapsedHook: PropTypes.func.isRequired,
@@ -374,7 +375,14 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    const { dashboard, location, onChangeLocation } = this.props;
+    const {
+      dashboard,
+      location,
+      isEditing,
+      isFullscreen,
+      showAdditionalInfo,
+      onChangeLocation,
+    } = this.props;
 
     return (
       <Header
@@ -382,9 +390,10 @@ export default class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         item={dashboard}
-        isEditing={this.props.isEditing}
-        hasBadge={!this.props.isEditing && !this.props.isFullscreen}
-        isEditingInfo={this.props.isEditing}
+        isEditing={isEditing}
+        hasBadge={!isEditing && !isFullscreen && showAdditionalInfo}
+        hasLastEditInfo={dashboard["last-edit-info"] && showAdditionalInfo}
+        isEditingInfo={isEditing}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`}

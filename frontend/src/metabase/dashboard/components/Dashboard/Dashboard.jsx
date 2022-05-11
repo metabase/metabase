@@ -246,7 +246,8 @@ export default class Dashboard extends Component {
       />
     );
 
-    const shouldRenderHeader = !isEmbedded || embedOptions.header;
+    const showHeader = !isEmbedded || embedOptions.header;
+    const showAdditionalInfo = !isEmbedded || embedOptions.additional_info;
 
     const shouldRenderParametersWidgetInViewMode =
       !isEditing && !isFullscreen && parameters.length > 0;
@@ -268,7 +269,7 @@ export default class Dashboard extends Component {
       >
         {() => (
           <DashboardStyled>
-            {shouldRenderHeader && (
+            {showHeader && (
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
@@ -282,6 +283,7 @@ export default class Dashboard extends Component {
                   onSharingClick={this.onSharingClick}
                   onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                   showAddQuestionSidebar={showAddQuestionSidebar}
+                  showAdditionalInfo={showAdditionalInfo}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (
