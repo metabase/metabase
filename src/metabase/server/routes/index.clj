@@ -52,9 +52,11 @@
            (log/warn (.getMessage e))))))
    (fallback-localization locale-string)))
 
-(def ^:private ^{:arglists '([])} load-localization
-  "Load a JSON-encoded map of localized strings for the current user's Locale."
-  (comp (memoize load-localization*) #(i18n/user-locale-string)))
+(let [load-fn (memoize load-localization*)]
+  (defn- load-localization
+    "Load a JSON-encoded map of localized strings for the current user's Locale."
+    [locale-override]
+    (load-fn (or locale-override (i18n/user-locale-string)))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
@@ -69,14 +71,14 @@
         (log/error e message)
         (throw (Exception. message e))))))
 
-(defn- load-entrypoint-template [entrypoint-name embeddable? uri]
+(defn- load-entrypoint-template [entrypoint-name embeddable? {:keys [uri params]}]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
    (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map :public)]
      {:bootstrapJS        (load-inline-js "index_bootstrap")
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
-      :localizationJSON   (escape-script (load-localization))
+      :localizationJSON   (escape-script (load-localization (:locale params)))
       :language           (hiccup.util/escape-html (public-settings/site-locale))
       :favicon            (hiccup.util/escape-html (public-settings/application-favicon-url))
       :applicationName    (hiccup.util/escape-html (public-settings/application-name))
@@ -93,10 +95,10 @@
 
 (defn- entrypoint
   "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
-  [entrypoint-name embeddable? {:keys [uri]} respond _raise]
+  [entrypoint-name embeddable? request respond _raise]
   (respond
     (-> (response/response (if (init-status/complete?)
-                             (load-entrypoint-template entrypoint-name embeddable? uri)
+                             (load-entrypoint-template entrypoint-name embeddable? request)
                              (load-init-template)))
         (response/content-type "text/html; charset=utf-8"))))
 

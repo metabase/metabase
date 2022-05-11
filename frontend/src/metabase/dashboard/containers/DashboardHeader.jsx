@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -36,9 +37,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@Bookmark.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
-export default class DashboardHeader extends Component {
+class DashboardHeader extends Component {
   constructor(props) {
     super(props);
 
@@ -397,3 +396,8 @@ export default class DashboardHeader extends Component {
     );
   }
 }
+
+export default _.compose(
+  Bookmark.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardHeader);

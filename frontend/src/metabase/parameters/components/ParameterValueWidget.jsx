@@ -19,7 +19,6 @@ import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { hasFieldValues } from "metabase/parameters/utils/fields";
 
@@ -49,8 +48,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
-export default class ParameterValueWidget extends Component {
+class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
     name: PropTypes.string,
@@ -241,6 +239,11 @@ export default class ParameterValueWidget extends Component {
   }
 }
 
+export default connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)(ParameterValueWidget);
+
 function getFields(metadata, parameter) {
   if (!metadata) {
     return [];
@@ -306,7 +309,6 @@ function Widget({
         setValue={setValue}
         isEditing={isEditing}
         focusChanged={onFocusChanged}
-        operator={deriveFieldOperatorFromParameter(parameter)}
       />
     );
   } else {

@@ -76,9 +76,6 @@ describe("scenarios > x-rays", () => {
 
   ["X-ray", "Compare to the rest"].forEach(action => {
     it(`"${action.toUpperCase()}" should work on a nested question made from base native question (metabase#15655)`, () => {
-      // TODO: Remove this when #15655 gets fixed
-      cy.skipOn(action === "Compare to the rest");
-
       cy.intercept("GET", "/api/automagic-dashboards/**").as("xray");
 
       cy.createNativeQuestion({
@@ -111,7 +108,7 @@ describe("scenarios > x-rays", () => {
 
       cy.findByTextEnsureVisible("A look at the number of 15655");
 
-      cy.findByRole("heading", { name: /^A closer look at the number of/ });
+      cy.findByRole("heading", { name: /^A look at the number of/ });
       cy.get(".DashCard");
     });
 

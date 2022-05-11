@@ -76,9 +76,7 @@ const mapDispatchToProps = {
   selectEngine,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ database }) => database && database.name)
-export default class DatabaseEditApp extends Component {
+class DatabaseEditApp extends Component {
   constructor(props, context) {
     super(props, context);
   }
@@ -219,3 +217,8 @@ export default class DatabaseEditApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ database }) => database && database.name),
+)(DatabaseEditApp);

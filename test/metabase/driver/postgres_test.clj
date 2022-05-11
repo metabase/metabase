@@ -379,6 +379,28 @@
                    database
                    {:name "describe_json_table"}))))))))
 
+(deftest describe-nested-field-columns-identifier-test
+  (mt/test-driver :postgres
+    (testing "sync goes and runs with identifier if there is a schema other than default public one"
+      (drop-if-exists-and-create-db! "describe-json-with-schema-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-with-schema-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
+                                    "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
+                                    "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= #{{:name "trivial_json → a",
+                    :database-type "integer",
+                    :base-type :type/Integer,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:trivial_json "a"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:schema "bobdobbs" :name "describe_json_table"}))))))))
+
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
