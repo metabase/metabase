@@ -71,7 +71,6 @@ declare module "underscore" {
   declare function isEmpty(o: any): boolean;
   declare function isString(o: any): boolean;
   declare function isObject(o: any): boolean;
-  declare function isArray(o: any): boolean;
 
   declare function groupBy<T>(
     a: Array<T>,
