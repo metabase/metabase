@@ -106,13 +106,6 @@
   (api/check (sso-settings/saml-configured?)
     [400 (tru "SAML has not been enabled and/or configured")]))
 
-(defn- check-saml-redirect [continue-url]
-  (let [decoded-url (some-> continue-url (URLDecoder/decode))
-        given-host  (some-> decoded-url (URL.) (.getHost))
-        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
-    (api/check (= given-host our-host)
-      [400 (tru "SAML SSO is trying to do an open redirect to an untrusted site")])))
-
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
   ;; and redirect them back to us
@@ -185,7 +178,8 @@
                         (when-let [s (some-> (:RelayState params) base64-decode)]
                           (when-not (str/blank? s)
                             s)))]
-    (check-saml-redirect continue-url)
+    (println continue-url)
+    (sso-utils/check-sso-redirect continue-url)
     (let [xml-string    (base64-decode (:SAMLResponse params))
           saml-response (xml-string->saml-response xml-string)
           attrs         (saml-response->attributes saml-response)

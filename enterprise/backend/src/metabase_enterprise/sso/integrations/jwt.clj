@@ -13,7 +13,7 @@
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.response :as response])
-  (:import java.net.MalformedURLException java.net.URL java.net.URLDecoder java.net.URLEncoder))
+  (:import java.net.URLEncoder))
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
@@ -68,22 +68,10 @@
                                                      (group-names->ids group-names)
                                                      (all-mapped-group-ids))))))
 
-(defn- check-jwt-redirect [redirect-url]
-  (let [decoded-url (some-> redirect-url (URLDecoder/decode))
-                    ;; In this case, this just means that we don't have a specified host in redirect,
-                    ;; meaning it can't be an open redirect
-        no-host     (or (nil? decoded-url) (= (first decoded-url) \/))
-        host        (try
-                      (.getHost (new URL decoded-url))
-                      (catch MalformedURLException _ ""))
-        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
-  (api/check (or no-host (= host our-host))
-    [400 (tru "JWT SSO is trying to do an open redirect to an untrusted site")])))
-
 (defn- login-jwt-user
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
-    (check-jwt-redirect redirect-url)
+    (sso-utils/check-sso-redirect redirect-url)
     (let [ jwt-data     (try
                           (jwt/unsign jwt (sso-settings/jwt-shared-secret)
                                       {:max-age three-minutes-in-seconds})

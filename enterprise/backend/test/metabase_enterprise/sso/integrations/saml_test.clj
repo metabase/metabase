@@ -370,7 +370,11 @@
                        (get-in response [:headers "Location"])))
                 (is (= (some-saml-attributes "rasta")
                        (saml-login-attributes "rasta@metabase.com"))))))))))
-  (testing "if the RelayState leads us to the wrong host, avoid the open redirect"
+  (testing "if the RelayState leads us to the wrong host, avoid the open redirect (boat#160)"
+    ;;;;;;;;;
+    ;;;;;;;;;
+    ;;;;;;;;;
+    ;;;;;;;;;
     (let [relay-state "https://badsite.com"]
       (with-saml-default-setup
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
