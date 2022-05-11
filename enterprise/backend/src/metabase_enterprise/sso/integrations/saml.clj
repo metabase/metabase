@@ -35,7 +35,7 @@
             [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
-  (:import java.util.UUID))
+  (:import java.net.MalformedURLException java.net.URL java.net.URLDecoder jjava.util.UUID))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
@@ -105,6 +105,13 @@
 (defn- check-saml-enabled []
   (api/check (sso-settings/saml-configured?)
     [400 (tru "SAML has not been enabled and/or configured")]))
+
+(defn- check-saml-redirect [continue-url]
+  (let [decoded-url (URLDecoder/decode continue-url)
+        given-host  (.getHost (new URL decoded-url))
+        our-host    (.getHost (new URL (public-settings/site-url)))]
+    (api/check (= given-host our-host)
+      [400 (tru "SAML SSO is trying to do an open redirect to an untrusted site")])))
 
 (defmethod sso.i/sso-get :saml
   ;; Initial call that will result in a redirect to the IDP along with information about how the IDP can authenticate
@@ -178,6 +185,7 @@
                         (when-let [s (some-> (:RelayState params) base64-decode)]
                           (when-not (str/blank? s)
                             s)))
+        check         (check-saml-redirect continue-url)
         xml-string    (base64-decode (:SAMLResponse params))
         saml-response (xml-string->saml-response xml-string)
         attrs         (saml-response->attributes saml-response)
