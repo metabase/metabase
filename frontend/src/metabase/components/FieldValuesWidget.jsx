@@ -254,6 +254,7 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
+      forceTokenField = false,
       valueRenderer = renderValue(fields, formatOptions, value, {
         autoLoad: true,
         compact: false,
@@ -321,7 +322,7 @@ class FieldValuesWidgetInner extends Component {
         }}
       >
         {isFetchingList && <LoadingState />}
-        {hasListData && (
+        {hasListData && !forceTokenField && (
           <ListField
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
@@ -335,7 +336,7 @@ class FieldValuesWidgetInner extends Component {
             }
           />
         )}
-        {!hasListData && !isFetchingList && (
+        {(!hasListData || forceTokenField) && !isFetchingList && (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
