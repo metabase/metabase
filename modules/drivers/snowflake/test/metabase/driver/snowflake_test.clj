@@ -226,3 +226,22 @@
                                             :regionid "us-west-1"}}]
                              (is (= {:account "my-instance.us-west-1"}
                                     (:details db)))))))
+
+(deftest convert-timezone-test
+  (mt/test-driver :snowflake
+    (testing "convert timezone should return correct converted time with respect to given timezone"
+      (letfn [(run-query []
+                (mt/rows
+                 (qp/process-query
+                  {:database   (mt/id)
+                   :type       :native
+                   :native     {:query         (str "SELECT convert_timezone('America/Los_Angeles', {{filter_date}})")
+                                :template-tags {:filter_date {:name         "filter_date"
+                                                              :display_name "Just A Date"
+                                                              :type         "date"}}}
+                   :parameters [{:type   "date/single"
+                                 :target ["variable" ["template-tag" "filter_date"]]
+                                 :value  "2021-06-19T04:45:00Z"}]})))]
+        (testing "with convert-timezone"
+          (is (= [["2021-06-18T21:45:00Z"]]
+                 (run-query))))))))
