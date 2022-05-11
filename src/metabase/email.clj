@@ -19,6 +19,10 @@
   (deferred-tru "Email address you want to use as the sender of Metabase.")
   :default "notifications@metabase.com")
 
+(defsetting email-reply-to-address
+  (deferred-tru "Designated email address that any replies to emails will go to.")
+  :default "notifications@metabase.com")
+
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
 
@@ -95,14 +99,15 @@
     (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
   ;; Now send the email
   (send-email! (smtp-settings)
-    {:from    (email-from-address)
-     :to      recipients
-     :subject subject
-     :body    (case message-type
-                :attachments message
-                :text        message
-                :html        [{:type    "text/html; charset=utf-8"
-                               :content message}])}))
+    {:from     (email-from-address)
+     :reply-to (email-reply-to-address)
+     :to       recipients
+     :subject  subject
+     :body     (case message-type
+                 :attachments message
+                 :text        message
+                 :html        [{:type    "text/html; charset=utf-8"
+                                :content message}])}))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
