@@ -2,7 +2,13 @@ import { connect } from "react-redux";
 import Settings from "metabase/lib/settings";
 import { State, DatabaseInfo, InviteInfo } from "metabase-types/store";
 import DatabaseStep from "../../components/DatabaseStep";
-import { setDatabase, setInvite, setStep, submitDatabase } from "../../actions";
+import {
+  setDatabaseEngine,
+  setDatabase,
+  setInvite,
+  setStep,
+  submitDatabase,
+} from "../../actions";
 import {
   trackDatabaseSelected,
   trackAddDataLaterClicked,
@@ -14,6 +20,7 @@ import {
   isStepActive,
   isStepCompleted,
   isSetupCompleted,
+  getDatabaseEngine,
   getInvite,
   getUser,
   isLocaleLoaded,
@@ -22,6 +29,7 @@ import {
 const mapStateToProps = (state: State) => ({
   user: getUser(state),
   database: getDatabase(state),
+  engine: getDatabaseEngine(state),
   invite: getInvite(state),
   isEmailConfigured: Settings.isEmailConfigured(),
   isStepActive: isStepActive(state, DATABASE_STEP),
@@ -31,8 +39,11 @@ const mapStateToProps = (state: State) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-  onEngineChange: (engine: string) => {
-    trackDatabaseSelected(engine);
+  onEngineChange: (engine?: string) => {
+    if (engine) {
+      trackDatabaseSelected(engine);
+    }
+    dispatch(setDatabaseEngine(engine || null));
   },
   onStepSelect: () => {
     dispatch(setStep(DATABASE_STEP));

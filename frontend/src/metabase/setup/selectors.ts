@@ -50,3 +50,7 @@ export const isStepCompleted = (state: State, step: number): boolean => {
 export const isSetupCompleted = (state: State): boolean => {
   return getStep(state) === COMPLETED_STEP;
 };
+
+export const getDatabaseEngine = (state: State): string | undefined => {
+  return getDatabase(state)?.engine || state.setup.databaseEngine;
+};

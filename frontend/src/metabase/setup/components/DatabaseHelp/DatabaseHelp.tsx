@@ -12,7 +12,6 @@ const DatabaseHelp = ({
   isStepActive,
 }: DatabaseHelpProps): JSX.Element => {
   const isVisible = isStepActive && engine != null;
-
   return (
     <DatabaseHelpRoot isVisible={isVisible}>
       <DatabaseHelpCard />

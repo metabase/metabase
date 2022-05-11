@@ -9,7 +9,6 @@ import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
-import DatabaseHelp from "../DatabaseHelp";
 import {
   StepActions,
   StepDescription,
@@ -27,7 +26,7 @@ export interface DatabaseStepProps {
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onEngineChange: (engine: string) => void;
+  onEngineChange: (engine?: string) => void;
   onStepSelect: () => void;
   onDatabaseSubmit: (database: DatabaseInfo) => void;
   onInviteSubmit: (invite: InviteInfo) => void;
@@ -37,6 +36,7 @@ export interface DatabaseStepProps {
 const DatabaseStep = ({
   user,
   database,
+  engine,
   invite,
   isEmailConfigured,
   isStepActive,
@@ -48,19 +48,9 @@ const DatabaseStep = ({
   onInviteSubmit,
   onStepCancel,
 }: DatabaseStepProps): JSX.Element => {
-  const [engine, setEngine] = useState();
-
   const handleCancel = () => {
     onStepCancel(engine);
   };
-
-  const handleEngineChange = useCallback(
-    engine => {
-      setEngine(engine);
-      onEngineChange(engine);
-    },
-    [onEngineChange],
-  );
 
   if (!isStepActive) {
     return (
@@ -75,37 +65,34 @@ const DatabaseStep = ({
   }
 
   return (
-    <>
-      <ActiveStep
-        title={getStepTitle(database, invite, isStepCompleted)}
-        label={3}
-      >
-        <StepDescription>
-          <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
-          <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
-        </StepDescription>
-        <DatabaseForm
-          database={database}
-          engine={engine}
-          onSubmit={onDatabaseSubmit}
-          onEngineChange={handleEngineChange}
-        />
-        <StepActions>
-          <StepButton onClick={handleCancel}>
-            {t`I'll add my data later`}
-          </StepButton>
-        </StepActions>
-        {isEmailConfigured && (
-          <SetupSection
-            title={t`Need help connecting to your data?`}
-            description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
-          >
-            <InviteForm user={user} invite={invite} onSubmit={onInviteSubmit} />
-          </SetupSection>
-        )}
-      </ActiveStep>
-      <DatabaseHelp engine={engine} isStepActive />
-    </>
+    <ActiveStep
+      title={getStepTitle(database, invite, isStepCompleted)}
+      label={3}
+    >
+      <StepDescription>
+        <div>{t`Are you ready to start exploring your data? Add it below.`}</div>
+        <div>{t`Not ready? Skip and play around with our Sample Database.`}</div>
+      </StepDescription>
+      <DatabaseForm
+        database={database}
+        engine={engine}
+        onSubmit={onDatabaseSubmit}
+        onEngineChange={onEngineChange}
+      />
+      <StepActions>
+        <StepButton onClick={handleCancel}>
+          {t`I'll add my data later`}
+        </StepButton>
+      </StepActions>
+      {isEmailConfigured && (
+        <SetupSection
+          title={t`Need help connecting to your data?`}
+          description={t`Invite a teammate. We’ll make them an admin so they can configure your database. You can always change this later on.`}
+        >
+          <InviteForm user={user} invite={invite} onSubmit={onInviteSubmit} />
+        </SetupSection>
+      )}
+    </ActiveStep>
   );
 };
 
@@ -113,7 +100,7 @@ interface DatabaseFormProps {
   database?: DatabaseInfo;
   engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
-  onEngineChange: (engine: string) => void;
+  onEngineChange: (engine?: string) => void;
 }
 
 const DatabaseForm = ({
@@ -131,7 +118,7 @@ const DatabaseForm = ({
   };
 
   const handleEngineChange = (value?: string) => {
-    value && onEngineChange(value);
+    onEngineChange(value);
   };
 
   return (
@@ -155,7 +142,6 @@ const DatabaseForm = ({
             engine={values.engine}
             onChange={engine => {
               onChangeField("engine", engine);
-              onEngineChange(engine);
             }}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
