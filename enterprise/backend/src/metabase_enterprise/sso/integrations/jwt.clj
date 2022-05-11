@@ -12,7 +12,7 @@
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.response :as response])
-  (:import java.net.URLEncoder))
+  (:import java.net.MalformedURLException java.net.URL java.net.URLDecoder java.net.URLEncoder))
 
 (defn fetch-or-create-user!
   "Returns a session map for the given `email`. Will create the user if needed."
@@ -90,9 +90,21 @@
   (api/check (sso-settings/jwt-configured?)
     [400 (tru "JWT SSO has not been enabled and/or configured")]))
 
+(defn- check-jwt-redirect [redirect-url]
+  (let [decoded-url (URLDecoder/decode redirect-url)
+                    ;; In this case, this just means that we don't have a specified host in redirect,
+                    ;; meaning it can't be an open redirect
+        no-host     (= (first decoded-url) \/)
+        host        (try
+                      (.getHost (new URL decoded-url))
+                      (catch MalformedURLException e ""))]
+  (api/check (or no-host (= host "metabase.com"))
+    [400 (tru "JWT SSO is trying to do an open redirect to an untrusted site")])))
+
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
   (check-jwt-enabled)
+  (check-jwt-redirect redirect)
   (if jwt
     (login-jwt-user jwt request)
     (let [idp (sso-settings/jwt-identity-provider-uri)
