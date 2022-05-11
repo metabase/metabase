@@ -1,4 +1,4 @@
-## Bookmark
+# Bookmark
 
 Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
   model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
@@ -11,34 +11,38 @@ Handle creating bookmarks for the user. Bookmarks are in three tables and should
   - [POST /api/bookmark/:model/:id](#post-apibookmarkmodelid)
   - [PUT /api/bookmark/ordering](#put-apibookmarkordering)
 
-### `DELETE /api/bookmark/:model/:id`
+## `DELETE /api/bookmark/:model/:id`
 
 Delete a bookmark. Will delete a bookmark assigned to the user making the request by model and id.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`model`** value must be one of: `card`, `collection`, `dashboard`.
 
 *  **`id`** value must be an integer greater than zero.
 
-### `GET /api/bookmark/`
+## `GET /api/bookmark/`
 
 Fetch all bookmarks for the user.
 
-### `POST /api/bookmark/:model/:id`
+## `POST /api/bookmark/:model/:id`
 
 Create a new bookmark for user.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`model`** value must be one of: `card`, `collection`, `dashboard`.
 
 *  **`id`** value must be an integer greater than zero.
 
-### `PUT /api/bookmark/ordering`
+## `PUT /api/bookmark/ordering`
 
 Sets the order of bookmarks for user.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`orderings`** value must be an array.
+
+---
+
+[<< Back to API index](../api-documentation.md)

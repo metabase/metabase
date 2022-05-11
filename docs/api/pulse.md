@@ -1,4 +1,4 @@
-## Pulse
+# Pulse
 
 /api/pulse endpoints.
 
@@ -13,21 +13,21 @@
   - [POST /api/pulse/test](#post-apipulsetest)
   - [PUT /api/pulse/:id](#put-apipulseid)
 
-### `DELETE /api/pulse/:id/subscription`
+## `DELETE /api/pulse/:id/subscription`
 
 For users to unsubscribe themselves from a pulse subscription.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/pulse/`
+## `GET /api/pulse/`
 
 Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard subscriptions
   associated with that dashboard. If `user_id` is specified, restricts results to pulses or subscriptions
   created by the user, or for which the user is a known recipient.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -35,47 +35,47 @@ Fetch all Pulses. If `dashboard_id` is specified, restricts results to dashboard
 
 *  **`user_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `GET /api/pulse/:id`
+## `GET /api/pulse/:id`
 
 Fetch `Pulse` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/pulse/form_input`
+## `GET /api/pulse/form_input`
 
 Provides relevant configuration information and user choices for creating/updating Pulses.
 
-### `GET /api/pulse/preview_card/:id`
+## `GET /api/pulse/preview_card/:id`
 
 Get HTML rendering of a Card with `id`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/pulse/preview_card_info/:id`
+## `GET /api/pulse/preview_card_info/:id`
 
 Get JSON object containing HTML rendering of a Card with `id` and other information.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/pulse/preview_card_png/:id`
+## `GET /api/pulse/preview_card_png/:id`
 
 Get PNG rendering of a Card with `id`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/pulse/`
+## `POST /api/pulse/`
 
 Create a new `Pulse`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -93,11 +93,11 @@ Create a new `Pulse`.
 
 *  **`parameters`** value must be an array. Each value must be a map.
 
-### `POST /api/pulse/test`
+## `POST /api/pulse/test`
 
 Test send an unsaved pulse.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -113,11 +113,11 @@ Test send an unsaved pulse.
 
 *  **`dashboard_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `PUT /api/pulse/:id`
+## `PUT /api/pulse/:id`
 
 Update a Pulse with `id`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`skip_if_empty`** value may be nil, or if non-nil, value must be a boolean.
 
@@ -136,3 +136,7 @@ Update a Pulse with `id`.
 *  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
 
 *  **`pulse-updates`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

@@ -1,4 +1,4 @@
-## Timeline event
+# Timeline event
 
 /api/timeline-event endpoints.
 
@@ -7,27 +7,27 @@
   - [POST /api/timeline-event/](#post-apitimeline-event)
   - [PUT /api/timeline-event/:id](#put-apitimeline-eventid)
 
-### `DELETE /api/timeline-event/:id`
+## `DELETE /api/timeline-event/:id`
 
 Delete a [[TimelineEvent]].
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/timeline-event/:id`
+## `GET /api/timeline-event/:id`
 
 Fetch the [[TimelineEvent]] with `id`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/timeline-event/`
+## `POST /api/timeline-event/`
 
 Create a new [[TimelineEvent]].
 
-##### PARAMS:
+### PARAMS:
 
 *  **`timestamp`** value must be a valid date string
 
@@ -49,11 +49,11 @@ Create a new [[TimelineEvent]].
 
 *  **`icon`** value may be nil, or if non-nil, value must be one of: `balloons`, `bell`, `cloud`, `mail`, `star`, `warning`.
 
-### `PUT /api/timeline-event/:id`
+## `PUT /api/timeline-event/:id`
 
 Update a [[TimelineEvent]].
 
-##### PARAMS:
+### PARAMS:
 
 *  **`timestamp`** value may be nil, or if non-nil, value must be a valid date string
 
@@ -74,3 +74,7 @@ Update a [[TimelineEvent]].
 *  **`id`** 
 
 *  **`timeline-event-updates`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

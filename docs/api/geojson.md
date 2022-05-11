@@ -1,14 +1,14 @@
-## Geojson
+# Geojson
 
   - [GET /api/geojson/](#get-apigeojson)
   - [GET /api/geojson/:key](#get-apigeojsonkey)
 
-### `GET /api/geojson/`
+## `GET /api/geojson/`
 
 Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`url`** value must be a non-blank string.
 
@@ -16,15 +16,19 @@ Load a custom GeoJSON file based on a URL or file path provided as a query param
 
 *  **`raise`**
 
-### `GET /api/geojson/:key`
+## `GET /api/geojson/:key`
 
 Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This just acts as a simple proxy for the
   file specified for `key`).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`key`** value must be a non-blank string.
 
 *  **`respond`** 
 
 *  **`raise`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

@@ -1,4 +1,4 @@
-## Card
+# Card
 
 /api/card endpoints.
 
@@ -23,55 +23,55 @@
   - [POST /api/card/related](#post-apicardrelated)
   - [PUT /api/card/:id](#put-apicardid)
 
-### `DELETE /api/card/:card-id/public_link`
+## `DELETE /api/card/:card-id/public_link`
 
 Delete the publicly-accessible link to this Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`**
 
-### `DELETE /api/card/:id`
+## `DELETE /api/card/:id`
 
 Delete a Card. (DEPRECATED -- don't delete a Card anymore -- archive it instead.).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/card/`
+## `GET /api/card/`
 
 Get all the Cards. Option filter param `f` can be used to change the set of Cards that are returned; default is
   `all`, but other options include `mine`, `bookmarked`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `bookmarked`, `database`, `mine`, `popular`, `recent`, `table`.
 
 *  **`model_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `GET /api/card/:id`
+## `GET /api/card/:id`
 
 Get `Card` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/card/:id/related`
+## `GET /api/card/:id/related`
 
 Return related entities.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/card/:id/timelines`
+## `GET /api/card/:id/timelines`
 
 Get the timelines for card with ID. Looks up the collection the card is in and uses that.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -81,20 +81,20 @@ Get the timelines for card with ID. Looks up the collection the card is in and u
 
 *  **`end`** value may be nil, or if non-nil, value must be a valid date string
 
-### `GET /api/card/embeddable`
+## `GET /api/card/embeddable`
 
 Fetch a list of Cards where `enable_embedding` is `true`. The cards can be embedded using the embedding endpoints
   and a signed JWT.
 
-### `GET /api/card/public`
+## `GET /api/card/public`
 
 Fetch a list of Cards with public UUIDs. These cards are publicly-accessible *if* public sharing is enabled.
 
-### `POST /api/card/`
+## `POST /api/card/`
 
 Create a new `Card`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`visualization_settings`** value must be a map.
 
@@ -114,32 +114,32 @@ Create a new `Card`.
 
 *  **`display`** value must be a non-blank string.
 
-### `POST /api/card/:card-id/persist`
+## `POST /api/card/:card-id/persist`
 
 Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
   query in place of the model's query.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`** value must be an integer greater than zero.
 
-### `POST /api/card/:card-id/public_link`
+## `POST /api/card/:card-id/public_link`
 
 Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
   already been shared, it will return the existing public link rather than creating a new one.)  Public sharing must
   be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`**
 
-### `POST /api/card/:card-id/query`
+## `POST /api/card/:card-id/query`
 
 Run the query associated with a Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`** 
 
@@ -151,14 +151,14 @@ Run the query associated with a Card.
 
 *  **`collection_preview`** value may be nil, or if non-nil, value must be a boolean.
 
-### `POST /api/card/:card-id/query/:export-format`
+## `POST /api/card/:card-id/query/:export-format`
 
 Run the query associated with a Card, and return its results as a file in the specified format.
 
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`** 
 
@@ -166,51 +166,51 @@ Run the query associated with a Card, and return its results as a file in the sp
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
-### `POST /api/card/:card-id/refresh`
+## `POST /api/card/:card-id/refresh`
 
 Refresh the persisted model caching `card-id`.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`** value must be an integer greater than zero.
 
-### `POST /api/card/:card-id/unpersist`
+## `POST /api/card/:card-id/unpersist`
 
 Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
   query rather than the saved version of the query.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`** value must be an integer greater than zero.
 
-### `POST /api/card/:id/copy`
+## `POST /api/card/:id/copy`
 
 Copy a `Card`, with the new name 'Copy of _name_'.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `POST /api/card/collections`
+## `POST /api/card/collections`
 
 Bulk update endpoint for Card Collections. Move a set of `Cards` with CARD_IDS into a `Collection` with
   COLLECTION_ID, or remove them from any Collections by passing a `null` COLLECTION_ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card_ids`** value must be an array. Each value must be an integer greater than zero.
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `POST /api/card/pivot/:card-id/query`
+## `POST /api/card/pivot/:card-id/query`
 
 Run the query associated with a Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`card-id`** 
 
@@ -218,19 +218,19 @@ Run the query associated with a Card.
 
 *  **`ignore_cache`** value may be nil, or if non-nil, value must be a boolean.
 
-### `POST /api/card/related`
+## `POST /api/card/related`
 
 Return related entities for an ad-hoc query.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`query`**
 
-### `PUT /api/card/:id`
+## `PUT /api/card/:id`
 
 Update a `Card`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
 
@@ -261,3 +261,7 @@ Update a `Card`.
 *  **`id`** 
 
 *  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
+
+---
+
+[<< Back to API index](../api-documentation.md)

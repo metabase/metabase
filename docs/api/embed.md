@@ -1,4 +1,4 @@
-## Embed
+# Embed
 
 Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.
    The endpoints are the same as the ones in `api/public/`, and differ only in the way they are authorized.
@@ -33,7 +33,7 @@ Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fe
   - [GET /api/embed/pivot/card/:token/query](#get-apiembedpivotcardtokenquery)
   - [GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id](#get-apiembedpivotdashboardtokendashcarddashcard-idcardcard-id)
 
-### `GET /api/embed/card/:token`
+## `GET /api/embed/card/:token`
 
 Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -41,16 +41,16 @@ Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
      {:resource {:question <card-id>}}.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`**
 
-### `GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id`
+## `GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id`
 
 Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Cards.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -60,11 +60,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 *  **`value`** value must be a non-blank string.
 
-### `GET /api/embed/card/:token/field/:field-id/search/:search-field-id`
+## `GET /api/embed/card/:token/field/:field-id/search/:search-field-id`
 
 Search for values of a Field that is referenced by an embedded Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -76,17 +76,17 @@ Search for values of a Field that is referenced by an embedded Card.
 
 *  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
 
-### `GET /api/embed/card/:token/field/:field-id/values`
+## `GET /api/embed/card/:token/field/:field-id/values`
 
 Fetch FieldValues for a Field that is referenced by an embedded Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
 *  **`field-id`**
 
-### `GET /api/embed/card/:token/query`
+## `GET /api/embed/card/:token/query`
 
 Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -95,7 +95,7 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
      {:resource {:question <card-id>}
       :params   <parameters>}.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -103,11 +103,11 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
 
 *  **`query-params`**
 
-### `GET /api/embed/card/:token/query/:export-format`
+## `GET /api/embed/card/:token/query/:export-format`
 
 Like `GET /api/embed/card/query`, but returns the results as a file in the specified format.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -115,7 +115,7 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 *  **`query-params`**
 
-### `GET /api/embed/dashboard/:token`
+## `GET /api/embed/dashboard/:token`
 
 Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -123,16 +123,16 @@ Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
      {:resource {:dashboard <dashboard-id>}}.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`**
 
-### `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -144,12 +144,12 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 *  **`query-params`**
 
-### `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format`
+## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format`
 
 Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -161,12 +161,12 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 *  **`query-params`**
 
-### `GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id`
+## `GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id`
 
 Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with
   embedded Dashboards.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -176,11 +176,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 *  **`value`** value must be a non-blank string.
 
-### `GET /api/embed/dashboard/:token/field/:field-id/search/:search-field-id`
+## `GET /api/embed/dashboard/:token/field/:field-id/search/:search-field-id`
 
 Search for values of a Field that is referenced by a Card in an embedded Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -192,21 +192,21 @@ Search for values of a Field that is referenced by a Card in an embedded Dashboa
 
 *  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
 
-### `GET /api/embed/dashboard/:token/field/:field-id/values`
+## `GET /api/embed/dashboard/:token/field/:field-id/values`
 
 Fetch FieldValues for a Field that is used as a param in an embedded Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
 *  **`field-id`**
 
-### `GET /api/embed/dashboard/:token/params/:param-key/search/:prefix`
+## `GET /api/embed/dashboard/:token/params/:param-key/search/:prefix`
 
 Embedded version of chain filter search endpoint.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -216,11 +216,11 @@ Embedded version of chain filter search endpoint.
 
 *  **`query-params`**
 
-### `GET /api/embed/dashboard/:token/params/:param-key/values`
+## `GET /api/embed/dashboard/:token/params/:param-key/values`
 
 Embedded version of chain filter values endpoint.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -228,7 +228,7 @@ Embedded version of chain filter values endpoint.
 
 *  **`query-params`**
 
-### `GET /api/embed/pivot/card/:token/query`
+## `GET /api/embed/pivot/card/:token/query`
 
 Fetch the results of running a Card using a JSON Web Token signed with the `embedding-secret-key`.
 
@@ -237,7 +237,7 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
      {:resource {:question <card-id>}
       :params   <parameters>}.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -245,12 +245,12 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
 
 *  **`query-params`**
 
-### `GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+## `GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -261,3 +261,7 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 *  **`&`** 
 
 *  **`query-params`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

@@ -1,4 +1,4 @@
-## Timeline
+# Timeline
 
 /api/timeline endpoints.
 
@@ -8,30 +8,30 @@
   - [POST /api/timeline/](#post-apitimeline)
   - [PUT /api/timeline/:id](#put-apitimelineid)
 
-### `DELETE /api/timeline/:id`
+## `DELETE /api/timeline/:id`
 
 Delete a [[Timeline]]. Will cascade delete its events as well.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/timeline/`
+## `GET /api/timeline/`
 
 Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`include`** value may be nil, or if non-nil, value must be one of: `events`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `GET /api/timeline/:id`
+## `GET /api/timeline/:id`
 
 Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events included on the timeline. Add
   `archived=true` to return all events on the timeline, both archived and unarchived.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -43,11 +43,11 @@ Fetch the [[Timeline]] with `id`. Include `include=events` to unarchived events 
 
 *  **`end`** value may be nil, or if non-nil, value must be a valid date string
 
-### `POST /api/timeline/`
+## `POST /api/timeline/`
 
 Create a new [[Timeline]].
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -61,12 +61,12 @@ Create a new [[Timeline]].
 
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
-### `PUT /api/timeline/:id`
+## `PUT /api/timeline/:id`
 
 Update the [[Timeline]] with `id`. Returns the timeline without events. Archiving a timeline will archive all of the
   events in that timeline.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -83,3 +83,7 @@ Update the [[Timeline]] with `id`. Returns the timeline without events. Archivin
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`timeline-updates`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

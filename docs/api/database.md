@@ -1,4 +1,4 @@
-## Database
+# Database
 
 /api/database endpoints.
 
@@ -29,17 +29,17 @@
   - [POST /api/database/validate](#post-apidatabasevalidate)
   - [PUT /api/database/:id](#put-apidatabaseid)
 
-### `DELETE /api/database/:id`
+## `DELETE /api/database/:id`
 
 Delete a `Database`.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/database/`
+## `GET /api/database/`
 
 Fetch all `Databases`.
 
@@ -61,7 +61,7 @@ Fetch all `Databases`.
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
     effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`include_tables`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
@@ -75,7 +75,7 @@ Fetch all `Databases`.
 
 *  **`exclude_uneditable_details`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `GET /api/database/:id`
+## `GET /api/database/:id`
 
 Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
@@ -87,7 +87,7 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -95,7 +95,7 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
 
 *  **`include_editable_data_model`**
 
-### `GET /api/database/:id/autocomplete_suggestions`
+## `GET /api/database/:id/autocomplete_suggestions`
 
 Return a list of autocomplete suggestions for a given `prefix`.
 
@@ -106,7 +106,7 @@ Return a list of autocomplete suggestions for a given `prefix`.
   When Fields have a semantic_type, they are returned in the format `[field_name "table_name base_type semantic_type"]`
   When Fields lack a semantic_type, they are returned in the format `[field_name "table_name base_type"]`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -114,23 +114,23 @@ Return a list of autocomplete suggestions for a given `prefix`.
 
 *  **`search`**
 
-### `GET /api/database/:id/fields`
+## `GET /api/database/:id/fields`
 
 Get a list of all `Fields` in `Database`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/database/:id/idfields`
+## `GET /api/database/:id/idfields`
 
 Get a list of all primary key `Fields` for `Database`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/database/:id/metadata`
+## `GET /api/database/:id/metadata`
 
 Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
@@ -140,7 +140,7 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`. Ret
   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
   and tables, with no additional metadata.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -148,72 +148,72 @@ Get metadata about a `Database`, including all of its `Tables` and `Fields`. Ret
 
 *  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `GET /api/database/:id/schema/`
+## `GET /api/database/:id/schema/`
 
 Return a list of Tables for a Database whose `schema` is `nil` or an empty string.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/database/:id/schema/:schema`
+## `GET /api/database/:id/schema/:schema`
 
 Returns a list of Tables for the given Database `id` and `schema`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`schema`**
 
-### `GET /api/database/:id/schemas`
+## `GET /api/database/:id/schemas`
 
 Returns a list of all the schemas found for the database `id`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/database/:virtual-db/datasets`
+## `GET /api/database/:virtual-db/datasets`
 
 Returns a list of all the datasets found for the saved questions virtual database.
 
-### `GET /api/database/:virtual-db/datasets/:schema`
+## `GET /api/database/:virtual-db/datasets/:schema`
 
 Returns a list of Tables for the datasets virtual database.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`schema`**
 
-### `GET /api/database/:virtual-db/metadata`
+## `GET /api/database/:virtual-db/metadata`
 
 Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database.
 
-### `GET /api/database/:virtual-db/schema/:schema`
+## `GET /api/database/:virtual-db/schema/:schema`
 
 Returns a list of Tables for the saved questions virtual database.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`schema`**
 
-### `GET /api/database/:virtual-db/schemas`
+## `GET /api/database/:virtual-db/schemas`
 
 Returns a list of all the schemas found for the saved questions virtual database.
 
-### `GET /api/database/db-ids-with-deprecated-drivers`
+## `GET /api/database/db-ids-with-deprecated-drivers`
 
 Return a list of database IDs using currently deprecated drivers.
 
-### `POST /api/database/`
+## `POST /api/database/`
 
 Add a new `Database`.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -231,81 +231,81 @@ You must be a superuser to do this.
 
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `POST /api/database/:id/discard_values`
+## `POST /api/database/:id/discard_values`
 
 Discards all saved field values for this `Database`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/database/:id/persist`
+## `POST /api/database/:id/persist`
 
 Attempt to enable model persistence for a database. If already enabled returns a generic 204.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/database/:id/rescan_values`
+## `POST /api/database/:id/rescan_values`
 
 Trigger a manual scan of the field values for this `Database`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/database/:id/sync`
+## `POST /api/database/:id/sync`
 
 Update the metadata for this `Database`. This happens asynchronously.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/database/:id/sync_schema`
+## `POST /api/database/:id/sync_schema`
 
 Trigger a manual update of the schema metadata for this `Database`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/database/:id/unpersist`
+## `POST /api/database/:id/unpersist`
 
 Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/database/sample_database`
+## `POST /api/database/sample_database`
 
 Add the sample database as a new `Database`.
 
 You must be a superuser to do this.
 
-### `POST /api/database/validate`
+## `POST /api/database/validate`
 
 Validate that we can connect to a database given a set of details.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`engine`** value must be a valid database engine.
 
 *  **`details`** value must be a map.
 
-### `PUT /api/database/:id`
+## `PUT /api/database/:id`
 
 Update a `Database`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`engine`** value may be nil, or if non-nil, value must be a valid database engine.
 
@@ -332,3 +332,7 @@ Update a `Database`.
 *  **`id`** 
 
 *  **`is_on_demand`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

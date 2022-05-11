@@ -1,4 +1,4 @@
-## Preview embed
+# Preview embed
 
 Endpoints for previewing how Cards and Dashboards will look when embedding them.
    These endpoints are basically identical in functionality to the ones in `/api/embed`, but:
@@ -17,19 +17,19 @@ Endpoints for previewing how Cards and Dashboards will look when embedding them.
   - [GET /api/preview-embed/pivot/card/:token/query](#get-apipreview-embedpivotcardtokenquery)
   - [GET /api/preview-embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id](#get-apipreview-embedpivotdashboardtokendashcarddashcard-idcardcard-id)
 
-### `GET /api/preview-embed/card/:token`
+## `GET /api/preview-embed/card/:token`
 
 Fetch a Card you're considering embedding by passing a JWT `token`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`**
 
-### `GET /api/preview-embed/card/:token/query`
+## `GET /api/preview-embed/card/:token/query`
 
 Fetch the query results for a Card you're considering embedding by passing a JWT `token`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -37,19 +37,19 @@ Fetch the query results for a Card you're considering embedding by passing a JWT
 
 *  **`query-params`**
 
-### `GET /api/preview-embed/dashboard/:token`
+## `GET /api/preview-embed/dashboard/:token`
 
 Fetch a Dashboard you're considering embedding by passing a JWT `token`. .
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`**
 
-### `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+## `GET /api/preview-embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -61,11 +61,11 @@ Fetch the results of running a Card belonging to a Dashboard you're considering 
 
 *  **`query-params`**
 
-### `GET /api/preview-embed/pivot/card/:token/query`
+## `GET /api/preview-embed/pivot/card/:token/query`
 
 Fetch the query results for a Card you're considering embedding by passing a JWT `token`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -73,11 +73,11 @@ Fetch the query results for a Card you're considering embedding by passing a JWT
 
 *  **`query-params`**
 
-### `GET /api/preview-embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
+## `GET /api/preview-embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** 
 
@@ -88,3 +88,7 @@ Fetch the results of running a Card belonging to a Dashboard you're considering 
 *  **`&`** 
 
 *  **`query-params`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

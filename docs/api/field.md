@@ -1,4 +1,4 @@
-## Field
+# Field
 
   - [DELETE /api/field/:id/dimension](#delete-apifieldiddimension)
   - [GET /api/field/:id](#get-apifieldid)
@@ -14,35 +14,35 @@
   - [POST /api/field/:id/values](#post-apifieldidvalues)
   - [PUT /api/field/:id](#put-apifieldid)
 
-### `DELETE /api/field/:id/dimension`
+## `DELETE /api/field/:id/dimension`
 
 Remove the dimension associated to field at ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/field/:id`
+## `GET /api/field/:id`
 
 Get `Field` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/field/:id/related`
+## `GET /api/field/:id/related`
 
 Return related entities.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/field/:id/remapping/:remapped-id`
+## `GET /api/field/:id/remapping/:remapped-id`
 
 Fetch remapped Field values.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -50,12 +50,12 @@ Fetch remapped Field values.
 
 *  **`value`**
 
-### `GET /api/field/:id/search/:search-id`
+## `GET /api/field/:id/search/:search-id`
 
 Search for values of a Field with `search-id` that start with `value`. See docstring for
   `metabase.api.field/search-values` for a more detailed explanation.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -63,37 +63,37 @@ Search for values of a Field with `search-id` that start with `value`. See docst
 
 *  **`value`** value must be a non-blank string.
 
-### `GET /api/field/:id/summary`
+## `GET /api/field/:id/summary`
 
 Get the count and distinct count of `Field` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/field/:id/values`
+## `GET /api/field/:id/values`
 
 If a Field's value of `has_field_values` is `:list`, return a list of all the distinct values of the Field, and (if
   defined by a User) a map of human-readable remapped values.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/field/field%2C:field-name%2C:options/values`
+## `GET /api/field/field%2C:field-name%2C:options/values`
 
 Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
   convenience to simplify the frontend code. It just returns the standard 'empty' field values response.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`_`**
 
-### `POST /api/field/:id/dimension`
+## `POST /api/field/:id/dimension`
 
 Sets the dimension for the given field at ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -103,40 +103,40 @@ Sets the dimension for the given field at ID.
 
 *  **`human_readable_field_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `POST /api/field/:id/discard_values`
+## `POST /api/field/:id/discard_values`
 
 Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/field/:id/rescan_values`
+## `POST /api/field/:id/rescan_values`
 
 Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/field/:id/values`
+## `POST /api/field/:id/values`
 
 Update the fields values and human-readable values for a `Field` whose semantic type is
   `category`/`city`/`state`/`country` or whose base type is `type/Boolean`. The human-readable values are optional.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`value-pairs`** value must be an array. Each value must be an array.
 
-### `PUT /api/field/:id`
+## `PUT /api/field/:id`
 
 Update `Field` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `details-only`, `hidden`, `normal`, `retired`, `sensitive`.
 
@@ -161,3 +161,7 @@ Update `Field` with ID.
 *  **`nfc_path`** value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
 
 *  **`id`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

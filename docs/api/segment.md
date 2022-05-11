@@ -1,4 +1,4 @@
-## Segment
+# Segment
 
 /api/segment endpoints.
 
@@ -11,49 +11,49 @@
   - [POST /api/segment/:id/revert](#post-apisegmentidrevert)
   - [PUT /api/segment/:id](#put-apisegmentid)
 
-### `DELETE /api/segment/:id`
+## `DELETE /api/segment/:id`
 
 Archive a Segment. (DEPRECATED -- Just pass updated value of `:archived` to the `PUT` endpoint instead.).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`revision_message`** value must be a non-blank string.
 
-### `GET /api/segment/`
+## `GET /api/segment/`
 
 Fetch *all* `Segments`.
 
-### `GET /api/segment/:id`
+## `GET /api/segment/:id`
 
 Fetch `Segment` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/segment/:id/related`
+## `GET /api/segment/:id/related`
 
 Return related entities.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/segment/:id/revisions`
+## `GET /api/segment/:id/revisions`
 
 Fetch `Revisions` for `Segment` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/segment/`
+## `POST /api/segment/`
 
 Create a new `Segment`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -63,21 +63,21 @@ Create a new `Segment`.
 
 *  **`definition`** value must be a map.
 
-### `POST /api/segment/:id/revert`
+## `POST /api/segment/:id/revert`
 
 Revert a `Segement` to a prior `Revision`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`revision_id`** value must be an integer greater than zero.
 
-### `PUT /api/segment/:id`
+## `PUT /api/segment/:id`
 
 Update a `Segment` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`points_of_interest`** value may be nil, or if non-nil, value must be a string.
 
@@ -96,3 +96,7 @@ Update a `Segment` with ID.
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
 
 *  **`id`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

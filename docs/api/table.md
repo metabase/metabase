@@ -1,4 +1,4 @@
-## Table
+# Table
 
 /api/table endpoints.
 
@@ -15,27 +15,27 @@
   - [PUT /api/table/:id](#put-apitableid)
   - [PUT /api/table/:id/fields/order](#put-apitableidfieldsorder)
 
-### `GET /api/table/`
+## `GET /api/table/`
 
 Get all `Tables`.
 
-### `GET /api/table/:id`
+## `GET /api/table/:id`
 
 Get `Table` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/table/:id/fks`
+## `GET /api/table/:id/fks`
 
 Get all foreign keys whose destination is a `Field` that belongs to this `Table`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/table/:id/query_metadata`
+## `GET /api/table/:id/query_metadata`
 
 Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
@@ -45,7 +45,7 @@ Get metadata about a `Table` useful for running queries.
 
   These options are provided for use in the Admin Edit Metadata page.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -53,50 +53,50 @@ Get metadata about a `Table` useful for running queries.
 
 *  **`include_hidden_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `GET /api/table/:id/related`
+## `GET /api/table/:id/related`
 
 Return related entities.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/table/card__:id/fks`
+## `GET /api/table/card__:id/fks`
 
 Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint
    serves mainly as a placeholder to avoid having to change anything on the frontend.
 
-### `GET /api/table/card__:id/query_metadata`
+## `GET /api/table/card__:id/query_metadata`
 
 Return metadata for the 'virtual' table for a Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/table/:id/discard_values`
+## `POST /api/table/:id/discard_values`
 
 Discard the FieldValues belonging to the Fields in this Table. Only applies to fields that have FieldValues. If
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `POST /api/table/:id/rescan_values`
+## `POST /api/table/:id/rescan_values`
 
 Manually trigger an update for the FieldValues for the Fields belonging to this Table. Only applies to Fields that
    are eligible for FieldValues.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `PUT /api/table/`
+## `PUT /api/table/`
 
 Update all `Table` in `ids`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`ids`** value must be an array. Each value must be an integer greater than zero. The array cannot be empty.
 
@@ -114,11 +114,11 @@ Update all `Table` in `ids`.
 
 *  **`show_in_getting_started`** value may be nil, or if non-nil, value must be a boolean.
 
-### `PUT /api/table/:id`
+## `PUT /api/table/:id`
 
 Update `Table` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`visibility_type`** value may be nil, or if non-nil, value must be one of: `cruft`, `hidden`, `technical`.
 
@@ -138,12 +138,16 @@ Update `Table` with ID.
 
 *  **`id`**
 
-### `PUT /api/table/:id/fields/order`
+## `PUT /api/table/:id/fields/order`
 
 Reorder fields.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`field_order`** value must be an array. Each value must be an integer greater than zero.
+
+---
+
+[<< Back to API index](../api-documentation.md)

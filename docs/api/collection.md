@@ -1,4 +1,4 @@
-## Collection
+# Collection
 
 `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is
   the one that has things like Dashboards and Cards. Other namespaces of Collections exist as well, such as the
@@ -19,7 +19,7 @@
   - [PUT /api/collection/:id](#put-apicollectionid)
   - [PUT /api/collection/graph](#put-apicollectiongraph)
 
-### `GET /api/collection/`
+## `GET /api/collection/`
 
 Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
   additional property of each Collection so you can tell which of these you have write permissions for.)
@@ -27,21 +27,21 @@ Fetch a list of all Collections that the current user has read permissions for (
   By default, this returns non-archived Collections, but instead you can show archived ones by passing
   `?archived=true`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
-### `GET /api/collection/:id`
+## `GET /api/collection/:id`
 
 Fetch a specific Collection with standard details added.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/collection/:id/items`
+## `GET /api/collection/:id/items`
 
 Fetch a specific Collection's items with the following options:
 
@@ -51,7 +51,7 @@ Fetch a specific Collection's items with the following options:
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -65,11 +65,11 @@ Fetch a specific Collection's items with the following options:
 
 *  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
 
-### `GET /api/collection/:id/timelines`
+## `GET /api/collection/:id/timelines`
 
 Fetch a specific Collection's timelines.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -77,25 +77,25 @@ Fetch a specific Collection's timelines.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `GET /api/collection/graph`
+## `GET /api/collection/graph`
 
 Fetch a graph of all Collection Permissions.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
-### `GET /api/collection/root`
+## `GET /api/collection/root`
 
 Return the 'Root' Collection object with standard details added.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
-### `GET /api/collection/root/items`
+## `GET /api/collection/root/items`
 
 Fetch objects that the current user should see at their root level. As mentioned elsewhere, the 'Root' Collection
   doesn't actually exist as a row in the application DB: it's simply a virtual Collection where things with no
@@ -111,7 +111,7 @@ Fetch objects that the current user should see at their root level. As mentioned
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`models`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be an array. Each value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`. 2) value must be one of: `card`, `collection`, `dashboard`, `dataset`, `no_models`, `pulse`, `snippet`, `timeline`.
 
@@ -125,17 +125,17 @@ Fetch objects that the current user should see at their root level. As mentioned
 
 *  **`sort_direction`** value may be nil, or if non-nil, value must be one of: `asc`, `desc`.
 
-### `GET /api/collection/root/timelines`
+## `GET /api/collection/root/timelines`
 
 Fetch the root Collection's timelines.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`include`** value may be nil, or if non-nil, value must be one of: `events`.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `GET /api/collection/tree`
+## `GET /api/collection/tree`
 
 Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
@@ -158,17 +158,17 @@ Similar to `GET /`, but returns Collections in a tree structure, e.g.
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`exclude-archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
-### `POST /api/collection/`
+## `POST /api/collection/`
 
 Create a new Collection.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -182,11 +182,11 @@ Create a new Collection.
 
 *  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
 
-### `PUT /api/collection/:id`
+## `PUT /api/collection/:id`
 
 Modify an existing Collection, including archiving or unarchiving it, or moving it.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`authority_level`** value may be nil, or if non-nil, value must be one of: `official`.
 
@@ -206,14 +206,18 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 
 *  **`update_collection_tree_authority_level`** value may be nil, or if non-nil, value must be a boolean.
 
-### `PUT /api/collection/graph`
+## `PUT /api/collection/graph`
 
 Do a batch update of Collections Permissions by passing in a modified graph.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`namespace`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`body`** value must be a map.
+
+---
+
+[<< Back to API index](../api-documentation.md)

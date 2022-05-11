@@ -1,4 +1,4 @@
-## Permissions
+# Permissions
 
 /api/permissions endpoints.
 
@@ -14,44 +14,44 @@
   - [PUT /api/permissions/group/:group-id](#put-apipermissionsgroupgroup-id)
   - [PUT /api/permissions/membership/:id](#put-apipermissionsmembershipid)
 
-### `DELETE /api/permissions/group/:group-id`
+## `DELETE /api/permissions/group/:group-id`
 
 Delete a specific `PermissionsGroup`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`group-id`**
 
-### `DELETE /api/permissions/membership/:id`
+## `DELETE /api/permissions/membership/:id`
 
 Remove a User from a PermissionsGroup (delete their membership).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/permissions/graph`
+## `GET /api/permissions/graph`
 
 Fetch a graph of all Permissions.
 
 You must be a superuser to do this.
 
-### `GET /api/permissions/group`
+## `GET /api/permissions/group`
 
 Fetch all `PermissionsGroups`, including a count of the number of `:members` in that group.
   This API requires superuser or group manager of more than one group.
   Group manager is only available if `advanced-permissions` is enabled and returns only groups that user
   is manager of.
 
-### `GET /api/permissions/group/:id`
+## `GET /api/permissions/group/:id`
 
 Fetch the details for a certain permissions group.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/permissions/membership`
+## `GET /api/permissions/membership`
 
 Fetch a map describing the group memberships of various users.
    This map's format is:
@@ -60,21 +60,21 @@ Fetch a map describing the group memberships of various users.
                  :group_id         <id>
                  :is_group_manager boolean}]}.
 
-### `POST /api/permissions/group`
+## `POST /api/permissions/group`
 
 Create a new `PermissionsGroup`.
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
-### `POST /api/permissions/membership`
+## `POST /api/permissions/membership`
 
 Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`group_id`** value must be an integer greater than zero.
 
@@ -82,7 +82,7 @@ Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging 
 
 *  **`is_group_manager`** value may be nil, or if non-nil, value must be a boolean.
 
-### `PUT /api/permissions/graph`
+## `PUT /api/permissions/graph`
 
 Do a batch update of Permissions by passing in a modified graph. This should return the same graph, in the same
   format, that you got from `GET /api/permissions/graph`, with any changes made in the wherever necessary. This
@@ -95,26 +95,30 @@ Do a batch update of Permissions by passing in a modified graph. This should ret
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`body`** value must be a map.
 
-### `PUT /api/permissions/group/:group-id`
+## `PUT /api/permissions/group/:group-id`
 
 Update the name of a `PermissionsGroup`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`group-id`** 
 
 *  **`name`** value must be a non-blank string.
 
-### `PUT /api/permissions/membership/:id`
+## `PUT /api/permissions/membership/:id`
 
 Update a Permission Group membership. Returns the updated record.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`is_group_manager`** value must be a boolean.
+
+---
+
+[<< Back to API index](../api-documentation.md)

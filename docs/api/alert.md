@@ -1,4 +1,4 @@
-## Alert
+# Alert
 
 /api/alert endpoints.
 
@@ -9,47 +9,47 @@
   - [POST /api/alert/](#post-apialert)
   - [PUT /api/alert/:id](#put-apialertid)
 
-### `DELETE /api/alert/:id/subscription`
+## `DELETE /api/alert/:id/subscription`
 
 For users to unsubscribe themselves from the given alert.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/alert/`
+## `GET /api/alert/`
 
 Fetch all alerts.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`user_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `GET /api/alert/:id`
+## `GET /api/alert/:id`
 
 Fetch an alert by ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/alert/question/:id`
+## `GET /api/alert/question/:id`
 
 Fetch all questions for the given question (`Card`) id.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`archived`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-### `POST /api/alert/`
+## `POST /api/alert/`
 
 Create a new Alert.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`alert_condition`** value must be one of: `goal`, `rows`.
 
@@ -63,11 +63,11 @@ Create a new Alert.
 
 *  **`new-alert-request-body`**
 
-### `PUT /api/alert/:id`
+## `PUT /api/alert/:id`
 
 Update a `Alert` with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -84,3 +84,7 @@ Update a `Alert` with ID.
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`alert-updates`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

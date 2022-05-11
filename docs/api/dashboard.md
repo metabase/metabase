@@ -1,4 +1,4 @@
-## Dashboard
+# Dashboard
 
 /api/dashboard endpoints.
 
@@ -27,33 +27,33 @@
   - [PUT /api/dashboard/:id](#put-apidashboardid)
   - [PUT /api/dashboard/:id/cards](#put-apidashboardidcards)
 
-### `DELETE /api/dashboard/:dashboard-id/public_link`
+## `DELETE /api/dashboard/:dashboard-id/public_link`
 
 Delete the publicly-accessible link to this Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`dashboard-id`**
 
-### `DELETE /api/dashboard/:id`
+## `DELETE /api/dashboard/:id`
 
 Delete a Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `DELETE /api/dashboard/:id/cards`
+## `DELETE /api/dashboard/:id/cards`
 
 Remove a `DashboardCard` from a Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`dashcardId`** value must be a valid integer greater than zero.
 
-### `GET /api/dashboard/`
+## `GET /api/dashboard/`
 
 Get `Dashboards`. With filter option `f` (default `all`), restrict results as follows:
 
@@ -61,19 +61,19 @@ Get `Dashboards`. With filter option `f` (default `all`), restrict results as fo
   *  `mine`     - Return Dashboards created by the current user.
   *  `archived` - Return Dashboards that have been archived. (By default, these are *excluded*.).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`f`** value may be nil, or if non-nil, value must be one of: `all`, `archived`, `mine`.
 
-### `GET /api/dashboard/:id`
+## `GET /api/dashboard/:id`
 
 Get Dashboard with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/dashboard/:id/params/:param-key/search/:query`
+## `GET /api/dashboard/:id/params/:param-key/search/:query`
 
 Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
   these values by passing query parameters like `other-parameter=value` e.g.
@@ -84,7 +84,7 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
   Currently limited to first 1000 results.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -94,7 +94,7 @@ Fetch possible values of the parameter whose ID is `:param-key` that contain `:q
 
 *  **`query-params`**
 
-### `GET /api/dashboard/:id/params/:param-key/values`
+## `GET /api/dashboard/:id/params/:param-key/values`
 
 Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
   parameters like `other-parameter=value` e.g.
@@ -102,7 +102,7 @@ Fetch possible values of the parameter whose ID is `:param-key`. Optionally rest
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -110,28 +110,28 @@ Fetch possible values of the parameter whose ID is `:param-key`. Optionally rest
 
 *  **`query-params`**
 
-### `GET /api/dashboard/:id/related`
+## `GET /api/dashboard/:id/related`
 
 Return related entities.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/dashboard/:id/revisions`
+## `GET /api/dashboard/:id/revisions`
 
 Fetch `Revisions` for Dashboard with ID.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`**
 
-### `GET /api/dashboard/embeddable`
+## `GET /api/dashboard/embeddable`
 
 Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT.
 
-### `GET /api/dashboard/params/valid-filter-fields`
+## `GET /api/dashboard/params/valid-filter-fields`
 
 Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
   parameters) and a set of `filtering` Field IDs that will be used to restrict values of `filtered` Fields, for each
@@ -154,22 +154,22 @@ Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field I
 
     `filtered` Field ID -> subset of `filtering` Field IDs that would be used in chain filter query.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`filtered`** value must satisfy one of the following requirements: 1) value must be a valid integer greater than zero. 2) value must be an array. Each value must be a valid integer greater than zero. The array cannot be empty.
 
 *  **`filtering`** value may be nil, or if non-nil, value must satisfy one of the following requirements: 1) value must be a valid integer greater than zero. 2) value must be an array. Each value must be a valid integer greater than zero. The array cannot be empty.
 
-### `GET /api/dashboard/public`
+## `GET /api/dashboard/public`
 
 Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled.
 
-### `POST /api/dashboard/`
+## `POST /api/dashboard/`
 
 Create a new Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`name`** value must be a non-blank string.
 
@@ -185,11 +185,11 @@ Create a new Dashboard.
 
 *  **`_dashboard`**
 
-### `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
+## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
 
 Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`dashboard-id`** 
 
@@ -199,7 +199,7 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
-### `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format`
+## `POST /api/dashboard/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query/:export-format`
 
 Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it, and return
   its results as a file in the specified format.
@@ -207,7 +207,7 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
   `parameters` should be passed as query parameter encoded as a serialized JSON string (this is because this endpoint
   is normally used to power 'Download Results' buttons that use HTML `form` actions).
 
-##### PARAMS:
+### PARAMS:
 
 *  **`dashboard-id`** 
 
@@ -221,7 +221,7 @@ Run the query associated with a Saved Question (`Card`) in the context of a `Das
 
 *  **`request-parameters`**
 
-### `POST /api/dashboard/:dashboard-id/public_link`
+## `POST /api/dashboard/:dashboard-id/public_link`
 
 Generate publicly-accessible links for this Dashboard. Returns UUID to be used in public links. (If this
   Dashboard has already been shared, it will return the existing public link rather than creating a new one.) Public
@@ -229,15 +229,15 @@ Generate publicly-accessible links for this Dashboard. Returns UUID to be used i
 
 You must be a superuser to do this.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`dashboard-id`**
 
-### `POST /api/dashboard/:from-dashboard-id/copy`
+## `POST /api/dashboard/:from-dashboard-id/copy`
 
 Copy a Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`from-dashboard-id`** 
 
@@ -251,11 +251,11 @@ Copy a Dashboard.
 
 *  **`_dashboard`**
 
-### `POST /api/dashboard/:id/cards`
+## `POST /api/dashboard/:id/cards`
 
 Add a `Card` to a Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
@@ -265,21 +265,21 @@ Add a `Card` to a Dashboard.
 
 *  **`dashboard-card`**
 
-### `POST /api/dashboard/:id/revert`
+## `POST /api/dashboard/:id/revert`
 
 Revert a Dashboard to a prior `Revision`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`revision_id`** value must be an integer greater than zero.
 
-### `POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
+## `POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query`
 
 Run a pivot table query for a specific DashCard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`dashboard-id`** 
 
@@ -289,25 +289,25 @@ Run a pivot table query for a specific DashCard.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a parameter map with an 'id' key
 
-### `POST /api/dashboard/save`
+## `POST /api/dashboard/save`
 
 Save a denormalized description of dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`dashboard`**
 
-### `POST /api/dashboard/save/collection/:parent-collection-id`
+## `POST /api/dashboard/save/collection/:parent-collection-id`
 
 Save a denormalized description of dashboard into collection with ID `:parent-collection-id`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`parent-collection-id`** 
 
 *  **`dashboard`**
 
-### `PUT /api/dashboard/:id`
+## `PUT /api/dashboard/:id`
 
 Update a Dashboard.
 
@@ -315,7 +315,7 @@ Update a Dashboard.
   permissions for the Cards belonging to this Dashboard), but to change the value of `enable_embedding` you must be a
   superuser.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`parameters`** value may be nil, or if non-nil, value must be an array. Each value must be a map.
 
@@ -347,7 +347,7 @@ Update a Dashboard.
 
 *  **`position`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
-### `PUT /api/dashboard/:id/cards`
+## `PUT /api/dashboard/:id/cards`
 
 Update `Cards` on a Dashboard. Request body should have the form:
 
@@ -361,8 +361,12 @@ Update `Cards` on a Dashboard. Request body should have the form:
                                     ...}]}
              ...]}.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`id`** 
 
 *  **`cards`** value must be an array. Each value must be a valid DashboardCard map. The array cannot be empty.
+
+---
+
+[<< Back to API index](../api-documentation.md)

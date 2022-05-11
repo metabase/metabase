@@ -1,4 +1,4 @@
-## Public
+# Public
 
 Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
 
@@ -19,21 +19,21 @@ Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.
   - [GET /api/public/pivot/card/:uuid/query](#get-apipublicpivotcarduuidquery)
   - [GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id](#get-apipublicpivotdashboarduuiddashcarddashcard-idcardcard-id)
 
-### `GET /api/public/card/:uuid`
+## `GET /api/public/card/:uuid`
 
 Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`**
 
-### `GET /api/public/card/:uuid/field/:field-id/remapping/:remapped-id`
+## `GET /api/public/card/:uuid/field/:field-id/remapping/:remapped-id`
 
 Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Cards.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -43,11 +43,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 *  **`value`** value must be a non-blank string.
 
-### `GET /api/public/card/:uuid/field/:field-id/search/:search-field-id`
+## `GET /api/public/card/:uuid/field/:field-id/search/:search-field-id`
 
 Search for values of a Field that is referenced by a public Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -59,33 +59,33 @@ Search for values of a Field that is referenced by a public Card.
 
 *  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
 
-### `GET /api/public/card/:uuid/field/:field-id/values`
+## `GET /api/public/card/:uuid/field/:field-id/values`
 
 Fetch FieldValues for a Field that is referenced by a public Card.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
 *  **`field-id`**
 
-### `GET /api/public/card/:uuid/query`
+## `GET /api/public/card/:uuid/query`
 
 Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
-### `GET /api/public/card/:uuid/query/:export-format`
+## `GET /api/public/card/:uuid/query/:export-format`
 
 Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -93,20 +93,20 @@ Fetch a publicly-accessible Card and return query results in the specified forma
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
-### `GET /api/public/dashboard/:uuid`
+## `GET /api/public/dashboard/:uuid`
 
 Fetch a publicly-accessible Dashboard. Does not require auth credentials. Public sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`**
 
-### `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id`
+## `GET /api/public/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -116,12 +116,12 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
-### `GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id`
+## `GET /api/public/dashboard/:uuid/field/:field-id/remapping/:remapped-id`
 
 Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:remapped-id`, but for use with public
   Dashboards.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -131,11 +131,11 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 *  **`value`** value must be a non-blank string.
 
-### `GET /api/public/dashboard/:uuid/field/:field-id/search/:search-field-id`
+## `GET /api/public/dashboard/:uuid/field/:field-id/search/:search-field-id`
 
 Search for values of a Field that is referenced by a Card in a public Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -147,21 +147,21 @@ Search for values of a Field that is referenced by a Card in a public Dashboard.
 
 *  **`limit`** value may be nil, or if non-nil, value must be a valid integer greater than zero.
 
-### `GET /api/public/dashboard/:uuid/field/:field-id/values`
+## `GET /api/public/dashboard/:uuid/field/:field-id/values`
 
 Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
 *  **`field-id`**
 
-### `GET /api/public/dashboard/:uuid/params/:param-key/search/:query`
+## `GET /api/public/dashboard/:uuid/params/:param-key/search/:query`
 
 Fetch filter values for dashboard parameter `param-key`, containing specified `query`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -171,11 +171,11 @@ Fetch filter values for dashboard parameter `param-key`, containing specified `q
 
 *  **`query-params`**
 
-### `GET /api/public/dashboard/:uuid/params/:param-key/values`
+## `GET /api/public/dashboard/:uuid/params/:param-key/values`
 
 Fetch filter values for dashboard parameter `param-key`.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -183,11 +183,11 @@ Fetch filter values for dashboard parameter `param-key`.
 
 *  **`query-params`**
 
-### `GET /api/public/oembed`
+## `GET /api/public/oembed`
 
 oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`url`** value must be a non-blank string.
 
@@ -197,23 +197,23 @@ oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase
 
 *  **`maxwidth`** value may be nil, or if non-nil, value must be a valid integer.
 
-### `GET /api/public/pivot/card/:uuid/query`
+## `GET /api/public/pivot/card/:uuid/query`
 
 Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
 
-### `GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id`
+## `GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id`
 
 Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`uuid`** 
 
@@ -222,3 +222,7 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 *  **`dashcard-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+---
+
+[<< Back to API index](../api-documentation.md)

@@ -1,4 +1,4 @@
-## Session
+# Session
 
 /api/session endpoints.
 
@@ -10,31 +10,31 @@
   - [POST /api/session/google_auth](#post-apisessiongoogle_auth)
   - [POST /api/session/reset_password](#post-apisessionreset_password)
 
-### `DELETE /api/session/`
+## `DELETE /api/session/`
 
 Logout.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`metabase-session-id`**
 
-### `GET /api/session/password_reset_token_valid`
+## `GET /api/session/password_reset_token_valid`
 
 Check is a password reset token is valid and isn't expired.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** value must be a string.
 
-### `GET /api/session/properties`
+## `GET /api/session/properties`
 
 Get all global properties and their values. These are the specific `Settings` which are meant to be public.
 
-### `POST /api/session/`
+## `POST /api/session/`
 
 Login.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`username`** value must be a non-blank string.
 
@@ -42,34 +42,38 @@ Login.
 
 *  **`request`**
 
-### `POST /api/session/forgot_password`
+## `POST /api/session/forgot_password`
 
 Send a reset email when user has forgotten their password.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`email`** value must be a valid email address.
 
 *  **`request`**
 
-### `POST /api/session/google_auth`
+## `POST /api/session/google_auth`
 
 Login with Google Auth.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** value must be a non-blank string.
 
 *  **`request`**
 
-### `POST /api/session/reset_password`
+## `POST /api/session/reset_password`
 
 Reset password with a reset token.
 
-##### PARAMS:
+### PARAMS:
 
 *  **`token`** value must be a non-blank string.
 
 *  **`password`** password is too common.
 
 *  **`request`**
+
+---
+
+[<< Back to API index](../api-documentation.md)
