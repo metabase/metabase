@@ -378,7 +378,7 @@
             (fn []
               (let [req-options (saml-post-request-options (saml-test-response) relay-state)
                     response    (client-full-response :post 400 "/auth/sso" req-options)]
-                (is (not (successful-login? response))))))))))
+                (is (not (successful-login? response)))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
