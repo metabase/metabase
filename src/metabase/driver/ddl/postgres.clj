@@ -20,17 +20,12 @@
     (format "create schema %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid))))))
 
-(defn- create-table-sql [{driver :engine :as database} definition]
+(defn- create-table-sql [{driver :engine :as database} definition query]
   (let [q (quote-fn driver)]
-    (format "create table %s.%s (%s);"
+    (format "create table %s.%s as %s"
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table (:table-name definition))
-            (str/join
-             ", "
-             (for [{:keys [field-name base-type]} (:field-definitions definition)]
-               (format "%s %s"
-                       (q :field field-name)
-                       (ddl.i/field-base-type->sql-type driver base-type)))))))
+            query)))
 
 (defn- drop-table-sql [{driver :engine :as database} table-name]
   (let [q (quote-fn driver)]
@@ -38,26 +33,13 @@
             (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
             (q :table table-name))))
 
-(defn- populate-table-sql [{driver :engine :as database} definition query]
-  (let [q (quote-fn driver)]
-   (format "insert into %s.%s (%s) %s"
-           (q :table (ddl.i/schema-name database (public-settings/site-uuid)))
-           (q :table (:table-name definition))
-           (str/join
-            ", "
-            (for [{:keys [field-name]} (:field-definitions definition)]
-              (q :field field-name)))
-           query)))
-
 (defmethod ddl.i/refresh! :postgres [_driver database definition dataset-query]
   (try
-    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
-      (jdbc/execute! conn [(drop-table-sql database (:table-name definition))])
-      (jdbc/execute! conn [(create-table-sql database definition)])
-      (jdbc/execute! conn [(populate-table-sql database definition (-> dataset-query
-                                                                       qp/compile
-                                                                       :query))])
-      {:state :success})
+    (let [{:keys [query params]} (qp/compile dataset-query)]
+      (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+        (jdbc/execute! conn [(drop-table-sql database (:table-name definition))])
+        (jdbc/execute! conn (into [(create-table-sql database definition query)] params))
+        {:state :success}))
     (catch Exception e
       {:state :error :error (ex-message e)})))
 
