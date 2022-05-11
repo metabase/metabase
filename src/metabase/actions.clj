@@ -41,23 +41,23 @@
 
 (defmulti row-action!
   "Multimethod for doing an action against a specific row as a whole, e.g. updating or deleting that row."
-  {:arglists '([action {:keys [table-id pk], :as arg-map}])}
-  (fn [action driver _arg-map]
+  {:arglists '([action driver query])}
+  (fn [action driver _query]
     [(keyword action)
      (driver/dispatch-on-initialized-driver driver)])
   :hierarchy #'driver/hierarchy)
 
 (defmethod row-action! :default
-  [action driver arg-map]
+  [action driver query]
   (throw (ex-info (i18n/tru "Unknown row action {0}." (pr-str (some-> action name)))
-                  {:status-code 404, :action action, :driver driver, :arg-map arg-map})))
+                  {:status-code 404, :action action, :driver driver, :query query})))
 
 (defmethod row-action! [:delete ::driver/driver]
-  [action driver arg-map]
+  [action driver query]
   (throw (ex-info (i18n/tru "Row deletion is not supported for {0} databases." (name driver))
-                  {:status-code 400, :action action, :driver driver, :arg-map arg-map})))
+                  {:status-code 400, :action action, :driver driver, :query query})))
 
 (defmethod row-action! [:update ::driver/driver]
-  [action driver arg-map]
+  [action driver query]
   (throw (ex-info (i18n/tru "Row updating is not supported for {0} databases." (name driver))
-                  {:status-code 400, :action action, :driver driver, :arg-map arg-map})))
+                  {:status-code 400, :action action, :driver driver, :query query})))

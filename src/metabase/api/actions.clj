@@ -5,17 +5,18 @@
    [metabase.actions :as actions]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
    [metabase.models.database :refer [Database]]
    [metabase.models.setting :as setting]
-   [metabase.models.table :refer [Table]]
    [metabase.util.i18n :as i18n]
-   [metabase.util.schema :as su]
-   [toucan.db :as db]))
+   [schema.core :as s]
+   [toucan.db :as db]
+   [cheshire.core :as json]
+   [clojure.walk :as walk]))
 
-(defn- do-action-for-table [table-id f]
-  {:pre [(integer? table-id)]}
-  (let [database-id (api/check-404 (db/select-one-field :db_id Table :id table-id))
-        db-settings (db/select-one-field :settings Database :id database-id)
+(defn- do-check-actions-enabled [database-id f]
+  {:pre [(integer? database-id)]}
+  (let [db-settings (db/select-one-field :settings Database :id database-id)
         driver      (driver.u/database->driver database-id)]
     (binding [setting/*database-local-values* db-settings]
       ;; make sure Actions are enabled for this Database
@@ -27,22 +28,43 @@
 
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."
-  [action :as {{:keys [table-id], :as body} :body}]
-  {table-id su/IntGreaterThanZero}
-  (do-action-for-table
-   table-id
+  [action :as {{:keys [database], :as query} :body}]
+  #_{database s/Int query {:filter mbql.s/Filter}}
+  (do-check-actions-enabled
+   database
    (fn [_driver]
-     (actions/table-action! (keyword action) (assoc body :table-id table-id)))))
+     (actions/table-action! (keyword action) query))))
+
+;; HACK:
+(defn kwdize-filter [strings-to-kw query]
+  (update-in query [:query :filter]
+             #(walk/postwalk
+               (fn [x] (if (and
+                            (string? x)
+                            (contains? strings-to-kw x))
+                         (keyword x)
+                         x))
+               %)))
 
 (api/defendpoint POST "/row/:action"
   "Generic API endpoint for doing an action against a specific row."
-  [action :as {{:keys [table-id pk], :as body} :body}]
-  {table-id su/IntGreaterThanZero
-   pk       su/Map}
-  (do-action-for-table
-   table-id
-   (fn [driver]
-     (actions/row-action! (keyword action) driver (assoc body :table-id table-id)))))
+  [action :as {{:keys [database] :as query} :body}]
+  (let [query (kwdize-filter
+               ;; HACK:
+               ;; the query's filter clause needs to have forms like:
+               ;; [:= [:field ...]]
+               ;; but we recieve forms like
+               ;; ["=" ["field" ...]]
+               #{"=" "<" ">" "field" "and"}
+               query)
+
+        table-id (:source-table query)]
+    (def a action)
+    (def q query)
+    (do-check-actions-enabled
+     database
+     (fn [driver]
+       (actions/row-action! (keyword action) driver query)))))
 
 (defn- +check-actions-enabled
   "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
