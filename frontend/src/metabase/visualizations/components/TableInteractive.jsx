@@ -13,7 +13,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
 import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -337,7 +337,6 @@ class TableInteractive extends Component {
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
   _getCellClickedObjectCached(
     data,
     settings,
@@ -376,7 +375,6 @@ class TableInteractive extends Component {
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
   _getHeaderClickedObjectCached(data, columnIndex, isPivoted) {
     return getTableHeaderClickedObject(data, columnIndex, isPivoted);
   }
@@ -402,13 +400,11 @@ class TableInteractive extends Component {
     }
   }
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
   _visualizationIsClickableCached(visualizationIsClickable, clicked) {
     return visualizationIsClickable(clicked);
   }
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
   getCellBackgroundColor(settings, value, rowIndex, columnName) {
     try {
       return settings["table._cell_background_getter"](
@@ -422,7 +418,6 @@ class TableInteractive extends Component {
   }
 
   // NOTE: all arguments must be passed to the memoized method, not taken from this.props etc
-  @memoize
   getCellFormattedValue(value, columnSettings, clicked) {
     try {
       return formatValue(value, {
@@ -600,7 +595,6 @@ class TableInteractive extends Component {
     return style.left;
   }
 
-  @memoize
   getDimension(column, query) {
     if (!query) {
       return undefined;
@@ -1045,9 +1039,19 @@ class TableInteractive extends Component {
   }
 }
 
-export default ExplicitSize({
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
-})(TableInteractive);
+export default _.compose(
+  ExplicitSize({
+    refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+  }),
+  memoizeClass(
+    "_getCellClickedObjectCached",
+    "_getHeaderClickedObjectCached",
+    "_visualizationIsClickableCached",
+    "getCellBackgroundColor",
+    "getCellFormattedValue",
+    "getDimension",
+  ),
+)(TableInteractive);
 
 const DetailShortcut = React.forwardRef((_props, ref) => (
   <div
