@@ -44,7 +44,6 @@
         (User id)))))
 
 (defn check-sso-redirect [redirect-url]
-  (println redirect-url)
   (let [decoded-url (some-> redirect-url (URLDecoder/decode))
                     ;; In this case, this just means that we don't have a specified host in redirect,
                     ;; meaning it can't be an open redirect
@@ -52,6 +51,7 @@
         host        (try
                       (.getHost (new URL decoded-url))
                       (catch MalformedURLException _ ""))
-        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
+        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))
+        printo      (println our-host)]
   (api/check (or no-host (= host our-host))
     [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))

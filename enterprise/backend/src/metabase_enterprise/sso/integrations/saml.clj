@@ -35,7 +35,7 @@
             [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
-  (:import java.net.URL java.net.URLDecoder java.util.UUID))
+  (:import java.net.URL java.net.URLDecoder java.net.URLEncoder java.util.UUID))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"
@@ -114,21 +114,22 @@
   (try
     (let [redirect-url (or (get-in req [:params :redirect])
                            (log/warn (trs "Warning: expected `redirect` param, but none is present"))
-                           (public-settings/site-url))
-          idp-url      (sso-settings/saml-identity-provider-uri)
-          saml-request (saml/request
-                        {:request-id (str "id-" (java.util.UUID/randomUUID))
-                         :sp-name    (sso-settings/saml-application-name)
-                         :issuer     (sso-settings/saml-application-name)
-                         :acs-url    (acs-url)
-                         :idp-url    idp-url
-                         :credential (sp-cert-keystore-details)})
-          relay-state  (saml/str->base64 redirect-url)]
-      (saml/idp-redirect-response saml-request idp-url relay-state))
-    (catch Throwable e
-      (let [msg (trs "Error generating SAML request")]
-        (log/error e msg)
-        (throw (ex-info msg {:status-code 500} e))))))
+                           (public-settings/site-url))]
+      (sso-utils/check-sso-redirect redirect-url)
+      (let [idp-url      (sso-settings/saml-identity-provider-uri)
+            saml-request (saml/request
+                           {:request-id (str "id-" (java.util.UUID/randomUUID))
+                            :sp-name    (sso-settings/saml-application-name)
+                            :issuer     (sso-settings/saml-application-name)
+                            :acs-url    (acs-url)
+                            :idp-url    idp-url
+                            :credential (sp-cert-keystore-details)})
+            relay-state  (saml/str->base64 redirect-url)]
+        (saml/idp-redirect-response saml-request idp-url relay-state)))
+      (catch Throwable e
+        (let [msg (trs "Error generating SAML request")]
+          (log/error e msg)
+          (throw (ex-info msg {:status-code 500} e))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)
@@ -178,7 +179,6 @@
                         (when-let [s (some-> (:RelayState params) base64-decode)]
                           (when-not (str/blank? s)
                             s)))]
-    (println continue-url)
     (sso-utils/check-sso-redirect continue-url)
     (let [xml-string    (base64-decode (:SAMLResponse params))
           saml-response (xml-string->saml-response xml-string)

@@ -72,13 +72,13 @@
   [jwt {{redirect :return_to} :params, :as request}]
   (let [redirect-url (or redirect (URLEncoder/encode "/"))]
     (sso-utils/check-sso-redirect redirect-url)
-    (let [ jwt-data     (try
-                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                      {:max-age three-minutes-in-seconds})
-                          (catch Throwable e
-                            (throw (ex-info (ex-message e)
-                                            (assoc (ex-data e) :status-code 401)
-                                            e))))
+    (let [jwt-data     (try
+                         (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                     {:max-age three-minutes-in-seconds})
+                         (catch Throwable e
+                           (throw (ex-info (ex-message e)
+                                           (assoc (ex-data e) :status-code 401)
+                                           e))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
           first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
