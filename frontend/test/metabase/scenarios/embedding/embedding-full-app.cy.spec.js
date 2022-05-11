@@ -6,14 +6,26 @@ describe("scenarios > embedding > full app", () => {
     cy.signInAsAdmin();
   });
 
-  it("should hide the top nav by default", () => {
+  it("should hide top nav by default", () => {
     visitApp("/");
     cy.findByTestId("main-logo").should("not.exist");
   });
 
-  it("should show the top nav with a param", () => {
+  it("should show top nav when enabled", () => {
     visitApp("/?top_nav=true");
     cy.findAllByTestId("main-logo").should("be.visible");
+    cy.findByRole("button", { name: /New/ }).should("not.exist");
+    cy.findByPlaceholderText("Search").should("not.exist");
+  });
+
+  it("should show question creation controls when enabled", () => {
+    visitApp("/?top_nav=true&new_button=true");
+    cy.findByRole("button", { name: /New/ }).should("be.visible");
+  });
+
+  it("should show search controls when enabled", () => {
+    visitApp("/?top_nav=true&search=true");
+    cy.findByPlaceholderText("Search…").should("be.visible");
   });
 });
 
