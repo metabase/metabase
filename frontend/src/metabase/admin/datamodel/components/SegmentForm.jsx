@@ -14,50 +14,7 @@ import { reduxForm } from "redux-form";
 
 import cx from "classnames";
 
-@reduxForm(
-  {
-    form: "segment",
-    fields: [
-      "id",
-      "name",
-      "description",
-      "table_id",
-      "definition",
-      "revision_message",
-    ],
-    validate: values => {
-      const errors = {};
-      if (!values.name) {
-        errors.name = t`Name is required`;
-      }
-      if (!values.description) {
-        errors.description = t`Description is required`;
-      }
-      if (values.id != null) {
-        if (!values.revision_message) {
-          errors.revision_message = t`Revision message is required`;
-        }
-      }
-      if (
-        !values.definition ||
-        !values.definition.filter ||
-        values.definition.filter.length < 1
-      ) {
-        errors.definition = t`At least one filter is required`;
-      }
-      return errors;
-    },
-    initialValues: {
-      name: "",
-      description: "",
-      table_id: null,
-      definition: { filter: [] },
-      revision_message: null,
-    },
-  },
-  (state, { segment }) => ({ initialValues: segment }),
-)
-export default class SegmentForm extends Component {
+class SegmentForm extends Component {
   updatePreviewSummary(datasetQuery) {
     this.props.updatePreviewSummary({
       ...datasetQuery,
@@ -167,3 +124,47 @@ export default class SegmentForm extends Component {
     );
   }
 }
+
+export default reduxForm(
+  {
+    form: "segment",
+    fields: [
+      "id",
+      "name",
+      "description",
+      "table_id",
+      "definition",
+      "revision_message",
+    ],
+    validate: values => {
+      const errors = {};
+      if (!values.name) {
+        errors.name = t`Name is required`;
+      }
+      if (!values.description) {
+        errors.description = t`Description is required`;
+      }
+      if (values.id != null) {
+        if (!values.revision_message) {
+          errors.revision_message = t`Revision message is required`;
+        }
+      }
+      if (
+        !values.definition ||
+        !values.definition.filter ||
+        values.definition.filter.length < 1
+      ) {
+        errors.definition = t`At least one filter is required`;
+      }
+      return errors;
+    },
+    initialValues: {
+      name: "",
+      description: "",
+      table_id: null,
+      definition: { filter: [] },
+      revision_message: null,
+    },
+  },
+  (state, { segment }) => ({ initialValues: segment }),
+)(SegmentForm);

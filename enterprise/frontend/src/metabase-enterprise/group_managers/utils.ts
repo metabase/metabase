@@ -19,7 +19,7 @@ export const groupManagerAllowedPathGetter = (
   return canAccessPeople(user) ? ["people"] : [];
 };
 
-const getRevokedAllGroupManagersPath = (adminPaths: AdminPath[]) => {
+export const getRevokedAllGroupManagersPath = (adminPaths: AdminPath[]) => {
   const allowedItems = adminPaths.filter(item => item.key !== "people");
 
   return allowedItems.length > 0 ? allowedItems[0].path : "/";

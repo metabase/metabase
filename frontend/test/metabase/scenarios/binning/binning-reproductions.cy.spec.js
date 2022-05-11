@@ -192,6 +192,54 @@ describe("binning related reproductions", () => {
     cy.findByText("Hour of Day");
   });
 
+  it.skip("shouldn't duplicate the breakout field (metabase#22382)", () => {
+    const questionDetails = {
+      name: "22382",
+      query: {
+        "source-table": ORDERS_ID,
+        aggregation: [["count"]],
+        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      },
+    };
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
+    cy.createQuestion(questionDetails, { visitQuestion: true });
+
+    cy.findByText("Settings").click();
+
+    cy.findByTestId("sidebar-left").within(() => {
+      cy.findByTextEnsureVisible("Table options");
+      cy.findByText("Count")
+        .siblings(".Icon-close")
+        .click();
+      cy.button("Done").click();
+    });
+
+    summarize();
+
+    cy.findByTestId("pinned-dimensions")
+      .should("contain", "Created At")
+      .find(".Icon-close")
+      .click();
+    cy.wait("@dataset");
+
+    cy.get(".Visualization").findByText("Count");
+
+    cy.findByTestId("sidebar-right")
+      .findAllByText("Created At")
+      .first()
+      .click();
+    cy.wait("@dataset");
+
+    cy.get(".Visualization").within(() => {
+      // ALl of these are implicit assertions and will fail if there's more than one string
+      cy.findByText("Count");
+      cy.findByText("Created At: Month");
+      cy.findByText("June, 2016");
+    });
+  });
+
   describe("binning should work on nested question based on question that has aggregation (metabase#16379)", () => {
     beforeEach(() => {
       cy.createQuestion(

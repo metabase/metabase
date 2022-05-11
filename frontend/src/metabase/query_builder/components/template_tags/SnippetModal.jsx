@@ -9,8 +9,7 @@ import Link from "metabase/core/components/Link";
 import Snippets from "metabase/entities/snippets";
 import SnippetCollections from "metabase/entities/snippet-collections";
 
-@SnippetCollections.loadList()
-export default class SnippetModal extends React.Component {
+class SnippetModal extends React.Component {
   render() {
     const {
       insertSnippet,
@@ -65,3 +64,5 @@ export default class SnippetModal extends React.Component {
     );
   }
 }
+
+export default SnippetCollections.loadList()(SnippetModal);

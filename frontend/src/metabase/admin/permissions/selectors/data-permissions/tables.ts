@@ -130,6 +130,7 @@ export const buildTablesPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "tables",
     ),
   ];

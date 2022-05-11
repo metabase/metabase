@@ -19,8 +19,6 @@ import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { GTAPApi } from "metabase/services";
 
-import { UNKNOWN_ERROR_MESSAGE } from "metabase/components/form/FormMessage";
-
 import EntityObjectLoader from "metabase/entities/containers/EntityObjectLoader";
 import QuestionLoader from "metabase/containers/QuestionLoader";
 
@@ -35,9 +33,7 @@ const mapDispatchToProps = {
   updateTableSandboxingPermission,
 };
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-export default class GTAPModal extends React.Component {
+class GTAPModal extends React.Component {
   state = {
     gtap: null,
     attributesOptions: null,
@@ -109,7 +105,7 @@ export default class GTAPModal extends React.Component {
         ? error.data
           ? error.data.message || JSON.stringify(error.data)
           : JSON.stringify(error)
-        : UNKNOWN_ERROR_MESSAGE;
+        : t`Unknown error encountered`;
       this.setState({ error: message });
       throw new Error(message);
     }
@@ -251,6 +247,11 @@ export default class GTAPModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(GTAPModal);
 
 const AttributePicker = ({ value, onChange, attributesOptions }) => (
   <div style={{ minWidth: 200 }}>

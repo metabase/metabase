@@ -15,13 +15,7 @@ import * as Urls from "metabase/lib/urls";
 
 import withTableMetadataLoaded from "../hoc/withTableMetadataLoaded";
 
-@Tables.load({
-  id: (state, props) => props.value && props.value["source-table"],
-  wrapped: true,
-})
-@withTableMetadataLoaded
-@connect((state, props) => ({ metadata: getMetadata(state) }))
-export default class PartialQueryBuilder extends Component {
+class PartialQueryBuilder extends Component {
   static propTypes = {
     onChange: PropTypes.func.isRequired,
     table: PropTypes.object.isRequired,
@@ -135,3 +129,12 @@ export default class PartialQueryBuilder extends Component {
     );
   }
 }
+
+export default _.compose(
+  Tables.load({
+    id: (state, props) => props.value && props.value["source-table"],
+    wrapped: true,
+  }),
+  withTableMetadataLoaded,
+  connect((state, props) => ({ metadata: getMetadata(state) })),
+)(PartialQueryBuilder);

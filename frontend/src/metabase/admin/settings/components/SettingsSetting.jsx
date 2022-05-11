@@ -60,6 +60,13 @@ export default class SettingsSetting extends Component {
       );
       Widget = SettingInput;
     }
+
+    const widgetProps = {
+      ...setting.getProps?.(setting),
+      ...setting.props,
+      ...updatePlaceholderForEnvironmentVars(this.props),
+    };
+
     return (
       // TODO - this formatting needs to be moved outside this component
       <li className="m2 mb4">
@@ -67,11 +74,7 @@ export default class SettingsSetting extends Component {
           <SettingHeader id={settingId} setting={setting} />
         )}
         <div className="flex">
-          <Widget
-            id={settingId}
-            {...(setting.props || {})}
-            {...updatePlaceholderForEnvironmentVars(this.props)}
-          />
+          <Widget id={settingId} {...widgetProps} />
         </div>
         {errorMessage && (
           <div className="text-error text-bold pt1">{errorMessage}</div>

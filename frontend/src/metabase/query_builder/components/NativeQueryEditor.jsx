@@ -42,10 +42,7 @@ import "./NativeQueryEditor.css";
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-@ExplicitSize()
-@Snippets.loadList({ loadingAndErrorWrapper: false })
-@SnippetCollections.loadList({ loadingAndErrorWrapper: false })
-export default class NativeQueryEditor extends Component {
+class NativeQueryEditor extends Component {
   _localUpdate = false;
 
   constructor(props) {
@@ -177,9 +174,14 @@ export default class NativeQueryEditor extends Component {
   }, 100);
 
   handleKeyDown = e => {
-    const ENTER_KEY = 13;
-    if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
-      this.runQuery();
+    const { isRunning, cancelQuery } = this.props;
+
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (isRunning) {
+        cancelQuery();
+      } else {
+        this.runQuery();
+      }
     }
   };
 
@@ -501,3 +503,9 @@ export default class NativeQueryEditor extends Component {
     );
   }
 }
+
+export default _.compose(
+  ExplicitSize(),
+  Snippets.loadList({ loadingAndErrorWrapper: false }),
+  SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
+)(NativeQueryEditor);

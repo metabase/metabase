@@ -12,6 +12,7 @@
             [metabase.api.dataset :as api.dataset]
             [metabase.api.timeline :as api.timeline]
             [metabase.async.util :as async.u]
+            [metabase.driver :as driver]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
@@ -21,6 +22,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
@@ -34,6 +36,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
@@ -151,16 +154,18 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (u/prog1 (-> (Card id)
-               (hydrate :creator
-                        :dashboard_count
-                        :can_write
-                        :average_query_time
-                        :last_query_start
-                        :collection [:moderation_reviews :moderator_details])
-               api/read-check
-               (last-edit/with-last-edit-info :card))
-    (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
+  (let [card (-> (Card id)
+                 (hydrate :creator
+                          :bookmarked
+                          :dashboard_count
+                          :can_write
+                          :average_query_time
+                          :last_query_start
+                          :collection [:moderation_reviews :moderator_details])
+                 api/read-check
+                 (last-edit/with-last-edit-info :card))]
+    (u/prog1 (cond-> card (:dataset card) (hydrate :persisted))
+      (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*)))))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
@@ -754,5 +759,51 @@
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
+
+(api/defendpoint POST "/:card-id/persist"
+  "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
+  query in place of the model's query."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/check-superuser)
+  ;; if we change from superuser make sure to start on read/write checks
+  (api/let-404 [{:keys [dataset database_id] :as card} (Card card-id)]
+    (let [database (Database database_id)]
+      (when-not (driver/database-supports? (:engine database)
+                                           :persist-models database)
+        (throw (ex-info (tru "Database does not support persisting")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not (driver/database-supports? (:engine database)
+                                           :persist-models-enabled database)
+        (throw (ex-info (tru "Persisting models not enabled for database")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not dataset
+        (throw (ex-info (tru "Card is not a model") {:status-code 400})))
+      (when-let [persisted-info (persisted-info/make-ready! api/*current-user-id* card)]
+        (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
+      api/generic-204-no-content)))
+
+(api/defendpoint POST "/:card-id/refresh"
+  "Refresh the persisted model caching `card-id`."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+    (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
+    api/generic-204-no-content))
+
+(api/defendpoint POST "/:card-id/unpersist"
+  "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
+  query rather than the saved version of the query."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/check-superuser)
+  ;; if we change from superuser make sure to start on read/write checks
+  (api/let-404 [_card (Card card-id)]
+    (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
+      (persisted-info/mark-for-deletion! {:id (:id persisted-info)})
+      api/generic-204-no-content)))
 
 (api/define-routes)

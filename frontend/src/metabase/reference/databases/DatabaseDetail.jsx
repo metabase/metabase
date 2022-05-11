@@ -7,6 +7,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import _ from "underscore";
 
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -55,20 +56,7 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@reduxForm({
-  form: "details",
-  fields: [
-    "name",
-    "display_name",
-    "description",
-    "revision_message",
-    "points_of_interest",
-    "caveats",
-  ],
-  validate,
-})
-export default class DatabaseDetail extends Component {
+class DatabaseDetail extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entity: PropTypes.object.isRequired,
@@ -190,3 +178,19 @@ export default class DatabaseDetail extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  reduxForm({
+    form: "details",
+    fields: [
+      "name",
+      "display_name",
+      "description",
+      "revision_message",
+      "points_of_interest",
+      "caveats",
+    ],
+    validate,
+  }),
+)(DatabaseDetail);

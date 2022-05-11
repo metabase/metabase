@@ -34,8 +34,7 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class NewQueryOptions extends Component {
+class NewQueryOptions extends Component {
   componentDidMount() {
     // We need to check if any databases exist otherwise show an empty state.
     // Be aware that the embedded version does not have the Navbar, which also
@@ -121,3 +120,5 @@ export default class NewQueryOptions extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);
