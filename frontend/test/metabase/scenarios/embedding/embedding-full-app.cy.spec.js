@@ -12,36 +12,36 @@ describe("scenarios > embedding > full app", () => {
 
   describe("navigation", () => {
     it("should hide the top nav by default", () => {
-      visitAppUrl("/");
+      visitUrl({ url: "/" });
       cy.findByText("Our analytics").should("be.visible");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
     it("should show the top nav by a param", () => {
-      visitAppUrl("/?top_nav=true");
+      visitUrl({ url: "/", qs: { top_nav: true } });
       cy.findAllByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
     });
 
     it("should hide the side nav by a param", () => {
-      visitAppUrl("/?top_nav=true&side_nav=false");
+      visitUrl({ url: "/", qs: { top_nav: true, side_nav: false } });
       cy.findAllByTestId("main-logo").should("be.visible");
       cy.findByText("Our analytics").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
-      visitAppUrl("/?top_nav=true&new_button=true");
+      visitUrl({ url: "/", qs: { top_nav: true, new_button: true } });
       cy.button(/New/).should("be.visible");
     });
 
     it("should show search controls by a param", () => {
-      visitAppUrl("/?top_nav=true&search=true");
+      visitUrl({ url: "/", qs: { top_nav: true, search: true } });
       cy.findByPlaceholderText("Search…").should("be.visible");
     });
 
     it("should preserve params when navigating", () => {
-      visitAppUrl("/?top_nav=true");
+      visitUrl({ url: "/", qs: { top_nav: true } });
       cy.findAllByTestId("main-logo").should("be.visible");
 
       cy.findByText("Our analytics").click();
@@ -52,7 +52,7 @@ describe("scenarios > embedding > full app", () => {
 
   describe("questions", () => {
     it("should show the question header by default", () => {
-      visitQuestionUrl("/question/1");
+      visitQuestionUrl({ url: "/question/1" });
 
       cy.findByTestId("qb-header").should("be.visible");
       cy.findByText(/Edited/).should("be.visible");
@@ -65,20 +65,20 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the question header by a param", () => {
-      visitQuestionUrl("/question/1?header=false");
+      visitQuestionUrl({ url: "/question/1", qs: { header: false } });
 
       cy.findByTestId("qb-header").should("not.exist");
     });
 
     it("should hide the question's additional info by a param", () => {
-      visitQuestionUrl("/question/1?additional_info=false");
+      visitQuestionUrl({ url: "/question/1", qs: { additional_info: false } });
 
       cy.findByText("Our analytics").should("not.exist");
       cy.findByText(/Edited/).should("not.exist");
     });
 
     it("should hide the question's action buttons by a param", () => {
-      visitQuestionUrl("/question/1?action_buttons=false");
+      visitQuestionUrl({ url: "/question/1", qs: { action_buttons: false } });
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("not.exist");
@@ -89,7 +89,7 @@ describe("scenarios > embedding > full app", () => {
 
   describe("dashboards", () => {
     it("should show the dashboard header by default", () => {
-      visitDashboardUrl("/dashboard/1");
+      visitDashboardUrl({ url: "/dashboard/1" });
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("be.visible");
@@ -97,13 +97,16 @@ describe("scenarios > embedding > full app", () => {
     });
 
     it("should hide the dashboard header by a param", () => {
-      visitDashboardUrl("/dashboard/1?header=false");
+      visitDashboardUrl({ url: "/dashboard/1", qs: { header: false } });
 
       cy.findByText("Orders in a dashboard").should("not.exist");
     });
 
     it("should hide the dashboard's additional info by a param", () => {
-      visitDashboardUrl("/dashboard/1?additional_info=false");
+      visitDashboardUrl({
+        url: "/dashboard/1",
+        qs: { additional_info: false },
+      });
 
       cy.findByText("Orders in a dashboard").should("be.visible");
       cy.findByText(/Edited/).should("not.exist");
@@ -113,21 +116,27 @@ describe("scenarios > embedding > full app", () => {
 
   describe("x-ray dashboards", () => {
     it("should show the dashboard header by default", () => {
-      visitXrayDashboardUrl("/auto/dashboard/table/1");
+      visitXrayDashboardUrl({ url: "/auto/dashboard/table/1" });
+
       cy.findByText("More X-rays").should("be.visible");
       cy.button("Save this").should("be.visible");
     });
 
     it("should hide the dashboard header by a param", () => {
-      visitXrayDashboardUrl("/auto/dashboard/table/1?header=false");
+      visitXrayDashboardUrl({
+        url: "/auto/dashboard/table/1",
+        qs: { header: false },
+      });
+
       cy.findByText("More X-rays").should("be.visible");
       cy.button("Save this").should("not.exist");
     });
   });
 });
 
-const visitAppUrl = url => {
-  cy.visit(url, {
+const visitUrl = url => {
+  cy.visit({
+    ...url,
     onBeforeLoad(window) {
       // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
       // by removing the property the app would work in embedding mode
@@ -137,17 +146,17 @@ const visitAppUrl = url => {
 };
 
 const visitQuestionUrl = url => {
-  visitAppUrl(url);
+  visitUrl(url);
   cy.wait("@getCardQuery");
 };
 
 const visitDashboardUrl = url => {
-  visitAppUrl(url);
+  visitUrl(url);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
 };
 
 const visitXrayDashboardUrl = url => {
-  visitAppUrl(url);
+  visitUrl(url);
   cy.wait("@getXrayDashboard");
 };
