@@ -282,6 +282,7 @@ function AhHocQuestionLeftSide(props) {
 
 DatasetLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
+  isDataSourceVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
@@ -290,6 +291,7 @@ DatasetLeftSide.propTypes = {
 function DatasetLeftSide(props) {
   const {
     question,
+    isDataSourceVisible,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
@@ -314,7 +316,14 @@ function DatasetLeftSide(props) {
           <HeadBreadcrumbs
             divider="/"
             parts={[
-              <DatasetCollectionBadge key="collection" dataset={question} />,
+              ...(isDataSourceVisible
+                ? [
+                    <DatasetCollectionBadge
+                      key="collection"
+                      dataset={question}
+                    />,
+                  ]
+                : []),
               <DatasetHeaderButtonContainer key="dataset-header-button">
                 <SavedQuestionHeaderButton
                   question={question}
