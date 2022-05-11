@@ -4,9 +4,10 @@ describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("GET", `/api/dashboard/*`).as("getDashboard");
     cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
     cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
+    cy.intercept("GET", `/api/dashboard/*`).as("getDashboard");
+    cy.intercept("GET", "/api/automagic-dashboards/**").as("getXrayDashboard");
   });
 
   describe("navigation", () => {
@@ -93,6 +94,20 @@ describe("scenarios > embedding > full app", () => {
       cy.findByText("Our analytics").should("not.exist");
     });
   });
+
+  describe("x-ray dashboards", () => {
+    it("should show the dashboard header by default", () => {
+      visitXrayDashboardUrl("/auto/dashboard/table/1");
+      cy.findByText("More X-rays").should("be.visible");
+      cy.button("Save this").should("be.visible");
+    });
+
+    it("should hide the dashboard header by a param", () => {
+      visitXrayDashboardUrl("/auto/dashboard/table/1?header=false");
+      cy.findByText("More X-rays").should("be.visible");
+      cy.button("Save this").should("not.exist");
+    });
+  });
 });
 
 const visitAppUrl = url => {
@@ -112,4 +127,9 @@ const visitDashboardUrl = url => {
   visitAppUrl(url);
   cy.wait("@getDashboard");
   cy.wait("@getDashCardQuery");
+};
+
+const visitXrayDashboardUrl = url => {
+  visitAppUrl(url);
+  cy.wait("@getXrayDashboard");
 };
