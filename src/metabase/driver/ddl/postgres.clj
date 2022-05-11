@@ -1,6 +1,5 @@
 (ns metabase.driver.ddl.postgres
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
