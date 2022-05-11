@@ -43,6 +43,14 @@ describe("scenarios > embedding > full app", () => {
       cy.wait("@getCardQuery");
 
       cy.findByTestId("qb-header").should("be.visible");
+
+      cy.findByText(/Editied/).should("be.visible");
+      cy.findByText("Our analytics").should("be.visible");
+
+      cy.icon("refresh").should("be.visible");
+      cy.icon("notebook").should("be.visible");
+      cy.button("Summarize").should("be.visible");
+      cy.button("Filter").should("be.visible");
     });
 
     it("should hide the question header by a param", () => {
@@ -57,16 +65,17 @@ describe("scenarios > embedding > full app", () => {
       cy.wait("@getCardQuery");
 
       cy.findByText("Our analytics").should("not.exist");
+      cy.findByText(/Editied/).should("not.exist");
     });
 
     it("should hide the question's action buttons by a param", () => {
       cy.visit("/question/1?action_buttons=false", visitOptions);
       cy.wait("@getCardQuery");
 
+      cy.icon("refresh").should("be.visible");
+      cy.icon("notebook").should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
-      cy.icon("notebook").should("not.exist");
-      cy.icon("refresh").should("be.visible");
     });
   });
 });
