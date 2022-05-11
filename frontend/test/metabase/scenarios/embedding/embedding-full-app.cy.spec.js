@@ -122,6 +122,8 @@ describe("scenarios > embedding > full app", () => {
 const visitAppUrl = url => {
   cy.visit(url, {
     onBeforeLoad(window) {
+      // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
+      // by removing the property the app would work in embedding mode
       window.Cypress = undefined;
     },
   });
