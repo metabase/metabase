@@ -1,16 +1,12 @@
 import { restore } from "__support__/e2e/cypress";
 
-const visitOptions = {
-  onBeforeLoad(window) {
-    window.Cypress = undefined;
-  },
-};
-
 describe("scenarios > embedding > full app", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("GET", `/api/dashboard/*`).as("getDashboard");
     cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
+    cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
   });
 
   describe("navigation", () => {
@@ -78,4 +74,40 @@ describe("scenarios > embedding > full app", () => {
       cy.button("Filter").should("not.exist");
     });
   });
+
+  describe("dashboards", () => {
+    it("should show the dashboard header by default", () => {
+      cy.visit("/dashboard/1", visitOptions);
+      cy.wait("@getDashboard");
+      cy.wait("@getDashCardQuery");
+
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText(/Edited/).should("be.visible");
+      cy.findByText("Our analytics").should("be.visible");
+    });
+
+    it("should hide the dashboard header by a param", () => {
+      cy.visit("/dashboard/1?header=false", visitOptions);
+      cy.wait("@getDashboard");
+      cy.wait("@getDashCardQuery");
+
+      cy.findByText("Orders in a dashboard").should("not.exist");
+    });
+
+    it("should hide the dashboard's additional info by a param", () => {
+      cy.visit("/dashboard/1?additional_info=false", visitOptions);
+      cy.wait("@getDashboard");
+      cy.wait("@getDashCardQuery");
+
+      cy.findByText("Orders in a dashboard").should("be.visible");
+      cy.findByText(/Edited/).should("not.exist");
+      cy.findByText("Our analytics").should("not.exist");
+    });
+  });
 });
+
+const visitOptions = {
+  onBeforeLoad(window) {
+    window.Cypress = undefined;
+  },
+};
