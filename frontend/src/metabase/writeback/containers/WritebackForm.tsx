@@ -7,6 +7,8 @@ import { TYPE } from "metabase/lib/types";
 import Field from "metabase-lib/lib/metadata/Field";
 import Table from "metabase-lib/lib/metadata/Table";
 
+import CategoryFieldPicker from "./CategoryFieldPicker";
+
 export interface WritebackFormProps {
   table: Table;
   onSubmit?: () => void;
@@ -35,6 +37,15 @@ function getFieldTypeProps(field: Field) {
     field.semantic_type === TYPE.Comment
   ) {
     return { type: "text" };
+  }
+  if (field.semantic_type === TYPE.Title) {
+    return { type: "input" };
+  }
+  if (field.isCategory()) {
+    return {
+      fieldInstance: field,
+      widget: CategoryFieldPicker,
+    };
   }
   return { type: "input" };
 }
