@@ -274,15 +274,11 @@ class View extends React.Component {
   };
 
   renderHeader = () => {
-    const { query, isEmbedded, embedOptions } = this.props;
+    const { query } = this.props;
     const isStructured = query instanceof StructuredQuery;
 
     const isNewQuestion =
       isStructured && !query.sourceTableId() && !query.sourceQuery();
-
-    if (isEmbedded && !embedOptions.header) {
-      return null;
-    }
 
     return (
       <Motion
@@ -458,6 +454,7 @@ class View extends React.Component {
       onDismissToast,
       onConfirmToast,
       isShowingToaster,
+      isHeaderVisible,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -490,7 +487,7 @@ class View extends React.Component {
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {this.renderHeader()}
+          {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook

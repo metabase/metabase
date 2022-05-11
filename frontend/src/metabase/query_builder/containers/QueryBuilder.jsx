@@ -11,7 +11,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { IFRAMED } from "metabase/lib/dom";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
@@ -23,7 +22,6 @@ import {
   getUserIsAdmin,
   canManageSubscriptions,
 } from "metabase/selectors/user";
-import { getEmbedOptions } from "metabase/selectors/embed";
 
 import { useForceUpdate } from "metabase/hooks/use-force-update";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -89,6 +87,7 @@ import {
   getPageFavicon,
   getIsTimeseries,
   getIsLoadingComplete,
+  getIsHeaderVisible,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -191,8 +190,8 @@ const mapStateToProps = (state, props) => {
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
 
-    isEmbedded: IFRAMED,
-    embedOptions: getEmbedOptions(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isLastEditInfoVisible: getIsLoadingComplete(state),
   };
 };
 

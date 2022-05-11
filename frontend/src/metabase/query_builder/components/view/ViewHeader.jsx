@@ -63,6 +63,7 @@ const viewTitleHeaderPropTypes = {
   isShowingSummarySidebar: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
+  isLastEditInfoVisible: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -107,8 +108,6 @@ export function ViewTitleHeader(props) {
     }
   }, [previousQuestion, question, expandFilters]);
 
-  const lastEditInfo = question.lastEditInfo();
-
   const isStructured = question.isStructured();
   const isNative = question.isNative();
   const isSaved = question.isSaved();
@@ -131,7 +130,7 @@ export function ViewTitleHeader(props) {
         {isDataset ? (
           <DatasetLeftSide {...props} />
         ) : isSaved ? (
-          <SavedQuestionLeftSide {...props} lastEditInfo={lastEditInfo} />
+          <SavedQuestionLeftSide {...props} />
         ) : (
           <AhHocQuestionLeftSide
             {...props}
@@ -163,7 +162,7 @@ export function ViewTitleHeader(props) {
 
 SavedQuestionLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
-  lastEditInfo: PropTypes.object,
+  isLastEditInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   onOpenQuestionDetails: PropTypes.func.isRequired,
@@ -175,10 +174,10 @@ function SavedQuestionLeftSide(props) {
   const {
     question,
     isObjectDetail,
+    isLastEditInfoVisible,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
-    lastEditInfo,
     onOpenQuestionHistory,
   } = props;
 
@@ -204,7 +203,7 @@ function SavedQuestionLeftSide(props) {
             onClick={onHeaderClick}
           />
         </SavedQuestionHeaderButtonContainer>
-        {lastEditInfo && (
+        {isLastEditInfoVisible && (
           <StyledLastEditInfoLabel
             item={question.card()}
             onClick={onOpenQuestionHistory}
