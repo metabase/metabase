@@ -5,7 +5,9 @@
    [metabase.actions :as actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util.i18n :as i18n]))
+   [metabase.util.i18n :as i18n]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.util :as u]))
 
 (defmethod actions/row-action! [:delete :sql-jdbc]
   ;; "Often condition is a map of primary-key(s) => value(s)."
@@ -23,9 +25,9 @@
     (let [delete-hsql (-> raw-hsql (dissoc :select) (assoc :delete []))]
       {:rows-deleted (jdbc/execute! connection-spec (hformat/format delete-hsql))})))
 
-(defmethod actions/row-action! [:update :metabase.driver/driver]
-  [_action driver {database-id :database :as query}]
-  query)
+#_(defmethod actions/row-action! [:update :metabase.driver/driver]
+    [_action driver {database-id :database :as query}]
+    query)
 
 ;; TODO -- need to parse the values in case they're not integers or whatever THANX
 #_(metabase.driver.sql.query-processor/->honeysql :postgres
@@ -34,3 +36,12 @@
                                                    {:base_type :type/UUID
                                                     :database_type "uuid"}])
 #_#uuid "232333d9-1434-4b1e-973d-4536d1dc8411"
+
+
+
+;; hmm, empty store...:
+;; (qp.store/with-store
+;;   (qp.store/fetch-and-store-database! (u/the-id 7))
+;;   (sql.qp/mbql->honeysql
+;;    :postgres
+;;    {:database 7, :type "query", :query {:filter [:= [:field 606 nil] 20], :source-table 87}}))

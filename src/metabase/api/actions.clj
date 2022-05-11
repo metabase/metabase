@@ -29,7 +29,7 @@
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."
   [action :as {{:keys [database], :as query} :body}]
-  #_{database s/Int query {:filter mbql.s/Filter}}
+  {database s/Int query {:filter mbql.s/Filter}}
   (do-check-actions-enabled
    database
    (fn [_driver]
@@ -49,6 +49,7 @@
 (api/defendpoint POST "/row/:action"
   "Generic API endpoint for doing an action against a specific row."
   [action :as {{:keys [database] :as query} :body}]
+  {database s/Int}
   (let [query (kwdize-filter
                ;; HACK:
                ;; the query's filter clause needs to have forms like:
@@ -56,11 +57,7 @@
                ;; but we recieve forms like
                ;; ["=" ["field" ...]]
                #{"=" "<" ">" "field" "and"}
-               query)
-
-        table-id (:source-table query)]
-    (def a action)
-    (def q query)
+               query)]
     (do-check-actions-enabled
      database
      (fn [driver]
