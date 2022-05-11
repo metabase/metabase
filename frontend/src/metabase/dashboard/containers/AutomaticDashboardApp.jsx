@@ -22,7 +22,6 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { getEmbedOptions } from "metabase/selectors/embed";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -31,7 +30,6 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q from "metabase/lib/query/query";
 import Dimension from "metabase-lib/lib/Dimension";
 import { color } from "metabase/lib/colors";
-import { IFRAMED } from "metabase/lib/dom";
 
 import { dissoc } from "icepick";
 import {
@@ -48,8 +46,6 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
-  isEmbedded: IFRAMED,
-  embedOptions: getEmbedOptions(state),
 });
 
 const mapDispatchToProps = {
