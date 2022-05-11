@@ -367,6 +367,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isShowingSummarySidebar: PropTypes.bool,
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
+  isActionListVisible: PropTypes.bool,
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
   onOpenModal: PropTypes.func,
@@ -396,6 +397,7 @@ function ViewTitleHeaderRightSide(props) {
     isShowingSummarySidebar,
     isDirty,
     isResultDirty,
+    isActionListVisible,
     runQuestionQuery,
     cancelQuery,
     onOpenModal,
@@ -420,7 +422,11 @@ function ViewTitleHeaderRightSide(props) {
     MetabaseSettings.get("enable-nested-queries");
 
   const isNewQuery = !query.hasData();
-  const hasSaveButton = !isDataset && !!isDirty && (isNewQuery || canEditQuery);
+  const hasSaveButton =
+    !isDataset &&
+    !!isDirty &&
+    (isNewQuery || canEditQuery) &&
+    isActionListVisible;
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
