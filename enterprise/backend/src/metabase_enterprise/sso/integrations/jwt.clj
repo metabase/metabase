@@ -68,34 +68,11 @@
                                                      (group-names->ids group-names)
                                                      (all-mapped-group-ids))))))
 
-(defn- login-jwt-user
-  [jwt {{redirect :return_to} :params, :as request}]
-  (let [jwt-data     (try
-                       (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                   {:max-age three-minutes-in-seconds})
-                       (catch Throwable e
-                         (throw (ex-info (ex-message e)
-                                         (assoc (ex-data e) :status-code 401)
-                                         e))))
-        login-attrs  (jwt-data->login-attributes jwt-data)
-        email        (get jwt-data (jwt-attribute-email))
-        first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
-        last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
-        user         (fetch-or-create-user! first-name last-name email login-attrs)
-        session      (api.session/create-session! :sso user (request.u/device-info request))
-        redirect-url (or redirect (URLEncoder/encode "/"))]
-    (sync-groups! user jwt-data)
-    (mw.session/set-session-cookie request (response/redirect redirect-url) session)))
-
-(defn- check-jwt-enabled []
-  (api/check (sso-settings/jwt-configured?)
-    [400 (tru "JWT SSO has not been enabled and/or configured")]))
-
 (defn- check-jwt-redirect [redirect-url]
-  (let [decoded-url (URLDecoder/decode redirect-url)
+  (let [decoded-url (some-> redirect-url (URLDecoder/decode))
                     ;; In this case, this just means that we don't have a specified host in redirect,
                     ;; meaning it can't be an open redirect
-        no-host     (= (first decoded-url) \/)
+        no-host     (or (nil? decoded-url) (= (first decoded-url) \/))
         host        (try
                       (.getHost (new URL decoded-url))
                       (catch MalformedURLException e ""))
@@ -103,10 +80,33 @@
   (api/check (or no-host (= host our-host))
     [400 (tru "JWT SSO is trying to do an open redirect to an untrusted site")])))
 
+(defn- login-jwt-user
+  [jwt {{redirect :return_to} :params, :as request}]
+  (let [redirect-url (or redirect (URLEncoder/encode "/"))]
+    (check-jwt-redirect redirect-url)
+    (let [ jwt-data     (try
+                          (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                      {:max-age three-minutes-in-seconds})
+                          (catch Throwable e
+                            (throw (ex-info (ex-message e)
+                                            (assoc (ex-data e) :status-code 401)
+                                            e))))
+          login-attrs  (jwt-data->login-attributes jwt-data)
+          email        (get jwt-data (jwt-attribute-email))
+          first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
+          last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
+          user         (fetch-or-create-user! first-name last-name email login-attrs)
+          session      (api.session/create-session! :sso user (request.u/device-info request))]
+      (sync-groups! user jwt-data)
+      (mw.session/set-session-cookie request (response/redirect redirect-url) session))))
+
+(defn- check-jwt-enabled []
+  (api/check (sso-settings/jwt-configured?)
+    [400 (tru "JWT SSO has not been enabled and/or configured")]))
+
 (defmethod sso.i/sso-get :jwt
   [{{:keys [jwt redirect]} :params, :as request}]
   (check-jwt-enabled)
-  (check-jwt-redirect redirect)
   (if jwt
     (login-jwt-user jwt request)
     (let [idp (sso-settings/jwt-identity-provider-uri)
