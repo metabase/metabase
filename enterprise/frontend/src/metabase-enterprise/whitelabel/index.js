@@ -39,10 +39,12 @@ if (hasPremiumFeature("whitelabel")) {
           key: "application-font",
           display_name: t`Font`,
           type: "select",
-          options: MetabaseSettings.get("available-fonts").map(font => ({
-            name: font,
-            value: font,
-          })),
+          options: MetabaseSettings.get("available-fonts").map(
+            ([dirname, name]) => ({
+              name: name,
+              value: dirname,
+            }),
+          ),
           defaultValue: "Lato",
           onChanged: (oldFont, newFont) => {
             if (oldFont !== newFont) {
