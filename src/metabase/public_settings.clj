@@ -381,7 +381,7 @@
   "Available fonts"
   :visibility :public
   :setter     :none
-  :getter     u.fonts/available-fonts-with-names)
+  :getter     u.fonts/available-fonts)
 
 (defsetting available-locales
   "Available i18n locales"
