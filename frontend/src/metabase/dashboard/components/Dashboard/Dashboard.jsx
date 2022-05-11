@@ -46,6 +46,8 @@ class Dashboard extends Component {
       .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     isNavbarOpen: PropTypes.bool.isRequired,
+    isHeaderVisible: PropTypes.bool,
+    isLastEditInfoVisible: PropTypes.bool,
 
     dashboard: PropTypes.object,
     dashboardId: PropTypes.number,
@@ -86,9 +88,6 @@ class Dashboard extends Component {
     closeSidebar: PropTypes.func.isRequired,
     openAddQuestionSidebar: PropTypes.func.isRequired,
     showAddQuestionSidebar: PropTypes.bool.isRequired,
-
-    isEmbedded: PropTypes.bool,
-    embedOptions: PropTypes.object,
   };
 
   static defaultProps = {
@@ -223,8 +222,7 @@ class Dashboard extends Component {
       setParameterValue,
       setParameterIndex,
       setEditingParameter,
-      isEmbedded,
-      embedOptions,
+      isHeaderVisible,
     } = this.props;
 
     const { error, isParametersWidgetSticky } = this.state;
@@ -246,9 +244,6 @@ class Dashboard extends Component {
       />
     );
 
-    const showHeader = !isEmbedded || embedOptions.header;
-    const showAdditionalInfo = !isEmbedded || embedOptions.additional_info;
-
     const shouldRenderParametersWidgetInViewMode =
       !isEditing && !isFullscreen && parameters.length > 0;
 
@@ -269,7 +264,7 @@ class Dashboard extends Component {
       >
         {() => (
           <DashboardStyled>
-            {showHeader && (
+            {isHeaderVisible && (
               <HeaderContainer
                 isFullscreen={isFullscreen}
                 isNightMode={shouldRenderAsNightMode}
@@ -283,7 +278,6 @@ class Dashboard extends Component {
                   onSharingClick={this.onSharingClick}
                   onToggleAddQuestionSidebar={this.onToggleAddQuestionSidebar}
                   showAddQuestionSidebar={showAddQuestionSidebar}
-                  showAdditionalInfo={showAdditionalInfo}
                 />
 
                 {shouldRenderParametersWidgetInEditMode && (
