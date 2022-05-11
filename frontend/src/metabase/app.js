@@ -31,7 +31,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider } from "@emotion/react";
+import { ThemeProvider, Global, css } from "@emotion/react";
 
 import { createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -66,6 +66,16 @@ const theme = {
   space: [4, 8, 16, 32, 64, 128],
 };
 
+console.log(MetabaseSettings.get("application-font"));
+
+const applicationFontStyles = css`
+  :root {
+    --default-font-family: "${MetabaseSettings.get("application-font")}";
+    --default-font-size: 0.875em;
+    --default-font-color: var(--color-text-dark);
+    --default-bg-color: var(--color-bg-light);
+  }`;
+
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
   const routes = getRoutes(store);
@@ -77,6 +87,7 @@ function _init(reducers, getRoutes, callback) {
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
+          <Global styles={applicationFontStyles} />
           <Router history={history}>{routes}</Router>
         </ThemeProvider>
       </DragDropContextProvider>
