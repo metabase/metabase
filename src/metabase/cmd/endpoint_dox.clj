@@ -24,14 +24,14 @@
        last
        str/capitalize))
 
-(defn- section-title
-  "Creates a section title for a set of endpoints."
+(defn- endpoint-page-title
+  "Creates a page title for a set of endpoints, e.g., `# Card`."
   [ep-title]
   (str/replace (str "# " ep-title "\n\n") #"-" " "))
 
 ;;;; API docs section description
 
-(defn- section-description
+(defn- endpoint-page-description
   "If there is a namespace docstring, include the docstring with a paragraph break."
   [ep-data]
   (let [desc (u/add-period (:doc (meta (:ns (first ep-data)))))]
@@ -77,7 +77,7 @@
       str/trim))
 
 (defn- process-endpoint
-  "Decorates endpoints with strings for building api endpoint sections."
+  "Decorates endpoints with strings for building API endpoint pages."
   [endpoint]
   (assoc endpoint
          :endpoint-str (endpoint-str endpoint)
@@ -93,41 +93,42 @@
         :when       (:is-endpoint? (meta varr))]
     (meta varr)))
 
-(defn- section-endpoints
+(defn- endpoint-docs
   "Builds a list of endpoints and their parameters.
-  Relies on docstring generation in /api/common/internal.clj."
+  Relies on docstring generation in `/api/common/internal.clj`."
   [ep-data]
   (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
 ;;;; Generate API pages
 
-(def footer "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
+(def endpoint-footer "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
 
 (defn endpoint-page
   "Builds a page with the name, description, table of contents for endpoints in a namespace,
   followed by the endpoint and their parameter descriptions."
   [ep ep-data]
   (apply str
-         (section-title ep)
-         (section-description ep-data)
+         (endpoint-page-title ep)
+         (endpoint-page-description ep-data)
          (section-toc ep-data)
-         (section-endpoints ep-data)
-         footer))
+         (endpoint-docs ep-data)
+         endpoint-footer))
 
 (defn build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
-  on the API index page at docs/api-documentation.md."
+  on the API index page at `docs/api-documentation.md`."
   [ep]
   (str "- [" (str/capitalize ep) "](api/" (str/lower-case ep) ".md)"))
 
 (defn build-index
   "Creates a string that lists links to all endpoint groups,
-  e.g, - [Activity](docs/api/activity.md)."
+  e.g., - [Activity](docs/api/activity.md)."
   [endpoints]
   (str/join "\n" (map (fn [[ep _]] (build-endpoint-link ep)) endpoints)))
 
 (defn- dox
-  "Generates markdown pages for all API endpoint groups."
+  "Takes a map of endpoint groups and generates markdown
+  pages for all API endpoint groups."
   [endpoints]
   (doseq [[ep ep-data] endpoints]
     (spit (str "docs/api/" (str/lower-case ep) ".md") (endpoint-page ep ep-data))))
