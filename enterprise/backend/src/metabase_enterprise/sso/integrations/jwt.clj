@@ -8,6 +8,7 @@
             [metabase.api.common :as api]
             [metabase.api.session :as api.session]
             [metabase.integrations.common :as integrations.common]
+            [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]
@@ -97,8 +98,9 @@
         no-host     (= (first decoded-url) \/)
         host        (try
                       (.getHost (new URL decoded-url))
-                      (catch MalformedURLException e ""))]
-  (api/check (or no-host (= host "metabase.com"))
+                      (catch MalformedURLException e ""))
+        our-host    (.getHost (new URL (public-settings/site-url)))]
+  (api/check (or no-host (= host our-host))
     [400 (tru "JWT SSO is trying to do an open redirect to an untrusted site")])))
 
 (defmethod sso.i/sso-get :jwt
