@@ -101,7 +101,9 @@
 
 ;;;; Generate API pages
 
-(def endpoint-footer "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
+(def endpoint-page-footer
+  "Used to link back to index on each endpoint page."
+  "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
 
 (defn endpoint-page
   "Builds a page with the name, description, table of contents for endpoints in a namespace,
@@ -112,7 +114,7 @@
          (endpoint-page-description ep-data)
          (section-toc ep-data)
          (endpoint-docs ep-data)
-         endpoint-footer))
+         endpoint-page-footer))
 
 (defn build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
