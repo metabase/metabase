@@ -1,5 +1,5 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import { render, screen } from "@testing-library/react";
 import DatabaseStep, { DatabaseStepProps } from "./DatabaseStep";
 import { DatabaseDetails, DatabaseInfo } from "metabase-types/store";
 
@@ -17,16 +17,6 @@ jest.mock("metabase/entities/users", () => ({
 
 jest.mock("metabase/containers/DriverWarning", () => ComponentMock);
 
-function setup(props: DatabaseStepProps) {
-  renderWithProviders(<DatabaseStep {...props} />, {
-    reducers: {
-      settings: () => ({
-        values: {},
-      }),
-    },
-  });
-}
-
 describe("DatabaseStep", () => {
   it("should render in active state", () => {
     const props = getProps({
@@ -34,7 +24,7 @@ describe("DatabaseStep", () => {
       isStepCompleted: false,
     });
 
-    setup(props);
+    render(<DatabaseStep {...props} />);
 
     expect(screen.getByText("Add your data"));
   });
@@ -46,7 +36,7 @@ describe("DatabaseStep", () => {
       isStepCompleted: true,
     });
 
-    setup(props);
+    render(<DatabaseStep {...props} />);
 
     expect(screen.getByText("Connecting to Test"));
   });
@@ -57,7 +47,7 @@ describe("DatabaseStep", () => {
       isEmailConfigured: true,
     });
 
-    setup(props);
+    render(<DatabaseStep {...props} />);
 
     expect(screen.getByText("Need help connecting to your data?"));
   });
