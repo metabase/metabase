@@ -437,7 +437,7 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
-  const hasNewRowButton = isWritebackEnabled && isSaved && !isNative;
+  const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
 
   return (
     <div
