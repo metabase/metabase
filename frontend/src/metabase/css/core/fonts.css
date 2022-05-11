@@ -56,14 +56,9 @@
 
 /*PT Serif 400 */
 @font-face {
-  font-family: "PTSerif";
-  src: url("~fonts/PTSerif/PTSerif-Regular.eot");
+  font-family: "PT Serif";
   src: local("PT Serif"), local("PTSerif-Regular"),
-    url("~fonts/PTSerif/PTSerif-Regular.eot?#iefix") format("embedded-opentype"),
-    url("~fonts/PTSerif/PTSerif-Regular.woff2") format("woff2"),
-    url("~fonts/PTSerif/PTSerif-Regular.woff") format("woff"),
-    url("~fonts/PTSerif/PTSerif-Regular.ttf") format("truetype"),
-    url("~fonts/PTSerif/PTSerif-Regular.svg#PTSerif-Regular") format("svg");
+    url("~fonts/PT_Serif/PTSerif-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -71,14 +66,9 @@
 
 /*PT Serif 700 */
 @font-face {
-  font-family: "PTSerif";
-  src: url("~fonts/PTSerif/PTSerif-Bold.eot");
+  font-family: "PT Serif";
   src: local("PT Serif Bold"), local("PTSerif-Bold"),
-    url("~fonts/PTSerif/PTSerif-Bold.eot?#iefix") format("embedded-opentype"),
-    url("~fonts/PTSerif/PTSerif-Bold.woff2") format("woff2"),
-    url("~fonts/PTSerif/PTSerif-Bold.woff") format("woff"),
-    url("~fonts/PTSerif/PTSerif-Bold.ttf") format("truetype"),
-    url("~fonts/PTSerif/PTSerif-Bold.svg#PTSerif-Bold") format("svg");
+    url("~fonts/PT_Serif/PTSerif-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -87,13 +77,8 @@
 /* Merriweather-400 */
 @font-face {
   font-family: "Merriweather";
-  src: url("~fonts/Merriweather/Merriweather-Regular.eot");
   src: local("Merriweather Regular"), local("Merriweather-Regular"),
-    url("~fonts/Merriweather/Merriweather-Regular.eot?#iefix")
-      format("embedded-opentype"),
-    url("~fonts/Merriweather/Merriweather-Regular.woff2") format("woff2"),
-    url("~fonts/Merriweather/Merriweather-Regular.woff") format("woff"),
-    url("~fonts/Merriweather/Merriweather-Regular.ttf") format("truetype");
+    url("~fonts/Merriweather/Merriweather-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -102,13 +87,8 @@
 /* Merriweather-700 */
 @font-face {
   font-family: "Merriweather";
-  src: url("~fonts/Merriweather/Merriweather-Bold.eot");
   src: local("Merriweather Bold"), local("Merriweather-Bold"),
-    url("~fonts/Merriweather/Merriweather-Bold.eot?#iefix")
-      format("embedded-opentype"),
-    url("~fonts/Merriweather/Merriweather-Bold.woff2") format("woff2"),
-    url("~fonts/Merriweather/Merriweather-Bold.woff") format("woff"),
-    url("~fonts/Merriweather/Merriweather-Bold.ttf") format("truetype");
+    url("~fonts/Merriweather/Merriweather-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -117,14 +97,210 @@
 /* Merriweather-400 */
 @font-face {
   font-family: "Merriweather";
-  src: url("~fonts/Merriweather/Merriweather-Black.eot");
   src: local("Merriweather Black"), local("Merriweather-Black"),
-    url("~fonts/Merriweather/Merriweather-Black.eot?#iefix")
-      format("embedded-opentype"),
-    url("~fonts/Merriweather/Merriweather-Black.woff2") format("woff2"),
-    url("~fonts/Merriweather/Merriweather-Black.woff") format("woff"),
-    url("~fonts/Merriweather/Merriweather-Black.ttf") format("truetype");
+    url("~fonts/Merriweather/Merriweather-Black.woff2") format("woff2");
   font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  src: local("Montserrat Regular"), local("Montserrat-Regular"),
+    url("~fonts/Montserrat/Montserrat-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  src: local("Montserrat Bold"), local("Montserrat-Bold"),
+    url("~fonts/Montserrat/Montserrat-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Montserrat";
+  src: local("Montserrat Black"), local("Montserrat-Black"),
+    url("~fonts/Montserrat/Montserrat-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans JP";
+  src: local(""), local("NotoSansJP-Black-Alphabetic"),
+    url("~fonts/Noto_Sans_JP/NotoSansJP-Black-Alphabetic.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans JP";
+  src: local(""), local("NotoSansJP-Bold-Alphabetic"),
+    url("~fonts/Noto_Sans_JP/NotoSansJP-Bold-Alphabetic.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans JP";
+  src: local(""), local("NotoSansJP-Regular-Alphabetic"),
+    url("~fonts/Noto_Sans_JP/NotoSansJP-Regular-Alphabetic.woff2")
+      format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  src: local("Open Sans Regular"), local("OpenSans-Regular"),
+    url("~fonts/Open_Sans/OpenSans-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  src: local("Open Sans Bold"), local("OpenSans-Bold"),
+    url("~fonts/Open_Sans/OpenSans-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Oswald";
+  src: local("Oswald Bold"), local("Oswald-Bold"),
+    url("~fonts/Oswald/Oswald-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Oswald";
+  src: local("Oswald Regular"), local("Oswald-Regular"),
+    url("~fonts/Oswald/Oswald-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Raleway";
+  src: local("Raleway Bold"), local("Raleway-Bold"),
+    url("~fonts/Raleway/Raleway-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Raleway";
+  src: local("Raleway Regular"), local("Raleway-Regular"),
+    url("~fonts/Raleway/Raleway-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Raleway";
+  src: local("Raleway Black"), local("Raleway-Black"),
+    url("~fonts/Raleway/Raleway-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/*    ------------------------------ */
+
+@font-face {
+  font-family: "Roboto";
+  src: local("Roboto Black"), local("Roboto-Black"),
+    url("~fonts/Roboto/Roboto-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: local("Roboto Bold"), local("Roboto-Bold"),
+    url("~fonts/Roboto/Roboto-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto";
+  src: local("Roboto"), local("Roboto-Regular"),
+    url("~fonts/Roboto/Roboto-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Condensed";
+  src: local("Roboto Condensed Bold"), local("RobotoCondensed-Bold"),
+    url("~fonts/Roboto_Condensed/RobotoCondensed-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Condensed";
+  src: local("Roboto Condensed"), local("RobotoCondensed-Regular"),
+    url("~fonts/Roboto_Condensed/RobotoCondensed-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Slabo 27px";
+  src: local("Slabo 27px"), local("Slabo27px-Regular"),
+    url("~fonts/Slabo_27px/Slabo27px-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Sans Pro";
+  src: local("Source Sans Pro Black"), local("SourceSansPro-Black"),
+    url("~fonts/Source_Sans_Pro/SourceSansPro-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Sans Pro";
+  src: local("Source Sans Pro"), local("SourceSansPro-Regular"),
+    url("~fonts/Source_Sans_Pro/SourceSansPro-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Source Sans Pro";
+  src: local("Source Sans Pro Bold"), local("SourceSansPro-Bold"),
+    url("~fonts/Source_Sans_Pro/SourceSansPro-Bold.woff2") format("woff2");
+  font-weight: bold;
   font-style: normal;
   font-display: swap;
 }
