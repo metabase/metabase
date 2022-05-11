@@ -13,6 +13,7 @@ describe("scenarios > embedding > full app", () => {
   describe("navigation", () => {
     it("should hide the top nav by default", () => {
       visitAppUrl("/");
+      cy.findByText("Our analytics").should("be.visible");
       cy.findByTestId("main-logo").should("not.exist");
     });
 
@@ -21,6 +22,12 @@ describe("scenarios > embedding > full app", () => {
       cy.findAllByTestId("main-logo").should("be.visible");
       cy.button(/New/).should("not.exist");
       cy.findByPlaceholderText("Search").should("not.exist");
+    });
+
+    it("should hide the side nav by a param", () => {
+      visitAppUrl("/?top_nav=true&side_nav=false");
+      cy.findAllByTestId("main-logo").should("be.visible");
+      cy.findByText("Our analytics").should("not.exist");
     });
 
     it("should show question creation controls by a param", () => {
