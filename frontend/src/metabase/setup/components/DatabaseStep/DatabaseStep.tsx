@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
@@ -140,9 +140,7 @@ const DatabaseForm = ({
           <FormField name="engine" onChange={handleEngineChange} />
           <DriverWarning
             engine={values.engine}
-            onChange={engine => {
-              onChangeField("engine", engine);
-            }}
+            onChange={engine => onChangeField("engine", engine)}
           />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
