@@ -835,6 +835,11 @@ export const getIsHeaderVisible = createSelector(
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
 );
 
+export const getIsActionListVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+);
+
 export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,

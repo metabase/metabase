@@ -478,7 +478,7 @@ function ViewTitleHeaderRightSide(props) {
           data-metabase-event={`View Mode; Open Summary Widget`}
         />
       )}
-      {QuestionNotebookButton.shouldRender({ question }) && (
+      {QuestionNotebookButton.shouldRender(props) && (
         <QuestionNotebookButton
           className="hide sm-show"
           ml={2}

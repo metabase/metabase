@@ -88,6 +88,7 @@ import {
   getIsTimeseries,
   getIsLoadingComplete,
   getIsHeaderVisible,
+  getIsActionListVisible,
   getIsAdditionalInfoVisible,
 } from "../selectors";
 import * as actions from "../actions";
@@ -165,6 +166,7 @@ const mapStateToProps = (state, props) => {
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
     isHeaderVisible: getIsHeaderVisible(state),
+    isActionListVisible: getIsActionListVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
