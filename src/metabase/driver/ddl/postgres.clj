@@ -68,7 +68,8 @@
                                        (create-table-sql database
                                                          {:table-name table-name
                                                           :field-definitions [{:field-name "field"
-                                                                               :base-type :type/Text}]})))]
+                                                                               :base-type :type/Text}]}
+                                                         "values (1)")))]
                      [:persist.check/read-table
                       (fn read-table [conn]
                         (jdbc/query conn [(format "select * from %s.%s"
