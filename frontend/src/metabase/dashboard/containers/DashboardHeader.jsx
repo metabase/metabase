@@ -56,6 +56,7 @@ class DashboardHeader extends Component {
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
+    isAdditionalInfoVisible: PropTypes.bool,
 
     refreshPeriod: PropTypes.number,
     setRefreshElapsedHook: PropTypes.func.isRequired,
@@ -373,7 +374,16 @@ class DashboardHeader extends Component {
   }
 
   render() {
-    const { dashboard, location, onChangeLocation } = this.props;
+    const {
+      dashboard,
+      location,
+      isEditing,
+      isFullscreen,
+      isAdditionalInfoVisible,
+      onChangeLocation,
+    } = this.props;
+
+    const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
       <Header
@@ -381,9 +391,10 @@ class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         item={dashboard}
-        isEditing={this.props.isEditing}
-        hasBadge={!this.props.isEditing && !this.props.isFullscreen}
-        isEditingInfo={this.props.isEditing}
+        isEditing={isEditing}
+        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
+        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+        isEditingInfo={isEditing}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`}

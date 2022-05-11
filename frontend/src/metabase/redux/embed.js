@@ -9,6 +9,9 @@ const DEFAULT_OPTIONS = {
   side_nav: "default",
   search: false,
   new_button: false,
+  header: true,
+  additional_info: true,
+  action_buttons: true,
 };
 
 export const SET_OPTIONS = "metabase/embed/SET_OPTIONS";

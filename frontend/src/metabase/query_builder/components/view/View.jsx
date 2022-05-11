@@ -40,12 +40,12 @@ import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 import {
-  QueryBuilderViewRoot,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
   QueryBuilderContentContainer,
   QueryBuilderMain,
   QueryBuilderViewHeaderContainer,
-  BorderedViewTitleHeader,
-  NativeQueryEditorContainer,
+  QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
@@ -454,6 +454,7 @@ class View extends React.Component {
       onDismissToast,
       onConfirmToast,
       isShowingToaster,
+      isHeaderVisible,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -486,7 +487,7 @@ class View extends React.Component {
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {this.renderHeader()}
+          {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook

@@ -22,6 +22,7 @@ import { Dashboard } from "metabase/dashboard/containers/Dashboard";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 
 import { getMetadata } from "metabase/selectors/metadata";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 
 import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
@@ -46,6 +47,7 @@ const getDashboardId = (state, { params: { splat }, location: { hash } }) =>
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state),
   dashboardId: getDashboardId(state, props),
+  isHeaderVisible: getIsHeaderVisible(state),
 });
 
 const mapDispatchToProps = {
@@ -104,6 +106,7 @@ class AutomaticDashboardAppInner extends React.Component {
       parameters,
       parameterValues,
       setParameterValue,
+      isHeaderVisible,
     } = this.props;
     const { savedDashboardId } = this.state;
     // pull out "more" related items for displaying as a button at the bottom of the dashboard
@@ -119,34 +122,36 @@ class AutomaticDashboardAppInner extends React.Component {
         })}
       >
         <div className="" style={{ marginRight: hasSidebar ? 346 : undefined }}>
-          <div className="bg-white border-bottom py2">
-            <div className="wrapper flex align-center">
-              <Icon name="bolt" className="text-gold mr2" size={24} />
-              <div>
-                <h2 className="text-wrap mr2">
-                  {dashboard && <TransientTitle dashboard={dashboard} />}
-                </h2>
-                {dashboard && dashboard.transient_filters && (
-                  <TransientFilters
-                    filter={dashboard.transient_filters}
-                    metadata={this.props.metadata}
-                  />
+          {isHeaderVisible && (
+            <div className="bg-white border-bottom py2">
+              <div className="wrapper flex align-center">
+                <Icon name="bolt" className="text-gold mr2" size={24} />
+                <div>
+                  <h2 className="text-wrap mr2">
+                    {dashboard && <TransientTitle dashboard={dashboard} />}
+                  </h2>
+                  {dashboard && dashboard.transient_filters && (
+                    <TransientFilters
+                      filter={dashboard.transient_filters}
+                      metadata={this.props.metadata}
+                    />
+                  )}
+                </div>
+                {savedDashboardId != null ? (
+                  <Button className="ml-auto" disabled>{t`Saved`}</Button>
+                ) : (
+                  <ActionButton
+                    className="ml-auto text-nowrap"
+                    success
+                    borderless
+                    actionFn={this.save}
+                  >
+                    {t`Save this`}
+                  </ActionButton>
                 )}
               </div>
-              {savedDashboardId != null ? (
-                <Button className="ml-auto" disabled>{t`Saved`}</Button>
-              ) : (
-                <ActionButton
-                  className="ml-auto text-nowrap"
-                  success
-                  borderless
-                  actionFn={this.save}
-                >
-                  {t`Save this`}
-                </ActionButton>
-              )}
             </div>
-          </div>
+          )}
 
           <div className="wrapper pb4">
             {parameters && parameters.length > 0 && (
