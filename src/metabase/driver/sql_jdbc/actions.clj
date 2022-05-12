@@ -8,12 +8,25 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :as i18n]))
 
+(defn catch-throw [e status-code & [more-info]]
+  (throw
+   (ex-info (ex-message e)
+            (merge {:exception-data (ex-data e)
+                    :status-code status-code}
+                   more-info))))
+
 (defmethod actions/row-action! [:delete :sql-jdbc]
   [_action driver {database-id :database :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
-                          (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
-                          (sql.qp/mbql->honeysql driver query))
+                          (try
+                            (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                            (catch Exception e
+                              (catch-throw e 404)))
+                          (try
+                            (sql.qp/mbql->honeysql driver query)
+                            (catch Exception e
+                              (catch-throw e 404))))
         select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
         row-count       (:row_count (first (jdbc/query connection-spec (hformat/format select-hsql))) 0)]
     (when (not= 1 row-count)
@@ -24,9 +37,8 @@
     (let [delete-hsql (-> raw-hsql (dissoc :select) (assoc :delete []))
           result      (try (jdbc/execute! connection-spec (hformat/format delete-hsql))
                            (catch Exception e
-                             (throw (ex-info (.getMessage e) {:query       query
-                                                              :sql         delete-hsql
-                                                              :status-code 400}))))]
+                             (catch-throw e 400 {:query       query
+                                                 :sql         delete-hsql})))]
       {:rows-deleted result})))
 
 #_(defmethod actions/row-action! [:update :metabase.driver/driver]

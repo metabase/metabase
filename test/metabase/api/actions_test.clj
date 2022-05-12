@@ -24,7 +24,7 @@
                             ["=" "id" 1]
                             ["=" "name" "Red Medicine"]]}}
    {:action       "actions/row/delete"
-    :request-body (mt/mbql-query :checkins {:filter [:= $id 1]})
+    :request-body (mt/mbql-query checkins {:filter [:= $id 1]})
     :expected     {:rows-deleted [1]}}])
 
 (defn- row-action? [action]
@@ -47,11 +47,6 @@
       (testing "Should return a 400 when deleting the row violates a foreign key constraint"
         (let [request-body (mt/mbql-query venues {:filter [:= $id 22]})]
           (mt/user-http-request :crowberto :post 400 "actions/row/delete" request-body))))))
-
-(deftest unknown-row-action-gives-404
-  (mt/with-temporary-setting-values [experimental-enable-actions true]
-    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (mt/user-http-request :crowberto :post 404 "actions/row/rewrite" (mt/mbql-query venues {:filter [:= $id 1]})))))
 
 (deftest feature-flags-test
   (testing "Disable endpoints unless both global and Database feature flags are enabled"
@@ -77,16 +72,14 @@
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
       (doseq [{:keys [action]} (mock-requests)]
         (testing action
-          (testing "Require `:table-id`"
-            (is (= {:errors {:table-id "value must be an integer greater than zero."}}
-                   (mt/user-http-request :crowberto :post 400 action))))
           (when (row-action? action)
-            (testing "Require `:pk` for row actions"
-              (is (= {:errors {:pk "value must be a map."}}
-                     (mt/user-http-request :crowberto :post 400 action {:table-id (mt/id :venues)})))
-              (testing "`:pk` must be a map"
-                (is (= {:errors {:pk "value must be a map."}}
-                       (mt/user-http-request :crowberto :post 400 action {:table-id (mt/id :venues), :pk 1})))))))))))
+            (is (re= #"Value does not match schema:.*"
+                     (:message (mt/user-http-request :crowberto :post 400 action {:database (mt/id) :this "is not a mbql query"}))))))))))
+
+(deftest unknown-row-action-gives-404
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))
 
 (deftest four-oh-four-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
@@ -94,11 +87,8 @@
       (doseq [{:keys [action]} (mock-requests)]
         (testing action
           (testing "404 for unknown Table"
-            (is (= "Not found."
-                   (mt/user-http-request :crowberto :post 404 action {:table-id Integer/MAX_VALUE, :pk {:id 1}}))))))
-      (testing "404 for unknown Table action"
-        (is (= "Unknown Table action \"fake\"."
-               (mt/user-http-request :crowberto :post 404 "actions/table/fake" {:table-id (mt/id :venues), :pk {:id 1}}))))
-      (testing "404 for unknown row action"
+            (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
+                   (:message (mt/user-http-request :crowberto :post 404 action (assoc (mt/mbql-query venues {:filter [:= $id 1]}) :source-table Integer/MAX_VALUE))))))))
+      (testing "404 for unknown Row action"
         (is (= "Unknown row action \"fake\"."
-               (mt/user-http-request :crowberto :post 404 "actions/row/fake" {:table-id (mt/id :venues), :pk {:id 1}})))))))
+               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))))))

@@ -34,14 +34,12 @@
      (actions/table-action! (keyword action) query))))
 
 (defn- kwdize-filter [strings-to-kw query]
-  (update-in query [:query :filter]
-             #(walk/postwalk
-               (fn [x] (if (and
-                            (string? x)
-                            (contains? strings-to-kw x))
-                         (keyword x)
-                         x))
-               %)))
+  (-> query
+      (update :type keyword)
+      (update-in [:query :filter]
+                 #(walk/postwalk
+                   (fn [x] (if (and (string? x) (contains? strings-to-kw x)) (keyword x) x))
+                   %))))
 
 (api/defendpoint POST "/row/:action"
   "Generic API endpoint for doing an action against a specific row."
@@ -54,6 +52,13 @@
                ;; ["=" ["field" ...]]
                #{"=" "<" ">" "field" "and"}
                query)]
+    (try
+      (s/validate mbql.s/Query query)
+      (catch Exception e
+        (throw (ex-info
+                (ex-message e)
+                {:exception-data (ex-data e)
+                 :status-code 400}))))
     (do-check-actions-enabled
      database
      (fn [driver]
