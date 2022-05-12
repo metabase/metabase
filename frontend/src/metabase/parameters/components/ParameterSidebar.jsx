@@ -6,6 +6,7 @@ import cx from "classnames";
 import { DashboardApi } from "metabase/services";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
+import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
 
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
@@ -15,9 +16,10 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 
-const tabs = [
+const LINKED_FILTER = "linked-filters";
+const TABS = [
   { value: "settings", name: t`Settings`, icon: "gear" },
-  { value: "linked-filters", name: t`Linked filters`, icon: "link" },
+  { value: LINKED_FILTER, name: t`Linked filters`, icon: "link" },
 ];
 class ParameterSidebar extends React.Component {
   state = { currentTab: "settings", originalParameter: null };
@@ -51,6 +53,11 @@ class ParameterSidebar extends React.Component {
       setFilteringParameters,
     } = this.props;
     const { currentTab } = this.state;
+
+    const tabs = canUseLinkedFilters(parameter)
+      ? TABS
+      : TABS.filter(tab => tab.value !== LINKED_FILTER);
+
     return (
       <Sidebar onClose={done} onCancel={this.handleCancel}>
         <div className="flex justify-evenly border-bottom">
