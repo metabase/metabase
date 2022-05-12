@@ -29,21 +29,7 @@ const ICON_SIZE = 16;
 const HEADER_ICON_SIZE = 18;
 const MIN_SNIPPETS_FOR_SEARCH = 15;
 
-@Snippets.loadList()
-@SnippetCollections.loadList()
-@SnippetCollections.load({
-  id: (state, props) =>
-    props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
-  wrapped: true,
-})
-@Search.loadList({
-  query: (state, props) => ({
-    collection:
-      props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
-    namespace: "snippets",
-  }),
-})
-export default class SnippetSidebar extends React.Component {
+class SnippetSidebar extends React.Component {
   state = {
     showSearch: false,
     searchString: "",
@@ -280,11 +266,24 @@ export default class SnippetSidebar extends React.Component {
   }
 }
 
-@SnippetCollections.loadList({ query: { archived: true }, wrapped: true })
-@connect((state, { list }) => ({ archivedSnippetCollections: list }))
-@SnippetCollections.loadList()
-@Snippets.loadList({ query: { archived: true }, wrapped: true })
-class ArchivedSnippets extends React.Component {
+export default _.compose(
+  Snippets.loadList(),
+  SnippetCollections.loadList(),
+  SnippetCollections.load({
+    id: (state, props) =>
+      props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
+    wrapped: true,
+  }),
+  Search.loadList({
+    query: (state, props) => ({
+      collection:
+        props.snippetCollectionId === null ? "root" : props.snippetCollectionId,
+      namespace: "snippets",
+    }),
+  }),
+)(SnippetSidebar);
+
+class ArchivedSnippetsInner extends React.Component {
   render() {
     const {
       onBack,
@@ -329,6 +328,13 @@ class ArchivedSnippets extends React.Component {
     );
   }
 }
+
+const ArchivedSnippets = _.compose(
+  SnippetCollections.loadList({ query: { archived: true }, wrapped: true }),
+  connect((state, { list }) => ({ archivedSnippetCollections: list })),
+  SnippetCollections.loadList(),
+  Snippets.loadList({ query: { archived: true }, wrapped: true }),
+)(ArchivedSnippetsInner);
 
 function Row(props) {
   const Component = {

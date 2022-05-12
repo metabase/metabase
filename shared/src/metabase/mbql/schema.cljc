@@ -2,21 +2,21 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
-   (:clj
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])
-     (:import java.time.format.DateTimeFormatter)]
-    :cljs
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])]))
+  (:clj
+   [(:require
+     [clojure.core :as core]
+     [clojure.set :as set]
+     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+     [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [schema.core :as s])
+    (:import java.time.format.DateTimeFormatter)]
+   :cljs
+   [(:require
+     [clojure.core :as core]
+     [clojure.set :as set]
+     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+     [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [schema.core :as s])]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -1151,7 +1151,7 @@
      (s/cond-pre
       (s/enum :all :none)
       (s/recursive #'Fields))
-    "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
+     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -1286,7 +1286,6 @@
   Field filter like `:date` or `:text` and you pass in a parameter like `string/!=` `NOTHING_WILL_MATCH_THIS`.
   Non-exact-match parameters can be abused to enumerate *all* the rows in a table when the parameter was supposed to
   lock the results down to a single row or set of rows."
-  ;; `:type` -- the gener
   {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
@@ -1341,7 +1340,7 @@
    :date/all-options {:type :date, :allowed-for #{:date/all-options}}
 
    ;; "operator" parameter types.
-   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=} }
+   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
    :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}
    :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category
                                                                                  :location/zip_code}}

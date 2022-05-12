@@ -1,15 +1,31 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-import YearPicker from "./YearPicker";
-
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
+
+import YearPicker from "metabase/components/YearPicker";
+
 import { MonthContainer, MonthList } from "./DateMonthYearWidget.styled";
 
-export default class DateMonthYearWidget extends React.Component {
-  constructor(props, context) {
-    super(props, context);
+type Props = {
+  value: string;
+  setValue: (v: string) => void;
+  onClose: () => void;
+};
+
+type State = {
+  month: number | null;
+  year: number;
+};
+
+class DateMonthYearWidget extends React.Component<Props, State> {
+  state: State = {
+    month: null,
+    year: moment().year(),
+  };
+
+  constructor(props: Props) {
+    super(props);
 
     const initial = moment(this.props.value, "YYYY-MM");
     if (initial.isValid()) {
@@ -25,10 +41,7 @@ export default class DateMonthYearWidget extends React.Component {
     }
   }
 
-  static propTypes = {};
-  static defaultProps = {};
-
-  static format = value => {
+  static format = (value: string) => {
     const m = moment(value, "YYYY-MM");
     return m.isValid() ? m.format("MMMM, YYYY") : "";
   };
@@ -73,8 +86,15 @@ export default class DateMonthYearWidget extends React.Component {
   }
 }
 
-const Month = ({ month, selected, onClick }) => (
+interface MonthProp {
+  month: number;
+  selected: boolean;
+  onClick: () => void;
+}
+
+const Month = ({ month, selected, onClick }: MonthProp) => (
   <div
+    aria-selected={selected}
     className={cx(
       "cursor-pointer text-bold full text-centered py1 px2 circular my1",
       {
@@ -89,3 +109,5 @@ const Month = ({ month, selected, onClick }) => (
       .format("MMMM")}
   </div>
 );
+
+export default DateMonthYearWidget;

@@ -1,8 +1,11 @@
 (ns metabase.cmd.endpoint-dox
   "Implementation for the `api-documentation` command, which generates doc pages
   for API endpoints."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.java.classpath :as classpath]
+            [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.namespace.find :as ns.find]
+            [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]))
 
@@ -84,11 +87,16 @@
          :endpoint-str (endpoint-str endpoint)
          :ns-name  (endpoint-ns-name endpoint)))
 
+(defn- api-namespaces []
+  (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
+        :when   (and (re-find #"^metabase(?:-enterprise\.[\w-]+)?\.api\." (name ns-symb))
+                     (not (str/includes? (name ns-symb) "test")))]
+    ns-symb))
+
 (defn- collect-endpoints
   "Gets a list of all API endpoints. Currently excludes Enterprise endpoints."
   []
-  (for [ns-symb     u/metabase-namespace-symbols
-        :when       (str/includes? (name ns-symb) "metabase.api")
+  (for [ns-symb     (api-namespaces)
         [_sym varr] (do (classloader/require ns-symb)
                         (sort (ns-interns ns-symb)))
         :when       (:is-endpoint? (meta varr))]
@@ -173,6 +181,13 @@
   Index page is `docs/api-documentation.md`.
   Endpoint pages are in `/docs/api/{endpoint}.md`"
   []
+  (when-not config/ee-available?
+    (println (u/colorize
+              :red (str "Warning: EE source code not available. EE endpoints will not be included. "
+                        "If you want to include them, run the command with"
+                        \newline
+                        \newline
+                        "clojure -M:ee:run api-documentation"))))
   (let [endpoint-map (map-endpoints)]
     (generate-index-page! endpoint-map)
     (println "API doc index generated at docs/api-documentation.md.")

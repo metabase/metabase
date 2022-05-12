@@ -85,7 +85,7 @@ export async function fetchDataOrError(dataPromise) {
   }
 }
 
-export function getDatasetQueryParams(datasetQuery) {
+export function getDatasetQueryParams(datasetQuery = {}) {
   const { type, query, native, parameters = [] } = datasetQuery;
   return { type, query, native, parameters };
 }

@@ -1,6 +1,6 @@
 # API Documentation for Metabase
 
-_This file was generated from source comments by `clojure -M:run api-documentation`_.
+_This file was generated from source comments by `clojure -M:ee:run api-documentation`_.
 
 Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
 
@@ -10,6 +10,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 - [Actions](api/actions.md)
 - [Activity](api/activity.md)
 - [Alert](api/alert.md)
+- [Application](api/application.md)
 - [Automagic-dashboards](api/automagic-dashboards.md)
 - [Bookmark](api/bookmark.md)
 - [Card](api/card.md)
@@ -21,6 +22,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 - [Embed](api/embed.md)
 - [Field](api/field.md)
 - [Geojson](api/geojson.md)
+- [Gtap](api/gtap.md)
 - [Ldap](api/ldap.md)
 - [Login-history](api/login-history.md)
 - [Metric](api/metric.md)
@@ -32,6 +34,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 - [Preview-embed](api/preview-embed.md)
 - [Public](api/public.md)
 - [Pulse](api/pulse.md)
+- [Review](api/review.md)
 - [Revision](api/revision.md)
 - [Search](api/search.md)
 - [Segment](api/segment.md)
@@ -39,6 +42,7 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 - [Setting](api/setting.md)
 - [Setup](api/setup.md)
 - [Slack](api/slack.md)
+- [Sso](api/sso.md)
 - [Table](api/table.md)
 - [Task](api/task.md)
 - [Tiles](api/tiles.md)

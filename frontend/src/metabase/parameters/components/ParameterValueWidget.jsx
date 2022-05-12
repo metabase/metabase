@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon";
 import DateSingleWidget from "./widgets/DateSingleWidget";
 import DateRangeWidget from "./widgets/DateRangeWidget";
 import DateRelativeWidget from "./widgets/DateRelativeWidget";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
+import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
@@ -48,8 +48,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
-export default class ParameterValueWidget extends Component {
+class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
     name: PropTypes.string,
@@ -239,6 +238,11 @@ export default class ParameterValueWidget extends Component {
     }
   }
 }
+
+export default connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)(ParameterValueWidget);
 
 function getFields(metadata, parameter) {
   if (!metadata) {

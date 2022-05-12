@@ -41,6 +41,7 @@
             [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.middleware.persistence :as qp.persistence]
             [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
             [metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses :as prevent-infinite-recursive-preprocesses]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
@@ -92,6 +93,7 @@
    #'qp.add-source-metadata/add-source-metadata-for-source-queries
    #'upgrade-field-literals/upgrade-field-literals
    (resolve 'ee.sandbox.rows/apply-sandboxing)
+   #'qp.persistence/substitute-persisted-query
    #'qp.add-implicit-clauses/add-implicit-clauses
    #'qp.add-dimension-projections/add-remapped-columns
    #'qp.resolve-fields/resolve-fields
