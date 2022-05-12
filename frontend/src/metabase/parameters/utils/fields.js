@@ -1,17 +1,9 @@
 export function hasFieldValues(parameter) {
-  return parameter.fields.some(field => field.hasFieldValues());
-}
-
-export function getFields(metadata, parameter) {
-  if (!metadata) {
-    return [];
+  if (!Array.isArray(parameter.fields)) {
+    return false;
   }
-  return (
-    parameter.fields ??
-    getFieldIds(parameter)
-      .map(id => metadata.field(id))
-      .filter(f => f != null)
-  );
+
+  return parameter.fields.some(field => field.hasFieldValues());
 }
 
 export function getFieldIds(parameter) {
