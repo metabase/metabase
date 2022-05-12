@@ -746,7 +746,7 @@ export function formatValueRaw(value, options = {}) {
     return NULL_DISPLAY_VALUE;
   } else if (value === null && isBoolean(column)) {
     // Custom expressions returning the False literal return null
-    return JSON.stringify(false);
+    return "";
   } else if (value == null) {
     return null;
   } else if (
