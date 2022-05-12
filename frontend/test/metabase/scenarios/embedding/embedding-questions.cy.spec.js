@@ -168,6 +168,29 @@ describe("scenarios > embedding > questions ", () => {
 
     cy.contains("October 7, 2017, 1:34 AM");
   });
+
+  it("should display according to `locale` parameter metabase#22561", () => {
+    const CARD_ID = 1;
+    cy.request("PUT", `/api/card/${CARD_ID}`, { enable_embedding: true });
+
+    visitQuestion(CARD_ID);
+
+    cy.icon("share").click();
+    cy.findByText("Embed this question in an application").click();
+
+    visitIframe();
+
+    cy.url().then(url => {
+      cy.visit({
+        url,
+        qs: {
+          locale: "de",
+        },
+      });
+    });
+
+    cy.findByText("Februar 11, 2019, 9:40 PM");
+  });
 });
 
 function testPairedTooltipValues(val1, val2) {
