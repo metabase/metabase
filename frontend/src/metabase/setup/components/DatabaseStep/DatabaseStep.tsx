@@ -26,7 +26,7 @@ export interface DatabaseStepProps {
   isStepActive: boolean;
   isStepCompleted: boolean;
   isSetupCompleted: boolean;
-  onEngineChange: (engine: string) => void;
+  onEngineChange: (engine?: string) => void;
   onStepSelect: () => void;
   onDatabaseSubmit: (database: DatabaseInfo) => void;
   onInviteSubmit: (invite: InviteInfo) => void;
@@ -100,7 +100,7 @@ interface DatabaseFormProps {
   database?: DatabaseInfo;
   engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
-  onEngineChange: (engine: string) => void;
+  onEngineChange: (engine?: string) => void;
 }
 
 const DatabaseForm = ({
@@ -118,7 +118,7 @@ const DatabaseForm = ({
   };
 
   const handleEngineChange = (value?: string) => {
-    value && onEngineChange(value);
+    onEngineChange(value);
   };
 
   return (
