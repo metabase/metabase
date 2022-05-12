@@ -5,6 +5,7 @@
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
+            [medley.core :as m]
             [metabase.db :as mdb]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
@@ -77,11 +78,13 @@
   (let [start-time   (t/zoned-date-time)
         task-details (f)
         end-time     (t/zoned-date-time)]
-    (when-let [error-ids (seq (:error-ids task-details))]
-      (let [persisted-infos (hydrate (db/select PersistedInfo :id [:in error-ids])
-                                     [:card :collection]
-                                     :database)]
+    (when-let [error-details (seq (:error-details task-details))]
+      (let [error-details-by-id (m/index-by :persisted-info-id error-details)
+            persisted-infos (->> (hydrate (db/select PersistedInfo :id [:in (keys error-details-by-id)])
+                                          [:card :collection] :database)
+                                 (map #(assoc % :error (get-in error-details-by-id [(:id %) :error]))))]
         (messages/send-persistent-model-error-email!
+          db-id
           persisted-infos
           (:trigger task-details))))
     (db/insert! TaskHistory {:task         task-type
@@ -89,7 +92,7 @@
                              :started_at   start-time
                              :ended_at     end-time
                              :duration     (.toMillis (t/duration start-time end-time))
-                             :task_details (dissoc task-details :error-ids)})))
+                             :task_details task-details})))
 
 (defn- prune-deletables!
   "Seam for tests to pass in specific deletables to drop."
@@ -132,12 +135,13 @@
                   (catch Exception e
                     (log/info e (trs "Error refreshing persisting model with card-id {0}"
                                      (:card_id persisted-info)))
-                    {:state :error}))]
+                    {:state :error :error (ex-message e)}))]
     (if (= :success (:state results))
       (update stats :success inc)
       (-> stats
-          (update :error-ids conj (:id persisted-info))
-          (update :error inc)))) )
+          (update :error-details conj {:persisted-info-id (:id persisted-info)
+                                       :error (:error results)})
+          (update :error inc)))))
 
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
