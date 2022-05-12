@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import _ from "underscore";
 import { getIn } from "icepick";
 
@@ -6,6 +6,8 @@ import { getIn } from "icepick";
 import { FormikProps } from "formik";
 
 import { CustomFormProps } from "metabase/components/form/CustomForm";
+
+import { usePrevious } from "metabase/hooks/use-previous";
 
 import { FieldName, FieldValues, FormField } from "metabase-types/forms";
 
@@ -40,8 +42,19 @@ function getMaybeNestedValue<Value = string>(
   return isNestedField ? getIn(obj, fieldName.split(".")) : obj[fieldName];
 }
 
+interface FormikFormViewAdapterOwnProps {
+  formInitialValues: FieldValues;
+  onValuesChange: (values: FieldValues) => void;
+}
+
+type FormikFormViewAdapterProps = FormikProps<FieldValues> &
+  FormProps &
+  FormikFormViewAdapterOwnProps;
+
 function FormikFormViewAdapter({
   formObject,
+  formInitialValues,
+  onValuesChange,
 
   errors,
   dirty,
@@ -58,8 +71,21 @@ function FormikFormViewAdapter({
   initialValues,
   submitForm,
   ...rest
-}: FormikProps<FieldValues> & FormProps) {
+}: FormikFormViewAdapterProps) {
   const [active, setActive] = useState<string | null>(null);
+  const previousValues = usePrevious(values);
+
+  useEffect(() => {
+    if (!_.isEqual(previousValues, values)) {
+      onValuesChange(values);
+    }
+  }, [previousValues, values, onValuesChange]);
+
+  useEffect(() => {
+    if (!_.isEqual(formInitialValues, initialValues)) {
+      resetForm({ values: formInitialValues });
+    }
+  }, [formInitialValues, initialValues, resetForm]);
 
   const fields = formObject.fields(values);
   const formFieldsByName = _.indexBy(fields, "name");

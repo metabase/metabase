@@ -75,6 +75,7 @@ function Form({
   ...props
 }: FormContainerProps) {
   const [error, setError] = useState<string | null>(null);
+  const [values, setValues] = useState(initialValuesProp);
 
   const {
     inlineFields,
@@ -109,7 +110,7 @@ function Form({
   ]);
 
   const initialValues = useMemo(() => {
-    const fieldNames = formObject.fieldNames();
+    const fieldNames = formObject.fieldNames(values);
 
     const filteredInitialValues: FieldValues = {};
     Object.keys(initialValuesProp).forEach(fieldName => {
@@ -118,13 +119,16 @@ function Form({
       }
     });
 
-    return merge(formObject.initial(), filteredInitialValues);
-  }, [initialValuesProp, formObject]);
+    return merge(
+      merge(formObject.initial(values), filteredInitialValues),
+      values,
+    );
+  }, [values, initialValuesProp, formObject]);
 
-  const fieldNames = useMemo(() => formObject.fieldNames(initialValues), [
-    formObject,
-    initialValues,
-  ]);
+  const fieldNames = useMemo(
+    () => formObject.fieldNames({ ...initialValues, ...values }),
+    [formObject, values, initialValues],
+  );
 
   const handleValidation = useCallback(
     (values: FieldValues) => {
@@ -198,9 +202,11 @@ function Form({
           {...formikProps}
           {...props}
           formObject={formObject}
+          formInitialValues={initialValues}
           error={error}
           registerFormField={registerFormField}
           unregisterFormField={unregisterFormField}
+          onValuesChange={setValues}
         />
       )}
     </Formik>
