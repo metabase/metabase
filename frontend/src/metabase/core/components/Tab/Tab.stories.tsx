@@ -15,3 +15,9 @@ export const Default = Template.bind({});
 Default.args = {
   children: "Tab",
 };
+
+export const WithIcon = Template.bind({});
+WithIcon.args = {
+  icon: "link",
+  children: "Tab",
+};
