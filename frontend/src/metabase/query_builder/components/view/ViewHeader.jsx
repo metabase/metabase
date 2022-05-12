@@ -466,12 +466,10 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
-          className="hide sm-show"
-          ml={1}
+          className="hide sm-show ml1"
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
           onCloseFilter={onCloseFilter}
-          data-metabase-event={`View Mode; Open Filter Widget`}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (
