@@ -13,7 +13,7 @@
   []
   (str (slurp "src/metabase/cmd/resources/api-intro.md") "\n\n"))
 
-;;;; API docs section title
+;;;; API docs page title
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts."
@@ -30,7 +30,7 @@
   [ep-title]
   (str/replace (str "# " ep-title "\n\n") #"-" " "))
 
-;;;; API docs section description
+;;;; API endpoint description
 
 (defn- endpoint-page-description
   "If there is a namespace docstring, include the docstring with a paragraph break."
@@ -40,11 +40,11 @@
       desc
       (str desc "\n\n"))))
 
-;;;; API docs section table of contents
+;;;; API endpoint page route table of contents
 
 (defn- anchor-link
   "Converts an endpoint string to an anchor link, like [GET /api/alert](#get-apialert),
-  for use in section tables of contents."
+  for use in tables of contents for endpoint routes."
   [ep-name]
   (let [al (-> (str "#" (str/lower-case ep-name))
                (str/replace #"[/:%]" "")
@@ -61,12 +61,12 @@
       anchor-link
       (#(str "  - " %))))
 
-(defn section-toc
-  "Generates a table of contents for endpoints in a section."
+(defn route-toc
+  "Generates a table of contents for routes in a page."
   [ep-data]
   (str (str/join "\n" (map toc-links ep-data)) "\n\n"))
 
-;;;; API docs section endpoints
+;;;; API endpoints
 
 (defn- endpoint-str
   "Creates a name for an endpoint: VERB /path/to/endpoint.
@@ -100,7 +100,7 @@
   [ep-data]
   (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
-;;;; Generate API pages
+;;;; Build API pages
 
 (def endpoint-page-footer
   "Used to link back to index on each endpoint page."
@@ -113,15 +113,26 @@
   (apply str
          (endpoint-page-title ep)
          (endpoint-page-description ep-data)
-         (section-toc ep-data)
+         (route-toc ep-data)
          (endpoint-docs ep-data)
          endpoint-page-footer))
+
+(defn- build-filepath
+  "Creates a filepath from an endpoint."
+  [dir endpoint-name ext]
+  (let [file (-> endpoint-name
+                 str/trim
+                 (str/split #"\s+")
+                 (#(str/join "-" %))
+                 str/lower-case)]
+    (str dir file ext)))
 
 (defn- build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
   [ep]
-  (str "- [" (str/capitalize ep) "](api/" (str/lower-case ep) ".md)"))
+  (let [filepath (build-filepath "api/" ep ".md")]
+    (str "- [" (str/capitalize ep) "](" filepath ")")))
 
 (defn- build-index
   "Creates a string that lists links to all endpoint groups,
@@ -138,17 +149,24 @@
        (group-by :ns-name)
        (into (sorted-map))))
 
+;;;; Page generators
+
 (defn- generate-index-page!
   "Creates an index page that lists links to all endpoint pages."
   [endpoint-map]
-  (spit (io/file "docs/api-documentation.md") (str (api-docs-intro) (build-index endpoint-map))))
+  (let [endpoint-index (str
+                        (api-docs-intro)
+                        (build-index endpoint-map))]
+    (spit (io/file "docs/api-documentation.md") endpoint-index)))
 
 (defn- generate-endpoint-pages!
   "Takes a map of endpoint groups and generates markdown
   pages for all API endpoint groups."
   [endpoints]
   (doseq [[ep ep-data] endpoints]
-    (spit (str "docs/api/" (str/lower-case ep) ".md") (endpoint-page ep ep-data))))
+    (let [file (build-filepath "docs/api/" ep ".md")
+          contents (endpoint-page ep ep-data)]
+      (spit file contents))))
 
 (defn generate-dox!
   "Builds an index page and sub-pages for groups of endpoints.
