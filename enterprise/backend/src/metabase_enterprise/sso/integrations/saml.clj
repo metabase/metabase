@@ -111,11 +111,11 @@
   ;; and redirect them back to us
   [req]
   (check-saml-enabled)
-  (try
-    (let [redirect-url (or (get-in req [:params :redirect])
-                           (log/warn (trs "Warning: expected `redirect` param, but none is present"))
-                           (public-settings/site-url))]
-      (sso-utils/check-sso-redirect redirect-url)
+  (let [redirect-url (or (get-in req [:params :redirect])
+                         (log/warn (trs "Warning: expected `redirect` param, but none is present"))
+                         (public-settings/site-url))]
+    (sso-utils/check-sso-redirect redirect-url)
+    (try
       (let [idp-url      (sso-settings/saml-identity-provider-uri)
             saml-request (saml/request
                            {:request-id (str "id-" (java.util.UUID/randomUUID))
@@ -125,11 +125,11 @@
                             :idp-url    idp-url
                             :credential (sp-cert-keystore-details)})
             relay-state  (saml/str->base64 redirect-url)]
-        (saml/idp-redirect-response saml-request idp-url relay-state)))
-      (catch Throwable e
-        (let [msg (trs "Error generating SAML request")]
-          (log/error e msg)
-          (throw (ex-info msg {:status-code 500} e))))))
+        (saml/idp-redirect-response saml-request idp-url relay-state))
+    (catch Throwable e
+      (let [msg (trs "Error generating SAML request")]
+        (log/error e msg)
+        (throw (ex-info msg {:status-code 500} e)))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)

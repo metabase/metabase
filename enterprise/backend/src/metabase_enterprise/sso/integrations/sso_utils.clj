@@ -51,7 +51,6 @@
         host        (try
                       (.getHost (new URL decoded-url))
                       (catch MalformedURLException _ ""))
-        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))
-        printo      (println our-host)]
+        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
   (api/check (or no-host (= host our-host))
     [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
