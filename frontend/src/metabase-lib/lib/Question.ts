@@ -1239,7 +1239,7 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToFilters() {
+  convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
@@ -1273,7 +1273,7 @@ class QuestionInner {
       if (this.query().isEditable()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToFilters()
+          .convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,
