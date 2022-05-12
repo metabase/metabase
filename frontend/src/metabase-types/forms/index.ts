@@ -73,9 +73,9 @@ export type FormObject<Values> = {
 
 export type PopulatedFormObject<Values extends BaseFieldValues> = {
   fields: (values?: Values) => FormFieldDefinition[];
-  fieldNames: (values?: Values) => (keyof Values)[];
+  fieldNames: (values?: Partial<Values>) => (keyof Values)[];
   hidden: (obj: unknown) => void;
-  initial: () => Values;
+  initial: (values?: Partial<Values>) => Values;
   normalize: (values: Values) => Values;
   validate: (obj: unknown, opts: { values: Values }) => void;
   disablePristineSubmit?: boolean;

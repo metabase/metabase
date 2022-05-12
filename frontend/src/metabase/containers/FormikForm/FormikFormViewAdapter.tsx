@@ -88,8 +88,11 @@ function FormikFormViewAdapter<Values extends BaseFieldValues>({
 
     const value = getMaybeNestedValue(values, name);
     const initialValue = getMaybeNestedValue(initialValues, name);
-    const error = getMaybeNestedValue(errors, name);
-    const isTouched = !!getMaybeNestedValue(touched, name);
+    const error = getMaybeNestedValue(errors as Record<string, string>, name);
+    const isTouched = !!getMaybeNestedValue<boolean>(
+      touched as Record<string, boolean>,
+      name,
+    );
 
     return {
       ...field,
