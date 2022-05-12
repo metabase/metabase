@@ -255,10 +255,11 @@ class FieldValuesWidgetInner extends Component {
       formatOptions,
       placeholder,
       forceTokenField = false,
-      valueRenderer = renderValue(fields, formatOptions, value, {
-        autoLoad: true,
-        compact: false,
-      }),
+      valueRenderer = value =>
+        renderValue(fields, formatOptions, value, {
+          autoLoad: true,
+          compact: false,
+        }),
       optionRenderer = option =>
         renderValue(fields, formatOptions, option[0], { autoLoad: false }),
       layoutRenderer = layoutProps => (
