@@ -173,7 +173,7 @@ export function QuestionFilterWidget({
         large
         labelBreakpoint="sm"
         color={color("filter")}
-        icon="triple_dot"
+        icon="ellipsis"
         active={isShowingFilterSidebar}
         onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       />
