@@ -33,7 +33,7 @@ function CategoryFieldInput({ value, field, onChange }) {
       <StyledFieldValuesWidget
         value={value ? [String(value)] : []}
         fields={[field]}
-        onChange={onChange}
+        onChange={values => onChange(values[0])}
         multi={false}
         autoFocus={false}
         alwaysShowOptions={false}
