@@ -35,10 +35,15 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-;; MariaDB doesn't like JSON at all, it turns out
+(defn- mariadb? [^DatabaseMetaData metadata]
+  (= (.getDatabaseProductName metadata) "MariaDB"))
+
+;; MariaDB doesn't like the special mysql JSON type at all, it turns out
+;; There exists a JSON type in MariaDB that's actually just their LONGTEXT
+;; which seems to break things and will require special attention
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ database]
-  (let [spec (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (jdbc/with-db-metadata [metadata jdbc-spec]
+  (let [spec (sql-jdbc.conn/connection-details->spec :mysql (:details database))]
+    (jdbc/with-db-metadata [metadata spec]
       (not (mariadb? metadata)))))
 
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
@@ -48,9 +53,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- mariadb? [^DatabaseMetaData metadata]
-  (= (.getDatabaseProductName metadata) "MariaDB"))
 
 (defn- db-version [^DatabaseMetaData metadata]
   (Double/parseDouble
