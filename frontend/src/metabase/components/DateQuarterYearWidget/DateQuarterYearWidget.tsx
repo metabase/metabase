@@ -1,5 +1,4 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
+import React from "react";
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
@@ -10,9 +9,25 @@ import YearPicker from "metabase/components/YearPicker";
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc
 const QUARTER_FORMAT_STRING = t`[Q]Q`;
 
-export default class DateQuarterYearWidget extends Component {
-  constructor(props, context) {
-    super(props, context);
+type Props = {
+  value: string;
+  setValue: (v: string) => void;
+  onClose: () => void;
+};
+
+type State = {
+  quarter: number | null;
+  year: number;
+};
+
+class DateQuarterYearWidget extends React.Component<Props, State> {
+  state: State = {
+    quarter: null,
+    year: moment().year(),
+  };
+
+  constructor(props: Props) {
+    super(props);
 
     const initial = moment(this.props.value, "[Q]Q-YYYY");
     if (initial.isValid()) {
@@ -28,10 +43,7 @@ export default class DateQuarterYearWidget extends Component {
     }
   }
 
-  static propTypes = {};
-  static defaultProps = {};
-
-  static format = value => {
+  static format = (value: string) => {
     const m = moment(value, "[Q]Q-YYYY");
     return m.isValid() ? m.format("[Q]Q, YYYY") : "";
   };
@@ -78,8 +90,15 @@ export default class DateQuarterYearWidget extends Component {
   }
 }
 
-const Quarter = ({ quarter, selected, onClick }) => (
+interface QuarterProps {
+  quarter: number;
+  selected: boolean;
+  onClick: () => void;
+}
+
+const Quarter = ({ quarter, selected, onClick }: QuarterProps) => (
   <li
+    aria-selected={selected}
     className={cx(
       "cursor-pointer bg-brand-hover text-white-hover flex layout-centered",
       { "bg-brand text-white": selected },
@@ -92,3 +111,5 @@ const Quarter = ({ quarter, selected, onClick }) => (
       .format(QUARTER_FORMAT_STRING)}
   </li>
 );
+
+export default DateQuarterYearWidget;
