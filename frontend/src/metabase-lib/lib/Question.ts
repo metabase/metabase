@@ -1244,18 +1244,17 @@ class QuestionInner {
       return this;
     }
 
-    const [query, hasQueryBeenAltered] = this.parameters().reduce(
-      ([query, hasQueryBeenAltered], parameter) => {
-        const filter = fieldFilterParameterToMBQLFilter(
-          parameter,
-          this.metadata(),
-        );
-        return filter
-          ? [query.filter(filter), true]
-          : [query, hasQueryBeenAltered];
-      },
-      [this.query(), false],
-    );
+    const mbqlFilters = this.parameters()
+      .map(parameter => {
+        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
+      })
+      .filter(mbqlFilter => mbqlFilter != null);
+
+    const query = mbqlFilters.reduce((query, mbqlFilter) => {
+      return query.filter(mbqlFilter);
+    }, this.query());
+
+    const hasQueryBeenAltered = mbqlFilters.length > 0;
 
     const question = query
       .question()
