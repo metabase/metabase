@@ -73,15 +73,8 @@ function parseParameterValueForFields(value, fields) {
 
 function normalizeParameterValueForWidget(value, parameter) {
   const fieldType = getParameterType(parameter);
-
-  // ParameterValueWidget uses FieldValuesWidget if there's no available
-  // date widget and all targets are fields.
-  const willUseFieldValuesWidget =
-    parameter.hasOnlyFieldTargets && fieldType !== "date";
-
-  // If we'll use FieldValuesWidget, we should start with an array to match.
-  if (willUseFieldValuesWidget && !Array.isArray(value)) {
-    value = [value];
+  if (fieldType !== "date" && !Array.isArray(value)) {
+    return [value];
   }
 
   return value;

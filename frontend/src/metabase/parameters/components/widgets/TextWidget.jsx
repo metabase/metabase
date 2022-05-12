@@ -62,11 +62,15 @@ export default class TextWidget extends Component {
       this.setState({ isFocused });
     };
 
+    const value = Array.isArray(this.state.value)
+      ? this.state.value[0]
+      : this.state.value;
+
     return (
       <input
         className={className}
         type="text"
-        value={this.state.value || ""}
+        value={value || ""}
         onChange={e => {
           this.setState({ value: e.target.value });
           if (this.props.commitImmediately) {
