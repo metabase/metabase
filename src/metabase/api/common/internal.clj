@@ -21,13 +21,20 @@
 
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
-  [method route]
-  (format "%s %s%s"
-          (name method)
-          (str/replace (.getName *ns*) #"^metabase\.api\." "/api/")
-          (if (vector? route)
-            (first route)
-            route)))
+  ([method route]
+   (endpoint-name *ns* method route))
+
+  ([endpoint-namespace method route]
+   (format "%s %s%s"
+           (name method)
+           (-> (.getName (the-ns endpoint-namespace))
+               (str/replace #"^metabase\.api\." "/api/")
+               ;; This is only correct for EE endpoints following the usual convention. Not all of them do. The right
+               ;; way to fix this is to move them -- see #22687
+               (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/"))
+           (if (vector? route)
+             (first route)
+             route))))
 
 (defn- args-form-flatten
   "A version of `flatten` that will actually flatten a form such as:
@@ -101,7 +108,7 @@
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
                     (str (u/add-period docstr) (when (contains-superuser-check? body)
-                                  "\n\nYou must be a superuser to do this."))
+                                                 "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))
 
