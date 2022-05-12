@@ -1,19 +1,22 @@
-import React, { ReactNode } from "react";
+import React, { forwardRef, HTMLAttributes, ReactNode, Ref } from "react";
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 
-export interface TabProps {
+export interface TabProps extends HTMLAttributes<HTMLButtonElement> {
   icon?: string;
   isActive?: boolean;
   children?: ReactNode;
 }
 
-const Tab = ({ icon, isActive, children }: TabProps): JSX.Element => {
+const Tab = forwardRef(function Tab(
+  { icon, isActive, children, ...props }: TabProps,
+  ref: Ref<HTMLButtonElement>,
+) {
   return (
-    <TabRoot isActive={isActive}>
+    <TabRoot {...props} ref={ref} isActive={isActive}>
       {icon && <TabIcon name={icon} />}
       <TabLabel>{children}</TabLabel>
     </TabRoot>
   );
-};
+});
 
 export default Tab;
