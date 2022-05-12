@@ -28,6 +28,7 @@
 
 (defn- available-fonts*
   []
+  (log/info (str "Reading available fonts from " font-path))
   (->> font-path
        u.files/get-path
        u.files/files-seq
