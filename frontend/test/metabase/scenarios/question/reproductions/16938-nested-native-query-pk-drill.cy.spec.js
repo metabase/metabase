@@ -29,7 +29,7 @@ describe("issue 16938", () => {
       .click();
 
     cy.findByTestId("object-detail").within(() => {
-      cy.findByText(`37.65`);
+      cy.findByText("37.65");
     });
   });
 });
