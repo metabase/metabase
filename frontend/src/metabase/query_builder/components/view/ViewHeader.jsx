@@ -469,6 +469,7 @@ function ViewTitleHeaderRightSide(props) {
           className="hide sm-show ml1"
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
+          onOpenModal={onOpenModal}
           onCloseFilter={onCloseFilter}
         />
       )}
