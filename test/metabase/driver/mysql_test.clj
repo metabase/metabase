@@ -362,12 +362,14 @@
 ;; Therefore, no JSON tests.
 (defn- version-query [db-id] {:type :native, :native {:query "SELECT VERSION();"}, :database db-id})
 
-(defn- is-mariadb? [db-id] (str/includes? (get-in (qp/process-userland-query (version-query db-id) [:data :rows 0 0])) "Maria"))
+(defn- is-mariadb? [db-id] (str/includes?
+                             (or (get-in (qp/process-userland-query (version-query db-id)) [:data :rows 0 0]) "")
+                             "Maria"))
 
 (deftest nested-field-column-test
   (mt/test-driver :mysql
     (mt/dataset json
-      (if (not (is-mariadb? (mt/db)))
+      (when (not (is-mariadb? (u/id (mt/db))))
         (testing "Nested field column listing"
           (is (= #{{:name "json_bit → 1234123412314",
                     :database-type "timestamp",
@@ -431,7 +433,7 @@
 (deftest big-nested-field-column-test
   (mt/test-driver :mysql
     (mt/dataset json
-      (if (not (is-mariadb? (mt/db)))
+      (when (not (is-mariadb? (u/id (mt/db))))
         (testing "Nested field column listing, but big"
           (is (= #{}
                  (sql-jdbc.sync/describe-nested-field-columns
@@ -456,21 +458,20 @@
 
 (deftest json-alias-test
   (mt/test-driver :mysql
-    (if (not (is-mariadb? (u/id (mt/db))))
+    (when (not (is-mariadb? (u/id (mt/db))))
       (testing "json breakouts and order bys have alias coercion"
-        (println (qp/process-userland-query (mt/native-query {:query "SELECT VERSION();"})))
         (mt/dataset json
-                    (let [table  (db/select-one Table :db_id (u/id (mt/db)) :name "json")]
-                      (sync/sync-table! table)
-                      (let [field (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")
-                            compile-res (qp/compile
-                                          {:database (u/the-id (mt/db))
-                                           :type     :query
-                                           :query    {:source-table (u/the-id table)
-                                                      :aggregation  [[:count]]
-                                                      :breakout     [[:field (u/the-id field) nil]]}})]
-                        (is (= (str "SELECT JSON_EXTRACT(`json`.`json_bit`, ?) AS `json_bit → 1234`, "
-                                    "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
-                                    "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
-                               (:query compile-res)))
-                        (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
+          (let [table  (db/select-one Table :db_id (u/id (mt/db)) :name "json")]
+            (sync/sync-table! table)
+            (let [field (db/select-one Field :table_id (u/id table) :name "json_bit → 1234")
+                  compile-res (qp/compile
+                                {:database (u/the-id (mt/db))
+                                 :type     :query
+                                 :query    {:source-table (u/the-id table)
+                                            :aggregation  [[:count]]
+                                            :breakout     [[:field (u/the-id field) nil]]}})]
+              (is (= (str "SELECT JSON_EXTRACT(`json`.`json_bit`, ?) AS `json_bit → 1234`, "
+                          "count(*) AS `count` FROM `json` GROUP BY JSON_EXTRACT(`json`.`json_bit`, ?) "
+                          "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
+                     (:query compile-res)))
+              (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
