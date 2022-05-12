@@ -5,16 +5,26 @@ export interface TabProps {
   isActive?: boolean;
 }
 
-export const TabRoot = styled.div<TabProps>`
+export const TabRoot = styled.button<TabProps>`
   display: inline-flex;
   align-items: center;
   color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
-  padding-bottom: 0.75rem;
+  cursor: pointer;
+  padding: 0.75rem 0;
   border-bottom: 0.125rem solid
     ${props => (props.isActive ? color("brand") : "transparent")};
 
   &:hover {
     color: ${color("brand")};
+    border-color: ${color("brand")};
+  }
+
+  &:focus {
+    outline: 2px solid ${color("focus")};
+  }
+
+  &:focus:not(:focus-visible) {
+    outline: none;
   }
 `;
 
