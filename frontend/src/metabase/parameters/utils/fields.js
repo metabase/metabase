@@ -1,3 +1,7 @@
 export function hasFieldValues(parameter) {
-  return parameter.fields.some(field => field.hasFieldValues());
+  if (Array.isArray(parameter.values)) {
+    return parameter.fields.some(field => field.hasFieldValues());
+  }
+
+  return false;
 }
