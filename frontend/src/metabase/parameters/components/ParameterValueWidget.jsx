@@ -20,7 +20,11 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
-import { hasFieldValues } from "metabase/parameters/utils/fields";
+import {
+  hasFieldValues,
+  getFields,
+  getFieldIds,
+} from "metabase/parameters/utils/fields";
 
 import S from "./ParameterWidget.css";
 
@@ -243,24 +247,6 @@ export default connect(
   makeMapStateToProps,
   mapDispatchToProps,
 )(ParameterValueWidget);
-
-function getFields(metadata, parameter) {
-  if (!metadata) {
-    return [];
-  }
-  return (
-    parameter.fields ??
-    getFieldIds(parameter)
-      .map(id => metadata.field(id))
-      .filter(f => f != null)
-  );
-}
-
-function getFieldIds(parameter) {
-  const { field_ids = [], field_id } = parameter;
-  const fieldIds = field_id ? [field_id] : field_ids;
-  return fieldIds.filter(id => typeof id === "number");
-}
 
 function Widget({
   parameter,
