@@ -96,7 +96,7 @@ function FormikFormViewAdapter({
     const value = getMaybeNestedValue(values, name);
     const initialValue = getMaybeNestedValue(initialValues, name);
     const error = getMaybeNestedValue(errors, name);
-    const isTouched = getMaybeNestedValue(touched, name);
+    const isTouched = !!getMaybeNestedValue(touched, name);
 
     return {
       ...field,
