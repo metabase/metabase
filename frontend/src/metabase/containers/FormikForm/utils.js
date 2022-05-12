@@ -85,9 +85,17 @@ function setValueAtPath(object, path, value, mergeFn = (a, b) => b) {
 export function cleanObject(object) {
   const result = {};
   Object.keys(object).forEach(key => {
-    const value = object[key];
-    if (value) {
-      result[key] = value;
+    const isNestedObject = typeof object[key] === "object";
+    if (isNestedObject) {
+      const cleanNestedObject = cleanObject(object[key]);
+      if (Object.keys(cleanNestedObject).length > 1) {
+        result[key] = cleanNestedObject;
+      }
+    } else {
+      const value = object[key];
+      if (value) {
+        result[key] = value;
+      }
     }
   });
   return result;

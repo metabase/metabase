@@ -21,7 +21,6 @@ interface FormContainerProps {
   form?: FormObject;
 
   fields?: FormFieldDefinition[];
-  values?: FieldValues;
   initialValues?: FieldValues;
 
   overwriteOnInitialValuesChange?: boolean;
@@ -67,7 +66,6 @@ function Form({
   form,
   fields,
   initialValues: initialValuesProp = {},
-  values = {},
   overwriteOnInitialValuesChange = false,
   validate,
   initial,
@@ -120,13 +118,13 @@ function Form({
       }
     });
 
-    return merge(formObject.initial(values), filteredInitialValues);
-  }, [values, initialValuesProp, formObject]);
+    return merge(formObject.initial(), filteredInitialValues);
+  }, [initialValuesProp, formObject]);
 
-  const fieldNames = useMemo(
-    () => formObject.fieldNames({ ...initialValues, ...values }),
-    [formObject, values, initialValues],
-  );
+  const fieldNames = useMemo(() => formObject.fieldNames(initialValues), [
+    formObject,
+    initialValues,
+  ]);
 
   const handleValidation = useCallback(
     (values: FieldValues) => {

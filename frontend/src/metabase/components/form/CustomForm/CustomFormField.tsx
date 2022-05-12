@@ -58,7 +58,7 @@ function RawCustomFormField(
     unregisterFormField,
   } = useForm();
 
-  const field = getIn(fields, name.split("."));
+  const field = fields[name];
   const formField = formFieldsByName[name];
 
   useOnMount(() => {
