@@ -26,12 +26,6 @@ function isCustomWidget(
   );
 }
 
-function isInlineField(
-  props: CustomFormFieldProps,
-): props is StandardFormFieldDefinition {
-  return !!(props as FormFieldDefinition).type;
-}
-
 export interface CustomFormFieldProps extends BaseFieldDefinition {
   onChange?: (e: unknown) => void;
 }
@@ -68,15 +62,15 @@ function RawCustomFormField(
   const formField = formFieldsByName[name];
 
   useOnMount(() => {
-    if (isInlineField(props)) {
-      registerFormField?.(getFieldDefinition(props));
-    }
+    registerFormField?.(
+      getFieldDefinition(props as StandardFormFieldDefinition),
+    );
   });
 
   useOnUnmount(() => {
-    if (isInlineField(props)) {
-      unregisterFormField?.(getFieldDefinition(props));
-    }
+    unregisterFormField?.(
+      getFieldDefinition(props as StandardFormFieldDefinition),
+    );
   });
 
   const handleChange = useCallback(
