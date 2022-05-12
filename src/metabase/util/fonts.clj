@@ -6,13 +6,6 @@
 
 (def ^:private font-path "./resources/frontend_client/app/fonts/")
 
-(defn- available-font-paths
-  []
-  (log/info (str "Reading available fonts from " font-path))
-  (->> font-path
-       u.files/get-path
-       u.files/files-seq))
-
 (defn- partial-file-name
   [parent-path path]
   (-> (str path)
