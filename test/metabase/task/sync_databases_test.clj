@@ -253,30 +253,20 @@
   (testing "It will fingerprint if under time and no other fingerprints"
     (is (should-refingerprint (results (dec threshold) 0)))))
 
-(deftest randomized-schedules-test
-  (testing "when user schedules it does not return new schedules"
-    (is (nil? (task.sync-databases/randomized-schedules {:details {:let-user-control-scheduling true}}))))
-  (testing "when schedules are already 'randomized' it returns nil"
-    (is (nil? (task.sync-databases/randomized-schedules
-                {:cache_field_values_schedule (u.cron/schedule-map->cron-string
-                                                {:schedule_hour 17 :schedule_type "daily"})
-                 :metadata_sync_schedule      (u.cron/schedule-map->cron-string
-                                                {:schedule_minute 17 :schedule_type "hourly"})}))))
-  (testing "returns appropriate randomized schedules"
-    (doseq [default-metadata sync.schedules/default-metadata-sync-schedule-cron-strings]
-      (is (contains? (task.sync-databases/randomized-schedules
-                       {:metadata_sync_schedule      default-metadata
-                        :cache_field_values_schedule (u.cron/schedule-map->cron-string
-                                                       {:schedule_hour 17 :schedule_type "daily"})})
-                     :metadata_sync_schedule)))
-    (doseq [default-cache sync.schedules/default-cache-field-values-schedule-cron-strings]
-      (is (contains? (task.sync-databases/randomized-schedules
-                       {:metadata_sync_schedule      (u.cron/schedule-map->cron-string
-                                                       {:schedule_hour 17 :schedule_type "hourly"})
-                        :cache_field_values_schedule default-cache})
-                     :cache_field_values_schedule)))
-    (is (schema= {:metadata_sync_schedule      String
-                  :cache_field_values_schedule String}
-                 (task.sync-databases/randomized-schedules
-                   {:metadata_sync_schedule      (first sync.schedules/default-metadata-sync-schedule-cron-strings)
-                    :cache_field_values_schedule (first sync.schedules/default-cache-field-values-schedule-cron-strings)})))))
+(deftest randomizing-schedules-test
+  (testing "metabase-controls-schedule?"
+    (is (not (#'task.sync-databases/metabase-controls-schedule?
+              {:details {:let-user-control-scheduling true}})))
+    (is (#'task.sync-databases/metabase-controls-schedule?
+         {:details {:let-user-control-scheduling false}}))
+    (is (#'task.sync-databases/metabase-controls-schedule?
+         {:details {}})))
+  (testing "old-default-schedule?"
+    (doseq [default-sync-schedule sync.schedules/default-metadata-sync-schedule-cron-strings]
+      (is (#'task.sync-databases/old-default-schedule?
+           {:metadata_sync_schedule default-sync-schedule
+            :cache_field_values_schedule "0 43 0 * * ? *"})))
+    (doseq [default-fv-schedule sync.schedules/default-cache-field-values-schedule-cron-strings]
+      (is (#'task.sync-databases/old-default-schedule?
+           {:metadata_sync_schedule "0 32 * * * ? *"
+            :cache_field_values_schedule default-fv-schedule})))))

@@ -206,6 +206,7 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
+;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
 (s/defn ^:private check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- DatabaseInstance]
@@ -254,37 +255,30 @@
   (task/add-job! sync-analyze-job)
   (task/add-job! field-values-job))
 
-(defn randomized-schedules
-  "Updated default schedules for the sync task when given the original default schedules.
-  The defaults used to be all at the same time leading to poor resource management. If the user has not indicated they
-  want to control the scheduling, returns appropriate randomized schedules for the sync tasks."
-  [{:keys [details cache_field_values_schedule metadata_sync_schedule] :as _database}]
-  (when-not (:let-user-control-scheduling details)
-    (let [random-defaults (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
-          old-default-keys (cond-> []
-                             (contains? sync.schedules/default-cache-field-values-schedule-cron-strings cache_field_values_schedule)
-                             (conj :cache_field_values_schedule)
-
-                             (contains? sync.schedules/default-metadata-sync-schedule-cron-strings metadata_sync_schedule)
-                             (conj :metadata_sync_schedule))]
-      (not-empty (select-keys random-defaults old-default-keys)))))
-
-(defn maybe-update-db-schedules
-  "Update schedules when managed by metabase to spread the syncs out in time.
-  When not let-user-control-scheduling metabase is in control of the sync times. These used to all be scheduled at
-  every hour at 50 minutes or on the hour. This can cause a large load on the databaes or CPU and this attempts to
-  spread them out in time."
+(defn- metabase-controls-schedule?
+  "Predicate returning if the user does not manually set sync schedules and leaves it to metabase."
   [database]
-  (if-let [randomized-schedules (randomized-schedules database)]
-    (u/prog1 (merge database randomized-schedules)
-      (db/update! Database (u/the-id database) randomized-schedules))
-    database))
+  (not (-> database :details :let-user-control-scheduling)))
+
+(defn- old-default-schedule?
+  "Database uses the old default scheduled time for syncs. All databases used to sync schema on the hour and sync field
+  values at midnight. This led to stampedes on db resources so we now randomize the schedules by default."
+  [database]
+  (or (contains? sync.schedules/default-cache-field-values-schedule-cron-strings
+                 (:cache_field_values_schedule database))
+      (contains? sync.schedules/default-metadata-sync-schedule-cron-strings
+                 (:metadata_sync_schedule database))))
 
 (defmethod task/init! ::SyncDatabases
   [_]
   (job-init)
-  (doseq [database (db/select Database)]
-    (try
-      (check-and-schedule-tasks-for-db! (maybe-update-db-schedules database))
-      (catch Throwable e
-        (log/error e (trs "Failed to schedule tasks for Database {0}" (:id database)))))))
+  ;; prevent "stampedes" on databases which all used the same sync schedules. Randomize them
+  (let [dbs-with-default-schedules (->> (db/select Database)
+                                        (filter
+                                         (every-pred
+                                          metabase-controls-schedule? old-default-schedule?)))]
+    (when (seq dbs-with-default-schedules)
+      (log/info (trs "Updating databases without custom sync scheduling to random schedules.")))
+    (doseq [db dbs-with-default-schedules]
+      (db/update! Database (u/the-id db)
+        (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))))))
