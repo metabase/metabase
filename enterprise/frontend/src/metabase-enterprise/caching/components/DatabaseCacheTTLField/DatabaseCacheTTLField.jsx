@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import Select, { Option } from "metabase/core/components/Select";
+
 import { CacheTTLField } from "../CacheTTLField";
 import {
   CacheFieldContainer,
@@ -25,17 +27,18 @@ export function DatabaseCacheTTLField({ field }) {
     field.value > 0 ? MODE.CUSTOM : MODE.INSTANCE_DEFAULT,
   );
 
-  const onModeChange = useCallback(e => {
-    setMode(e.target.value);
-  }, []);
-
-  useEffect(() => {
-    if (mode === MODE.INSTANCE_DEFAULT) {
-      field.onChange(INSTANCE_DEFAULT_CACHE_TTL);
-    } else if (field.value == null) {
-      field.onChange(DEFAULT_CUSTOM_CACHE_TTL);
-    }
-  }, [field, mode]);
+  const onModeChange = useCallback(
+    e => {
+      const nextMode = e.target.value;
+      if (nextMode === MODE.INSTANCE_DEFAULT) {
+        field.onChange(INSTANCE_DEFAULT_CACHE_TTL);
+      } else if (field.value == null) {
+        field.onChange(DEFAULT_CUSTOM_CACHE_TTL);
+      }
+      setMode(nextMode);
+    },
+    [field],
+  );
 
   return (
     <FieldContainer>
