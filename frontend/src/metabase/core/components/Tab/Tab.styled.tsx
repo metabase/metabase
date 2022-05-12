@@ -3,17 +3,17 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export interface TabProps {
-  isActive?: boolean;
+  isSelected?: boolean;
 }
 
 export const TabRoot = styled.button<TabProps>`
   display: inline-flex;
   align-items: center;
-  color: ${props => (props.isActive ? color("brand") : color("text-dark"))};
+  color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   cursor: pointer;
   padding: 0.75rem 0;
   border-bottom: 0.125rem solid
-    ${props => (props.isActive ? color("brand") : "transparent")};
+    ${props => (props.isSelected ? color("brand") : "transparent")};
 
   &:hover {
     color: ${color("brand")};
