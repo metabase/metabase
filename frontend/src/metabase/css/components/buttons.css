@@ -13,7 +13,7 @@
   cursor: pointer;
   text-decoration: none;
   font-weight: bold;
-  font-family: "Lato", sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   border-radius: var(--default-button-border-radius);
 }
 

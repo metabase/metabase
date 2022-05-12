@@ -29,7 +29,7 @@ const LineAreaBarChart = ({
   const palette = { ...defaultColors, ...colors };
 
   const chartStyle: ChartStyle = {
-    fontFamily: "Lato, sans-serif",
+    fontFamily: "var(--default-font-family), sans-serif",
     axes: {
       color: palette.textLight,
       ticks: {
