@@ -119,7 +119,7 @@
   (when config/ee-available?
     (testing "Make sure the route name for enterprise API endpoints is somewhat correct"
       (require 'metabase-enterprise.advanced-permissions.api.application)
-      (is (= "GET /api/ee/advanced-permissions/applications/graph"
+      (is (= "GET /api/ee/advanced-permissions/application/graph"
              (#'internal/endpoint-name (the-ns 'metabase-enterprise.advanced-permissions.api.application)
                                        'GET
                                        "/graph"))))))
