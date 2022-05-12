@@ -13,8 +13,8 @@ describe("DateMonthYearWidget", () => {
       ></DateMonthYearWidget>,
     );
 
-    expect(screen.getByText("January")).toBeDefined();
-    expect(screen.getByText("December")).toBeDefined();
+    expect(screen.getByText("January")).toBeVisible();
+    expect(screen.getByText("December")).toBeVisible();
 
     // 07 = July and year 2021
     expect(screen.getByRole("button")).toHaveTextContent("2021");
