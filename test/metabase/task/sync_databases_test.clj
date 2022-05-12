@@ -11,7 +11,6 @@
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [metabase.util.cron :as u.cron]
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
