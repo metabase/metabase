@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 export interface TabProps {
   isActive?: boolean;
@@ -26,6 +27,12 @@ export const TabRoot = styled.button<TabProps>`
   &:focus:not(:focus-visible) {
     outline: none;
   }
+`;
+
+export const TabIcon = styled(Icon)`
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
 `;
 
 export const TabLabel = styled.span`

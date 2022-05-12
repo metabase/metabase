@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { TabLabel, TabRoot } from "./Tab.styled";
+import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 
 export interface TabProps {
   icon?: string;
@@ -7,9 +7,10 @@ export interface TabProps {
   children?: ReactNode;
 }
 
-const Tab = ({ isActive, children }: TabProps): JSX.Element => {
+const Tab = ({ icon, isActive, children }: TabProps): JSX.Element => {
   return (
     <TabRoot isActive={isActive}>
+      {icon && <TabIcon name={icon} />}
       <TabLabel>{children}</TabLabel>
     </TabRoot>
   );
