@@ -36,7 +36,7 @@ import {
   getValueAndFieldIdPopulatedParametersFromCard,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
@@ -1244,10 +1244,15 @@ class QuestionInner {
       return this;
     }
 
-    const [query, isAltered] = this.parameters().reduce(
-      ([query, isAltered], parameter) => {
-        const filter = parameterToMBQLFilter(parameter, this.metadata());
-        return filter ? [query.filter(filter), true] : [query, isAltered];
+    const [query, hasQueryBeenAltered] = this.parameters().reduce(
+      ([query, hasQueryBeenAltered], parameter) => {
+        const filter = fieldFilterParameterToMBQLFilter(
+          parameter,
+          this.metadata(),
+        );
+        return filter
+          ? [query.filter(filter), true]
+          : [query, hasQueryBeenAltered];
       },
       [this.query(), false],
     );
@@ -1257,7 +1262,7 @@ class QuestionInner {
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return isAltered ? question.markDirty() : question;
+    return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {

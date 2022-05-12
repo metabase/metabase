@@ -163,7 +163,7 @@ export function numberParameterValueToMBQL(parameter, fieldRef) {
 export function isFieldFilterParameterConveratableToMBQL(parameter) {
   const { value, target } = parameter;
   const hasValue = hasParameterValue(value);
-  const hasWellFormedTarget = Array.isArray(target[1]);
+  const hasWellFormedTarget = Array.isArray(target?.[1]);
   const hasFieldDimensionTarget =
     isDimensionTarget(target) &&
     !TemplateTagDimension.isTemplateTagClause(target[1]);
@@ -172,7 +172,7 @@ export function isFieldFilterParameterConveratableToMBQL(parameter) {
 }
 
 /** compiles a parameter with value to an MBQL clause */
-export function parameterToMBQLFilter(parameter, metadata) {
+export function fieldFilterParameterToMBQLFilter(parameter, metadata) {
   if (!isFieldFilterParameterConveratableToMBQL(parameter)) {
     return null;
   }
