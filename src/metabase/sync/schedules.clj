@@ -42,8 +42,9 @@
   {:schedule_hour  (rand-int 24)
    :schedule_type  "daily"})
 
-(defn default-schedule
-  "Default schedule maps for caching field values and sync."
+(defn default-randomized-schedule
+  "Default schedule maps for caching field values and sync. Defaults to `:cache_field_values` randomly once a day and
+  `:metadata_sync` randomly once an hour. "
   []
   {:cache_field_values (randomly-once-a-day)
    :metadata_sync      (randomly-once-an-hour)})

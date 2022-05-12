@@ -282,4 +282,4 @@
       (log/info (trs "Updating databases without custom sync scheduling to random schedules.")))
     (doseq [db dbs-with-default-schedules]
       (db/update! Database (u/the-id db)
-        (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))))))
+        (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))))))
