@@ -222,8 +222,6 @@
   font-display: swap;
 }
 
-/*    ------------------------------ */
-
 @font-face {
   font-family: "Roboto";
   src: local("Roboto Black"), local("Roboto-Black"),
@@ -301,6 +299,186 @@
   src: local("Source Sans Pro Bold"), local("SourceSansPro-Bold"),
     url("~fonts/Source_Sans_Pro/SourceSansPro-Bold.woff2") format("woff2");
   font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: local("Lora Bold"), local("Lora-Bold"),
+    url("~fonts/Lora/Lora-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: local("Lora Regular"), local("Lora-Regular"),
+    url("~fonts/Lora/Lora-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  src: local("Noto Sans Black"), local("NotoSans-Black"),
+    url("~fonts/Noto_Sans/NotoSans-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  src: local("Noto Sans Regular"), local("NotoSans-Regular"),
+    url("~fonts/Noto_Sans/NotoSans-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans";
+  src: local("Noto Sans Bold"), local("NotoSans-Bold"),
+    url("~fonts/Noto_Sans/NotoSans-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: local("Playfair Display Regular"), local("PlayfairDisplay-Regular"),
+    url("~fonts/Playfair_Display/PlayfairDisplay-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: local("Playfair Display Bold"), local("PlayfairDisplay-Bold"),
+    url("~fonts/Playfair_Display/PlayfairDisplay-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  src: local("Playfair Display Black"), local("PlayfairDisplay-Black"),
+    url("~fonts/Playfair_Display/PlayfairDisplay-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: local("Poppins Bold"), local("Poppins-Bold"),
+    url("~fonts/Poppins/Poppins-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: local("Poppins Regular"), local("Poppins-Regular"),
+    url("~fonts/Poppins/Poppins-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Poppins";
+  src: local("Poppins Black"), local("Poppins-Black"),
+    url("~fonts/Poppins/Poppins-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PT Sans";
+  src: local("PT Sans"), local("PTSans-Regular"),
+    url("~fonts/PT_Sans/PTSans-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PT Sans";
+  src: local("PT Sans Bold"), local("PTSans-Bold"),
+    url("~fonts/PT_Sans/PTSans-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  src: local("Roboto Mono Bold"), local("RobotoMono-Bold"),
+    url("~fonts/Roboto_Mono/RobotoMono-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Mono";
+  src: local("Roboto Mono Regular"), local("RobotoMono-Regular"),
+    url("~fonts/Roboto_Mono/RobotoMono-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Slab";
+  src: local("Roboto Slab Black"), local("RobotoSlab-Black"),
+    url("~fonts/Roboto_Slab/RobotoSlab-Black.woff2") format("woff2");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Slab";
+  src: local("Roboto Slab Regular"), local("RobotoSlab-Regular"),
+    url("~fonts/Roboto_Slab/RobotoSlab-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Roboto Slab";
+  src: local("Roboto Slab Bold"), local("RobotoSlab-Bold"),
+    url("~fonts/Roboto_Slab/RobotoSlab-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ubuntu";
+  src: local("Ubuntu Bold"), local("Ubuntu-Bold"),
+    url("~fonts/Ubuntu/Ubuntu-Bold.woff2") format("woff2");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Ubuntu";
+  src: local("Ubuntu Regular"), local("Ubuntu-Regular"),
+    url("~fonts/Ubuntu/Ubuntu-Regular.woff2") format("woff2");
+  font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
