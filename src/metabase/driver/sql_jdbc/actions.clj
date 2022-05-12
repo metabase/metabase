@@ -12,18 +12,25 @@
 (defmethod actions/row-action! [:delete :sql-jdbc]
   ;; "Often condition is a map of primary-key(s) => value(s)."
   [_action driver {database-id :database :as query}]
-  (let [connection-spec        (sql-jdbc.conn/db->pooled-connection-spec database-id)
-        _ (require '[metabase.test :as mt]) ;;HACK: using mt here is not good
-        raw-hsql (mt/with-everything-store ;;HACK: using mt and with-everything-store is not good
-                   (sql.qp/mbql->honeysql driver query))
-        select-hsql (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
-        {row-count :row_count} (jdbc/query connection-spec (hformat/format select-hsql))]
+  (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        _               (require '[metabase.test :as mt]) ;;HACK: using mt here is not good
+        raw-hsql        (mt/with-everything-store ;;HACK: using mt and with-everything-store is not good
+                          (sql.qp/mbql->honeysql driver query))
+        select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
+        row-count       (:row_count (first (jdbc/query connection-spec (hformat/format select-hsql))) 0)]
     (when (not= 1 row-count)
       (throw (ex-info (i18n/tru "Sorry, this would delete {0} rows, but you can only delete 1 and only 1!!!" row-count)
-                      {:query query
-                       :sql select-hsql})))
-    (let [delete-hsql (-> raw-hsql (dissoc :select) (assoc :delete []))]
-      {:rows-deleted (jdbc/execute! connection-spec (hformat/format delete-hsql))})))
+                      {:query       query
+                       :sql         select-hsql
+                       :status-code 400})))
+    (let [delete-hsql (-> raw-hsql (dissoc :select) (assoc :delete []))
+          result      (try (jdbc/execute! connection-spec (hformat/format delete-hsql))
+                      (catch Exception e
+                        (throw (ex-info (.getMessage e) {:query       query
+                                                         :sql         delete-hsql
+                                                         :status-code 400}))))]
+      {:rows-deleted result})))
+
 
 #_(defmethod actions/row-action! [:update :metabase.driver/driver]
     [_action driver {database-id :database :as query}]
@@ -35,13 +42,5 @@
                                                    "232333d9-1434-4b1e-973d-4536d1dc8411"
                                                    {:base_type :type/UUID
                                                     :database_type "uuid"}])
-#_#uuid "232333d9-1434-4b1e-973d-4536d1dc8411"
 
-
-
-;; hmm, empty store...:
-;; (qp.store/with-store
-;;   (qp.store/fetch-and-store-database! (u/the-id 7))
-;;   (sql.qp/mbql->honeysql
-;;    :postgres
-;;    {:database 7, :type "query", :query {:filter [:= [:field 606 nil] 20], :source-table 87}}))
+;; #uuid "232333d9-1434-4b1e-973d-4536d1dc8411"
