@@ -15,8 +15,12 @@ export const ArchiveBody = styled.div`
 `;
 
 export const ArchiveBarContent = styled.div`
-  display: flex;
   align-items: center;
+  display: flex;
+  // Height is hard-set so it remains
+  // the same as the ProfileLinkContainer
+  // in MainNavbar
+  height: 48px;
   padding: 8px 4rem 7px;
 `;
 
