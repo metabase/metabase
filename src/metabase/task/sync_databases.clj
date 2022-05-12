@@ -20,7 +20,8 @@
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.models :as models])
   (:import metabase.models.database.DatabaseInstance
            [org.quartz CronTrigger JobDetail JobKey TriggerKey]))
 
@@ -261,25 +262,37 @@
   [database]
   (not (-> database :details :let-user-control-scheduling)))
 
-(defn- old-default-schedule?
-  "Database uses the old default scheduled time for syncs. All databases used to sync schema on the hour and sync field
-  values at midnight. This led to stampedes on db resources so we now randomize the schedules by default."
-  [database]
-  (or (contains? sync.schedules/default-cache-field-values-schedule-cron-strings
-                 (:cache_field_values_schedule database))
-      (contains? sync.schedules/default-metadata-sync-schedule-cron-strings
-                 (:metadata_sync_schedule database))))
+(defn- randomize-db-schedules-if-needed
+  []
+  ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
+  (transduce (comp (map (partial models/do-post-select Database))
+                   (filter metabase-controls-schedule?))
+             (fn
+               ([] 0)
+               ([counter]
+                (log/info (trs "Updated default schedules for {0} databases" counter))
+                counter)
+               ([counter db]
+                (try
+                  (db/update! Database (u/the-id db)
+                    (sync.schedules/schedule-map->cron-strings
+                     (sync.schedules/default-randomized-schedule)))
+                  (inc counter)
+                  (catch Exception e
+                    (log/warn e
+                              (trs "Error updating database {0} for randomized schedules"
+                                   (u/the-id db)))
+                    counter))))
+             (db/reducible-query
+              {:select [:id :details]
+               :from [Database]
+               :where [:or
+                       [:in :metadata_sync_schedule
+                        sync.schedules/default-metadata-sync-schedule-cron-strings]
+                       [:in :cache_field_values_schedule
+                        sync.schedules/default-cache-field-values-schedule-cron-strings]]})))
 
 (defmethod task/init! ::SyncDatabases
   [_]
   (job-init)
-  ;; prevent "stampedes" on databases which all used the same sync schedules. Randomize them
-  (let [dbs-with-default-schedules (->> (db/select Database)
-                                        (filter
-                                         (every-pred
-                                          metabase-controls-schedule? old-default-schedule?)))]
-    (when (seq dbs-with-default-schedules)
-      (log/info (trs "Updating databases without custom sync scheduling to random schedules.")))
-    (doseq [db dbs-with-default-schedules]
-      (db/update! Database (u/the-id db)
-        (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))))))
+  (randomize-db-schedules-if-needed))
