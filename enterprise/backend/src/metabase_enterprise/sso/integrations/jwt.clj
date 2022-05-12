@@ -8,7 +8,6 @@
             [metabase.api.common :as api]
             [metabase.api.session :as api.session]
             [metabase.integrations.common :as integrations.common]
-            [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
             [metabase.util.i18n :refer [trs tru]]

@@ -35,7 +35,7 @@
             [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
-  (:import java.net.URL java.net.URLDecoder java.net.URLEncoder java.util.UUID))
+  (:import java.util.UUID))
 
 (defn- group-names->ids
   "Translate a user's group names to a set of MB group IDs using the configured mappings"

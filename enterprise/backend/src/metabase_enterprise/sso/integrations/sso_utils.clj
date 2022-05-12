@@ -43,7 +43,9 @@
         (db/update! User id :login_attributes new-user-attributes)
         (User id)))))
 
-(defn check-sso-redirect [redirect-url]
+(defn check-sso-redirect
+  "Check if open redirect is being exploited in SSO, blurts out a 400 if so"
+  [redirect-url]
   (let [decoded-url (some-> redirect-url (URLDecoder/decode))
                     ;; In this case, this just means that we don't have a specified host in redirect,
                     ;; meaning it can't be an open redirect
