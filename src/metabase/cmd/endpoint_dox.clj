@@ -117,19 +117,33 @@
          (endpoint-docs ep-data)
          endpoint-page-footer))
 
-(defn build-endpoint-link
+(defn- build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
   [ep]
   (str "- [" (str/capitalize ep) "](api/" (str/lower-case ep) ".md)"))
 
-(defn build-index
+(defn- build-index
   "Creates a string that lists links to all endpoint groups,
   e.g., - [Activity](docs/api/activity.md)."
   [endpoints]
   (str/join "\n" (map (fn [[ep _]] (build-endpoint-link ep)) endpoints)))
 
-(defn- dox
+(defn- map-endpoints
+  "Creates a sorted map of API endpoints. Currently excludes
+  endpoints for paid features."
+  []
+  (->> (collect-endpoints)
+       (map process-endpoint)
+       (group-by :ns-name)
+       (into (sorted-map))))
+
+(defn- generate-index-page!
+  "Creates an index page that lists links to all endpoint pages."
+  [endpoint-map]
+  (spit (io/file "docs/api-documentation.md") (str (api-docs-intro) (build-index endpoint-map))))
+
+(defn- generate-endpoint-pages!
   "Takes a map of endpoint groups and generates markdown
   pages for all API endpoint groups."
   [endpoints]
@@ -141,11 +155,8 @@
   Index page is `docs/api-documentation.md`.
   Endpoint pages are in `/docs/api/{endpoint}.md`"
   []
-  (let [endpoint-map (->> (collect-endpoints)
-                          (map process-endpoint)
-                          (group-by :ns-name)
-                          (into (sorted-map)))]
-    (spit (io/file "docs/api-documentation.md") (str (api-docs-intro) (build-index endpoint-map)))
-    (dox endpoint-map)
+  (let [endpoint-map (map-endpoints)]
+    (generate-index-page! endpoint-map)
     (println "API doc index generated at docs/api-documentation.md.")
+    (generate-endpoint-pages! endpoint-map)
     (println "API endpoint docs generated in docs/api/{endpoint}.")))
