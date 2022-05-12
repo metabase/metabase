@@ -132,34 +132,6 @@
 }
 
 @font-face {
-  font-family: "Noto Sans JP";
-  src: local(""), local("NotoSansJP-Black-Alphabetic"),
-    url("~fonts/Noto_Sans_JP/NotoSansJP-Black-Alphabetic.woff2") format("woff2");
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Noto Sans JP";
-  src: local(""), local("NotoSansJP-Bold-Alphabetic"),
-    url("~fonts/Noto_Sans_JP/NotoSansJP-Bold-Alphabetic.woff2") format("woff2");
-  font-weight: bold;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Noto Sans JP";
-  src: local(""), local("NotoSansJP-Regular-Alphabetic"),
-    url("~fonts/Noto_Sans_JP/NotoSansJP-Regular-Alphabetic.woff2")
-      format("woff2");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
   font-family: "Open Sans";
   src: local("Open Sans Regular"), local("OpenSans-Regular"),
     url("~fonts/Open_Sans/OpenSans-Regular.woff2") format("woff2");

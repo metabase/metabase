@@ -219,4 +219,25 @@ describeEE("formatting > whitelabel", () => {
         .should("have.length", 1);
     });
   });
+
+  describe("font", () => {
+    const font = "Open Sans";
+    beforeEach(() => {
+      cy.log("Change Application Font");
+      cy.signInAsAdmin();
+      setApplicationFontTo(font);
+    });
+
+    it("should apply correct font", () => {
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.get("body").should("have.css", "font-family", `"${font}", sans-serif`);
+    });
+  });
 });
+
+function setApplicationFontTo(font) {
+  cy.request("PUT", "/api/setting/application-font", {
+    value: font,
+  });
+}
