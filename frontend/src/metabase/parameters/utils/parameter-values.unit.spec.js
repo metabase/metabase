@@ -160,13 +160,13 @@ describe("parameters/utils/parameter-values", () => {
     it("should return the parameter value found in the queryParams object", () => {
       expect(
         getParameterValueFromQueryParams(parameter1, queryParams, metadata),
-      ).toBe("parameter1 queryParam value");
+      ).toEqual(["parameter1 queryParam value"]);
     });
 
     it("should ignore the parameter's default value when the parameter value is found in queryParams", () => {
       expect(
         getParameterValueFromQueryParams(parameter2, queryParams, metadata),
-      ).toBe("parameter2 queryParam value");
+      ).toEqual(["parameter2 queryParam value"]);
     });
 
     it("should return an empty string as the value for a defaulted parameter because we handle that special case elsewhere", () => {
@@ -196,7 +196,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(123.456);
+      ).toEqual([123.456]);
 
       expect(
         getParameterValueFromQueryParams(
@@ -223,7 +223,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(123.456);
+      ).toEqual([123.456]);
     });
 
     it("should not parse numeric values that are dates as floats", () => {
@@ -241,7 +241,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe("123.456");
+      ).toEqual(["123.456"]);
     });
 
     it("should parse a value of 'true' or 'false' as a boolean if all associated fields are booleans", () => {
@@ -256,7 +256,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(true);
+      ).toEqual([true]);
 
       expect(
         getParameterValueFromQueryParams(
@@ -266,7 +266,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(false);
+      ).toEqual([false]);
 
       expect(
         getParameterValueFromQueryParams(
@@ -286,7 +286,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe("foo");
+      ).toEqual(["foo"]);
     });
 
     it("should not normalize date parameters", () => {
@@ -316,7 +316,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toEqual("foo");
+      ).toEqual(["foo"]);
     });
 
     it("should not normalize empty string parameter values", () => {
@@ -370,7 +370,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(true);
+      ).toEqual([true]);
     });
 
     it("should not try to parse parameters without fields", () => {
@@ -382,7 +382,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe("true");
+      ).toEqual(["true"]);
     });
 
     it("should not try to parse default values", () => {
@@ -397,7 +397,7 @@ describe("parameters/utils/parameter-values", () => {
           },
           metadata,
         ),
-      ).toBe(NaN);
+      ).toEqual([NaN]);
 
       expect(getParameterValueFromQueryParams(parameter2, {}, metadata)).toBe(
         "parameter2 default value",
@@ -415,8 +415,8 @@ describe("parameters/utils/parameter-values", () => {
             metadata,
           ),
         ).toEqual({
-          [parameter1.id]: "parameter1 queryParam value",
-          [parameter2.id]: "parameter2 queryParam value",
+          [parameter1.id]: ["parameter1 queryParam value"],
+          [parameter2.id]: ["parameter2 queryParam value"],
           [parameter3.id]: "parameter3 default value",
         });
       });
@@ -480,16 +480,16 @@ describe("parameters/utils/parameter-values", () => {
             parameters,
             {
               [parameter1.slug]: "0",
-              [parameter2.slug]: "parameter2 default value",
+              [parameter2.slug]: "parameter2 foo value",
               [parameter3.slug]: "false",
             },
             metadata,
             { forcefullyUnsetDefaultedParametersWithEmptyStringValue: false },
           ),
         ).toEqual({
-          [parameter1.id]: 0,
-          [parameter2.id]: "parameter2 default value",
-          [parameter3.id]: false,
+          [parameter1.id]: [0],
+          [parameter2.id]: ["parameter2 foo value"],
+          [parameter3.id]: [false],
         });
       });
     });
@@ -533,8 +533,8 @@ describe("parameters/utils/parameter-values", () => {
           { forcefullyUnsetDefaultedParametersWithEmptyStringValue: true },
         ),
       ).toEqual({
-        [parameter1.id]: 0,
-        [parameter3.id]: false,
+        [parameter1.id]: [0],
+        [parameter3.id]: [false],
       });
     });
   });
