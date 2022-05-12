@@ -9,7 +9,7 @@
 (comment api.actions/keep-me)
 
 (defn mock-requests []
-  [{:action       "actions/table/insert"
+  [#_#_{:action       "actions/table/insert"
     :request-body {:table-id (mt/id :venues)
                    :values   {:name "Toucannery"}}
     :expected     {:insert-into "VENUES"
@@ -25,33 +25,33 @@
                             ["=" "name" "Red Medicine"]]}}
    {:action       "actions/row/delete"
     :request-body (mt/mbql-query :checkins {:filter [:= $id 1]})
-    :expected     {:rows-deleted '(1)}}
-   {:action       "actions/row/delete"
-    :request-body (mt/mbql-query :venues {:filter [:= $id 1]})
-    :expected     "error"}])
+    :expected     {:rows-deleted [1]}}])
 
 (defn- row-action? [action]
   (str/starts-with? action "actions/row"))
 
 (deftest happy-path-test
   (testing "Make sure it's possible to use known actions end-to-end if preconditions are satisfied"
-    ;; (mt/with-temp-copy-of-db) ;;<-- causes field does not exist error
-    (mt/with-temporary-setting-values [experimental-enable-actions true]
-      (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-        (doseq [{:keys [action request-body request-body-thunk expected]} (mock-requests)]
-          (let [request-body (or request-body (request-body-thunk))]
-            (testing action
-              (is (= expected
-                     (mt/user-http-request :crowberto :post 200 action request-body))))))))))
+    (mt/with-temp-copy-of-db
+      (mt/with-temporary-setting-values [experimental-enable-actions true]
+        (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+          (doseq [{:keys [action request-body request-body-thunk expected]} (mock-requests)]
+            (let [request-body (or request-body (request-body-thunk))]
+              (testing action
+                (is (= expected
+                       (mt/user-http-request :crowberto :post 200 action request-body)))))))))))
 
 (deftest row-delete-row-with-constraint-fails-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (let [request-body {:database (mt/id)
-                          :type     :query
-                          :query    (mt/mbql-query venues {:filter [:= $id 1]})}]
-        (mt/user-http-request :crowberto :post 400 "actions/row/delete" request-body)))))
+      (testing "Should return a 400 when deleting the row violates a foreign key constraint"
+        (let [request-body (mt/mbql-query venues {:filter [:= $id 22]})]
+          (mt/user-http-request :crowberto :post 400 "actions/row/delete" request-body))))))
 
+(deftest unknown-row-action-gives-404
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (mt/user-http-request :crowberto :post 404 "actions/row/rewrite" (mt/mbql-query venues {:filter [:= $id 1]})))))
 
 (deftest feature-flags-test
   (testing "Disable endpoints unless both global and Database feature flags are enabled"

@@ -1,18 +1,16 @@
 (ns metabase.api.actions
   "`/api/actions/` endpoints."
-  (:require
-   [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
-   [metabase.api.common :as api]
-   [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.setting :as setting]
-   [metabase.util.i18n :as i18n]
-   [schema.core :as s]
-   [toucan.db :as db]
-   [cheshire.core :as json]
-   [clojure.walk :as walk]))
+  (:require [clojure.walk :as walk]
+            [compojure.core :as compojure :refer [POST]]
+            [metabase.actions :as actions]
+            [metabase.api.common :as api]
+            [metabase.driver.util :as driver.u]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.setting :as setting]
+            [metabase.util.i18n :as i18n]
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 (defn- do-check-actions-enabled [database-id f]
   {:pre [(integer? database-id)]}
@@ -35,8 +33,7 @@
    (fn [_driver]
      (actions/table-action! (keyword action) query))))
 
-;; HACK:
-(defn kwdize-filter [strings-to-kw query]
+(defn- kwdize-filter [strings-to-kw query]
   (update-in query [:query :filter]
              #(walk/postwalk
                (fn [x] (if (and
@@ -51,8 +48,7 @@
   [action :as {{:keys [database] :as query} :body}]
   {database s/Int}
   (let [query (kwdize-filter
-               ;; HACK:
-               ;; the query's filter clause needs to have forms like:
+               ;; the mbql-query's filter clause needs to have forms like:
                ;; [:= [:field ...]]
                ;; but we recieve forms like
                ;; ["=" ["field" ...]]

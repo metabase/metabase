@@ -9,12 +9,11 @@
             [metabase.util.i18n :as i18n]))
 
 (defmethod actions/row-action! [:delete :sql-jdbc]
-  ;; "Often condition is a map of primary-key(s) => value(s)."
   [_action driver {database-id :database :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
-        raw-hsql (qp.store/with-store
-                   (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
-                   (sql.qp/mbql->honeysql driver query))
+        raw-hsql        (qp.store/with-store
+                          (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                          (sql.qp/mbql->honeysql driver query))
         select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
         row-count       (:row_count (first (jdbc/query connection-spec (hformat/format select-hsql))) 0)]
     (when (not= 1 row-count)
@@ -24,12 +23,11 @@
                        :status-code 400})))
     (let [delete-hsql (-> raw-hsql (dissoc :select) (assoc :delete []))
           result      (try (jdbc/execute! connection-spec (hformat/format delete-hsql))
-                      (catch Exception e
-                        (throw (ex-info (.getMessage e) {:query       query
-                                                         :sql         delete-hsql
-                                                         :status-code 400}))))]
+                           (catch Exception e
+                             (throw (ex-info (.getMessage e) {:query       query
+                                                              :sql         delete-hsql
+                                                              :status-code 400}))))]
       {:rows-deleted result})))
-
 
 #_(defmethod actions/row-action! [:update :metabase.driver/driver]
     [_action driver {database-id :database :as query}]
