@@ -59,7 +59,7 @@ class ParameterSidebar extends React.Component {
 
     const tabs = canUseLinkedFilters(parameter)
       ? TABS
-      : TABS.filter(tab => tab.value !== LINKED_FILTER);
+      : TABS.filter(({ value }) => value !== LINKED_FILTER);
 
     return (
       <Sidebar onClose={done} onCancel={this.handleCancel}>
