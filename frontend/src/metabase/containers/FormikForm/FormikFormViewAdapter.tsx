@@ -6,13 +6,7 @@ import { FormikProps } from "formik";
 
 import { CustomFormProps } from "metabase/components/form/CustomForm";
 
-import {
-  FieldName,
-  FieldValues,
-  FormField,
-  FormFieldDefinition,
-  FormObject,
-} from "metabase-types/forms";
+import { FieldName, FieldValues, FormField } from "metabase-types/forms";
 
 import FormView from "./FormView";
 
