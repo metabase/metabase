@@ -73,21 +73,21 @@ describe("parameters/utils/parameter-values", () => {
     parameter1 = {
       id: 111,
       slug: "foo",
-      field_ids: [1, 4],
+      fields: [field1, field4],
     };
     // found in queryParams and defaulted
     parameter2 = {
       id: 222,
       slug: "bar",
       default: "parameter2 default value",
-      field_id: 2,
+      fields: [field2],
     };
     // not found in queryParams and defaulted
     parameter3 = {
       id: 333,
       slug: "baz",
       default: "parameter3 default value",
-      field_ids: [["field", 3, null]],
+      fields: [field3],
     };
     // not found in queryParams and not defaulted
     parameter4 = {
@@ -207,6 +207,23 @@ describe("parameters/utils/parameter-values", () => {
           metadata,
         ),
       ).toBe("");
+    });
+
+    it("should parse the parameter value as a float when it is a number parameter without fields", () => {
+      const numberParameter = {
+        id: 111,
+        slug: "numberParameter",
+        type: "number/=",
+      };
+      expect(
+        getParameterValueFromQueryParams(
+          numberParameter,
+          {
+            [numberParameter.slug]: "123.456",
+          },
+          metadata,
+        ),
+      ).toBe(123.456);
     });
 
     it("should not parse numeric values that are dates as floats", () => {
