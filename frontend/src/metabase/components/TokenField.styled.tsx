@@ -1,7 +1,9 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const TokenFieldItem = styled.li`
+export const TokenFieldItem = styled.li<{
+  isValid: boolean;
+}>`
   display: flex;
   align-items: center;
   margin: 0 0.25rem 0.25rem 0;
@@ -11,7 +13,9 @@ export const TokenFieldItem = styled.li`
   background-color: ${color("bg-medium")};
 `;
 
-export const TokenFieldAddon = styled.a`
+export const TokenFieldAddon = styled.a<{
+  isValid: boolean;
+}>`
   display: flex;
   align-items: center;
   padding: 0 0.5rem;
