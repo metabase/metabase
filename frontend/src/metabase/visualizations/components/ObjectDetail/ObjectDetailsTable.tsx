@@ -130,7 +130,7 @@ export function DetailsTable({
             <GridCell>
               <DetailsTableCell
                 column={column}
-                value={row[columnIndex] ?? "Empty"}
+                value={row[columnIndex] ?? t`Empty`}
                 isColumnName
                 settings={settings}
                 className="text-bold text-medium"
