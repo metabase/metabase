@@ -5,7 +5,10 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import TokenField from "metabase/components/TokenField";
+import TokenField, {
+  parseNumberValue,
+  parseStringValue,
+} from "metabase/components/TokenField";
 import ListField from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -366,23 +369,10 @@ class FieldValuesWidgetInner extends Component {
               );
             }}
             onInputChange={this.onInputChange}
-            parseFreeformValue={v => {
-              // trim whitespace
-              v = String(v || "").trim();
-              // empty string is not valid
-              if (!v) {
-                return null;
-              }
-              // if the field is numeric we need to parse the string into an integer
-              if (fields[0].isNumeric()) {
-                const n = Number.parseFloat(v);
-                if (Number.isFinite(n)) {
-                  return n;
-                } else {
-                  return null;
-                }
-              }
-              return v;
+            parseFreeformValue={value => {
+              return fields[0].isNumeric()
+                ? parseNumberValue(value)
+                : parseStringValue(value);
             }}
           />
         )}
