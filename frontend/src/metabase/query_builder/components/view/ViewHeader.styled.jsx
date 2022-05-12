@@ -79,6 +79,11 @@ export const HeaderButton = styled(Button)`
   }
 `;
 
+export const IconHeaderButton = styled(HeaderButton)`
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+`;
+
 export const FilterHeaderButton = styled(Button)`
   background-color: ${({ active }) =>
     active ? alpha(color("filter"), 0.8) : alpha(color("filter"), 0.2)};

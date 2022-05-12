@@ -14,6 +14,7 @@ import {
   HeaderButton,
   FilterHeaderContainer,
   FilterHeaderButton,
+  IconHeaderButton,
 } from "./ViewHeader.styled";
 
 import { color } from "metabase/lib/colors";
@@ -169,7 +170,7 @@ export function QuestionFilterWidget({
       >
         {t`Filter`}
       </HeaderButton>
-      <HeaderButton
+      <IconHeaderButton
         large
         labelBreakpoint="sm"
         color={color("filter")}
