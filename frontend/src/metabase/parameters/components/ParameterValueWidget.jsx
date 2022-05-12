@@ -8,7 +8,7 @@ import Icon from "metabase/components/Icon";
 import DateSingleWidget from "./widgets/DateSingleWidget";
 import DateRangeWidget from "./widgets/DateRangeWidget";
 import DateRelativeWidget from "./widgets/DateRelativeWidget";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
+import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
