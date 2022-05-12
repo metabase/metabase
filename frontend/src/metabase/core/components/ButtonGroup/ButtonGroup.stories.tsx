@@ -1,6 +1,6 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
-import Button from "../Button";
+import Button from "metabase/core/components/Button";
 import ButtonGroup from "./ButtonGroup";
 
 export default {
