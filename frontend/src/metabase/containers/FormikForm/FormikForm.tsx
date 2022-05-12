@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { merge } from "icepick";
 
 // eslint-disable-next-line import/named
-import { Formik, FormikProps } from "formik";
+import { Formik, FormikProps, FormikHelpers } from "formik";
 
 import {
   FormFieldDefinition,
@@ -35,10 +35,12 @@ interface FormContainerProps {
 }
 
 type ServerErrorResponse = {
-  data?: {
-    message?: string;
-    errors?: Record<string, string>;
-  };
+  data?:
+    | {
+        message?: string;
+        errors?: Record<string, string>;
+      }
+    | string;
   message?: string;
 };
 
@@ -46,6 +48,18 @@ function maybeBlurActiveElement() {
   // HACK: blur the current element to ensure we show the error
   if (document.activeElement && "blur" in document.activeElement) {
     (document.activeElement as HTMLInputElement).blur();
+  }
+}
+
+function getGeneralErrorMessage(error: ServerErrorResponse) {
+  if (typeof error.data === "object" && error.data.message) {
+    return error.data.message;
+  }
+  if (error.message) {
+    return error.message;
+  }
+  if (typeof error.data === "string") {
+    return error.data;
   }
 }
 
@@ -62,6 +76,8 @@ function Form({
   onSubmitSuccess,
   ...props
 }: FormContainerProps) {
+  const [error, setError] = useState<string | null>(null);
+
   const {
     inlineFields,
     registerFormField,
@@ -123,38 +139,51 @@ function Form({
     [formObject],
   );
 
+  const handleError = useCallback(
+    (error: ServerErrorResponse, formikHelpers: FormikHelpers<FieldValues>) => {
+      maybeBlurActiveElement();
+      const DEFAULT_ERROR_MESSAGE = t`An error occurred`;
+
+      if (typeof error?.data === "object" && error?.data?.errors) {
+        const errorNames = Object.keys(error.data.errors);
+        const hasUnknownFields = errorNames.some(
+          name => !fieldNames.includes(name),
+        );
+
+        if (hasUnknownFields) {
+          setError(DEFAULT_ERROR_MESSAGE);
+          return DEFAULT_ERROR_MESSAGE;
+        }
+
+        formikHelpers.setErrors(error.data.errors);
+        return error.data.errors;
+      }
+
+      if (error) {
+        const message = getGeneralErrorMessage(error) || DEFAULT_ERROR_MESSAGE;
+        setError(message);
+        return message;
+      }
+
+      return DEFAULT_ERROR_MESSAGE;
+    },
+    [fieldNames],
+  );
+
   const handleSubmit = useCallback(
-    async (values: FieldValues) => {
+    async (values: FieldValues, formikHelpers: FormikHelpers<FieldValues>) => {
       try {
         const normalized = formObject.normalize(values);
         const result = await onSubmit(normalized);
         onSubmitSuccess?.(result);
         return result;
       } catch (e) {
-        const error = e as ServerErrorResponse;
-        if (error?.data?.errors) {
-          maybeBlurActiveElement();
-          const errorNames = Object.keys(error.data.errors);
-          const hasUnknownFields = errorNames.some(
-            name => !fieldNames.include(name),
-          );
-          throw {
-            _error: hasUnknownFields ? t`An error occurred` : null,
-            ...error.data.errors,
-          };
-        }
-        if (error) {
-          throw {
-            _error:
-              error.data?.message ||
-              error.message ||
-              error.data ||
-              t`An error occurred`,
-          };
-        }
+        const error = handleError(e as ServerErrorResponse, formikHelpers);
+        // Need to throw, so e.g. submit button can react to an error
+        throw error;
       }
     },
-    [formObject, fieldNames, onSubmit, onSubmitSuccess],
+    [formObject, onSubmit, onSubmitSuccess, handleError],
   );
 
   return (
@@ -171,6 +200,7 @@ function Form({
           {...formikProps}
           {...props}
           formObject={formObject}
+          error={error}
           registerFormField={registerFormField}
           unregisterFormField={unregisterFormField}
         />
