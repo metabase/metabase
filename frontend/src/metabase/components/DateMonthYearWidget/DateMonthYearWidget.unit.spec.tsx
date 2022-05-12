@@ -17,9 +17,9 @@ describe("DateMonthYearWidget", () => {
     expect(screen.getByText("December")).toBeVisible();
 
     // 07 = July and year 2021
-    expect(screen.getByRole("button")).toHaveTextContent("2021");
-    expect(container.querySelector('div[class*="bg-brand"]')).toHaveTextContent(
-      "July",
-    );
+    expect(screen.getByTestId("select-button")).toHaveTextContent("2021");
+    expect(
+      container.querySelector("div[aria-selected='true']"),
+    ).toHaveTextContent("July");
   });
 });

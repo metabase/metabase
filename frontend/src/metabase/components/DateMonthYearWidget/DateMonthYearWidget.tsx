@@ -94,12 +94,12 @@ interface MonthProp {
 
 const Month = ({ month, selected, onClick }: MonthProp) => (
   <div
+    aria-selected={selected}
     className={cx(
       "cursor-pointer text-bold full text-centered py1 px2 circular my1",
       {
         "bg-light-hover": !selected,
         "text-white bg-brand": selected,
-        "aria-selected": selected,
       },
     )}
     onClick={onClick}
