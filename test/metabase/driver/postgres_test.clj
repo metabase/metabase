@@ -445,6 +445,15 @@
         (is (= []
                (mt/rows (mt/run-mbql-query users
                           {:filter [:= $user_id nil]})))))
+      (testing "check that is-empty doesn't barf (#22667)"
+        (is (= []
+               (mt/rows (mt/run-mbql-query users
+                          {:filter [:is-empty $user_id]})))))
+      (testing "check that not-empty doesn't barf (#22667)"
+        (is (= (map-indexed (fn [i [uuid]] [(inc i) uuid])
+                            (-> with-uuid :table-definitions first :rows))
+               (mt/rows (mt/run-mbql-query users
+                          {:filter [:not-empty $user_id]})))))
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows
