@@ -8,7 +8,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :as i18n]))
 
-(defn catch-throw [e status-code & [more-info]]
+(defn- catch-throw [e status-code & [more-info]]
   (throw
    (ex-info (ex-message e)
             (merge {:exception-data (ex-data e)
