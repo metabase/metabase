@@ -4,8 +4,11 @@
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.api.actions :as api.actions]
+   [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
-   [metabase.test :as mt]))
+   [metabase.models.table :refer [Table]]
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (comment api.actions/keep-me)
 
@@ -68,6 +71,26 @@
               (testing "Should return a 400 if Database feature flag is disabled."
                 (is (re= #"^Actions are not enabled for Database [\d,]+\.$"
                          (mt/user-http-request :crowberto :post 400 action request-body)))))))))))
+
+(driver/register! ::feature-flag-test-driver, :parent :h2)
+
+(defmethod driver/database-supports? [::feature-flag-test-driver :actions]
+  [_driver _feature _database]
+  false)
+
+(deftest actions-feature-test
+  (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
+    (mt/with-temporary-setting-values [experimental-enable-actions true]
+      (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
+                                             :engine   ::feature-flag-test-driver
+                                             :settings {:database-enable-actions true}}]
+                      Table    [{table-id :id} {:db_id db-id}]]
+        (is (partial= {:message (format "%s Database %d \"Birds\" does not support actions."
+                                        (u/qualified-name ::feature-flag-test-driver)
+                                        db-id)}
+                      (mt/user-http-request :crowberto :post 400 "actions/table/insert"
+                                            {:table-id table-id
+                                             :values   {:name "Toucannery"}})))))))
 
 (deftest validation-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]

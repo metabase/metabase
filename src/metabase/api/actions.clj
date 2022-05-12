@@ -1,21 +1,28 @@
 (ns metabase.api.actions
   "`/api/actions/` endpoints."
-  (:require [clojure.walk :as walk]
-            [compojure.core :as compojure :refer [POST]]
-            [metabase.actions :as actions]
-            [metabase.api.common :as api]
-            [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
-            [metabase.models.database :refer [Database]]
-            [metabase.models.setting :as setting]
-            [metabase.util.i18n :as i18n]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.walk :as walk]
+   [compojure.core :as compojure :refer [POST]]
+   [metabase.actions :as actions]
+   [metabase.api.common :as api]
+   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
+   [metabase.mbql.schema :as mbql.s]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.setting :as setting]
+   [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
+   [schema.core :as s]))
 
 (defn- do-check-actions-enabled [database-id f]
   {:pre [(integer? database-id)]}
-  (let [db-settings (db/select-one-field :settings Database :id database-id)
-        driver      (driver.u/database->driver database-id)]
+  (let [{db-settings :settings, :as db} (Database database-id)
+        driver                          (driver.u/database->driver database-id)]
+    (when-not (driver/database-supports? driver :actions db)
+      (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
+                                (u/qualified-name driver)
+                                (format "%d %s" (:id db) (pr-str (:name db))))
+                      {:status-code 400, :database-id (:id db)})))
     (binding [setting/*database-local-values* db-settings]
       ;; make sure Actions are enabled for this Database
       (when-not (actions/database-enable-actions)
