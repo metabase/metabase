@@ -306,6 +306,11 @@
               }
             ]
           ]
+        },
+        {
+          "parameter_id": "parameter2",
+          "card_id": 62,
+          "target": ["breakout", 0]
         }
       ],
       "card_id": 62,
@@ -377,6 +382,18 @@
       "slug": "category",
       "id": "parameter1",
       "type": "category"
+    },
+    {
+      "name": "Granularity",
+      "slug": "granularity",
+      "id": "parameter2",
+      "type": "granularity"
+    },
+    {
+      "name": "Unmapped",
+      "slug": "unmapped",
+      "id": "parameter3",
+      "type": "name"
     }
   ],
   "created_at": "2021-09-21T11:08:34.361",
