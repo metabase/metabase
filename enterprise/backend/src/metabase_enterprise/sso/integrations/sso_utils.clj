@@ -11,7 +11,8 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import [java.net MalformedURLException URL URLDecoder] java.util.UUID))
+  (:import [java.net MalformedURLException URL URLDecoder]
+           java.util.UUID))
 
 (def ^:private UserAttributes
   {:first_name       su/NonBlankString
