@@ -18,7 +18,7 @@ type State = {
   year: number;
 };
 
-class DateMonthYearWidget extends React.Component<Props> {
+class DateMonthYearWidget extends React.Component<Props, State> {
   state: State = {
     month: null,
     year: moment().year(),
@@ -99,6 +99,7 @@ const Month = ({ month, selected, onClick }: MonthProp) => (
       {
         "bg-light-hover": !selected,
         "text-white bg-brand": selected,
+        "aria-selected": selected,
       },
     )}
     onClick={onClick}
