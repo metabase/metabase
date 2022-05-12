@@ -97,6 +97,7 @@ function FormikFormViewAdapter({
       invalid={!isValid}
       valid={isValid}
       pristine={!dirty}
+      disablePristineSubmit={formObject.disablePristineSubmit}
       values={values}
       submitting={isSubmitting}
       asyncValidate={validateForm}
