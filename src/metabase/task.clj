@@ -147,8 +147,8 @@
     (System/setProperty "org.quartz.jobStore.driverDelegateClass" "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate")))
 
 (defn init-scheduler!
-  "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to begin executing. Puts scheduler
-  in standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
+  "Initialize our Quartzite scheduler which allows jobs to be submitted and triggers to scheduled. Puts scheduler in
+  standby mode. Call [[start-scheduler!]] to begin running scheduled tasks."
   []
   (classloader/the-classloader)
   (when-not @quartz-scheduler
@@ -161,7 +161,8 @@
         (init-tasks!)))))
 
 (defn start-scheduler!
-  "Start an initialized scheduler. Tasks do not run before calling this function."
+  "Start an initialized scheduler. Tasks do not run before calling this function. It is an error to call this function
+  when [[quartz-scheduler]] has not been set. The function [[init-scheduler!]] will initialize this correctly."
   []
   (if-let [scheduler @quartz-scheduler]
     (do (qs/start scheduler)
