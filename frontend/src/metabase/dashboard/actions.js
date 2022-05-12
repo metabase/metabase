@@ -19,7 +19,7 @@ import {
   setParameterName as setParamName,
   setParameterDefaultValue as setParamDefaultValue,
   getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
   getParametersMappedToDashcard,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
@@ -785,7 +785,7 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
     const metadata = getMetadata(getState());
     const mappingsByParameter = getMappingsByParameter(metadata, result);
 
-    const parameters = getDashboardParametersWithFieldMetadata(
+    const parameters = getDashboardUiParameters(
       metadata,
       result,
       mappingsByParameter,

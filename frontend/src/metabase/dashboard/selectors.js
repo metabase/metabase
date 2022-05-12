@@ -6,7 +6,7 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 import {
   getMappingsByParameter as _getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
@@ -143,7 +143,7 @@ export const getMappingsByParameter = createSelector(
 /** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
 );
 
 export const makeGetParameterMappingOptions = () => {

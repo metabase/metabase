@@ -117,7 +117,7 @@ export function getMappingsByParameter(metadata, dashboard) {
   return mappingsByParameterIdByDashcardIdByCardId;
 }
 
-export function getDashboardParametersWithFieldMetadata(
+export function getDashboardUiParameters(
   metadata,
   dashboard,
   mappingsByParameter,
