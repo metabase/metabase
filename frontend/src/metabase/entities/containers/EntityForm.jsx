@@ -53,8 +53,7 @@ const Modal = ({
   );
 };
 
-@entityType()
-export default class EntityForm extends React.Component {
+class EntityForm extends React.Component {
   render() {
     const { modal, ...props } = this.props;
 
@@ -67,3 +66,5 @@ export default class EntityForm extends React.Component {
     }
   }
 }
+
+export default entityType()(EntityForm);

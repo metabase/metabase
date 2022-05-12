@@ -7,7 +7,6 @@ import _ from "underscore";
 import { getIn } from "icepick";
 
 import Icon from "metabase/components/Icon";
-import { memoize } from "metabase-lib/lib/utils";
 import { AccordionListCell } from "./AccordionListCell";
 import { AccordionListRoot } from "./AccordionList.styled";
 import { getNextCursor, getPrevCursor } from "./utils";
@@ -375,7 +374,6 @@ export default class AccordionList extends Component {
     }
   };
 
-  @memoize
   getRowsCached = (
     searchFilter,
     searchable,

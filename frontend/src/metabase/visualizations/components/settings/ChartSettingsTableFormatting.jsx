@@ -95,6 +95,9 @@ export const isFormattable = field => isNumeric(field) || isString(field);
 
 const INPUT_CLASSNAME = "AdminSelect input mt1 full";
 
+const getValueForDescription = rule =>
+  ["is-null", "not-null"].includes(rule.operator) ? "" : ` ${rule.value}`;
+
 export default class ChartSettingsTableFormatting extends React.Component {
   state = {
     editingRule: null,
@@ -291,19 +294,22 @@ const SinglePreview = ({ color, className, style, ...props }) => (
   />
 );
 
-const RuleDescription = ({ rule }) => (
-  <span>
-    {rule.type === "range"
-      ? t`Cells in this column will be tinted based on their values.`
-      : rule.type === "single"
-      ? jt`When a cell in these columns ${(
-          <span className="text-bold">
-            {ALL_OPERATOR_NAMES[rule.operator]} {rule.value}
-          </span>
-        )} it will be tinted this color.`
-      : null}
-  </span>
-);
+const RuleDescription = ({ rule }) => {
+  return (
+    <span>
+      {rule.type === "range"
+        ? t`Cells in this column will be tinted based on their values.`
+        : rule.type === "single"
+        ? jt`When a cell in these columns ${(
+            <span className="text-bold">
+              {ALL_OPERATOR_NAMES[rule.operator]}
+              {getValueForDescription(rule)}
+            </span>
+          )} it will be tinted this color.`
+        : null}
+    </span>
+  );
+};
 
 const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
   const selectedColumns = rule.columns.map(name => _.findWhere(cols, { name }));

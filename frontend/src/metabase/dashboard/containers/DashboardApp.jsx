@@ -41,6 +41,8 @@ import {
   getDocumentTitle,
   getIsRunning,
   getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsAdditionalInfoVisible,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -83,6 +85,8 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     isRunning: getIsRunning(state),
     isLoadingComplete: getIsLoadingComplete(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
   };
 };
 

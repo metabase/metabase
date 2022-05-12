@@ -43,8 +43,7 @@ const ErrorMessage = ({ error }) => {
   );
 };
 
-@ExplicitSize()
-export default class ExpressionEditorTextfield extends React.Component {
+class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
     this.input = React.createRef();
@@ -462,3 +461,5 @@ export default class ExpressionEditorTextfield extends React.Component {
     );
   }
 }
+
+export default ExplicitSize()(ExpressionEditorTextfield);

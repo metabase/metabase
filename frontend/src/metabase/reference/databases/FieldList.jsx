@@ -7,6 +7,7 @@ import { t } from "ttag";
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 import F from "metabase/reference/components/Field.css";
+import _ from "underscore";
 
 import Field from "metabase/reference/components/Field";
 import List from "metabase/components/List";
@@ -63,12 +64,7 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@reduxForm({
-  form: "fields",
-  validate,
-})
-export default class FieldList extends Component {
+class FieldList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
@@ -194,3 +190,11 @@ export default class FieldList extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  reduxForm({
+    form: "fields",
+    validate,
+  }),
+)(FieldList);

@@ -47,9 +47,7 @@ const mapDispatchToProps = {
   reloadSettings,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ activeSection }) => activeSection && activeSection.name)
-export default class SettingsEditorApp extends Component {
+class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
 
   static propTypes = {
@@ -257,3 +255,8 @@ export default class SettingsEditorApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ activeSection }) => activeSection && activeSection.name),
+)(SettingsEditorApp);

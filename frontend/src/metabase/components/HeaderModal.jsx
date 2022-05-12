@@ -5,8 +5,7 @@ import BodyComponent from "metabase/components/BodyComponent";
 import cx from "classnames";
 import { t } from "ttag";
 
-@BodyComponent
-export default class HeaderModal extends Component {
+class HeaderModal extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -54,3 +53,5 @@ export default class HeaderModal extends Component {
     );
   }
 }
+
+export default BodyComponent(HeaderModal);
