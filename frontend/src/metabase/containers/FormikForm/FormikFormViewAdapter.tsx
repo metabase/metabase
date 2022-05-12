@@ -83,9 +83,9 @@ function FormikFormViewAdapter({
 
   useEffect(() => {
     if (!_.isEqual(formInitialValues, initialValues)) {
-      resetForm({ values: formInitialValues });
+      resetForm({ values: formInitialValues, errors, touched });
     }
-  }, [formInitialValues, initialValues, resetForm]);
+  }, [formInitialValues, initialValues, errors, touched, resetForm]);
 
   const fields = formObject.fields(values);
   const formFieldsByName = _.indexBy(fields, "name");
