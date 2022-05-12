@@ -70,11 +70,12 @@
 (deftest validation-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (doseq [{:keys [action]} (mock-requests)]
-        (testing action
+      (doseq [{:keys [action request-body]} (mock-requests)
+              k [:query :type]]
+        (testing (str action " without " k)
           (when (row-action? action)
             (is (re= #"Value does not match schema:.*"
-                     (:message (mt/user-http-request :crowberto :post 400 action {:database (mt/id) :this "is not a mbql query"}))))))))))
+                     (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k)))))))))))
 
 (deftest unknown-row-action-gives-404
   (mt/with-temporary-setting-values [experimental-enable-actions true]
