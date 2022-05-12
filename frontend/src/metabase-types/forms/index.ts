@@ -30,7 +30,7 @@ export type BaseFieldDefinition = Record<string, unknown> & {
   descriptionPosition?: "top" | "bottom";
   visibleIf?: Record<FieldName, unknown>;
 
-  initial?: (value: any) => DefaultFieldValue;
+  initial?: () => DefaultFieldValue;
   validate?: (value: any) => FieldValidateResultOK | FieldValidateResultError;
   normalize?: (value: any) => DefaultFieldValue;
 };
@@ -75,7 +75,7 @@ export type PopulatedFormObject<Values extends BaseFieldValues> = {
   fields: (values?: Values) => FormFieldDefinition[];
   fieldNames: (values?: Values) => (keyof Values)[];
   hidden: (obj: unknown) => void;
-  initial: (values: Partial<Values>) => Values;
+  initial: () => Values;
   normalize: (values: Values) => Values;
   validate: (obj: unknown, opts: { values: Values }) => void;
   disablePristineSubmit?: boolean;
