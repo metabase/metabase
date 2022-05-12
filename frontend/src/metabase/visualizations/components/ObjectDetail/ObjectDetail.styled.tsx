@@ -28,6 +28,11 @@ export const ObjectDetailBodyWrapper = styled.div`
   height: calc(100vh - 8rem);
 `;
 
+export const ObjectIdLabel = styled.span`
+  color: ${color("text-medium")};
+  margin-left: 0.5rem;
+`;
+
 export const ObjectDetailsTable = styled.div`
   overflow-y: auto;
   flex: 1;

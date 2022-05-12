@@ -46,6 +46,7 @@ import { Relationships } from "./ObjectRelationships";
 import {
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
+  ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
 } from "./ObjectDetail.styled";
@@ -303,9 +304,7 @@ export function ObjectDetailHeader({
       <div className="Grid-cell">
         <h2 className="p3">
           {objectName}
-          {objectId !== null && (
-            <span className="text-medium ml1"> {objectId}</span>
-          )}
+          {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
       <div className="flex align-center">
