@@ -90,6 +90,7 @@ describe("ObjectDetailDrill", () => {
   describe("PK cells", () => {
     describe("general", () => {
       const mockDispatch = jest.fn();
+      const mockGetState = () => ({ qb: { queryResults: {}, card: {} } });
       const { actions, cellValue } = setup({
         column: ORDERS.ID.column(),
       });
@@ -102,7 +103,7 @@ describe("ObjectDetailDrill", () => {
 
       it("should return correct redux action", () => {
         const [action] = actions;
-        action.action()(mockDispatch);
+        action.action()(mockDispatch, mockGetState);
         expect(mockDispatch).toHaveBeenCalledWith({
           type: ZOOM_IN_ROW,
           payload: {
