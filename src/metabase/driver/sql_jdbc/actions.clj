@@ -1,21 +1,20 @@
 (ns metabase.driver.sql-jdbc.actions
-  (:require
-   [clojure.java.jdbc :as jdbc]
-   [honeysql.format :as hformat]
-   [metabase.actions :as actions]
-   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.util.i18n :as i18n]
-   [metabase.query-processor.store :as qp.store]
-   [metabase.util :as u]))
+  (:require [clojure.java.jdbc :as jdbc]
+            [honeysql.format :as hformat]
+            [metabase.actions :as actions]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor :as qp]
+            [metabase.query-processor.store :as qp.store]
+            [metabase.util.i18n :as i18n]))
 
 (defmethod actions/row-action! [:delete :sql-jdbc]
   ;; "Often condition is a map of primary-key(s) => value(s)."
   [_action driver {database-id :database :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
-        _               (require '[metabase.test :as mt]) ;;HACK: using mt here is not good
-        raw-hsql        (mt/with-everything-store ;;HACK: using mt and with-everything-store is not good
-                          (sql.qp/mbql->honeysql driver query))
+        raw-hsql (qp.store/with-store
+                   (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                   (sql.qp/mbql->honeysql driver query))
         select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
         row-count       (:row_count (first (jdbc/query connection-spec (hformat/format select-hsql))) 0)]
     (when (not= 1 row-count)
