@@ -207,6 +207,7 @@
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
 ;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
+#_ {:clj-kondo/ignore [:unused-private-var]}
 (s/defn ^:private check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- DatabaseInstance]
