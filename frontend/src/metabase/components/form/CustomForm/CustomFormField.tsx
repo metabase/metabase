@@ -62,15 +62,11 @@ function RawCustomFormField(
   const formField = formFieldsByName[name];
 
   useOnMount(() => {
-    registerFormField?.(
-      getFieldDefinition(props as StandardFormFieldDefinition),
-    );
+    registerFormField?.(getFieldDefinition(props));
   });
 
   useOnUnmount(() => {
-    unregisterFormField?.(
-      getFieldDefinition(props as StandardFormFieldDefinition),
-    );
+    unregisterFormField?.(getFieldDefinition(props));
   });
 
   const handleChange = useCallback(
