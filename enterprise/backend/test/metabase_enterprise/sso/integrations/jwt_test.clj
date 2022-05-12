@@ -112,7 +112,7 @@
 (deftest no-open-redirect-test
   (testing "Check a JWT with bad (open redirect)"
     (with-jwt-default-setup
-      (is (= "JWT SSO is trying to do an open redirect to an untrusted site"
+      (is (= "SSO is trying to do an open redirect to an untrusted site"
              (saml-test/client
                :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
                :return_to "https://evilsite.com"
