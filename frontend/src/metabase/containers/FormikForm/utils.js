@@ -88,7 +88,7 @@ export function cleanObject(object) {
     const isNestedObject = typeof object[key] === "object";
     if (isNestedObject) {
       const cleanNestedObject = cleanObject(object[key]);
-      if (Object.keys(cleanNestedObject).length > 1) {
+      if (Object.keys(cleanNestedObject).length > 0) {
         result[key] = cleanNestedObject;
       }
     } else {
