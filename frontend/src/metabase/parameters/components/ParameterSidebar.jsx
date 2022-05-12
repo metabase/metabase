@@ -6,7 +6,10 @@ import cx from "classnames";
 import { DashboardApi } from "metabase/services";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
+import {
+  canUseLinkedFilters,
+  usableAsLinkedFilter,
+} from "metabase/parameters/utils/linked-filters";
 
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
@@ -170,10 +173,12 @@ class OtherParameterList extends React.Component {
       showAddParameterPopover,
     } = this.props;
     const { expandedParameterId, columnPairs } = this.state;
+    const usableParameters = otherParameters.filter(usableAsLinkedFilter);
+
     return (
       <div className="py3 px2">
         <h3>{t`Limit this filter's choices`}</h3>
-        {otherParameters.length === 0 ? (
+        {usableParameters.length === 0 ? (
           <div>
             <p className="text-medium">{t`If you have another dashboard filter, you can limit the choices that are listed for this filter based on the selection of the other one.`}</p>
             <p className="text-medium">{jt`So first, ${(
@@ -188,7 +193,7 @@ class OtherParameterList extends React.Component {
             <p className="text-medium">{jt`If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for ${(
               <span className="text-italic">this</span>
             )} filter.`}</p>
-            {otherParameters.map(({ id, name }) => (
+            {usableParameters.map(({ id, name }) => (
               <div className={"bg-light rounded mb2"} key={name}>
                 <div className="flex justify-between align-center p2">
                   <span
