@@ -21,6 +21,7 @@ import {
 } from "../confirmations";
 import { Group, GroupsPermissions } from "metabase-types/api";
 import { SchemaEntityId } from "../../types";
+import { getGroupFocusPermissionsUrl } from "../../utils/urls";
 
 const buildAccessPermission = (
   entityId: SchemaEntityId,
@@ -66,10 +67,7 @@ const buildAccessPermission = (
     warning,
     confirmations,
     postActions: {
-      controlled: () =>
-        push(
-          `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`,
-        ),
+      controlled: () => push(getGroupFocusPermissionsUrl(groupId, entityId)),
     },
     options: PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions(
       [
@@ -132,6 +130,7 @@ export const buildTablesPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "tables",
     ),
   ];

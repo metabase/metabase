@@ -9,8 +9,7 @@ const mapStateToProps = (state, props) => ({
   errorPage: state.app.errorPage,
 });
 
-@connect(mapStateToProps)
-export default class PublicApp extends Component {
+class PublicApp extends Component {
   render() {
     const { children, errorPage } = this.props;
     if (errorPage) {
@@ -24,3 +23,5 @@ export default class PublicApp extends Component {
     }
   }
 }
+
+export default connect(mapStateToProps)(PublicApp);

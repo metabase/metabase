@@ -89,7 +89,7 @@
                 :first-name "Fred"
                 :last-name  "Taylor"
                 :email      "fred.taylor@metabase.com"
-                :groups     []}
+                :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
                (ldap/find-user "fred.taylor@metabase.com"))))
 
       (testing "find by email, no givenName"

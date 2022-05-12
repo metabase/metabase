@@ -6,8 +6,7 @@ import { QuestionLoaderHOC } from "metabase/containers/QuestionLoader";
 
 import { getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
-@QuestionLoaderHOC
-export default class QuestionParameterTargetWidget extends React.Component {
+class QuestionParameterTargetWidget extends React.Component {
   render() {
     const { question, ...props } = this.props;
     const mappingOptions = question
@@ -16,3 +15,5 @@ export default class QuestionParameterTargetWidget extends React.Component {
     return <ParameterTargetWidget {...props} mappingOptions={mappingOptions} />;
   }
 }
+
+export default QuestionLoaderHOC(QuestionParameterTargetWidget);

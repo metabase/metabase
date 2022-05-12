@@ -18,6 +18,7 @@ import {
   HeaderButtonsContainer,
   HeaderButtonSection,
   StyledLastEditInfoLabel,
+  HeaderCaption,
 } from "./Header.styled";
 
 const propTypes = {
@@ -33,7 +34,8 @@ const propTypes = {
   isEditingInfo: PropTypes.bool,
   item: PropTypes.object.isRequired,
   objectType: PropTypes.string.isRequired,
-  hasBadge: PropTypes.bool,
+  isBadgeVisible: PropTypes.bool,
+  isLastEditInfoVisible: PropTypes.bool,
   children: PropTypes.node,
   setItemAttributeFn: PropTypes.func,
   onHeaderModalDone: PropTypes.func,
@@ -117,8 +119,12 @@ class Header extends Component {
   }
 
   render() {
-    const { item, hasBadge, onLastEditInfoClick } = this.props;
-    const hasLastEditInfo = !!item["last-edit-info"];
+    const {
+      item,
+      isBadgeVisible,
+      isLastEditInfoVisible,
+      onLastEditInfoClick,
+    } = this.props;
 
     let titleAndDescription;
     if (this.props.item && this.props.item.id != null) {
@@ -172,10 +178,10 @@ class Header extends Component {
           ref={this.header}
         >
           <HeaderContent>
-            <span className="inline-block mb1">{titleAndDescription}</span>
+            <HeaderCaption>{titleAndDescription}</HeaderCaption>
             {attribution}
             <HeaderBadges>
-              {hasBadge && (
+              {isBadgeVisible && (
                 <>
                   <CollectionBadge
                     collectionId={item.collection_id}
@@ -183,10 +189,10 @@ class Header extends Component {
                   />
                 </>
               )}
-              {hasBadge && hasLastEditInfo && (
+              {isBadgeVisible && isLastEditInfoVisible && (
                 <HeaderBadgesDivider>•</HeaderBadgesDivider>
               )}
-              {hasLastEditInfo && (
+              {isLastEditInfoVisible && (
                 <StyledLastEditInfoLabel
                   item={item}
                   onClick={onLastEditInfoClick}

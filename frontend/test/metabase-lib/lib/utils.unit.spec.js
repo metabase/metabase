@@ -1,4 +1,4 @@
-import { sortObject, memoize } from "metabase-lib/lib/utils";
+import { sortObject, memoizeClass } from "metabase-lib/lib/utils";
 
 describe("sortObject", () => {
   it("should serialize identically regardless of property creation order", () => {
@@ -35,38 +35,76 @@ describe("sortObject", () => {
 describe("memoize", () => {
   it("should memoize method", () => {
     let x = 0;
-    class foo {
-      @memoize
+    class fooInner {
       bar() {
         return ++x;
       }
     }
+    const foo = memoizeClass("bar")(fooInner);
     const f = new foo();
     expect(f.bar()).toEqual(1);
     expect(f.bar()).toEqual(1);
   });
 
+  it("should memoize method with objects", () => {
+    class fooInner {
+      bar() {
+        return {};
+      }
+    }
+    const foo = memoizeClass("bar")(fooInner);
+    const f = new foo();
+    const x = f.bar();
+    expect(f.bar()).toEqual(x);
+  });
+
   it("should use args in cache key", () => {
-    class foo {
-      @memoize
+    class fooInner {
       bar(a, b, c) {
         return a + b + c;
       }
     }
+    const foo = memoizeClass("bar")(fooInner);
     const f = new foo();
     expect(f.bar(1, 2, 3)).toEqual(6);
     expect(f.bar(1, 2, 4)).toEqual(7);
   });
 
   it("should allow calling with variable number of args", () => {
-    class foo {
-      @memoize
+    class fooInner {
       bar(x) {
         return x;
       }
     }
+    const foo = memoizeClass("bar")(fooInner);
     const f = new foo();
     expect(f.bar()).toEqual(undefined);
     expect(f.bar(1)).toEqual(1);
+  });
+
+  it("should memoize multiple methods", () => {
+    let x = 0;
+    class fooInner {
+      bar() {
+        return ++x;
+      }
+
+      biz() {
+        return ++x;
+      }
+    }
+    const foo = memoizeClass("bar", "biz")(fooInner);
+    const f = new foo();
+    expect(f.bar()).toEqual(1);
+    expect(f.bar()).toEqual(1);
+    expect(f.biz()).toEqual(2);
+    expect(f.biz()).toEqual(2);
+  });
+
+  it("should throw on nonexistant keys", () => {
+    expect(() => {
+      class fooInner {}
+      memoizeClass("bar")(fooInner);
+    }).toThrow();
   });
 });

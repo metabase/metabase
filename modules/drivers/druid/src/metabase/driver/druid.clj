@@ -1,6 +1,7 @@
 (ns metabase.driver.druid
   "Druid driver."
-  (:require [clj-http.client :as http]
+  (:require [cheshire.core :as json]
+            [clj-http.client :as http]
             [metabase.driver :as driver]
             [metabase.driver.druid.client :as druid.client]
             [metabase.driver.druid.execute :as druid.execute]
@@ -29,11 +30,18 @@
   [_ query]
   (druid.qp/mbql->native query))
 
+(defn- add-timeout-to-query [query timeout]
+  (let [parsed (if (string? query)
+                 (json/parse-string query keyword)
+                 query)]
+    (assoc-in parsed [:context :timeout] timeout)))
+
 (defmethod driver/execute-reducible-query :druid
   [_ query context respond]
   (druid.execute/execute-reducible-query
     (partial druid.client/do-query-with-cancellation (qp.context/canceled-chan context))
-    query respond))
+    (update-in query [:native :query] add-timeout-to-query (qp.context/timeout context))
+    respond))
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true}]

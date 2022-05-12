@@ -1,10 +1,11 @@
 /* eslint-disable react/prop-types */
 import React from "react";
-import YearPicker from "./YearPicker";
-
 import moment from "moment";
 import _ from "underscore";
 import cx from "classnames";
+
+import YearPicker from "metabase/components/YearPicker";
+
 import { MonthContainer, MonthList } from "./DateMonthYearWidget.styled";
 
 export default class DateMonthYearWidget extends React.Component {

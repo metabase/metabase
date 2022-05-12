@@ -330,16 +330,16 @@
   "Default implementation of `describe-nested-field-columns` for SQL JDBC drivers. Goes and queries the table if there are JSON columns for the nested contents."
   [driver spec table]
   (with-open [conn (jdbc/get-connection spec)]
-    (let [_map-inner       (fn [f xs] (map #(into {}
-                                                  (for [[k v] %]
-                                                    [k (f v)])) xs))
-          table-fields     (describe-table-fields driver conn table)
-          json-fields      (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
+    (let [table-identifier-info [(:schema table) (:name table)]
+
+          table-fields          (describe-table-fields driver conn table)
+          json-fields           (filter #(= (:semantic-type %) :type/SerializedJSON) table-fields)]
       (if (nil? (seq json-fields))
         #{}
-        (let [json-field-names (mapv (comp keyword :name) json-fields)
+        (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
+              table-identifier (apply hx/identifier :field table-identifier-info)
               sql-args         (hsql/format {:select json-field-names
-                                             :from   [(keyword (:name table))]
+                                             :from   [table-identifier]
                                              :limit  nested-field-sample-limit} {:quoting :ansi})
               query            (jdbc/reducible-query spec sql-args)
               field-types      (transduce describe-json-xform describe-json-rf query)

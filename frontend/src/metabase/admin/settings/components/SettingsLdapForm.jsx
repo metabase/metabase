@@ -7,8 +7,7 @@ import { updateLdapSettings } from "metabase/admin/settings/settings";
 
 import SettingsBatchForm from "./SettingsBatchForm";
 
-@connect(null, { updateSettings: updateLdapSettings })
-export default class SettingsLdapForm extends React.Component {
+class SettingsLdapForm extends React.Component {
   render() {
     return (
       <SettingsBatchForm
@@ -61,3 +60,7 @@ export default class SettingsLdapForm extends React.Component {
     );
   }
 }
+
+export default connect(null, { updateSettings: updateLdapSettings })(
+  SettingsLdapForm,
+);

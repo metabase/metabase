@@ -30,7 +30,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-shrink: 0;
   align-items: center;
   padding: 0.5rem 0;
-  background-color: ${color("nav")};
+  background-color: ${color("white")};
 
   overflow: auto;
   overflow-x: hidden;
@@ -142,6 +142,7 @@ export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   border-top: 1px solid ${color("border")};
   background-color: ${color("white")};
   display: flex;
+  overflow: hidden;
   align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};

@@ -8,10 +8,11 @@ interface ObjectDetailModalProps {
 
 export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
   border: 1px solid ${colors.border};
-  border-radius: 8px;
+  border-radius: 0.5rem;
   overflow: hidden;
   ${breakpointMinMedium} {
-    width: ${({ wide }) => (wide ? "880px" : "568px")};
+    width: ${({ wide }) => (wide ? "64rem" : "48rem")};
+    max-width: 95vw;
   }
   max-height: 95vh;
   width: 95vw;
@@ -59,4 +60,19 @@ export const CloseButton = styled.div`
 
 export const ErrorWrapper = styled.div`
   height: 480px;
+`;
+
+type GridContainerProps = { cols?: number };
+
+export const GridContainer = styled.div<GridContainerProps>`
+  display: grid;
+  grid-template-columns: repeat(${props => props.cols || 2}, minmax(0, 1fr));
+  gap: 1rem;
+`;
+
+type GridItemProps = { colSpan?: number };
+
+export const GridCell = styled.div<GridItemProps>`
+  grid-column: span ${props => props.colSpan || 1} / span
+    ${props => props.colSpan || 1};
 `;

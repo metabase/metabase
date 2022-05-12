@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.humanization :as humanization]
@@ -14,6 +15,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
+
+(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -135,6 +138,8 @@
   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
   seconds."
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id read-or-write]]
+                         [(mdb.connection/unique-identifier) table-id read-or-write])}
    (fn [table-id read-or-write]
      (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
        (perms-objects-set* db-id schema table-id read-or-write)))
@@ -344,7 +349,7 @@
 
 (def ^{:arglists '([field-id])} field-id->table-id
   "Return the ID of the Table this Field belongs to."
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
      (db/select-one-field :table_id Field, :id field-id))))

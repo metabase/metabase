@@ -4,12 +4,14 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 import { t } from "ttag";
+import _ from "underscore";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 import { isSyncCompleted, isSyncInProgress } from "metabase/lib/syncing";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
+import LoadingAndGenericErrorWrapper from "metabase/components/LoadingAndGenericErrorWrapper";
 import FormMessage from "metabase/components/form/FormMessage";
 import Modal from "metabase/components/Modal";
 import SyncingModal from "metabase/containers/SyncingModal";
@@ -63,12 +65,8 @@ const mapDispatchToProps = {
   addSampleDatabase: addSampleDatabase,
   closeSyncingModal,
 };
-@Database.loadList({
-  reloadInterval: getReloadInterval,
-  query,
-})
-@connect(mapStateToProps, mapDispatchToProps)
-export default class DatabaseList extends Component {
+
+class DatabaseList extends Component {
   constructor(props) {
     super(props);
 
@@ -217,3 +215,12 @@ export default class DatabaseList extends Component {
     );
   }
 }
+
+export default _.compose(
+  Database.loadList({
+    reloadInterval: getReloadInterval,
+    query,
+    LoadingAndErrorWrapper: LoadingAndGenericErrorWrapper,
+  }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DatabaseList);

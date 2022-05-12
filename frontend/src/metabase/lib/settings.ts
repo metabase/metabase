@@ -66,6 +66,8 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
+  | "experimental-enable-actions"
+  | "persisted-models-enabled"
   | "engines"
   | "ga-code"
   | "ga-enabled"
@@ -77,6 +79,7 @@ export type SettingName =
   | "ldap-configured?"
   | "map-tile-server-url"
   | "password-complexity"
+  | "persisted-model-refresh-interval-hours"
   | "premium-features"
   | "search-typeahead-enabled"
   | "setup-token"
@@ -267,6 +270,10 @@ class Settings {
 
   upgradeUrl() {
     return "https://www.metabase.com/upgrade/";
+  }
+
+  migrateToCloudGuideUrl() {
+    return "https://www.metabase.com/cloud/docs/migrate/guide";
   }
 
   newVersionAvailable() {

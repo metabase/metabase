@@ -230,7 +230,7 @@ describe("scenarios > question > new", () => {
       cy.url().should("include", "question#");
     });
 
-    it("should correctly choose between 'Object Detail' and 'Table (metabase#13717)", () => {
+    it("composite keys should act as filters on click (metabase#13717)", () => {
       cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
         semantic_type: "type/PK",
       });
@@ -241,6 +241,11 @@ describe("scenarios > question > new", () => {
         .eq(1) // first table body cell
         .should("contain", "2") // quantity for order ID#1
         .click();
+      cy.wait("@dataset");
+
+      cy.get(
+        "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
+      ).should("have.length.gt", 1);
 
       cy.log(
         "**Reported at v0.34.3 - v0.37.0.2 / probably was always like this**",
@@ -254,8 +259,12 @@ describe("scenarios > question > new", () => {
         .eq(1) // first table body cell
         .should("contain", 1)
         .click();
+      cy.wait("@dataset");
 
-      cy.get(".ObjectDetail");
+      cy.log("only one row should appear after filtering by ID");
+      cy.get(
+        "#main-data-grid .TableInteractive-cellWrapper--firstColumn",
+      ).should("have.length", 1);
     });
 
     // flaky test (#19454)

@@ -13,7 +13,7 @@ import { isCompatibleAggregationOperatorForField } from "metabase/lib/schema_met
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
 import { t } from "ttag";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
 import {
   StructuredQuery as StructuredQueryObject,
   Aggregation,
@@ -63,7 +63,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
 
-export default class StructuredQuery extends AtomicQuery {
+class StructuredQueryInner extends AtomicQuery {
   static isDatasetQueryType(datasetQuery: DatasetQuery) {
     return datasetQuery && datasetQuery.type === STRUCTURED_QUERY_TEMPLATE.type;
   }
@@ -298,7 +298,6 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns the table object, if a table is selected and loaded.
    */
-  @memoize
   table(): Table {
     const sourceQuery = this.sourceQuery();
 
@@ -822,7 +821,6 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Filter}s.
    */
-  @memoize
   filters(): FilterWrapper[] {
     return Q.getFilters(this.query()).map(
       (filter, index) => new FilterWrapper(filter, index, this),
@@ -964,7 +962,6 @@ export default class StructuredQuery extends AtomicQuery {
 
   // SORTS
   // TODO: standardize SORT vs ORDER_BY terminology
-  @memoize
   sorts(): OrderByWrapper[] {
     return Q.getOrderBys(this.query()).map(
       (sort, index) => new OrderByWrapper(sort, index, this),
@@ -1099,6 +1096,10 @@ export default class StructuredQuery extends AtomicQuery {
       query = query.removeField(index);
     }
 
+    if (!query.hasExpressions() && query.isRaw()) {
+      query = query.clearFields();
+    }
+
     return query;
   }
 
@@ -1113,6 +1114,10 @@ export default class StructuredQuery extends AtomicQuery {
       if (index >= 0) {
         query = query.removeField(index);
       }
+    }
+
+    if (this.isRaw()) {
+      query = query.clearFields();
     }
 
     return query;
@@ -1273,7 +1278,6 @@ export default class StructuredQuery extends AtomicQuery {
     return [...this.expressionDimensions(), ...this.tableDimensions()];
   }
 
-  @memoize
   tableDimensions(): Dimension[] {
     const table: Table = this.table();
     return table // HACK: ensure the dimensions are associated with this query
@@ -1283,7 +1287,6 @@ export default class StructuredQuery extends AtomicQuery {
       : [];
   }
 
-  @memoize
   expressionDimensions(): Dimension[] {
     return Object.entries(this.expressions()).map(
       ([expressionName, expression]) => {
@@ -1297,24 +1300,20 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 
-  @memoize
   joinedDimensions(): Dimension[] {
     return [].concat(...this.joins().map(join => join.fieldsDimensions()));
   }
 
-  @memoize
   breakoutDimensions() {
     return this.breakouts().map(breakout => this.parseFieldReference(breakout));
   }
 
-  @memoize
   aggregationDimensions() {
     return this.aggregations().map(aggregation =>
       aggregation.aggregationDimension(),
     );
   }
 
-  @memoize
   fieldDimensions() {
     return this.fields().map((fieldClause, index) =>
       this.parseFieldReference(fieldClause),
@@ -1323,7 +1322,6 @@ export default class StructuredQuery extends AtomicQuery {
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
   // NOTE: these will not have the correct columnName() if there are duplicates
-  @memoize
   columnDimensions() {
     if (this.hasAggregations() || this.hasBreakouts()) {
       const aggregations = this.aggregationDimensions();
@@ -1361,7 +1359,6 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   // TODO: this replicates logic in the backend, we should have integration tests to ensure they match
-  @memoize
   columnNames() {
     // NOTE: dimension.columnName() doesn't include suffixes for duplicated column names so we need to do that here
     const nameCounts = new Map();
@@ -1435,7 +1432,6 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * The (wrapped) source query, if any
    */
-  @memoize
   sourceQuery(): StructuredQuery | null | undefined {
     const sourceQuery = this.query()?.["source-query"];
 
@@ -1453,7 +1449,6 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns the "first" of the nested queries, or this query it not nested
    */
-  @memoize
   rootQuery(): StructuredQuery {
     const sourceQuery = this.sourceQuery();
     return sourceQuery ? sourceQuery.rootQuery() : this;
@@ -1462,7 +1457,6 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Returns the "last" nested query that is already summarized, or `null` if none are
    * */
-  @memoize
   lastSummarizedQuery(): StructuredQuery | null | undefined {
     if (this.hasAggregations() || !this.canNest()) {
       return this;
@@ -1476,7 +1470,6 @@ export default class StructuredQuery extends AtomicQuery {
    * Returns the "last" nested query that is already summarized, or the query itself.
    * Used in "view mode" to effectively ignore post-aggregation filter stages
    */
-  @memoize
   topLevelQuery(): StructuredQuery {
     if (!this.canNest()) {
       return this;
@@ -1653,6 +1646,26 @@ export default class StructuredQuery extends AtomicQuery {
     );
   }
 } // subclass of StructuredQuery that's returned by query.sourceQuery() to allow manipulation of source-query
+
+class StructuredQuery extends memoizeClass<StructuredQueryInner>(
+  "table",
+  "filters",
+  "sorts",
+  "tableDimensions",
+  "expressionDimensions",
+  "joinedDimensions",
+  "breakoutDimensions",
+  "aggregationDimensions",
+  "fieldDimensions",
+  "columnDimensions",
+  "columnNames",
+  "sourceQuery",
+  "rootQuery",
+  "lastSummarizedQuery",
+  "topLevelQuery",
+)(StructuredQueryInner) {}
+
+export default StructuredQuery;
 
 class NestedStructuredQuery extends StructuredQuery {
   _parent: StructuredQuery;

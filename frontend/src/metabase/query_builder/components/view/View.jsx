@@ -40,12 +40,12 @@ import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 import {
-  QueryBuilderViewRoot,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
   QueryBuilderContentContainer,
   QueryBuilderMain,
   QueryBuilderViewHeaderContainer,
-  BorderedViewTitleHeader,
-  NativeQueryEditorContainer,
+  QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
@@ -57,8 +57,7 @@ const DEFAULT_POPOVER_STATE = {
   breakoutPopoverTarget: null,
 };
 
-@ExplicitSize()
-export default class View extends React.Component {
+class View extends React.Component {
   state = {
     ...DEFAULT_POPOVER_STATE,
   };
@@ -132,6 +131,8 @@ export default class View extends React.Component {
       onCloseChartType,
       isBookmarked,
       toggleBookmark,
+      persistDataset,
+      unpersistDataset,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -151,6 +152,8 @@ export default class View extends React.Component {
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
+          persistDataset={persistDataset}
+          unpersistDataset={unpersistDataset}
         />
       );
     }
@@ -451,6 +454,7 @@ export default class View extends React.Component {
       onDismissToast,
       onConfirmToast,
       isShowingToaster,
+      isHeaderVisible,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
@@ -483,7 +487,7 @@ export default class View extends React.Component {
     return (
       <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {this.renderHeader()}
+          {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook
@@ -527,3 +531,5 @@ export default class View extends React.Component {
     );
   }
 }
+
+export default ExplicitSize({ refreshMode: "debounceLeading" })(View);

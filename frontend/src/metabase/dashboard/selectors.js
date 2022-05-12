@@ -13,6 +13,7 @@ import {
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => !!state.dashboard.isEditing;
@@ -194,3 +195,13 @@ export const getDashboardParameterValuesCache = state => {
     },
   };
 };
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
+);

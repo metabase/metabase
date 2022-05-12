@@ -5,20 +5,19 @@ import { color } from "metabase/lib/colors";
 
 import CardRenderer from "./CardRenderer";
 
-// import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
 import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
 const LeafletChoropleth = ({
-  series,
+  series = [],
   geoJson,
   minimalBounds = computeMinimalBounds(geoJson.features || [geoJson]),
   getColor = () => color("brand"),
   onHoverFeature = () => {},
   onClickFeature = () => {},
-  onRenderError,
+  onRenderError = () => {},
 }) => (
   <CardRenderer
     card={{ display: "map" }}
@@ -29,9 +28,13 @@ const LeafletChoropleth = ({
       element.style.backgroundColor = "transparent";
 
       const map = L.map(element, {
-        zoomSnap: 0,
-        worldCopyJump: true,
         attributionControl: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
+        trackResize: true,
+        worldCopyJump: true,
+        zoomAnimation: false,
+        zoomSnap: 0,
 
         // disable zoom controls
         dragging: false,
@@ -56,7 +59,7 @@ const LeafletChoropleth = ({
         layer.on({
           mousemove: e => {
             onHoverFeature({
-              feature: feature,
+              feature,
               event: e.originalEvent,
             });
           },
@@ -65,7 +68,7 @@ const LeafletChoropleth = ({
           },
           click: e => {
             onClickFeature({
-              feature: feature,
+              feature,
               event: e.originalEvent,
             });
           },
@@ -75,29 +78,29 @@ const LeafletChoropleth = ({
       // main layer
       L.featureGroup([
         L.geoJson(geoJson, {
-          style: style,
-          onEachFeature: onEachFeature,
+          style,
+          onEachFeature,
         }),
       ]).addTo(map);
 
-      // left and right duplicates so we can pan a bit
-      L.featureGroup([
-        L.geoJson(geoJson, {
-          style: style,
-          onEachFeature: onEachFeature,
-          coordsToLatLng: ([longitude, latitude]) =>
-            L.latLng(latitude, longitude - 360),
-        }),
-        L.geoJson(geoJson, {
-          style: style,
-          onEachFeature: onEachFeature,
-          coordsToLatLng: ([longitude, latitude]) =>
-            L.latLng(latitude, longitude + 360),
-        }),
-      ]).addTo(map);
+      // // left and right duplicates so we can pan a bit
+      // L.featureGroup([
+      //   L.geoJson(geoJson, {
+      //     style,
+      //     onEachFeature,
+      //     coordsToLatLng: ([longitude, latitude]) =>
+      //       L.latLng(latitude, longitude - 360),
+      //   }),
+      //   L.geoJson(geoJson, {
+      //     style,
+      //     onEachFeature,
+      //     coordsToLatLng: ([longitude, latitude]) =>
+      //       L.latLng(latitude, longitude + 360),
+      //   }),
+      // ]).addTo(map);
 
       map.fitBounds(minimalBounds);
-      // map.fitBounds(geoFeatureGroup.getBounds());
+      map.panTo([0, 0], { animate: false });
 
       return () => {
         map.remove();

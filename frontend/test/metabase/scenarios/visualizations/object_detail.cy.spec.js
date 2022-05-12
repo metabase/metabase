@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  openOrdersTable,
   openPeopleTable,
   openProductsTable,
 } from "__support__/e2e/cypress";
@@ -33,10 +34,7 @@ describe("scenarios > question > object details", () => {
 
   it("handles browsing records by PKs", () => {
     cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
-    getFirstTableColumn()
-      .eq(1)
-      .should("contain", FIRST_ORDER_ID)
-      .click();
+    drillPK({ id: FIRST_ORDER_ID });
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
     getPreviousObjectDetailButton().should("have.attr", "disabled", "disabled");
@@ -55,21 +53,25 @@ describe("scenarios > question > object details", () => {
     assertOrderDetailView({ id: FIRST_ORDER_ID });
   });
 
-  it("handles browsing records by FKs", () => {
-    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
-    const FIRST_USER_ID = 1283;
+  it("handles browsing records by FKs (metabase#21756)", () => {
+    openOrdersTable();
 
-    cy.findByText(String(FIRST_USER_ID)).click();
-    popover()
-      .findByText("View details")
-      .click();
+    drillFK({ id: 1 });
 
-    assertUserDetailView({ id: FIRST_USER_ID });
-    getPreviousObjectDetailButton().click();
-    assertUserDetailView({ id: FIRST_USER_ID - 1 });
-    getNextObjectDetailButton().click();
-    getNextObjectDetailButton().click();
-    assertUserDetailView({ id: FIRST_USER_ID + 1 });
+    assertUserDetailView({ id: 1 });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
+
+    cy.go("back");
+    cy.go("back");
+    cy.wait("@dataset");
+
+    changeSorting("User ID", "desc");
+    drillFK({ id: 2500 });
+
+    assertDetailView({ id: 2500, entityName: "Person", byFK: true });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
   });
 
   it("handles opening a filtered out record", () => {
@@ -89,10 +91,7 @@ describe("scenarios > question > object details", () => {
     const EXPECTED_LINKED_REVIEWS_COUNT = 8;
     openProductsTable();
 
-    getFirstTableColumn()
-      .eq(5)
-      .should("contain", 5)
-      .click();
+    drillPK({ id: 5 });
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByTestId("fk-relation-orders").findByText(97);
@@ -122,9 +121,7 @@ describe("scenarios > question > object details", () => {
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
     openPeopleTable({ limit: 2 });
 
-    cy.get(".Table-ID")
-      .contains("2")
-      .click();
+    drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
     cy.findByTestId("object-detail")
@@ -138,18 +135,30 @@ describe("scenarios > question > object details", () => {
   });
 });
 
-function getFirstTableColumn() {
-  return cy.get(".TableInteractive-cellWrapper--firstColumn");
+function drillPK({ id }) {
+  cy.get(".Table-ID")
+    .contains(id)
+    .first()
+    .click();
+}
+
+function drillFK({ id }) {
+  cy.get(".Table-FK")
+    .contains(id)
+    .first()
+    .click();
+  popover()
+    .findByText("View details")
+    .click();
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
-  cy.get("h1")
-    .parent()
+  cy.get("h2")
     .should("contain", entityName)
     .should("contain", id);
 
   const pattern = byFK
-    ? new RegExp(`/question\\?objectId=${id}#*`)
+    ? new RegExp("/question#*")
     : new RegExp(`/question/[1-9]d*.*/${id}`);
 
   cy.url().should("match", pattern);
@@ -169,4 +178,13 @@ function getPreviousObjectDetailButton() {
 
 function getNextObjectDetailButton() {
   return cy.findByTestId("view-next-object-detail");
+}
+
+function changeSorting(columnName, direction) {
+  const icon = direction === "asc" ? "arrow_up" : "arrow_down";
+  cy.findByText(columnName).click();
+  popover().within(() => {
+    cy.icon(icon).click();
+  });
+  cy.wait("@dataset");
 }

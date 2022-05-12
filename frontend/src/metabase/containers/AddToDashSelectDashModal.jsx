@@ -18,8 +18,7 @@ function mapStateToProps(state) {
   };
 }
 
-@connect(mapStateToProps)
-export default class AddToDashSelectDashModal extends Component {
+class AddToDashSelectDashModal extends Component {
   state = {
     shouldCreateDashboard: false,
   };
@@ -75,3 +74,5 @@ export default class AddToDashSelectDashModal extends Component {
     }
   }
 }
+
+export default connect(mapStateToProps)(AddToDashSelectDashModal);

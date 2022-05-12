@@ -12,7 +12,7 @@ import {
   FieldContainer,
   InfoLabel,
 } from "./FormField.styled";
-import { FormFieldDecription } from "./FormFieldDescription";
+import { FormFieldDescription } from "./FormFieldDescription";
 
 const formFieldCommon = {
   title: PropTypes.string,
@@ -62,6 +62,7 @@ function FormField(props) {
     hidden = formField && (formField.hidden || formField.type === "hidden"),
     horizontal = formField &&
       (formField.horizontal || formField.type === "boolean"),
+    align = formField?.align || "right",
     children,
   } = props;
 
@@ -75,6 +76,7 @@ function FormField(props) {
   };
 
   const formFieldId = `formField-${name.replace(ALL_DOT_CHARS, "-")}`;
+  const isToggle = formField?.type === "boolean";
 
   if (!visited || active) {
     // if the field hasn't been visited or is currently active then don't show the error
@@ -88,14 +90,16 @@ function FormField(props) {
 
   return (
     <div id={formFieldId} className={rootClassNames}>
+      {align === "left" && <InputContainer>{children}</InputContainer>}
       {(title || description) && (
-        <FieldContainer horizontal={horizontal}>
+        <FieldContainer horizontal={horizontal} align={align}>
           <FieldRow>
             {title && (
               <Label
                 id={`${name}-label`}
                 htmlFor={name}
                 horizontal={horizontal}
+                standAlone={isToggle && align === "right" && !description}
               >
                 {title}
                 {error && <span className="text-error">: {error}</span>}
@@ -113,13 +117,13 @@ function FormField(props) {
             )}
           </FieldRow>
           {description && descriptionPosition === "top" && (
-            <FormFieldDecription className="mb1" description={description} />
+            <FormFieldDescription className="mb1" description={description} />
           )}
         </FieldContainer>
       )}
-      <InputContainer horizontal={horizontal}>{children}</InputContainer>
+      {align !== "left" && <InputContainer>{children}</InputContainer>}
       {description && descriptionPosition === "bottom" && (
-        <FormFieldDecription className="mt1" description={description} />
+        <FormFieldDescription className="mt1" description={description} />
       )}
     </div>
   );

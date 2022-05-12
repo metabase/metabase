@@ -54,8 +54,7 @@ const ReduxFormComponent = reduxForm()(
   },
 );
 
-@connect(makeMapStateToProps)
-export default class Form extends React.Component {
+class Form extends React.Component {
   _state = {
     submitting: false,
     failed: false,
@@ -282,6 +281,8 @@ export default class Form extends React.Component {
     );
   }
 }
+
+export default connect(makeMapStateToProps)(Form);
 
 // returns a function that takes an object
 // apply the top level method (if any) to the whole object
