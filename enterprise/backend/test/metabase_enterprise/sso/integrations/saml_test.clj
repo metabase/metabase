@@ -358,7 +358,8 @@
     (doseq [relay-state ["something-random_#!@__^^"
                          ""
                          "   "
-                         "/"]]
+                         "/"
+                         "https://badsite.com"]]
       (testing (format "\nRelayState = %s" (pr-str relay-state))
         (with-saml-default-setup
           (do-with-some-validators-disabled
@@ -376,10 +377,10 @@
         (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
           (do-with-some-validators-disabled
             (fn []
-              (let [response (client-full-response :get 400 "/auth/sso"
-                               {:request-options {:redirect-strategy :none}}
-                               :redirect redirect-url)]
-                (is (not (successful-login? response)))))))))))
+              (let [get-response (client :get 400 "/auth/sso"
+                                   {:request-options {:redirect-strategy :none}}
+                                   :redirect redirect-url)]
+                (is (= "SSO is trying to do an open redirect to an untrusted site" get-response))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"
