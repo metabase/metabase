@@ -20,7 +20,7 @@ export interface BaseFormProps {
   active?: boolean;
   asyncValidating: boolean;
   dirty: boolean;
-  error?: unknown;
+  error?: string;
   invalid: boolean;
   overwriteOnInitialValuesChange?: boolean;
   pristine: boolean;

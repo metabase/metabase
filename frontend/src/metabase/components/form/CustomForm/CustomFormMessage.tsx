@@ -15,7 +15,7 @@ function CustomFormMessage({
   ...props
 }: CustomFormMessageProps & FormLegacyContext) {
   if (error) {
-    return <FormMessage {...props} message={error} formError />;
+    return <FormMessage {...props} message={error} />;
   }
   return null;
 }
