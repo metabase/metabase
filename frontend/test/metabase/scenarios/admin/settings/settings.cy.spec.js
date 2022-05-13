@@ -208,7 +208,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")
       .closest("li")
-      .findByTestId("select-button")
+      .findByTestId("report-timezone-select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");
