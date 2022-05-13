@@ -598,7 +598,7 @@
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)
-                                      (sync.schedules/default-schedule)))
+                                      (sync.schedules/default-randomized-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>)
@@ -740,7 +740,7 @@
                                                    (and (get-in existing-database [:details :let-user-control-scheduling])
                                                         (not (:let-user-control-scheduling details)))
 
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
                                                    ;; if user is controlling schedules
                                                    (:let-user-control-scheduling details)
