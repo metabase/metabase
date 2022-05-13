@@ -4,27 +4,31 @@
             [clojure.tools.logging :as log]
             [metabase.util.files :as u.files]))
 
-(def ^:private font-path "./resources/frontend_client/app/fonts/")
+(def font-path "./resources/frontend_client/app/fonts/")
 
 (defn- partial-file-name
+  "Helper function that "
   [parent-path path]
   (-> (str path)
       (str/replace (str parent-path "/") "")
       (str/split #"-")
       first))
 
-(defn- font-dir->font-name
-  "Compare the names of the actual font file with the directory to try determine the Display Name."
+(defn- normalize-font-dirname
+  "Use a font's directory to derive a Display Name.
+
+  Underscores become spaces, and then split on dashes and take the first word.
+  This is done because of the Lato-v16-latin directory name."
+  [dirname]
+  (-> dirname
+      (str/split #"-")
+      first
+      (str/replace #"_" " ")))
+
+(defn- contains-font-file?
   [path]
-  (let [potential-name (-> (str path)
-                           (str/replace font-path "")
-                           (str/replace #"_" " "))
-        no-spaces-name (str/replace potential-name #" " "")
-        font-files-partial-name (first (map #(partial-file-name path %) (u.files/files-seq path)))]
-    (if (= (str/lower-case no-spaces-name)
-           (str/lower-case font-files-partial-name))
-      potential-name
-      (str/capitalize font-files-partial-name))))
+  ;; todo: expand this to allow other font formats?
+  (some #(str/includes? % ".woff") (u.files/files-seq path)))
 
 (defn- available-fonts*
   []
@@ -32,10 +36,12 @@
   (->> font-path
        u.files/get-path
        u.files/files-seq
-       (map font-dir->font-name)
+       (filter contains-font-file?)
+       (map #(str/replace (str %) font-path ""))
+       (map normalize-font-dirname)
        (sort-by #(str/lower-case %))))
 
 (def ^{:arglists '([])} available-fonts
-  "Return sorted set of available fonts, as Strings."
+  "Return an alphabetically sorted list of available fonts, as Strings."
   (let [fonts (delay (available-fonts*))]
     (fn [] @fonts)))
