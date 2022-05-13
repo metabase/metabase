@@ -98,8 +98,8 @@
  * to stick to bottom, options lists and other
  * middle content need extra margin-bottom
  */
-.PopoverBody--marginBottom {
-  margin-bottom: 60px;
+.PopoverBody--paddingBottom {
+  padding-bottom: 60px;
 }
 
 .PopoverBody .Form-input {
@@ -186,7 +186,7 @@
 }
 
 .PopoverParameterFieldWidgetFooter {
-  position: fixed;
+  position: absolute;
   bottom: -7px;
 }
 

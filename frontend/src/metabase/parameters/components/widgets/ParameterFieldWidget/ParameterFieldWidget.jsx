@@ -127,7 +127,7 @@ export default class ParameterFieldWidget extends Component {
           onClose={() => focusChanged(false)}
           content={
             <div
-              className={cx("relative PopoverBody--marginBottom", {
+              className={cx("relative PopoverBody--paddingBottom", {
                 p2: !isEqualsOp,
               })}
             >
