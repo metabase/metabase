@@ -33,7 +33,7 @@
       (is (seq fonts)))
     (testing "Only directories with font files are included."
       (let [dirs (conj
-                  (u.files/files-seq (u.files/get-path fonts/font-path))
+                  (u.files/files-seq (u.files/get-path @#'fonts/font-path))
                   (u.files/get-path "./metabase/"))]
         (is (> (count dirs)
                (count fonts)))))))
