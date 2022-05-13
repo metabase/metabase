@@ -11,10 +11,6 @@
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-<<<<<<< HEAD
-            [metabase.util.cron :as cron-util]
-=======
->>>>>>> a6c1b33c09 (Don't reschedule syncs on startup (#22680))
             [toucan.db :as db])
   (:import [metabase.task.sync_databases SyncAndAnalyzeDatabase UpdateFieldValues]))
 
