@@ -1,6 +1,6 @@
 import React from "react";
 import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
-import SelectButton from "metabase/core/components/SelectButton";
+import BulkFilterSelect from "../BulkFilterSelect";
 import {
   ListAction,
   ListLabel,
@@ -19,7 +19,7 @@ const BulkFilterList = ({ options }: BulkFilterListProps): JSX.Element => {
         <ListRow key={index}>
           <ListLabel>{option.dimension.displayName()}</ListLabel>
           <ListAction>
-            <SelectButton />
+            <BulkFilterSelect />
           </ListAction>
         </ListRow>
       ))}
