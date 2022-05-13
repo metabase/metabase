@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useContext,
 } from "react";
-import TabContext from "./TabContext";
+import { TabContext } from "./TabContext";
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 
 export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {

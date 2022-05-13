@@ -7,7 +7,7 @@ import React, {
   useContext,
   useMemo,
 } from "react";
-import TabContext, { TabContextType } from "../Tab/TabContext";
+import { TabContext, TabContextType } from "../Tab";
 import { TabListRoot } from "./TabList.styled";
 
 export interface TabListProps<T>

@@ -6,6 +6,4 @@ export interface TabContextType {
   onChange?: (value: unknown) => void;
 }
 
-const TabContext = createContext<TabContextType>({ isDefault: true });
-
-export default TabContext;
+export const TabContext = createContext<TabContextType>({ isDefault: true });

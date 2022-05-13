@@ -5,7 +5,7 @@ import React, {
   Ref,
   useContext,
 } from "react";
-import TabContext from "../Tab/TabContext";
+import { TabContext } from "../Tab";
 
 export interface TabPanelProps<T> extends HTMLAttributes<HTMLDivElement> {
   value?: T;

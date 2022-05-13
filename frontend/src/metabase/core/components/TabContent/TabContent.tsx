@@ -5,7 +5,7 @@ import React, {
   Ref,
   useMemo,
 } from "react";
-import TabContext, { TabContextType } from "../Tab/TabContext";
+import { TabContext, TabContextType } from "../Tab";
 
 export interface TabContentProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
