@@ -11,8 +11,8 @@
                   :column 1,
                   :is-endpoint? true,
                   :line 61,
-                  :endpoint-str "### `GET /api/activity/`",
-                  :doc "### `GET /api/activity/`\n\nGet recent activity."}
+                  :endpoint-str "## `GET /api/activity/`",
+                  :doc "## `GET /api/activity/`\n\nGet recent activity."}
                  {:ns (find-ns 'metabase.api.activity),
                   :name "GET_recent_views",
                   :file "metabase/api/activity.clj",
@@ -20,15 +20,15 @@
                   :column 1,
                   :is-endpoint? true,
                   :line 76,
-                  :endpoint-str "### `GET /api/activity/recent_views`",
+                  :endpoint-str "## `GET /api/activity/recent_views`",
                   :doc
-                  "### `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently."}]})
+                  "## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently."}]})
 
-(def section-markdown "## Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n### `GET /api/activity/`\n\nGet recent activity.\n\n### `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently.")
+(def page-markdown (str "# Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently." (endpoint-dox/endpoint-footer (val (first endpoints)))))
 
-(deftest endpoint-section-test
-  (is (= (first (endpoint-dox/endpoint-section endpoints))
-         section-markdown)))
+(deftest endpoint-page-test
+  (is (= (first (for [[ep ep-data] endpoints] (endpoint-dox/endpoint-page ep ep-data)))
+         page-markdown)))
 
 (deftest include-ee-test
   (testing "Enterprise API endpoints should be included (#22396)"
