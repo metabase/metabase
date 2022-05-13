@@ -321,7 +321,6 @@
   "Impl for [[metabase.test/dataset]] macro. Resolve a dataset definition (e.g. `test-data` or `sad-toucan-incidents` in
   a namespace."
   [namespace-symb symb]
-  {:pre [(nil? (namespace symb))]}
   @(or (ns-resolve namespace-symb symb)
        (do
          (classloader/require 'metabase.test.data.dataset-definitions)
