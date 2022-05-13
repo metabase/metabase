@@ -10,7 +10,7 @@ import TabContent from "metabase/core/components/TabContent";
 import TabPanel from "metabase/core/components/TabPanel";
 import TabList from "metabase/core/components/TabList";
 import Icon from "metabase/components/Icon";
-import FilterList from "../FilterList";
+import BulkFilterList from "../BulkFilterList";
 import {
   ModalCloseButton,
   ModalContent,
@@ -18,17 +18,17 @@ import {
   ModalFooter,
   ModalHeader,
   ModalHeaderTitle,
-} from "./FilterModal.styled";
+} from "./BulkFilterModal.styled";
 
-export interface FilterModalProps {
+export interface BulkFilterModalProps {
   question: Question;
   onClose?: () => void;
 }
 
-const FilterModal = ({
+const BulkFilterModal = ({
   question,
   onClose,
-}: FilterModalProps): JSX.Element | null => {
+}: BulkFilterModalProps): JSX.Element | null => {
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return null;
@@ -66,7 +66,7 @@ interface ModalSectionProps {
 const ModalSection = ({ section }: ModalSectionProps): JSX.Element => {
   return (
     <ModalContent>
-      <FilterList options={section.items} />
+      <BulkFilterList options={section.items} />
     </ModalContent>
   );
 };
@@ -97,7 +97,7 @@ const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
       <ModalContent>
         {sections.map((section, index) => (
           <TabPanel key={index} value={index}>
-            <FilterList options={section.items} />
+            <BulkFilterList options={section.items} />
           </TabPanel>
         ))}
       </ModalContent>
@@ -109,4 +109,4 @@ const getTitle = (question: Question) => {
   return question.isSaved() ? t`Filter ${question.displayName()}` : t`Filter`;
 };
 
-export default FilterModal;
+export default BulkFilterModal;

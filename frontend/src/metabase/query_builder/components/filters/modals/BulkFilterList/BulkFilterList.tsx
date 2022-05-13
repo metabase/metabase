@@ -1,12 +1,12 @@
 import React from "react";
 import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
-import { ListLabel, ListRoot, ListRow } from "./FilterList.styled";
+import { ListLabel, ListRoot, ListRow } from "./BulkFilterList.styled";
 
-export interface FilterListProps {
+export interface BulkFilterListProps {
   options: DimensionOption[];
 }
 
-const FilterList = ({ options }: FilterListProps): JSX.Element => {
+const BulkFilterList = ({ options }: BulkFilterListProps): JSX.Element => {
   return (
     <ListRoot>
       {options.map((option, index) => (
@@ -18,4 +18,4 @@ const FilterList = ({ options }: FilterListProps): JSX.Element => {
   );
 };
 
-export default FilterList;
+export default BulkFilterList;
