@@ -3,6 +3,8 @@ import React, {
   HTMLAttributes,
   ReactNode,
   Ref,
+  useCallback,
+  useContext,
   useMemo,
 } from "react";
 import TabContext, { TabContextType } from "../Tab/TabContext";
@@ -19,13 +21,25 @@ const TabList = forwardRef(function TabGroup<T>(
   { value, onChange, children, ...props }: TabListProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const context = useMemo(() => {
-    return { value, onChange } as TabContextType;
-  }, [value, onChange]);
+  const { value: outerValue, onChange: onOuterChange } = useContext(TabContext);
+
+  const handleChange = useCallback(
+    (value: T) => {
+      onChange?.(value);
+      onOuterChange?.(value);
+    },
+    [onChange, onOuterChange],
+  );
+
+  const innerContext = useMemo(() => {
+    return { value: value ?? outerValue, onChange: handleChange };
+  }, [value, outerValue, handleChange]);
 
   return (
     <TabListRoot {...props} ref={ref} role="tablist">
-      <TabContext.Provider value={context}>{children}</TabContext.Provider>
+      <TabContext.Provider value={innerContext as TabContextType}>
+        {children}
+      </TabContext.Provider>
     </TabListRoot>
   );
 });

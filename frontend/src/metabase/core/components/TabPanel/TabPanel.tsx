@@ -16,8 +16,8 @@ const TabPanel = forwardRef(function TabPanel<T>(
   { value, children, ...props }: TabPanelProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const context = useContext(TabContext);
-  const isSelected = value === context.value;
+  const { value: selectedValue } = useContext(TabContext);
+  const isSelected = value === selectedValue;
 
   return (
     <div
