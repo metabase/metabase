@@ -295,7 +295,7 @@
   (copy-db-fks! old-db-id new-db-id))
 
 (def ^:dynamic *db-is-temp-copy?*
-    "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
+  "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
 (defn do-with-temp-copy-of-db
