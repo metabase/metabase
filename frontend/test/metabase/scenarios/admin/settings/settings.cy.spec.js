@@ -247,7 +247,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
-    const lastItem = isEE ? "Whitelabel" : "Caching";
+    const lastItem = isEE ? "Appearance" : "Caching";
 
     cy.visit("/admin/settings/setup");
     cy.get(".AdminList .AdminList-item")
