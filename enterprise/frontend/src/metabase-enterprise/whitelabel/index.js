@@ -46,7 +46,7 @@ if (hasPremiumFeature("whitelabel")) {
           defaultValue: "Lato",
           onChanged: (oldFont, newFont) => {
             if (oldFont !== newFont) {
-              //window.location.reload();
+              window.location.reload();
             }
           },
         },
