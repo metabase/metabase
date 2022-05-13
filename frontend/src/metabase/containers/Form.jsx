@@ -169,6 +169,7 @@ class Form extends React.Component {
         initialize(this.props.formName, this._getInitialValues(), newFields),
       );
     }
+    this.props.onChange?.(this.props.values);
   }
 
   _registerFormField = field => {

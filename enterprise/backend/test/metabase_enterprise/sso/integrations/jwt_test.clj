@@ -57,7 +57,8 @@
 (defn- call-with-default-jwt-config [f]
   (mt/with-temporary-setting-values [jwt-enabled               true
                                      jwt-identity-provider-uri default-idp-uri
-                                     jwt-shared-secret         default-jwt-secret]
+                                     jwt-shared-secret         default-jwt-secret
+                                     site-url                  "http://localhost"]
     (f)))
 
 (defmacro ^:private with-jwt-default-setup [& body]
@@ -107,6 +108,20 @@
         (testing "login attributes"
           (is (= {"extra" "keypairs", "are" "also present"}
                  (db/select-one-field :login_attributes User :email "rasta@metabase.com"))))))))
+
+(deftest no-open-redirect-test
+  (testing "Check a JWT with bad (open redirect)"
+    (with-jwt-default-setup
+      (is (= "SSO is trying to do an open redirect to an untrusted site"
+             (saml-test/client
+               :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}
+               :return_to "https://evilsite.com"
+               :jwt (jwt/sign {:email      "rasta@metabase.com"
+                               :first_name "Rasta"
+                               :last_name  "Toucan"
+                               :extra      "keypairs"
+                               :are        "also present"}
+                              default-jwt-secret)))))))
 
 (deftest expired-jwt-test
   (testing "Check an expired JWT"

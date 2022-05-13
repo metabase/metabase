@@ -10,7 +10,10 @@ export const FieldRow = styled.div`
   margin-bottom: 0.5em;
 `;
 
-export const Label = styled.label`
+export const Label = styled.label<{
+  horizontal?: boolean;
+  standAlone?: boolean;
+}>`
   margin-bottom: 0;
   ${props =>
     props.horizontal &&
@@ -42,7 +45,10 @@ export const InfoLabel = styled.span`
   cursor: default;
 `;
 
-export const FieldContainer = styled.div`
+export const FieldContainer = styled.div<{
+  horizontal?: boolean;
+  align?: "left" | "right";
+}>`
   width: 100%;
   margin-right: ${props => (props.horizontal ? "1rem" : "")};
   margin-left: ${props => (props.align === "left" ? "0.5rem" : "")};
@@ -50,9 +56,4 @@ export const FieldContainer = styled.div`
 
 export const InputContainer = styled.div`
   flex-shrink: 0;
-  ${props =>
-    props.horizontal &&
-    css`
-      margin-left: auto;
-    `}
 `;

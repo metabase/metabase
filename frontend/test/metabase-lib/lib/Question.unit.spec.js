@@ -1137,10 +1137,10 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.convertParametersToFilters", () => {
+  describe("Question.prototype.convertParametersToMbql", () => {
     it("should do nothing to a native question", () => {
       const question = new Question(native_orders_count_card, metadata);
-      expect(question.convertParametersToFilters()).toBe(question);
+      expect(question.convertParametersToMbql()).toBe(question);
     });
 
     it("should convert a question with parameters into a new question with filters", () => {
@@ -1165,7 +1165,7 @@ describe("Question", () => {
           foo_id: "abc",
         });
 
-      const questionWithFilters = question.convertParametersToFilters();
+      const questionWithFilters = question.convertParametersToMbql();
 
       expect(questionWithFilters.card().dataset_query.query.filter).toEqual([
         "starts-with",

@@ -254,6 +254,20 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
+      forceTokenField = false,
+      valueRenderer = value =>
+        renderValue(fields, formatOptions, value, {
+          autoLoad: true,
+          compact: false,
+        }),
+      optionRenderer = option =>
+        renderValue(fields, formatOptions, option[0], { autoLoad: false }),
+      layoutRenderer = layoutProps => (
+        <div>
+          {layoutProps.valuesList}
+          {renderOptions(this.state, this.props, layoutProps)}
+        </div>
+      ),
     } = this.props;
     const { loadingState, options: stateOptions } = this.state;
 
@@ -309,7 +323,7 @@ class FieldValuesWidgetInner extends Component {
         }}
       >
         {isFetchingList && <LoadingState />}
-        {hasListData && (
+        {hasListData && !forceTokenField && (
           <ListField
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
@@ -323,7 +337,7 @@ class FieldValuesWidgetInner extends Component {
             }
           />
         )}
-        {!hasListData && !isFetchingList && (
+        {(!hasListData || forceTokenField) && !isFetchingList && (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
@@ -340,21 +354,9 @@ class FieldValuesWidgetInner extends Component {
             // end forwarded props
             options={options}
             valueKey={0}
-            valueRenderer={value =>
-              renderValue(fields, formatOptions, value, {
-                autoLoad: true,
-                compact: false,
-              })
-            }
-            optionRenderer={option =>
-              renderValue(fields, formatOptions, option[0], { autoLoad: false })
-            }
-            layoutRenderer={layoutProps => (
-              <div>
-                {layoutProps.valuesList}
-                {renderOptions(this.state, this.props, layoutProps)}
-              </div>
-            )}
+            valueRenderer={valueRenderer}
+            optionRenderer={optionRenderer}
+            layoutRenderer={layoutRenderer}
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
               return option.some(

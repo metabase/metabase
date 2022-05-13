@@ -104,8 +104,8 @@
     (events/initialize-events!)
     (init-status/set-progress! 0.7)
 
-    ;; Now start the task runner
-    (task/start-scheduler!)
+    ;; Now initialize the task runner
+    (task/init-scheduler!)
     (init-status/set-progress! 0.8)
 
     (when new-install?
@@ -123,6 +123,8 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!)))
 
+  ;; start scheduler at end of init!
+  (task/start-scheduler!)
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
 

@@ -281,15 +281,15 @@
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
-               (hsql/format (#'postgres/json-query boop-identifier boop-field))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh,foobar,1234}"]
-               (hsql/format (#'postgres/json-query boop-identifier weird-field))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
-               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres

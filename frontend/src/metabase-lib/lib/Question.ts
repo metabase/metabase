@@ -36,7 +36,7 @@ import {
   getValueAndFieldIdPopulatedParametersFromCard,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
@@ -285,6 +285,10 @@ class QuestionInner {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  /**
+   * returns whether this question is a model
+   * @returns boolean
+   */
   isDataset() {
     return this._card && this._card.dataset;
   }
@@ -1239,25 +1243,29 @@ class QuestionInner {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToFilters() {
+  convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
 
-    const [query, isAltered] = this.parameters().reduce(
-      ([query, isAltered], parameter) => {
-        const filter = parameterToMBQLFilter(parameter, this.metadata());
-        return filter ? [query.filter(filter), true] : [query, isAltered];
-      },
-      [this.query(), false],
-    );
+    const mbqlFilters = this.parameters()
+      .map(parameter => {
+        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
+      })
+      .filter(mbqlFilter => mbqlFilter != null);
+
+    const query = mbqlFilters.reduce((query, mbqlFilter) => {
+      return query.filter(mbqlFilter);
+    }, this.query());
+
+    const hasQueryBeenAltered = mbqlFilters.length > 0;
 
     const question = query
       .question()
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return isAltered ? question.markDirty() : question;
+    return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
@@ -1269,7 +1277,7 @@ class QuestionInner {
       if (this.query().isEditable()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToFilters()
+          .convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,

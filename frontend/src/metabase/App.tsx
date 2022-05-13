@@ -99,7 +99,7 @@ function App({
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
         <div className="spread">
-          {isAppBarVisible && <AppBar />}
+          {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
           <AppContentContainer
             isAdminApp={isAdminApp}
             isAppBarVisible={isAppBarVisible}

@@ -1,11 +1,21 @@
-/* eslint-disable react/prop-types */
 import React from "react";
-
-import CustomForm from "./CustomForm";
-
 import { t } from "ttag";
 
-const StandardForm = ({ onClose, submitTitle, submitFullWidth, ...props }) => (
+import { BaseFormProps } from "./CustomForm/types";
+import { CustomFormFooterProps } from "./CustomForm/CustomFormFooter";
+import CustomForm from "./CustomForm";
+
+interface Props extends BaseFormProps, CustomFormFooterProps {
+  submitFullWidth?: boolean;
+  onClose?: () => void;
+}
+
+const StandardForm = ({
+  submitTitle,
+  submitFullWidth,
+  onClose,
+  ...props
+}: Props) => (
   <CustomForm {...props}>
     {({ values, formFields, Form, FormField, FormFooter }) => (
       <Form>

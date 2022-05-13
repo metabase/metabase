@@ -22,6 +22,7 @@ import { CreateAlertModalContent } from "metabase/query_builder/components/Alert
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
+import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 import FilterModal from "metabase/query_builder/components/filters/modals/FilterModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
@@ -245,6 +246,14 @@ export default class QueryModals extends React.Component {
         <MoveEventModal
           eventId={modalContext}
           collectionId={question.collectionId()}
+          onClose={onCloseModal}
+        />
+      </Modal>
+    ) : modal === MODAL_TYPES.INSERT_ROW ? (
+      <Modal onClose={onCloseModal}>
+        <WritebackModalForm
+          table={question.table()}
+          onSubmit={onCloseModal}
           onClose={onCloseModal}
         />
       </Modal>
