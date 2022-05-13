@@ -277,9 +277,9 @@
                       (mapv :user_id))
         emails (db/select-field :email User {:where [:and
                                                      [:= :is_active true]
-                                                     [:or
-                                                      [:= :is_superuser true]
-                                                      [:in :id user-ids]]]})
+                                                     (cond-> [:or
+                                                              [:= :is_superuser true]]
+                                                       (seq user-ids) (conj [:in :id user-ids]))]})
         timezone (some-> database qp.timezone/results-timezone-id t/zone-id)
         context {:database-name (:name database)
                  :errors

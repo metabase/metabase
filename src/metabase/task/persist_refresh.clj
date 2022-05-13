@@ -157,7 +157,7 @@
                              :database_id database-id, :state [:in refreshable-states])
         thunk     (fn []
                     (reduce (partial refresh-with-results! refresher database)
-                            {:success 0, :error 0, :error-ids [], :trigger "Scheduled"}
+                            {:success 0, :error 0, :trigger "Scheduled"}
                             persisted))]
     (save-task-history! "persist-refresh" database-id thunk))
   (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
@@ -176,7 +176,7 @@
                             (partial refresh-with-results!
                                      refresher
                                      database
-                                     {:success 0 :error 0, :error-ids [], :trigger "Manual"}
+                                     {:success 0 :error 0, :trigger "Manual"}
                                      persisted-info))
         (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
                        (:card_id persisted-info)
