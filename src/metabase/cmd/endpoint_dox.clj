@@ -94,7 +94,7 @@
     ns-symb))
 
 (defn- collect-endpoints
-  "Gets a list of all API endpoints. Currently excludes Enterprise endpoints."
+  "Gets a list of all API endpoints."
   []
   (for [ns-symb     (api-namespaces)
         [_sym varr] (do (classloader/require ns-symb)
@@ -110,10 +110,6 @@
 
 ;;;; Build API pages
 
-(def endpoint-page-footer
-  "Used to link back to index on each endpoint page."
-  "\n\n---\n\n[<< Back to API index](../api-documentation.md)")
-
 (defn endpoint-page
   "Builds a page with the name, description, table of contents for endpoints in a namespace,
   followed by the endpoint and their parameter descriptions."
@@ -122,8 +118,11 @@
          (endpoint-page-title ep)
          (endpoint-page-description ep-data)
          (route-toc ep-data)
-         (endpoint-docs ep-data)
-         endpoint-page-footer))
+         (endpoint-docs ep-data)))
+
+(defn ee?
+  [ep-data]
+  (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))
 
 (defn- build-filepath
   "Creates a filepath from an endpoint."
@@ -138,15 +137,15 @@
 (defn- build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
-  [ep]
-  (let [filepath (build-filepath "api/" ep ".md")]
-    (str "- [" (str/capitalize ep) "](" filepath ")")))
+  [ep ep-data]
+  (let [filepath (build-filepath (if (ee? ep-data) "api/ee/" "api/") ep ".md")]
+    (str "- [" (str/capitalize ep) (when (ee? ep-data) " (Premium feature)") "](" filepath ")")))
 
 (defn- build-index
   "Creates a string that lists links to all endpoint groups,
   e.g., - [Activity](docs/api/activity.md)."
   [endpoints]
-  (str/join "\n" (map (fn [[ep _]] (build-endpoint-link ep)) endpoints)))
+  (str/join "\n" (map (fn [[ep ep-data]] (build-endpoint-link ep ep-data)) endpoints)))
 
 (defn- map-endpoints
   "Creates a sorted map of API endpoints. Currently excludes
@@ -172,9 +171,16 @@
   pages for all API endpoint groups."
   [endpoints]
   (doseq [[ep ep-data] endpoints]
-    (let [file (build-filepath "docs/api/" ep ".md")
+    (let [file (build-filepath (str "docs/" (if (ee? ep-data) "api/ee/" "api/")) ep ".md")
           contents (endpoint-page ep ep-data)]
+      (io/make-parents file)
       (spit file contents))))
+
+(defn delete-dir-recur
+  [f]
+  (when (.isDirectory f)
+    (run! delete-dir-recur (.listFiles f)))
+  (when (.exists f) (io/delete-file f)))
 
 (defn generate-dox!
   "Builds an index page and sub-pages for groups of endpoints.
@@ -189,6 +195,8 @@
                         \newline
                         "clojure -M:ee:run api-documentation"))))
   (let [endpoint-map (map-endpoints)]
+    (delete-dir-recur (io/file "docs/api"))
+    (println (get endpoint-map "Application"))
     (generate-index-page! endpoint-map)
     (println "API doc index generated at docs/api-documentation.md.")
     (generate-endpoint-pages! endpoint-map)

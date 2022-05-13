@@ -174,7 +174,3 @@ You must be a superuser to do this.
 ### PARAMS:
 
 *  **`id`**
-
----
-
-[<< Back to API index](../api-documentation.md)

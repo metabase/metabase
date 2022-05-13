@@ -74,7 +74,3 @@ Update a [[TimelineEvent]].
 *  **`id`** 
 
 *  **`timeline-event-updates`**
-
----
-
-[<< Back to API index](../api-documentation.md)

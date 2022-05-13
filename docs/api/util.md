@@ -39,7 +39,3 @@ Endpoint that checks if the supplied password meets the currently configured pas
 ### PARAMS:
 
 *  **`password`** password is too common.
-
----
-
-[<< Back to API index](../api-documentation.md)

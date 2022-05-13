@@ -261,7 +261,3 @@ Update a `Card`.
 *  **`id`** 
 
 *  **`display`** value may be nil, or if non-nil, value must be a non-blank string.
-
----
-
-[<< Back to API index](../api-documentation.md)

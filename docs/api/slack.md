@@ -22,7 +22,3 @@ Update Slack related settings. You must be a superuser to do this. Also updates 
 *  **`slack-app-token`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`slack-files-channel`** value may be nil, or if non-nil, value must be a non-blank string.
-
----
-
-[<< Back to API index](../api-documentation.md)

@@ -84,7 +84,3 @@ Update a `Alert` with ID.
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`alert-updates`**
-
----
-
-[<< Back to API index](../api-documentation.md)

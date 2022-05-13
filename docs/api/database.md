@@ -332,7 +332,3 @@ Update a `Database`.
 *  **`id`** 
 
 *  **`is_on_demand`**
-
----
-
-[<< Back to API index](../api-documentation.md)

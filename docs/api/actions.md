@@ -26,7 +26,3 @@ Generic API endpoint for doing an action against a specific Table.
 *  **`action`** 
 
 *  **`table-id`** value must be an integer greater than zero.
-
----
-
-[<< Back to API index](../api-documentation.md)

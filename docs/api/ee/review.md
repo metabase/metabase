@@ -17,7 +17,3 @@ You must be a superuser to do this.
 *  **`moderated_item_type`** value must be one of: `:card`, `:dashboard`, `card`, `dashboard`.
 
 *  **`status`** value must be one of: ``, `verified`.
-
----
-
-[<< Back to API index](../api-documentation.md)

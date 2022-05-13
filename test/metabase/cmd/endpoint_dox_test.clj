@@ -24,7 +24,7 @@
                   :doc
                   "## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently."}]})
 
-(def page-markdown (str "# Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently." endpoint-dox/endpoint-page-footer))
+(def page-markdown "# Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently.")
 
 (deftest endpoint-page-test
   (is (= (first (for [[ep ep-data] endpoints] (endpoint-dox/endpoint-page ep ep-data)))

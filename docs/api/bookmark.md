@@ -42,7 +42,3 @@ Sets the order of bookmarks for user.
 ### PARAMS:
 
 *  **`orderings`** value must be an array.
-
----
-
-[<< Back to API index](../api-documentation.md)

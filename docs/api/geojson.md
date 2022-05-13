@@ -28,7 +28,3 @@ Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This ju
 *  **`respond`** 
 
 *  **`raise`**
-
----
-
-[<< Back to API index](../api-documentation.md)

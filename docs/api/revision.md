@@ -24,7 +24,3 @@ Revert an object to a prior revision.
 *  **`id`** value must be an integer.
 
 *  **`revision_id`** value must be an integer.
-
----
-
-[<< Back to API index](../api-documentation.md)

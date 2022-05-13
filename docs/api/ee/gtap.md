@@ -53,7 +53,3 @@ Update a GTAP entry. The only things you're allowed to update for a GTAP are the
 *  **`id`** 
 
 *  **`card_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
-
----
-
-[<< Back to API index](../api-documentation.md)

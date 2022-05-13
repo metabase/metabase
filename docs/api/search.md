@@ -36,7 +36,3 @@ Get the set of models that a search query will return.
 *  **`archived-string`** 
 
 *  **`table-db-id`**
-
----
-
-[<< Back to API index](../api-documentation.md)

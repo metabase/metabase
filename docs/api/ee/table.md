@@ -162,7 +162,3 @@ Reorder fields.
 *  **`id`** 
 
 *  **`field_order`** value must be an array. Each value must be an integer greater than zero.
-
----
-
-[<< Back to API index](../api-documentation.md)

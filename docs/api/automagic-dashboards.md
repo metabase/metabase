@@ -162,7 +162,3 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
 ### PARAMS:
 
 *  **`id`**
-
----
-
-[<< Back to API index](../api-documentation.md)

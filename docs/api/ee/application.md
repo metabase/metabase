@@ -18,7 +18,3 @@ You must be a superuser to do this.
 Do a batch update of Application Permissions by passing a modified graph.
 
 You must be a superuser to do this.
-
----
-
-[<< Back to API index](../api-documentation.md)
