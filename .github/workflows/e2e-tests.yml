@@ -60,8 +60,11 @@ jobs:
         edition: [ee]
         folder:
           - "binning"
+          - "custom-column"
+          - "dashboard"
           - "dashboard-filters"
           - "downloads"
+          - "embedding"
           - "joins"
     services:
       maildev:
