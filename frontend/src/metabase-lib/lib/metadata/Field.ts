@@ -30,6 +30,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+import { FieldFingerprint } from "metabase-types/api/field";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
@@ -42,8 +43,11 @@ import Base from "./Base";
  */
 
 class FieldInner extends Base {
+  id?: number;
   name: string;
+  description: string | null;
   semantic_type: string | null;
+  fingerprint?: FieldFingerprint;
   table?: Table;
 
   parent() {
