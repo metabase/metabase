@@ -8,6 +8,7 @@ import TabContent from "metabase/core/components/TabContent";
 import TabList from "metabase/core/components/TabList";
 import Tab from "metabase/core/components/Tab";
 import TabPanel from "metabase/core/components/TabPanel";
+import FilterList from "../FilterList";
 
 export interface FilterModalProps {
   question: Question;
@@ -59,7 +60,9 @@ const FilterModalBody = ({ query }: FilterModalBodyProps): JSX.Element => {
         ))}
       </TabList>
       {sections.map((section, index) => (
-        <TabPanel key={index} value={index} />
+        <TabPanel key={index} value={index}>
+          <FilterList options={section.items} />
+        </TabPanel>
       ))}
     </TabContent>
   );
