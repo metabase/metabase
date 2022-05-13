@@ -15,31 +15,56 @@
                     :status-code status-code}
                    more-info))))
 
+(defn- check-one-row-effected [conn query raw-hsql] ;
+  (let [select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
+        row-count       (:row_count (first (jdbc/query conn (hformat/format select-hsql))) 0)]
+    (when (not= 1 row-count)
+      (throw (ex-info (i18n/tru "Sorry, this would effect {0} rows, but you can only act on 1" row-count)
+                      {:query       query
+                       :sql         select-hsql
+                       :status-code 400})))))
+
 (defmethod actions/row-action! [:delete :sql-jdbc]
   [_action driver {database-id :database :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
                             (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
-                            (catch Exception e
-                              (catch-throw e 404)))
-                          (try
                             (sql.qp/mbql->honeysql driver query)
                             (catch Exception e
-                              (catch-throw e 404))))
-        select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
-        row-count       (:row_count (first (jdbc/query connection-spec (hformat/format select-hsql))) 0)]
-    (when (not= 1 row-count)
-      (throw (ex-info (i18n/tru "Sorry, this would delete {0} rows, but you can only delete 1 and only 1!!!" row-count)
-                      {:query       query
-                       :sql         select-hsql
-                       :status-code 400})))
-    (let [delete-hsql (-> raw-hsql (dissoc :select) (assoc :delete []))
+                              (catch-throw e 404))))]
+    (check-one-row-effected connection-spec query raw-hsql)
+    (let [delete-hsql (-> raw-hsql
+                          (dissoc :select)
+                          (assoc :delete []))
           result      (try (jdbc/execute! connection-spec (hformat/format delete-hsql))
                            (catch Exception e
-                             (catch-throw e 400 {:query       query
-                                                 :sql         delete-hsql})))]
+                             (catch-throw e 400 {:query query
+                                                 :sql delete-hsql})))]
       {:rows-deleted result})))
+
+(defmethod actions/row-action! [:update :sql-jdbc]
+  [_action driver {database-id :database new-row :new-row :as query}]
+  (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        raw-hsql        (qp.store/with-store
+                          (try
+                            (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                            (sql.qp/mbql->honeysql driver query)
+                            (catch Exception e
+                              (catch-throw e 404))))]
+    (check-one-row-effected connection-spec query raw-hsql)
+    (let [update-values (:update_row query)
+          target-table (first (:from raw-hsql))
+          update-hsql (-> raw-hsql
+                          (assoc
+                           :update target-table
+                           :set update-values)
+                          (select-keys [:update :set :where]))]
+      {:rows-updated (try (jdbc/execute! connection-spec (hformat/format update-hsql))
+                          (catch Exception e
+                            (catch-throw e 400 {:query query
+                                                :sql   update-hsql})))})))
+
 
 #_(defmethod actions/row-action! [:update :metabase.driver/driver]
     [_action driver {database-id :database :as query}]

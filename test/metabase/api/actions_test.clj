@@ -26,7 +26,10 @@
                             ["=" "name" "Red Medicine"]]}}
    {:action       "actions/row/delete"
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}])
+    :expected     {:rows-deleted [1]}}
+   {:action       "actions/row/update"
+    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 3]}) :update_row {:name "MyNewName"})
+    :expected     {:rows-updated [1]}}])
 
 (defn- row-action? [action]
   (str/starts-with? action "actions/row"))

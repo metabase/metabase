@@ -42,7 +42,7 @@
                    %))))
 
 (api/defendpoint POST "/row/:action"
-  "Generic API endpoint for doing an action against a specific row."
+  "Generic API endpoint for doing an action against a single, specific row."
   [action :as {{:keys [database] :as query} :body}]
   {database s/Int}
   (let [query (kwdize-filter
