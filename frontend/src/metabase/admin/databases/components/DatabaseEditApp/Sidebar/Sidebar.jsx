@@ -8,7 +8,10 @@ import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
-import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
+import {
+  isDatabaseWritebackEnabled,
+  isWritebackSupported,
+} from "metabase/writeback/utils";
 import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
@@ -43,7 +46,10 @@ const DatabaseEditAppSidebar = ({
   const deleteDatabaseModal = useRef();
 
   const hasWriteback = isDatabaseWritebackEnabled(database);
-  const enableWriteback = isWritebackEnabled && typeof database.id === "number";
+  const showWriteback =
+    isWritebackEnabled &&
+    typeof database.id === "number" &&
+    isWritebackSupported(database);
 
   return (
     <SidebarRoot>
@@ -141,7 +147,7 @@ const DatabaseEditAppSidebar = ({
               </li>
             )}
 
-            {enableWriteback && (
+            {showWriteback && (
               <li className="mt2">
                 <ModalWithTrigger
                   ref={enableWritebackModal}
