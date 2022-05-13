@@ -69,19 +69,19 @@
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
-    (mt/with-temporary-setting-values [site-name "Test"]
+    (mt/with-temporary-setting-values [site-name          "Test"
+                                       startup-time-millis 1234.0]
       (let [stats (anonymous-usage-stats)]
-        (is (partial= {:running_on        :unknown
-                       :check_for_updates true
-                       :site_name         true
-                       :friendly_names    false
-                       :email_configured  false
-                       :slack_configured  false
-                       :sso_configured    false
-                       :has_sample_data   false}
-                      stats))
-        (is (number? (:startup_time_millis stats)))
-        (is (pos? (:startup_time_millis stats)))))))
+        (is (partial= {:running_on          :unknown
+                       :check_for_updates   true
+                       :startup_time_millis 1234.0
+                       :site_name           true
+                       :friendly_names      false
+                       :email_configured    false
+                       :slack_configured    false
+                       :sso_configured      false
+                       :has_sample_data     false}
+                      stats))))))
 
 (deftest conversion-test
   (is (= #{true}
