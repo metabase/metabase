@@ -11,8 +11,8 @@
 (defn- normalize-font-dirname
   "Use a font's directory to derive a Display Name.
 
-  Underscores become spaces, and then split on dashes and take the first word.
-  This is done because of the Lato-v16-latin directory name."
+  Split on dashes and take the first word, then change underscores to spaces.
+  This is done because of the 'Lato-v16-latin' directory name."
   [dirname]
   (-> dirname
       (str/split #"-")
@@ -22,7 +22,7 @@
 (defn- contains-font-file?
   [path]
   ;; todo: expand this to allow other font formats?
-  (some #(str/includes? % ".woff") (u.files/files-seq path)))
+  (boolean (some #(str/includes? % ".woff") (u.files/files-seq path))))
 
 (defn- available-fonts*
   []
