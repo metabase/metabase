@@ -7,7 +7,7 @@
             [metabase.models.database :as database]
             [metabase.models.field :as field]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.sync.concurrent :as sync.concurrent]
             [metabase.test :as mt]
@@ -16,7 +16,7 @@
 
 (defn- do-with-all-user-data-perms
   [graph f]
-  (let [all-users-group-id  (u/the-id (group/all-users))
+  (let [all-users-group-id  (u/the-id (perms-group/all-users))
         current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-perms-object-set)
@@ -151,6 +151,18 @@
                                              (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))]
             (is (= {:id (mt/id) :name (:name (mt/db))} (dissoc result :tables)))
             (is (= [id-1] (map :id (:tables result))))))))))
+
+(deftest fetch-id-fields-test
+  (testing "GET /api/database/:id/idfields?include_editable_data_model=true"
+    (testing "A non-admin without data model perms for a DB cannot fetch id fields when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :write :schemas :all}
+                                           :data-model {:schemas :none}}}
+        (mt/user-http-request :rasta :get 403 (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))
+
+    (testing "A non-admin with only data model perms for a DB can fetch id fields when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
+                                           :data-model {:schemas :all}}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))))
 
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]

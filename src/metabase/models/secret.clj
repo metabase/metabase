@@ -265,13 +265,10 @@
   details->secret association itself. Refer to the docstring for [[expand-inferred-secret-values]] for full details."
   {:added "0.42.0"}
   [database]
-  (when database
-   (update database
-           :details
-           (fn [details]
-             (reduce-over-details-secret-values (driver.u/database->driver database)
-                                                details
-                                                expand-inferred-secret-values)))))
+  (update database :details (fn [details]
+                              (reduce-over-details-secret-values (driver.u/database->driver database)
+                                                                 details
+                                                                 expand-inferred-secret-values))))
 
 ;;; -------------------------------------------------- JSON Encoder --------------------------------------------------
 

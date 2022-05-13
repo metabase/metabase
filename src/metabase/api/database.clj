@@ -295,8 +295,7 @@
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
   consumption."
   [db]
-  (when db
-    (assoc db :schedules (expanded-schedules db))))
+  (assoc db :schedules (expanded-schedules db)))
 
 (defn- filter-sensitive-fields
   [fields]
@@ -307,16 +306,15 @@
   [db include]
   (if-not include
     db
-    (when db
-     (-> (hydrate db (case include
-                       "tables"        :tables
-                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
-         (update :tables (fn [tables]
-                           (cond->> tables
-                             ; filter hidden tables
-                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
-                             ; filter hidden fields
-                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields)))))))))
+    (-> (hydrate db (case include
+                      "tables"        :tables
+                      "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+        (update :tables (fn [tables]
+                          (cond->> tables
+                            ; filter hidden tables
+                            true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            ; filter hidden fields
+                            (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -486,11 +484,12 @@
   "Get a list of all primary key `Fields` for `Database`."
   [id include_editable_data_model]
   (let [[db-perm-check field-perm-check] (if (Boolean/parseBoolean include_editable_data_model)
-                                           [api/write-check mi/can-write?]
+                                           [check-db-data-model-perms mi/can-write?]
                                            [api/read-check mi/can-read?])]
-    (db-perm-check Database id)
-    (sort-by (comp str/lower-case :name :table) (filter field-perm-check (-> (database/pk-fields {:id id})
-                                                                             (hydrate :table))))))
+    (db-perm-check (Database id))
+    (sort-by (comp str/lower-case :name :table)
+             (filter field-perm-check (-> (database/pk-fields {:id id})
+                                          (hydrate :table))))))
 
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
