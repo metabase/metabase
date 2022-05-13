@@ -5,6 +5,7 @@ import React, {
   Ref,
   useMemo,
 } from "react";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
 
 export interface TabContentProps<T>
@@ -18,7 +19,10 @@ const TabContent = forwardRef(function TabContent<T>(
   { value, children, onChange, ...props }: TabContentProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const context = useMemo(() => ({ value, onChange }), [value, onChange]);
+  const idPrefix = useUniqueId();
+  const context = useMemo(() => {
+    return { value, idPrefix, onChange };
+  }, [value, idPrefix, onChange]);
 
   return (
     <div {...props} ref={ref}>

@@ -1,9 +1,14 @@
 import { createContext } from "react";
 
 export interface TabContextType {
-  value?: unknown;
-  isDefault?: boolean;
+  value: unknown;
+  idPrefix: string;
+  isDefault: boolean;
   onChange?: (value: unknown) => void;
 }
 
-export const TabContext = createContext<TabContextType>({ isDefault: true });
+export const TabContext = createContext<TabContextType>({
+  value: null,
+  idPrefix: "",
+  isDefault: true,
+});

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { TabContext } from "./TabContext";
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
+import { getTabId, getTabPanelId } from "./utils";
 
 export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {
   value?: T;
@@ -21,7 +22,9 @@ const Tab = forwardRef(function Tab<T>(
   { value, icon, children, onClick, ...props }: TabProps<T>,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const { value: selectedValue, onChange } = useContext(TabContext);
+  const { value: selectedValue, idPrefix, onChange } = useContext(TabContext);
+  const tabId = getTabId(idPrefix, value);
+  const panelId = getTabPanelId(idPrefix, value);
   const isSelected = value === selectedValue;
 
   const handleClick = useCallback(
@@ -36,9 +39,11 @@ const Tab = forwardRef(function Tab<T>(
     <TabRoot
       {...props}
       ref={ref}
+      id={tabId}
       role="tab"
       isSelected={isSelected}
       aria-selected={isSelected}
+      aria-controls={panelId}
       onClick={handleClick}
     >
       {icon && <TabIcon name={icon} />}
