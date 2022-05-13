@@ -77,14 +77,14 @@
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
   (when (seq param-symb->schema)
-    (str "\n\n##### PARAMS:\n\n"
+    (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
                             (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
   [route-str docstr param->schema]
-  (str (format "### `%s`" route-str)
+  (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
