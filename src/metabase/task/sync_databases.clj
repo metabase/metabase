@@ -17,7 +17,8 @@
             [metabase.util.i18n :refer [trs]]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db])
+            [toucan.db :as db]
+            [toucan.models :as models])
   (:import metabase.models.database.DatabaseInstance
            [org.quartz CronTrigger JobDetail JobKey TriggerKey]))
 
@@ -199,6 +200,8 @@
       ;; See https://www.nurkiewicz.com/2012/04/quartz-scheduler-misfire-instructions.html for more info
       (cron/with-misfire-handling-instruction-do-nothing)))))
 
+;; called [[from metabase.models.database/schedule-tasks!]] from the post-insert and the pre-update
+#_ {:clj-kondo/ignore [:unused-private-var]}
 (s/defn ^:private check-and-schedule-tasks-for-db!
   "Schedule a new Quartz job for `database` and `task-info` if it doesn't already exist or is incorrect."
   [database :- DatabaseInstance]
@@ -247,37 +250,42 @@
   (task/add-job! sync-analyze-job)
   (task/add-job! field-values-job))
 
-(defn randomized-schedules
-  "Updated default schedules for the sync task when given the original default schedules.
-  The defaults used to be all at the same time leading to poor resource management. If the user has not indicated they
-  want to control the scheduling, returns appropriate randomized schedules for the sync tasks."
-  [{:keys [details cache_field_values_schedule metadata_sync_schedule] :as _database}]
-  (when-not (:let-user-control-scheduling details)
-    (let [random-defaults (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
-          old-default-keys (cond-> []
-                             (contains? sync.schedules/default-cache-field-values-schedule-cron-strings cache_field_values_schedule)
-                             (conj :cache_field_values_schedule)
-
-                             (contains? sync.schedules/default-metadata-sync-schedule-cron-strings metadata_sync_schedule)
-                             (conj :metadata_sync_schedule))]
-      (not-empty (select-keys random-defaults old-default-keys)))))
-
-(defn maybe-update-db-schedules
-  "Update schedules when managed by metabase to spread the syncs out in time.
-  When not let-user-control-scheduling metabase is in control of the sync times. These used to all be scheduled at
-  every hour at 50 minutes or on the hour. This can cause a large load on the databaes or CPU and this attempts to
-  spread them out in time."
+(defn- metabase-controls-schedule?
+  "Predicate returning if the user does not manually set sync schedules and leaves it to metabase."
   [database]
-  (if-let [randomized-schedules (randomized-schedules database)]
-    (u/prog1 (merge database randomized-schedules)
-      (db/update! Database (u/the-id database) randomized-schedules))
-    database))
+  (not (-> database :details :let-user-control-scheduling)))
+
+(defn- randomize-db-schedules-if-needed
+  []
+  ;; todo: when we can use json operations on h2 we can check details in the query and drop the transducer
+  (transduce (comp (map (partial models/do-post-select Database))
+                   (filter metabase-controls-schedule?))
+             (fn
+               ([] 0)
+               ([counter]
+                (log/info (trs "Updated default schedules for {0} databases" counter))
+                counter)
+               ([counter db]
+                (try
+                  (db/update! Database (u/the-id db)
+                    (sync.schedules/schedule-map->cron-strings
+                     (sync.schedules/default-randomized-schedule)))
+                  (inc counter)
+                  (catch Exception e
+                    (log/warn e
+                              (trs "Error updating database {0} for randomized schedules"
+                                   (u/the-id db)))
+                    counter))))
+             (db/reducible-query
+              {:select [:id :details]
+               :from [Database]
+               :where [:or
+                       [:in :metadata_sync_schedule
+                        sync.schedules/default-metadata-sync-schedule-cron-strings]
+                       [:in :cache_field_values_schedule
+                        sync.schedules/default-cache-field-values-schedule-cron-strings]]})))
 
 (defmethod task/init! ::SyncDatabases
   [_]
   (job-init)
-  (doseq [database (db/select Database)]
-    (try
-      (check-and-schedule-tasks-for-db! (maybe-update-db-schedules database))
-      (catch Throwable e
-        (log/error e (trs "Failed to schedule tasks for Database {0}" (:id database)))))))
+  (randomize-db-schedules-if-needed))
