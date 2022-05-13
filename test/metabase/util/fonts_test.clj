@@ -1,7 +1,7 @@
 (ns metabase.util.fonts-test
   (:require [clojure.test :refer :all]
             [metabase.util.files :as u.files]
-            [metabase.util.fonts :as fonts]))
+            [metabase.util.fonts :as u.fonts]))
 
 (deftest normalize-font-dirname-test
   (doseq [[s expected] {"Roboto"           "Roboto"
@@ -23,12 +23,12 @@
                         "Ubuntu"           "Ubuntu"
                         "Montserrat"       "Montserrat"
                         "Lora"             "Lora"}]
-    (testing (pr-str (list 'fonts/normalize-font-dirname s))
+    (testing (pr-str (list 'u.fonts/normalize-font-dirname s))
       (is (= expected
-             (#'fonts/normalize-font-dirname s))))))
+             (#'u.fonts/normalize-font-dirname s))))))
 
 (deftest available-fonts-test
-  (let [fonts (fonts/available-fonts)]
+  (let [fonts (u.fonts/available-fonts)]
     (testing "A list of available fonts is returned"
       (seq fonts))
     (testing "Only directories with font files are included."
@@ -37,3 +37,9 @@
                   (u.files/get-path "./metabase/"))]
         (is (> (count dirs)
                (count fonts)))))))
+
+(deftest available-font-predicate-test
+  (testing "A valid font on the system returns `true`."
+    (is (u.fonts/available-font? "Lato")))
+  (testing "An invalid font on the system returns `false`."
+    (is (not (u.fonts/available-font? "Comic Sans")))))

@@ -39,3 +39,9 @@
   "Return an alphabetically sorted list of available fonts, as Strings."
   (let [fonts (delay (available-fonts*))]
     (fn [] @fonts)))
+
+(defn available-font?
+  "True if a font's 'Display String', `font`, is a valid font available on this system."
+  [font]
+  (boolean
+   ((set (available-fonts)) font)))
