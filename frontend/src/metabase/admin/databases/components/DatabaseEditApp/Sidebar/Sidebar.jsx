@@ -8,10 +8,12 @@ import ActionButton from "metabase/components/ActionButton";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import Button from "metabase/core/components/Button";
+import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 import { SidebarRoot } from "./Sidebar.styled";
 
 const propTypes = {
   database: PropTypes.object.isRequired,
+  updateDatabase: PropTypes.func.isRequired,
   deleteDatabase: PropTypes.func.isRequired,
   syncDatabaseSchema: PropTypes.func.isRequired,
   rescanDatabaseFields: PropTypes.func.isRequired,
@@ -19,22 +21,29 @@ const propTypes = {
   persistDatabase: PropTypes.func.isRequired,
   unpersistDatabase: PropTypes.func.isRequired,
   isAdmin: PropTypes.bool,
+  isWritebackEnabled: PropTypes.bool,
   isModelPersistenceEnabled: PropTypes.bool,
 };
 
 const DatabaseEditAppSidebar = ({
   database,
   deleteDatabase,
+  updateDatabase,
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
   persistDatabase,
   unpersistDatabase,
   isAdmin,
+  isWritebackEnabled,
   isModelPersistenceEnabled,
 }) => {
   const discardSavedFieldValuesModal = useRef();
+  const enableWritebackModal = useRef();
   const deleteDatabaseModal = useRef();
+
+  const hasWriteback = isDatabaseWritebackEnabled(database);
+  const enableWriteback = isWritebackEnabled && typeof database.id === "number";
 
   return (
     <SidebarRoot>
@@ -127,6 +136,38 @@ const DatabaseEditAppSidebar = ({
                     database={database}
                     onClose={() => deleteDatabaseModal.current.toggle()}
                     onDelete={() => deleteDatabase(database.id, true)}
+                  />
+                </ModalWithTrigger>
+              </li>
+            )}
+
+            {enableWriteback && (
+              <li className="mt2">
+                <ModalWithTrigger
+                  ref={enableWritebackModal}
+                  triggerClasses="Button Button--danger Button--discardSavedFieldValues"
+                  triggerElement={
+                    hasWriteback ? t`Disable actions` : t`Enable actions`
+                  }
+                >
+                  <ConfirmContent
+                    title={
+                      hasWriteback
+                        ? t`Disable Actions`
+                        : t`[EXPERIMENTAL] Enable Actions`
+                    }
+                    message={
+                      hasWriteback
+                        ? undefined
+                        : t`Are you sure you want to enable EXPERIMENTAL Actions? This will enable Metabase features that write to your database`
+                    }
+                    onClose={() => enableWritebackModal.current.toggle()}
+                    onAction={() =>
+                      updateDatabase({
+                        id: database.id,
+                        settings: { "database-enable-actions": !hasWriteback },
+                      })
+                    }
                   />
                 </ModalWithTrigger>
               </li>
