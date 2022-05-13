@@ -358,7 +358,8 @@
     (doseq [relay-state ["something-random_#!@__^^"
                          ""
                          "   "
-                         "/"]]
+                         "/"
+                         "https://badsite.com"]]
       (testing (format "\nRelayState = %s" (pr-str relay-state))
         (with-saml-default-setup
           (do-with-some-validators-disabled
@@ -369,7 +370,17 @@
                 (is (= (public-settings/site-url)
                        (get-in response [:headers "Location"])))
                 (is (= (some-saml-attributes "rasta")
-                       (saml-login-attributes "rasta@metabase.com")))))))))))
+                       (saml-login-attributes "rasta@metabase.com"))))))))))
+  (testing "if the RelayState leads us to the wrong host, avoid the open redirect (boat#160)"
+    (let [redirect-url "https://badsite.com"]
+      (with-saml-default-setup
+        (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+          (do-with-some-validators-disabled
+            (fn []
+              (let [get-response (client :get 400 "/auth/sso"
+                                   {:request-options {:redirect-strategy :none}}
+                                   :redirect redirect-url)]
+                (is (= "SSO is trying to do an open redirect to an untrusted site" get-response))))))))))
 
 (deftest login-create-account-test
   (testing "A new account will be created for a SAML user we haven't seen before"

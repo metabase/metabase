@@ -2,14 +2,17 @@
   "Functions shared by the various SSO implementations"
   (:require [clojure.tools.logging :as log]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
+            [metabase.api.common :as api]
             [metabase.email.messages :as messages]
             [metabase.models.user :refer [User]]
+            [metabase.public-settings :as public-settings]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.UUID))
+  (:import [java.net MalformedURLException URL URLDecoder]
+           java.util.UUID))
 
 (def ^:private UserAttributes
   {:first_name       su/NonBlankString
@@ -40,3 +43,17 @@
       (do
         (db/update! User id :login_attributes new-user-attributes)
         (User id)))))
+
+(defn check-sso-redirect
+  "Check if open redirect is being exploited in SSO, blurts out a 400 if so"
+  [redirect-url]
+  (let [decoded-url (some-> redirect-url (URLDecoder/decode))
+                    ;; In this case, this just means that we don't have a specified host in redirect,
+                    ;; meaning it can't be an open redirect
+        no-host     (or (nil? decoded-url) (= (first decoded-url) \/))
+        host        (try
+                      (.getHost (new URL decoded-url))
+                      (catch MalformedURLException _ ""))
+        our-host    (some-> (public-settings/site-url) (URL.) (.getHost))]
+  (api/check (or no-host (= host our-host))
+    [400 (tru "SSO is trying to do an open redirect to an untrusted site")])))
