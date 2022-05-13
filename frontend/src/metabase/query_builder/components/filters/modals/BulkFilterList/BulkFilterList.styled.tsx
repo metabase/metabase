@@ -7,10 +7,18 @@ export const ListRoot = styled.div`
 `;
 
 export const ListRow = styled.div`
-  padding: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0;
 `;
 
 export const ListLabel = styled.div`
+  flex: 1 1 0;
   color: ${color("black")};
   font-weight: bold;
+`;
+
+export const ListAction = styled.div`
+  flex: 1 1 0;
 `;
