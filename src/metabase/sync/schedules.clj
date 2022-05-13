@@ -33,13 +33,15 @@
 (defn randomly-once-an-hour
   "Schedule map for once an hour at a random minute of the hour."
   []
-  {:schedule_minute (rand-int 59)
+  ;; prevent zeros which would appear as non-random
+  {:schedule_minute (inc (rand-int 59))
    :schedule_type   "hourly"})
 
 (defn randomly-once-a-day
   "Schedule map for once a day at a random hour of the day."
   []
-  {:schedule_hour  (rand-int 24)
+  ;; prevent zeros which would appear as non-random
+  {:schedule_hour  (inc (rand-int 23))
    :schedule_type  "daily"})
 
 (defn default-randomized-schedule
