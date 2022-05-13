@@ -126,13 +126,43 @@ const fieldRefWithTemporalUnit = (mbqlClause, unit) => {
 const fieldRefWithTemporalUnitForColumn = (column, unit) =>
   fieldRefWithTemporalUnit(fieldRefForColumn(column), unit);
 
+// min number of points when switching units
+const MIN_INTERVALS = 4;
+
+const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
+const getNextUnit = unit => {
+  return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
+};
+
+export function addOrUpdateBreakout(query, newBreakout) {
+  // replace existing breakout, if it exists
+  for (const breakout of query.breakouts()) {
+    if (breakout.dimension().isSameBaseDimension(newBreakout)) {
+      return breakout.replace(newBreakout);
+    }
+  }
+  // otherwise add a new breakout
+  return query.breakout(newBreakout);
+}
+
+export const isLargerUnit = (unit, unitToCompare) => {
+  return UNITS.indexOf(unit) > UNITS.indexOf(unitToCompare);
+};
+
+export const formatFilterDate = (momentDate, unit) => {
+  const shouldIncludeTime = !isLargerUnit(unit, "hour");
+
+  const dateFormat = shouldIncludeTime ? "YYYY-MM-DD[T]HH:mm:ss" : "YYYY-MM-DD";
+  return momentDate.format(dateFormat);
+};
+
 export function drillFilter(query, value, column) {
   let filter;
   if (isDate(column)) {
     filter = [
       "=",
       fieldRefWithTemporalUnitForColumn(column, column.unit),
-      parseTimestamp(value, column.unit).format(),
+      formatFilterDate(parseTimestamp(value, column.unit), column.unit),
     ];
   } else {
     const range = rangeForValue(value, column);
@@ -158,25 +188,6 @@ export function addOrUpdateFilter(query, newFilter) {
   }
   // otherwise add a new filter
   return query.filter(newFilter);
-}
-
-// min number of points when switching units
-const MIN_INTERVALS = 4;
-
-const UNITS = ["minute", "hour", "day", "week", "month", "quarter", "year"];
-const getNextUnit = unit => {
-  return UNITS[Math.max(0, UNITS.indexOf(unit) - 1)];
-};
-
-export function addOrUpdateBreakout(query, newBreakout) {
-  // replace existing breakout, if it exists
-  for (const breakout of query.breakouts()) {
-    if (breakout.dimension().isSameBaseDimension(newBreakout)) {
-      return breakout.replace(newBreakout);
-    }
-  }
-  // otherwise add a new breakout
-  return query.breakout(newBreakout);
 }
 
 export function updateDateTimeFilter(query, column, start, end) {
@@ -224,8 +235,8 @@ export function updateDateTimeFilter(query, column, start, end) {
       return addOrUpdateFilter(query, [
         "between",
         fieldRefWithTemporalUnit(fieldRef, column.unit),
-        start.format(),
-        end.format(),
+        formatFilterDate(start, column.unit),
+        formatFilterDate(end, column.unit),
       ]);
     }
   } else {

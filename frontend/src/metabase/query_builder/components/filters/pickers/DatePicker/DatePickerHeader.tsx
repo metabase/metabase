@@ -28,6 +28,7 @@ export default function DatePickerHeader({
   const dimension = filter.dimension?.();
   const operator = _.find(operators, o => o.test(filter));
   const tabs = operators.filter(o => o.group === operator?.group);
+  const selectedTab = operators.find(o => o.test(filter));
 
   if (operator?.name === "exclude") {
     const hasTemporalUnit = dimension?.temporalUnit();
@@ -62,16 +63,18 @@ export default function DatePickerHeader({
           icon="chevronleft"
         />
       ) : null}
-      {tabs.map(({ test, displayName, init }) => (
+      {tabs.map(tab => (
         <TabButton
-          selected={!!test(filter)}
+          selected={tab === selectedTab}
           primaryColor={primaryColor}
-          key={displayName}
+          key={tab.displayName}
           onClick={() => {
-            onFilterChange(init(filter));
+            onFilterChange(
+              tab.init(dimension?.withoutTemporalBucketing().mbql() as any),
+            );
           }}
         >
-          {displayName}
+          {tab.displayName}
         </TabButton>
       ))}
     </Container>

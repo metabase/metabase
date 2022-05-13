@@ -65,7 +65,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // new filter applied
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists and that it starts with May, 2016
-    cy.contains(/^Created At between May, 2016/);
+    cy.contains(/^Created At between May, 2016/).click();
+    cy.findByDisplayValue("05/01/2016");
     // more granular axis labels
     cy.contains("June, 2016");
     // confirm that product category is still broken out
@@ -315,7 +316,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it.skip("should drill through a with date filter (metabase#12496)", () => {
+  it("should drill through a with date filter (metabase#12496)", () => {
     cy.createQuestion({
       name: "Orders by Created At: Week",
       query: {
@@ -645,6 +646,40 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       cy.findByText("Category is Widget");
       cy.findByText("Gizmo").should("not.exist");
       cy.findByText("Doohickey").should("not.exist");
+    });
+  });
+
+  it("should show 'between' filter when drill through ", () => {
+    cy.createQuestion(
+      {
+        name: "Orders by month",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+        },
+        display: "line",
+      },
+      { visitQuestion: true },
+    );
+
+    cy.get(".dot")
+      .eq(1)
+      .click({ force: true });
+    cy.contains("View these Orders").click();
+
+    cy.findByText("Created At is May, 2016").click();
+
+    popover().within(() => {
+      cy.findAllByTestId("date-picker-input")
+        .eq(0)
+        .should("have.value", "05/01/2016");
+
+      cy.findAllByTestId("date-picker-input")
+        .eq(1)
+        .should("have.value", "05/31/2016");
     });
   });
 });
