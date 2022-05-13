@@ -32,13 +32,13 @@
                        :user_id api/*current-user-id* :group_id (u/the-id group-or-id)))
 
 (defn filter-tables-by-data-model-perms
-  "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions.
-  Returns the list unmodified if the :advanced-permissions feature flag is not enabled."
+  "Given a list of tables, removes the ones for which `*current-user*` does not have data model editing permissions."
   [tables]
   (cond
     api/*is-superuser?*
     tables
 
+    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
     (not (premium-features/enable-advanced-permissions?))
     (empty tables)
 
@@ -58,7 +58,7 @@
     api/*is-superuser?*
     dbs
 
-    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms.
+    ;; If advanced-permissions is not enabled, no non-admins have any data-model editing perms, so return an empty list
     (not (premium-features/enable-advanced-permissions?))
     (empty dbs)
 

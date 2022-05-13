@@ -305,6 +305,24 @@
                                              :data-model {:schemas {"PUBLIC" {table-id :all}}}}}
           (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id)))))))
 
+(deftest fetch-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata?include_editable_data_model=true"
+    (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+      (testing "A non-admin without data model perms for a table cannot fetch the query metadata when
+               include_editable_data_model=true"
+        (with-all-users-data-perms {(mt/id) {:data       {:native :write :schemas :all}
+                                             :data-model {:schemas :none}}}
+          (mt/user-http-request :rasta :get 403
+                                (format "table/%d/query_metadata?include_editable_data_model=true" table-id))))
+
+      (testing "A non-admin with only data model perms for a table can fetch the query metadata when
+               include_editable_data_model=true"
+        (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
+                                             :data-model {:schemas :all}}}
+          (mt/user-http-request :rasta :get 200
+                                (format "table/%d/query_metadata?include_editable_data_model=true" table-id)))))))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                  Database details permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
