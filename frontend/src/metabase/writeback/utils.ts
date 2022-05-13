@@ -7,5 +7,5 @@ const DB_WRITEBACK_SETTING = "database-enable-actions";
 export const isDatabaseWritebackEnabled = (database: IDatabase) =>
   !!database?.settings?.[DB_WRITEBACK_SETTING];
 
-export const isWritebackSupported = (database: Database) =>
-  !!database?.hasFeature(DB_WRITEBACK_FEATURE);
+export const isWritebackSupported = (database: Database) => true;
+// !!database?.hasFeature(DB_WRITEBACK_FEATURE);
