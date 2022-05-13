@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useContext,
 } from "react";
-import TabGroupContext from "metabase/core/components/TabGroup/TabGroupContext";
+import TabContext from "./TabContext";
 import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 
 export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {
@@ -21,7 +21,7 @@ const Tab = forwardRef(function Tab<T>(
   { value, icon, children, onClick, ...props }: TabProps<T>,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const { value: groupValue, onChange } = useContext(TabGroupContext);
+  const { value: groupValue, onChange } = useContext(TabContext);
   const isSelected = value === groupValue;
 
   const handleClick = useCallback(

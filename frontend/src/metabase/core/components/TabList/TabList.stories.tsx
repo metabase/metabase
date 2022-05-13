@@ -3,23 +3,23 @@ import { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import Tab from "../Tab";
 
-import TabGroup from "./TabGroup";
+import TabList from "./TabList";
 
 export default {
-  title: "Core/TabGroup",
-  component: TabGroup,
+  title: "Core/TabList",
+  component: TabList,
 };
-const Template: ComponentStory<typeof TabGroup> = args => {
+const Template: ComponentStory<typeof TabList> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: unknown) => updateArgs({ value });
 
   return (
-    <TabGroup {...args} value={value} onChange={handleChange}>
+    <TabList {...args} value={value} onChange={handleChange}>
       <Tab value={1}>One</Tab>
       <Tab value={2} icon="link">
         Two
       </Tab>
-    </TabGroup>
+    </TabList>
   );
 };
 
