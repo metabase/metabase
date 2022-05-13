@@ -1,9 +1,11 @@
 (ns metabase.actions
   "Code related to the new writeback Actions."
-  (:require [metabase.models.setting :as setting]
-            [metabase.models.table :refer [Table]]
-            [metabase.util.i18n :as i18n]
-            [toucan.db :as db]))
+  (:require
+   [metabase.driver :as driver]
+   [metabase.models.setting :as setting]
+   [metabase.models.table :refer [Table]]
+   [metabase.util.i18n :as i18n]
+   [toucan.db :as db]))
 
 (setting/defsetting experimental-enable-actions
   (i18n/deferred-tru "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)")
@@ -39,32 +41,23 @@
 
 (defmulti row-action!
   "Multimethod for doing an action against a specific row as a whole, e.g. updating or deleting that row."
-  {:arglists '([action {:keys [table-id pk], :as arg-map}])}
-  (fn [action _arg-map]
-    (keyword action)))
+  {:arglists '([action driver query])}
+  (fn [action driver _query]
+    [(keyword action)
+     (driver/dispatch-on-initialized-driver driver)])
+  :hierarchy #'driver/hierarchy)
 
 (defmethod row-action! :default
-  [action _arg-map]
+  [action driver query]
   (throw (ex-info (i18n/tru "Unknown row action {0}." (pr-str (some-> action name)))
-                  {:status-code 404})))
+                  {:status-code 404, :action action, :driver driver, :query query})))
 
-(defn- pk-where-clause [pk]
-  {:pre [(map? pk)]}
-  (let [clauses (for [[k v] pk]
-                  [:= (keyword k) v])]
-    (if (= (count clauses) 1)
-      (first clauses)
-      (into [:and] clauses))))
+(defmethod row-action! [:delete ::driver/driver]
+  [action driver query]
+  (throw (ex-info (i18n/tru "Row deletion is not supported for {0} databases." (name driver))
+                  {:status-code 400, :action action, :driver driver, :query query})))
 
-(defmethod row-action! :delete
-  [_action {:keys [table-id pk]}]
-  ;; placeholder until we really implement it.
-  {:delete-from (db/select-one-field :name Table :id table-id)
-   :where       (pk-where-clause pk)})
-
-(defmethod row-action! :update
-  [_action {:keys [table-id pk values]}]
-  ;; placeholder until we really implement it.
-  {:update (db/select-one-field :name Table :id table-id)
-   :set    values
-   :where  (pk-where-clause pk)})
+(defmethod row-action! [:update ::driver/driver]
+  [action driver query]
+  (throw (ex-info (i18n/tru "Row updating is not supported for {0} databases." (name driver))
+                  {:status-code 400, :action action, :driver driver, :query query})))
