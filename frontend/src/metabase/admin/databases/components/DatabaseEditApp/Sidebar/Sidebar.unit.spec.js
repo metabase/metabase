@@ -6,7 +6,12 @@ import Sidebar from "./Sidebar";
 
 it("syncs database schema", () => {
   const databaseId = 1;
-  const database = { id: databaseId, initial_sync_status: "complete" };
+  const database = {
+    id: databaseId,
+    initial_sync_status: "complete",
+    supportsPersistence: () => true,
+    isPersisted: () => false,
+  };
   const syncDatabaseSchema = jest.fn();
 
   render(
@@ -22,7 +27,12 @@ it("syncs database schema", () => {
 
 it("rescans database field values", () => {
   const databaseId = 1;
-  const database = { id: databaseId, initial_sync_status: "complete" };
+  const database = {
+    id: databaseId,
+    initial_sync_status: "complete",
+    supportsPersistence: () => true,
+    isPersisted: () => false,
+  };
   const rescanDatabaseFields = jest.fn();
 
   render(
@@ -38,7 +48,12 @@ it("rescans database field values", () => {
 
 it("discards saved field values", () => {
   const databaseId = 1;
-  const database = { id: databaseId, initial_sync_status: "complete" };
+  const database = {
+    id: databaseId,
+    initial_sync_status: "complete",
+    supportsPersistence: () => true,
+    isPersisted: () => false,
+  };
   const discardSavedFieldValues = jest.fn();
 
   render(
@@ -70,7 +85,12 @@ it("discards saved field values", () => {
 it("removes database", () => {
   const databaseId = 1;
   const name = "DB Name";
-  const database = { id: databaseId, name };
+  const database = {
+    id: databaseId,
+    name,
+    supportsPersistence: () => true,
+    isPersisted: () => false,
+  };
   const deleteDatabase = jest.fn();
 
   render(
@@ -108,7 +128,12 @@ it("does not allow to remove databases for non-admins", () => {
 
 it("shows loading indicator when a sync is in progress", () => {
   const databaseId = 1;
-  const database = { id: databaseId, initial_sync_status: "incomplete" };
+  const database = {
+    id: databaseId,
+    initial_sync_status: "incomplete",
+    supportsPersistence: () => true,
+    isPersisted: () => false,
+  };
 
   render(<Sidebar database={database} />);
 

@@ -10,6 +10,7 @@ import {
   Bookmark,
   GroupsPermissions,
   Dataset,
+  Group,
 } from "metabase-types/api";
 import { AdminPathKey, State } from "metabase-types/store";
 import { PluginGroupManagersType } from "./types";
@@ -33,6 +34,12 @@ export const PLUGIN_ADMIN_ROUTES = [];
 export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
   user: any,
 ) => AdminPathKey[])[] = [];
+
+export const PLUGIN_ADMIN_TOOLS = {
+  INDEX_ROUTE: "model-caching",
+  EXTRA_ROUTES_INFO: [],
+  EXTRA_ROUTES: [],
+};
 
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
@@ -138,6 +145,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _isAdmin: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: string,
+    _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
   ) => {
     return [] as any;
@@ -164,6 +172,7 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   getChangeMembershipConfirmation: () => null,
   getRemoveMembershipConfirmation: () => null,
 
+  deleteGroup: null,
   confirmDeleteMembershipAction: null,
   confirmUpdateMembershipAction: null,
 };

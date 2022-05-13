@@ -669,6 +669,7 @@
   (if (or (not base-type)
           (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
     (assoc-field-options clause :temporal-unit unit)
+    #_{:clj-kondo/ignore [:redundant-do]} ; The linter detects that this is redundant in CLJS and warns for it.
     (do
       #?(:clj
          (log/warn (metabase.util.i18n/trs "{0} is not a valid temporal unit for {1}; not adding to clause {2}"

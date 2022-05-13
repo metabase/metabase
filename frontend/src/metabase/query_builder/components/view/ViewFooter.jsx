@@ -74,6 +74,9 @@ const ViewFooter = ({
     return null;
   }
 
+  const hasDataPermission = question.query().isEditable();
+  const hideChartSettings = result.error && !hasDataPermission;
+
   return (
     <ViewFooterRoot
       className={cx(className, "text-medium border-top")}
@@ -82,7 +85,10 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
-          QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
+          QuestionFilterWidget.shouldRender({
+            question,
+            queryBuilderMode,
+          }) && (
             <MobileQuestionFilterWidget
               className="sm-hide"
               mr={1}
@@ -105,26 +111,30 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          <VizTypeButton
-            key="viz-type"
-            question={question}
-            result={result}
-            active={isShowingChartTypeSidebar}
-            onClick={
-              isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
-            }
-          />,
-          <VizSettingsButton
-            key="viz-settings"
-            ml={1}
-            mr={[3, 0]}
-            active={isShowingChartSettingsSidebar}
-            onClick={
-              isShowingChartSettingsSidebar
-                ? onCloseChartSettings
-                : onOpenChartSettings
-            }
-          />,
+          !hideChartSettings && (
+            <VizTypeButton
+              key="viz-type"
+              question={question}
+              result={result}
+              active={isShowingChartTypeSidebar}
+              onClick={
+                isShowingChartTypeSidebar ? onCloseChartType : onOpenChartType
+              }
+            />
+          ),
+          !hideChartSettings && (
+            <VizSettingsButton
+              key="viz-settings"
+              ml={1}
+              mr={[3, 0]}
+              active={isShowingChartSettingsSidebar}
+              onClick={
+                isShowingChartSettingsSidebar
+                  ? onCloseChartSettings
+                  : onOpenChartSettings
+              }
+            />
+          ),
         ]}
         center={
           isVisualized && (
@@ -140,7 +150,11 @@ const ViewFooter = ({
           )
         }
         right={[
-          QuestionRowCount.shouldRender({ question, result, isObjectDetail }) &&
+          QuestionRowCount.shouldRender({
+            question,
+            result,
+            isObjectDetail,
+          }) &&
             !isPreviewing && (
               <QuestionRowCount
                 key="row_count"

@@ -68,8 +68,7 @@ const mapStateToProps = state => ({
   hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
 });
 
-@connect(mapStateToProps)
-export default class PivotTable extends Component {
+class PivotTable extends Component {
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
   static iconName = "pivot_table";
@@ -523,6 +522,8 @@ export default class PivotTable extends Component {
       });
   }
 }
+
+export default connect(mapStateToProps)(PivotTable);
 
 function RowToggleIcon({
   value,

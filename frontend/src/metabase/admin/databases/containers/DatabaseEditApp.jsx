@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { getValues } from "redux-form";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -16,6 +15,9 @@ import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import Databases from "metabase/entities/databases";
+import { getSetting } from "metabase/selectors/settings";
+
+import Database from "metabase-lib/lib/metadata/Database";
 
 import {
   getEditingDatabase,
@@ -32,6 +34,8 @@ import {
   discardSavedFieldValues,
   deleteDatabase,
   selectEngine,
+  persistDatabase,
+  unpersistDatabase,
 } from "../database";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import {
@@ -46,13 +50,13 @@ const DATABASE_FORM_NAME = "database";
 
 const mapStateToProps = state => {
   const database = getEditingDatabase(state);
-  const formValues = getValues(state.form[DATABASE_FORM_NAME]);
+
   return {
-    database,
+    database: database ? new Database(database) : undefined,
     databaseCreationStep: getDatabaseCreationStep(state),
-    selectedEngine: formValues ? formValues.engine : undefined,
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
+    isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
   };
 };
 
@@ -63,19 +67,20 @@ const mapDispatchToProps = {
   syncDatabaseSchema,
   rescanDatabaseFields,
   discardSavedFieldValues,
+  persistDatabase,
+  unpersistDatabase,
   deleteDatabase,
   selectEngine,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ database }) => database && database.name)
-export default class DatabaseEditApp extends Component {
+class DatabaseEditApp extends Component {
   constructor(props, context) {
     super(props, context);
   }
 
   static propTypes = {
     database: PropTypes.object,
+    metadata: PropTypes.object,
     databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
@@ -83,11 +88,14 @@ export default class DatabaseEditApp extends Component {
     syncDatabaseSchema: PropTypes.func.isRequired,
     rescanDatabaseFields: PropTypes.func.isRequired,
     discardSavedFieldValues: PropTypes.func.isRequired,
+    persistDatabase: PropTypes.func.isRequired,
+    unpersistDatabase: PropTypes.func.isRequired,
     deleteDatabase: PropTypes.func.isRequired,
     saveDatabase: PropTypes.func.isRequired,
     selectEngine: PropTypes.func.isRequired,
     location: PropTypes.object,
     isAdmin: PropTypes.bool,
+    isModelPersistenceEnabled: PropTypes.bool,
   };
 
   async componentDidMount() {
@@ -100,11 +108,13 @@ export default class DatabaseEditApp extends Component {
       database,
       deleteDatabase,
       discardSavedFieldValues,
-      selectedEngine,
       initializeError,
       rescanDatabaseFields,
       syncDatabaseSchema,
+      persistDatabase,
+      unpersistDatabase,
       isAdmin,
+      isModelPersistenceEnabled,
     } = this.props;
     const editingExistingDatabase = database?.id != null;
     const addingNewDatabase = !editingExistingDatabase;
@@ -171,11 +181,7 @@ export default class DatabaseEditApp extends Component {
                               </div>
                             </Form>
                           </DatabaseEditForm>
-                          <div>
-                            {addingNewDatabase && (
-                              <DatabaseEditHelp engine={selectedEngine} />
-                            )}
-                          </div>
+                          <div>{addingNewDatabase && <DatabaseEditHelp />}</div>
                         </DatabaseEditContent>
                       );
                     }}
@@ -187,12 +193,15 @@ export default class DatabaseEditApp extends Component {
 
           {editingExistingDatabase && (
             <Sidebar
-              isAdmin={isAdmin}
               database={database}
+              isAdmin={isAdmin}
+              isModelPersistenceEnabled={isModelPersistenceEnabled}
               deleteDatabase={deleteDatabase}
               discardSavedFieldValues={discardSavedFieldValues}
               rescanDatabaseFields={rescanDatabaseFields}
               syncDatabaseSchema={syncDatabaseSchema}
+              persistDatabase={persistDatabase}
+              unpersistDatabase={unpersistDatabase}
             />
           )}
         </DatabaseEditMain>
@@ -200,3 +209,8 @@ export default class DatabaseEditApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ database }) => database && database.name),
+)(DatabaseEditApp);

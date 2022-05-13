@@ -63,6 +63,7 @@ describe("scenarios > question > object details", () => {
     getNextObjectDetailButton().should("not.exist");
 
     cy.go("back");
+    cy.go("back");
     cy.wait("@dataset");
 
     changeSorting("User ID", "desc");
@@ -152,8 +153,7 @@ function drillFK({ id }) {
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
-  cy.get("h1")
-    .parent()
+  cy.get("h2")
     .should("contain", entityName)
     .should("contain", id);
 

@@ -23,10 +23,19 @@
                       (taoensso.nippy/extend-thaw)
                       (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
                       (clojure.tools.macro/macrolet)]}
-           :refer-all {:exclude [clojure.test
+           :refer-all {:level   :warning
+                       :exclude [clojure.test
                                  monger.operators]}
-           :unexpected-recur {:level :off}
-           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :unexpected-recur             {:level :off}
+           :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :missing-else-branch          {:level :warning}
+           :misplaced-docstring          {:level :warning}
+           :non-arg-vec-return-type-hint {:level :warning}
+           :missing-body-in-when         {:level :warning}
+           :missing-docstring            {:level :warning}
+           ; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
+           :namespace-name-mismatch      {:level :off}
+           :use                          {:level :warning}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
                                       {:namespaces ["metabase.*"]}
                                       metabase.db.data-migrations/data-migrations
@@ -115,7 +124,9 @@
                                         java-time                                                       t
                                         metabase-enterprise.audit-app.pages.common                      common
                                         metabase-enterprise.sandbox.api.table                           table
+                                        metabase.actions                                                actions
                                         metabase.analytics.stats                                        stats
+                                        metabase.api.actions                                            api.actions
                                         metabase.api.activity                                           api.activity
                                         metabase.api.alert                                              api.alert
                                         metabase.api.automagic-dashboards                               api.magic
@@ -389,8 +400,10 @@
            :macroexpand {metabase.query-processor.streaming/streaming-response
                          metabase.query-processor.streaming/streaming-response
                          metabase.api.common/define-routes macros.metabase.api.common/define-routes
+
                          toucan.models/defmodel toucan.models/defmodel
                          clojurewerkz.quartzite.jobs/build macros.quartz/build-job
                          clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
-                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule}}
+                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule
+                         clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
  :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}

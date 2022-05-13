@@ -26,8 +26,8 @@ import { getValuePopulatedParameters } from "metabase/parameters/utils/parameter
 const SCROLL_THROTTLE_INTERVAL = 1000 / 24;
 
 // NOTE: move DashboardControls HoC to container
-@DashboardControls
-export default class Dashboard extends Component {
+
+class Dashboard extends Component {
   state = {
     error: null,
     isParametersWidgetSticky: false,
@@ -330,3 +330,5 @@ export default class Dashboard extends Component {
     );
   }
 }
+
+export default DashboardControls(Dashboard);

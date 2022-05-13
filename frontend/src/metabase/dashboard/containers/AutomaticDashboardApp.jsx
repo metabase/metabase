@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
 import cx from "classnames";
+import _ from "underscore";
 
 import title from "metabase/hoc/Title";
 import withToast from "metabase/hoc/Toast";
@@ -52,11 +53,7 @@ const mapDispatchToProps = {
   invalidateCollections: Collections.actions.invalidateLists,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@DashboardData
-@withToast
-@title(({ dashboard }) => dashboard && dashboard.name)
-class AutomaticDashboardApp extends React.Component {
+class AutomaticDashboardAppInner extends React.Component {
   state = {
     savedDashboardId: null,
   };
@@ -192,6 +189,13 @@ class AutomaticDashboardApp extends React.Component {
     );
   }
 }
+
+const AutomaticDashboardApp = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  DashboardData,
+  withToast,
+  title(({ dashboard }) => dashboard && dashboard.name),
+)(AutomaticDashboardAppInner);
 
 const TransientTitle = ({ dashboard }) =>
   dashboard.transient_name ? (

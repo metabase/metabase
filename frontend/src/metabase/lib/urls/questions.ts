@@ -8,8 +8,8 @@ import { Card as BaseCard } from "metabase-types/types/Card";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
-type Card = BaseCard & {
-  id?: string;
+type Card = Partial<BaseCard> & {
+  id?: number | string;
   card_id?: string;
   name?: string;
   model?: "card" | "dataset";

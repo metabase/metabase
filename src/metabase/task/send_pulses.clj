@@ -76,8 +76,7 @@
       (< start-of-last-week curr-day-of-month) :last
       :else                                    :other)))
 
-;; triggers the sending of all pulses which are scheduled to run in the current hour
-(jobs/defjob SendPulses [_]
+(jobs/defjob ^{:doc "Triggers the sending of all pulses which are scheduled to run in the current hour"} SendPulses [_]
   (try
     (task-history/with-task-history {:task "send-pulses"}
       ;; determine what time it is right now (hour-of-day & day-of-week) in reporting timezone

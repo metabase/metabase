@@ -5,6 +5,7 @@
             [clojure.tools.reader.edn :as edn]
             [metabase.api.common :as api]
             [metabase.config :as config]
+            [metabase.db.connection :as mdb.conn]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.plugins.classloader :as classloader]
@@ -332,7 +333,7 @@
   {:style/indent 1}
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
-        get-db-for-driver (memoize
+        get-db-for-driver (mdb.conn/memoize-for-application-db
                            (fn [driver]
                              (binding [db/*disable-db-logging* true]
                                (let [db (get-or-create-database! driver dbdef)]

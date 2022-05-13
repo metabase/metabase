@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
@@ -77,57 +78,7 @@ const getMemoizedEntityQuery = createMemoizedSelector(
   entityQuery => entityQuery,
 );
 
-@entityType()
-@paginationState()
-@connect((state, props) => {
-  let {
-    entityDef,
-    entityQuery,
-    reloadInterval,
-    page,
-    pageSize,
-    allLoading,
-    allLoaded,
-    allFetched,
-    allError,
-    selectorName = "getList",
-  } = props;
-  if (typeof entityQuery === "function") {
-    entityQuery = entityQuery(state, props);
-  }
-  if (typeof pageSize === "number" && typeof page === "number") {
-    entityQuery = { limit: pageSize, offset: pageSize * page, ...entityQuery };
-  }
-  entityQuery = getMemoizedEntityQuery(state, { entityQuery });
-
-  const list = entityDef.selectors[selectorName](state, { entityQuery });
-  if (typeof reloadInterval === "function") {
-    reloadInterval = reloadInterval(state, props, list);
-  }
-
-  const loading = entityDef.selectors.getLoading(state, { entityQuery });
-  const loaded = entityDef.selectors.getLoaded(state, { entityQuery });
-  const fetched = entityDef.selectors.getFetched(state, { entityQuery });
-  const error = entityDef.selectors.getError(state, { entityQuery });
-  const metadata = entityDef.selectors.getListMetadata(state, { entityQuery });
-
-  return {
-    list,
-    entityQuery,
-    reloadInterval,
-    metadata,
-    loading,
-    loaded,
-    fetched,
-    error,
-    // merge props passed in from stacked Entity*Loaders:
-    allLoading: loading || (allLoading == null ? false : allLoading),
-    allLoaded: loaded && (allLoaded == null ? true : allLoaded),
-    allFetched: fetched && (allFetched == null ? true : allFetched),
-    allError: error || (allError == null ? null : allError),
-  };
-})
-class EntityListLoader extends React.Component {
+class EntityListLoaderInner extends React.Component {
   state = {
     previousList: [],
     isReloading: this.props.reload,
@@ -275,6 +226,65 @@ class EntityListLoader extends React.Component {
     this.fetchList(this.props, { reload: true });
   };
 }
+
+const EntityListLoader = _.compose(
+  entityType(),
+  paginationState(),
+  connect((state, props) => {
+    let {
+      entityDef,
+      entityQuery,
+      reloadInterval,
+      page,
+      pageSize,
+      allLoading,
+      allLoaded,
+      allFetched,
+      allError,
+      selectorName = "getList",
+    } = props;
+    if (typeof entityQuery === "function") {
+      entityQuery = entityQuery(state, props);
+    }
+    if (typeof pageSize === "number" && typeof page === "number") {
+      entityQuery = {
+        limit: pageSize,
+        offset: pageSize * page,
+        ...entityQuery,
+      };
+    }
+    entityQuery = getMemoizedEntityQuery(state, { entityQuery });
+
+    const list = entityDef.selectors[selectorName](state, { entityQuery });
+    if (typeof reloadInterval === "function") {
+      reloadInterval = reloadInterval(state, props, list);
+    }
+
+    const loading = entityDef.selectors.getLoading(state, { entityQuery });
+    const loaded = entityDef.selectors.getLoaded(state, { entityQuery });
+    const fetched = entityDef.selectors.getFetched(state, { entityQuery });
+    const error = entityDef.selectors.getError(state, { entityQuery });
+    const metadata = entityDef.selectors.getListMetadata(state, {
+      entityQuery,
+    });
+
+    return {
+      list,
+      entityQuery,
+      reloadInterval,
+      metadata,
+      loading,
+      loaded,
+      fetched,
+      error,
+      // merge props passed in from stacked Entity*Loaders:
+      allLoading: loading || (allLoading == null ? false : allLoading),
+      allLoaded: loaded && (allLoaded == null ? true : allLoaded),
+      allFetched: fetched && (allFetched == null ? true : allFetched),
+      allError: error || (allError == null ? null : allError),
+    };
+  }),
+)(EntityListLoaderInner);
 
 EntityListLoader.propTypes = propTypes;
 EntityListLoader.defaultProps = defaultProps;

@@ -67,6 +67,7 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.util :as mdb.u]
             [metabase.driver.common.parameters.dates :as params.dates]
             [metabase.mbql.util :as mbql.u]
@@ -88,6 +89,9 @@
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
 
+;; for [[memoize/ttl]] keys
+(comment mdb.connection/keep-me)
+
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
   Restaurant -> Category instead of the usual Category -> Restuarant*)
@@ -102,6 +106,8 @@
   "Whether Field with `field-id` is a temporal Field such as a Date or Datetime. Cached for 10 minutes to avoid hitting
   the DB too much since this is unlike to change often, if ever."
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[field-id]]
+                         [(mdb.connection/unique-identifier) field-id])}
    (fn [field-id]
      (types/temporal-field? (db/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
@@ -210,7 +216,11 @@
   right-hand-side of the join. Of course, you can join in either direction (e.g. `FROM B JOIN A ...` or `FROM A JOIN
   B`), so both `A -> B` and `B -> A` versions of the relationship are returned; having both possibilities simplifies
   the implementation of `find-joins` below."
-  (memoize/ttl database-fk-relationships* :ttl/threshold find-joins-cache-duration-ms))
+  (memoize/ttl
+   ^{::memoize/args-fn (fn [[database-id enable-reverse-joins?]]
+                         [(mdb.connection/unique-identifier) database-id enable-reverse-joins?])}
+   database-fk-relationships*
+   :ttl/threshold find-joins-cache-duration-ms))
 
 (defn- traverse-graph
   "A breadth first traversal of graph, not probing any paths that are over `max-depth` in length."
@@ -270,7 +280,15 @@
       :rhs {:table <region>, :field <country.id>}}
      {:lhs {:table <region>, :field <region.country_id>}
       :rhs {:table <country>, :field <country.id>}}]"
-  (let [f (memoize/ttl find-joins* :ttl/threshold find-joins-cache-duration-ms)]
+  (let [f (memoize/ttl
+           ^{::memoize/args-fn (fn [[database-id source-table-id other-table-id enable-reverse-joins?]]
+                                 [(mdb.connection/unique-identifier)
+                                  database-id
+                                  source-table-id
+                                  other-table-id
+                                  enable-reverse-joins?])}
+           find-joins*
+           :ttl/threshold find-joins-cache-duration-ms)]
     (fn
       ([database-id source-table-id other-table-id]
        (f database-id source-table-id other-table-id *enable-reverse-joins*))
@@ -279,6 +297,8 @@
 
 (def ^:private ^{:arglists '([source-table other-table-ids enable-reverse-joins?])} find-all-joins*
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[source-table-id other-table-ids enable-reverse-joins?]]
+                         [(mdb.connection/unique-identifier) source-table-id other-table-ids enable-reverse-joins?])}
    (fn [source-table-id other-table-ids enable-reverse-joins?]
      (let [db-id     (table/table-id->database-id source-table-id)
            all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)

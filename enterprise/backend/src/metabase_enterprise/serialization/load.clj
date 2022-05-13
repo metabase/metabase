@@ -124,7 +124,7 @@
                 (vector? v)
                 (map (fn [x] (conj node x)) (range (count v)))
 
-                :default
+                :else
                 [])))
           (branch? [node] (-> (children node) seq boolean))]
     (->> (keys m)
@@ -410,7 +410,7 @@
               (if (names/fully-qualified-field-name? f-str)
                 [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
                 [f-type f-str f-md]))
-            (resolve-field-id [{:keys [::mb.viz/table-column-field-ref] :as tbl-col}]
+            (resolve-field-id [tbl-col]
               (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
       (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
                                                (mapv resolve-field-id tbl-cols))))

@@ -53,6 +53,16 @@ describe("scenarios > auth > signin", () => {
     cy.contains(/[a-z ]+, Bob/i);
   });
 
+  it("should allow toggling of Remember Me", () => {
+    cy.visit("/auth/login");
+
+    // default initial state
+    cy.findByRole("checkbox").should("be.checked");
+
+    cy.findByLabelText("Remember me").click();
+    cy.findByRole("checkbox").should("not.be.checked");
+  });
+
   it("should redirect to a unsaved question after login", () => {
     cy.signInAsAdmin();
     cy.visit("/");

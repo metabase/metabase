@@ -8,6 +8,7 @@ import { color } from "metabase/lib/colors";
 import {
   checkDatabaseSupportsModels,
   checkCanBeModel,
+  checkDatabaseCanPersistDatasets,
 } from "metabase/lib/data-modeling/utils";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -22,6 +23,8 @@ export const EDIT_TESTID = "edit-details-button";
 export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const MOVE_TESTID = "move-button";
 export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
+export const PERSIST_DATASET_TESTID = "persist-dataset";
+export const UNPERSIST_DATASET_TESTID = "unpersist-dataset";
 export const CLONE_TESTID = "clone-button";
 export const ARCHIVE_TESTID = "archive-button";
 
@@ -34,6 +37,8 @@ QuestionActionButtons.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
+  persistDataset: PropTypes.func.isRequired,
+  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -49,6 +54,8 @@ function QuestionActionButtons({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
+  persistDataset,
+  unpersistDataset,
 }) {
   const [animation, setAnimation] = useState(null);
 
@@ -57,7 +64,9 @@ function QuestionActionButtons({
     setAnimation(isBookmarked ? "shrink" : "expand");
   };
 
+  const isSaved = question.isSaved();
   const isDataset = question.isDataset();
+  const isPersisted = question.isPersisted();
 
   const duplicateTooltip = isDataset
     ? t`Duplicate this model`
@@ -68,6 +77,12 @@ function QuestionActionButtons({
     !isDataset &&
     areNestedQueriesEnabled &&
     checkDatabaseSupportsModels(question.query().database());
+
+  const canPersistDataset =
+    canWrite &&
+    isSaved &&
+    isDataset &&
+    checkDatabaseCanPersistDatasets(question.query().database());
 
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
@@ -121,6 +136,26 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
+      {canPersistDataset &&
+        (isPersisted ? (
+          <Tooltip tooltip={t`Unpersist model`}>
+            <Button
+              onlyIcon
+              icon="database"
+              iconSize={ICON_SIZE}
+              onClick={() => unpersistDataset(question.id())}
+            />
+          </Tooltip>
+        ) : (
+          <Tooltip tooltip={t`Persist model`}>
+            <Button
+              onlyIcon
+              icon="database"
+              iconSize={ICON_SIZE}
+              onClick={() => persistDataset(question.id())}
+            />
+          </Tooltip>
+        ))}
       {canWrite && (
         <Tooltip tooltip={duplicateTooltip}>
           <Button

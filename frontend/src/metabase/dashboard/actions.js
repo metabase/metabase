@@ -29,7 +29,6 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
-import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import Utils from "metabase/lib/utils";
@@ -1070,15 +1069,14 @@ export const navigateToNewCardFromDashboard = createThunkAction(
     const isDrillingFromNativeModel =
       previousQuestion.isDataset() && previousQuestion.isNative();
 
-    // when the query is for a specific object (ie `=` filter on PK column)
-    // it does not make sense to apply parameter filters
-    // because we'll be navigating to the details view of a specific row on a table
-    const url = question.isObjectDetail()
-      ? Urls.serializedQuestion(question.card())
-      : question.getUrlWithParameters(parametersMappedToCard, parameterValues, {
-          clean: !isDrillingFromNativeModel,
-          objectId,
-        });
+    const url = question.getUrlWithParameters(
+      parametersMappedToCard,
+      parameterValues,
+      {
+        clean: !isDrillingFromNativeModel,
+        objectId,
+      },
+    );
 
     dispatch(openUrl(url));
   },

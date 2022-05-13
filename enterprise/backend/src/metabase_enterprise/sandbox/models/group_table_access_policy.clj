@@ -104,7 +104,7 @@
     (when-let [gtaps-using-this-card (not-empty (db/select [GroupTableAccessPolicy :id :table_id] :card_id card-id))]
       (let [original-result-metadata (db/select-one-field :result_metadata Card :id card-id)]
         (when-not (= original-result-metadata new-result-metadata)
-          (doseq [{gtap-id :id, table-id :table_id} gtaps-using-this-card]
+          (doseq [{table-id :table_id} gtaps-using-this-card]
             (try
               (check-columns-match-table table-id new-result-metadata)
               (catch clojure.lang.ExceptionInfo e

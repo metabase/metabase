@@ -81,8 +81,7 @@ const mapDispatchToProps = {
   discardFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class FieldApp extends React.Component {
+class FieldApp extends React.Component {
   state = {
     tab: "general",
   };
@@ -247,6 +246,8 @@ export default class FieldApp extends React.Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(FieldApp);
 
 const FieldGeneralPane = ({
   field,

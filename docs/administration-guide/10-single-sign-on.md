@@ -26,7 +26,7 @@ Note that Metabase accounts created with Google Sign-In do not have passwords an
 
 ## Enabling LDAP authentication
 
-In the **Admin** > **Authentication** tab, go the the LDAP section and click **Configure**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the following information about your LDAP server:
+In the **Admin** > **Authentication** tab, go to the LDAP section and click **Configure**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the following information about your LDAP server:
 
 - hostname
 - port
@@ -59,7 +59,7 @@ For example, let's say you're configuring LDAP for your company, WidgetCo, where
 You'll see the following grayed-out default value in the **User filter** field:
 
 ```
-(&(objectClass=inetOrgPerson)(|uid={login})(mail={login})
+(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
 ```
 
 When a person logs into Metabase, this command confirms that the login they supplied matches either a UID _or_ email field in your LDAP server, _and_ that the matching entry has an objectClass of `inetOrgPerson`.

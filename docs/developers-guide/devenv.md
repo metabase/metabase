@@ -214,7 +214,7 @@ clojure -X:dev:ee:ee-dev:drivers:drivers-dev:eastwood
 clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:namespace-checker
 
 # Run clj-kondo
-clj-kondo --parallel --lint src shared/src enterprise/backend/src --config lint-config.edn
+clj-kondo --parallel --lint src shared/src enterprise/backend/src --config .clj-kondo/config.edn
 ```
 
 ## Continuous integration

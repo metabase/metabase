@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [metabase.db :as mdb]
             [metabase.db.spec :as mdb.spec]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.database :refer [Database]]
             [metabase.test.data.impl :as data.impl]
@@ -81,11 +82,11 @@
    ((get-method sql.tx/create-table-sql :sql-jdbc/test-extensions) driver dbdef tabledef)
    ";\n"
    ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (tx/format-name driver table-name)))))
+   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (ddl.i/format-name driver table-name)))))
 
 (defmethod tx/has-questionable-timezone-support? :h2 [_] true)
 
-(defmethod tx/format-name :h2
+(defmethod ddl.i/format-name :h2
   [_ s]
   (str/upper-case s))
 

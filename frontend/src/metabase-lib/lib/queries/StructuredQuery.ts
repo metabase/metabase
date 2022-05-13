@@ -1099,6 +1099,10 @@ export default class StructuredQuery extends AtomicQuery {
       query = query.removeField(index);
     }
 
+    if (!query.hasExpressions() && query.isRaw()) {
+      query = query.clearFields();
+    }
+
     return query;
   }
 
@@ -1113,6 +1117,10 @@ export default class StructuredQuery extends AtomicQuery {
       if (index >= 0) {
         query = query.removeField(index);
       }
+    }
+
+    if (this.isRaw()) {
+      query = query.clearFields();
     }
 
     return query;

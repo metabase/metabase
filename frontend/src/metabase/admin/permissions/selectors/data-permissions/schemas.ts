@@ -176,6 +176,7 @@ export const buildSchemasPermissions = (
       isAdmin,
       permissions,
       accessPermission.value,
+      defaultGroup,
       "schemas",
     ),
   ];

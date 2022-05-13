@@ -199,7 +199,7 @@
       (let [site-locale (@site-locale-from-setting-fn)]
         (reset! cached-site-locale site-locale)
         site-locale)
-      (catch Exception e @cached-site-locale))))
+      (catch Exception _ @cached-site-locale))))
 
 (defmethod print-method Locale
   [locale ^java.io.Writer writer]

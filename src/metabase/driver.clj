@@ -406,6 +406,11 @@
     ;; subselects in SQL queries.
     :nested-queries
 
+    ;; Does the driver support persisting models
+    :persist-models
+    ;; Is persisting enabled?
+    :persist-models-enabled
+
     ;; Does the driver support binning as specified by the `binning-strategy` clause?
     :binning
 
@@ -654,8 +659,9 @@
 
 (defmethod default-field-order ::driver [_] :database)
 
+;; TODO -- this can vary based on session variables or connection options
 (defmulti db-start-of-week
-  "Return start of week for given database"
+  "Return the day that is considered to be the start of week by `driver`. Should return a keyword such as `:sunday`."
   {:added "0.37.0" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

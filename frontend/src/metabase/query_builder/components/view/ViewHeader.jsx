@@ -4,6 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import * as Urls from "metabase/lib/urls";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
 import ButtonBar from "metabase/components/ButtonBar";
@@ -408,6 +409,10 @@ function ViewTitleHeaderRightSide(props) {
 
   const isNewQuery = !query.hasData();
   const hasSaveButton = !isDataset && !!isDirty && (isNewQuery || canEditQuery);
+  const isMissingPermissions =
+    result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
+  const hasRunButton =
+    isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
   return (
     <div
@@ -416,7 +421,12 @@ function ViewTitleHeaderRightSide(props) {
     >
       {hasSaveButton && (
         <SaveButton
-          disabled={!question.canRun()}
+          disabled={!question.canRun() || !canEditQuery}
+          tooltip={{
+            tooltip: t`You don't have permission to save this question.`,
+            isEnabled: !canEditQuery,
+            placement: "left",
+          }}
           data-metabase-event={
             isShowingNotebook
               ? `Notebook Mode; Click Save`
@@ -478,7 +488,7 @@ function ViewTitleHeaderRightSide(props) {
         />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}
-      {isRunnable && !isNativeEditorOpen && (
+      {hasRunButton && (
         <RunButtonWithTooltip
           className={cx("text-brand-hover text-dark hide", {
             "sm-show": !isShowingNotebook || isNative,

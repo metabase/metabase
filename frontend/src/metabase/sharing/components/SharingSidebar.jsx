@@ -105,13 +105,7 @@ const mapDispatchToProps = {
   testPulse,
 };
 
-@Pulses.loadList({
-  query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
-  loadingAndErrorWrapper: false,
-})
-@User.loadList({ loadingAndErrorWrapper: false })
-@connect(mapStateToProps, mapDispatchToProps)
-class SharingSidebar extends React.Component {
+class SharingSidebarInner extends React.Component {
   state = {
     editingMode: "list-pulses",
     // use this to know where to go "back" to
@@ -412,5 +406,14 @@ class SharingSidebar extends React.Component {
     return <Sidebar />;
   }
 }
+
+const SharingSidebar = _.compose(
+  Pulses.loadList({
+    query: (state, { dashboard }) => ({ dashboard_id: dashboard.id }),
+    loadingAndErrorWrapper: false,
+  }),
+  User.loadList({ loadingAndErrorWrapper: false }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(SharingSidebarInner);
 
 export default SharingSidebar;

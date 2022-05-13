@@ -64,10 +64,7 @@ function pickRowsToMeasure(rows, columnIndex, count = 10) {
   return rowIndexes;
 }
 
-@ExplicitSize({
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
-})
-export default class TableInteractive extends Component {
+class TableInteractive extends Component {
   constructor(props) {
     super(props);
 
@@ -149,9 +146,10 @@ export default class TableInteractive extends Component {
   }
 
   _findIDColumn = (data, isPivoted = false) => {
-    const pkIndex = isPivoted
-      ? -1
-      : data.cols.findIndex(col => isPK(col) && col.id !== undefined);
+    const hasManyPKColumns = data.cols.filter(isPK).length > 1;
+
+    const pkIndex =
+      isPivoted || hasManyPKColumns ? -1 : data.cols.findIndex(isPK);
 
     this.setState({
       IDColumnIndex: pkIndex === -1 ? null : pkIndex,
@@ -1046,6 +1044,10 @@ export default class TableInteractive extends Component {
     next();
   }
 }
+
+export default ExplicitSize({
+  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+})(TableInteractive);
 
 const DetailShortcut = React.forwardRef((_props, ref) => (
   <div

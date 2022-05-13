@@ -116,6 +116,7 @@ export default function ExcludeDatePicker({
         {EXCLUDE_OPERATORS.map(({ displayName, init }) => (
           <OptionButton
             key={displayName}
+            primaryColor={primaryColor}
             onClick={() => {
               onFilterChange(init(filter));
             }}
@@ -161,6 +162,7 @@ export default function ExcludeDatePicker({
     <div className={className}>
       <ExcludeCheckBox
         label={<ExcludeLabel>{selectAllLabel}</ExcludeLabel>}
+        checkedColor={primaryColor}
         checked={allSelected}
         onChange={() =>
           update(allSelected ? options.flat().map(({ value }) => value) : [])

@@ -233,7 +233,7 @@ export function ObjectDetailFn({
         ) : (
           <div className="ObjectDetail" data-testid="object-detail">
             <ObjectDetailHeader
-              canZoom={canZoom}
+              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
               objectName={objectName}
               objectId={zoomedRowID}
               canZoomPreviousRow={canZoomPreviousRow}
@@ -283,9 +283,9 @@ export function ObjectDetailHeader({
   return (
     <div className="Grid border-bottom relative">
       <div className="Grid-cell">
-        <h1 className="p3">
+        <h2 className="p3">
           {objectName} {objectId}
-        </h1>
+        </h2>
       </div>
       <div className="flex align-center">
         <div className="flex p2">
@@ -317,7 +317,6 @@ export function ObjectDetailHeader({
               data-testId="object-detail-close-button"
               onlyIcon
               borderless
-              disabled={!canZoomNextRow}
               onClick={closeObjectDetail}
               icon="close"
               iconSize={20}

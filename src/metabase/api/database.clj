@@ -9,17 +9,20 @@
             [metabase.api.table :as api.table]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.util :as driver.u]
             [metabase.events :as events]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.database :as database :refer [Database protected-password]]
+            [metabase.models.database :as database :refer [Database
+                                                           protected-password]]
             [metabase.models.field :refer [Field readable-fields-only]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.plugins.classloader :as classloader]
@@ -29,6 +32,7 @@
             [metabase.sync.field-values :as field-values]
             [metabase.sync.schedules :as sync.schedules]
             [metabase.sync.sync-metadata :as sync-metadata]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.cron :as u.cron]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -644,6 +648,46 @@
                 details))
             details
             (database/sensitive-fields-for-db database)))))
+
+(api/defendpoint POST "/:id/persist"
+  "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
+  [id]
+  {:id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/check (public-settings/persisted-models-enabled)
+             400
+             (tru "Persisting models is not enabled."))
+  (api/let-404 [database (Database id)]
+    (if (-> database :options :persist-models-enabled)
+      ;; todo: some other response if already persisted?
+      api/generic-204-no-content
+      (let [[success? error] (ddl.i/check-can-persist database)
+            schema           (ddl.i/schema-name database (public-settings/site-uuid))]
+        (if success?
+          ;; do secrets require special handling to not clobber them or mess up encryption?
+          (do (db/update! Database id :options
+                          (assoc (:options database) :persist-models-enabled true))
+              (task.persist-refresh/schedule-persistence-for-database! database
+                                                                      (public-settings/persisted-model-refresh-interval-hours))
+              api/generic-204-no-content)
+          (throw (ex-info (ddl.i/error->message error schema)
+                          {:error error
+                           :database (:name database)})))))))
+
+(api/defendpoint POST "/:id/unpersist"
+  "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
+  [id]
+  {:id su/IntGreaterThanZero}
+  (api/check-superuser)
+  (api/let-404 [database (Database id)]
+    (if (-> database :options :persist-models-enabled)
+      (do (db/update! Database id :options
+                      (dissoc (:options database) :persist-models-enabled))
+          (persisted-info/mark-for-deletion! {:database_id id})
+          (task.persist-refresh/unschedule-persistence-for-database! database)
+          api/generic-204-no-content)
+      ;; todo: a response saying this was a no-op? an error? same on the post to persist
+      api/generic-204-no-content)))
 
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
