@@ -1,4 +1,4 @@
-# Sso.api.sso
+# SSO
 
 `/auth/sso` Routes.
 

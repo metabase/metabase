@@ -18,7 +18,6 @@
 
 ;;;; API docs page title
 
-
 (defn handle-enterprise-ns
   "Some paid endpoints have different formatting. This way we don't combine
   the api/table endpoint with sandbox.api.table, for example."
@@ -28,14 +27,17 @@
     (str/split endpoint #"\.")))
 
 (defn- endpoint-ns-name
-  "Creates a name for endpoints in a namespace, like all the endpoints for Alerts."
+  "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
+  Handles some edge cases for enterprise endpoints."
   [endpoint]
   (-> (:ns endpoint)
       ns-name
       name
       handle-enterprise-ns
       last
-      str/capitalize))
+      str/capitalize
+      (str/replace #"(.api.|-)" " ")
+      (str/replace "Sso sso" "SSO")))
 
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
@@ -117,7 +119,7 @@
   [ep-data]
   (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
-(defn paid?
+(defn- paid?
   "Is the endpoint a paid feature?"
   [ep-data]
   (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))

@@ -1,4 +1,4 @@
-# Premium-features
+# Premium features
 
   - [GET /api/premium-features/token/status](#get-apipremium-featurestokenstatus)
 

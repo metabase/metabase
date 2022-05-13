@@ -1,4 +1,4 @@
-# Native-query-snippet
+# Native query snippet
 
 Native query snippet (/api/native-query-snippet) endpoints.
 

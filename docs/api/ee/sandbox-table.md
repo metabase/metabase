@@ -1,4 +1,4 @@
-# Sandbox.api.table
+# Sandbox table
 
   - [GET /api/ee/sandbox/table/:id/query_metadata](#get-apieesandboxtableidquery_metadata)
 

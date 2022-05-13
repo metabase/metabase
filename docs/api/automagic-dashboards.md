@@ -1,4 +1,4 @@
-# Automagic-dashboards
+# Automagic dashboards
 
   - [GET /api/automagic-dashboards/:entity/:entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-query)
   - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query](#get-apiautomagic-dashboardsentityentity-id-or-querycellcell-query)

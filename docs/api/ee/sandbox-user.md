@@ -1,4 +1,4 @@
-# Sandbox.api.user
+# Sandbox user
 
 Endpoint(s)for setting user attributes.
 

@@ -1,4 +1,4 @@
-# Preview-embed
+# Preview embed
 
 Endpoints for previewing how Cards and Dashboards will look when embedding them.
    These endpoints are basically identical in functionality to the ones in `/api/embed`, but:

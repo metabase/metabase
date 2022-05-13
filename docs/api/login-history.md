@@ -1,4 +1,4 @@
-# Login-history
+# Login history
 
   - [GET /api/login-history/current](#get-apilogin-historycurrent)
 

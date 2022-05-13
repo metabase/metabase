@@ -1,4 +1,4 @@
-# Timeline-event
+# Timeline event
 
 /api/timeline-event endpoints.
 
