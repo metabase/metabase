@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Ellipsified from "metabase/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
-import TabList from "metabase/core/components/TabList";
 
 export const ModalHeader = styled.div`
   display: flex;
@@ -23,7 +22,7 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
 `;
 
-export const ModalTabList = styled(TabList)`
+export const ModalContent = styled.div`
   margin: 0 2rem;
 `;
 
