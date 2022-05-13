@@ -21,23 +21,13 @@ const TabList = forwardRef(function TabGroup<T>(
   { value, onChange, children, ...props }: TabListProps<T>,
   ref: Ref<HTMLDivElement>,
 ) {
-  const { value: outerValue, onChange: onOuterChange } = useContext(TabContext);
-
-  const handleChange = useCallback(
-    (value: T) => {
-      onChange?.(value);
-      onOuterChange?.(value);
-    },
-    [onChange, onOuterChange],
-  );
-
-  const innerContext = useMemo(() => {
-    return { value: value ?? outerValue, onChange: handleChange };
-  }, [value, outerValue, handleChange]);
+  const outerContext = useContext(TabContext);
+  const innerContext = useMemo(() => ({ value, onChange }), [value, onChange]);
+  const activeContext = outerContext.isDefault ? innerContext : outerContext;
 
   return (
     <TabListRoot {...props} ref={ref} role="tablist">
-      <TabContext.Provider value={innerContext as TabContextType}>
+      <TabContext.Provider value={activeContext as TabContextType}>
         {children}
       </TabContext.Provider>
     </TabListRoot>

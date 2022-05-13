@@ -15,10 +15,8 @@ const Template: ComponentStory<typeof TabList> = args => {
 
   return (
     <TabList {...args} value={value} onChange={handleChange}>
-      <Tab value={1}>One</Tab>
-      <Tab value={2} icon="link">
-        Two
-      </Tab>
+      <Tab value={1}>Tab 1</Tab>
+      <Tab value={2}>Tab 2</Tab>
     </TabList>
   );
 };
