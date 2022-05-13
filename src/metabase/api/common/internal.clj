@@ -21,16 +21,6 @@
 
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
-  [method route]
-  (format "%s %s%s"
-          (name method)
-          (str/replace (.getName *ns*) #"^metabase\.api\." "/api/")
-          (if (vector? route)
-            (first route)
-            route)))
-
-(defn- endpoint-name
-  "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
   ([method route]
    (endpoint-name *ns* method route))
 
