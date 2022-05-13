@@ -26,6 +26,7 @@ import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import {
@@ -139,6 +140,10 @@ export const getPKColumnIndex = createSelector(
       return;
     }
     const { cols } = result.data;
+    const hasMultiplePks = cols.filter(isPK).length > 1;
+    if (hasMultiplePks) {
+      return -1;
+    }
     return cols.findIndex(isPK);
   },
 );
@@ -150,6 +155,9 @@ export const getPKRowIndexMap = createSelector(
       return {};
     }
     const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
     const map = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
@@ -425,6 +433,9 @@ export const getPreviousRowPKValue = createSelector(
     if (!result) {
       return;
     }
+    if (PKColumnIndex === -1) {
+      return rowIndex - 1;
+    }
     const { rows } = result.data;
     return rows[rowIndex - 1][PKColumnIndex];
   },
@@ -435,6 +446,9 @@ export const getNextRowPKValue = createSelector(
   (result, PKColumnIndex, rowIndex) => {
     if (!result) {
       return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex + 1;
     }
     const { rows } = result.data;
     return rows[rowIndex + 1][PKColumnIndex];
@@ -827,4 +841,19 @@ export const getPageFavicon = createSelector(
 export const getTimeoutId = createSelector(
   [getLoadingControls],
   loadingControls => loadingControls.timeoutId,
+);
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsActionListVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );

@@ -53,7 +53,7 @@ const mapDispatchToProps = {
 function HomepageLink({ handleClick }: { handleClick: () => void }) {
   return (
     <LogoLink to="/" onClick={handleClick} data-metabase-event="Navbar;Logo">
-      <LogoIcon size={24} />
+      <LogoIcon height={32} />
     </LogoLink>
   );
 }

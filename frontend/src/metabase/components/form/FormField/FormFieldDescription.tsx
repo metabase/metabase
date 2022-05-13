@@ -1,14 +1,14 @@
 import React from "react";
 
-interface FormFieldDecriptionProps {
+interface FormFieldDescriptionProps {
   className: string;
   description: string;
 }
 
-export const FormFieldDecription = ({
+export const FormFieldDescription = ({
   className,
   description,
-}: FormFieldDecriptionProps) => {
+}: FormFieldDescriptionProps) => {
   if (typeof description === "string") {
     return (
       <div

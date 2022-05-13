@@ -3,8 +3,10 @@ import { isFK, isPK } from "metabase/lib/schema_metadata";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 function hasManyPKColumns(question) {
-  const table = question.query().table();
-  const fields = table?.fields ?? question.getResultMetadata();
+  const fields = question.isDataset()
+    ? question.getResultMetadata() ?? question.query().table?.()?.fields
+    : question.query().table?.()?.fields ?? question.getResultMetadata();
+
   return fields.filter(field => isPK(field)).length > 1;
 }
 

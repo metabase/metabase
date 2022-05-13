@@ -7,6 +7,7 @@ import { t } from "ttag";
 import S from "../components/Detail.css";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import _ from "underscore";
 
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -82,20 +83,7 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
-@reduxForm({
-  form: "details",
-  fields: [
-    "name",
-    "display_name",
-    "description",
-    "revision_message",
-    "points_of_interest",
-    "caveats",
-  ],
-  validate,
-})
-export default class SegmentDetail extends Component {
+class SegmentDetail extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entity: PropTypes.object.isRequired,
@@ -273,3 +261,19 @@ export default class SegmentDetail extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  reduxForm({
+    form: "details",
+    fields: [
+      "name",
+      "display_name",
+      "description",
+      "revision_message",
+      "points_of_interest",
+      "caveats",
+    ],
+    validate,
+  }),
+)(SegmentDetail);

@@ -272,10 +272,10 @@
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
       (params.dates/date-range-type? param-type) (prepend-field
-                                                 (date-range-field-filter->replacement-snippet-info driver value))
+                                                  (date-range-field-filter->replacement-snippet-info driver value))
       ;; convert all other dates to `= <date>`
       (params.dates/date-type? param-type)       (prepend-field
-                                                 (field-filter->equals-clause-sql driver (params/map->Date {:s value})))
+                                                  (field-filter->equals-clause-sql driver (params/map->Date {:s value})))
       ;; for sequences of multiple values we want to generate an `IN (...)` clause
       (sequential? value)                       (prepend-field
                                                  (field-filter-multiple-values->in-clause-sql driver value))

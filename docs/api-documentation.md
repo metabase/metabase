@@ -113,6 +113,28 @@ Update a `Alert` with ID.
 *  **`alert-updates`**
 
 
+## Application
+
+`/advanced-permisisons/application` Routes.
+  Implements the Permissions routes needed for application permission - a class of permissions that control access to features
+  like access Setting pages, access monitoring tools ... etc.
+
+  - [GET /api/ee/advanced-permissions/application/graph](#get-apieeadvanced-permissionsapplicationgraph)
+  - [PUT /api/ee/advanced-permissions/application/graph](#put-apieeadvanced-permissionsapplicationgraph)
+
+### `GET /api/ee/advanced-permissions/application/graph`
+
+Fetch a graph of Application Permissions.
+
+You must be a superuser to do this.
+
+### `PUT /api/ee/advanced-permissions/application/graph`
+
+Do a batch update of Application Permissions by passing a modified graph.
+
+You must be a superuser to do this.
+
+
 ## Automagic dashboards
 
   - [GET /api/automagic-dashboards/:entity/:entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-query)
@@ -338,9 +360,12 @@ Sets the order of bookmarks for user.
   - [GET /api/card/embeddable](#get-apicardembeddable)
   - [GET /api/card/public](#get-apicardpublic)
   - [POST /api/card/](#post-apicard)
+  - [POST /api/card/:card-id/persist](#post-apicardcard-idpersist)
   - [POST /api/card/:card-id/public_link](#post-apicardcard-idpublic_link)
   - [POST /api/card/:card-id/query](#post-apicardcard-idquery)
   - [POST /api/card/:card-id/query/:export-format](#post-apicardcard-idqueryexport-format)
+  - [POST /api/card/:card-id/refresh](#post-apicardcard-idrefresh)
+  - [POST /api/card/:card-id/unpersist](#post-apicardcard-idunpersist)
   - [POST /api/card/:id/copy](#post-apicardidcopy)
   - [POST /api/card/collections](#post-apicardcollections)
   - [POST /api/card/pivot/:card-id/query](#post-apicardpivotcard-idquery)
@@ -438,6 +463,17 @@ Create a new `Card`.
 
 *  **`display`** value must be a non-blank string.
 
+### `POST /api/card/:card-id/persist`
+
+Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
+  query in place of the model's query.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
+
 ### `POST /api/card/:card-id/public_link`
 
 Generate publicly-accessible links for this Card. Returns UUID to be used in public links. (If this Card has
@@ -478,6 +514,27 @@ Run the query associated with a Card, and return its results as a file in the sp
 *  **`export-format`** value must be one of: `api`, `csv`, `json`, `xlsx`.
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+### `POST /api/card/:card-id/refresh`
+
+Refresh the persisted model caching `card-id`.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
+
+### `POST /api/card/:card-id/unpersist`
+
+Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
+  query rather than the saved version of the query.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** value must be an integer greater than zero.
 
 ### `POST /api/card/:id/copy`
 
@@ -696,19 +753,21 @@ Fetch the root Collection's timelines.
 
 Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
+  ```
   [{:name     "A"
   :below    #{:card :dataset}
   :children [{:name "B"}
-  {:name     "C"
-  :here     #{:dataset :card}
-  :below    #{:dataset :card}
-  :children [{:name     "D"
-  :here     #{:dataset}
-  :children [{:name "E"}]}
-  {:name     "F"
-  :here     #{:card}
-  :children [{:name "G"}]}]}]}
+             {:name     "C"
+              :here     #{:dataset :card}
+              :below    #{:dataset :card}
+              :children [{:name     "D"
+                          :here     #{:dataset}
+                          :children [{:name "E"}]}
+                         {:name     "F"
+                          :here     #{:card}
+                          :children [{:name "G"}]}]}]}
   {:name "H"}]
+  ```
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below).
@@ -1166,9 +1225,11 @@ Update `Cards` on a Dashboard. Request body should have the form:
   - [GET /api/database/db-ids-with-deprecated-drivers](#get-apidatabasedb-ids-with-deprecated-drivers)
   - [POST /api/database/](#post-apidatabase)
   - [POST /api/database/:id/discard_values](#post-apidatabaseiddiscard_values)
+  - [POST /api/database/:id/persist](#post-apidatabaseidpersist)
   - [POST /api/database/:id/rescan_values](#post-apidatabaseidrescan_values)
   - [POST /api/database/:id/sync](#post-apidatabaseidsync)
   - [POST /api/database/:id/sync_schema](#post-apidatabaseidsync_schema)
+  - [POST /api/database/:id/unpersist](#post-apidatabaseidunpersist)
   - [POST /api/database/sample_database](#post-apidatabasesample_database)
   - [POST /api/database/validate](#post-apidatabasevalidate)
   - [PUT /api/database/:id](#put-apidatabaseid)
@@ -1383,6 +1444,16 @@ Discards all saved field values for this `Database`.
 
 *  **`id`**
 
+### `POST /api/database/:id/persist`
+
+Attempt to enable model persistence for a database. If already enabled returns a generic 204.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`id`**
+
 ### `POST /api/database/:id/rescan_values`
 
 Trigger a manual scan of the field values for this `Database`.
@@ -1402,6 +1473,16 @@ Update the metadata for this `Database`. This happens asynchronously.
 ### `POST /api/database/:id/sync_schema`
 
 Trigger a manual update of the schema metadata for this `Database`.
+
+##### PARAMS:
+
+*  **`id`**
+
+### `POST /api/database/:id/unpersist`
+
+Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.
+
+You must be a superuser to do this.
 
 ##### PARAMS:
 
@@ -2007,6 +2088,63 @@ Fetch a custom GeoJSON file as defined in the `custom-geojson` setting. (This ju
 *  **`raise`**
 
 
+## Gtap
+
+`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
+
+  - [DELETE /api/ee/sandbox/gtap/:id](#delete-apieesandboxgtapid)
+  - [GET /api/ee/sandbox/gtap/](#get-apieesandboxgtap)
+  - [GET /api/ee/sandbox/gtap/:id](#get-apieesandboxgtapid)
+  - [POST /api/ee/sandbox/gtap/](#post-apieesandboxgtap)
+  - [PUT /api/ee/sandbox/gtap/:id](#put-apieesandboxgtapid)
+
+### `DELETE /api/ee/sandbox/gtap/:id`
+
+Delete a GTAP entry.
+
+##### PARAMS:
+
+*  **`id`**
+
+### `GET /api/ee/sandbox/gtap/`
+
+Fetch a list of all the GTAPs currently in use.
+
+### `GET /api/ee/sandbox/gtap/:id`
+
+Fetch GTAP by `id`.
+
+##### PARAMS:
+
+*  **`id`**
+
+### `POST /api/ee/sandbox/gtap/`
+
+Create a new GTAP.
+
+##### PARAMS:
+
+*  **`table_id`** value must be an integer greater than zero.
+
+*  **`card_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+*  **`group_id`** value must be an integer greater than zero.
+
+*  **`attribute_remappings`**
+
+### `PUT /api/ee/sandbox/gtap/:id`
+
+Update a GTAP entry. The only things you're allowed to update for a GTAP are the Card being used (`card_id`) or the
+  paramter mappings; changing `table_id` or `group_id` would effectively be deleting this entry and creating a new
+  one. If that's what you want to do, do so explicity with appropriate calls to the `DELETE` and `POST` endpoints.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`card_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+
 ## Ldap
 
 /api/ldap endpoints.
@@ -2351,6 +2489,67 @@ Update a Permission Group membership. Returns the updated record.
 *  **`id`** 
 
 *  **`is_group_manager`** value must be a boolean.
+
+
+## Persist
+
+  - [GET /api/persist/](#get-apipersist)
+  - [GET /api/persist/:persisted-info-id](#get-apipersistpersisted-info-id)
+  - [GET /api/persist/card/:card-id](#get-apipersistcardcard-id)
+  - [POST /api/persist/disable](#post-apipersistdisable)
+  - [POST /api/persist/enable](#post-apipersistenable)
+  - [POST /api/persist/set-interval](#post-apipersistset-interval)
+
+### `GET /api/persist/`
+
+List the entries of [[PersistedInfo]] in order to show a status page.
+
+You must be a superuser to do this.
+
+### `GET /api/persist/:persisted-info-id`
+
+Fetch a particular [[PersistedInfo]] by id.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`persisted-info-id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+### `GET /api/persist/card/:card-id`
+
+Fetch a particular [[PersistedInfo]] by card-id.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`card-id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+### `POST /api/persist/disable`
+
+Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
+  that option from databases which might have it enabled, and delete all cached tables.
+
+You must be a superuser to do this.
+
+### `POST /api/persist/enable`
+
+Enable global setting to allow databases to persist models.
+
+You must be a superuser to do this.
+
+### `POST /api/persist/set-interval`
+
+Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`hours`** Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four
+
+*  **`_body`**
 
 
 ## Premium features
@@ -2821,6 +3020,27 @@ Update a Pulse with `id`.
 *  **`pulse-updates`**
 
 
+## Review
+
+  - [POST /api/ee/content-management/review/](#post-apieecontent-managementreview)
+
+### `POST /api/ee/content-management/review/`
+
+Create a new `ModerationReview`.
+
+You must be a superuser to do this.
+
+##### PARAMS:
+
+*  **`text`** value may be nil, or if non-nil, value must be a string.
+
+*  **`moderated_item_id`** value must be an integer greater than zero.
+
+*  **`moderated_item_type`** value must be one of: `:card`, `:dashboard`, `card`, `dashboard`.
+
+*  **`status`** value must be one of: ``, `verified`.
+
+
 ## Revision
 
   - [GET /api/revision/](#get-apirevision)
@@ -3211,10 +3431,36 @@ Update Slack related settings. You must be a superuser to do this. Also updates 
 *  **`slack-files-channel`** value may be nil, or if non-nil, value must be a non-blank string.
 
 
+## Sso
+
+`/auth/sso` Routes.
+
+  Implements the SSO routes needed for SAML and JWT. This namespace primarily provides hooks for those two backends so
+  we can have a uniform interface both via the API and code.
+
+  - [GET /api/ee/sso/sso/](#get-apieessosso)
+  - [POST /api/ee/sso/sso/](#post-apieessosso)
+
+### `GET /api/ee/sso/sso/`
+
+SSO entry-point for an SSO user that has not logged in yet.
+
+##### PARAMS:
+
+*  **`req`**
+
+### `POST /api/ee/sso/sso/`
+
+Route the SSO backends call with successful login details.
+
+##### PARAMS:
+
+*  **`req`**
+
+
 ## Table
 
-/api/table endpoints.
-
+  - [GET /api/ee/sandbox/table/:id/query_metadata](#get-apieesandboxtableidquery_metadata)
   - [GET /api/table/](#get-apitable)
   - [GET /api/table/:id](#get-apitableid)
   - [GET /api/table/:id/fks](#get-apitableidfks)
@@ -3227,6 +3473,22 @@ Update Slack related settings. You must be a superuser to do this. Also updates 
   - [PUT /api/table/](#put-apitable)
   - [PUT /api/table/:id](#put-apitableid)
   - [PUT /api/table/:id/fields/order](#put-apitableidfieldsorder)
+
+### `GET /api/ee/sandbox/table/:id/query_metadata`
+
+This endpoint essentially acts as a wrapper for the OSS version of this route. When a user has segmented permissions
+  that only gives them access to a subset of columns for a given table, those inaccessable columns should also be
+  excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
+  doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
+  information.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`include_hidden_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 ### `GET /api/table/`
 
@@ -3599,8 +3861,11 @@ Look up a database schema transform.
 
 ## User
 
-/api/user endpoints.
+`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature.
 
+  - [DELETE /api/ee/audit-app/user/:id/subscriptions](#delete-apieeaudit-appuseridsubscriptions)
+  - [GET /api/ee/sandbox/user/attributes](#get-apieesandboxuserattributes)
+  - [PUT /api/ee/sandbox/user/:id/attributes](#put-apieesandboxuseridattributes)
   - [DELETE /api/user/:id](#delete-apiuserid)
   - [GET /api/user/](#get-apiuser)
   - [GET /api/user/:id](#get-apiuserid)
@@ -3611,6 +3876,30 @@ Look up a database schema transform.
   - [PUT /api/user/:id/modal/:modal](#put-apiuseridmodalmodal)
   - [PUT /api/user/:id/password](#put-apiuseridpassword)
   - [PUT /api/user/:id/reactivate](#put-apiuseridreactivate)
+
+### `DELETE /api/ee/audit-app/user/:id/subscriptions`
+
+Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
+  Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user.
+
+##### PARAMS:
+
+*  **`id`**
+
+### `GET /api/ee/sandbox/user/attributes`
+
+Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
+  existing Users and returns those. .
+
+### `PUT /api/ee/sandbox/user/:id/attributes`
+
+Update the `login_attributes` for a User.
+
+##### PARAMS:
+
+*  **`id`** 
+
+*  **`login_attributes`** value must be a valid user attributes map (name -> value)
 
 ### `DELETE /api/user/:id`
 

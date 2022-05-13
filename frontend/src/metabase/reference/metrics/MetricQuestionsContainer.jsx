@@ -34,8 +34,7 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class MetricQuestionsContainer extends Component {
+class MetricQuestionsContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,
     location: PropTypes.object.isRequired,
@@ -76,3 +75,8 @@ export default class MetricQuestionsContainer extends Component {
     );
   }
 }
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(MetricQuestionsContainer);

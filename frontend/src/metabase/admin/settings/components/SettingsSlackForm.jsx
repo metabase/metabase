@@ -14,8 +14,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import _ from "underscore";
 import { t, jt } from "ttag";
 
-@connect(null, { updateSettings: updateSlackSettings })
-export default class SettingsSlackForm extends Component {
+class SettingsSlackForm extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -287,3 +286,7 @@ export default class SettingsSlackForm extends Component {
     );
   }
 }
+
+export default connect(null, { updateSettings: updateSlackSettings })(
+  SettingsSlackForm,
+);
