@@ -10,6 +10,7 @@ import TabContent from "metabase/core/components/TabContent";
 import TabPanel from "metabase/core/components/TabPanel";
 import TabList from "metabase/core/components/TabList";
 import Icon from "metabase/components/Icon";
+import FilterList from "../FilterList";
 import {
   ModalCloseButton,
   ModalContent,
@@ -44,7 +45,11 @@ const FilterModal = ({
           <Icon name="close" />
         </ModalCloseButton>
       </ModalHeader>
-      <ModalTabContent sections={sections} />
+      {sections.length === 1 ? (
+        <ModalSection section={sections[0]} />
+      ) : (
+        <ModalSectionList sections={sections} />
+      )}
       <ModalDivider />
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
@@ -54,11 +59,23 @@ const FilterModal = ({
   );
 };
 
-interface ModalTabContentProps {
+interface ModalSectionProps {
+  section: FilterSection;
+}
+
+const ModalSection = ({ section }: ModalSectionProps): JSX.Element => {
+  return (
+    <ModalContent>
+      <FilterList options={section.items} />
+    </ModalContent>
+  );
+};
+
+interface ModalSectionListProps {
   sections: FilterSection[];
 }
 
-const ModalTabContent = ({ sections }: ModalTabContentProps): JSX.Element => {
+const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
   const [tab, setTab] = useState(0);
 
   return (
@@ -73,9 +90,13 @@ const ModalTabContent = ({ sections }: ModalTabContentProps): JSX.Element => {
         </TabList>
       </ModalContent>
       <ModalDivider />
-      {sections.map((section, index) => (
-        <TabPanel key={index} value={index} />
-      ))}
+      <ModalContent>
+        {sections.map((section, index) => (
+          <TabPanel key={index} value={index}>
+            <FilterList options={section.items} />
+          </TabPanel>
+        ))}
+      </ModalContent>
     </TabContent>
   );
 };
