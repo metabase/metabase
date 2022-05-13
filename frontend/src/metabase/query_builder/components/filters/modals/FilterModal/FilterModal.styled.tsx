@@ -2,11 +2,12 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Ellipsified from "metabase/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import TabList from "metabase/core/components/TabList";
 
 export const ModalHeader = styled.div`
   display: flex;
   align-items: center;
-  padding: 2.5rem 2.5rem 1.75rem;
+  padding: 2rem 2rem 1.75rem;
 `;
 
 export const ModalHeaderTitle = styled(Ellipsified)`
@@ -22,13 +23,17 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
 `;
 
+export const ModalTabList = styled(TabList)`
+  margin: 0 2rem;
+`;
+
+export const ModalDivider = styled.div`
+  border-top: 1px solid ${color("border")};
+`;
+
 export const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
   padding: 1.5rem 2rem;
-`;
-
-export const ModalDivider = styled.div`
-  border-top: 1px solid ${color("border")};
 `;
