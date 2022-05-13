@@ -2,8 +2,10 @@ import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export interface FilterModalProps {
+  query: StructuredQuery;
   onClose?: () => void;
 }
 
