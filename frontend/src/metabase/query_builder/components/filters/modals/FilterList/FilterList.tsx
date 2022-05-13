@@ -1,6 +1,6 @@
 import React from "react";
 import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
-import { ListLabel, ListRow } from "./FilterList.styled";
+import { FilterLabel, FilterListRoot, FilterRow } from "./FilterList.styled";
 
 export interface FilterListProps {
   options: DimensionOption[];
@@ -8,13 +8,13 @@ export interface FilterListProps {
 
 const FilterList = ({ options }: FilterListProps): JSX.Element => {
   return (
-    <div>
+    <FilterListRoot>
       {options.map((option, index) => (
-        <ListRow key={index}>
-          <ListLabel>{option.dimension.displayName()}</ListLabel>
-        </ListRow>
+        <FilterRow key={index}>
+          <FilterLabel>{option.dimension.displayName()}</FilterLabel>
+        </FilterRow>
       ))}
-    </div>
+    </FilterListRoot>
   );
 };
 
