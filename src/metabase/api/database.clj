@@ -206,12 +206,11 @@
      filtered-dbs)))
 
 (defn- check-db-data-model-perms
-  [db include-editable-data-model?]
-  (if include-editable-data-model?
-    (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
-      (when (seq filtered-dbs)
-        (first filtered-dbs)))
-    db))
+  "Given a DB, checks that *current-user* has any data model editing perms for the DB. If yes, returns the DB,
+  with its tables also filtered by data model editing perms. If it does not, throws a permissions exception."
+  [db]
+  (let [filtered-dbs (filter-databases-by-data-model-perms [db])]
+    (api/check-403 (first filtered-dbs))))
 
 (defn- dbs-list
   [& {:keys [include-tables?
@@ -296,7 +295,8 @@
   "Add 'expanded' versions of the cron schedules strings for DB in a format that is appropriate for frontend
   consumption."
   [db]
-  (assoc db :schedules (expanded-schedules db)))
+  (when db
+    (assoc db :schedules (expanded-schedules db))))
 
 (defn- filter-sensitive-fields
   [fields]
@@ -307,15 +307,16 @@
   [db include]
   (if-not include
     db
-    (-> (hydrate db (case include
-                      "tables"        :tables
-                      "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
-        (update :tables (fn [tables]
-                          (cond->> tables
-                            ; filter hidden tables
-                            true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
-                            ; filter hidden fields
-                            (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
+    (when db
+     (-> (hydrate db (case include
+                       "tables"        :tables
+                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+         (update :tables (fn [tables]
+                           (cond->> tables
+                             ; filter hidden tables
+                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                             ; filter hidden fields
+                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields)))))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -334,10 +335,10 @@
         filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (api/check-404 (Database id))
       filter-by-data-access?       api/read-check
-      include-editable-data-model? (check-db-data-model-perms include-editable-data-model?)
       exclude-uneditable-details?  api/write-check
       true                         add-expanded-schedules
       true                         (get-database-hydrate-include include)
+      include-editable-data-model? check-db-data-model-perms
       mi/can-write?                secret/expand-db-details-inferred-secret-values)))
 
 
@@ -353,19 +354,12 @@
   []
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
-(defn- filter-tables-by-data-model-perms
-  [tables]
-  (if-let [f (u/ignore-exceptions
-              (classloader/require 'metabase-enterprise.advanced-permissions.common)
-              (resolve 'metabase-enterprise.advanced-permissions.common/filter-tables-by-data-model-perms))]
-    (f tables)
-    tables))
-
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
   (-> (if include-editable-data-model?
         (api/check-404 (Database id))
         (api/read-check Database id))
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
+      (#(if include-editable-data-model? (check-db-data-model-perms %) %))
       (update :tables (if include-hidden?
                         identity
                         (fn [tables]
@@ -373,15 +367,16 @@
                                (remove :visibility_type)
                                (map #(update % :fields filter-sensitive-fields))))))
       (update :tables (fn [tables]
-                        (if include-editable-data-model?
-                          (filter-tables-by-data-model-perms tables)
-                          (filter mi/can-read? tables))))
+                        (if-not include-editable-data-model?
+                          ;; If we're filtering by data model perms, table perm checks were already done by
+                          ;; check-db-data-model-perms
+                          (filter mi/can-read? tables)
+                          tables)))
       (update :tables (fn [tables]
                         (for [table tables]
                           (-> table
                               (update :segments (partial filter mi/can-read?))
-                              (update :metrics  (partial filter mi/can-read?))))))
-      (check-db-data-model-perms include-editable-data-model?)))
+                              (update :metrics  (partial filter mi/can-read?))))))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.

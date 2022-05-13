@@ -79,7 +79,7 @@
 ;;; |                                        Data model permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest fetch-databases-include-editable-data-model-test
+(deftest fetch-databases-test
   (testing "GET /api/database?include_editable_data_model=true"
     (letfn [(get-test-db
               ([] (get-test-db "database?include_editable_data_model=true"))
@@ -110,7 +110,19 @@
                                :tables
                                (map :id))))))))))
 
-(deftest fetch-database-metadata-exclude-uneditable-test
+(deftest fetch-database-test
+  (testing "GET /api/database/:id?include_editable_data_model=true"
+    (testing "A non-admin without data model perms for a DB cannot fetch the DB when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :write :schemas :all}
+                                           :data-model {:schemas :none}}}
+        (mt/user-http-request :rasta :get 403 (format "database/%d?include_editable_data_model=true" (mt/id)))))
+
+    (testing "A non-admin with only data model perms for a DB can fetch the DB when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
+                                           :data-model {:schemas :all}}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d?include_editable_data_model=true" (mt/id)))))))
+
+(deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata?include_editable_data_model=true"
     (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
       (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
