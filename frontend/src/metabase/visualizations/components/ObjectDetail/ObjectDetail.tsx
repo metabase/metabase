@@ -56,6 +56,12 @@ import {
   ErrorWrapper,
   EditingFormContainer,
 } from "./ObjectDetail.styled";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import {
+  deleteRowFromObjectDetail,
+  DeleteRowPayload,
+} from "metabase/writeback/actions";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
@@ -93,6 +99,8 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
+  deleteRowFromObjectDetail: (payload: DeleteRowPayload) =>
+    dispatch(deleteRowFromObjectDetail(payload)),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
@@ -113,6 +121,7 @@ export interface ObjectDetailProps {
   isWritebackEnabled: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
+  deleteRowFromObjectDetail: (opts: DeleteRowPayload) => void;
   fetchTableFks: (id: number) => void;
   loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
   followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
@@ -125,6 +134,7 @@ export function ObjectDetailFn({
   data,
   question,
   table,
+  deleteRowFromObjectDetail,
   zoomedRow,
   zoomedRowID,
   tableForeignKeys,
@@ -248,6 +258,15 @@ export function ObjectDetailFn({
   );
   const canEdit = !!(isWritebackEnabled && table);
 
+  let deleteRow;
+  if (canEdit) {
+    deleteRow = () =>
+      deleteRowFromObjectDetail({
+        id: zoomedRowID,
+        table,
+      });
+  }
+
   return (
     <Modal
       isOpen
@@ -270,6 +289,7 @@ export function ObjectDetailFn({
               canZoomNextRow={canZoomNextRow}
               isEditing={isEditing}
               canEdit={canEdit}
+              deleteRow={deleteRow}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
               closeObjectDetail={closeObjectDetail}
@@ -309,6 +329,7 @@ export interface ObjectDetailHeaderProps {
   canZoomNextRow: boolean;
   isEditing: boolean;
   canEdit: boolean;
+  deleteRow?: () => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -323,11 +344,13 @@ export function ObjectDetailHeader({
   canZoomNextRow,
   isEditing,
   canEdit,
+  deleteRow,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
   onToggleEditingModeClick,
 }: ObjectDetailHeaderProps): JSX.Element {
+  const deleteRowModal = React.useRef() as any;
   return (
     <div className="Grid border-bottom relative">
       <div className="Grid-cell">
@@ -338,14 +361,38 @@ export function ObjectDetailHeader({
       </div>
       <div className="flex align-center">
         {canEdit && (
-          <Button
-            className="mr1"
-            icon={isEditing ? "eye" : "pencil"}
-            onClick={onToggleEditingModeClick}
-            iconSize={20}
-            onlyIcon
-            borderless
-          />
+          <>
+            {deleteRow ? (
+              <ModalWithTrigger
+                ref={deleteRowModal}
+                triggerElement={
+                  <Button
+                    className="mr1"
+                    icon={"trash"}
+                    iconSize={20}
+                    onlyIcon
+                    borderless
+                  />
+                }
+              >
+                <ConfirmContent
+                  title={t`Delete row`}
+                  content={""}
+                  onClose={() => deleteRowModal.current.toggle()}
+                  onAction={() => deleteRow()}
+                />
+              </ModalWithTrigger>
+            ) : null}
+
+            <Button
+              className="mr1"
+              icon={isEditing ? "eye" : "pencil"}
+              onClick={onToggleEditingModeClick}
+              iconSize={20}
+              onlyIcon
+              borderless
+            />
+          </>
         )}
         <div className="flex p2">
           {!!canZoom && (
