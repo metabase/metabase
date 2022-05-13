@@ -71,17 +71,17 @@
                 slack/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name "Test"]
       (let [stats (anonymous-usage-stats)]
-        (doseq [[k expected] {:running_on        :unknown
-                              :check_for_updates true
-                              :site_name         true
-                              :friendly_names    false
-                              :email_configured  false
-                              :slack_configured  false
-                              :sso_configured    false
-                              :has_sample_data   false}]
-          (testing k
-            (is (= expected
-                   (get stats k)))))))))
+        (is (partial= {:running_on        :unknown
+                       :check_for_updates true
+                       :site_name         true
+                       :friendly_names    false
+                       :email_configured  false
+                       :slack_configured  false
+                       :sso_configured    false
+                       :has_sample_data   false}
+                      stats))
+        (is (number? (:startup_time_millis stats)))
+        (is (pos? (:startup_time_millis stats)))))))
 
 (deftest conversion-test
   (is (= #{true}

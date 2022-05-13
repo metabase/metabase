@@ -38,12 +38,9 @@
 
 (defn start!
   []
-  (when-not @initialized?
-    (init!))
   (server/start-web-server! #'handler/app)
-  (mdb/setup-db!)
-  (plugins/load-plugins!)
-  (init-status/set-complete!))
+  (when-not @initialized?
+    (init!)))
 
 (defn stop!
   []
