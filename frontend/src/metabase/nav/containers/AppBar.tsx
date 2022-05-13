@@ -11,12 +11,15 @@ import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
 
-import { EmbedOptions, State } from "metabase-types/store";
+import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
+import {
+  getIsNewButtonVisible,
+  getIsSearchVisible,
+} from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
-import { IFRAMED, isSmallScreen } from "metabase/lib/dom";
-import { getEmbedOptions } from "metabase/selectors/embed";
+import { isSmallScreen } from "metabase/lib/dom";
 
 import {
   AppBarRoot,
@@ -30,18 +33,19 @@ import {
 } from "./AppBar.styled";
 
 type Props = {
-  isNavbarOpen: boolean;
-  isEmbedded: boolean;
-  embedOptions: EmbedOptions;
+  isNavBarOpen: boolean;
+  isNavBarVisible: boolean;
+  isSearchVisible: boolean;
+  isNewButtonVisible: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
 
 function mapStateToProps(state: State) {
   return {
-    isNavbarOpen: getIsNavbarOpen(state),
-    isEmbedded: IFRAMED,
-    embedOptions: getEmbedOptions(state),
+    isNavBarOpen: getIsNavbarOpen(state),
+    isSearchVisible: getIsSearchVisible(state),
+    isNewButtonVisible: getIsNewButtonVisible(state),
   };
 }
 
@@ -59,16 +63,14 @@ function HomepageLink({ handleClick }: { handleClick: () => void }) {
 }
 
 function AppBar({
-  isNavbarOpen,
-  isEmbedded,
-  embedOptions,
+  isNavBarOpen,
+  isNavBarVisible,
+  isSearchVisible,
+  isNewButtonVisible,
   toggleNavbar,
   closeNavbar,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
-  const hasSearch = !isEmbedded || embedOptions.search;
-  const hasNewButton = !isEmbedded || embedOptions.new_button;
-  const hasSidebar = !isEmbedded || embedOptions.side_nav;
 
   const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
@@ -90,23 +92,26 @@ function AppBar({
   }, []);
 
   const sidebarButtonTooltip = useMemo(() => {
-    const message = isNavbarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
     const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
     return `${message} ${shortcut}`;
-  }, [isNavbarOpen]);
+  }, [isNavBarOpen]);
 
   return (
     <AppBarRoot>
-      <LeftContainer isLogoActive={!hasSidebar} isSearchActive={isSearchActive}>
+      <LeftContainer
+        isLogoActive={!isNavBarVisible}
+        isSearchActive={isSearchActive}
+      >
         <HomepageLink handleClick={onLogoClick} />
-        {hasSidebar && (
+        {isNavBarVisible && (
           <SidebarButtonContainer>
             <Tooltip
               tooltip={sidebarButtonTooltip}
               isEnabled={!isSmallScreen()}
             >
               <SidebarButton
-                isSidebarOpen={isNavbarOpen}
+                isSidebarOpen={isNavBarOpen}
                 onClick={toggleNavbar}
               />
             </Tooltip>
@@ -118,9 +123,9 @@ function AppBar({
           <HomepageLink handleClick={onLogoClick} />
         </MiddleContainer>
       )}
-      {(hasSearch || hasNewButton) && (
+      {(isSearchVisible || isNewButtonVisible) && (
         <RightContainer>
-          {hasSearch && (
+          {isSearchVisible && (
             <SearchBarContainer>
               <SearchBarContent>
                 <SearchBar
@@ -130,7 +135,7 @@ function AppBar({
               </SearchBarContent>
             </SearchBarContainer>
           )}
-          {hasNewButton && <NewButton />}
+          {isNewButtonVisible && <NewButton />}
         </RightContainer>
       )}
     </AppBarRoot>
