@@ -1,7 +1,7 @@
-import * as api from "metabase/writeback/api";
+import { MetabaseApi } from "metabase/services";
+import Table from "metabase-lib/lib/metadata/Table";
 import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import { closeObjectDetail } from "metabase/query_builder/actions/object-detail";
-import Table from "metabase-lib/lib/metadata/Table";
 
 export type DeleteRowPayload = {
   table: Table;
@@ -19,12 +19,12 @@ export const deleteRowFromObjectDetail = (payload: DeleteRowPayload) => {
     }
 
     const pk = field.isNumeric() && typeof id === "string" ? parseInt(id) : id;
-    const result = await api.deleteRow({
+    const result = await MetabaseApi.actions.deleteRow({
       type: "query",
       database: table.db_id,
       query: {
         "source-table": table.id,
-        filter: ["=", ["field", field.id, null], pk],
+        filter: ["=", field.reference(), pk],
       },
     });
 

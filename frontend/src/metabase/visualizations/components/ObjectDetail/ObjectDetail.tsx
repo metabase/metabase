@@ -56,12 +56,11 @@ import {
   ErrorWrapper,
   EditingFormContainer,
 } from "./ObjectDetail.styled";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import ConfirmContent from "metabase/components/ConfirmContent";
 import {
   deleteRowFromObjectDetail,
   DeleteRowPayload,
 } from "metabase/writeback/actions";
+import ActionHeader from "metabase/writeback/components/ObjectDetails/ActionHeader";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
@@ -222,6 +221,17 @@ export function ObjectDetailFn({
     [zoomedRowID, followForeignKey],
   );
 
+  const canEdit = !!(isWritebackEnabled && table);
+  const deleteRow = React.useMemo(() => {
+    if (canEdit) {
+      return () =>
+        deleteRowFromObjectDetail({
+          id: zoomedRowID,
+          table,
+        });
+    }
+  }, [canEdit, zoomedRowID, table, deleteRowFromObjectDetail]);
+
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: { [key: string]: () => void } = {
       ArrowUp: viewPreviousObjectDetail,
@@ -256,16 +266,6 @@ export function ObjectDetailFn({
     !!tableForeignKeys.length &&
     hasPk
   );
-  const canEdit = !!(isWritebackEnabled && table);
-
-  let deleteRow;
-  if (canEdit) {
-    deleteRow = () =>
-      deleteRowFromObjectDetail({
-        id: zoomedRowID,
-        table,
-      });
-  }
 
   return (
     <Modal
@@ -350,7 +350,6 @@ export function ObjectDetailHeader({
   closeObjectDetail,
   onToggleEditingModeClick,
 }: ObjectDetailHeaderProps): JSX.Element {
-  const deleteRowModal = React.useRef() as any;
   return (
     <div className="Grid border-bottom relative">
       <div className="Grid-cell">
@@ -361,38 +360,11 @@ export function ObjectDetailHeader({
       </div>
       <div className="flex align-center">
         {canEdit && (
-          <>
-            {deleteRow ? (
-              <ModalWithTrigger
-                ref={deleteRowModal}
-                triggerElement={
-                  <Button
-                    className="mr1"
-                    icon={"trash"}
-                    iconSize={20}
-                    onlyIcon
-                    borderless
-                  />
-                }
-              >
-                <ConfirmContent
-                  title={t`Delete row`}
-                  content={""}
-                  onClose={() => deleteRowModal.current.toggle()}
-                  onAction={() => deleteRow()}
-                />
-              </ModalWithTrigger>
-            ) : null}
-
-            <Button
-              className="mr1"
-              icon={isEditing ? "eye" : "pencil"}
-              onClick={onToggleEditingModeClick}
-              iconSize={20}
-              onlyIcon
-              borderless
-            />
-          </>
+          <ActionHeader
+            isEditing={isEditing}
+            deleteRow={deleteRow}
+            onToggleEditingModeClick={onToggleEditingModeClick}
+          />
         )}
         <div className="flex p2">
           {!!canZoom && (
