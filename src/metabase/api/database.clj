@@ -653,11 +653,11 @@
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (Database id)]
+    (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
@@ -678,8 +678,8 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/let-404 [database (Database id)]
+    (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
