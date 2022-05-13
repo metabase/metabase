@@ -121,6 +121,7 @@
          (endpoint-docs ep-data)))
 
 (defn ee?
+  "Is the endpoint a premium feature?"
   [ep-data]
   (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))
 
@@ -177,6 +178,8 @@
       (spit file contents))))
 
 (defn delete-dir-recur
+  "Used to clear the API directory for rebuilding docs from scratch
+  so we don't orphan files."
   [f]
   (when (.isDirectory f)
     (run! delete-dir-recur (.listFiles f)))
