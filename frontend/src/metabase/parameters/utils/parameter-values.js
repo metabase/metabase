@@ -42,8 +42,9 @@ export function getParameterValueFromQueryParams(
 }
 
 export function parseParameterValue(value, parameter) {
-  if (Array.isArray(parameter.fields) && parameter.fields.length > 0) {
-    return parseParameterValueForFields(value, parameter.fields);
+  const { fields } = parameter;
+  if (Array.isArray(fields) && fields.length > 0) {
+    return parseParameterValueForFields(value, fields);
   }
 
   const type = getParameterType(parameter);
