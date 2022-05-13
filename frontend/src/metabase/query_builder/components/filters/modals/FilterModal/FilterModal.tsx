@@ -83,7 +83,11 @@ const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
       <ModalContent>
         <TabList>
           {sections.map((section, index) => (
-            <Tab key={index} value={index}>
+            <Tab
+              key={index}
+              value={index}
+              icon={index > 0 ? section.icon : undefined}
+            >
               {section.name}
             </Tab>
           ))}
