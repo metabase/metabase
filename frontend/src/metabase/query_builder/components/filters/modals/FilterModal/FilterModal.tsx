@@ -1,14 +1,13 @@
-import React, { useState } from "react";
+import React from "react";
 import { t } from "ttag";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import Button from "metabase/core/components/Button";
-import ModalContent from "metabase/components/ModalContent";
-import TabContent from "metabase/core/components/TabContent";
-import TabList from "metabase/core/components/TabList";
-import Tab from "metabase/core/components/Tab";
-import TabPanel from "metabase/core/components/TabPanel";
-import FilterList from "../FilterList";
+import Icon from "metabase/components/Icon";
+import {
+  ModalCloseButton,
+  ModalHeader,
+  ModalHeaderTitle,
+} from "./FilterModal.styled";
 
 export interface FilterModalProps {
   question: Question;
@@ -19,53 +18,29 @@ const FilterModal = ({
   question,
   onClose,
 }: FilterModalProps): JSX.Element | null => {
+  const title = getTitle(question);
   const query = question.query();
+
   if (!(query instanceof StructuredQuery)) {
     return null;
   }
 
   return (
-    <ModalContent
-      title={t`Filter`}
-      footer={[
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button key="submit" primary onClick={onClose}>{t`Apply`}</Button>,
-      ]}
-      onClose={onClose}
-    >
-      <FilterModalBody query={query} />
-    </ModalContent>
+    <div>
+      <ModalHeader>
+        <ModalHeaderTitle>{title}</ModalHeaderTitle>
+        <ModalCloseButton onClick={onClose}>
+          <Icon name="close" />
+        </ModalCloseButton>
+      </ModalHeader>
+    </div>
   );
 };
 
-interface FilterModalBodyProps {
-  query: StructuredQuery;
-}
-
-const FilterModalBody = ({ query }: FilterModalBodyProps): JSX.Element => {
-  const [tab, setTab] = useState(0);
-  const sections = query.topLevelFilterFieldOptionSections();
-
-  return (
-    <TabContent value={tab} onChange={setTab}>
-      <TabList>
-        {sections.map((section, index) => (
-          <Tab
-            key={index}
-            value={index}
-            icon={index > 0 ? section.icon : undefined}
-          >
-            {section.name}
-          </Tab>
-        ))}
-      </TabList>
-      {sections.map((section, index) => (
-        <TabPanel key={index} value={index}>
-          <FilterList options={section.items} />
-        </TabPanel>
-      ))}
-    </TabContent>
-  );
+const getTitle = (question: Question) => {
+  return question.isSaved()
+    ? t`Filter ${question.displayName()}`
+    : t`Filter data`;
 };
 
 export default FilterModal;
