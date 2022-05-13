@@ -1,5 +1,6 @@
 import React, { forwardRef, ReactNode, Ref, useMemo } from "react";
 import TabGroupContext, { TabGroupContextType } from "./TabGroupContext";
+import { TabGroupRoot } from "./TabGroup.styled";
 
 export interface TabGroupProps<T> {
   value?: T;
@@ -16,11 +17,11 @@ const TabGroup = forwardRef(function TabGroup<T>(
   }, [value, onChange]);
 
   return (
-    <div ref={ref}>
+    <TabGroupRoot ref={ref}>
       <TabGroupContext.Provider value={context}>
         {children}
       </TabGroupContext.Provider>
-    </div>
+    </TabGroupRoot>
   );
 });
 
