@@ -13,7 +13,7 @@
   "reporterOptions": {
     "reportDir": "cypress/reports/mochareports",
     "reportFilename": "[status]-[name]",
-    "quite": true,
+    "quiet": true,
     "overwrite": false,
     "html": false,
     "json": true
