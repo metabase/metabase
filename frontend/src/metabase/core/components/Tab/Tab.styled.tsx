@@ -11,7 +11,7 @@ export const TabRoot = styled.button<TabProps>`
   align-items: center;
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
   cursor: pointer;
-  padding: 0.75rem 0;
+  padding-bottom: 0.75rem;
   border-bottom: 0.125rem solid
     ${props => (props.isSelected ? color("brand") : "transparent")};
 

@@ -59,6 +59,13 @@ export const STRUCTURED_QUERY_TEMPLATE = {
     "source-table": null,
   },
 };
+
+export interface FilterSection {
+  name: string;
+  icon: string;
+  items: FieldDimension[];
+}
+
 /**
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
@@ -853,7 +860,10 @@ class StructuredQueryInner extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(filter = null, stages = 2) {
+  topLevelFilterFieldOptionSections(
+    filter = null,
+    stages = 2,
+  ): FilterSection[] {
     const queries = this.queries().slice(-stages);
 
     // allow post-aggregation filtering

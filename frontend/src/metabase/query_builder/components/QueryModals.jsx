@@ -157,7 +157,7 @@ export default class QueryModals extends React.Component {
       </Modal>
     ) : modal === MODAL_TYPES.FILTERS ? (
       <Modal onClose={onCloseModal}>
-        <FilterModal onClose={onCloseModal} />
+        <FilterModal question={question} onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
       <Modal onClose={onCloseModal}>

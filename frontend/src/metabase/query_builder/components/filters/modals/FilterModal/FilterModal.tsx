@@ -1,15 +1,25 @@
 import React from "react";
 import { t } from "ttag";
+import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Button from "metabase/core/components/Button";
 import ModalContent from "metabase/components/ModalContent";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import FilterEditor from "metabase/query_builder/components/filters/modals/FilterEditor";
 
 export interface FilterModalProps {
-  query: StructuredQuery;
+  question: Question;
   onClose?: () => void;
 }
 
-const FilterModal = ({ onClose }: FilterModalProps): JSX.Element => {
+const FilterModal = ({
+  question,
+  onClose,
+}: FilterModalProps): JSX.Element | null => {
+  const query = question.query();
+  if (!(query instanceof StructuredQuery)) {
+    return null;
+  }
+
   return (
     <ModalContent
       title={t`Filter`}
@@ -18,7 +28,9 @@ const FilterModal = ({ onClose }: FilterModalProps): JSX.Element => {
         <Button key="submit" primary onClick={onClose}>{t`Apply`}</Button>,
       ]}
       onClose={onClose}
-    />
+    >
+      <FilterEditor query={query} />
+    </ModalContent>
   );
 };
 
