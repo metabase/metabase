@@ -84,6 +84,20 @@ export const getIsNavBarVisible = createSelector(
   },
 );
 
+export const getIsSearchVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => {
+    return !isEmbedded || embedOptions.search;
+  },
+);
+
+export const getIsNewButtonVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => {
+    return !isEmbedded || embedOptions.new_button;
+  },
+);
+
 export const getErrorPage = (state: State) => {
   return state.app.errorPage;
 };

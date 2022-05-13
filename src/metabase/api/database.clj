@@ -598,7 +598,7 @@
                                   (sync.schedules/schedule-map->cron-strings
                                     (if (:let-user-control-scheduling details)
                                       (sync.schedules/scheduling schedules)
-                                      (sync.schedules/default-schedule)))
+                                      (sync.schedules/default-randomized-schedule)))
                                   (when (some? auto_run_queries)
                                     {:auto_run_queries auto_run_queries}))))
         (events/publish-event! :database-create <>)
@@ -653,11 +653,11 @@
   "Attempt to enable model persistence for a database. If already enabled returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/check (public-settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
   (api/let-404 [database (Database id)]
+    (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       ;; todo: some other response if already persisted?
       api/generic-204-no-content
@@ -678,8 +678,8 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [id]
   {:id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/let-404 [database (Database id)]
+    (api/write-check database)
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
@@ -740,7 +740,7 @@
                                                    (and (get-in existing-database [:details :let-user-control-scheduling])
                                                         (not (:let-user-control-scheduling details)))
 
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-schedule))
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/default-randomized-schedule))
 
                                                    ;; if user is controlling schedules
                                                    (:let-user-control-scheduling details)

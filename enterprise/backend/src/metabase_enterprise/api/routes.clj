@@ -15,7 +15,7 @@
   ;; The following routes are NAUGHTY and do not follow the naming convention (i.e., they do not start with
   ;; `/ee/<feature>/`).
   ;;
-  ;; TODO -- Please fix them!
+  ;; TODO -- Please fix them! See #22687
   content-management/routes
   sandbox/routes
   ;; The following routes are NICE and do follow the `/ee/<feature>/` naming convention. Please add new routes here
