@@ -7,6 +7,7 @@ import Base from "./Base";
 import { singularize } from "metabase/lib/formatting";
 import { getAggregationOperators } from "metabase/lib/schema_metadata";
 import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
+import Field from "./Field";
 
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
@@ -24,6 +25,7 @@ class TableInner extends Base {
   display_name: string;
   schema_name: string;
   db_id: number;
+  fields: Field[];
 
   hasSchema() {
     return (this.schema_name && this.db && this.db.schemas.length > 1) || false;

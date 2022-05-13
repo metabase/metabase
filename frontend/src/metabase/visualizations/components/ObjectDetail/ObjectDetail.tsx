@@ -4,9 +4,10 @@ import { t } from "ttag";
 
 import Question from "metabase-lib/lib/Question";
 import { isPK } from "metabase/lib/schema_metadata";
-import { Table } from "metabase-types/types/Table";
+import Table from "metabase-lib/lib/metadata/Table";
 
 import { ForeignKey } from "metabase-types/api/foreignKey";
+import { State } from "metabase-types/store";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
@@ -36,6 +37,9 @@ import {
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
+import WritebackForm from "metabase/writeback/containers/WritebackForm";
+import { getWritebackEnabled } from "metabase/writeback/selectors";
+
 import {
   getObjectName,
   getDisplayId,
@@ -50,9 +54,10 @@ import {
   ObjectIdLabel,
   CloseButton,
   ErrorWrapper,
+  EditingFormContainer,
 } from "./ObjectDetail.styled";
 
-const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
@@ -74,6 +79,7 @@ const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
     canZoom: isZooming && !!zoomedRow,
     canZoomPreviousRow,
     canZoomNextRow,
+    isWritebackEnabled: getWritebackEnabled(state),
   };
 };
 
@@ -104,6 +110,7 @@ export interface ObjectDetailProps {
   canZoom: boolean;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
+  isWritebackEnabled: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   fetchTableFks: (id: number) => void;
@@ -126,6 +133,7 @@ export function ObjectDetailFn({
   canZoom,
   canZoomPreviousRow,
   canZoomNextRow,
+  isWritebackEnabled,
   onVisualizationClick,
   visualizationIsClickable,
   fetchTableFks,
@@ -134,8 +142,10 @@ export function ObjectDetailFn({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  ...rest
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const prevZoomedRowId = usePrevious(zoomedRowID);
   const prevData = usePrevious(data);
   const prevTableForeignKeys = usePrevious(tableForeignKeys);
@@ -236,6 +246,7 @@ export function ObjectDetailFn({
     !!tableForeignKeys.length &&
     hasPk
   );
+  const canEdit = !!(isWritebackEnabled && table);
 
   return (
     <Modal
@@ -257,22 +268,33 @@ export function ObjectDetailFn({
               objectId={displayId}
               canZoomPreviousRow={canZoomPreviousRow}
               canZoomNextRow={canZoomNextRow}
+              isEditing={isEditing}
+              canEdit={canEdit}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
               closeObjectDetail={closeObjectDetail}
+              onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
             />
-            <ObjectDetailBody
-              data={data}
-              objectName={objectName}
-              zoomedRow={zoomedRow ?? []}
-              settings={settings}
-              hasRelationships={hasRelationships}
-              onVisualizationClick={onVisualizationClick}
-              visualizationIsClickable={visualizationIsClickable}
-              tableForeignKeys={tableForeignKeys}
-              tableForeignKeyReferences={tableForeignKeyReferences}
-              followForeignKey={onFollowForeignKey}
-            />
+            <ObjectDetailBodyWrapper>
+              {isEditing && table ? (
+                <EditingFormContainer>
+                  <WritebackForm table={table} row={zoomedRow} isModal />
+                </EditingFormContainer>
+              ) : (
+                <ObjectDetailBody
+                  data={data}
+                  objectName={objectName}
+                  zoomedRow={zoomedRow ?? []}
+                  settings={settings}
+                  hasRelationships={hasRelationships}
+                  onVisualizationClick={onVisualizationClick}
+                  visualizationIsClickable={visualizationIsClickable}
+                  tableForeignKeys={tableForeignKeys}
+                  tableForeignKeyReferences={tableForeignKeyReferences}
+                  followForeignKey={onFollowForeignKey}
+                />
+              )}
+            </ObjectDetailBodyWrapper>
           </div>
         )}
       </ObjectDetailModal>
@@ -285,9 +307,12 @@ export interface ObjectDetailHeaderProps {
   objectId: ObjectId | null | unknown;
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
+  isEditing: boolean;
+  canEdit: boolean;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
+  onToggleEditingModeClick: () => void;
 }
 
 export function ObjectDetailHeader({
@@ -296,9 +321,12 @@ export function ObjectDetailHeader({
   objectId,
   canZoomPreviousRow,
   canZoomNextRow,
+  isEditing,
+  canEdit,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
+  onToggleEditingModeClick,
 }: ObjectDetailHeaderProps): JSX.Element {
   return (
     <div className="Grid border-bottom relative">
@@ -309,6 +337,16 @@ export function ObjectDetailHeader({
         </h2>
       </div>
       <div className="flex align-center">
+        {canEdit && (
+          <Button
+            className="mr1"
+            icon={isEditing ? "eye" : "pencil"}
+            onClick={onToggleEditingModeClick}
+            iconSize={20}
+            onlyIcon
+            borderless
+          />
+        )}
         <div className="flex p2">
           {!!canZoom && (
             <>
@@ -377,7 +415,7 @@ export function ObjectDetailBody({
   followForeignKey,
 }: ObjectDetailBodyProps): JSX.Element {
   return (
-    <ObjectDetailBodyWrapper>
+    <>
       <DetailsTable
         data={data}
         zoomedRow={zoomedRow}
@@ -393,7 +431,7 @@ export function ObjectDetailBody({
           foreignKeyClicked={followForeignKey}
         />
       )}
-    </ObjectDetailBodyWrapper>
+    </>
   );
 }
 
