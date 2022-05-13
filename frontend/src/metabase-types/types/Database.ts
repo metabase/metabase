@@ -20,6 +20,10 @@ export type DatabaseDetails = {
   [key: string]: any;
 };
 
+export type DatabaseSettings = {
+  [key: string]: any;
+};
+
 export type DatabaseEngine = string;
 
 export type DatabaseNativePermission = "write" | "read";
@@ -32,6 +36,7 @@ export type Database = {
   tables: Table[];
 
   details: DatabaseDetails;
+  settings?: DatabaseSettings | null;
   engine: DatabaseType;
   features: DatabaseFeature[];
   is_full_sync: boolean;
