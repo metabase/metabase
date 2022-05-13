@@ -21,15 +21,15 @@ const Tab = forwardRef(function Tab<T>(
   { value, icon, children, onClick, ...props }: TabProps<T>,
   ref: Ref<HTMLButtonElement>,
 ) {
-  const { value: groupValue, onChange } = useContext(TabContext);
-  const isSelected = value === groupValue;
+  const context = useContext(TabContext);
+  const isSelected = value === context.value;
 
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
-      onChange?.(value);
+      context.onChange?.(value);
     },
-    [value, onClick, onChange],
+    [value, context, onClick],
   );
 
   return (
