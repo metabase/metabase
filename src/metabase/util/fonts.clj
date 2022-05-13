@@ -4,15 +4,9 @@
             [clojure.tools.logging :as log]
             [metabase.util.files :as u.files]))
 
-(def font-path "./resources/frontend_client/app/fonts/")
-
-(defn- partial-file-name
-  "Helper function that "
-  [parent-path path]
-  (-> (str path)
-      (str/replace (str parent-path "/") "")
-      (str/split #"-")
-      first))
+(def font-path
+  "font resources path as a String."
+  "./resources/frontend_client/app/fonts/")
 
 (defn- normalize-font-dirname
   "Use a font's directory to derive a Display Name.
