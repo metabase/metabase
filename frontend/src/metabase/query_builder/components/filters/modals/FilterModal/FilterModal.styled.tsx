@@ -28,3 +28,7 @@ export const ModalFooter = styled.div`
   gap: 1rem;
   padding: 1.5rem 2rem;
 `;
+
+export const ModalDivider = styled.div`
+  border-top: 1px solid ${color("border")};
+`;

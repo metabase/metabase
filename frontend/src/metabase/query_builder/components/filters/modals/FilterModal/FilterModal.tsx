@@ -6,6 +6,7 @@ import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import {
   ModalCloseButton,
+  ModalDivider,
   ModalFooter,
   ModalHeader,
   ModalHeaderTitle,
@@ -35,6 +36,7 @@ const FilterModal = ({
           <Icon name="close" />
         </ModalCloseButton>
       </ModalHeader>
+      <ModalDivider />
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button primary onClick={onClose}>{t`Apply`}</Button>
