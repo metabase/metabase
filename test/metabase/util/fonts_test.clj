@@ -30,7 +30,7 @@
 (deftest available-fonts-test
   (let [fonts (u.fonts/available-fonts)]
     (testing "A list of available fonts is returned"
-      (seq fonts))
+      (is (seq fonts)))
     (testing "Only directories with font files are included."
       (let [dirs (conj
                   (u.files/files-seq (u.files/get-path fonts/font-path))
