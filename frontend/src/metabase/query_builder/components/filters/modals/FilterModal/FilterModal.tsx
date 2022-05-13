@@ -2,9 +2,11 @@ import React from "react";
 import { t } from "ttag";
 import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import {
   ModalCloseButton,
+  ModalFooter,
   ModalHeader,
   ModalHeaderTitle,
 } from "./FilterModal.styled";
@@ -33,6 +35,10 @@ const FilterModal = ({
           <Icon name="close" />
         </ModalCloseButton>
       </ModalHeader>
+      <ModalFooter>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button primary onClick={onClose}>{t`Apply`}</Button>
+      </ModalFooter>
     </div>
   );
 };

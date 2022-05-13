@@ -21,3 +21,10 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
   flex: 0 0 auto;
   color: ${color("text-light")};
 `;
+
+export const ModalFooter = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+`;
