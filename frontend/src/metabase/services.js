@@ -343,6 +343,10 @@ export const MetabaseApi = {
     // this prevents the `endpoint` parameter from being URL encoded
     raw: { endpoint: true },
   }),
+
+  actions: {
+    deleteRow: POST("/api/actions/row/delete"),
+  },
 };
 
 export const ModerationReviewApi = {
