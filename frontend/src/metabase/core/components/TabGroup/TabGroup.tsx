@@ -17,7 +17,7 @@ const TabGroup = forwardRef(function TabGroup<T>(
   }, [value, onChange]);
 
   return (
-    <TabGroupRoot ref={ref}>
+    <TabGroupRoot ref={ref} role="tablist">
       <TabGroupContext.Provider value={context}>
         {children}
       </TabGroupContext.Provider>

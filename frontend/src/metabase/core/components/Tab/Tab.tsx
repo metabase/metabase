@@ -13,17 +13,16 @@ import { TabIcon, TabLabel, TabRoot } from "./Tab.styled";
 export interface TabProps<T> extends HTMLAttributes<HTMLButtonElement> {
   value?: T;
   icon?: string;
-  isSelected?: boolean;
   children?: ReactNode;
   onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 const Tab = forwardRef(function Tab<T>(
-  { value, icon, isSelected, children, onClick, ...props }: TabProps<T>,
+  { value, icon, children, onClick, ...props }: TabProps<T>,
   ref: Ref<HTMLButtonElement>,
 ) {
   const { value: groupValue, onChange } = useContext(TabGroupContext);
-  const isSelectedInGroup = value === groupValue;
+  const isSelected = value === groupValue;
 
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -37,7 +36,9 @@ const Tab = forwardRef(function Tab<T>(
     <TabRoot
       {...props}
       ref={ref}
-      isSelected={isSelected || isSelectedInGroup}
+      role="tab"
+      isSelected={isSelected}
+      aria-selected={isSelected}
       onClick={handleClick}
     >
       {icon && <TabIcon name={icon} />}
