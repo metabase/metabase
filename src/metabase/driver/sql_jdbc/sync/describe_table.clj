@@ -205,7 +205,7 @@
 
 (def ^:const nested-field-sample-limit
   "Number of rows to sample for describe-nested-field-columns"
-  10000)
+  500)
 
 (defn- flattened-row [field-name row]
   (letfn [(flatten-row [row path]
