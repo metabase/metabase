@@ -63,7 +63,7 @@ export const STRUCTURED_QUERY_TEMPLATE = {
 export interface FilterSection {
   name: string;
   icon: string;
-  items: FieldDimension[];
+  items: Dimension[];
 }
 
 /**

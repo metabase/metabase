@@ -49,7 +49,11 @@ const FilterModalBody = ({ query }: FilterModalBodyProps): JSX.Element => {
     <TabContent value={tab} onChange={setTab}>
       <TabList>
         {sections.map((section, index) => (
-          <Tab key={index} value={index} icon={index > 0 ? "link" : undefined}>
+          <Tab
+            key={index}
+            value={index}
+            icon={index > 0 ? section.icon : undefined}
+          >
             {section.name}
           </Tab>
         ))}
