@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
-interface DatabaseHelpRootProps {
+interface SetupCardContainerProps {
   isVisible: boolean;
 }
 
-export const DatabaseHelpRoot = styled.div<DatabaseHelpRootProps>`
+export const SetupCardContainer = styled.div<SetupCardContainerProps>`
   display: ${props => (props.isVisible ? "block" : "none")};
   margin-bottom: 1.75rem;
 

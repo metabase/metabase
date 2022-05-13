@@ -19,7 +19,6 @@ import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { hasFieldValues } from "metabase/parameters/utils/fields";
 
@@ -306,7 +305,6 @@ function Widget({
         setValue={setValue}
         isEditing={isEditing}
         focusChanged={onFocusChanged}
-        operator={deriveFieldOperatorFromParameter(parameter)}
       />
     );
   } else {

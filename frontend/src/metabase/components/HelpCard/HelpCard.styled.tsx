@@ -53,18 +53,22 @@ export const CardIcon = styled(Icon)`
   color: ${color("brand")};
 `;
 
-export const CardMessage = styled.span`
+export const CardMessage = styled.div`
   display: block;
   color: ${color("text-medium")};
   line-height: 1.25rem;
 
-  &:not(:last-child) {
+  p {
+    margin: 0;
+  }
+
+  p:not(:last-child) {
     margin-bottom: 1.25rem;
   }
-`;
 
-export const CardLink = styled(ExternalLink)`
-  color: ${color("brand")};
-  cursor: pointer;
-  font-weight: bold;
+  a {
+    color: ${color("brand")};
+    cursor: pointer;
+    font-weight: bold;
+  }
 `;
