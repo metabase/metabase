@@ -6,7 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import TabContext, { TabContextType } from "../Tab/TabContext";
-import { TabGroupRoot } from "./TabList.styled";
+import { TabListRoot } from "./TabList.styled";
 
 export interface TabListProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -24,9 +24,9 @@ const TabList = forwardRef(function TabGroup<T>(
   }, [value, onChange]);
 
   return (
-    <TabGroupRoot {...props} ref={ref} role="tablist">
+    <TabListRoot {...props} ref={ref} role="tablist">
       <TabContext.Provider value={context}>{children}</TabContext.Provider>
-    </TabGroupRoot>
+    </TabListRoot>
   );
 });
 
