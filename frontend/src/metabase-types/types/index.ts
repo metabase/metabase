@@ -34,3 +34,5 @@ export type Moment = {
   locale: () => Moment;
   format: (format: string) => string;
 };
+
+export type AsyncFn = (...args: any[]) => Promise<any>;
