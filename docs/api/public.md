@@ -222,3 +222,7 @@ Fetch the results for a Card in a publicly-accessible Dashboard. Does not requir
 *  **`dashcard-id`** 
 
 *  **`parameters`** value may be nil, or if non-nil, value must be a valid JSON string.
+
+---
+
+[<< Back to API index](../api-documentation.md)

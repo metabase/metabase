@@ -24,3 +24,7 @@ This endpoints provides an image with the appropriate pins rendered given a MBQL
 *  **`lon-field`** value must be a string.
 
 *  **`query`** value must be a valid JSON string.
+
+---
+
+[<< Back to API index](../api-documentation.md)

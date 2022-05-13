@@ -21,3 +21,7 @@ Get `TaskHistory` entry with ID.
 ## `GET /api/task/info`
 
 Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers).
+
+---
+
+[<< Back to API index](../api-documentation.md)

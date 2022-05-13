@@ -1,4 +1,4 @@
-# Automagic dashboards
+# Automagic-dashboards
 
   - [GET /api/automagic-dashboards/:entity/:entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-query)
   - [GET /api/automagic-dashboards/:entity/:entity-id-or-query/cell/:cell-query](#get-apiautomagic-dashboardsentityentity-id-or-querycellcell-query)
@@ -162,3 +162,7 @@ Return a list of candidates for automagic dashboards orderd by interestingness.
 ### PARAMS:
 
 *  **`id`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

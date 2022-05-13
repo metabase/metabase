@@ -83,3 +83,7 @@ Update the [[Timeline]] with `id`. Returns the timeline without events. Archivin
 *  **`archived`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`timeline-updates`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

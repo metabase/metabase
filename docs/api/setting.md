@@ -38,3 +38,7 @@ Create/update a `Setting`. If called by a non-admin, only user-local settings ca
 *  **`key`** value must be a non-blank string.
 
 *  **`value`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

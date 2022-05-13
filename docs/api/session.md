@@ -73,3 +73,7 @@ Reset password with a reset token.
 *  **`password`** password is too common.
 
 *  **`request`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

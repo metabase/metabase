@@ -1,4 +1,4 @@
-# Native query snippet
+# Native-query-snippet
 
 Native query snippet (/api/native-query-snippet) endpoints.
 
@@ -54,3 +54,7 @@ Update an existing `NativeQuerySnippet`.
 *  **`name`** value may be nil, or if non-nil, snippet names cannot include } or start with spaces
 
 *  **`collection_id`** value may be nil, or if non-nil, value must be an integer greater than zero.
+
+---
+
+[<< Back to API index](../api-documentation.md)

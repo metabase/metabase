@@ -258,7 +258,7 @@
   "Protocol for transformations that should be done to the value returned by a `defendpoint` form before it
   Compojure/Ring see it."
   (wrap-response-if-needed [this]
-                           "Transform the value returned by a `defendpoint` form as needed, e.g. by adding `:status` and `:body`."))
+    "Transform the value returned by a `defendpoint` form as needed, e.g. by adding `:status` and `:body`."))
 
 (extend-protocol EndpointResponse
   Object

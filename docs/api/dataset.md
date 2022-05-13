@@ -57,3 +57,7 @@ Generate a pivoted dataset for an ad-hoc query.
 *  **`database`** value may be nil, or if non-nil, value must be an integer.
 
 *  **`query`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

@@ -22,3 +22,7 @@ Notification about a potential schema change to one of our `Databases`.
 *  **`table_name`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`scan`** value may be nil, or if non-nil, value must be one of: `full`, `schema`.
+
+---
+
+[<< Back to API index](../api-documentation.md)

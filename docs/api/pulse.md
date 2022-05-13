@@ -136,3 +136,7 @@ Update a Pulse with `id`.
 *  **`cards`** value may be nil, or if non-nil, value must be an array. Each value must satisfy one of the following requirements: 1) value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)` 2) value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`. The array cannot be empty.
 
 *  **`pulse-updates`**
+
+---
+
+[<< Back to API index](../api-documentation.md)

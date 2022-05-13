@@ -18,20 +18,29 @@
 
 ;;;; API docs page title
 
+
+(defn handle-enterprise-ns
+  "Some paid endpoints have different formatting. This way we don't combine
+  the api/table endpoint with sandbox.api.table, for example."
+  [endpoint]
+  (if (str/includes? endpoint "metabase-enterprise")
+    (str/split endpoint #"metabase-enterprise.")
+    (str/split endpoint #"\.")))
+
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts."
   [endpoint]
-  (->> (:ns endpoint)
-       ns-name
-       name
-       (#(str/split % #"\."))
-       last
-       str/capitalize))
+  (-> (:ns endpoint)
+      ns-name
+      name
+      handle-enterprise-ns
+      last
+      str/capitalize))
 
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
   [ep-title]
-  (str/replace (str "# " ep-title "\n\n") #"-" " "))
+  (str "# " ep-title "\n\n"))
 
 ;;;; API endpoint description
 
@@ -108,6 +117,17 @@
   [ep-data]
   (str/join "\n\n" (map #(str/trim (:doc %)) ep-data)))
 
+(defn paid?
+  "Is the endpoint a paid feature?"
+  [ep-data]
+  (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))
+
+(defn endpoint-footer
+  "Adds a footer with a link back to the API index."
+  [ep-data]
+  (let [level (if (paid? ep-data) "../../" "../")]
+    (str "\n\n---\n\n[<< Back to API index](" level "api-documentation.md)")))
+
 ;;;; Build API pages
 
 (defn endpoint-page
@@ -118,12 +138,8 @@
          (endpoint-page-title ep)
          (endpoint-page-description ep-data)
          (route-toc ep-data)
-         (endpoint-docs ep-data)))
-
-(defn ee?
-  "Is the endpoint a premium feature?"
-  [ep-data]
-  (str/includes? (:endpoint-str (first ep-data)) "/api/ee"))
+         (endpoint-docs ep-data)
+         (endpoint-footer ep-data)))
 
 (defn- build-filepath
   "Creates a filepath from an endpoint."
@@ -139,8 +155,8 @@
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
   [ep ep-data]
-  (let [filepath (build-filepath (if (ee? ep-data) "api/ee/" "api/") ep ".md")]
-    (str "- [" (str/capitalize ep) (when (ee? ep-data) " (Premium feature)") "](" filepath ")")))
+  (let [filepath (build-filepath (if (paid? ep-data) "api/ee/" "api/") ep ".md")]
+    (str "- [" ep (when (paid? ep-data) "*") "](" filepath ")")))
 
 (defn- build-index
   "Creates a string that lists links to all endpoint groups,
@@ -149,7 +165,7 @@
   (str/join "\n" (map (fn [[ep ep-data]] (build-endpoint-link ep ep-data)) endpoints)))
 
 (defn- map-endpoints
-  "Creates a sorted map of API endpoints. Currently excludes
+  "Creates a sorted map of API endpoints. Currently includes some
   endpoints for paid features."
   []
   (->> (collect-endpoints)
@@ -172,18 +188,30 @@
   pages for all API endpoint groups."
   [endpoints]
   (doseq [[ep ep-data] endpoints]
-    (let [file (build-filepath (str "docs/" (if (ee? ep-data) "api/ee/" "api/")) ep ".md")
+    (let [file (build-filepath (str "docs/" (if (paid? ep-data) "api/ee/" "api/")) ep ".md")
           contents (endpoint-page ep ep-data)]
       (io/make-parents file)
       (spit file contents))))
 
-(defn delete-dir-recur
+(defn- md?
+  "Is it a markdown file?"
+  [file]
+  (= "md"
+     (-> file
+         str
+         (str/split #"\.")
+         last)))
+
+(defn- reset-dir
   "Used to clear the API directory for rebuilding docs from scratch
-  so we don't orphan files."
-  [f]
-  (when (.isDirectory f)
-    (run! delete-dir-recur (.listFiles f)))
-  (when (.exists f) (io/delete-file f)))
+  so we don't orphan files as the API changes."
+  [file]
+  (let [files (filter md? (file-seq file))]
+    (doseq [f files]
+      (try (io/delete-file f)
+           (catch Exception e
+             (println "File:" f "not deleted")
+             (println e))))))
 
 (defn generate-dox!
   "Builds an index page and sub-pages for groups of endpoints.
@@ -198,8 +226,7 @@
                         \newline
                         "clojure -M:ee:run api-documentation"))))
   (let [endpoint-map (map-endpoints)]
-    (delete-dir-recur (io/file "docs/api"))
-    (println (get endpoint-map "Application"))
+    (reset-dir (io/file "docs/api"))
     (generate-index-page! endpoint-map)
     (println "API doc index generated at docs/api-documentation.md.")
     (generate-endpoint-pages! endpoint-map)

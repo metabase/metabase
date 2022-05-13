@@ -73,3 +73,7 @@ Validate that we can connect to a database given a set of details.
 *  **`details`** 
 
 *  **`token`** Token does not match the setup token.
+
+---
+
+[<< Back to API index](../api-documentation.md)

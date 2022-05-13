@@ -1,4 +1,4 @@
-# Sso
+# Sso.api.sso
 
 `/auth/sso` Routes.
 
@@ -23,3 +23,7 @@ Route the SSO backends call with successful login details.
 ### PARAMS:
 
 *  **`req`**
+
+---
+
+[<< Back to API index](../../api-documentation.md)

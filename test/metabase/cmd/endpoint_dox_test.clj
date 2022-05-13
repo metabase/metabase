@@ -27,6 +27,9 @@
 (def page-markdown "# Activity\n\n  - [GET /api/activity/](#get-apiactivity)\n  - [GET /api/activity/recent_views](#get-apiactivityrecent_views)\n\n## `GET /api/activity/`\n\nGet recent activity.\n\n## `GET /api/activity/recent_views`\n\nGet the list of 10 things the current user has been viewing most recently.")
 
 (deftest endpoint-page-test
+  (testing "Markdown for a generated docs page."
+    ;; Note that if we change the Activity endpoint (or introduce another endpoint before Activity,
+    ;; we may need to update the page-markdown string above.
   (is (= (first (for [[ep ep-data] endpoints] (endpoint-dox/endpoint-page ep ep-data)))
          page-markdown)))
 

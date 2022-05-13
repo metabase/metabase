@@ -1,20 +1,31 @@
-# API Documentation for Metabase
+# Metabase API documentation
 
-_This file was generated from source comments by `clojure -M:ee:run api-documentation`_.
+_These reference files were generated from source comments by running `clojure -M:ee:run api-documentation`_.
+
+## About the Metabase API
+
+- **The API is subject to change.** The API is tightly coupled with the front end and is subject to change between releases. The endpoints likely won’t change that much (existing API endpoints are changed infrequently, and removed rarely), but if you write code to use the API, you might have to update it in the future.
+- **The API isn't versioned.** Meaning: it can change version to version, so don’t expect to stay on a particular version of Metabase in order to use a “stable” API.
+
+## API tutorial
 
 Check out an introduction to the [Metabase API](https://www.metabase.com/learn/administration/metabase-api.html).
 
 ## API endpoints
 
+_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing/)._
+
 
 - [Actions](api/actions.md)
 - [Activity](api/activity.md)
+- [Advanced-permissions.api.application*](api/ee/advanced-permissions.api.application.md)
 - [Alert](api/alert.md)
-- [Application (Premium feature)](api/ee/application.md)
+- [Audit-app.api.user*](api/ee/audit-app.api.user.md)
 - [Automagic-dashboards](api/automagic-dashboards.md)
 - [Bookmark](api/bookmark.md)
 - [Card](api/card.md)
 - [Collection](api/collection.md)
+- [Content-management.api.review*](api/ee/content-management.api.review.md)
 - [Dashboard](api/dashboard.md)
 - [Database](api/database.md)
 - [Dataset](api/dataset.md)
@@ -22,7 +33,6 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 - [Embed](api/embed.md)
 - [Field](api/field.md)
 - [Geojson](api/geojson.md)
-- [Gtap (Premium feature)](api/ee/gtap.md)
 - [Ldap](api/ldap.md)
 - [Login-history](api/login-history.md)
 - [Metric](api/metric.md)
@@ -34,20 +44,22 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 - [Preview-embed](api/preview-embed.md)
 - [Public](api/public.md)
 - [Pulse](api/pulse.md)
-- [Review (Premium feature)](api/ee/review.md)
 - [Revision](api/revision.md)
+- [Sandbox.api.gtap*](api/ee/sandbox.api.gtap.md)
+- [Sandbox.api.table*](api/ee/sandbox.api.table.md)
+- [Sandbox.api.user*](api/ee/sandbox.api.user.md)
 - [Search](api/search.md)
 - [Segment](api/segment.md)
 - [Session](api/session.md)
 - [Setting](api/setting.md)
 - [Setup](api/setup.md)
 - [Slack](api/slack.md)
-- [Sso (Premium feature)](api/ee/sso.md)
-- [Table (Premium feature)](api/ee/table.md)
+- [Sso.api.sso*](api/ee/sso.api.sso.md)
+- [Table](api/table.md)
 - [Task](api/task.md)
 - [Tiles](api/tiles.md)
 - [Timeline](api/timeline.md)
 - [Timeline-event](api/timeline-event.md)
 - [Transform](api/transform.md)
-- [User (Premium feature)](api/ee/user.md)
+- [User](api/user.md)
 - [Util](api/util.md)

@@ -1,10 +1,7 @@
 # User
 
-`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature.
+/api/user endpoints.
 
-  - [DELETE /api/ee/audit-app/user/:id/subscriptions](#delete-apieeaudit-appuseridsubscriptions)
-  - [GET /api/ee/sandbox/user/attributes](#get-apieesandboxuserattributes)
-  - [PUT /api/ee/sandbox/user/:id/attributes](#put-apieesandboxuseridattributes)
   - [DELETE /api/user/:id](#delete-apiuserid)
   - [GET /api/user/](#get-apiuser)
   - [GET /api/user/:id](#get-apiuserid)
@@ -15,30 +12,6 @@
   - [PUT /api/user/:id/modal/:modal](#put-apiuseridmodalmodal)
   - [PUT /api/user/:id/password](#put-apiuseridpassword)
   - [PUT /api/user/:id/reactivate](#put-apiuseridreactivate)
-
-## `DELETE /api/ee/audit-app/user/:id/subscriptions`
-
-Delete all Alert and DashboardSubscription subscriptions for a User (i.e., so they will no longer receive them).
-  Archive all Alerts and DashboardSubscriptions created by the User. Only allowed for admins or for the current user.
-
-### PARAMS:
-
-*  **`id`**
-
-## `GET /api/ee/sandbox/user/attributes`
-
-Fetch a list of possible keys for User `login_attributes`. This just looks at keys that have already been set for
-  existing Users and returns those. .
-
-## `PUT /api/ee/sandbox/user/:id/attributes`
-
-Update the `login_attributes` for a User.
-
-### PARAMS:
-
-*  **`id`** 
-
-*  **`login_attributes`** value must be a valid user attributes map (name -> value)
 
 ## `DELETE /api/user/:id`
 
@@ -174,3 +147,7 @@ You must be a superuser to do this.
 ### PARAMS:
 
 *  **`id`**
+
+---
+
+[<< Back to API index](../api-documentation.md)
