@@ -7,7 +7,7 @@
             [java-time :as t]
             [metabase.models.database :refer [Database]]
             [metabase.sync.schedules :as sync.schedules]
-            [metabase.task.sync-databases :as sync-db]
+            [metabase.task.sync-databases :as task.sync-databases]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
             [metabase.util :as u]
@@ -43,7 +43,7 @@
 
 (defmacro with-scheduler-setup [& body]
   `(tu/with-temp-scheduler
-     (#'sync-db/job-init)
+     (#'task.sync-databases/job-init)
      ~@body))
 
 (def ^:private sync-job
@@ -149,7 +149,7 @@
 (deftest check-orphaned-jobs-removed-test
   (testing "jobs for orphaned databases are removed during sync run"
     (with-scheduler-setup
-      (doseq [sync-fn [#'sync-db/update-field-values! #'sync-db/sync-and-analyze-database!]]
+      (doseq [sync-fn [#'task.sync-databases/update-field-values! #'task.sync-databases/sync-and-analyze-database!]]
         (testing (str sync-fn)
           (mt/with-temp Database [database {:engine :postgres}]
             (let [db-id (:id database)]
@@ -226,8 +226,8 @@
                :metadata_sync_schedule      (cron-schedule-for-next-year)
                :cache_field_values_schedule "* * * * * ? *"})))))
 
-(def should-refingerprint #'sync-db/should-refingerprint-fields?)
-(def threshold @#'sync-db/analyze-duration-threshold-for-refingerprinting)
+(def should-refingerprint #'task.sync-databases/should-refingerprint-fields?)
+(def threshold @#'task.sync-databases/analyze-duration-threshold-for-refingerprinting)
 
 (defn results [minutes-duration fingerprints-attempted]
   (let [now (t/instant)
