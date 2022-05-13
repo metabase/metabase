@@ -9,8 +9,8 @@ const TestTabList = () => {
 
   return (
     <TabList value={value} onChange={setValue}>
-      <Tab value={1}>A</Tab>
-      <Tab value={2}>B</Tab>
+      <Tab value={1}>Tab 1</Tab>
+      <Tab value={2}>Tab 2</Tab>
     </TabList>
   );
 };
@@ -19,8 +19,8 @@ describe("TabList", () => {
   it("should navigate between tabs", () => {
     render(<TestTabList />);
 
-    const option1 = screen.getByRole("tab", { name: "A" });
-    const option2 = screen.getByRole("tab", { name: "B" });
+    const option1 = screen.getByRole("tab", { name: "Tab 1" });
+    const option2 = screen.getByRole("tab", { name: "Tab 2" });
     expect(option1).toHaveAttribute("aria-selected", "true");
     expect(option2).toHaveAttribute("aria-selected", "false");
 
