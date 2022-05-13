@@ -87,11 +87,13 @@
                           :data
                           (filter (fn [db] (= (mt/id) (:id db))))
                           first)))]
-      (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
-                                           :data-model {:schemas :all}}}
-        (is (partial= {:id (mt/id)} (get-test-db))))
+      (testing "Sanity check: a non-admin can fetch a DB when they have full data access and data model perms"
+        (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
+                                             :data-model {:schemas :all}}}
+          (is (partial= {:id (mt/id)} (get-test-db)))))
 
-      (testing "DB with no data model perms is excluded"
+      (testing "A non-admin cannot fetch a DB for which they do not have data model perms if
+               include_editable_data_model=true"
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
                                              :data-model {:schemas :none}}}
             (is (= nil (get-test-db)))))
@@ -102,7 +104,8 @@
                                                                               id-2 :none
                                                                               id-3 :none
                                                                               id-4 :none}}}}}
-          (testing "DB with data model perms for a single table is included"
+          (testing "If a non-admin has data model perms for a single table in a DB, the DB is returned when listing
+                   all DBs"
             (is (partial= {:id (mt/id)} (get-test-db))))
 
           (testing "if include=tables, only tables with data model perms are included"

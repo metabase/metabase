@@ -353,28 +353,33 @@
   (saved-cards-virtual-db-metadata :card :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id include-hidden? include-editable-data-model?]
-  (-> (if include-editable-data-model?
-        (api/check-404 (Database id))
-        (api/read-check Database id))
-      (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
-      (#(if include-editable-data-model? (check-db-data-model-perms %) %))
-      (update :tables (if include-hidden?
-                        identity
-                        (fn [tables]
-                          (->> tables
-                               (remove :visibility_type)
-                               (map #(update % :fields filter-sensitive-fields))))))
-      (update :tables (fn [tables]
-                        (if-not include-editable-data-model?
-                          ;; If we're filtering by data model perms, table perm checks were already done by
-                          ;; check-db-data-model-perms
-                          (filter mi/can-read? tables)
-                          tables)))
-      (update :tables (fn [tables]
-                        (for [table tables]
-                          (-> table
-                              (update :segments (partial filter mi/can-read?))
-                              (update :metrics  (partial filter mi/can-read?))))))))
+  (let [db (-> (if include-editable-data-model?
+                 (api/check-404 (Database id))
+                 (api/read-check Database id))
+               (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics]))
+        db (if include-editable-data-model?
+             ;; We need to check data model perms after hydrating tables, since this will also filter out tables for
+             ;; which the *current-user* does not have data model perms
+             (check-db-data-model-perms db)
+             db)]
+    (-> db
+        (update :tables (if include-hidden?
+                          identity
+                          (fn [tables]
+                            (->> tables
+                                 (remove :visibility_type)
+                                 (map #(update % :fields filter-sensitive-fields))))))
+        (update :tables (fn [tables]
+                          (if-not include-editable-data-model?
+                            ;; If we're filtering by data model perms, table perm checks were already done by
+                            ;; check-db-data-model-perms
+                            (filter mi/can-read? tables)
+                            tables)))
+        (update :tables (fn [tables]
+                          (for [table tables]
+                            (-> table
+                                (update :segments (partial filter mi/can-read?))
+                                (update :metrics  (partial filter mi/can-read?)))))))))
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
