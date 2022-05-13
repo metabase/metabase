@@ -278,7 +278,12 @@
   (deferred-tru "This is the primary font used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
   :visibility :public
   :type       :string
-  :default    "Lato")
+  :default    "Lato"
+  :setter (fn [new-value]
+                (when new-value
+                  (when-not (u.fonts/available-font? new-value)
+                    (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-value-of-type! :string :application-font new-value)))
 
 (defn application-color
   "The primary color, a.k.a. brand color"
