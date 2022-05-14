@@ -339,7 +339,7 @@
   [reff timeout-ms]
   (let [result (deref reff timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (when (instance? java.util.concurrent.Future reff)
+      (when (future? reff)
         (future-cancel reff))
       (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
@@ -347,16 +347,10 @@
 (defn do-with-timeout
   "Impl for `with-timeout` macro."
   [timeout-ms f]
-  (let [result (deref-with-timeout
-                (future
-                  (try
-                    (f)
-                    (catch Throwable e
-                      e)))
-                timeout-ms)]
-    (if (instance? Throwable result)
-      (throw result)
-      result)))
+  (try
+    (deref-with-timeout (future-call f) timeout-ms)
+    (catch java.util.concurrent.ExecutionException e
+      (throw (.getCause e)))))
 
 (defmacro with-timeout
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
