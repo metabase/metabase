@@ -9,7 +9,7 @@ import DateSingleWidget from "./widgets/DateSingleWidget";
 import DateRangeWidget from "./widgets/DateRangeWidget";
 import DateRelativeWidget from "./widgets/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
-import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
+import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
