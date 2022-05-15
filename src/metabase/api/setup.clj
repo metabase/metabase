@@ -173,7 +173,9 @@
   {token  SetupToken
    engine DBEngineString}
   (let [engine           (keyword engine)
-        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
+        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :host :host-and-port :password
+                                                                  :ssh-username-and-password :ssl
+                                                                  :username :username-and-password} field)
                                                              {:errors {field m}}
                                                              {:message m})})
         error-or-nil     (api.database/test-database-connection engine details :invalid-response-handler invalid-response)]

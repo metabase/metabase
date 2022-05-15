@@ -505,6 +505,19 @@
    field    m
    :message m})
 
+(def ^:private category->field
+  {:cannot-connect-check-host-and-port :host-and-port
+   :ssh-tunnel-auth-fail               :ssh-username-and-password
+   :ssh-tunnel-connection-fail         :host-and-port
+   :database-name-incorrect            :dbname
+   :invalid-hostname                   :host
+   :password-incorrect                 :password
+   :password-required                  :password
+   :username-incorrect                 :username
+   :username-or-password-incorrect     :username-and-password
+   :certificate-not-trusted            :ssl
+   :requires-ssl                       :ssl})
+
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
@@ -535,7 +548,7 @@
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
           (log/error e (trs "Cannot connect to Database")))
-        (invalid-response-handler :dbname (.getMessage e))))))
+        (invalid-response-handler (category->field (-> e ex-data :category) :unknown) (.getMessage e))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?

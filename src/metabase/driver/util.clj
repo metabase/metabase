@@ -11,7 +11,7 @@
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
@@ -19,6 +19,50 @@
            java.util.Base64
            javax.net.SocketFactory
            [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+
+(def ^:private connection-error-messages
+  "Generic error messages that drivers should return in their implementation
+  of [[metabase.driver/humanize-connection-error-message]]."
+  {:cannot-connect-check-host-and-port
+   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
+        " "
+        (deferred-tru "Make sure your host and port settings are correct"))
+
+   :ssh-tunnel-auth-fail
+   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
+        " "
+        (deferred-tru "Check the username, password."))
+
+   :ssh-tunnel-connection-fail
+   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
+        " "
+        (deferred-tru "Check the hostname and port."))
+
+   :database-name-incorrect
+   (deferred-tru "Looks like the database name is incorrect.")
+
+   :invalid-hostname
+   (str (deferred-tru "It looks like your host is invalid.")
+        " "
+        (deferred-tru "Please double-check it and try again."))
+
+   :password-incorrect
+   (deferred-tru "Looks like your password is incorrect.")
+
+   :password-required
+   (deferred-tru "Looks like you forgot to enter your password.")
+
+   :username-incorrect
+   (deferred-tru "Looks like your username is incorrect.")
+
+   :username-or-password-incorrect
+   (deferred-tru "Looks like the username or password is incorrect.")
+
+   :certificate-not-trusted
+   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
+
+   :requires-ssl
+   (deferred-tru "Server appears to require SSL - please enable SSL above")})
 
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
@@ -36,6 +80,11 @@
                 3000
                 10000))
 
+(defn- connection-error? [throwable]
+  (and (some? throwable)
+       (or (instance? java.net.ConnectException throwable)
+           (recur (.getCause throwable)))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -52,10 +101,20 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (throw (if-let [message (some->> (.getMessage e)
-                                         (driver/humanize-connection-error-message driver)
-                                         str)]
-                 (Exception. message e)
+        (throw (if-let [humanized-message (some->> (.getMessage e)
+                                                   (driver/humanize-connection-error-message driver))]
+                 (let [error-data (cond
+                                    (keyword? humanized-message)
+                                    {:category humanized-message
+                                     :message (str (connection-error-messages humanized-message))}
+
+                                    (connection-error? e)
+                                    {:category :cannot-connect-check-host-and-port
+                                     :message (str humanized-message)}
+
+                                    :else
+                                    {:message (str humanized-message)})]
+                   (ex-info (:message error-data) error-data e))
                  e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)

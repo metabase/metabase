@@ -772,7 +772,7 @@
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
-        (is (= {:dbname  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+        (is (= {:host-and-port  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
                 :message "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
                 :valid   false}
                (#'api.database/test-connection-details "h2" {:db "ABC"}))))
