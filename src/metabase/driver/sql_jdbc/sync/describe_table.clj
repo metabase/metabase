@@ -323,6 +323,9 @@
         field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
 
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
 
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.
