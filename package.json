@@ -225,7 +225,7 @@
     "mini-css-extract-plugin": "^1.6.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "postcss": "^8.3.11",
+    "postcss": "~8.4.13",
     "postcss-color-mod-function": "^3.0.3",
     "postcss-import": "^14.0.2",
     "postcss-loader": "^6.2.0",
