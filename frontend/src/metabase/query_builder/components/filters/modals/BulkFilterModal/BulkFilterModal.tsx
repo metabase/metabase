@@ -40,6 +40,11 @@ const BulkFilterModal = ({
     return query.topLevelFilterFieldOptionSections();
   }, [query]);
 
+  const handleAddFilter = useCallback((filter: Filter) => {
+    setQuery(filter.add());
+    setIsChanged(true);
+  }, []);
+
   const handleChangeFilter = useCallback(
     (filter: Filter, newFilter: Filter) => {
       setQuery(filter.replace(newFilter));
@@ -71,6 +76,7 @@ const BulkFilterModal = ({
           query={query}
           filters={filters}
           section={sections[0]}
+          onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
         />
@@ -79,6 +85,7 @@ const BulkFilterModal = ({
           query={query}
           filters={filters}
           sections={sections}
+          onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
         />
@@ -100,6 +107,7 @@ interface BulkFilterModalSectionProps {
   query: StructuredQuery;
   filters: Filter[];
   section: FilterSection;
+  onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
 }
@@ -108,6 +116,7 @@ const BulkFilterModalSection = ({
   query,
   filters,
   section: { items },
+  onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterModalSectionProps): JSX.Element => {
@@ -119,6 +128,7 @@ const BulkFilterModalSection = ({
         query={query}
         filters={filters}
         dimensions={dimensions}
+        onAddFilter={onAddFilter}
         onChangeFilter={onChangeFilter}
         onRemoveFilter={onRemoveFilter}
       />
@@ -130,6 +140,7 @@ interface BulkFilterModalSectionListProps {
   query: StructuredQuery;
   filters: Filter[];
   sections: FilterSection[];
+  onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
 }
@@ -138,6 +149,7 @@ const BulkFilterModalSectionList = ({
   query,
   filters,
   sections,
+  onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterModalSectionListProps): JSX.Element => {
@@ -165,6 +177,7 @@ const BulkFilterModalSectionList = ({
             query={query}
             filters={filters}
             section={section}
+            onAddFilter={onAddFilter}
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
           />

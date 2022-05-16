@@ -14,6 +14,7 @@ export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
   dimensions: Dimension[];
+  onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
 }
@@ -22,6 +23,7 @@ const BulkFilterList = ({
   query,
   filters,
   dimensions,
+  onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterListProps): JSX.Element => {
@@ -33,6 +35,7 @@ const BulkFilterList = ({
           query={query}
           filters={filters}
           dimension={dimension}
+          onAddFilter={onAddFilter}
           onChangeFilter={onChangeFilter}
           onRemoveFilter={onRemoveFilter}
         />
@@ -45,6 +48,7 @@ interface BulkFilterListItemProps {
   query: StructuredQuery;
   filters: Filter[];
   dimension: Dimension;
+  onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
 }
@@ -53,6 +57,7 @@ const BulkFilterListItem = ({
   query,
   filters,
   dimension,
+  onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterListItemProps): JSX.Element => {
@@ -69,6 +74,8 @@ const BulkFilterListItem = ({
             key={index}
             query={query}
             filter={filter}
+            dimension={dimension}
+            onAddFilter={onAddFilter}
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
           />
