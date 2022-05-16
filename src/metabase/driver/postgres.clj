@@ -265,7 +265,8 @@
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
     (when (some? value)
       (condp #(isa? %2 %1) base-type
-        :type/UUID         (UUID/fromString value)
+        :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
+                             (UUID/fromString  value))
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))

@@ -322,3 +322,59 @@
                 (get-public-cards user 200)
                 (get-embeddable-cards user 200)
                 (delete-public-card user 204)))))))))
+
+(deftest persistence-test
+  (testing "/api/persist"
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user [group]]
+      (letfn [(enable-persist [user status]
+                (testing (format "persist/enable with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :post status "persist/enable")))
+              (disable-persist [user status]
+                (testing (format "persist/disable with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :post status "persist/disable")))
+              (set-interval [user status]
+                (testing (format "persist/set-interval with %s user" (mt/user-descriptor user))
+                  (mt/user-http-request user :post status "persist/set-interval" {"hours" 1})))]
+
+        (testing "if `advanced-permissions` is disabled, require admins,"
+          (enable-persist :crowberto 204)
+          (enable-persist user 403)
+          (enable-persist :rasta 403)
+
+          (disable-persist :crowberto 204)
+          (disable-persist user 403)
+          (disable-persist :rasta 403)
+
+          (set-interval :crowberto 204)
+          (set-interval user 403)
+          (set-interval :rasta 403))
+
+        (testing "if `advanced-permissions` is enabled"
+          (premium-features-test/with-premium-features #{:advanced-permissions}
+            (testing "still fail if user's group doesn't have `setting` permission,"
+              (enable-persist :crowberto 204)
+              (enable-persist user 403)
+              (enable-persist :rasta 403)
+
+              (disable-persist :crowberto 204)
+              (disable-persist user 403)
+              (disable-persist :rasta 403)
+
+              (set-interval :crowberto 204)
+              (set-interval user 403)
+              (set-interval :rasta 403))
+
+            (testing "succeed if user's group has `setting` permission,"
+              (perms/grant-application-permissions! group :setting)
+              (enable-persist :crowberto 204)
+              (enable-persist user 204)
+              (enable-persist :rasta 403)
+
+              (disable-persist :crowberto 204)
+              (disable-persist user 204)
+              (disable-persist :rasta 403)
+
+              (set-interval :crowberto 204)
+              (set-interval user 204)
+              (set-interval :rasta 403))))))))

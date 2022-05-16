@@ -105,6 +105,7 @@
   []
   {:version              (config/mb-version-info :tag)
    :running_on           (environment-type)
+   :startup_time_millis  (public-settings/startup-time-millis)
    :application_database (config/config-str :mb-db-type)
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
