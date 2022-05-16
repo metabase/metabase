@@ -22,17 +22,17 @@ export const ModalCloseButton = styled(IconButtonWrapper)`
   color: ${color("text-light")};
 `;
 
-export const ModalContent = styled.div`
-  margin: 0 2rem;
-`;
-
-export const ModalDivider = styled.div`
-  border-top: 1px solid ${color("border")};
-`;
-
 export const ModalFooter = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
   padding: 1.5rem 2rem;
+`;
+
+export const ModalRow = styled.div`
+  margin: 0 2rem;
+`;
+
+export const ModalDivider = styled.div`
+  border-top: 1px solid ${color("border")};
 `;

@@ -12,7 +12,7 @@ import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalCloseButton,
-  ModalContent,
+  ModalRow,
   ModalDivider,
   ModalFooter,
   ModalHeader,
@@ -64,9 +64,9 @@ interface ModalSectionProps {
 
 const ModalSection = ({ section }: ModalSectionProps): JSX.Element => {
   return (
-    <ModalContent>
+    <ModalRow>
       <BulkFilterList options={section.items} />
-    </ModalContent>
+    </ModalRow>
   );
 };
 
@@ -79,7 +79,7 @@ const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
 
   return (
     <TabContent value={tab} onChange={setTab}>
-      <ModalContent>
+      <ModalRow>
         <TabList>
           {sections.map((section, index) => (
             <Tab
@@ -91,15 +91,15 @@ const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
             </Tab>
           ))}
         </TabList>
-      </ModalContent>
+      </ModalRow>
       <ModalDivider />
-      <ModalContent>
+      <ModalRow>
         {sections.map((section, index) => (
           <TabPanel key={index} value={index}>
             <BulkFilterList options={section.items} />
           </TabPanel>
         ))}
-      </ModalContent>
+      </ModalRow>
     </TabContent>
   );
 };
