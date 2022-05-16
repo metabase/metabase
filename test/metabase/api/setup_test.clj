@@ -18,6 +18,7 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.schema :as su]
+            [ring.mock.request :as ring.mock]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -41,7 +42,8 @@
 
 (defn- do-with-setup* [request-body thunk]
   (try
-    (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+    (mt/discard-setting-changes [site-name site-locale site-url
+                                 anon-tracking-enabled admin-email]
       (thunk))
     (finally
       (db/delete! User :email (get-in request-body [:user :email]))
@@ -57,14 +59,19 @@
            :password   "anythingUP12!!"}})
 
 (defn- do-with-setup [request-body thunk]
-  (let [request-body (merge-with merge (default-setup-input) request-body)]
+  (let [headers      (:headers request-body)
+        request-body (merge-with merge
+                                 (default-setup-input) (dissoc request-body :headers))]
     (do-with-setup*
      request-body
      (fn []
        (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
          (testing "API response should return a Session UUID"
            (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
-                        (client/client :post 200 "setup" request-body))))
+                        (client/client :post 200 "setup"
+                                       {:request-options
+                                        {:headers headers}}
+                                       request-body))))
          ;; reset our setup token
          (setup/create-token!)
          (thunk))))))
@@ -125,6 +132,39 @@
               last-name (mt/random-name)]
           (with-setup {:invite {:email email, :first_name first-name, :last_name last-name}}
             (is (not (db/exists? User :email email)))))))))
+
+(defn- mock-request
+  [uri origin-header x-forwarded-host-header host-header]
+  (cond-> (m/dissoc-in (ring.mock/request :get uri) [:headers "host"])
+    origin-header           (ring.mock/header "Origin" origin-header)
+    x-forwarded-host-header (ring.mock/header "X-Forwarded-Host" x-forwarded-host-header)
+    host-header             (ring.mock/header "Host" host-header)))
+
+(deftest maybe-set-site-url-test
+  (let [maybe-set-site-url (comp #'api.setup/maybe-set-site-url :headers)]
+    (doseq [origin-header           ["https://mb1.example.com" nil]
+            x-forwarded-host-header ["https://mb2.example.com" nil]
+            host-header             ["https://mb3.example.com" nil]
+            :let                    [request (mock-request "/" origin-header x-forwarded-host-header host-header)]]
+      (mt/with-temporary-setting-values [site-url nil]
+        (maybe-set-site-url request)
+        (is (= (or origin-header x-forwarded-host-header host-header)
+               (public-settings/site-url)))))
+    (testing "When `site-url` is already set do nothing"
+      (mt/with-temporary-setting-values [site-url "http://www.metabase.com"]
+        (doseq [origin-header           ["https://mb1.example.com" nil]
+                x-forwarded-host-header ["https://mb2.example.com" nil]
+                host-header             ["https://mb3.example.com" nil]
+                :let                    [request (mock-request "/" origin-header x-forwarded-host-header host-header)]]
+          (maybe-set-site-url request)
+          (is (= "http://www.metabase.com" (public-settings/site-url)))))))
+  ;; "host" header not overriding in test
+  (doseq [header ["origin" "x-forwarded-host"]]
+    (mt/with-temporary-setting-values [site-url nil]
+      (with-setup {:user {:first_name "bob"}
+                   :headers {header "https://www.metabase.com"}}
+        (is (= "https://www.metabase.com" (public-settings/site-url))
+            (str "Header: " header " did not set site-url"))))))
 
 (deftest setup-settings-test
   (testing "POST /api/setup"

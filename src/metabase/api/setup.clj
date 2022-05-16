@@ -105,6 +105,18 @@
   (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
                                              allow-tracking?)))
 
+(defn- maybe-set-site-url
+  "Set the site url from headers. If the [[public-settings/site-url]] is not already set, checks origin,
+  x-forwarded-host, and then host in that order, using the first non-nil value."
+  [{:strs [origin x-forwarded-host host]}]
+  (when (not (public-settings/site-url))
+    (when-let [site-url (or origin x-forwarded-host host)]
+      (log/info (trs "Setting Metabase site URL to {0}" site-url))
+      (try
+        (public-settings/site-url site-url)
+        (catch Throwable e
+          (log/warn e (trs "Failed to set site-url")))))))
+
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
   returns a session ID. This endpoint also can also be used to add a database, create and invite a second admin, and/or
@@ -157,6 +169,7 @@
                 (setting.cache/restore-cache!)
                 (snowplow/track-event! ::snowplow/database-connection-failed nil {:database engine, :source :setup})
                 (throw e))))]
+    (maybe-set-site-url (:headers request))
     (let [{:keys [user-id session-id database session]} (create!)]
       (events/publish-event! :database-create database)
       (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})

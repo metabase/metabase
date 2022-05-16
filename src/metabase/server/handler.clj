@@ -34,7 +34,6 @@
    #'mw.offset-paging/handle-paging             ; binds per-request parameters to handle paging
    #'wrap-keyword-params                        ; converts string keys in :params to keyword keys
    #'wrap-params                                ; parses GET and POST params as :query-params/:form-params and both as :params
-   #'mw.misc/maybe-set-site-url                 ; set the value of `site-url` if it hasn't been set yet
    #'mw.session/bind-current-user               ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
    #'mw.session/wrap-current-user-info          ; looks for :metabase-session-id and sets :metabase-user-id and other info if Session ID is valid
    #'mw.session/wrap-session-id                 ; looks for a Metabase Session ID and assoc as :metabase-session-id

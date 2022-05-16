@@ -30,35 +30,6 @@
                (comp respond add-content-type*))
              raise)))
 
-
-;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
-
-;; It's important for us to know what the site URL is for things like returning links, etc. this is stored in the
-;; `site-url` Setting; we can set it automatically by looking at the `Origin`, `X-Forwarded-Host`, or `Host` headers
-;; sent with a request.
-;;
-;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
-;; the (initial) value of `site-url`
-(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host user-agent]} :headers, uri :uri}]
-  (when (and (mdb/db-is-set-up?)
-             (not (public-settings/site-url))
-             (not= uri "/api/health")
-             (or (nil? user-agent) ((complement str/includes?) user-agent "HealthChecker")))
-    (when-let [site-url (or origin x-forwarded-host host)]
-      (log/info (trs "Setting Metabase site URL to {0}" site-url))
-      (try
-        (public-settings/site-url site-url)
-        (catch Throwable e
-          (log/warn e (trs "Failed to set site-url")))))))
-
-(defn maybe-set-site-url
-  "Middleware to set the `site-url` setting on the initial setup request"
-  [handler]
-  (fn [request respond raise]
-    (maybe-set-site-url* request)
-    (handler request respond raise)))
-
-
 ;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
