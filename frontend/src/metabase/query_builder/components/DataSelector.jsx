@@ -553,33 +553,25 @@ export class UnconnectedDataSelector extends Component {
     const { activeStep } = this.state;
 
     // database
-    if (activeStep === DATABASE_STEP && this.props.useOnlyAvailableDatabase) {
+    if (
+      activeStep === DATABASE_STEP &&
+      this.props.useOnlyAvailableDatabase &&
+      this.props.selectedDatabaseId == null
+    ) {
       const databases = this.getDatabases();
-      // retrieve the selected DB
-      if (this.props.selectedDatabaseId) {
-        const selectedDatabase = databases.find(
-          database => database.id === this.props.selectedDatabaseId,
-        );
-        await this.onChangeDatabase(selectedDatabase);
-      }
-      // select the only available DB
-      else if (databases && databases.length === 1) {
+      if (databases && databases.length === 1) {
         await this.onChangeDatabase(databases[0]);
       }
     }
 
     // schema
-    else if (activeStep === SCHEMA_STEP && this.props.useOnlyAvailableSchema) {
+    else if (
+      activeStep === SCHEMA_STEP &&
+      this.props.useOnlyAvailableSchema &&
+      this.props.selectedSchemaId
+    ) {
       const { schemas } = this.state;
-      // retrieve the selected schema
-      if (this.props.selectedSchemaId) {
-        const selectedSchema = schemas.find(
-          schema => schema.id === this.props.selectedSchemaId,
-        );
-        await this.onChangeSchema(selectedSchema);
-      }
-      // select the only available schema
-      else if (schemas && schemas.length === 1) {
+      if (schemas && schemas.length === 1) {
         await this.onChangeSchema(schemas[0]);
       }
     }
@@ -612,19 +604,6 @@ export class UnconnectedDataSelector extends Component {
       steps[index] === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       this.state.schemas.length === 1
-    ) {
-      index -= 1;
-    }
-
-    // Database: skip another step backwards
-    const databases = this.getDatabases();
-    const filteredDatabases = databases.filter(
-      database => !database.is_saved_questions,
-    );
-    if (
-      steps[index] === DATABASE_STEP &&
-      this.props.useOnlyAvailableDatabase &&
-      filteredDatabases.length === 1
     ) {
       index -= 1;
     }
