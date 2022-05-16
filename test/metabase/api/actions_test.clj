@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.actions.test-util :as actions.test-util]
    [metabase.api.actions :as api.actions]
    [metabase.models.database :refer [Database]]
    [metabase.test :as mt]))
@@ -25,7 +24,7 @@
                             ["=" "id" 1]
                             ["=" "name" "Red Medicine"]]}}
    {:action       "actions/row/delete"
-    :request-body (mt/mbql-query categories {:filter [:= $id 1]})
+    :request-body (mt/mbql-query checkins {:filter [:= $id 1]})
     :expected     {:rows-deleted [1]}}])
 
 (defn- row-action? [action]
@@ -33,7 +32,7 @@
 
 (deftest happy-path-test
   (testing "Make sure it's possible to use known actions end-to-end if preconditions are satisfied"
-    (actions.test-util/with-actions-test-data
+    (mt/with-temp-copy-of-db
       (mt/with-temporary-setting-values [experimental-enable-actions true]
         (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
           (doseq [{:keys [action request-body request-body-thunk expected]} (mock-requests)]
@@ -42,13 +41,12 @@
                 (is (= expected
                        (mt/user-http-request :crowberto :post 200 action request-body)))))))))))
 
-;; TODO: update test for this when we get something other than categories
-#_(deftest row-delete-row-with-constraint-fails-test
-    (mt/with-temporary-setting-values [experimental-enable-actions true]
-      (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-        (testing "Should return a 400 when deleting the row violates a foreign key constraint"
-          (let [request-body (mt/mbql-query categories {:filter [:= $id 22]})]
-            (mt/user-http-request :crowberto :post 400 "actions/row/delete" request-body))))))
+(deftest row-delete-row-with-constraint-fails-test
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (testing "Should return a 400 when deleting the row violates a foreign key constraint"
+        (let [request-body (mt/mbql-query venues {:filter [:= $id 22]})]
+          (mt/user-http-request :crowberto :post 400 "actions/row/delete" request-body))))))
 
 (deftest feature-flags-test
   (testing "Disable endpoints unless both global and Database feature flags are enabled"
