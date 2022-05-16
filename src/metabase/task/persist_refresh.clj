@@ -50,8 +50,9 @@
     (unpersist! [_ database persisted-info]
      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
-(defn- refresh-with-state! [refresher database persisted-info]
-  (when-not (contains? prunable-states (:state persisted-info))
+(defn- refresh-with-stats! [refresher database stats persisted-info]
+  ;; Since this could be long running, double check state just before refreshing
+  (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
     (let [card (Card (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
@@ -63,15 +64,24 @@
                         :refresh_end nil,
                         :state "refreshing"
                         :state_change_at :%now)
-          {:keys [state] :as results} (refresh! refresher database definition (:dataset_query card))]
-      ;; todo should check state where state = refreshing ?
+          {:keys [state error]} (try
+                                  (refresh! refresher database definition (:dataset_query card))
+                                  (catch Exception e
+                                    (log/info e (trs "Error refreshing persisting model with card-id {0}"
+                                                     (:card_id persisted-info)))
+                                    {:state :error :error (ex-message e)}))]
       (db/update! PersistedInfo (u/the-id persisted-info)
-        :active (= state :success),
-        :refresh_end :%now,
-        :state (if (= state :success) "persisted" "error")
-        :state_change_at :%now
-        :error (when (= state :error) (:error results)))
-      results)))
+                  :active (= state :success),
+                  :refresh_end :%now,
+                  :state (if (= state :success) "persisted" "error")
+                  :state_change_at :%now
+                  :error (when (= state :error) error))
+      (if (= :success state)
+        (update stats :success inc)
+        (-> stats
+            (update :error-details conj {:persisted-info-id (:id persisted-info)
+                                         :error error})
+            (update :error inc))))))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
@@ -126,22 +136,6 @@
                                         (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]})]
     (prune-deletables! refresher deletables)))
 
-(defn- refresh-with-results! [refresher database stats persisted-info]
-  ;; Since this could be long running, double check state just before refreshing
-  (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
-    (let [results (try
-                    (refresh-with-state! refresher database persisted-info)
-                    (catch Exception e
-                      (log/info e (trs "Error refreshing persisting model with card-id {0}"
-                                       (:card_id persisted-info)))
-                      {:state :error :error (ex-message e)}))]
-      (if (= :success (:state results))
-        (update stats :success inc)
-        (-> stats
-            (update :error-details conj {:persisted-info-id (:id persisted-info)
-                                         :error (:error results)})
-            (update :error inc))))))
-
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
@@ -152,7 +146,7 @@
         persisted (db/select PersistedInfo
                              :database_id database-id, :state [:in refreshable-states])
         thunk     (fn []
-                    (reduce (partial refresh-with-results! refresher database)
+                    (reduce (partial refresh-with-stats! refresher database)
                             {:success 0, :error 0, :trigger "Scheduled"}
                             persisted))]
     (save-task-history! "persist-refresh" database-id thunk))
@@ -169,7 +163,7 @@
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)
-                            (partial refresh-with-results!
+                            (partial refresh-with-stats!
                                      refresher
                                      database
                                      {:success 0 :error 0, :trigger "Manual"}
@@ -296,6 +290,7 @@
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
                      (u/the-id database) (.. ^Trigger tggr getKey getName)))
+    (persisted-info/ready-unpersisted-models! (u/the-id database))
     (try (task/add-trigger! tggr)
          (catch ObjectAlreadyExistsException _e
            (log/info

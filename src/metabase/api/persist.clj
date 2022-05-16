@@ -63,7 +63,9 @@
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
     {:data   persisted-infos
-     :total  (db/count PersistedInfo :database_id [:in writable-db-ids])
+     :total  (if (seq writable-db-ids)
+               (db/count PersistedInfo :database_id [:in writable-db-ids])
+               0)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
