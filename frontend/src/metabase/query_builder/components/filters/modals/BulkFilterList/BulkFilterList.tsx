@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import StructuredQuery, {
+  DimensionOption,
+} from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import BulkFilterSelect from "../BulkFilterSelect";
@@ -13,7 +15,7 @@ import {
 export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
-  dimensions: Dimension[];
+  options: DimensionOption[];
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
@@ -22,14 +24,14 @@ export interface BulkFilterListProps {
 const BulkFilterList = ({
   query,
   filters,
-  dimensions,
+  options,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterListProps): JSX.Element => {
   return (
     <ListRoot>
-      {dimensions.map((dimension, index) => (
+      {options.map(({ dimension }, index) => (
         <BulkFilterListItem
           key={index}
           query={query}

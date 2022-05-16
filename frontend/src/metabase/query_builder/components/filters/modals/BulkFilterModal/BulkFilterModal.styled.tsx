@@ -34,6 +34,11 @@ export const ModalDivider = styled.div`
   border-top: 1px solid ${color("border")};
 `;
 
+export const ModalContent = styled.div`
+  overflow-y: auto;
+  padding: 0 2rem;
+`;
+
 export const ModalTabList = styled(TabList)`
   padding: 0 2rem;
 `;

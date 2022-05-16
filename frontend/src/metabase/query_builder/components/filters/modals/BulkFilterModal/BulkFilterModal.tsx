@@ -11,6 +11,7 @@ import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalCloseButton,
+  ModalContent,
   ModalDivider,
   ModalFooter,
   ModalHeader,
@@ -115,22 +116,22 @@ interface BulkFilterModalSectionProps {
 const BulkFilterModalSection = ({
   query,
   filters,
-  section: { items },
+  section,
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterModalSectionProps): JSX.Element => {
-  const dimensions = useMemo(() => items.map(i => i.dimension), [items]);
-
   return (
-    <BulkFilterList
-      query={query}
-      filters={filters}
-      dimensions={dimensions}
-      onAddFilter={onAddFilter}
-      onChangeFilter={onChangeFilter}
-      onRemoveFilter={onRemoveFilter}
-    />
+    <ModalContent>
+      <BulkFilterList
+        query={query}
+        filters={filters}
+        options={section.items}
+        onAddFilter={onAddFilter}
+        onChangeFilter={onChangeFilter}
+        onRemoveFilter={onRemoveFilter}
+      />
+    </ModalContent>
   );
 };
 
@@ -169,10 +170,10 @@ const BulkFilterModalSectionList = ({
       <ModalDivider />
       {sections.map((section, index) => (
         <ModalTabPanel key={index} value={index}>
-          <BulkFilterModalSection
+          <BulkFilterList
             query={query}
             filters={filters}
-            section={section}
+            options={section.items}
             onAddFilter={onAddFilter}
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
