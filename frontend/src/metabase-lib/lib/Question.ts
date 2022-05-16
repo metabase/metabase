@@ -1274,7 +1274,7 @@ class QuestionInner {
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (this.query().isEditable()) {
+      if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
           .convertParametersToMbql()
