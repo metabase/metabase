@@ -135,7 +135,7 @@
               (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
 
 (defn- fake-persist-card! [card]
-  (let [persisted-info (persisted-info/make-ready! (mt/user->id :rasta) card)]
+  (let [persisted-info (persisted-info/turn-on! (mt/user->id :rasta) card)]
     (db/update-where! PersistedInfo {:card_id (u/the-id card)}
                       :definition (json/encode
                                     (persisted-info/metadata->definition

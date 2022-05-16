@@ -780,7 +780,7 @@
                          :database    (:name database)})))
       (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when-let [persisted-info (persisted-info/make-ready! api/*current-user-id* card)]
+      (when-let [persisted-info (persisted-info/turn-on! api/*current-user-id* card)]
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
@@ -801,7 +801,7 @@
   (api/let-404 [_card (Card card-id)]
     (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
       (api/write-check (Database (:database_id persisted-info)))
-      (persisted-info/mark-for-deletion! {:id (:id persisted-info)})
+      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 
 (api/define-routes)

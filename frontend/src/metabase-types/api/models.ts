@@ -30,6 +30,6 @@ export interface ModelCacheRefreshStatus {
   refresh_end: string;
   "next-fire-time": string;
 
-  creator_id: UserId;
-  creator: BaseUser;
+  creator_id?: UserId;
+  creator?: BaseUser;
 }

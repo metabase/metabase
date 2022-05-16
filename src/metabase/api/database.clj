@@ -684,7 +684,7 @@
     (if (-> database :options :persist-models-enabled)
       (do (db/update! Database id :options
                       (dissoc (:options database) :persist-models-enabled))
-          (persisted-info/mark-for-deletion! {:database_id id})
+          (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)
       ;; todo: a response saying this was a no-op? an error? same on the post to persist
