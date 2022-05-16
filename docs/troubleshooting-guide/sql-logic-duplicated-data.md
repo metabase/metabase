@@ -66,7 +66,7 @@ If you’ve written your joins assuming a one-to-one relationship for tables tha
 
 1. If you are joining data, check if your `SELECT` statement is including both primary and foreign key columns.
 2. Check if your source tables or query results have duplicated columns by following step 1 under [Debugging SQL logic][debugging-sql-logic].
-3. For more information, read about [common reasons for unexpected query results][common-reasons-for-sql-logic-errors].
+3. Learn more about [common reasons for unexpected query results][common-reasons-for-sql-logic-errors].
 
 
 ## Do you have a different problem?
@@ -85,9 +85,10 @@ If you’re not having one of the problems above, go to [Troubleshooting SQL log
 
 Search or ask the [Metabase community][discourse].
 
+
+[common-reasons-for-sql-logic-errors]: ./sql-logic.md#common-reasons-for-unexpected-query-results
 [debugging-sql-logic]: ./sql-logic.html#debugging-sql-logic
 [discourse]: https://discourse.metabase.com/
-[common-reasons-for-sql-logic-errors]: ./sql-logic.md#common-reasons-for-unexpected-query-results
 [schema-def]: /glossary/schema.html
 [troubleshooting-aggregations-too-high]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-high
 [troubleshooting-aggregations-too-low]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-low

@@ -53,18 +53,17 @@ If your problem isn't listed above, search or ask the [Metabase community][disc
 1. Check if your source tables or upstream queries have [duplicated rows][troubleshooting-duplicated-data].
 2. Check your source tables or upstream queries for rows that should be filtered out.
     - Are you including empty or `NULL` rows in your aggregations?
-    - Ask your Metabase admin or data team about business logic that defines invalid, cancelled, or expired records that should be filtered out in queries.
+    - Ask your Metabase admin or data team about business logic that defines invalid, cancelled, or expired records.
 3. If you’re aggregating unique values, check that you’re not double-counting them.
     - Do you need to use `COUNT_DISTINCT` instead of `COUNT`?
     - Are you applying a `SUM` on top of a `COUNT_DISTINCT`?
-4. If you’re getting an error message, go to [Troubleshooting error messages][troubleshooting-error-messages].
-5. If you’re still stuck, search or ask the [Metabase community][discourse].
 
 #### Aggregated results (counts, sums, etc.) are too low.
 
 1. Check if your source tables or upstream queries have [missing rows][troubleshooting-missing-data].
-2. If you’re getting an error message, go to [Troubleshooting error messages][troubleshooting-error-messages].
-3. If you’re still stuck, search or ask the [Metabase community][discourse].
+2. Check your source tables or upstream queries for filters that should be removed.
+    - Are you excluding empty or `NULL` rows in your aggregations?
+    - Ask your Metabase admin or data team about business logic that may be excluding data you want to use.
 
 ### How to find out if you have a nested query
 
@@ -99,18 +98,17 @@ Go to the saved question or model from the variables panel or by pasting the ID 
 
 **To find foreign keys or schema relationships for nested queries**
 1. Look for explicitly defined metadata (models only).
-2. If you're building off of someone else's work, ask the original owner of the query, saved question, or model.
+2. If you're building off of someone else's work, ask the original creator of the query, saved question, or model.
 3. Compare the rows from your data samples.
 
 ## Are you still stuck?
 
 Search or ask the [Metabase community][discourse].
 
-[common-join-problems]: /learn/sql-questions/sql-join-types#common-problems-with-sql-joins
+
 [cte-def]: /glossary/cte
 [data-reference-docs]: ../users-guide/12-data-model-reference.html
 [discourse]: https://discourse.metabase.com/
-[etl-learn]: /learn/analytics/etl-landscape
 [foreign-key-docs]: ../12-data-model-reference.html#foreign-keys
 [how-metabase-executes-sql-queries]: ../users-guide/writing-sql.html#how-metabase-executes-sql-queries
 [how-metabase-executes-sql-variables]: ../users-guide/referencing-saved-questions-in-queries.html#saved-question-as-a-common-table-expression-cte

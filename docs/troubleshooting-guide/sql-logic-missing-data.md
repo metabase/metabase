@@ -10,56 +10,70 @@
 3. Check your join conditions in the `ON` clause. For example:
     ```sql
     -- The join condition below will remove:
-    -- All rows from table A where key_a = "foo"
-    -- All rows from table B where key_b = "foo"
+    -- All transactions from the Orders table where the product category is 'Gizmo'.
 
     SELECT *
-    FROM table_a
-    JOIN table_b
-    ON key_a = key_b
-    AND key_b <> "foo"
+    FROM orders o 
+    JOIN products p 
+      ON o.product_id = p.id 
+     AND p.category <> 'Gizmo'
+    ;
     ```
 4. Check if your `WHERE` clause is interacting with your `JOIN` clause. For example:
     ```sql
-    # The WHERE clause below will remove:
-    # All rows from table A where key_a = "foo"
-    # All rows from table B where key_b = "foo"
+    -- The WHERE clause below will remove:
+    -- All transactions from the Orders table where the product category is 'Gizmo'.
 
     SELECT *
-    FROM table_a
-    JOIN table_b
-    WHERE key_b <> "foo"
+    FROM orders o 
+    JOIN products p 
+      ON o.product_id = p.id 
+    WHERE p.category <> 'Gizmo'
+    ;
     ```
-5. If you want to *add* rows to your query result to fill in data that is empty, zero, or `NULL`, you need to start your JOINs with a table or column that has all the rows you want. Ask your database admin if there’s a table you can use for this, or can create a temporary column using `GENERATE_SERIES`.
+5. If you want to *add* rows to your query result to fill in data that is empty, zero, or `NULL`, you need to start your JOINs with a table or column that has all the rows you want. Ask your database admin if there’s a table you can use for this. If your SQL dialect supports the `GENERATE_SERIES` function, you can create a temporary column to for your report dates.
     ```sql
-    -- This result has one row for every day with at least one transaction.
-    SELECT 
-    o.date
-    , SUM(p.price) AS total_sales
-    FROM orders o
-    LEFT JOIN products p
-    ON o.product_id = p.id
-    GROUP BY 1
+    -- The query below calculates the total sales for each day that had at least one order.
+    -- For example, note that there is no row in the results for May 5, 2016.
+
+    SELECT DATE_TRUNC('day', o.created_at)::DATE AS "order_created_date",
+           SUM(p.price) AS "total_sales"
+    FROM orders o 
+    JOIN products p 
+      ON o.product_id = p.id 
+    GROUP BY "order_created_date"
+    ORDER BY "order_created_date" ASC
     ;
 
-    -- This result has one row for every day, including days with 0 transactions.
+    -- This below calculates the total sales for every day in the report period, including days with 0 orders.
+    -- The date_series CTE generates one row per date that you want in your final result.
+    -- The fact_orders CTE generates the total sales for each date that had an order.
+    -- The main query joins the two CTEs together and uses the COALESCE function to fill in the dates where there were no orders (i.e. a total sales value of 0).
+
     WITH date_series AS (
-    GENERATE_SERIES(...)
+        SELECT *
+        FROM GENERATE_SERIES('2016-05-01'::DATE,'2020-05-30'::DATE, '1 day'::INTERVAL) report_date
+    )
+
+    , fact_orders AS (
+        SELECT DATE_TRUNC('day', o.created_at)::DATE AS "order_created_date",
+               SUM(p.price) AS "total_sales"
+        FROM orders o 
+        JOIN products p 
+        ON o.product_id = p.id 
+        GROUP BY "order_created_date"
+        ORDER BY "order_created_date" ASC
     )
 
     SELECT 
-      d.date
-    , SUM(p.price) AS total_sales
+      d.report_date,
+      o.order_created_date,
+      COALESCE(o.total_sales, 0) AS total_sales
     FROM date_series d
-    LEFT JOIN orders o
-        ON d.date = o.order_date
-    LEFT JOIN products p
-        ON o.product_id = p.id
-    GROUP BY 1
+    LEFT JOIN fact_orders o
+    ON d.date = o.order_created_date
     ;
     ```
-6. If you’re getting an error message, go to [Troubleshooting error messages][troubleshooting-error-messages].
-7. If you're still stuck, search or ask the [Metabase community][discourse].
 
 ### How joins filter out unmatched rows
 | Join type | Rows that are filtered out |
@@ -89,12 +103,12 @@ The execution order of the query may combine your join conditions and `WHERE` cl
 
 
 ## Do you have a different problem?
+- [I’m getting an error message][troubleshooting-error-messages].
 - [My result has duplicated data][troubleshooting-duplicated-data].
 - [My aggregations (counts, sums, etc.) are too high](#aggregated-results-counts-sums-etc-are-too-high).
 - [My aggregations (counts, sums, etc.) are too low](#aggregated-results-counts-sums-etc-are-too-low).
 - [My dates and times are wrong][troubleshooting-datetimes].
 - [My data isn't up to date][troubleshooting-database-syncs].
-- [My query doesn’t run, and I’m getting an error message][troubleshooting-error-messages].
 
 If you’re not having one of the problems above, go to [Troubleshooting SQL logic](#troubleshooting-sql-logic).
 
@@ -103,7 +117,7 @@ If you’re not having one of the problems above, go to [Troubleshooting SQL log
 
 1. If you are joining data, check if your `SELECT` statement contains the column you want.
 2. Check if your source tables or query results have missing columns by following step 1 under [Debugging SQL logic][debugging-sql-logic].
-3. For more information, read about [common reasons for unexpected query results][common-reasons-for-sql-logic-errors].
+3. Learn more about [common reasons for unexpected query results][common-reasons-for-sql-logic-errors].
 
 
 ## Are you still stuck?
@@ -111,8 +125,11 @@ If you’re not having one of the problems above, go to [Troubleshooting SQL log
 Search or ask the [Metabase community][discourse].
 
 
+[common-join-problems]: /learn/sql-questions/sql-join-types#common-problems-with-sql-joins
+[common-reasons-for-sql-logic-errors]: ./sql-logic.md#common-reasons-for-unexpected-query-results
 [debugging-sql-logic]: ./sql-logic.html#debugging-sql-logic
 [discourse]: https://discourse.metabase.com/
+[etl-learn]: /learn/analytics/etl-landscape
 [troubleshooting-aggregations-too-high]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-high
 [troubleshooting-aggregations-too-low]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-low
 [troubleshooting-database-syncs]: ./sync-fingerprint-scan.html 
