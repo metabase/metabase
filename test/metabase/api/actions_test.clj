@@ -11,7 +11,8 @@
 (comment api.actions/keep-me)
 
 (defn mock-requests []
-  [#_#_{:action       "actions/table/insert"
+  [#_#_
+   {:action       "actions/table/insert"
     :request-body {:table-id (mt/id :venues)
                    :values   {:name "Toucannery"}}
     :expected     {:insert-into "VENUES"
@@ -30,7 +31,10 @@
     :expected     {:rows-deleted [1]}}
    {:action       "actions/row/update"
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 3]}) :update_row {:name "MyNewName"})
-    :expected     {:rows-updated [1]}}])
+    :expected     {:rows-updated [1]}}
+   {:action       "actions/row/create"
+    :request-body (assoc (mt/mbql-query categories) :create_row {:name "name_for_my_new_row"})
+    :expect-fn    (fn [result] (is (number? (get-in result [:created-row :id]))))}])
 
 (defn- row-action? [action]
   (str/starts-with? action "actions/row"))
@@ -40,11 +44,14 @@
     (actions.test-util/with-actions-test-data
       (mt/with-temporary-setting-values [experimental-enable-actions true]
         (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-          (doseq [{:keys [action request-body request-body-thunk expected]} (mock-requests)]
+          (doseq [{:keys [action request-body request-body-thunk expected expect-fn]} (mock-requests)]
             (let [request-body (or request-body (request-body-thunk))]
               (testing action
-                (is (= expected
-                       (mt/user-http-request :crowberto :post 200 action request-body)))))))))))
+                (let [result (mt/user-http-request :crowberto :post 200 action request-body)]
+                  (when expected
+                    (is (= expected
+                           (mt/user-http-request :crowberto :post 200 action request-body))))
+                  (when expect-fn (expect-fn result)))))))))))
 
 ;; TODO: update test for this when we get something other than categories
 #_(deftest row-delete-row-with-constraint-fails-test
