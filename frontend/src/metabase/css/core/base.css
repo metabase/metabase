@@ -1,9 +1,8 @@
-/* :root {
-  --default-font-family: "Lato";
+:root {
   --default-font-size: 0.875em;
   --default-font-color: var(--color-text-dark);
   --default-bg-color: var(--color-bg-light);
-} */
+}
 
 html {
   height: 100%; /* ensure the entire page will fill the window */
