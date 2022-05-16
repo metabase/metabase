@@ -779,11 +779,7 @@ export class UnconnectedDataSelector extends Component {
       return;
     }
 
-    // callback only if selected DB id is new
-    if (
-      this.props.setDatabaseFn &&
-      this.props.selectedDatabaseId !== database?.id
-    ) {
+    if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
 
