@@ -21,7 +21,7 @@
 (defn- execute! [conn [sql & params]]
   (jdbc/execute! conn (into [(add-remark sql)] params)))
 
-(defn- query [conn [sql & params]]
+(defn- jdbc-query [conn [sql & params]]
   (jdbc/query conn (into [(add-remark sql)] params)))
 
 (defn- create-schema-sql
@@ -54,7 +54,7 @@
   (let [existing-timeout (->> (hsql/format {:select [:setting]
                                             :from [:pg_settings]
                                             :where [:= :name "statement_timeout"]})
-                              (jdbc/query tx)
+                              (jdbc-query tx)
                               first
                               :setting
                               parse-long)
@@ -63,7 +63,7 @@
                       ten-minutes
                       (min ten-minutes existing-timeout))]
     ;; Can't use a prepared parameter with these statements
-    (jdbc/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
+    (execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
 
 (defmethod ddl.i/refresh! :postgres [_driver database definition dataset-query]
   (try
@@ -93,7 +93,7 @@
         steps       [[:persist.check/create-schema
                       (fn check-schema [conn]
                         (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
-                                                    (query conn)
+                                                    (jdbc-query conn)
                                                     (map :schema_name)
                                                     (into #{}))]
                           (or (contains? existing-schemas schema-name)
@@ -107,7 +107,7 @@
                                                           "values (1)")]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
-                        (query conn [(format "select * from %s.%s"
+                        (jdbc-query conn [(format "select * from %s.%s"
                                              schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
