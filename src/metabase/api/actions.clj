@@ -10,7 +10,9 @@
             [metabase.models.setting :as setting]
             [metabase.util.i18n :as i18n]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [medley.core :as m]))
+
 
 (defn- do-check-actions-enabled [database-id f]
   {:pre [(integer? database-id)]}
@@ -36,10 +38,10 @@
 (defn- kwdize-filter [strings-to-kw query]
   (-> query
       (update :type keyword)
-      (update-in [:query :filter]
-                 #(walk/postwalk
-                   (fn [x] (if (and (string? x) (contains? strings-to-kw x)) (keyword x) x))
-                   %))))
+      (m/update-existing-in [:query :filter]
+                            #(walk/postwalk
+                              (fn [x] (if (and (string? x) (contains? strings-to-kw x)) (keyword x) x))
+                              %))))
 
 (api/defendpoint POST "/row/:action"
   "Generic API endpoint for doing an action against a single, specific row."

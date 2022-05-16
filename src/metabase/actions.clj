@@ -52,6 +52,11 @@
   (throw (ex-info (i18n/tru "Unknown row action {0}." (pr-str (some-> action name)))
                   {:status-code 404, :action action, :driver driver, :query query})))
 
+(defmethod row-action! [:create ::driver/driver]
+  [action driver query]
+  (throw (ex-info (i18n/tru "Row creation is not supported for {0} databases." (name driver))
+                  {:status-code 400, :action action, :driver driver, :query query})))
+
 (defmethod row-action! [:delete ::driver/driver]
   [action driver query]
   (throw (ex-info (i18n/tru "Row deletion is not supported for {0} databases." (name driver))

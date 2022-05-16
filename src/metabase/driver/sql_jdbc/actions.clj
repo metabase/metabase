@@ -65,6 +65,26 @@
                             (catch-throw e 400 {:query query
                                                 :sql   update-hsql})))})))
 
+(defmethod actions/row-action! [:create :sql-jdbc]
+  [_action driver {database-id :database :as query}]
+  (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        raw-hsql        (qp.store/with-store
+                          (try
+                            (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                            (sql.qp/mbql->honeysql driver query)
+                            (catch Exception e
+                              (catch-throw e 404))))]
+    (let [new-row     (:create_row query)
+          create-hsql (-> raw-hsql
+                          (dissoc :select :from)
+                          (assoc :insert-into (first (:from raw-hsql)))
+                          (assoc :values [new-row]))]
+      {:created-row (try (jdbc/execute! connection-spec
+                                        (hformat/format create-hsql)
+                                        {:return-keys true})
+                         (catch Exception e
+                           (catch-throw e 400 {:query query
+                                               :sql   create-hsql})))})))
 
 #_(defmethod actions/row-action! [:update :metabase.driver/driver]
     [_action driver {database-id :database :as query}]
