@@ -21,11 +21,9 @@ import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHist
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
-
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-
 import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
-
+import BulkFilterModal from "metabase/query_builder/components/filters/modals/BulkFilterModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
@@ -157,6 +155,10 @@ export default class QueryModals extends React.Component {
           multiStep
           initialCollectionId={this.props.initialCollectionId}
         />
+      </Modal>
+    ) : modal === MODAL_TYPES.FILTERS ? (
+      <Modal onClose={onCloseModal}>
+        <BulkFilterModal query={question.query()} onClose={onCloseModal} />
       </Modal>
     ) : modal === MODAL_TYPES.HISTORY ? (
       <Modal onClose={onCloseModal}>

@@ -224,7 +224,7 @@ describe("scenarios > collection defaults", () => {
         });
       });
 
-      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
+      it("should be able to choose a child collection when saving a question (metabase#14052)", () => {
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to

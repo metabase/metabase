@@ -25,6 +25,11 @@ import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+
+export interface FilterDisplayNameOpts {
+  includeDimension?: boolean;
+}
+
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -55,14 +60,15 @@ export default class Filter extends MBQLClause {
   /**
    * Returns the display name for the filter
    */
-  displayName() {
+  displayName({ includeDimension = true }: FilterDisplayNameOpts = {}) {
     if (this.isSegment()) {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
       const dimension = this.dimension();
       const operator = this.operator();
-      const dimensionName = dimension && dimension.displayName();
+      const dimensionName =
+        dimension && includeDimension && dimension.displayName();
       const operatorName =
         operator && !isStartingFrom(this) && operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
