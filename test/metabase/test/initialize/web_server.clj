@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
+            [metabase.http-client :as client]
             [metabase.models.setting :as setting]
             [metabase.server :as server]
             [metabase.server.handler :as handler]))
@@ -36,4 +37,5 @@
       (when config/is-test?
         (System/exit -2))))
   (init-status/set-complete!)
+  (client/client :get 200 "/testing/save-site-url")
   (setting/set! :site-name "Metabase Test"))

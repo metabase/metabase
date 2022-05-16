@@ -108,7 +108,7 @@
 (defn- maybe-set-site-url
   "Set the site url from headers. If the [[public-settings/site-url]] is not already set, checks origin,
   x-forwarded-host, and then host in that order, using the first non-nil value."
-  [{:strs [origin x-forwarded-host host]}]
+  [{:strs [origin x-forwarded-host host] :as _headers}]
   (when (not (public-settings/site-url))
     (when-let [site-url (or origin x-forwarded-host host)]
       (log/info (trs "Setting Metabase site URL to {0}" site-url))

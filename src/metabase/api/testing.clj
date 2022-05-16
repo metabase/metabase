@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
+            [metabase.api.setup :as api.setup]
             [metabase.models.setting.cache :as setting.cache]
             [toucan.db :as db]))
 
@@ -41,5 +42,10 @@
   [name]
   (restore-snapshot! name)
   nil)
+
+(api/defendpoint GET "/save-site-url"
+  [:as request]
+  (#'api.setup/maybe-set-site-url request)
+  api/generic-204-no-content)
 
 (api/define-routes)
