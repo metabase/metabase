@@ -26,7 +26,7 @@ const BulkFilterSelect = ({
   onRemoveFilter,
 }: BulkFilterSelectProps): JSX.Element => {
   const name = useMemo(() => {
-    return filter?.displayName();
+    return filter?.displayName({ includeDimension: false });
   }, [filter]);
 
   const newFilter = useMemo(() => {

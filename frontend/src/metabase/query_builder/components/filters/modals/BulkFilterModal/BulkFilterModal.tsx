@@ -186,7 +186,15 @@ const BulkFilterModalSectionList = ({
 
 const getTitle = (query: StructuredQuery) => {
   const question = query.question();
-  return question.isSaved() ? t`Filter ${question.displayName()}` : t`Filter`;
+  const table = query.table();
+
+  if (question.isSaved()) {
+    return t`Filter ${question.displayName()}`;
+  } else if (table) {
+    return t`Filter ${table.displayName()}`;
+  } else {
+    return t`Filter`;
+  }
 };
 
 export default BulkFilterModal;
