@@ -8,6 +8,7 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getCrumbs } from "metabase/lib/collections";
 
 import { color } from "metabase/lib/colors";
 
@@ -62,27 +63,6 @@ export default class ItemPicker extends React.Component {
     showScroll: PropTypes.bool,
   };
 
-  // returns a list of "crumbs" starting with the "root" collection
-  getCrumbs(collection, collectionsById) {
-    if (collection && collection.path) {
-      return [
-        ...collection.path.map(id => [
-          collectionsById[id].name,
-          () => this.setState({ parentId: id }),
-        ]),
-        [collection.name],
-      ];
-    } else {
-      return [
-        [
-          collectionsById["root"].name,
-          () => this.setState({ parentId: collectionsById["root"].id }),
-        ],
-        ["Unknown"],
-      ];
-    }
-  }
-
   checkHasWritePermissionForItem(item, models) {
     const { collectionsById } = this.props;
 
@@ -126,7 +106,9 @@ export default class ItemPicker extends React.Component {
       this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
-    const crumbs = this.getCrumbs(collection, collectionsById);
+    const crumbs = getCrumbs(collection, collectionsById, id =>
+      this.setState({ parentId: id }),
+    );
 
     let allCollections = (collection && collection.children) || [];
 
