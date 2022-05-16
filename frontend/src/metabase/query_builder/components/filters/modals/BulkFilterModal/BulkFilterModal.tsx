@@ -29,11 +29,6 @@ const BulkFilterModal = ({
   query,
   onClose,
 }: BulkFilterModalProps): JSX.Element | null => {
-  const title = useMemo(() => {
-    const question = query.question();
-    return question.isSaved() ? t`Filter ${question.displayName()}` : t`Filter`;
-  }, [query]);
-
   const filters = useMemo(() => {
     return query.topLevelFilters();
   }, [query]);
@@ -45,7 +40,7 @@ const BulkFilterModal = ({
   return (
     <div>
       <ModalHeader>
-        <ModalHeaderTitle>{title}</ModalHeaderTitle>
+        <ModalHeaderTitle>{getTitle(query)}</ModalHeaderTitle>
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />
         </ModalCloseButton>
@@ -116,6 +111,11 @@ const BulkFilterModalSectionList = ({
       ))}
     </TabContent>
   );
+};
+
+const getTitle = (query: StructuredQuery) => {
+  const question = query.question();
+  return question.isSaved() ? t`Filter ${question.displayName()}` : t`Filter`;
 };
 
 export default BulkFilterModal;

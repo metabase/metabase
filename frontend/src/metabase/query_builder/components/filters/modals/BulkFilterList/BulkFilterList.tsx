@@ -51,7 +51,6 @@ const BulkFilterListItem = ({
         {options.map((filter, index) => (
           <BulkFilterSelect key={index} filter={filter} />
         ))}
-        {!options.length && <BulkFilterSelect />}
       </ListRowContent>
     </ListRow>
   );
