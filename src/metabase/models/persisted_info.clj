@@ -90,22 +90,22 @@
   ([conditions-map state]
    (db/update-where! PersistedInfo conditions-map :active false, :state state, :state_change_at :%now)))
 
-(defn- create!
+(defn- create-row
   "Marks PersistedInfo as `creating`, these will at some point be persisted by the PersistRefresh task."
   [user-id card]
   (let [slug (-> card :name slug-name)
         {:keys [database_id]} card
         card-id (u/the-id card)]
-    (db/insert! PersistedInfo {:card_id         card-id
-                               :database_id     database_id
-                               :question_slug   slug
-                               :table_name      (format "model_%s_%s" card-id slug)
-                               :active          false
-                               :refresh_begin   :%now
-                               :refresh_end     nil
-                               :state           "creating"
-                               :state_change_at :%now
-                               :creator_id      user-id})))
+    {:card_id         card-id
+     :database_id     database_id
+     :question_slug   slug
+     :table_name      (format "model_%s_%s" card-id slug)
+     :active          false
+     :refresh_begin   :%now
+     :refresh_end     nil
+     :state           "creating"
+     :state_change_at :%now
+     :creator_id      user-id}))
 
 (defn ready-unpersisted-models!
   "Looks for all models in database and creates a persisted-info ready to be synced."
@@ -116,8 +116,7 @@
                                        [:not [:exists {:select [1]
                                                        :from [:persisted_info]
                                                        :where [:= :persisted_info.card_id :report_card.id]}]]]})]
-    (doseq [card cards]
-      (create! nil card))))
+    (db/insert-many! PersistedInfo (map #(create-row nil %) cards))))
 
 (comment
   (ready-unpersisted-models! 183))
@@ -129,7 +128,7 @@
         existing-persisted-info (db/select-one PersistedInfo :card_id card-id)
         persisted-info (cond
                          (not existing-persisted-info)
-                         (create! user-id card)
+                         (db/insert! PersistedInfo (create-row user-id card))
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
