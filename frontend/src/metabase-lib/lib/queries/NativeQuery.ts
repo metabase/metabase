@@ -26,7 +26,7 @@ import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
 import DimensionOptions from "../DimensionOptions";
-import { ValidationError } from "../ValidationError";
+import { ValidationError } from "metabase-lib/lib/ValidationError";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type VariableFilter = (variable: Variable) => boolean;

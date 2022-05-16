@@ -182,48 +182,53 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   }
 };
 
-@Search.loadList({
-  // If there is at least one dataset,
-  // we want to display a slightly different data picker view
-  // (see DATA_BUCKET step)
-  query: {
-    models: "dataset",
-    limit: 1,
-  },
-  loadingAndErrorWrapper: false,
-})
-@connect(
-  (state, ownProps) => ({
-    metadata: getMetadata(state),
-    databases:
-      ownProps.databases ||
-      Databases.selectors.getList(state, {
-        entityQuery: ownProps.databaseQuery,
-      }) ||
-      [],
-    hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables", saved: true },
-    }),
-    hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
-      entityQuery: { saved: true },
-    }),
-    hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
-      entityQuery: { include: "tables" },
-    }),
-    hasDataAccess: getHasDataAccess(state),
-  }),
-  {
-    fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
-    fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
-    fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
-    fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
-  },
-)
-class DataSelector extends Component {
+class DataSelectorInner extends Component {
   render() {
     return <UnconnectedDataSelector {...this.props} />;
   }
 }
+
+const DataSelector = _.compose(
+  Search.loadList({
+    // If there is at least one dataset,
+    // we want to display a slightly different data picker view
+    // (see DATA_BUCKET step)
+    query: {
+      models: "dataset",
+      limit: 1,
+    },
+    loadingAndErrorWrapper: false,
+  }),
+  connect(
+    (state, ownProps) => ({
+      metadata: getMetadata(state),
+      databases:
+        ownProps.databases ||
+        Databases.selectors.getList(state, {
+          entityQuery: ownProps.databaseQuery,
+        }) ||
+        [],
+      hasFetchedDatabasesWithTablesSaved: !!Databases.selectors.getList(state, {
+        entityQuery: { include: "tables", saved: true },
+      }),
+      hasFetchedDatabasesWithSaved: !!Databases.selectors.getList(state, {
+        entityQuery: { saved: true },
+      }),
+      hasFetchedDatabasesWithTables: !!Databases.selectors.getList(state, {
+        entityQuery: { include: "tables" },
+      }),
+      hasDataAccess: getHasDataAccess(state),
+    }),
+    {
+      fetchDatabases: databaseQuery =>
+        Databases.actions.fetchList(databaseQuery),
+      fetchSchemas: databaseId =>
+        Schemas.actions.fetchList({ dbId: databaseId }),
+      fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
+      fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
+    },
+  ),
+)(DataSelectorInner);
 
 export class UnconnectedDataSelector extends Component {
   constructor(props) {

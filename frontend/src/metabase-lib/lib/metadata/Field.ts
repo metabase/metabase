@@ -2,7 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment";
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -30,6 +30,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+import { FieldFingerprint } from "metabase-types/api/field";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
@@ -41,9 +42,12 @@ import Base from "./Base";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
-export default class Field extends Base {
+class FieldInner extends Base {
+  id?: number;
   name: string;
+  description: string | null;
   semantic_type: string | null;
+  fingerprint?: FieldFingerprint;
   table?: Table;
 
   parent() {
@@ -243,12 +247,10 @@ export default class Field extends Base {
   }
 
   // FILTERS
-  @memoize
   filterOperators(selected) {
     return getFilterOperators(this, this.table, selected);
   }
 
-  @memoize
   filterOperatorsLookup() {
     return createLookupByProperty(this.filterOperators(), "name");
   }
@@ -268,7 +270,6 @@ export default class Field extends Base {
   }
 
   // AGGREGATIONS
-  @memoize
   aggregationOperators() {
     return this.table
       ? this.table
@@ -281,7 +282,6 @@ export default class Field extends Base {
       : null;
   }
 
-  @memoize
   aggregationOperatorsLookup() {
     return createLookupByProperty(this.aggregationOperators(), "short");
   }
@@ -442,3 +442,10 @@ export default class Field extends Base {
     this.metadata = metadata;
   }
 }
+
+export default class Field extends memoizeClass<FieldInner>(
+  "filterOperators",
+  "filterOperatorsLookup",
+  "aggregationOperators",
+  "aggregationOperatorsLookup",
+)(FieldInner) {}

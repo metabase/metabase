@@ -30,14 +30,16 @@ export const DATETIME_UNITS = [
 
 export function computeFilterTimeRange(filter) {
   let expandedFilter;
+  let defaultUnit;
   if (filter[0] === "time-interval") {
+    defaultUnit = filter[3];
     expandedFilter = expandTimeIntervalFilter(filter);
   } else {
     expandedFilter = filter;
   }
 
   const [operator, field, ...values] = expandedFilter;
-  const bucketing = parseFieldBucketing(field, "day");
+  const bucketing = parseFieldBucketing(field, defaultUnit ?? "day");
 
   let start, end;
   if (isStartingFrom(filter)) {

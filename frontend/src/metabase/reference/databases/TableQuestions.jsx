@@ -51,8 +51,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class TableQuestions extends Component {
+class TableQuestions extends Component {
   static propTypes = {
     table: PropTypes.object.isRequired,
     style: PropTypes.object.isRequired,
@@ -111,3 +110,5 @@ export default class TableQuestions extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(TableQuestions);

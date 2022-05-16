@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Segment from "metabase/entities/segments";
 import SegmentItem from "metabase/admin/datamodel/components/SegmentItem";
@@ -9,9 +10,7 @@ import FilteredToUrlTable from "metabase/admin/datamodel/hoc/FilteredToUrlTable"
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
 
-@Segment.loadList({ wrapped: true })
-@FilteredToUrlTable("segments")
-class SegmentListApp extends React.Component {
+class SegmentListAppInner extends React.Component {
   render() {
     const { segments, tableSelector } = this.props;
 
@@ -50,5 +49,10 @@ class SegmentListApp extends React.Component {
     );
   }
 }
+
+const SegmentListApp = _.compose(
+  Segment.loadList({ wrapped: true }),
+  FilteredToUrlTable("segments"),
+)(SegmentListAppInner);
 
 export default SegmentListApp;

@@ -1253,7 +1253,6 @@ workflows:
                 [
                   "admin",
                   "collections",
-                  "custom-column",
                   "dashboard",
                   "embedding",
                   "filters",

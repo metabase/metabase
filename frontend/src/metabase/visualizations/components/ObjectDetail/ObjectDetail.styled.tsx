@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
 import { breakpointMinMedium } from "metabase/styled-components/theme/media-queries";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 interface ObjectDetailModalProps {
   wide: boolean;
 }
 
 export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
-  border: 1px solid ${colors.border};
+  border: 1px solid ${color("border")};
   border-radius: 0.5rem;
   overflow: hidden;
   ${breakpointMinMedium} {
@@ -28,6 +28,11 @@ export const ObjectDetailBodyWrapper = styled.div`
   height: calc(100vh - 8rem);
 `;
 
+export const ObjectIdLabel = styled.span`
+  color: ${color("text-medium")};
+  margin-left: 0.5rem;
+`;
+
 export const ObjectDetailsTable = styled.div`
   overflow-y: auto;
   flex: 1;
@@ -41,7 +46,7 @@ export const ObjectRelationships = styled.div`
   overflow-y: auto;
   flex: 0 0 100%;
   padding: 2rem;
-  background-color: ${colors["bg-light"]};
+  background-color: ${color("bg-light")};
   ${breakpointMinMedium} {
     flex: 0 0 33.3333%;
     max-height: calc(80vh - 4rem);
@@ -52,7 +57,7 @@ export const CloseButton = styled.div`
   display: flex;
   margin-left: 1rem;
   padding-left: 1rem;
-  border-left: 1px solid ${colors.border};
+  border-left: 1px solid ${color("border")};
   ${breakpointMinMedium} {
     display: none;
   }
@@ -75,4 +80,13 @@ type GridItemProps = { colSpan?: number };
 export const GridCell = styled.div<GridItemProps>`
   grid-column: span ${props => props.colSpan || 1} / span
     ${props => props.colSpan || 1};
+`;
+
+export const EditingFormContainer = styled.div`
+  overflow-y: auto;
+  flex: 1;
+  padding: 2rem;
+  ${breakpointMinMedium} {
+    max-height: calc(80vh - 4rem);
+  }
 `;

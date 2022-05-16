@@ -66,6 +66,7 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
+  | "experimental-enable-actions"
   | "persisted-models-enabled"
   | "engines"
   | "ga-code"
@@ -269,6 +270,10 @@ class Settings {
 
   upgradeUrl() {
     return "https://www.metabase.com/upgrade/";
+  }
+
+  migrateToCloudGuideUrl() {
+    return "https://www.metabase.com/cloud/docs/migrate/guide";
   }
 
   newVersionAvailable() {

@@ -89,18 +89,20 @@
                                                 [:in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
-                                   (let [database (-> persisted-info :database_id db-id->db)]
-                                     (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
-                                     (try
-                                       (unpersist! refresher database persisted-info)
-                                       (db/delete! PersistedInfo :id (:id persisted-info))
-                                       (update stats :success inc)
-                                       (catch Exception e
-                                         (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
-                                         (update stats :error inc)))))
+                                   ;; Since this could be long running, double check state just before deleting
+                                   (when (= "deletable" (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
+                                     (let [database (-> persisted-info :database_id db-id->db)]
+                                       (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                       (try
+                                         (unpersist! refresher database persisted-info)
+                                         (db/delete! PersistedInfo :id (:id persisted-info))
+                                         (update stats :success inc)
+                                         (catch Exception e
+                                           (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                           (update stats :error inc))))))
                                  {:success 0, :error 0}
                                  deletables))]
-      (save-task-history! "unpersist-tables" nil unpersist-fn))) )
+      (save-task-history! "unpersist-tables" nil unpersist-fn))))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -125,13 +127,15 @@
         persisted (db/select PersistedInfo
                              :database_id database-id, :state [:in refreshable-states])
         thunk     (fn []
-                    (reduce (fn [stats p]
-                              (try
-                                (refresh-with-state! refresher database p)
-                                (update stats :success inc)
-                                (catch Exception e
-                                  (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id p)))
-                                  (update stats :error inc))))
+                    (reduce (fn [stats persisted-info]
+                              ;; Since this could be long running, double check state just before refreshing
+                              (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
+                                (try
+                                  (refresh-with-state! refresher database persisted-info)
+                                  (update stats :success inc)
+                                  (catch Exception e
+                                    (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id persisted-info)))
+                                    (update stats :error inc)))))
                             {:success 0, :error 0}
                             persisted))]
     (save-task-history! "persist-refresh" database-id thunk))

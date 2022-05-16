@@ -265,7 +265,8 @@
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
     (when (some? value)
       (condp #(isa? %2 %1) base-type
-        :type/UUID         (UUID/fromString value)
+        :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
+                             (UUID/fromString  value))
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
@@ -301,7 +302,8 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- json-query [identifier nfc-field]
+(defmethod sql.qp/json-query :postgres
+  [_ identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
@@ -328,7 +330,7 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (json-query identifier stored-field))
+        (sql.qp/json-query :postgres identifier stored-field))
 
       :else
       identifier)))

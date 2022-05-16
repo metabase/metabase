@@ -20,8 +20,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ColumnItemInput } from "./ColumnItem.styled";
 import { getFieldRawName } from "../../../utils";
 
-@withRouter
-export default class Column extends Component {
+class Column extends Component {
   static propTypes = {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
@@ -110,6 +109,8 @@ export default class Column extends Component {
     );
   }
 }
+
+export default withRouter(Column);
 
 const getFkFieldPlaceholder = (field, idfields) => {
   const hasIdFields = idfields?.length > 0;

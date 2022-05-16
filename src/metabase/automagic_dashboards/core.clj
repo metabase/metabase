@@ -44,23 +44,32 @@
 (def ^:private ^{:arglists '([field])} id-or-name
   (some-fn :id :name))
 
-(s/defn ->field
+(s/defn ->field :- (s/maybe (type Field))
   "Return `Field` instance for a given ID or name in the context of root."
-  [root id-or-name :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
-  (let [id-or-name (if (sequential? id-or-name)
-                     (filters/field-reference->id id-or-name)
-                     id-or-name)]
-    (if (->> root :source (instance? (type Table)))
-      (Field id-or-name)
-      (when-let [field (->> root
-                            :source
-                            :result_metadata
-                            (m/find-first (comp #{id-or-name} :name)))]
-        (-> field
-            (update :base_type keyword)
-            (update :semantic_type keyword)
-            field/map->FieldInstance
-            (classify/run-classifiers {}))))))
+  [{{result-metadata :result_metadata} :source, :as root}
+   field-id-or-name-or-clause :- (s/cond-pre su/IntGreaterThanZero su/NonBlankString mbql.s/Field)]
+  (let [id-or-name (if (sequential? field-id-or-name-or-clause)
+                     (filters/field-reference->id field-id-or-name-or-clause)
+                     field-id-or-name-or-clause)]
+    (or
+     ;; Handle integer Field IDs.
+     (when (integer? id-or-name)
+       (Field id-or-name))
+     ;; handle field string names. Only if we have result metadata. (Not sure why)
+     (when (string? id-or-name)
+       (when-not result-metadata
+         (log/warn (trs "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name.")))
+       (when-let [field (m/find-first #(= (:name %) id-or-name)
+                                      result-metadata)]
+         (-> field
+             (update :base_type keyword)
+             (update :semantic_type keyword)
+             field/map->FieldInstance
+             (classify/run-classifiers {}))))
+     ;; otherwise this isn't returning something, and that's probably an error. Log it.
+     (log/warn (str (trs "Cannot resolve Field {0} in automagic analysis context" field-id-or-name-or-clause)
+                    \newline
+                    (u/pprint-to-str root))))))
 
 (def ^{:arglists '([root])} source-name
   "Return the (display) name of the soruce of a given root object."
@@ -1014,11 +1023,12 @@
                :transient_filters (:query-filter context)
                :param_fields      (->> context :query-filter (filter-referenced-fields root))))))
 
-(defmulti
-  ^{:doc "Create a transient dashboard analyzing given entity."
-    :arglists '([entity opts])}
-  automagic-analysis (fn [entity _]
-                       (type entity)))
+
+(defmulti automagic-analysis
+  "Create a transient dashboard analyzing given entity."
+  {:arglists '([entity opts])}
+  (fn [entity _]
+    (type entity)))
 
 (defmethod automagic-analysis (type Table)
   [table opts]
@@ -1032,7 +1042,7 @@
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(defn- collect-metrics
+(s/defn ^:private collect-metrics :- (s/maybe [(type Metric)])
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
@@ -1047,21 +1057,30 @@
                                           :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
-(defn- collect-breakout-fields
+(s/defn ^:private collect-breakout-fields :- (s/maybe [(type Field)])
   [root question]
-  (map (comp (partial ->field root)
-             first
-             filters/collect-field-references)
-       (get-in question [:dataset_query :query :breakout])))
+  (for [breakout     (get-in question [:dataset_query :query :breakout])
+        field-clause (take 1 (filters/collect-field-references breakout))
+        :let         [field (->field root field-clause)]
+        :when        field]
+    field))
 
 (defn- decompose-question
   [root question opts]
-  (map #(automagic-analysis % (assoc opts
-                                :source       (:source root)
-                                :query-filter (:query-filter root)
-                                :database     (:database root)))
-       (concat (collect-metrics root question)
-               (collect-breakout-fields root question))))
+  (letfn [(analyze [x]
+            (try
+              (automagic-analysis x (assoc opts
+                                           :source       (:source root)
+                                           :query-filter (:query-filter root)
+                                           :database     (:database root)))
+              (catch Throwable e
+                (throw (ex-info (tru "Error decomposing question: {0}" (ex-message e))
+                                {:root root, :question question, :object x}
+                                e)))))]
+    (into []
+          (comp cat (map analyze))
+          [(collect-metrics root question)
+           (collect-breakout-fields root question)])))
 
 (defn- pluralize
   [x]

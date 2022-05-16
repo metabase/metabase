@@ -350,7 +350,7 @@
         dashcards  (:ordered_cards dashboard)
         collection (populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)
-                    (rand-nth populate/colors)
+                    (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (db/insert! Dashboard

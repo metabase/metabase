@@ -205,8 +205,10 @@ QuestionFilterWidget.shouldRender = ({
   question,
   queryBuilderMode,
   isObjectDetail,
+  isActionListVisible,
 }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
   question.query().isEditable() &&
-  !isObjectDetail;
+  !isObjectDetail &&
+  isActionListVisible;

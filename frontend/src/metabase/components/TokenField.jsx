@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-/* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { findDOMNode } from "react-dom";
@@ -64,6 +62,37 @@ export default class TokenField extends Component {
     style: {},
     valueStyle: {},
     optionsStyle: {},
+  };
+
+  static propTypes = {
+    value: PropTypes.array.isRequired,
+    placeholder: PropTypes.string,
+    multi: PropTypes.bool,
+    validateValue: PropTypes.func,
+    parseFreeformValue: PropTypes.func,
+    updateOnInputChange: PropTypes.bool,
+    optionRenderer: PropTypes.func,
+    valueRenderer: PropTypes.func,
+    layoutRenderer: PropTypes.func,
+    color: PropTypes.string,
+    style: PropTypes.object,
+    className: PropTypes.string,
+    valueStyle: PropTypes.object,
+    optionsStyle: PropTypes.object,
+    optionsClassName: PropTypes.string,
+    prefix: PropTypes.string,
+    canAddItems: PropTypes.bool,
+    autoFocus: PropTypes.bool,
+    removeSelected: PropTypes.bool,
+    idKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+    valueKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+    labelKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
+    onChange: PropTypes.func.isRequired,
+    onFocus: PropTypes.func,
+    onBlur: PropTypes.func,
+    onInputKeyDown: PropTypes.func,
+    onInputChange: PropTypes.func,
+    updateOnInputBlur: PropTypes.bool,
   };
 
   UNSAFE_componentWillMount() {
@@ -501,6 +530,9 @@ export default class TokenField extends Component {
         className={cx(
           className,
           "pl1 pt1 pb0 pr0 flex align-center flex-wrap bg-white scroll-x scroll-y",
+          {
+            "TokenField--focused": isFocused,
+          },
         )}
         style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
@@ -511,7 +543,11 @@ export default class TokenField extends Component {
           </span>
         )}
         {value.map((v, index) => (
-          <TokenFieldItem key={index} isValid={validateValue(v)}>
+          <TokenFieldItem
+            key={index}
+            className="TokenField-ItemWrapper"
+            isValid={validateValue(v)}
+          >
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
               className={multi ? "pl1 pr0" : "px1"}
@@ -533,7 +569,7 @@ export default class TokenField extends Component {
           </TokenFieldItem>
         ))}
         {canAddItems && (
-          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
+          <li className="TokenField-NewItemInputContainer flex-full flex align-center mr1 mb1 p1">
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}

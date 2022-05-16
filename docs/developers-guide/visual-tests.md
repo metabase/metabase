@@ -4,16 +4,10 @@ We use [Percy](https://percy.io/) via Github actions to run visual regression te
 
 ## How to run visual tests on CI
 
-Percy tests are supposed to be run on CI since every run is attached to a pull request. Only when a cypress tests run command is prefixed by `percy exec -- ` and there is a valid `PERCY_TOKEN` environment variable specified, Percy CLI will submit pages snapshots to Percy servers, and we will be charged for every screenshot. To make use of Percy more cost-efficient, we manually trigger visual tests by posting a PR comment with a `@metabase-bot run visual tests` command.
+Percy tests are supposed to be run on CI since every run is attached to a pull request. Only when a cypress tests run command is prefixed by `percy exec --` and there is a valid `PERCY_TOKEN` environment variable specified, Percy CLI will submit pages snapshots to Percy servers, and we will be charged for every screenshot. To make use of Percy more cost-efficient, we manually trigger visual tests by assigning `visual` pull request label. It will also run the tests on every subsequent commit. If you plan to perform a lot of commits while the PR is work-in-progress and you don't need to run tests on all of them, then just temporarily remove the label. It is important because we pay for every screenshot and it saves screenshot credits. Alternatively, you can trigger visual tests manually by posting a PR comment with a `@metabase-bot run visual tests` command.
 In addition to that, we need to ensure that underlying Cypress tests are valid, so we run them without submitting screenshots to Percy on every commit.
 
-**1. Write `@metabase-bot run visual tests` comment in a PR**
-
-![https://user-images.githubusercontent.com/14301985/126784124-b6753632-2735-496c-b80b-29521e0b9d15.png](https://user-images.githubusercontent.com/14301985/126784124-b6753632-2735-496c-b80b-29521e0b9d15.png)
-
-It triggers a workflow that is visible in the repo Actions tab
-
-![https://user-images.githubusercontent.com/14301985/126784265-8137570f-0f68-4064-ab77-c4455a6ad706.png](https://user-images.githubusercontent.com/14301985/126784265-8137570f-0f68-4064-ab77-c4455a6ad706.png)
+**1. Add `visual` label to your pull request**
 
 **2. If there are some visual changes, it shows a failed Percy check in the PR**
 
@@ -24,7 +18,6 @@ It triggers a workflow that is visible in the repo Actions tab
 ![https://user-images.githubusercontent.com/14301985/126796075-31d5ed5d-6926-4e98-99d2-4aef20738b56.png](https://user-images.githubusercontent.com/14301985/126796075-31d5ed5d-6926-4e98-99d2-4aef20738b56.png)
 
 ![https://user-images.githubusercontent.com/14301985/126796104-c533bbea-006c-47ef-83fa-0c07fcf5393b.png](https://user-images.githubusercontent.com/14301985/126796104-c533bbea-006c-47ef-83fa-0c07fcf5393b.png)
-
 
 ## How to create a visual test
 
@@ -38,9 +31,9 @@ Each visual test should cover as many as possible different elements, variants o
 
 ### Workflow
 
-1) Run Metabase in the dev mode locally (`yarn dev` or similar commands).
-2) Run `yarn test-visual-open` to open Cypress locally. You do not need to export any `PERCY_TOKEN`.
-3) Create a spec inside `frontend/test/metabase-visual` and run it via Cypress runner.
+1. Run Metabase in the dev mode locally (`yarn dev` or similar commands).
+2. Run `yarn test-visual-open` to open Cypress locally. You do not need to export any `PERCY_TOKEN`.
+3. Create a spec inside `frontend/test/metabase-visual` and run it via Cypress runner.
 
 At this step, if you added `percySnapshot` command somewhere in your test, you will see `percyHealthCheck` step in your test:
 

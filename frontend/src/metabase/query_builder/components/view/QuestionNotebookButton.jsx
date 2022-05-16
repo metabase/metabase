@@ -14,7 +14,7 @@ export default function QuestionNotebookButton({
   setQueryBuilderMode,
   ...props
 }) {
-  return QuestionNotebookButton.shouldRender({ question }) ? (
+  return (
     <Tooltip
       tooltip={isShowingNotebook ? t`Hide editor` : t`Show editor`}
       placement="bottom"
@@ -33,8 +33,10 @@ export default function QuestionNotebookButton({
         {...props}
       />
     </Tooltip>
-  ) : null;
+  );
 }
 
-QuestionNotebookButton.shouldRender = ({ question }) =>
-  question.isStructured() && question.query().isEditable();
+QuestionNotebookButton.shouldRender = ({ question, isActionListVisible }) =>
+  question.isStructured() &&
+  question.query().isEditable() &&
+  isActionListVisible;

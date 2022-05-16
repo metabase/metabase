@@ -13,8 +13,7 @@ import { normal } from "metabase/lib/colors";
 const DEFAULT_COLORS = Object.values(normal);
 const MIN_WIDTH_PER_SERIES = 100;
 
-@ExplicitSize({ refreshMode: "debounce" })
-export default class LegendHeader extends Component {
+class LegendHeader extends Component {
   static propTypes = {
     series: PropTypes.array.isRequired,
     hovered: PropTypes.object,
@@ -147,3 +146,5 @@ export default class LegendHeader extends Component {
     );
   }
 }
+
+export default ExplicitSize({ refreshMode: "debounce" })(LegendHeader);

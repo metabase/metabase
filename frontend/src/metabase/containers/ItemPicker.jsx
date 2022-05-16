@@ -30,19 +30,7 @@ const getCollectionIconColor = () => color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
-@entityListLoader({
-  entityType: (state, props) => {
-    return props.entity ? props.entity.name : "collections";
-  },
-  loadingAndErrorWrapper: false,
-})
-@connect((state, props) => ({
-  collectionsById: (
-    props.entity || Collections
-  ).selectors.getExpandedCollectionsById(state),
-  getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
-}))
-export default class ItemPicker extends React.Component {
+class ItemPicker extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -292,6 +280,21 @@ export default class ItemPicker extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  entityListLoader({
+    entityType: (state, props) => {
+      return props.entity ? props.entity.name : "collections";
+    },
+    loadingAndErrorWrapper: false,
+  }),
+  connect((state, props) => ({
+    collectionsById: (
+      props.entity || Collections
+    ).selectors.getExpandedCollectionsById(state),
+    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
+  })),
+)(ItemPicker);
 
 const Item = ({
   item,

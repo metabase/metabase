@@ -7,9 +7,9 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "./widgets/DateSingleWidget";
 import DateRangeWidget from "./widgets/DateRangeWidget";
-import DateRelativeWidget from "./widgets/DateRelativeWidget";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
-import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
+import DateRelativeWidget from "metabase/components/DateRelativeWidget";
+import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
+import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
@@ -19,7 +19,6 @@ import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { hasFieldValues } from "metabase/parameters/utils/fields";
 
@@ -49,8 +48,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
-export default class ParameterValueWidget extends Component {
+class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
     name: PropTypes.string,
@@ -241,6 +239,11 @@ export default class ParameterValueWidget extends Component {
   }
 }
 
+export default connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)(ParameterValueWidget);
+
 function getFields(metadata, parameter) {
   if (!metadata) {
     return [];
@@ -306,7 +309,6 @@ function Widget({
         setValue={setValue}
         isEditing={isEditing}
         focusChanged={onFocusChanged}
-        operator={deriveFieldOperatorFromParameter(parameter)}
       />
     );
   } else {
