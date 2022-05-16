@@ -530,9 +530,6 @@ export default class TokenField extends Component {
         className={cx(
           className,
           "pl1 pt1 pb0 pr0 flex align-center flex-wrap bg-white scroll-x scroll-y",
-          {
-            "TokenField--focused": isFocused,
-          },
         )}
         style={{ maxHeight: 130, ...style }}
         onMouseDownCapture={this.onMouseDownCapture}
@@ -543,11 +540,7 @@ export default class TokenField extends Component {
           </span>
         )}
         {value.map((v, index) => (
-          <TokenFieldItem
-            key={index}
-            className="TokenField-ItemWrapper"
-            isValid={validateValue(v)}
-          >
+          <TokenFieldItem key={index} isValid={validateValue(v)}>
             <span
               style={{ ...defaultStyleValue, ...valueStyle }}
               className={multi ? "pl1 pr0" : "px1"}
@@ -569,7 +562,7 @@ export default class TokenField extends Component {
           </TokenFieldItem>
         ))}
         {canAddItems && (
-          <li className="TokenField-NewItemInputContainer flex-full flex align-center mr1 mb1 p1">
+          <li className={cx("flex-full flex align-center mr1 mb1 p1")}>
             <input
               ref={this.inputRef}
               style={{ ...defaultStyleValue, ...valueStyle }}
