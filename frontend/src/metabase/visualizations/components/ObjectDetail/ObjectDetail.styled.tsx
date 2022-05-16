@@ -81,12 +81,3 @@ export const GridCell = styled.div<GridItemProps>`
   grid-column: span ${props => props.colSpan || 1} / span
     ${props => props.colSpan || 1};
 `;
-
-export const EditingFormContainer = styled.div`
-  overflow-y: auto;
-  flex: 1;
-  padding: 2rem;
-  ${breakpointMinMedium} {
-    max-height: calc(80vh - 4rem);
-  }
-`;

@@ -18,8 +18,6 @@ export const MODAL_TYPES = {
   NEW_EVENT: "new-event",
   EDIT_EVENT: "edit-event",
   MOVE_EVENT: "move-event",
-
-  INSERT_ROW: "insert-row",
 };
 
 export const SIDEBAR_SIZES = {
