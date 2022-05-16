@@ -1,6 +1,5 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { t } from "ttag";
-import Question from "metabase-lib/lib/Question";
 import StructuredQuery, {
   FilterSection,
 } from "metabase-lib/lib/queries/StructuredQuery";
@@ -21,21 +20,21 @@ import {
 } from "./BulkFilterModal.styled";
 
 export interface BulkFilterModalProps {
-  question: Question;
+  query: StructuredQuery;
   onClose?: () => void;
 }
 
 const BulkFilterModal = ({
-  question,
+  query,
   onClose,
 }: BulkFilterModalProps): JSX.Element | null => {
-  const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
-    return null;
-  }
+  const title = useMemo(() => {
+    return getTitle(query);
+  }, [query]);
 
-  const title = getTitle(question);
-  const sections = query.topLevelFilterFieldOptionSections();
+  const sections = useMemo(() => {
+    return query.topLevelFilterFieldOptionSections();
+  }, [query]);
 
   return (
     <div>
@@ -105,7 +104,8 @@ const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
   );
 };
 
-const getTitle = (question: Question) => {
+const getTitle = (query: StructuredQuery) => {
+  const question = query.question();
   return question.isSaved() ? t`Filter ${question.displayName()}` : t`Filter`;
 };
 
