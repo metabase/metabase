@@ -82,6 +82,6 @@
                          (->> table :db_id (fully-qualified-name Database))
                          (:schema table))
                  (format "%s%s/dimensions.yaml"
-                         path
+                         path22523
                          (->> table :db_id (fully-qualified-name Database))))
                (map serialize/serialize dimensions))))
