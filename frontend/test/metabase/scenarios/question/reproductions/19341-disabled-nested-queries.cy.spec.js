@@ -12,7 +12,6 @@ describe("issue 19341", () => {
     restore();
     mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
-
     cy.createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
       native: {
