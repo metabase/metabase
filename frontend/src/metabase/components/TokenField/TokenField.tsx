@@ -449,9 +449,9 @@ export default class TokenField extends Component<
     }
     if (multi) {
       if (replaceLast) {
-        onChange(dedup(value.slice(0, -1).concat(valueToAdd)));
+        onChange(_.unique(value.slice(0, -1).concat(valueToAdd)));
       } else {
-        onChange(dedup(value.concat(valueToAdd)));
+        onChange(_.unique(value.concat(valueToAdd)));
       }
     } else {
       onChange(valueToAdd.slice(0, 1));
@@ -678,8 +678,6 @@ export default class TokenField extends Component<
     });
   }
 }
-
-const dedup = (array: any[]): any[] => Array.from(new Set(array));
 
 type DefaultTokenFieldLayoutProps = {
   valuesList: React.ReactNode;
