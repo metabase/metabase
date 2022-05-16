@@ -29,6 +29,17 @@
               (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
       (secret-key->hash secret-key))))
 
+(comment
+  (secret-key->hash "secret-------key")
+  (->> (.getBytes "http://www.metabase.com")
+       (encrypt-bytes (secret-key->hash "secret-------key"))
+       ring.util.codec/base64-encode
+       count)
+
+  (->> (ring.util.codec/base64-decode *1)
+       (decrypt-bytes (secret-key->hash "secret-------key")))
+  )
+
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 (defonce ^:private ^{:tag 'bytes} default-secret-key
