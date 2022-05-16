@@ -907,11 +907,6 @@
   The ability of this Setting to be /Database-local/. Valid values are `:only`, `:allowed`, and `:never`. Default:
   `:never`. See docstring for [[metabase.models.setting]] for more information.
 
-  ###### `:user-local`
-
-  Whether this Setting is /User-local/. Valid values are `:only`, `:allowed`, and `:never`. Default: `:never`. See
-  docstring for [[metabase.models.setting]] for more info.
-
   ###### `:deprecated`
 
   If this setting is deprecated, this should contain a string of the Metabase version in which the setting was
