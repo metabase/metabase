@@ -26,9 +26,12 @@ export interface BulkFilterModalProps {
 }
 
 const BulkFilterModal = ({
-  query,
+  query: initialQuery,
   onClose,
 }: BulkFilterModalProps): JSX.Element | null => {
+  const [query, setQuery] = useState(initialQuery);
+  const [isChanged, setIsChanged] = useState(false);
+
   const filters = useMemo(() => {
     return query.topLevelFilters();
   }, [query]);
@@ -38,8 +41,14 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleRemoveFilter = useCallback((filter: Filter) => {
-    filter.remove();
+    setQuery(filter.remove());
+    setIsChanged(true);
   }, []);
+
+  const handleApplyQuery = useCallback(() => {
+    query.update(undefined, { run: true });
+    onClose?.();
+  }, [query, onClose]);
 
   return (
     <div>
@@ -65,7 +74,11 @@ const BulkFilterModal = ({
       <ModalDivider />
       <ModalFooter>
         <Button onClick={onClose}>{t`Cancel`}</Button>
-        <Button primary disabled onClick={onClose}>{t`Apply`}</Button>
+        <Button
+          primary
+          disabled={!isChanged}
+          onClick={handleApplyQuery}
+        >{t`Apply`}</Button>
       </ModalFooter>
     </div>
   );
