@@ -30,7 +30,9 @@ Don't worry if you don't understand this just yet. Click the blue **Run query** 
 
 You'll notice that the table that comes back is the same as if you had used the [query builder][asking-questions] to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
 
-**Tip:** You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only part of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
+### Running query selections
+
+You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only part of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
 
 Questions asked using SQL can be saved, downloaded, converted to models, and added to dashboards just like questions asked using the query builder.
 
