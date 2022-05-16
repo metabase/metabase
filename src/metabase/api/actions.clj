@@ -27,7 +27,6 @@
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."
   [action :as {{:keys [database], :as query} :body}]
-  {database s/Int query {:filter mbql.s/Filter}}
   (do-check-actions-enabled
    database
    (fn [_driver]
