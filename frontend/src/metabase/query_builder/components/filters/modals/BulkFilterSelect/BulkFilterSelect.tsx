@@ -2,9 +2,11 @@ import React, { useCallback, useMemo } from "react";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
-import SelectButton from "metabase/core/components/SelectButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { FilterPopoverWithOverflow } from "./BulkFilterSelect.styled";
+import {
+  SelectFilterButton,
+  SelectFilterPopover,
+} from "./BulkFilterSelect.styled";
 
 export interface BulkFilterSelectProps {
   query: StructuredQuery;
@@ -52,15 +54,15 @@ const BulkFilterSelect = ({
     <TippyPopoverWithTrigger
       placement="bottom"
       renderTrigger={({ onClick }) => (
-        <SelectButton
+        <SelectFilterButton
           onClick={onClick}
           onClear={filter ? handleClear : undefined}
         >
-          {name}&nbsp;
-        </SelectButton>
+          {name}
+        </SelectFilterButton>
       )}
       popoverContent={({ closePopover }) => (
-        <FilterPopoverWithOverflow
+        <SelectFilterPopover
           query={query}
           filter={filter ?? newFilter}
           isNew={filter == null}
