@@ -50,7 +50,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 
 (defmethod tx/dbdef->connection-details :h2
-  [driver_ context dbdef]
+  [_ context dbdef]
   {:db (str "mem:" (tx/escaped-database-name dbdef) (when (= context :db)
                                                       ;; Return details with the GUEST user added so SQL queries are
                                                       ;; allowed.
