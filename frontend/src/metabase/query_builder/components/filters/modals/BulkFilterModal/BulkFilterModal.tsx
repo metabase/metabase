@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import StructuredQuery, {
   FilterSection,
@@ -37,6 +37,10 @@ const BulkFilterModal = ({
     return query.topLevelFilterFieldOptionSections();
   }, [query]);
 
+  const handleRemoveFilter = useCallback((filter: Filter) => {
+    filter.remove();
+  }, []);
+
   return (
     <div>
       <ModalHeader>
@@ -46,9 +50,17 @@ const BulkFilterModal = ({
         </ModalCloseButton>
       </ModalHeader>
       {sections.length === 1 ? (
-        <BulkFilterModalSection filters={filters} section={sections[0]} />
+        <BulkFilterModalSection
+          filters={filters}
+          section={sections[0]}
+          onRemoveFilter={handleRemoveFilter}
+        />
       ) : (
-        <BulkFilterModalSectionList filters={filters} sections={sections} />
+        <BulkFilterModalSectionList
+          filters={filters}
+          sections={sections}
+          onRemoveFilter={handleRemoveFilter}
+        />
       )}
       <ModalDivider />
       <ModalFooter>
@@ -62,17 +74,23 @@ const BulkFilterModal = ({
 interface BulkFilterModalSectionProps {
   filters: Filter[];
   section: FilterSection;
+  onRemoveFilter: (filter: Filter) => void;
 }
 
 const BulkFilterModalSection = ({
   filters,
   section: { items },
+  onRemoveFilter,
 }: BulkFilterModalSectionProps): JSX.Element => {
   const dimensions = useMemo(() => items.map(i => i.dimension), [items]);
 
   return (
     <ModalRow>
-      <BulkFilterList filters={filters} dimensions={dimensions} />
+      <BulkFilterList
+        filters={filters}
+        dimensions={dimensions}
+        onRemoveFilter={onRemoveFilter}
+      />
     </ModalRow>
   );
 };
@@ -80,11 +98,13 @@ const BulkFilterModalSection = ({
 interface BulkFilterModalSectionListProps {
   filters: Filter[];
   sections: FilterSection[];
+  onRemoveFilter: (filter: Filter) => void;
 }
 
 const BulkFilterModalSectionList = ({
   filters,
   sections,
+  onRemoveFilter,
 }: BulkFilterModalSectionListProps): JSX.Element => {
   const [tab, setTab] = useState(0);
 
@@ -106,7 +126,11 @@ const BulkFilterModalSectionList = ({
       <ModalDivider />
       {sections.map((section, index) => (
         <TabPanel key={index} value={index}>
-          <BulkFilterModalSection filters={filters} section={section} />
+          <BulkFilterModalSection
+            filters={filters}
+            section={section}
+            onRemoveFilter={onRemoveFilter}
+          />
         </TabPanel>
       ))}
     </TabContent>

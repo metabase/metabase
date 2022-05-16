@@ -12,11 +12,13 @@ import {
 export interface BulkFilterListProps {
   filters: Filter[];
   dimensions: Dimension[];
+  onRemoveFilter: (filter: Filter) => void;
 }
 
 const BulkFilterList = ({
   filters,
   dimensions,
+  onRemoveFilter,
 }: BulkFilterListProps): JSX.Element => {
   return (
     <ListRoot>
@@ -25,6 +27,7 @@ const BulkFilterList = ({
           key={index}
           filters={filters}
           dimension={dimension}
+          onRemoveFilter={onRemoveFilter}
         />
       ))}
     </ListRoot>
@@ -34,11 +37,13 @@ const BulkFilterList = ({
 interface BulkFilterListItemProps {
   filters: Filter[];
   dimension: Dimension;
+  onRemoveFilter: (filter: Filter) => void;
 }
 
 const BulkFilterListItem = ({
   filters,
   dimension,
+  onRemoveFilter,
 }: BulkFilterListItemProps): JSX.Element => {
   const options = useMemo(() => {
     return filters.filter(f => f.dimension()?.isSameBaseDimension(dimension));
@@ -49,7 +54,11 @@ const BulkFilterListItem = ({
       <ListRowLabel>{dimension.displayName()}</ListRowLabel>
       <ListRowContent>
         {options.map((filter, index) => (
-          <BulkFilterSelect key={index} filter={filter} />
+          <BulkFilterSelect
+            key={index}
+            filter={filter}
+            onRemoveFilter={onRemoveFilter}
+          />
         ))}
       </ListRowContent>
     </ListRow>
