@@ -7,8 +7,6 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
-import TabPanel from "metabase/core/components/TabPanel";
-import TabList from "metabase/core/components/TabList";
 import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
 import {
@@ -16,8 +14,10 @@ import {
   ModalDivider,
   ModalFooter,
   ModalHeader,
-  ModalHeaderTitle,
-  ModalRow,
+  ModalRoot,
+  ModalTabList,
+  ModalTabPanel,
+  ModalTitle,
 } from "./BulkFilterModal.styled";
 
 export interface BulkFilterModalProps {
@@ -64,9 +64,9 @@ const BulkFilterModal = ({
   }, [query, onClose]);
 
   return (
-    <div>
+    <ModalRoot>
       <ModalHeader>
-        <ModalHeaderTitle>{getTitle(query)}</ModalHeaderTitle>
+        <ModalTitle>{getTitle(query)}</ModalTitle>
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />
         </ModalCloseButton>
@@ -99,7 +99,7 @@ const BulkFilterModal = ({
           onClick={handleApplyQuery}
         >{t`Apply`}</Button>
       </ModalFooter>
-    </div>
+    </ModalRoot>
   );
 };
 
@@ -123,16 +123,14 @@ const BulkFilterModalSection = ({
   const dimensions = useMemo(() => items.map(i => i.dimension), [items]);
 
   return (
-    <ModalRow>
-      <BulkFilterList
-        query={query}
-        filters={filters}
-        dimensions={dimensions}
-        onAddFilter={onAddFilter}
-        onChangeFilter={onChangeFilter}
-        onRemoveFilter={onRemoveFilter}
-      />
-    </ModalRow>
+    <BulkFilterList
+      query={query}
+      filters={filters}
+      dimensions={dimensions}
+      onAddFilter={onAddFilter}
+      onChangeFilter={onChangeFilter}
+      onRemoveFilter={onRemoveFilter}
+    />
   );
 };
 
@@ -157,22 +155,20 @@ const BulkFilterModalSectionList = ({
 
   return (
     <TabContent value={tab} onChange={setTab}>
-      <ModalRow>
-        <TabList>
-          {sections.map((section, index) => (
-            <Tab
-              key={index}
-              value={index}
-              icon={index > 0 ? section.icon : undefined}
-            >
-              {section.name}
-            </Tab>
-          ))}
-        </TabList>
-      </ModalRow>
+      <ModalTabList>
+        {sections.map((section, index) => (
+          <Tab
+            key={index}
+            value={index}
+            icon={index > 0 ? section.icon : undefined}
+          >
+            {section.name}
+          </Tab>
+        ))}
+      </ModalTabList>
       <ModalDivider />
       {sections.map((section, index) => (
-        <TabPanel key={index} value={index}>
+        <ModalTabPanel key={index} value={index}>
           <BulkFilterModalSection
             query={query}
             filters={filters}
@@ -181,7 +177,7 @@ const BulkFilterModalSectionList = ({
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
           />
-        </TabPanel>
+        </ModalTabPanel>
       ))}
     </TabContent>
   );
