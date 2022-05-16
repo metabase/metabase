@@ -2,8 +2,8 @@
   "Functions shared by the various SSO implementations"
   (:require [clojure.tools.logging :as log]
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
-            [metabase.email.messages :as email]
             [metabase.api.common :as api]
+            [metabase.email.messages :as email]
             [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]
