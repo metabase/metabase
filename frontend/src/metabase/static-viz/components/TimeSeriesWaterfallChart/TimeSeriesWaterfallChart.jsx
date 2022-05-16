@@ -50,7 +50,7 @@ const layout = {
   },
   font: {
     size: 11,
-    family: "var(--default-font-family), sans-serif",
+    family: "Lato, sans-serif",
   },
   colors: {
     brand: "#509ee3",

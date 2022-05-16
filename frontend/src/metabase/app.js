@@ -31,7 +31,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider, Global, css } from "@emotion/react";
+import { ThemeProvider, Global } from "@emotion/react";
 
 import { createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -52,6 +52,8 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
+import { applicationFontStyles } from "metabase/styled-components/theme/global";
+
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
@@ -65,16 +67,6 @@ const browserHistory = useRouterHistory(createHistory)({
 const theme = {
   space: [4, 8, 16, 32, 64, 128],
 };
-
-console.log(MetabaseSettings.get("application-font"));
-
-const applicationFontStyles = css`
-  :root {
-    --default-font-family: "${MetabaseSettings.get("application-font")}";
-    --default-font-size: 0.875em;
-    --default-font-color: var(--color-text-dark);
-    --default-bg-color: var(--color-bg-light);
-  }`;
 
 function _init(reducers, getRoutes, callback) {
   const store = getStore(reducers, browserHistory);
