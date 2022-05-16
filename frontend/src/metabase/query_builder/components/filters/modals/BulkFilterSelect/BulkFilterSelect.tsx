@@ -77,7 +77,7 @@ const BulkFilterSelect = ({
 };
 
 const getNewFilter = (query: StructuredQuery, dimension: Dimension) => {
-  const filter = new Filter([], null, query);
+  const filter = new Filter([], null, dimension.query() ?? query);
   return filter.setDimension(dimension.mbql(), { useDefaultOperator: true });
 };
 
