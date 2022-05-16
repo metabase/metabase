@@ -330,7 +330,7 @@
   {include (s/maybe (s/enum "tables" "tables.fields"))}
   (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
         exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
-        filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))]
+        filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))]
     (cond-> (api/check-404 (Database id))
       filter-by-data-access?       api/read-check
       exclude-uneditable-details?  api/write-check

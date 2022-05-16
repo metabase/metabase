@@ -299,7 +299,7 @@
   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-  data model, rather than checking that they have data access perms for the table.
+  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
   These options are provided for use in the Admin Edit Metadata page."
   [id include_sensitive_fields include_hidden_fields include_editable_data_model]
