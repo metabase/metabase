@@ -1,9 +1,6 @@
 (ns metabase.api.actions-test
   (:require [clojure.test :refer :all]
-            [metabase.api.actions :as api.actions]
             [metabase.test :as mt]))
-
-(comment api.actions/keep-me)
 
 ;; TODO -- once we add a new endpoint rework these tests to test those and remove the dummy endpoint.
 (deftest global-feature-flag-test
