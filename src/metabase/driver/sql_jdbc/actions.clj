@@ -44,7 +44,7 @@
       {:rows-deleted result})))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
-  [_action driver {database-id :database new-row :new-row :as query}]
+  [_action driver {database-id :database :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
