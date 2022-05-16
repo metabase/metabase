@@ -1,7 +1,5 @@
 import {
   restore,
-  addPostgresDatabase,
-  addMySQLDatabase,
   mockSessionProperty,
   popover,
   startNewQuestion,
@@ -14,9 +12,6 @@ describe("issue 19341", () => {
     restore();
     mockSessionProperty("enable-nested-queries", false);
     cy.signInAsAdmin();
-
-    addMySQLDatabase();
-    addPostgresDatabase();
 
     cy.createNativeQuestion({
       name: TEST_NATIVE_QUESTION_NAME,
