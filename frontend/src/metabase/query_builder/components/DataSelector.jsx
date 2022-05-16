@@ -565,7 +565,7 @@ export class UnconnectedDataSelector extends Component {
     }
 
     // schema
-    else if (
+    if (
       activeStep === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
       this.props.selectedSchemaId == null
