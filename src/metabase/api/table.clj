@@ -273,7 +273,7 @@
 (defn fetch-query-metadata
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
-  [table include-sensitive-fields? include-hidden-fields? include-editable-data-model?]
+  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
   (if (Boolean/parseBoolean include-editable-data-model?)
     (api/write-check table)
     (api/read-check table))
@@ -306,7 +306,9 @@
   {include_sensitive_fields (s/maybe su/BooleanString)
    include_hidden_fields (s/maybe su/BooleanString)
    include_editable_data_model (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) include_sensitive_fields include_hidden_fields include_editable_data_model))
+  (fetch-query-metadata (Table id) {:include-sensitive-fields?    include_sensitive_fields
+                                    :include-hidden-fields?       include_hidden_fields
+                                    :include-editable-data-model? include_editable_data_model}))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'

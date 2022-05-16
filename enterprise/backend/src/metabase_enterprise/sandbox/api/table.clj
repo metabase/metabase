@@ -69,9 +69,9 @@
                             table
                             (api.table/fetch-query-metadata
                              table
-                             include_sensitive_fields
-                             include_hidden_fields
-                             include_editable_data_model)))]
+                             {:include-sensitive-fields?    include_sensitive_fields
+                              :include-hidden-fields?       include_hidden_fields
+                              :include-editable-data-model? include_editable_data_model})))]
     ;; if the user has segmented perms, temporarily upgrade their perms to read perms for the Table so they can see
     ;; the metadata
     (if segmented-perms?
