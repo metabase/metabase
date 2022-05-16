@@ -1,29 +1,52 @@
 import React from "react";
-import { DimensionOption } from "metabase-lib/lib/queries/StructuredQuery";
+import Dimension from "metabase-lib/lib/Dimension";
+import { Filter } from "metabase-types/types/Query";
 import BulkFilterSelect from "../BulkFilterSelect";
 import {
-  ListAction,
-  ListLabel,
+  ListRowContent,
+  ListRowLabel,
   ListRoot,
   ListRow,
 } from "./BulkFilterList.styled";
 
 export interface BulkFilterListProps {
-  options: DimensionOption[];
+  filters: Filter[];
+  dimensions: Dimension[];
 }
 
-const BulkFilterList = ({ options }: BulkFilterListProps): JSX.Element => {
+const BulkFilterList = ({
+  filters,
+  dimensions,
+}: BulkFilterListProps): JSX.Element => {
   return (
     <ListRoot>
-      {options.map((option, index) => (
-        <ListRow key={index}>
-          <ListLabel>{option.dimension.displayName()}</ListLabel>
-          <ListAction>
-            <BulkFilterSelect />
-          </ListAction>
-        </ListRow>
+      {dimensions.map((dimension, index) => (
+        <BulkFilterListItem
+          key={index}
+          filters={filters}
+          dimension={dimension}
+        />
       ))}
     </ListRoot>
+  );
+};
+
+interface BulkFilterListItemProps {
+  filters: Filter[];
+  dimension: Dimension;
+}
+
+const BulkFilterListItem = ({
+  filters,
+  dimension,
+}: BulkFilterListItemProps): JSX.Element => {
+  return (
+    <ListRow>
+      <ListRowLabel>{dimension.displayName()}</ListRowLabel>
+      <ListRowContent>
+        <BulkFilterSelect />
+      </ListRowContent>
+    </ListRow>
   );
 };
 

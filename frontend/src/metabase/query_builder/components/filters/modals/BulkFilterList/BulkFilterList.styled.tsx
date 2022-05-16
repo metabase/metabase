@@ -13,12 +13,12 @@ export const ListRow = styled.div`
   padding: 0.375rem 0;
 `;
 
-export const ListLabel = styled.div`
+export const ListRowLabel = styled.div`
   flex: 1 1 0;
   color: ${color("black")};
   font-weight: bold;
 `;
 
-export const ListAction = styled.div`
+export const ListRowContent = styled.div`
   flex: 1 1 0;
 `;

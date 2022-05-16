@@ -3,6 +3,7 @@ import { t } from "ttag";
 import StructuredQuery, {
   FilterSection,
 } from "metabase-lib/lib/queries/StructuredQuery";
+import { Filter } from "metabase-types/types/Query";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
@@ -12,11 +13,11 @@ import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalCloseButton,
-  ModalRow,
   ModalDivider,
   ModalFooter,
   ModalHeader,
   ModalHeaderTitle,
+  ModalRow,
 } from "./BulkFilterModal.styled";
 
 export interface BulkFilterModalProps {
@@ -32,6 +33,10 @@ const BulkFilterModal = ({
     return getTitle(query);
   }, [query]);
 
+  const filters = useMemo(() => {
+    return query.topLevelFilters();
+  }, [query]);
+
   const sections = useMemo(() => {
     return query.topLevelFilterFieldOptionSections();
   }, [query]);
@@ -45,9 +50,9 @@ const BulkFilterModal = ({
         </ModalCloseButton>
       </ModalHeader>
       {sections.length === 1 ? (
-        <ModalSection section={sections[0]} />
+        <BulkFilterModalSection filters={filters} section={sections[0]} />
       ) : (
-        <ModalSectionList sections={sections} />
+        <BulkFilterModalSectionList filters={filters} sections={sections} />
       )}
       <ModalDivider />
       <ModalFooter>
@@ -58,23 +63,33 @@ const BulkFilterModal = ({
   );
 };
 
-interface ModalSectionProps {
+interface BulkFilterModalSectionProps {
+  filters: Filter[];
   section: FilterSection;
 }
 
-const ModalSection = ({ section }: ModalSectionProps): JSX.Element => {
+const BulkFilterModalSection = ({
+  filters,
+  section: { items },
+}: BulkFilterModalSectionProps): JSX.Element => {
+  const dimensions = useMemo(() => items.map(i => i.dimension), [items]);
+
   return (
     <ModalRow>
-      <BulkFilterList options={section.items} />
+      <BulkFilterList filters={filters} dimensions={dimensions} />
     </ModalRow>
   );
 };
 
-interface ModalSectionListProps {
+interface BulkFilterModalSectionListProps {
+  filters: Filter[];
   sections: FilterSection[];
 }
 
-const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
+const BulkFilterModalSectionList = ({
+  filters,
+  sections,
+}: BulkFilterModalSectionListProps): JSX.Element => {
   const [tab, setTab] = useState(0);
 
   return (
@@ -93,13 +108,11 @@ const ModalSectionList = ({ sections }: ModalSectionListProps): JSX.Element => {
         </TabList>
       </ModalRow>
       <ModalDivider />
-      <ModalRow>
-        {sections.map((section, index) => (
-          <TabPanel key={index} value={index}>
-            <BulkFilterList options={section.items} />
-          </TabPanel>
-        ))}
-      </ModalRow>
+      {sections.map((section, index) => (
+        <TabPanel key={index} value={index}>
+          <BulkFilterModalSection filters={filters} section={section} />
+        </TabPanel>
+      ))}
     </TabContent>
   );
 };
