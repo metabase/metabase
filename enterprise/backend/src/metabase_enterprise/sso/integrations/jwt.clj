@@ -69,22 +69,23 @@
 
 (defn- login-jwt-user
   [jwt {{redirect :return_to} :params, :as request}]
-  (let [jwt-data     (try
-                       (jwt/unsign jwt (sso-settings/jwt-shared-secret)
-                                   {:max-age three-minutes-in-seconds})
-                       (catch Throwable e
-                         (throw (ex-info (ex-message e)
-                                         (assoc (ex-data e) :status-code 401)
-                                         e))))
-        login-attrs  (jwt-data->login-attributes jwt-data)
-        email        (get jwt-data (jwt-attribute-email))
-        first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
-        last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
-        user         (fetch-or-create-user! first-name last-name email login-attrs)
-        session      (session/create-session! :sso user (request.u/device-info request))
-        redirect-url (or redirect (URLEncoder/encode "/"))]
-    (sync-groups! user jwt-data)
-    (mw.session/set-session-cookie request (resp/redirect redirect-url) session)))
+  (let [redirect-url (or redirect (URLEncoder/encode "/"))]
+    (sso-utils/check-sso-redirect redirect-url)
+    (let [jwt-data     (try
+                         (jwt/unsign jwt (sso-settings/jwt-shared-secret)
+                                     {:max-age three-minutes-in-seconds})
+                         (catch Throwable e
+                           (throw (ex-info (ex-message e)
+                                           (assoc (ex-data e) :status-code 401)
+                                           e))))
+          login-attrs  (jwt-data->login-attributes jwt-data)
+          email        (get jwt-data (jwt-attribute-email))
+          first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
+          last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
+          user         (fetch-or-create-user! first-name last-name email login-attrs)
+          session      (session/create-session! :sso user (request.u/device-info request))]
+      (sync-groups! user jwt-data)
+      (mw.session/set-session-cookie request (resp/redirect redirect-url) session))))
 
 (defn- check-jwt-enabled []
   (api/check (sso-settings/jwt-configured?)
