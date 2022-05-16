@@ -3,7 +3,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import SelectButton from "metabase/core/components/SelectButton";
 
 export interface BulkFilterSelectProps {
-  filter?: Filter;
+  filter: Filter;
   onRemoveFilter: (filter: Filter) => void;
 }
 
@@ -16,7 +16,7 @@ const BulkFilterSelect = ({
   }, [filter]);
 
   const handleRemove = useCallback(() => {
-    return filter && onRemoveFilter(filter);
+    return onRemoveFilter(filter);
   }, [filter, onRemoveFilter]);
 
   return <SelectButton onClear={handleRemove}>{name}</SelectButton>;
