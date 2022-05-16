@@ -34,7 +34,7 @@ export const ModalDivider = styled.div`
   border-top: 1px solid ${color("border")};
 `;
 
-export const ModalContent = styled.div`
+export const ModalBody = styled.div`
   overflow-y: auto;
   padding: 0 2rem;
 `;

@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
 import {
   ModalCloseButton,
-  ModalContent,
+  ModalBody,
   ModalDivider,
   ModalFooter,
   ModalHeader,
@@ -122,7 +122,7 @@ const BulkFilterModalSection = ({
   onRemoveFilter,
 }: BulkFilterModalSectionProps): JSX.Element => {
   return (
-    <ModalContent>
+    <ModalBody>
       <BulkFilterList
         query={query}
         filters={filters}
@@ -131,7 +131,7 @@ const BulkFilterModalSection = ({
         onChangeFilter={onChangeFilter}
         onRemoveFilter={onRemoveFilter}
       />
-    </ModalContent>
+    </ModalBody>
   );
 };
 
