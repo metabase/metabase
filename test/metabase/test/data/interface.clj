@@ -464,7 +464,7 @@
 (p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list `edn-dataset-definition dataset-name)))
+    (list 'edn-dataset-definition dataset-name)))
 
 (defmethod get-dataset-definition EDNDatasetDefinition
   [^EDNDatasetDefinition this]
@@ -496,12 +496,13 @@
 (p.types/deftype+ ^:private TransformedDatasetDefinition [new-name wrapped-definition def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
+    (list 'transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  {:style/indent 2}
+  [new-name :- su/NonBlankString, wrapped-definition & transform-fns :- [(s/pred fn?)]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn
