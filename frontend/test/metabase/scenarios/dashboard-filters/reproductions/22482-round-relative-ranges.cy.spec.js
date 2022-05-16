@@ -41,7 +41,7 @@ describe("issue 22482", () => {
     const expectedRange = getFormattedRange(
       moment()
         .startOf("month")
-        .add(-15, "month"),
+        .add(-14, "month"),
       moment()
         .add(-1, "month")
         .endOf("month"),
