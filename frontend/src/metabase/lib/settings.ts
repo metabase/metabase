@@ -66,7 +66,6 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
-  | "experimental-enable-actions"
   | "persisted-models-enabled"
   | "engines"
   | "ga-code"
