@@ -80,6 +80,15 @@ const BulkFilterListItem = ({
             onRemoveFilter={onRemoveFilter}
           />
         ))}
+        {!options.length && (
+          <BulkFilterSelect
+            query={query}
+            dimension={dimension}
+            onAddFilter={onAddFilter}
+            onChangeFilter={onChangeFilter}
+            onRemoveFilter={onRemoveFilter}
+          />
+        )}
       </ListRowContent>
     </ListRow>
   );
