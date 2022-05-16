@@ -5,12 +5,14 @@ import { AsyncFn } from "metabase-types/types";
 
 import { useMostRecentCall } from "./use-most-recent-call";
 
+type TestAsyncFn = (num: number) => Promise<number>;
+
 function TestComponent({
   trigger,
   asyncFn,
 }: {
   trigger: number;
-  asyncFn: AsyncFn;
+  asyncFn: TestAsyncFn;
 }) {
   const [num, setNum] = useState(0);
   const fn = useMostRecentCall(asyncFn);
@@ -40,7 +42,7 @@ describe("useMostRecentCall", () => {
 
   it("should only ever resolve last call's promise", async () => {
     const resolveFnMap: Record<number, () => void> = {};
-    const asyncFn = (num: number) =>
+    const asyncFn: TestAsyncFn = (num: number) =>
       new Promise(resolve => {
         resolveFnMap[num] = resolve.bind(null, num);
       });
@@ -66,7 +68,7 @@ describe("useMostRecentCall", () => {
 
   it("should only reject last call's promise", async () => {
     const rejectFnMap: Record<number, () => void> = {};
-    const asyncFn = (num: number) =>
+    const asyncFn: TestAsyncFn = (num: number) =>
       new Promise((resolve, reject) => {
         rejectFnMap[num] = reject.bind(null, num);
       });
