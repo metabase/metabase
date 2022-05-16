@@ -172,18 +172,14 @@
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
-  (let [engine           (keyword engine)
-        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :host :host-and-port :password
-                                                                  :ssh-username-and-password :ssl
-                                                                  :username :username-and-password} field)
-                                                             {:errors {field m}}
-                                                             {:message m})})
-        error-or-nil     (api.database/test-database-connection engine details :invalid-response-handler invalid-response)]
+  (let [engine       (keyword engine)
+        error-or-nil (api.database/test-database-connection engine details)]
     (when error-or-nil
       (snowplow/track-event! ::snowplow/database-connection-failed
                              nil
                              {:database engine, :source :setup})
-      error-or-nil)))
+      {:status 400
+       :body   error-or-nil})))
 
 
 ;;; Admin Checklist

@@ -499,31 +499,11 @@
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
-(defn- invalid-connection-response [field m]
-  ;; work with the new {:field error-message} format but be backwards-compatible with the UI as it exists right now
-  {:valid   false
-   field    m
-   :message m})
-
-(def ^:private category->field
-  {:cannot-connect-check-host-and-port :host-and-port
-   :ssh-tunnel-auth-fail               :ssh-username-and-password
-   :ssh-tunnel-connection-fail         :host-and-port
-   :database-name-incorrect            :dbname
-   :invalid-hostname                   :host
-   :password-incorrect                 :password
-   :password-required                  :password
-   :username-incorrect                 :username
-   :username-or-password-incorrect     :username-and-password
-   :certificate-not-trusted            :ssl
-   :requires-ssl                       :ssl})
-
 (defn test-database-connection
   "Try out the connection details for a database and useful error message if connection fails, returns `nil` if
    connection succeeds."
-  [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler log-exception]
-                                              :or   {invalid-response-handler invalid-connection-response
-                                                     log-exception            true}}]
+  [engine {:keys [host port] :as details}, & {:keys [log-exception]
+                                              :or   {log-exception true}}]
   {:pre [(some? engine)]}
   (let [engine  (keyword engine)
         details (assoc details :engine engine)]
@@ -533,22 +513,26 @@
         nil
 
         (and host port (u/host-port-up? host port))
-        (invalid-response-handler :dbname (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
-                                               host port))
+        {:message (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
+                       host port)}
 
         (and host (u/host-up? host))
-        (invalid-response-handler :port (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
-                                             host port))
+        {:message (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
+                       host port)
+         :errors  {:port (deferred-tru "check your port settings")}}
 
         host
-        (invalid-response-handler :host (tru "Host ''{0}'' is not reachable" host))
+        {:message (tru "Host ''{0}'' is not reachable" host)
+         :errors  {:host (deferred-tru "check your host settings")}}
 
         :else
-        (invalid-response-handler :db (tru "Unable to connect to database.")))
+        {:message (tru "Unable to connect to database.")})
       (catch Throwable e
         (when (and log-exception (not (some->> e ex-cause ex-data ::driver/can-connect-message?)))
           (log/error e (trs "Cannot connect to Database")))
-        (invalid-response-handler (category->field (-> e ex-data :category) :unknown) (.getMessage e))))))
+        (if (-> e ex-data :message)
+          (ex-data e)
+          {:message (.getMessage e)})))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
@@ -578,7 +562,8 @@
       ;; Opportunistic SSL
       details-with-ssl
       ;; Try with original parameters
-      (test-database-connection engine details)
+      (some-> (test-database-connection engine details)
+              (assoc :valid false))
       details)))
 
 (api/defendpoint POST "/"
@@ -625,7 +610,7 @@
                                api/*current-user-id*
                                {:database engine, :source :setup})
         {:status 400
-         :body   details-or-error}))))
+         :body   (dissoc details-or-error :valid)}))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

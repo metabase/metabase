@@ -371,7 +371,9 @@
              (client/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
 
     (testing "should validate that database connection works"
-      (is (= {:errors {:host-and-port "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
+      (is (= {:errors {:host "check your host settings"
+                       :port "check your port settings"}
+              :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
              (client/client :post 400 "setup/validate" {:token   (setup/setup-token)
                                                         :details {:engine  "h2"
                                                                   :details {:db "file:///tmp/fake.db"}}}))))

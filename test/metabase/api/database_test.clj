@@ -199,8 +199,7 @@
               update! (fn [expected-status-code]
                         (mt/user-http-request :crowberto :put expected-status-code (format "database/%d" db-id) updates))]
           (testing "Should check that connection details are valid on save"
-            (is (= false
-                   (:valid (update! 400)))))
+            (is (string? (:message (update! 400)))))
           (testing "If connection details are valid, we should be able to update the Database"
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
@@ -772,8 +771,9 @@
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
-        (is (= {:host-and-port  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
-                :message "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
+        (is (= {:errors {:host "check your host settings"
+                         :port "check your port settings"}
+                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"
                 :valid   false}
                (#'api.database/test-connection-details "h2" {:db "ABC"}))))
 
