@@ -23,7 +23,8 @@ function colorForType(type) {
 }
 
 const retrieveFilename = ({ res, type }) => {
-  const contentDisposition = res.headers.get("Content-Disposition") || "";
+  const contentDisposition =
+    decodeURIComponent(res.headers.get("Content-Disposition")) || "";
   const match = contentDisposition.match(/filename="(?<fileName>.+)"/);
   const fileName =
     match?.groups?.fileName ||
