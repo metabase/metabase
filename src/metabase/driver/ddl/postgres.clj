@@ -12,6 +12,16 @@
   (fn quote [ident entity]
     (sql.u/quote-name driver ident (ddl.i/format-name driver entity))))
 
+(defn- add-remark [sql-str]
+  (str "-- Metabase\n"
+       sql-str))
+
+(defn- execute! [conn [sql & params]]
+  (jdbc/execute! conn (into [(add-remark sql)] params)))
+
+(defn- query [conn [sql & params]]
+  (jdbc/query conn (into [(add-remark sql)] params)))
+
 (defn- create-schema-sql
   "SQL string to create a schema suitable for postgres"
   [{driver :engine :as database}]
@@ -36,8 +46,8 @@
   (try
     (let [{:keys [query params]} (qp/compile dataset-query)]
       (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
-        (jdbc/execute! conn [(drop-table-sql database (:table-name definition))])
-        (jdbc/execute! conn (into [(create-table-sql database definition query)] params))
+        (execute! conn [(drop-table-sql database (:table-name definition))])
+        (execute! conn (into [(create-table-sql database definition query)] params))
         {:state :success}))
     (catch Exception e
       {:state :error :error (ex-message e)})))
@@ -46,7 +56,7 @@
   [_driver database persisted-info]
   (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
     (try
-      (jdbc/execute! conn [(drop-table-sql database (:table_name persisted-info))])
+      (execute! conn [(drop-table-sql database (:table_name persisted-info))])
       (catch Exception e
         (log/warn e)
         (throw e)))))
@@ -57,26 +67,26 @@
         table-name  (format "persistence_check_%s" (rand-int 10000))
         steps       [[:persist.check/create-schema
                       (fn check-schema [conn]
-                        (let [existing-schemas (into #{} (map :schema_name)
-                                                     (jdbc/query conn
-                                                                 ["select schema_name from information_schema.schemata"]))]
+                        (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
+                                                    (query conn)
+                                                    (map :schema_name)
+                                                    (into #{}))]
                           (or (contains? existing-schemas schema-name)
-                              (jdbc/execute! conn [(create-schema-sql database)]))))]
+                              (execute! conn [(create-schema-sql database)]))))]
                      [:persist.check/create-table
                       (fn create-table [conn]
-                        (jdbc/execute! conn
-                                       (create-table-sql database
-                                                         {:table-name table-name
-                                                          :field-definitions [{:field-name "field"
-                                                                               :base-type :type/Text}]}
-                                                         "values (1)")))]
+                        (execute! conn [(create-table-sql database
+                                                          {:table-name table-name
+                                                           :field-definitions [{:field-name "field"
+                                                                                :base-type :type/Text}]}
+                                                          "values (1)")]))]
                      [:persist.check/read-table
                       (fn read-table [conn]
-                        (jdbc/query conn [(format "select * from %s.%s"
-                                                  schema-name table-name)]))]
+                        (query conn [(format "select * from %s.%s"
+                                             schema-name table-name)]))]
                      [:persist.check/delete-table
                       (fn delete-table [conn]
-                        (jdbc/execute! conn [(drop-table-sql database table-name)]))]]]
+                        (execute! conn [(drop-table-sql database table-name)]))]]]
     (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
       (loop [[[step stepfn] & remaining] steps]
         (let [result (try (stepfn conn)
