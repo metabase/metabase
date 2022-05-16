@@ -19,4 +19,5 @@ export interface Collection {
 
   // Assigned on FE
   originalName?: string;
+  path?: CollectionId[];
 }
