@@ -841,7 +841,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Filter}s from the last two query stages
    */
-  topLevelFilters(stages = 2): Filter[] {
+  topLevelFilters(stages = 2): FilterWrapper[] {
     const queries = this.queries().slice(-stages);
     return [].concat(...queries.map(q => q.filters()));
   }

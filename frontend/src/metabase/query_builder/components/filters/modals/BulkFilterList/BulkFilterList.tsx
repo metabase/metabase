@@ -1,6 +1,6 @@
 import React from "react";
 import Dimension from "metabase-lib/lib/Dimension";
-import { Filter } from "metabase-types/types/Query";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import BulkFilterSelect from "../BulkFilterSelect";
 import {
   ListRowContent,

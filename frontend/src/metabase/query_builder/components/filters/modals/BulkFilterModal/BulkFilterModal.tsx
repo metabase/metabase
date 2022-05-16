@@ -3,7 +3,7 @@ import { t } from "ttag";
 import StructuredQuery, {
   FilterSection,
 } from "metabase-lib/lib/queries/StructuredQuery";
-import { Filter } from "metabase-types/types/Query";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
