@@ -70,7 +70,8 @@
         :refresh_end :%now,
         :state (if (= state :success) "persisted" "error")
         :state_change_at :%now
-        :error (when (= state :error) (:error results))))))
+        :error (when (= state :error) (:error results)))
+      results)))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
@@ -125,6 +126,22 @@
                                         (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]})]
     (prune-deletables! refresher deletables)))
 
+(defn- refresh-with-results! [refresher database stats persisted-info]
+  ;; Since this could be long running, double check state just before refreshing
+  (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
+    (let [results (try
+                    (refresh-with-state! refresher database persisted-info)
+                    (catch Exception e
+                      (log/info e (trs "Error refreshing persisting model with card-id {0}"
+                                       (:card_id persisted-info)))
+                      {:state :error :error (ex-message e)}))]
+      (if (= :success (:state results))
+        (update stats :success inc)
+        (-> stats
+            (update :error-details conj {:persisted-info-id (:id persisted-info)
+                                         :error (:error results)})
+            (update :error inc))))))
+
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
@@ -135,16 +152,8 @@
         persisted (db/select PersistedInfo
                              :database_id database-id, :state [:in refreshable-states])
         thunk     (fn []
-                    (reduce (fn [stats persisted-info]
-                              ;; Since this could be long running, double check state just before refreshing
-                              (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
-                                (try
-                                  (refresh-with-state! refresher database persisted-info)
-                                  (update stats :success inc)
-                                  (catch Exception e
-                                    (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id persisted-info)))
-                                    (update stats :error inc)))))
-                            {:success 0, :error 0}
+                    (reduce (partial refresh-with-results! refresher database)
+                            {:success 0, :error 0, :trigger "Scheduled"}
                             persisted))]
     (save-task-history! "persist-refresh" database-id thunk))
   (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
@@ -159,17 +168,15 @@
                          (Database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
-       (save-task-history! "persist-refresh" (u/the-id database)
-                            (fn []
-                              (try (refresh-with-state! refresher database persisted-info)
-                                   {:success 1 :error 0}
-                                   (catch Exception e
-                                     (log/info e (trs "Error refreshing persisting model with card-id {0}"
-                                                      (:card_id persisted-info)))
-                                     {:success 0 :error 1}))))
-       (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
-                      (:card_id persisted-info)
-                      (u/the-id persisted-info))))
+        (save-task-history! "persist-refresh" (u/the-id database)
+                            (partial refresh-with-results!
+                                     refresher
+                                     database
+                                     {:success 0 :error 0, :trigger "Manual"}
+                                     persisted-info))
+        (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
+                       (:card_id persisted-info)
+                       (u/the-id persisted-info))))
       (log/info (trs "Unable to refresh model with card-id {0}" (:card_id persisted-info))))))
 
 (defn- refresh-job-fn!
