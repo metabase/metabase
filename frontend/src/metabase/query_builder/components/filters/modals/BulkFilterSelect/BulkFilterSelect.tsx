@@ -4,7 +4,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
 import SelectButton from "metabase/core/components/SelectButton";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import FilterPopover from "../../FilterPopover";
+import { FilterPopoverWithOverflow } from "./BulkFilterSelect.styled";
 
 export interface BulkFilterSelectProps {
   query: StructuredQuery;
@@ -56,11 +56,11 @@ const BulkFilterSelect = ({
           onClick={onClick}
           onClear={filter ? handleClear : undefined}
         >
-          {name}
+          {name}&nbsp;
         </SelectButton>
       )}
       popoverContent={({ closePopover }) => (
-        <FilterPopover
+        <FilterPopoverWithOverflow
           query={query}
           filter={filter ?? newFilter}
           isNew={filter == null}
