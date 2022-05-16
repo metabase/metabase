@@ -62,7 +62,7 @@
   content: "Select a file";
   cursor: pointer;
   display: inline-block;
-  font-family: "Lato", sans-serif;
+  font-family: var(--default-font-family), sans-serif;
   font-size: 14px;
   font-weight: bold;
   outline: none;

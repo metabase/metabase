@@ -14,6 +14,7 @@ import {
   Query,
 } from "metabase-lib/lib/metadata/Metadata";
 import {
+  Field as AbstractField,
   ConcreteField,
   LocalFieldReference,
   ExpressionReference,
@@ -638,7 +639,7 @@ export default class Dimension {
     return this._parent ? this._parent.render() : this.displayName();
   }
 
-  mbql() {
+  mbql(): AbstractField | null | undefined {
     throw new Error("Abstract method `mbql` not implemented");
   }
 
