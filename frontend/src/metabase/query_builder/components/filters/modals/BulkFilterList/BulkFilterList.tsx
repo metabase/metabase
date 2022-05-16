@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Dimension from "metabase-lib/lib/Dimension";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import BulkFilterSelect from "../BulkFilterSelect";
@@ -40,11 +40,18 @@ const BulkFilterListItem = ({
   filters,
   dimension,
 }: BulkFilterListItemProps): JSX.Element => {
+  const options = useMemo(() => {
+    return filters.filter(f => f.dimension()?.isSameBaseDimension(dimension));
+  }, [filters, dimension]);
+
   return (
     <ListRow>
       <ListRowLabel>{dimension.displayName()}</ListRowLabel>
       <ListRowContent>
-        <BulkFilterSelect />
+        {options.map((filter, index) => (
+          <BulkFilterSelect key={index} filter={filter} />
+        ))}
+        {!options.length && <BulkFilterSelect />}
       </ListRowContent>
     </ListRow>
   );

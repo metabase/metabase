@@ -15,7 +15,7 @@ interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   left?: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
-  children?: React.ReactNode;
+  children: React.ReactNode;
   hasValue?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
