@@ -44,8 +44,10 @@
   nil)
 
 (api/defendpoint GET "/save-site-url"
+  "Save site-url from headers. This is performed automatically on POST `api/setup/` but testing needs this value to be
+  set in workflows where we do not post to this endpoint yet."
   [:as request]
-  (#'api.setup/maybe-set-site-url request)
+  (#'api.setup/maybe-set-site-url (:headers request))
   api/generic-204-no-content)
 
 (api/define-routes)

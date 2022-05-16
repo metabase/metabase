@@ -1,5 +1,6 @@
 (ns metabase.test.initialize.web-server
-  (:require [clojure.tools.logging :as log]
+  (:require [clj-http.client :as http]
+            [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.http-client :as client]
@@ -37,5 +38,7 @@
       (when config/is-test?
         (System/exit -2))))
   (init-status/set-complete!)
-  (client/client :get 200 "/testing/save-site-url")
+  ;; don't use client/client since it calls (initialize/initialize-if-needed! :db :web-server) and we are in the
+  ;; process of initializing the :web-server
+  (http/get (str client/*url-prefix* "testing/save-site-url"))
   (setting/set! :site-name "Metabase Test"))
