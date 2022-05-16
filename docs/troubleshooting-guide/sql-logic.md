@@ -1,12 +1,3 @@
-## What’s wrong with your query results?
-
-- [My query doesn’t run, and I’m getting an error message][troubleshooting-error-messages].
-- My query runs successfully, but I’m not getting the data results I expect.
-    - [My dates and times are wrong][troubleshooting-datetimes].
-    - [My data isn't up to date][troubleshooting-database-syncs].
-
-If you’re not having one of the problems above, go to [Troubleshooting SQL logic](#troubleshooting-sql-logic).
-
 ## Debugging SQL logic
 
 1. Get the schemas for the tables or nested queries used in your query.
@@ -41,29 +32,31 @@ If you’re getting a red error message that mentions SQL clauses or table and c
 
 ### Common SQL logic problems
 
-- [My result has duplicated rows][troubleshooting-duplicated-data].
-- [My result has missing rows][troubleshooting-missing-data].
-- [My aggregations (counts, sums, etc.) are too high](#aggregated-results-counts-sums-etc-are-too-high).
-- [My aggregations (counts, sums, etc.) are too low](#aggregated-results-counts-sums-etc-are-too-low).
+- [My result has duplicated data][troubleshooting-duplicated-data].
+- [My result has missing data][troubleshooting-missing-data].
+- [My aggregations (counts, sums, etc.) are wrong](#aggregated-results-counts-sums-etc-are-wrong).
 
 If your problem isn't listed above, search or ask the [Metabase community][discourse].
 
-#### Aggregated results (counts, sums, etc.) are too high.
+#### Aggregated results (counts, sums, etc.) are wrong.
+Before you start, make sure you know the [schemas of your source tables or nested queries](#debugging-sql-logic).
 
-1. Check if your source tables or upstream queries have [duplicated rows][troubleshooting-duplicated-data].
-2. Check your source tables or upstream queries for rows that should be filtered out.
-    - Are you including empty or `NULL` rows in your aggregations?
-    - Ask your Metabase admin or data team about business logic that defines invalid, cancelled, or expired records.
-3. If you’re aggregating unique values, check that you’re not double-counting them.
-    - Do you need to use `COUNT_DISTINCT` instead of `COUNT`?
-    - Are you applying a `SUM` on top of a `COUNT_DISTINCT`?
+1. If your aggregations are:
+    - too high, check if your source tables or queries have [duplicated rows][troubleshooting-duplicated-data].
+    - too low, check if your source tables or queries have [missing rows][troubleshooting-missing-data].
+2. Check your source tables or queries for filters.
+    - How are you handling empty or `NULL` rows in your aggregations?
+    - How are you handling invalid, cancelled, or expired records? Ask your Metabase admin or data team about business logic that you might not know about.
+3. If you're working with unique values, check if your use `COUNT_DISTINCT` is interacting with other functions.
+    - For example, applying `SUM` on top of `COUNT_DISTINCT` may double-count unique values.
+4. If you're working with time series data, [check if your time zones are set correctly][troubleshooting-datetimes].
+5. If your source tables get updated on a schedule, ask your Metabase admin [if your data is up to date][troubleshooting-database-syncs].
 
-#### Aggregated results (counts, sums, etc.) are too low.
+**Explanation**
 
-1. Check if your source tables or upstream queries have [missing rows][troubleshooting-missing-data].
-2. Check your source tables or upstream queries for filters that should be removed.
-    - Are you excluding empty or `NULL` rows in your aggregations?
-    - Ask your Metabase admin or data team about business logic that may be excluding data you want to use.
+Aggregations are often the first place where you'll detect a problem caused by one of the [common reasons for unexpected query results](#common-reasons-for-unexpected-query-results). The steps above will help you catch any edge cases that may be skewing your results. If you find lots of edge cases, and you anticipate handling the same cases over and over again, you may want to [bundle all of the logic together in a model][model-learn] so it can be easily re-used.
+
+And sometimes, you might just need a pair of fresh eyes. If you can't locate the root cause using the steps above, ask a teammate to help you check your math!
 
 ### How to find out if you have a nested query
 
@@ -101,6 +94,14 @@ Go to the saved question or model from the variables panel or by pasting the ID 
 2. If you're building off of someone else's work, ask the original creator of the query, saved question, or model.
 3. Compare the rows from your data samples.
 
+
+## Do you have a different problem?
+
+- [I’m getting an error message][troubleshooting-error-messages].
+- [My dates and times are wrong][troubleshooting-datetimes].
+- [My data isn't up to date][troubleshooting-database-syncs].
+
+
 ## Are you still stuck?
 
 Search or ask the [Metabase community][discourse].
@@ -114,6 +115,7 @@ Search or ask the [Metabase community][discourse].
 [how-metabase-executes-sql-variables]: ../users-guide/referencing-saved-questions-in-queries.html#saved-question-as-a-common-table-expression-cte
 [how-to-find-nested-query-type]: #i-dont-know-if-im-using-a-nested-query
 [how-to-run-query-selections]: ../users-guide/writing-sql.html#running-query-selections
+[model-learn]: /learn/getting-started/models
 [saved-question-model-docs]: ../users-guide/referencing-saved-questions-in-queries.html#referencing-models-and-saved-questions-in-sql-queries
 [troubleshooting-database-syncs]: ./sync-fingerprint-scan.html 
 [troubleshooting-datetimes]: ./timezones.html

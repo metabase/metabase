@@ -4,10 +4,13 @@
 
 
 ## Duplicated rows
+Before you start, make sure you know the [schemas of your source tables or nested queries](#debugging-sql-logic).
 
 1. Are you missing a `GROUP BY` clause?
 2. Check if your source tables or upstream queries have duplicated rows.
     ```sql
+    -- Replace the column and table names in the query below.
+    -- If the row_count is greater than 1, you have duplicated rows in your results.
     SELECT <your_columns>, COUNT(*) AS row_count
     FROM <your_table_or_upstream_query>
     GROUP BY <your_columns>
@@ -71,12 +74,11 @@ If you’ve written your joins assuming a one-to-one relationship for tables tha
 
 ## Do you have a different problem?
 
-- [My result has missing rows][troubleshooting-missing-data].
-- [My aggregations (counts, sums, etc.) are too high][troubleshooting-aggregations-too-high].
-- [My aggregations (counts, sums, etc.) are too low][troubleshooting-aggregations-too-low].
+- [I’m getting an error message][troubleshooting-error-messages].
+- [My result has missing data][troubleshooting-missing-data].
+- [My aggregations (counts, sums, etc.) are wrong][troubleshooting-aggregations].
 - [My dates and times are wrong][troubleshooting-datetimes].
 - [My data isn't up to date][troubleshooting-database-syncs].
-- [My query doesn’t run, and I’m getting an error message][troubleshooting-error-messages].
 
 If you’re not having one of the problems above, go to [Troubleshooting SQL logic][troubleshooting-sql-logic].
 
@@ -90,8 +92,7 @@ Search or ask the [Metabase community][discourse].
 [debugging-sql-logic]: ./sql-logic.html#debugging-sql-logic
 [discourse]: https://discourse.metabase.com/
 [schema-def]: /glossary/schema.html
-[troubleshooting-aggregations-too-high]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-high
-[troubleshooting-aggregations-too-low]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-low
+[troubleshooting-aggregations]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
 [troubleshooting-database-syncs]: ./sync-fingerprint-scan.html 
 [troubleshooting-datetimes]: ./timezones.html
 [troubleshooting-error-messages]: ./error-message.html

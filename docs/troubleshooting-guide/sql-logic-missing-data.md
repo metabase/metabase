@@ -4,8 +4,9 @@
 
 
 ## Missing rows
+Before you start, make sure you know the [schemas of your source tables or nested queries](#debugging-sql-logic).
 
-1. Check if your source tables or query results have missing rows. 
+1. Check if your source tables or queries have missing rows. 
 2. Check the [table below](#how-joins-filter-out-unmatched-rows) to see if you are missing rows because of your join type.
 3. Check your join conditions in the `ON` clause. For example:
     ```sql
@@ -45,7 +46,7 @@
     ORDER BY "order_created_date" ASC
     ;
 
-    -- This below calculates the total sales for every day in the report period, including days with 0 orders.
+    -- The query below calculates the total sales for every day in the report period, including days with 0 orders.
     -- The date_series CTE generates one row per date that you want in your final result.
     -- The fact_orders CTE generates the total sales for each date that had an order.
     -- The main query joins the two CTEs together and uses the COALESCE function to fill in the dates where there were no orders (i.e. a total sales value of 0).
@@ -103,10 +104,10 @@ The execution order of the query may combine your join conditions and `WHERE` cl
 
 
 ## Do you have a different problem?
+
 - [I’m getting an error message][troubleshooting-error-messages].
 - [My result has duplicated data][troubleshooting-duplicated-data].
-- [My aggregations (counts, sums, etc.) are too high](#aggregated-results-counts-sums-etc-are-too-high).
-- [My aggregations (counts, sums, etc.) are too low](#aggregated-results-counts-sums-etc-are-too-low).
+- [My aggregations (counts, sums, etc.) are wrong][troubleshooting-aggregations].
 - [My dates and times are wrong][troubleshooting-datetimes].
 - [My data isn't up to date][troubleshooting-database-syncs].
 
@@ -130,8 +131,7 @@ Search or ask the [Metabase community][discourse].
 [debugging-sql-logic]: ./sql-logic.html#debugging-sql-logic
 [discourse]: https://discourse.metabase.com/
 [etl-learn]: /learn/analytics/etl-landscape
-[troubleshooting-aggregations-too-high]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-high
-[troubleshooting-aggregations-too-low]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-too-low
+[troubleshooting-aggregations]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
 [troubleshooting-database-syncs]: ./sync-fingerprint-scan.html 
 [troubleshooting-datetimes]: ./timezones.html
 [troubleshooting-duplicated-data]: ./sql-logic-duplicated-data.md

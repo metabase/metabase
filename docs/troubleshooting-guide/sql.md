@@ -6,10 +6,11 @@
 - The error message contains part of your SQL query, such as a column or table name.
 - The error message may also contain a three-digit API error code, such as `400` or `404`.
 
-## My SQL query results are incorrect
+## [My SQL query results are incorrect][sql-logic]
 
-- [My query uses joins](/learn/sql-questions/sql-join-types.html#common-problems-with-sql-joins).
-- [My dates and times are wrong](/docs/latest/troubleshooting-guide/timezones.html).
+- [My result has duplicated data][troubleshooting-duplicated-data].
+- [My result has missing data][troubleshooting-missing-data].
+- [My aggregations (counts, sums, etc.) are wrong][troubleshooting-aggregations].
 
 ## My SQL variables aren't working
 
@@ -38,3 +39,6 @@ If you can’t solve your problem using the troubleshooting guides, search or as
 [sql-error-message]: ./sql-error-message.html
 [sql-variable-def]: /glossary/variable.html#example-variable-in-metabase
 [sql-variable-type]: /learn/sql-questions/sql-variables.html#the-different-types-of-variables-available-for-native-sql-queries
+[troubleshooting-aggregations]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
+[troubleshooting-duplicated-data]: ./sql-logic-duplicated-data.md
+[troubleshooting-missing-data]: ./sql-logic-missing-data.md
