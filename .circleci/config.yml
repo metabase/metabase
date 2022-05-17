@@ -1003,7 +1003,7 @@ workflows:
           matrix:
             parameters:
               edition: ["ee", "oss"]
-              java-version: ["java-11", "java-16"]
+              java-version: ["java-11", "java-17"]
           name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
