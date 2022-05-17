@@ -1,36 +1,10 @@
 import Dimension from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
-
-type Option = {
-  dimension: Dimension;
-};
-
-type Section = {
-  name: string;
-  icon: string;
-  items: Option[];
-};
-
-interface IDimensionFK {
-  name?: string;
-  icon?: string;
-  field: Field;
-  dimensions: Dimension[];
-}
-
-interface IDimensionOptionsProps {
-  name: string;
-  icon: string;
-  count: number;
-  dimensions: Dimension[];
-  fks: IDimensionFK[];
-}
-
-interface IDimensionOptions {
-  all(): Dimension[];
-  hasDimension(dimension: Dimension): boolean;
-  sections(options?: { extraItems?: Option[] }): Section[];
-}
+import {
+  IDimensionFK,
+  IDimensionOptions,
+  IDimensionOptionsProps,
+  ISection,
+} from "./types";
 
 export default class DimensionOptions implements IDimensionOptions {
   name: string;
@@ -71,12 +45,12 @@ export default class DimensionOptions implements IDimensionOptions {
     return false;
   }
 
-  sections({ extraItems = [] } = {}): Section[] {
+  sections({ extraItems = [] } = {}): ISection[] {
     const [dimension] = this.dimensions;
     const table = dimension && dimension.field().table;
     const tableName =
       table && !table.isSavedQuestion() ? table.objectName() : null;
-    const mainSection: Section = {
+    const mainSection: ISection = {
       name: this.name || tableName || "Table 2",
       icon: this.icon || "table2",
       items: [
