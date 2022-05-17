@@ -176,3 +176,9 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   confirmDeleteMembershipAction: null,
   confirmUpdateMembershipAction: null,
 };
+
+export const PLUGIN_MODEL_PERSISTENCE = {
+  isModelLevelPersistenceEnabled: () => false,
+  ModelCacheControl: PluginPlaceholder as any,
+  ModelCacheManagementSection: PluginPlaceholder as any,
+};
