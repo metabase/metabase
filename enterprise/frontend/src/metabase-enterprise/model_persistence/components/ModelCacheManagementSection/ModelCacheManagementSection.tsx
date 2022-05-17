@@ -16,7 +16,7 @@ import {
   IconButton,
   ErrorIcon,
   RefreshIcon,
-} from "./ModelCacheSection.styled";
+} from "./ModelCacheManagementSection.styled";
 
 type Props = {
   model: Question;
@@ -43,7 +43,7 @@ const mapDispatchToProps = {
     PersistedModels.objectActions.refreshCache(job),
 };
 
-function ModelCacheSection({ model, onRefresh }: Props) {
+function ModelCacheManagementSection({ model, onRefresh }: Props) {
   return (
     <PersistedModels.Loader
       id={model.id()}
@@ -82,4 +82,4 @@ function ModelCacheSection({ model, onRefresh }: Props) {
   );
 }
 
-export default connect(null, mapDispatchToProps)(ModelCacheSection);
+export default connect(null, mapDispatchToProps)(ModelCacheManagementSection);
