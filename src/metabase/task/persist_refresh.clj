@@ -53,6 +53,7 @@
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
   (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
+    (log/info (trs "Attempting to refresh persisted model {0}." (:card_id persisted-info)))
     (let [card (Card (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
@@ -95,7 +96,8 @@
                              :started_at   start-time
                              :ended_at     end-time
                              :duration     (.toMillis (t/duration start-time end-time))
-                             :task_details task-details})))
+                             :task_details task-details})
+    task-details))
 
 (defn- prune-deletables!
   "Seam for tests to pass in specific deletables to drop."
@@ -148,15 +150,14 @@
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
                             {:success 0, :error 0, :trigger "Scheduled"}
-                            persisted))]
-    (save-task-history! "persist-refresh" database-id thunk))
-  (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
+                            persisted))
+        {:keys [error success]} (save-task-history! "persist-refresh" database-id thunk)]
+    (log/info
+      (trs "Finished persisted model refresh task for Database {0} with {1} successes and {2} errors." database-id success error))))
 
 (defn- refresh-individual!
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher]
-  (log/info (trs "Attempting to refresh individual for persisted-info {0}."
-                 persisted-info-id))
   (let [persisted-info (PersistedInfo persisted-info-id)
         database       (when persisted-info
                          (Database (:database_id persisted-info)))]
