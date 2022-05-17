@@ -348,6 +348,6 @@
               query            (jdbc/reducible-query spec sql-args)
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
-          ;; throw away fields because currently testing
-          #{}
-          )))))
+          (if (> (count fields) max-nested-field-columns)
+            #{}
+            fields))))))
