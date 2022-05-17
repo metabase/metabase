@@ -11,21 +11,34 @@ export const SegmentedList = styled.ul`
   width: ${props => (props.fullWidth ? 1 : 0)};
 `;
 
-function getSegmentedItemColor(props, fallbackColor) {
-  if (props.variant === "fill-text") {
-    return fallbackColor;
-  }
-  return props.isSelected ? color(props.selectedColor) : fallbackColor;
+function getDefaultBorderColor() {
+  return darken(color("border"), 0.1);
 }
+
+const COLORS = {
+  "fill-text": {
+    background: () => "transparent",
+    border: () => getDefaultBorderColor(),
+    text: ({ isSelected, selectedColor, inactiveColor }) =>
+      color(isSelected ? selectedColor : inactiveColor),
+  },
+  "fill-background": {
+    background: ({ isSelected, selectedColor }) =>
+      isSelected ? color(selectedColor) : "transparent",
+    border: ({ isSelected, selectedColor }) =>
+      isSelected ? color(selectedColor) : getDefaultBorderColor(),
+    text: ({ isSelected, inactiveColor }) =>
+      color(isSelected ? "text-white" : inactiveColor),
+  },
+};
 
 export const SegmentedItem = styled.li`
   display: flex;
   flex-grow: ${props => (props.fullWidth ? 1 : 0)};
 
-  background-color: ${props => getSegmentedItemColor(props, "transparent")};
+  background-color: ${props => COLORS[props.variant].background(props)};
 
-  border: 1px solid
-    ${props => getSegmentedItemColor(props, darken(color("border"), 0.1))};
+  border: 1px solid ${props => COLORS[props.variant].border(props)};
 
   border-right-width: ${props => (props.isLast ? "1px" : 0)};
   border-top-left-radius: ${props => (props.isFirst ? BORDER_RADIUS : 0)};
@@ -41,12 +54,7 @@ export const SegmentedItemLabel = styled.label`
   justify-content: center;
   position: relative;
   font-weight: bold;
-  color: ${props => {
-    const selectedColor = color(
-      props.variant === "fill-text" ? props.selectedColor : "white",
-    );
-    return props.isSelected ? selectedColor : color(props.inactiveColor);
-  }};
+  color: ${props => COLORS[props.variant].text(props)};
   padding: ${props => (props.compact ? "8px" : "8px 12px")};
   cursor: pointer;
 
