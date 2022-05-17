@@ -76,7 +76,10 @@
     {:dn         dn
      :first-name first-name
      :last-name  last-name
-     :email      email
+     ; Some vendors can provide a list of all the emails attached to their identity (e.g. Okta)
+     :email      (if (coll? email)
+                     (first email)
+                     email)
      :groups     (when sync-groups?
                    ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
                    ;; groups. Otherwise we have to make the inverse query to get them.
