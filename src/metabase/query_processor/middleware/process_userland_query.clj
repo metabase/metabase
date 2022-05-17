@@ -52,10 +52,12 @@
                                                                (log/error e (trs "Error saving query execution info"))))))))
 
 (defn- save-successful-query-execution! [query-execution result-rows]
-  (save-query-execution! (assoc query-execution :result_rows result-rows)))
+  ;; (save-query-execution! (assoc query-execution :result_rows result-rows))
+  )
 
 (defn- save-failed-query-execution! [query-execution message]
-  (save-query-execution! (assoc query-execution :error (str message))))
+  ;; (save-query-execution! (assoc query-execution :error (str message)))
+  )
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
