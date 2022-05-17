@@ -12,7 +12,7 @@
 (defn- contains-font-file?
   [path]
   ;; todo: expand this to allow other font formats?
-  (boolean (some #(str/includes? (.toString %) ".woff") (u.files/files-seq path))))
+  (boolean (some #(str/includes? % ".woff") (u.files/files-seq path))))
 
 (defn- available-fonts*
   []
