@@ -238,7 +238,8 @@
                (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
-  ((comp (map #(for [[k v] %] [k (json/parsed-seq (io/reader (char-array v)))]))
+  ((comp (map #(for [[k v] %]
+                 [k (first (json/parsed-seq (io/reader (char-array v))))]))
          (map #(into {} %))
          (map row->types)) member))
 
