@@ -7,7 +7,7 @@
   (doseq [[s expected] {"Roboto"           "Roboto"
                         "Merriweather"     "Merriweather"
                         "Open_Sans"        "Open Sans"
-                        "Lato-v16-latin"   "Lato"
+                        "Lato"             "Lato"
                         "Noto_Sans"        "Noto Sans"
                         "Roboto_Slab"      "Roboto Slab"
                         "Source_Sans_Pro"  "Source Sans Pro"
@@ -30,13 +30,7 @@
 (deftest available-fonts-test
   (let [fonts (u.fonts/available-fonts)]
     (testing "A list of available fonts is returned"
-      (is (seq fonts)))
-    (testing "Only directories with font files are included."
-      (let [dirs (conj
-                  (u.files/files-seq (u.files/get-path @#'u.fonts/font-path))
-                  (u.files/get-path "./metabase/"))]
-        (is (> (count dirs)
-               (count fonts)))))))
+      (is (seq fonts)))))
 
 (deftest available-font-predicate-test
   (testing "A valid font on the system returns `true`."

@@ -4,34 +4,27 @@
             [clojure.tools.logging :as log]
             [metabase.util.files :as u.files]))
 
-(def ^:private font-path "./resources/frontend_client/app/fonts/")
-
 (defn- normalize-font-dirname
-  "Use a font's directory to derive a Display Name.
-
-  Split on dashes and take the first word, then change underscores to spaces.
-  This is done because of the 'Lato-v16-latin' directory name."
+  "Use a font's directory to derive a Display Name by changing underscores to spaces."
   [dirname]
-  (-> dirname
-      (str/split #"-")
-      first
-      (str/replace #"_" " ")))
+  (str/replace dirname #"_" " "))
 
 (defn- contains-font-file?
   [path]
   ;; todo: expand this to allow other font formats?
-  (boolean (some #(str/includes? % ".woff") (u.files/files-seq path))))
+  (boolean (some #(str/includes? (.toString %) ".woff") (u.files/files-seq path))))
 
 (defn- available-fonts*
   []
-  (log/info (str "Reading available fonts from " font-path))
-  (->> font-path
-       u.files/get-path
-       u.files/files-seq
-       (filter contains-font-file?)
-       (map #(str/replace (str %) font-path ""))
-       (map normalize-font-dirname)
-       (sort-by #(str/lower-case %))))
+  (u.files/with-open-path-to-resource [font-path "frontend_client/app/fonts"]
+    (let [font-path-str (str (.toString font-path) "/")]
+      (log/info (str "Reading available fonts from " font-path))
+      (->> font-path
+           u.files/files-seq
+           (filter contains-font-file?)
+           (map #(str/replace (str %) font-path-str ""))
+           (map normalize-font-dirname)
+           (sort-by #(str/lower-case %))))))
 
 (def ^{:arglists '([])} available-fonts
   "Return an alphabetically sorted list of available fonts, as Strings."
