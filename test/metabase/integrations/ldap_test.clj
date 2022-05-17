@@ -120,12 +120,12 @@
                (ldap/find-user "sbrown20"))))
 
        (testing "find user having two emails (professional & personal)"
-        (is (= {:dn         "cn=John Smith,ou=People,dc=metabase,dc=com"
+        (is (= {:dn         "cn=John Doe,ou=People,dc=metabase,dc=com"
                 :first-name "John"
-                :last-name  "Smith"
-                :email      "johnsmith2@metabase.com"
+                :last-name  "Doe"
+                :email      "johndoe@metabase.com"
                 :groups     ["cn=Accounting,ou=Groups,dc=metabase,dc=com"]}
-               (ldap/find-user "johnsmith2")))))))
+               (ldap/find-user "johndoe")))))))
 
 (deftest fetch-or-create-user-test
   ;; there are EE-specific versions of this test in `metabase-enterprise.enhancements.integrations.ldap-test`

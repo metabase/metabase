@@ -37,17 +37,17 @@ userPassword: 1234
 memberOf: cn=Accounting,ou=Groups,dc=metabase,dc=com
 memberOf: cn=Engineering,ou=Groups,dc=metabase,dc=com
 
-dn: cn=John Smith,ou=People,dc=metabase,dc=com
+dn: cn=John Doe,ou=People,dc=metabase,dc=com
 objectClass: top
 objectClass: person
 objectClass: organizationalPerson
 objectClass: inetOrgPerson
-cn: John Smith
-sn: Smith
+cn: John Doe
+sn: Doe
 givenName: John
-uid: johnsmith2
-mail: johnsmith2@metabase.com
-mail: johnsmith2personal@other.com
+uid: johndoe
+mail: johndoe@metabase.com
+mail: johndoepersonal@other.com
 userPassword: 1234
 memberOf: cn=Accounting,ou=Groups,dc=metabase,dc=com
 
