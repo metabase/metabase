@@ -14,6 +14,8 @@ import {
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getNestedQueriesEnabled } from "metabase/selectors/settings";
 
+import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -23,8 +25,7 @@ export const EDIT_TESTID = "edit-details-button";
 export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 export const MOVE_TESTID = "move-button";
 export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
-export const PERSIST_DATASET_TESTID = "persist-dataset";
-export const UNPERSIST_DATASET_TESTID = "unpersist-dataset";
+export const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
 export const CLONE_TESTID = "clone-button";
 export const ARCHIVE_TESTID = "archive-button";
 
@@ -37,8 +38,6 @@ QuestionActionButtons.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
-  persistDataset: PropTypes.func.isRequired,
-  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -54,8 +53,6 @@ function QuestionActionButtons({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
-  persistDataset,
-  unpersistDataset,
 }) {
   const [animation, setAnimation] = useState(null);
 
@@ -66,7 +63,6 @@ function QuestionActionButtons({
 
   const isSaved = question.isSaved();
   const isDataset = question.isDataset();
-  const isPersisted = question.isPersisted();
 
   const duplicateTooltip = isDataset
     ? t`Duplicate this model`
@@ -79,6 +75,7 @@ function QuestionActionButtons({
     checkDatabaseSupportsModels(question.query().database());
 
   const canPersistDataset =
+    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
     canWrite &&
     isSaved &&
     isDataset &&
@@ -136,26 +133,13 @@ function QuestionActionButtons({
           />
         </Tooltip>
       )}
-      {canPersistDataset &&
-        (isPersisted ? (
-          <Tooltip tooltip={t`Unpersist model`}>
-            <Button
-              onlyIcon
-              icon="database"
-              iconSize={ICON_SIZE}
-              onClick={() => unpersistDataset(question.id())}
-            />
-          </Tooltip>
-        ) : (
-          <Tooltip tooltip={t`Persist model`}>
-            <Button
-              onlyIcon
-              icon="database"
-              iconSize={ICON_SIZE}
-              onClick={() => persistDataset(question.id())}
-            />
-          </Tooltip>
-        ))}
+      {canPersistDataset && (
+        <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
+          model={question}
+          size={ICON_SIZE}
+          data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
+        />
+      )}
       {canWrite && (
         <Tooltip tooltip={duplicateTooltip}>
           <Button
