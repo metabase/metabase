@@ -11,12 +11,12 @@ executors:
   builder:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
 
   tester:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-node-browsers
+      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
       - image: maildev/maildev:1.1.0
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
