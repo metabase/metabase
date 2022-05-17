@@ -230,7 +230,7 @@ describe("ViewHeader", () => {
           setup({ question });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
           expect(
-            screen.queryByLabelText("More filters"),
+            screen.queryByLabelText("Show more filters"),
           ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
@@ -264,7 +264,7 @@ describe("ViewHeader", () => {
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
-          fireEvent.click(screen.getByLabelText("More filters"));
+          fireEvent.click(screen.getByLabelText("Show more filters"));
           expect(onAddFilter).toHaveBeenCalled();
         });
 
