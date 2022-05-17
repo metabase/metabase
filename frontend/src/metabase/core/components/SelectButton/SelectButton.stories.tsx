@@ -18,12 +18,12 @@ Default.args = {
   fullWidth: false,
 };
 
-export const Primary = Template.bind({});
-Primary.args = {
+export const Highlighted = Template.bind({});
+Highlighted.args = {
   children: "Select an option",
-  variant: "primary",
-  hasValue: false,
+  hasValue: true,
   fullWidth: false,
+  highlighted: true,
 };
 
 export const WithClearBehavior = Template.bind({});

@@ -10,7 +10,6 @@ import {
   SelectButtonIcon,
   SelectButtonContent,
 } from "./SelectButton.styled";
-import { SelectButtonVariant } from "./types";
 
 export interface SelectButtonProps
   extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,10 +17,10 @@ export interface SelectButtonProps
   className?: string;
   style?: React.CSSProperties;
   children: React.ReactNode;
-  variant?: SelectButtonVariant;
   hasValue?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
+  highlighted?: boolean;
   onClear?: () => void;
 }
 
@@ -31,10 +30,10 @@ const SelectButton = forwardRef(function SelectButton(
     style,
     children,
     left,
-    variant = "secondary",
     hasValue = true,
-    disabled,
+    disabled = false,
     fullWidth = true,
+    highlighted = false,
     onClear,
     ...rest
   }: SelectButtonProps,
@@ -65,9 +64,9 @@ const SelectButton = forwardRef(function SelectButton(
       ref={ref}
       className={className}
       style={style}
-      variant={variant}
       hasValue={hasValue}
       disabled={disabled}
+      highlighted={highlighted}
       fullWidth={fullWidth}
       {...rest}
     >
@@ -78,6 +77,8 @@ const SelectButton = forwardRef(function SelectButton(
       <SelectButtonIcon
         name={rightIcon}
         size={12}
+        hasValue={hasValue}
+        highlighted={highlighted}
         onClick={onClear ? handleClear : undefined}
       />
     </SelectButtonRoot>
