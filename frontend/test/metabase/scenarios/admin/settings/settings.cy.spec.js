@@ -208,7 +208,7 @@ describe("scenarios > admin > settings", () => {
     cy.visit("/admin/settings/localization");
     cy.contains("Report Timezone")
       .closest("li")
-      .findByTestId("report-timezone-select-button")
+      .findByTestId("select-button")
       .click();
 
     cy.findByPlaceholderText("Find...").type("Centr");
@@ -247,7 +247,7 @@ describe("scenarios > admin > settings", () => {
   });
 
   it("should display the order of the settings items consistently between OSS/EE versions (metabase#15441)", () => {
-    const lastItem = isEE ? "Appearance" : "Caching";
+    const lastItem = isEE ? "Whitelabel" : "Caching";
 
     cy.visit("/admin/settings/setup");
     cy.get(".AdminList .AdminList-item")

@@ -17,7 +17,7 @@
 
 .LineAreaBarChart .dc-chart .axis text {
   font-size: 12px;
-  font-family: var(--default-font-family), sans-serif;
+  font-family: "Lato", sans-serif;
   font-weight: 900;
 }
 

@@ -20,7 +20,6 @@ interface SelectButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   disabled?: boolean;
   fullWidth?: boolean;
   onClear?: () => void;
-  dataTestId?: string;
 }
 
 const SelectButton = forwardRef<HTMLButtonElement, SelectButtonProps>(
@@ -34,7 +33,6 @@ const SelectButton = forwardRef<HTMLButtonElement, SelectButtonProps>(
       disabled,
       fullWidth = true,
       onClear,
-      dataTestId,
       ...rest
     }: SelectButtonProps,
     ref,
@@ -60,7 +58,7 @@ const SelectButton = forwardRef<HTMLButtonElement, SelectButtonProps>(
     return (
       <SelectButtonRoot
         type="button"
-        data-testid={`${dataTestId ? `${dataTestId}-` : ""}select-button`}
+        data-testid="select-button"
         ref={ref as any}
         className={className}
         style={style}
