@@ -389,7 +389,12 @@
                 (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
                 (do
                   (setting.cache/restore-cache-if-needed!)
-                  (clojure.core/get (setting.cache/cache) (setting-name setting-definition-or-name))))]
+                  (let [cache (setting.cache/cache)]
+                    (if (nil? cache)
+                      ;; If another thread is populating the cache for the first time, we will have a nil value for
+                      ;; the cache and must hit the db while the cache populates
+                      (db/select-one-field :value Setting :key (setting-name setting-definition-or-name))
+                      (clojure.core/get cache (setting-name setting-definition-or-name))))))]
         (when (seq v)
           v)))))
 
