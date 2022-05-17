@@ -1,6 +1,7 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
   "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
   (:require [cheshire.core :as json]
+            [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
@@ -237,9 +238,13 @@
                (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
 
 (defn- describe-json-xform [member]
-  ((comp (map #(for [[k v] %] [k (json/parse-string v)]))
+  ((comp (map #(for [[k v] %] [k (json/parsed-seq (io/reader (char-array v)))]))
          (map #(into {} %))
          (map row->types)) member))
+
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
 
 (defn- describe-json-rf
   "Reducing function that takes a bunch of maps from row->types,
@@ -323,10 +328,6 @@
         field-hash   (apply hash-set (filter some? valid-fields))]
     field-hash))
 
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
-
 ;; The name's nested field columns but what the people wanted (issue #708)
 ;; was JSON so what they're getting is JSON.
 (defn describe-nested-field-columns
@@ -347,4 +348,6 @@
               query            (jdbc/reducible-query spec sql-args)
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
-          fields)))))
+          ;; throw away fields because currently testing
+          #{}
+          )))))
