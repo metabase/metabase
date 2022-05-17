@@ -175,200 +175,308 @@
           (is (= [[-30.00M -60.00M 1]]
                  (mt/rows (qp/process-query query)))))))))
 
+
 (def fill-empty-bins-examples
-  [{:input {:query {:source-table 2,
-                    :aggregation [[:count]],
-                    :breakout
-                    [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]],
-                    :limit 10,
-                    :order-by
-                    [[:asc
-                      [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]]},},
-    :expected {:query {:source-table 2,
-                       :aggregation
-                       [[:count
-                         [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]],
-                       :breakout [[:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]],
-                       :limit 10,
-                       :order-by [[:asc [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]]],
-                       :joins
-                       [{:strategy :right-join,
-                         :source-query
-                         {:native "(VALUES (0.0), (7.5), (15.0), (22.5), (30.0), (37.5), (45.0), (52.5), (60.0)) as bin(\"_FieldName_1\")"},
-                         :alias "bin",
-                         :condition
-                         [:=
-                          [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                          [:field
-                           1
-                           {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]}]},}}
-   {:input {:query {:source-table 2,
-                    :aggregation [[:count]],
-                    :breakout
-                    [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]],
-                    :limit 10,
-                    :order-by
-                    [[:asc
-                      [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]]},},
-    :expected {:query {:source-table 2,
-                       :aggregation
-                       [[:count
-                         [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]],
-                       :breakout [[:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]],
-                       :limit 10,
-                       :order-by [[:asc [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]]],
-                       :joins
-                       [{:strategy :right-join,
-                         :source-query
-                         {:native "(VALUES (0.0), (7.5), (15.0), (22.5), (30.0), (37.5), (45.0), (52.5), (60.0)) as bin(\"_FieldName_1\")"},
-                         :alias "bin",
-                         :condition
-                         [:=
-                          [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                          [:field
-                           1
-                           {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]}]},}}
+  [{:input
+    {:query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout
+      [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]],
+      :limit 10,
+      :order-by
+      [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]]}}
+
+    :expected {:breakout
+               [[:field
+                 1
+                 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]],
+               :joins
+               [{:strategy :right-join,
+                 :source-query
+                 {:native "(VALUES (0.0), (7.5), (15.0), (22.5), (30.0), (37.5), (45.0), (52.5), (60.0)) as bin(\"_FieldName_1\")"},
+                 :alias "bin",
+                 :condition
+                 [:=
+                  [:field
+                   1
+                   {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                    :join-alias "bin",
+                    :canonical-field
+                    [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]}]}}
+
+   {:input
+    {:query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout
+      [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]],
+      :limit 10,
+      :order-by
+      [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]]}}
+
+    :expected {:breakout
+               [[:field
+                 1
+                 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]],
+               :joins
+               [{:strategy :right-join,
+                 :source-query
+                 {:native "(VALUES (0.0), (7.5), (15.0), (22.5), (30.0), (37.5), (45.0), (52.5), (60.0)) as bin(\"_FieldName_1\")"},
+                 :alias "bin",
+                 :condition
+                 [:=
+                  [:field
+                   1
+                   {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                    :join-alias "bin",
+                    :canonical-field
+                    [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]}]}}
+
+
+   {:input
+    {:query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout
+      [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]
+       [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]],
+      :limit 10,
+      :order-by
+      [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
+       [:asc [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]}}
+
+    :expected {:breakout
+               [[:field
+                 1
+                 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]
+                [:field
+                 8
+                 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]}]],
+               :joins
+               [{:strategy :right-join,
+                 :source-query
+                 {:native
+                  "(VALUES (0.0, 0.0), (0.0, 2.0), (0.0, 4.0), (0.0, 6.0), (0.0, 8.0), (0.0, 10.0), (7.5, 0.0), (7.5, 2.0), (7.5, 4.0), (7.5, 6.0), (7.5, 8.0), (7.5, 10.0), (15.0, 0.0), (15.0, 2.0), (15.0, 4.0), (15.0, 6.0), (15.0, 8.0), (15.0, 10.0), (22.5, 0.0), (22.5, 2.0), (22.5, 4.0), (22.5, 6.0), (22.5, 8.0), (22.5, 10.0), (30.0, 0.0), (30.0, 2.0), (30.0, 4.0), (30.0, 6.0), (30.0, 8.0), (30.0, 10.0), (37.5, 0.0), (37.5, 2.0), (37.5, 4.0), (37.5, 6.0), (37.5, 8.0), (37.5, 10.0), (45.0, 0.0), (45.0, 2.0), (45.0, 4.0), (45.0, 6.0), (45.0, 8.0), (45.0, 10.0), (52.5, 0.0), (52.5, 2.0), (52.5, 4.0), (52.5, 6.0), (52.5, 8.0), (52.5, 10.0), (60.0, 0.0), (60.0, 2.0), (60.0, 4.0), (60.0, 6.0), (60.0, 8.0), (60.0, 10.0)) as bin(\"_FieldName_1\", \"_FieldName_8\")"},
+                 :alias "bin",
+                 :condition
+                 [:and
+                  [:=
+                   [:field
+                    1
+                    {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]
+                   [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
+                  [:=
+                   [:field
+                    8
+                    {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]}]
+                   [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]}]}}
+
+
+   {:input
+    {:query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout
+      [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]
+       [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]],
+      :limit 10,
+      :order-by
+      [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
+       [:asc [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]}}
+
+    :expected {:breakout
+               [[:field
+                 1
+                 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]
+                [:field
+                 8
+                 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]}]],
+               :joins
+               [{:strategy :right-join,
+                 :source-query
+                 {:native
+                  "(VALUES (0.0, 0.0), (0.0, 2.0), (0.0, 4.0), (0.0, 6.0), (0.0, 8.0), (0.0, 10.0), (7.5, 0.0), (7.5, 2.0), (7.5, 4.0), (7.5, 6.0), (7.5, 8.0), (7.5, 10.0), (15.0, 0.0), (15.0, 2.0), (15.0, 4.0), (15.0, 6.0), (15.0, 8.0), (15.0, 10.0), (22.5, 0.0), (22.5, 2.0), (22.5, 4.0), (22.5, 6.0), (22.5, 8.0), (22.5, 10.0), (30.0, 0.0), (30.0, 2.0), (30.0, 4.0), (30.0, 6.0), (30.0, 8.0), (30.0, 10.0), (37.5, 0.0), (37.5, 2.0), (37.5, 4.0), (37.5, 6.0), (37.5, 8.0), (37.5, 10.0), (45.0, 0.0), (45.0, 2.0), (45.0, 4.0), (45.0, 6.0), (45.0, 8.0), (45.0, 10.0), (52.5, 0.0), (52.5, 2.0), (52.5, 4.0), (52.5, 6.0), (52.5, 8.0), (52.5, 10.0), (60.0, 0.0), (60.0, 2.0), (60.0, 4.0), (60.0, 6.0), (60.0, 8.0), (60.0, 10.0)) as bin(\"_FieldName_1\", \"_FieldName_8\")"},
+                 :alias "bin",
+                 :condition
+                 [:and
+                  [:=
+                   [:field
+                    1
+                    {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]}]
+                   [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
+                  [:=
+                   [:field
+                    8
+                    {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]}]
+                   [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]}]}}
+
+   {:input
+    {:query
+     {:source-table 2,
+      :aggregation [[:count]],
+      :breakout
+      [[:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]
+       [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]
+       [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]],
+      :limit 10,
+      :order-by
+      [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
+       [:asc [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]
+       [:asc [:field 2 {:binning {:strategy :num-bins, :num-bins 50, :min-value 0.0, :max-value 100.0, :bin-width 2}}]]]}}
+
+    :expected {:breakout
+               [[:field
+                 1
+                 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]}]
+                [:field
+                 8
+                 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]}]
+                [:field
+                 2
+                 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]}]],
+               :joins
+               [{:strategy :right-join,
+                 :source-query
+                 {:native
+                  "(VALUES (0.0, 0.0, 0.0), (0.0, 0.0, 2000.0), (0.0, 0.0, 4000.0), (0.0, 0.0, 6000.0), (0.0, 0.0, 8000.0), (0.0, 200.0, 0.0), (0.0, 200.0, 2000.0), (0.0, 200.0, 4000.0), (0.0, 200.0, 6000.0), (0.0, 200.0, 8000.0), (0.0, 400.0, 0.0), (0.0, 400.0, 2000.0), (0.0, 400.0, 4000.0), (0.0, 400.0, 6000.0), (0.0, 400.0, 8000.0), (0.0, 600.0, 0.0), (0.0, 600.0, 2000.0), (0.0, 600.0, 4000.0), (0.0, 600.0, 6000.0), (0.0, 600.0, 8000.0), (0.0, 800.0, 0.0), (0.0, 800.0, 2000.0), (0.0, 800.0, 4000.0), (0.0, 800.0, 6000.0), (0.0, 800.0, 8000.0), (20.0, 0.0, 0.0), (20.0, 0.0, 2000.0), (20.0, 0.0, 4000.0), (20.0, 0.0, 6000.0), (20.0, 0.0, 8000.0), (20.0, 200.0, 0.0), (20.0, 200.0, 2000.0), (20.0, 200.0, 4000.0), (20.0, 200.0, 6000.0), (20.0, 200.0, 8000.0), (20.0, 400.0, 0.0), (20.0, 400.0, 2000.0), (20.0, 400.0, 4000.0), (20.0, 400.0, 6000.0), (20.0, 400.0, 8000.0), (20.0, 600.0, 0.0), (20.0, 600.0, 2000.0), (20.0, 600.0, 4000.0), (20.0, 600.0, 6000.0), (20.0, 600.0, 8000.0), (20.0, 800.0, 0.0), (20.0, 800.0, 2000.0), (20.0, 800.0, 4000.0), (20.0, 800.0, 6000.0), (20.0, 800.0, 8000.0), (40.0, 0.0, 0.0), (40.0, 0.0, 2000.0), (40.0, 0.0, 4000.0), (40.0, 0.0, 6000.0), (40.0, 0.0, 8000.0), (40.0, 200.0, 0.0), (40.0, 200.0, 2000.0), (40.0, 200.0, 4000.0), (40.0, 200.0, 6000.0), (40.0, 200.0, 8000.0), (40.0, 400.0, 0.0), (40.0, 400.0, 2000.0), (40.0, 400.0, 4000.0), (40.0, 400.0, 6000.0), (40.0, 400.0, 8000.0), (40.0, 600.0, 0.0), (40.0, 600.0, 2000.0), (40.0, 600.0, 4000.0), (40.0, 600.0, 6000.0), (40.0, 600.0, 8000.0), (40.0, 800.0, 0.0), (40.0, 800.0, 2000.0), (40.0, 800.0, 4000.0), (40.0, 800.0, 6000.0), (40.0, 800.0, 8000.0), (60.0, 0.0, 0.0), (60.0, 0.0, 2000.0), (60.0, 0.0, 4000.0), (60.0, 0.0, 6000.0), (60.0, 0.0, 8000.0), (60.0, 200.0, 0.0), (60.0, 200.0, 2000.0), (60.0, 200.0, 4000.0), (60.0, 200.0, 6000.0), (60.0, 200.0, 8000.0), (60.0, 400.0, 0.0), (60.0, 400.0, 2000.0), (60.0, 400.0, 4000.0), (60.0, 400.0, 6000.0), (60.0, 400.0, 8000.0), (60.0, 600.0, 0.0), (60.0, 600.0, 2000.0), (60.0, 600.0, 4000.0), (60.0, 600.0, 6000.0), (60.0, 600.0, 8000.0), (60.0, 800.0, 0.0), (60.0, 800.0, 2000.0), (60.0, 800.0, 4000.0), (60.0, 800.0, 6000.0), (60.0, 800.0, 8000.0), (80.0, 0.0, 0.0), (80.0, 0.0, 2000.0), (80.0, 0.0, 4000.0), (80.0, 0.0, 6000.0), (80.0, 0.0, 8000.0), (80.0, 200.0, 0.0), (80.0, 200.0, 2000.0), (80.0, 200.0, 4000.0), (80.0, 200.0, 6000.0), (80.0, 200.0, 8000.0), (80.0, 400.0, 0.0), (80.0, 400.0, 2000.0), (80.0, 400.0, 4000.0), (80.0, 400.0, 6000.0), (80.0, 400.0, 8000.0), (80.0, 600.0, 0.0), (80.0, 600.0, 2000.0), (80.0, 600.0, 4000.0), (80.0, 600.0, 6000.0), (80.0, 600.0, 8000.0), (80.0, 800.0, 0.0), (80.0, 800.0, 2000.0), (80.0, 800.0, 4000.0), (80.0, 800.0, 6000.0), (80.0, 800.0, 8000.0)) as bin(\"_FieldName_1\", \"_FieldName_8\", \"_FieldName_2\")"},
+                 :alias "bin",
+                 :condition
+                 [:and
+                  [:=
+                   [:field
+                    1
+                    {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]}]
+                   [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]]
+                  [:=
+                   [:field
+                    8
+                    {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]}]
+                   [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]]
+                  [:=
+                   [:field
+                    2
+                    {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]}]
+                   [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]]]}]}}
    {:input {:query
             {:source-table 2,
              :aggregation [[:count]],
              :breakout
-             [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]
-              [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]],
+             [[:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]
+              [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]
+              [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]],
              :limit 10,
              :order-by
-             [[:asc
-               [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
-              [:asc
-               [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]},},
-    :expected {:query
-               {:source-table 2,
-                :aggregation
-                [[:count
-                  [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]],
-                :breakout
-                [[:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                 [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]],
-                :limit 10,
-                :order-by
-                [[:asc [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]]
-                 [:asc [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]]],
-                :joins
-                [{:strategy :right-join,
-                  :source-query
-                  {:native
-                   "(VALUES (0.0, 0.0), (0.0, 2.0), (0.0, 4.0), (0.0, 6.0), (0.0, 8.0), (0.0, 10.0), (7.5, 0.0), (7.5, 2.0), (7.5, 4.0), (7.5, 6.0), (7.5, 8.0), (7.5, 10.0), (15.0, 0.0), (15.0, 2.0), (15.0, 4.0), (15.0, 6.0), (15.0, 8.0), (15.0, 10.0), (22.5, 0.0), (22.5, 2.0), (22.5, 4.0), (22.5, 6.0), (22.5, 8.0), (22.5, 10.0), (30.0, 0.0), (30.0, 2.0), (30.0, 4.0), (30.0, 6.0), (30.0, 8.0), (30.0, 10.0), (37.5, 0.0), (37.5, 2.0), (37.5, 4.0), (37.5, 6.0), (37.5, 8.0), (37.5, 10.0), (45.0, 0.0), (45.0, 2.0), (45.0, 4.0), (45.0, 6.0), (45.0, 8.0), (45.0, 10.0), (52.5, 0.0), (52.5, 2.0), (52.5, 4.0), (52.5, 6.0), (52.5, 8.0), (52.5, 10.0), (60.0, 0.0), (60.0, 2.0), (60.0, 4.0), (60.0, 6.0), (60.0, 8.0), (60.0, 10.0)) as bin(\"_FieldName_1\", \"_FieldName_8\")"},
-                  :alias "bin",
-                  :condition
-                  [:and
-                   [:=
-                    [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                    [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
-                   [:=
-                    [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]
-                    [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]}]},}}
-   {:input {:query {:source-table 2,
-                    :aggregation [[:count]],
-                    :breakout
-                    [[:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]
-                     [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]],
-                    :limit 10,
-                    :order-by
-                    [[:asc
-                      [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
-                     [:asc
-                      [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]},},
-    :expected {:query {:source-table 2,
-                       :aggregation
-                       [[:count
-                         [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]],
-                       :breakout
-                       [[:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                        [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]],
-                       :limit 10,
-                       :order-by
-                       [[:asc [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]]
-                        [:asc [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]]],
-                       :joins
-                       [{:strategy :right-join,
-                         :source-query
-                         {:native
-                          "(VALUES (0.0, 0.0), (0.0, 2.0), (0.0, 4.0), (0.0, 6.0), (0.0, 8.0), (0.0, 10.0), (7.5, 0.0), (7.5, 2.0), (7.5, 4.0), (7.5, 6.0), (7.5, 8.0), (7.5, 10.0), (15.0, 0.0), (15.0, 2.0), (15.0, 4.0), (15.0, 6.0), (15.0, 8.0), (15.0, 10.0), (22.5, 0.0), (22.5, 2.0), (22.5, 4.0), (22.5, 6.0), (22.5, 8.0), (22.5, 10.0), (30.0, 0.0), (30.0, 2.0), (30.0, 4.0), (30.0, 6.0), (30.0, 8.0), (30.0, 10.0), (37.5, 0.0), (37.5, 2.0), (37.5, 4.0), (37.5, 6.0), (37.5, 8.0), (37.5, 10.0), (45.0, 0.0), (45.0, 2.0), (45.0, 4.0), (45.0, 6.0), (45.0, 8.0), (45.0, 10.0), (52.5, 0.0), (52.5, 2.0), (52.5, 4.0), (52.5, 6.0), (52.5, 8.0), (52.5, 10.0), (60.0, 0.0), (60.0, 2.0), (60.0, 4.0), (60.0, 6.0), (60.0, 8.0), (60.0, 10.0)) as bin(\"_FieldName_1\", \"_FieldName_8\")"},
-                         :alias "bin",
-                         :condition
-                         [:and
-                          [:=
-                           [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                           [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
-                          [:=
-                           [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]
-                           [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]]}]},}}
-   {:input {:query {:source-table 2,
-                    :aggregation [[:count]],
-                    :breakout
-                    [[:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100 :bin-width 20}}]
-                     [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000 :bin-width 200}}]
-                     [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000 :bin-width 2000}}]],
-                    :limit 10,
-                    :order-by
-                    [[:asc
-                      [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
-                     [:asc [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]
-                     [:asc
-                      [:field 2 {:binning {:strategy :num-bins, :num-bins 50, :min-value 0.0, :max-value 100.0, :bin-width 2}}]]]},},
-    :expected {:query {:source-table 2,
-                       :aggregation
-                       [[:count [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]]],
-                       :breakout
-                       [[:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                        [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]
-                        [:field "_FieldName_2" {:base-type :type/Number, :join-alias "bin"}]],
-                       :limit 10,
-                       :order-by
-                       [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
-                        [:asc [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]
-                        [:asc [:field 2 {:binning {:strategy :num-bins, :num-bins 50, :min-value 0.0, :max-value 100.0, :bin-width 2}}]]],
-                       :joins
-                       [{:strategy :right-join,
-                         :source-query
-                         {:native
-                          (str "(VALUES (0.0, 0.0, 0.0), (0.0, 0.0, 2000.0), (0.0, 0.0, 4000.0), (0.0, 0.0, 6000.0), (0.0, 0.0, 8000.0), (0.0, 200.0, "
-                               "0.0), (0.0, 200.0, 2000.0), (0.0, 200.0, 4000.0), (0.0, 200.0, 6000.0), (0.0, 200.0, 8000.0), (0.0, 400.0, 0.0), (0.0, "
-                               "400.0, 2000.0), (0.0, 400.0, 4000.0), (0.0, 400.0, 6000.0), (0.0, 400.0, 8000.0), (0.0, 600.0, 0.0), (0.0, 600.0, "
-                               "2000.0), (0.0, 600.0, 4000.0), (0.0, 600.0, 6000.0), (0.0, 600.0, 8000.0), (0.0, 800.0, 0.0), (0.0, 800.0, 2000.0), "
-                               "(0.0, 800.0, 4000.0), (0.0, 800.0, 6000.0), (0.0, 800.0, 8000.0), (20.0, 0.0, 0.0), (20.0, 0.0, 2000.0), (20.0, 0.0, "
-                               "4000.0), (20.0, 0.0, 6000.0), (20.0, 0.0, 8000.0), (20.0, 200.0, 0.0), (20.0, 200.0, 2000.0), (20.0, 200.0, 4000.0), "
-                               "(20.0, 200.0, 6000.0), (20.0, 200.0, 8000.0), (20.0, 400.0, 0.0), (20.0, 400.0, 2000.0), (20.0, 400.0, 4000.0), (20.0, "
-                               "400.0, 6000.0), (20.0, 400.0, 8000.0), (20.0, 600.0, 0.0), (20.0, 600.0, 2000.0), (20.0, 600.0, 4000.0), (20.0, 600.0, "
-                               "6000.0), (20.0, 600.0, 8000.0), (20.0, 800.0, 0.0), (20.0, 800.0, 2000.0), (20.0, 800.0, 4000.0), (20.0, 800.0, "
-                               "6000.0), (20.0, 800.0, 8000.0), (40.0, 0.0, 0.0), (40.0, 0.0, 2000.0), (40.0, 0.0, 4000.0), (40.0, 0.0, 6000.0), "
-                               "(40.0, 0.0, 8000.0), (40.0, 200.0, 0.0), (40.0, 200.0, 2000.0), (40.0, 200.0, 4000.0), (40.0, 200.0, 6000.0), (40.0, "
-                               "200.0, 8000.0), (40.0, 400.0, 0.0), (40.0, 400.0, 2000.0), (40.0, 400.0, 4000.0), (40.0, 400.0, 6000.0), (40.0, 400.0, "
-                               "8000.0), (40.0, 600.0, 0.0), (40.0, 600.0, 2000.0), (40.0, 600.0, 4000.0), (40.0, 600.0, 6000.0), (40.0, 600.0, "
-                               "8000.0), (40.0, 800.0, 0.0), (40.0, 800.0, 2000.0), (40.0, 800.0, 4000.0), (40.0, 800.0, 6000.0), (40.0, 800.0, "
-                               "8000.0), (60.0, 0.0, 0.0), (60.0, 0.0, 2000.0), (60.0, 0.0, 4000.0), (60.0, 0.0, 6000.0), (60.0, 0.0, 8000.0), (60.0, "
-                               "200.0, 0.0), (60.0, 200.0, 2000.0), (60.0, 200.0, 4000.0), (60.0, 200.0, 6000.0), (60.0, 200.0, 8000.0), (60.0, 400.0, "
-                               "0.0), (60.0, 400.0, 2000.0), (60.0, 400.0, 4000.0), (60.0, 400.0, 6000.0), (60.0, 400.0, 8000.0), (60.0, 600.0, 0.0), "
-                               "(60.0, 600.0, 2000.0), (60.0, 600.0, 4000.0), (60.0, 600.0, 6000.0), (60.0, 600.0, 8000.0), (60.0, 800.0, 0.0), (60.0, "
-                               "800.0, 2000.0), (60.0, 800.0, 4000.0), (60.0, 800.0, 6000.0), (60.0, 800.0, 8000.0), (80.0, 0.0, 0.0), (80.0, 0.0, "
-                               "2000.0), (80.0, 0.0, 4000.0), (80.0, 0.0, 6000.0), (80.0, 0.0, 8000.0), (80.0, 200.0, 0.0), (80.0, 200.0, 2000.0), "
-                               "(80.0, 200.0, 4000.0), (80.0, 200.0, 6000.0), (80.0, 200.0, 8000.0), (80.0, 400.0, 0.0), (80.0, 400.0, 2000.0), (80.0, "
-                               "400.0, 4000.0), (80.0, 400.0, 6000.0), (80.0, 400.0, 8000.0), (80.0, 600.0, 0.0), (80.0, 600.0, 2000.0), (80.0, 600.0, "
-                               "4000.0), (80.0, 600.0, 6000.0), (80.0, 600.0, 8000.0), (80.0, 800.0, 0.0), (80.0, 800.0, 2000.0), (80.0, 800.0, "
-                               "4000.0), (80.0, 800.0, 6000.0), (80.0, 800.0, 8000.0)) as bin(\"_FieldName_1\", \"_FieldName_8\", \"_FieldName_2\")")},
-                          :alias "bin",
-                          :condition
-                          [:and
-                           [:=
-                            [:field "_FieldName_1" {:base-type :type/Number, :join-alias "bin"}]
-                            [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]]
-                           [:=
-                            [:field "_FieldName_8" {:base-type :type/Number, :join-alias "bin"}]
-                            [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]]
-                           [:=
-                            [:field "_FieldName_2" {:base-type :type/Number, :join-alias "bin"}]
-                            [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]]]}]}}}])
+             [[:asc [:field 1 {:binning {:strategy :num-bins, :num-bins 10, :min-value 0.0, :max-value 67.5, :bin-width 7.5}}]]
+              [:asc [:field 8 {:binning {:strategy :num-bins, :min-value 0.0, :max-value 12.0, :num-bins 8, :bin-width 2}}]]
+              [:asc [:field 2 {:binning {:strategy :num-bins, :num-bins 50, :min-value 0.0, :max-value 100.0, :bin-width 2}}]]]}}
+    :expected {:breakout
+               [[:field
+                 1
+                 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]}]
+                [:field
+                 8
+                 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]}]
+                [:field
+                 2
+                 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000},
+                  :join-alias "bin",
+                  :canonical-field
+                  [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]}]],
+               :joins
+               [{:strategy :right-join,
+                 :source-query
+                 {:native
+                  "(VALUES (0.0, 0.0, 0.0), (0.0, 0.0, 2000.0), (0.0, 0.0, 4000.0), (0.0, 0.0, 6000.0), (0.0, 0.0, 8000.0), (0.0, 200.0, 0.0), (0.0, 200.0, 2000.0), (0.0, 200.0, 4000.0), (0.0, 200.0, 6000.0), (0.0, 200.0, 8000.0), (0.0, 400.0, 0.0), (0.0, 400.0, 2000.0), (0.0, 400.0, 4000.0), (0.0, 400.0, 6000.0), (0.0, 400.0, 8000.0), (0.0, 600.0, 0.0), (0.0, 600.0, 2000.0), (0.0, 600.0, 4000.0), (0.0, 600.0, 6000.0), (0.0, 600.0, 8000.0), (0.0, 800.0, 0.0), (0.0, 800.0, 2000.0), (0.0, 800.0, 4000.0), (0.0, 800.0, 6000.0), (0.0, 800.0, 8000.0), (20.0, 0.0, 0.0), (20.0, 0.0, 2000.0), (20.0, 0.0, 4000.0), (20.0, 0.0, 6000.0), (20.0, 0.0, 8000.0), (20.0, 200.0, 0.0), (20.0, 200.0, 2000.0), (20.0, 200.0, 4000.0), (20.0, 200.0, 6000.0), (20.0, 200.0, 8000.0), (20.0, 400.0, 0.0), (20.0, 400.0, 2000.0), (20.0, 400.0, 4000.0), (20.0, 400.0, 6000.0), (20.0, 400.0, 8000.0), (20.0, 600.0, 0.0), (20.0, 600.0, 2000.0), (20.0, 600.0, 4000.0), (20.0, 600.0, 6000.0), (20.0, 600.0, 8000.0), (20.0, 800.0, 0.0), (20.0, 800.0, 2000.0), (20.0, 800.0, 4000.0), (20.0, 800.0, 6000.0), (20.0, 800.0, 8000.0), (40.0, 0.0, 0.0), (40.0, 0.0, 2000.0), (40.0, 0.0, 4000.0), (40.0, 0.0, 6000.0), (40.0, 0.0, 8000.0), (40.0, 200.0, 0.0), (40.0, 200.0, 2000.0), (40.0, 200.0, 4000.0), (40.0, 200.0, 6000.0), (40.0, 200.0, 8000.0), (40.0, 400.0, 0.0), (40.0, 400.0, 2000.0), (40.0, 400.0, 4000.0), (40.0, 400.0, 6000.0), (40.0, 400.0, 8000.0), (40.0, 600.0, 0.0), (40.0, 600.0, 2000.0), (40.0, 600.0, 4000.0), (40.0, 600.0, 6000.0), (40.0, 600.0, 8000.0), (40.0, 800.0, 0.0), (40.0, 800.0, 2000.0), (40.0, 800.0, 4000.0), (40.0, 800.0, 6000.0), (40.0, 800.0, 8000.0), (60.0, 0.0, 0.0), (60.0, 0.0, 2000.0), (60.0, 0.0, 4000.0), (60.0, 0.0, 6000.0), (60.0, 0.0, 8000.0), (60.0, 200.0, 0.0), (60.0, 200.0, 2000.0), (60.0, 200.0, 4000.0), (60.0, 200.0, 6000.0), (60.0, 200.0, 8000.0), (60.0, 400.0, 0.0), (60.0, 400.0, 2000.0), (60.0, 400.0, 4000.0), (60.0, 400.0, 6000.0), (60.0, 400.0, 8000.0), (60.0, 600.0, 0.0), (60.0, 600.0, 2000.0), (60.0, 600.0, 4000.0), (60.0, 600.0, 6000.0), (60.0, 600.0, 8000.0), (60.0, 800.0, 0.0), (60.0, 800.0, 2000.0), (60.0, 800.0, 4000.0), (60.0, 800.0, 6000.0), (60.0, 800.0, 8000.0), (80.0, 0.0, 0.0), (80.0, 0.0, 2000.0), (80.0, 0.0, 4000.0), (80.0, 0.0, 6000.0), (80.0, 0.0, 8000.0), (80.0, 200.0, 0.0), (80.0, 200.0, 2000.0), (80.0, 200.0, 4000.0), (80.0, 200.0, 6000.0), (80.0, 200.0, 8000.0), (80.0, 400.0, 0.0), (80.0, 400.0, 2000.0), (80.0, 400.0, 4000.0), (80.0, 400.0, 6000.0), (80.0, 400.0, 8000.0), (80.0, 600.0, 0.0), (80.0, 600.0, 2000.0), (80.0, 600.0, 4000.0), (80.0, 600.0, 6000.0), (80.0, 600.0, 8000.0), (80.0, 800.0, 0.0), (80.0, 800.0, 2000.0), (80.0, 800.0, 4000.0), (80.0, 800.0, 6000.0), (80.0, 800.0, 8000.0)) as bin(\"_FieldName_1\", \"_FieldName_8\", \"_FieldName_2\")"},
+                 :alias "bin",
+                 :condition
+                 [:and
+                  [:=
+                   [:field
+                    1
+                    {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]}]
+                   [:field 1 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 100, :bin-width 20}}]]
+                  [:=
+                   [:field
+                    8
+                    {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]}]
+                   [:field 8 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 1000, :bin-width 200}}]]
+                  [:=
+                   [:field
+                    2
+                    {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000},
+                     :join-alias "bin",
+                     :canonical-field
+                     [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]}]
+                   [:field 2 {:binning {:strategy :num-bins, :num-bins 5, :min-value 0.0, :max-value 10000, :bin-width 2000}}]]]}]}}])
+
 
 (deftest rewrite-query-to-fill-empty-bins-test
   (with-redefs [binning/bin-field->name #(str "_FieldName_" (second %))]
     (doseq [{:keys [input expected]} fill-empty-bins-examples]
-      (is (= expected (binning/fill-empty-bins input))))))
+      (is (= expected
+             (select-keys
+              (:query (binning/fill-empty-bins input))
+              [:breakout :joins]))))))
