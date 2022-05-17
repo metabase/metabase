@@ -138,22 +138,32 @@
       (truncate-fn expr))))
 
 (s/defn adjust-day-of-week
-  "Adjust day of week wrt start of week setting."
+  "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
+
+  The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
+
+  * `1` = first day of the week (e.g. Sunday)
+  * `7` = last day of the week (e.g. Saturday)
+
+  This assumes `day-of-week` as returned by the driver is already between `1` and `7` (adjust it if it's not). It
+  adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
+  from [[driver/db-start-of-week]]."
   ([driver day-of-week]
    (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
 
   ([driver day-of-week offset]
    (adjust-day-of-week driver day-of-week offset hx/mod))
 
-  ([_driver
+  ([driver
     day-of-week
     offset :- s/Int
     mod-fn :- (s/pred fn?)]
-   (if (not= offset 0)
-     (hsql/call :case
-       (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
-       :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
-     day-of-week)))
+   (cond
+     (zero? offset) day-of-week
+     (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
+     :else          (hsql/call :case
+                      (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
+                      :else                                                 (mod-fn (hx/+ day-of-week offset) 7)))))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
@@ -222,6 +232,15 @@
 (defmethod apply-top-level-clause :default
   [_ _ honeysql-form _]
   honeysql-form)
+
+(defmulti json-query
+  "Reaches into a JSON field (that is, a field with a defined :nfc_path).
+
+  Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with indexing into it. Implement the special syntax in this multimethod."
+  {:arglists '([driver identifier json-field]), :added "0.43.1"}
+  (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
+  :hierarchy #'driver/hierarchy)
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

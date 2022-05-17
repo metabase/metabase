@@ -225,7 +225,7 @@
       (load-data! driver dbdef tabledef))))
 
 (defn destroy-db!
-  "Default impl of `destroy-db!` for SQL drivers."
+  "Default impl of [[metabase.test.data.interface/destroy-db!]] for SQL drivers."
   [driver dbdef]
   (try
     (doseq [statement (ddl/drop-db-ddl-statements driver dbdef)]

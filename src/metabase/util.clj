@@ -339,7 +339,7 @@
   [reff timeout-ms]
   (let [result (deref reff timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (when (instance? java.util.concurrent.Future reff)
+      (when (future? reff)
         (future-cancel reff))
       (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
@@ -347,16 +347,10 @@
 (defn do-with-timeout
   "Impl for `with-timeout` macro."
   [timeout-ms f]
-  (let [result (deref-with-timeout
-                (future
-                  (try
-                    (f)
-                    (catch Throwable e
-                      e)))
-                timeout-ms)]
-    (if (instance? Throwable result)
-      (throw result)
-      result)))
+  (try
+    (deref-with-timeout (future-call f) timeout-ms)
+    (catch java.util.concurrent.ExecutionException e
+      (throw (.getCause e)))))
 
 (defmacro with-timeout
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
@@ -487,7 +481,10 @@
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
 
-   Consider using the `auto-retry` macro instead of calling this function directly."
+   Consider using the `auto-retry` macro instead of calling this function directly.
+
+   For implementing more fine grained retry policies like exponential backoff,
+   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
@@ -505,7 +502,10 @@
   until it succeeds.
 
   You can disable auto-retries for a specific ExceptionInfo by including `{:metabase.util/no-auto-retry? true}` in its
-  data (or the data of one of its causes.)"
+  data (or the data of one of its causes.)
+
+  For implementing more fine grained retry policies like exponential backoff,
+  consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries

@@ -94,7 +94,14 @@ function mockSettings({ enableNestedQueries = true } = {}) {
   });
 }
 
-function setup({ question, isRunnable = true, settings, ...props } = {}) {
+function setup({
+  question,
+  settings,
+  isRunnable = true,
+  isActionListVisible = true,
+  isAdditionalInfoVisible = true,
+  ...props
+} = {}) {
   mockSettings(settings);
 
   const callbacks = {
@@ -113,8 +120,10 @@ function setup({ question, isRunnable = true, settings, ...props } = {}) {
     <ViewTitleHeader
       {...callbacks}
       {...props}
-      isRunnable={isRunnable}
       question={question}
+      isRunnable={isRunnable}
+      isActionListVisible={isActionListVisible}
+      isAdditionalInfoVisible={isAdditionalInfoVisible}
     />,
     {
       withRouter: true,

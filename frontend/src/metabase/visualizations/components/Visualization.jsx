@@ -40,15 +40,11 @@ export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to se
 
 import Question from "metabase-lib/lib/Question";
 import Mode from "metabase-lib/lib/Mode";
-import { memoize } from "metabase-lib/lib/utils";
+import { memoizeClass } from "metabase-lib/lib/utils";
 
 // NOTE: pass `CardVisualization` so that we don't include header when providing size to child element
-@ExplicitSize({
-  selector: ".CardVisualization",
-  refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
-})
-@connect()
-export default class Visualization extends React.PureComponent {
+
+class Visualization extends React.PureComponent {
   constructor(props) {
     super(props);
 
@@ -188,7 +184,6 @@ export default class Visualization extends React.PureComponent {
     }
   };
 
-  @memoize
   _getQuestionForCardCached(metadata, card) {
     if (!metadata || !card) {
       return;
@@ -476,7 +471,7 @@ export default class Visualization extends React.PureComponent {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src={NoResults} />
+              <img data-testid="no-results-image" src={NoResults} />
             </Tooltip>
             {!small && <span className="h4 text-bold">No results!</span>}
           </div>
@@ -556,3 +551,12 @@ export default class Visualization extends React.PureComponent {
     );
   }
 }
+
+export default _.compose(
+  ExplicitSize({
+    selector: ".CardVisualization",
+    refreshMode: props => (props.isDashboard ? "debounce" : "throttle"),
+  }),
+  connect(),
+  memoizeClass("_getQuestionForCardCached"),
+)(Visualization);

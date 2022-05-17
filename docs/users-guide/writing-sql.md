@@ -58,7 +58,7 @@ When you run a query from the SQL editor, Metabase sends the query to your datab
 
 ## Need help?
 
-If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshoot-sql].
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshooting-sql].
 
 ---
 
@@ -71,4 +71,5 @@ Now that you have an answer to your question, you can learn about [visualizing a
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: /glossary/sample_database
 [sql-gloss]: /glossary/sql
+[troubleshooting-sql]: ../troubleshooting-guide/sql.md
 [variable-gloss]: /glossary/variable

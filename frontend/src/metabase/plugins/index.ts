@@ -172,6 +172,7 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   getChangeMembershipConfirmation: () => null,
   getRemoveMembershipConfirmation: () => null,
 
+  deleteGroup: null,
   confirmDeleteMembershipAction: null,
   confirmUpdateMembershipAction: null,
 };

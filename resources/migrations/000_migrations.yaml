@@ -11627,6 +11627,15 @@ databaseChangeLog:
                     foreignKeyName: fk_persisted_info_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
+  - changeSet:
+      id: v44.00-001
+      author: snoe
+      comment: Added 0.44.0 - Remove not null constraint from persisted_info.creator_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: creator_id
+            columnDataType: int
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

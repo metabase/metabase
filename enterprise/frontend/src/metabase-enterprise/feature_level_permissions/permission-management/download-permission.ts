@@ -21,7 +21,19 @@ import {
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 
-export const DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS = t`Download results access requires full data access.`;
+export const UNABLE_TO_DOWNLOAD_RESULTS = t`Groups with Block data access can't download results`;
+
+const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {
+  if (isAdmin) {
+    return UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
+  }
+
+  if (isBlockedAccess) {
+    return UNABLE_TO_DOWNLOAD_RESULTS;
+  }
+
+  return null;
+};
 
 export const DOWNLOAD_PERMISSION_OPTIONS = {
   none: {
@@ -111,6 +123,11 @@ export const buildDownloadPermission = (
     isAdmin ||
     PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(dataAccessPermissionValue);
 
+  const disabledTooltip = getTooltipMessage(
+    isAdmin,
+    PLUGIN_ADVANCED_PERMISSIONS.isBlockPermission(dataAccessPermissionValue),
+  );
+
   const warning = getPermissionWarning(
     value,
     defaultGroupValue,
@@ -135,15 +152,11 @@ export const buildDownloadPermission = (
     permission: "download",
     type: "download",
     isDisabled,
+    disabledTooltip,
     value,
     warning,
     confirmations,
     isHighlighted: isAdmin,
-    disabledTooltip: isAdmin
-      ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-      : isDisabled
-      ? DOWNLOAD_PERMISSION_REQUIRES_DATA_ACCESS
-      : null,
     options: [
       DOWNLOAD_PERMISSION_OPTIONS.none,
       ...(hasChildEntities ? [DOWNLOAD_PERMISSION_OPTIONS.controlled] : []),

@@ -5,14 +5,14 @@ import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 export const AppContentContainer = styled.div<{
   isAdminApp: boolean;
-  hasAppBar: boolean;
+  isAppBarVisible: boolean;
 }>`
   display: flex;
   flex-direction: ${props => (props.isAdminApp ? "column" : "row")};
   position: relative;
   overflow: hidden;
   height: ${props =>
-    props.hasAppBar ? `calc(100vh - ${APP_BAR_HEIGHT})` : "100vh"};
+    props.isAppBarVisible ? `calc(100vh - ${APP_BAR_HEIGHT})` : "100vh"};
   background-color: ${props =>
     color(props.isAdminApp ? "bg-white" : "content")};
 `;

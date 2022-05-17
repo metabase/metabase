@@ -91,7 +91,8 @@
         (let [call-count (atom 0)
               test-refresher (reify pr/Refresher
                                (refresh! [_ _database _definition _dataset-query]
-                                 (swap! call-count inc))
+                                 (swap! call-count inc)
+                                 {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
           (#'pr/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))
@@ -108,7 +109,8 @@
                                  (swap! call-count inc)
                                  ;; throw on first persist
                                  (when (= @call-count 1)
-                                   (throw (ex-info "DBs are risky" {:ka :boom}))))
+                                   (throw (ex-info "DBs are risky" {:ka :boom})))
+                                 {:state :success})
                                (unpersist! [_ _database _persisted-info]))]
           (#'pr/refresh-tables! (u/the-id db) test-refresher)
           (is (= 2 @call-count))

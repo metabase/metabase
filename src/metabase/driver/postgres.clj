@@ -247,8 +247,14 @@
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :postgres (extract-integer :dow expr)))
+  [_ driver expr]
+  ;; Postgres extract(dow ...) returns Sunday(0)...Saturday(6)
+  ;;
+  ;; Since that's different than what we normally consider the [[metabase.driver/db-start-of-week]] for Postgres
+  ;; (Monday) we need to pass in a custom offset here
+  (sql.qp/adjust-day-of-week driver
+                             (hx/+ (extract-integer :dow expr) 1)
+                             (driver.common/start-of-week-offset-for-day :sunday)))
 
 (defmethod sql.qp/date [:postgres :week]
   [_ _ expr]
@@ -259,7 +265,8 @@
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
     (when (some? value)
       (condp #(isa? %2 %1) base-type
-        :type/UUID         (UUID/fromString value)
+        :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
+                             (UUID/fromString  value))
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
@@ -295,7 +302,8 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- json-query [identifier nfc-field]
+(defmethod sql.qp/json-query :postgres
+  [_ identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
@@ -322,7 +330,7 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (json-query identifier stored-field))
+        (sql.qp/json-query :postgres identifier stored-field))
 
       :else
       identifier)))

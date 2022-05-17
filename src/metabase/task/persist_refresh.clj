@@ -26,7 +26,11 @@
 
 (def ^:private refreshable-states
   "States of `persisted_info` records which can be refreshed."
-  #{"persisted" "error"})
+  #{"creating" "persisted" "error"})
+
+(def ^:private prunable-states
+  "States of `persisted_info` records which can be pruned"
+  #{"deletable" "off"})
 
 (p/defprotocol+ Refresher
   "This protocol is just a wrapper of the ddl.interface multimethods to ease for testing. Rather than defing some
@@ -46,8 +50,9 @@
     (unpersist! [_ database persisted-info]
      (ddl.i/unpersist! (:engine database) database persisted-info))))
 
-(defn- refresh-with-state! [refresher database persisted-info]
-  (when-not (= "deletable" (:state persisted-info))
+(defn- refresh-with-stats! [refresher database stats persisted-info]
+  ;; Since this could be long running, double check state just before refreshing
+  (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
     (let [card (Card (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
@@ -59,13 +64,24 @@
                         :refresh_end nil,
                         :state "refreshing"
                         :state_change_at :%now)
-          {:keys [state] :as results} (refresh! refresher database definition (:dataset_query card))]
+          {:keys [state error]} (try
+                                  (refresh! refresher database definition (:dataset_query card))
+                                  (catch Exception e
+                                    (log/info e (trs "Error refreshing persisting model with card-id {0}"
+                                                     (:card_id persisted-info)))
+                                    {:state :error :error (ex-message e)}))]
       (db/update! PersistedInfo (u/the-id persisted-info)
-        :active (= state :success),
-        :refresh_end :%now,
-        :state (if (= state :success) "persisted" "error")
-        :state_change_at :%now
-        :error (when (= state :error) (:error results))))))
+                  :active (= state :success),
+                  :refresh_end :%now,
+                  :state (if (= state :success) "persisted" "error")
+                  :state_change_at :%now
+                  :error (when (= state :error) error))
+      (if (= :success state)
+        (update stats :success inc)
+        (-> stats
+            (update :error-details conj {:persisted-info-id (:id persisted-info)
+                                         :error error})
+            (update :error inc))))))
 
 (defn- save-task-history!
   "Create a task history entry with start, end, and duration. :task will be `task-type`, `db-id` is optional,
@@ -89,18 +105,22 @@
                                                 [:in (map :database_id deletables)]))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
-                                   (let [database (-> persisted-info :database_id db-id->db)]
-                                     (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
-                                     (try
-                                       (unpersist! refresher database persisted-info)
-                                       (db/delete! PersistedInfo :id (:id persisted-info))
-                                       (update stats :success inc)
-                                       (catch Exception e
-                                         (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
-                                         (update stats :error inc)))))
+                                   ;; Since this could be long running, double check state just before deleting
+                                   (let [current-state (db/select-one-field :state PersistedInfo :id (:id persisted-info))]
+                                     (when (contains? prunable-states current-state)
+                                       (let [database (-> persisted-info :database_id db-id->db)]
+                                         (log/info (trs "Unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                         (try
+                                           (unpersist! refresher database persisted-info)
+                                           (when (= "deletable" current-state)
+                                             (db/delete! PersistedInfo :id (:id persisted-info)))
+                                           (update stats :success inc)
+                                           (catch Exception e
+                                             (log/info e (trs "Error unpersisting model with card-id {0}" (:card_id persisted-info)))
+                                             (update stats :error inc)))))))
                                  {:success 0, :error 0}
                                  deletables))]
-      (save-task-history! "unpersist-tables" nil unpersist-fn))) )
+      (save-task-history! "unpersist-tables" nil unpersist-fn))))
 
 (defn- prune-all-deletable!
   "Prunes all deletable PersistInfos, should not be called from tests as
@@ -108,7 +128,7 @@
   [refresher]
   (let [deletables (db/select PersistedInfo
                               {:where [:and
-                                       [:= :state "deletable"]
+                                       [:in :state prunable-states]
                                        ;; Buffer deletions for an hour if the prune job happens soon after setting state.
                                        ;; 1. so that people have a chance to change their mind.
                                        ;; 2. if a query is running against the cache, it doesn't get ripped out.
@@ -121,18 +141,13 @@
   of \"persisted\"."
   [database-id refresher]
   (log/info (trs "Starting persisted model refresh task for Database {0}." database-id))
+  (persisted-info/ready-unpersisted-models! database-id)
   (let [database  (Database database-id)
         persisted (db/select PersistedInfo
                              :database_id database-id, :state [:in refreshable-states])
         thunk     (fn []
-                    (reduce (fn [stats p]
-                              (try
-                                (refresh-with-state! refresher database p)
-                                (update stats :success inc)
-                                (catch Exception e
-                                  (log/info e (trs "Error refreshing persisting model with card-id {0}" (:card_id p)))
-                                  (update stats :error inc))))
-                            {:success 0, :error 0}
+                    (reduce (partial refresh-with-stats! refresher database)
+                            {:success 0, :error 0, :trigger "Scheduled"}
                             persisted))]
     (save-task-history! "persist-refresh" database-id thunk))
   (log/info (trs "Finished persisted model refresh task for Database {0}." database-id)))
@@ -147,17 +162,15 @@
                          (Database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
-       (save-task-history! "persist-refresh" (u/the-id database)
-                            (fn []
-                              (try (refresh-with-state! refresher database persisted-info)
-                                   {:success 1 :error 0}
-                                   (catch Exception e
-                                     (log/info e (trs "Error refreshing persisting model with card-id {0}"
-                                                      (:card_id persisted-info)))
-                                     {:success 0 :error 1}))))
-       (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
-                      (:card_id persisted-info)
-                      (u/the-id persisted-info))))
+        (save-task-history! "persist-refresh" (u/the-id database)
+                            (partial refresh-with-stats!
+                                     refresher
+                                     database
+                                     {:success 0 :error 0, :trigger "Manual"}
+                                     persisted-info))
+        (log/info (trs "Finished updated model-id {0} from persisted-info {1}."
+                       (:card_id persisted-info)
+                       (u/the-id persisted-info))))
       (log/info (trs "Unable to refresh model with card-id {0}" (:card_id persisted-info))))))
 
 (defn- refresh-job-fn!
@@ -277,6 +290,7 @@
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
                      (u/the-id database) (.. ^Trigger tggr getKey getName)))
+    (persisted-info/ready-unpersisted-models! (u/the-id database))
     (try (task/add-trigger! tggr)
          (catch ObjectAlreadyExistsException _e
            (log/info
@@ -349,7 +363,7 @@
    - Prune scheduled job trigger is removed.
    - The prune job is triggered to run immediately. "
   []
-  (persisted-info/mark-for-deletion! {})
+  (persisted-info/mark-for-pruning! {})
   (unschedule-all-refresh-triggers! refresh-job-key)
   (task/delete-trigger! prune-scheduled-trigger-key)
   ;; ensure we clean up marked for deletion

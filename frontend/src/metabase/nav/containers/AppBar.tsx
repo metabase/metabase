@@ -14,6 +14,10 @@ import NewButton from "metabase/nav/containers/NewButton";
 import { State } from "metabase-types/store";
 
 import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
+import {
+  getIsNewButtonVisible,
+  getIsSearchVisible,
+} from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
@@ -29,14 +33,19 @@ import {
 } from "./AppBar.styled";
 
 type Props = {
-  isNavbarOpen: boolean;
+  isNavBarOpen: boolean;
+  isNavBarVisible: boolean;
+  isSearchVisible: boolean;
+  isNewButtonVisible: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
 
 function mapStateToProps(state: State) {
   return {
-    isNavbarOpen: getIsNavbarOpen(state),
+    isNavBarOpen: getIsNavbarOpen(state),
+    isSearchVisible: getIsSearchVisible(state),
+    isNewButtonVisible: getIsNewButtonVisible(state),
   };
 }
 
@@ -48,12 +57,19 @@ const mapDispatchToProps = {
 function HomepageLink({ handleClick }: { handleClick: () => void }) {
   return (
     <LogoLink to="/" onClick={handleClick} data-metabase-event="Navbar;Logo">
-      <LogoIcon size={24} />
+      <LogoIcon height={32} />
     </LogoLink>
   );
 }
 
-function AppBar({ isNavbarOpen, toggleNavbar, closeNavbar }: Props) {
+function AppBar({
+  isNavBarOpen,
+  isNavBarVisible,
+  isSearchVisible,
+  isNewButtonVisible,
+  toggleNavbar,
+  closeNavbar,
+}: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
 
   const onLogoClick = useCallback(() => {
@@ -76,40 +92,52 @@ function AppBar({ isNavbarOpen, toggleNavbar, closeNavbar }: Props) {
   }, []);
 
   const sidebarButtonTooltip = useMemo(() => {
-    const message = isNavbarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
     const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
     return `${message} ${shortcut}`;
-  }, [isNavbarOpen]);
+  }, [isNavBarOpen]);
 
   return (
     <AppBarRoot>
-      <LeftContainer isSearchActive={isSearchActive}>
+      <LeftContainer
+        isLogoActive={!isNavBarVisible}
+        isSearchActive={isSearchActive}
+      >
         <HomepageLink handleClick={onLogoClick} />
-        <SidebarButtonContainer>
-          <Tooltip tooltip={sidebarButtonTooltip} isEnabled={!isSmallScreen()}>
-            <SidebarButton
-              isSidebarOpen={isNavbarOpen}
-              onClick={toggleNavbar}
-            />
-          </Tooltip>
-        </SidebarButtonContainer>
+        {isNavBarVisible && (
+          <SidebarButtonContainer>
+            <Tooltip
+              tooltip={sidebarButtonTooltip}
+              isEnabled={!isSmallScreen()}
+            >
+              <SidebarButton
+                isSidebarOpen={isNavBarOpen}
+                onClick={toggleNavbar}
+              />
+            </Tooltip>
+          </SidebarButtonContainer>
+        )}
       </LeftContainer>
       {!isSearchActive && (
         <MiddleContainer>
           <HomepageLink handleClick={onLogoClick} />
         </MiddleContainer>
       )}
-      <RightContainer>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              onSearchActive={onSearchActive}
-              onSearchInactive={onSearchInactive}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
-        <NewButton />
-      </RightContainer>
+      {(isSearchVisible || isNewButtonVisible) && (
+        <RightContainer>
+          {isSearchVisible && (
+            <SearchBarContainer>
+              <SearchBarContent>
+                <SearchBar
+                  onSearchActive={onSearchActive}
+                  onSearchInactive={onSearchInactive}
+                />
+              </SearchBarContent>
+            </SearchBarContainer>
+          )}
+          {isNewButtonVisible && <NewButton />}
+        </RightContainer>
+      )}
     </AppBarRoot>
   );
 }

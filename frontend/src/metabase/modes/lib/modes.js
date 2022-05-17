@@ -1,4 +1,3 @@
-import ObjectMode from "../components/modes/ObjectMode";
 import SegmentMode from "../components/modes/SegmentMode";
 import MetricMode from "../components/modes/MetricMode";
 import TimeseriesMode from "../components/modes/TimeseriesMode";
@@ -9,23 +8,6 @@ import DefaultMode from "../components/modes/DefaultMode";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
-const isPKFilter = (filters, query) => {
-  const sourceTablePKFields =
-    query?.table()?.fields.filter(field => field.isPK()) || [];
-
-  if (sourceTablePKFields.length === 0) {
-    return false;
-  }
-
-  const hasEqualityFilterForEveryPK = sourceTablePKFields.every(pkField => {
-    const filter = filters.find(filter => filter.field()?.id === pkField.id);
-
-    return filter?.operatorName() === "=" && filter?.arguments().length === 1;
-  });
-
-  return hasEqualityFilterForEveryPK;
-};
 
 export function getMode(question) {
   if (!question) {
@@ -41,14 +23,9 @@ export function getMode(question) {
   if (query instanceof StructuredQuery) {
     const aggregations = query.aggregations();
     const breakouts = query.breakouts();
-    const filters = query.filters();
 
     if (aggregations.length === 0 && breakouts.length === 0) {
-      if (isPKFilter(filters, query)) {
-        return ObjectMode;
-      } else {
-        return SegmentMode;
-      }
+      return SegmentMode;
     }
     if (aggregations.length > 0 && breakouts.length === 0) {
       return MetricMode;

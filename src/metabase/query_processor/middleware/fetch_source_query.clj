@@ -25,7 +25,10 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.sql.util :as sql.u]
+            [metabase.driver.util :as driver.u]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -47,7 +50,8 @@
    :database        mbql.s/DatabaseID
    :source-metadata [mbql.s/SourceQueryMetadata]
 
-   (s/optional-key :source-query/dataset?) s/Bool})
+   (s/optional-key :source-query/dataset?) s/Bool
+   (s/optional-key :persisted-info/native) s/Str})
 
 (def ^:private MapWithResolvedSourceQuery
   (s/constrained
@@ -104,6 +108,23 @@
          (assoc m :field_ref [:field (:name m) {:base-type (:base_type m)}]))
        metadata))
 
+(defn- persisted-info-native-query [card database-id]
+  (let [driver (or driver/*driver* (driver.u/database->driver database-id))]
+    (format "select %s from %s.%s"
+            (str/join ", " (map #(sql.u/quote-name
+                                   driver
+                                   :field
+                                   (:field-name %))
+                                (get-in card [:definition :field-definitions])))
+            (sql.u/quote-name
+              driver
+              :table
+              (ddl.i/schema-name {:id database-id} (public-settings/site-uuid)))
+            (sql.u/quote-name
+              driver
+              :table
+              (:table_name card)))))
+
 (s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`. Pass true as the optional second arg `log?` to enable
   logging. (The circularity check calls this and will print more than desired)"
@@ -121,8 +142,9 @@
                   (db/do-post-select Card)
                   (db/do-post-select PersistedInfo)
                   first)
-             (throw (ex-info (tru "Card {0} does not exist." card-id)
-                             {:card-id card-id})))
+           (throw (ex-info (tru "Card {0} does not exist." card-id)
+                           {:card-id card-id})))
+
          {{mbql-query                   :query
            database-id                  :database
            {template-tags :template-tags
@@ -131,42 +153,44 @@
           dataset?                               :dataset}
          card
 
-         [persisted? source-query]
-         (or (when (and persisted-info/*allow-persisted-substitution*
-                        (:active card)
-                        (:definition card)
-                        (:query_hash card)
-                        (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
-                        (= (:definition card) (persisted-info/metadata->definition (:result_metadata card)
-                                                                                   (:table_name card)))
-                        (= (:state card) "persisted"))
-               (when log?
-                 (log/info (trs "Substituting cached query for card {0} from {1}.{2}"
-                                card-id
-                                (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                                (:table_name card))))
-               [true
-                {:native (format "select %s from %s.%s"
-                                 (str/join ", " (map :field-name (get-in card [:definition :field-definitions])))
-                                 (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
-                                 (:table_name card))}])
-             (when mbql-query
-               [false mbql-query])
-             (when native-query
-               ;; rename `:query` to `:native` because source queries have a slightly different shape
-               (let [native-query (set/rename-keys native-query {:query :native})]
-                 [false
-                  (cond-> native-query
-                    ;; trim trailing comments from SQL, but not other types of native queries
-                    (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
-                    (empty? template-tags)           (dissoc :template-tags))]))
-             (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                             {:card card})))]
+         persisted? (and persisted-info/*allow-persisted-substitution*
+                         (:active card)
+                         (:definition card)
+                         (:query_hash card)
+                         (= (:query_hash card) (persisted-info/query-hash (:dataset_query card)))
+                         (= (:definition card) (persisted-info/metadata->definition (:result_metadata card)
+                                                                                    (:table_name card)))
+                         (= (:state card) "persisted"))
+
+         source-query (cond
+                        mbql-query
+                        mbql-query
+
+                        native-query
+                        ;; rename `:query` to `:native` because source queries have a slightly different shape
+                        (let [native-query (set/rename-keys native-query {:query :native})]
+                          (cond-> native-query
+                            ;; trim trailing comments from SQL, but not other types of native queries
+                            (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+                            (empty? template-tags)           (dissoc :template-tags)))
+
+                        :else
+                        (throw (ex-info (tru "Missing source query in Card {0}" card-id)
+                                        {:card card})))]
+     (when (and persisted? log?)
+       (log/info (trs "Found substitute cached query for card {0} from {1}.{2}"
+                      card-id
+                      (ddl.i/schema-name {:id database-id} (public-settings/site-uuid))
+                      (:table_name card))))
+
      ;; log the query at this point, it's useful for some purposes
      (log/debug (trs "Fetched source query from Card {0}:" card-id)
                 "\n"
                 (u/pprint-to-str 'yellow source-query))
-     (cond-> {:source-query    source-query
+
+     (cond-> {:source-query    (cond-> source-query
+                                 ;; This will be applied, if still appropriate, by the peristence middleware
+                                 persisted? (assoc :persisted-info/native (persisted-info-native-query card database-id)))
               :database        database-id
               :source-metadata (cond-> (seq (map mbql.normalize/normalize-source-metadata result-metadata))
                                  persisted? sub-cached-field-refs)}

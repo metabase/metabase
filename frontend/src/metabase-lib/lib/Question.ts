@@ -10,7 +10,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
-import InternalQuery from "./queries/InternalQuery";
+import InternalQuery from "metabase-lib/lib/queries/InternalQuery";
 import Query from "metabase-lib/lib/queries/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
@@ -23,7 +23,7 @@ import {
 import Mode from "metabase-lib/lib/Mode";
 import { isStandard } from "metabase/lib/query/filter";
 import { isFK } from "metabase/lib/schema_metadata";
-import { memoize, sortObject } from "metabase-lib/lib/utils";
+import { memoizeClass, sortObject } from "metabase-lib/lib/utils";
 // TODO: remove these dependencies
 import * as Urls from "metabase/lib/urls";
 import {
@@ -36,7 +36,7 @@ import {
   getValueAndFieldIdPopulatedParametersFromCard,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
-import { parameterToMBQLFilter } from "metabase/parameters/utils/mbql";
+import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
 import {
   normalizeParameterValue,
   getParameterValuesBySlug,
@@ -96,7 +96,7 @@ export type QuestionCreatorOpts = {
  * This is a wrapper around a question/card object, which may contain one or more Query objects
  */
 
-export default class Question {
+class QuestionInner {
   /**
    * The plain object presentation of this question, equal to the format that Metabase REST API understands.
    * It is called `card` for both historical reasons and to make a clear distinction to this class.
@@ -150,43 +150,6 @@ export default class Question {
       this._parameterValues,
       this._update,
     );
-  }
-
-  /**
-   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
-   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
-   */
-  static create({
-    databaseId,
-    tableId,
-    collectionId,
-    metadata,
-    parameterValues,
-    type = "query",
-    name,
-    display = "table",
-    visualization_settings = {},
-    dataset_query = type === "native"
-      ? NATIVE_QUERY_TEMPLATE
-      : STRUCTURED_QUERY_TEMPLATE,
-  }: QuestionCreatorOpts = {}) {
-    let card: CardObject = {
-      name,
-      collection_id: collectionId,
-      display,
-      visualization_settings,
-      dataset_query,
-    };
-
-    if (tableId != null) {
-      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
-    }
-
-    if (databaseId != null) {
-      card = assocIn(card, ["dataset_query", "database"], databaseId);
-    }
-
-    return new Question(card, metadata, parameterValues);
   }
 
   metadata(): Metadata {
@@ -256,7 +219,6 @@ export default class Question {
    *
    * This is just a wrapper object, the data is stored in `this._card.dataset_query` in a format specific to the query type.
    */
-  @memoize
   query(): AtomicQuery {
     const datasetQuery = this._card.dataset_query;
 
@@ -323,6 +285,10 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  /**
+   * returns whether this question is a model
+   * @returns boolean
+   */
   isDataset() {
     return this._card && this._card.dataset;
   }
@@ -823,7 +789,6 @@ export default class Question {
     }
   }
 
-  @memoize
   mode(): Mode | null | undefined {
     return Mode.forQuestion(this);
   }
@@ -1278,25 +1243,29 @@ export default class Question {
     return utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 
-  convertParametersToFilters() {
+  convertParametersToMbql() {
     if (!this.isStructured()) {
       return this;
     }
 
-    const [query, isAltered] = this.parameters().reduce(
-      ([query, isAltered], parameter) => {
-        const filter = parameterToMBQLFilter(parameter, this.metadata());
-        return filter ? [query.filter(filter), true] : [query, isAltered];
-      },
-      [this.query(), false],
-    );
+    const mbqlFilters = this.parameters()
+      .map(parameter => {
+        return fieldFilterParameterToMBQLFilter(parameter, this.metadata());
+      })
+      .filter(mbqlFilter => mbqlFilter != null);
+
+    const query = mbqlFilters.reduce((query, mbqlFilter) => {
+      return query.filter(mbqlFilter);
+    }, this.query());
+
+    const hasQueryBeenAltered = mbqlFilters.length > 0;
 
     const question = query
       .question()
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    return isAltered ? question.markDirty() : question;
+    return hasQueryBeenAltered ? question.markDirty() : question;
   }
 
   getUrlWithParameters(parameters, parameterValues, { objectId, clean } = {}) {
@@ -1305,10 +1274,10 @@ export default class Question {
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (this.query().isEditable()) {
+      if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
-          .convertParametersToFilters()
+          .convertParametersToMbql()
           .getUrl({
             clean,
             originalQuestion: this,
@@ -1338,5 +1307,47 @@ export default class Question {
 
   getModerationReviews() {
     return getIn(this, ["_card", "moderation_reviews"]) || [];
+  }
+}
+
+export default class Question extends memoizeClass<QuestionInner>(
+  "query",
+  "mode",
+)(QuestionInner) {
+  /**
+   * TODO Atte Keinänen 6/13/17: Discussed with Tom that we could use the default Question constructor instead,
+   * but it would require changing the constructor signature so that `card` is an optional parameter and has a default value
+   */
+  static create({
+    databaseId,
+    tableId,
+    collectionId,
+    metadata,
+    parameterValues,
+    type = "query",
+    name,
+    display = "table",
+    visualization_settings = {},
+    dataset_query = type === "native"
+      ? NATIVE_QUERY_TEMPLATE
+      : STRUCTURED_QUERY_TEMPLATE,
+  }: QuestionCreatorOpts = {}) {
+    let card: CardObject = {
+      name,
+      collection_id: collectionId,
+      display,
+      visualization_settings,
+      dataset_query,
+    };
+
+    if (tableId != null) {
+      card = assocIn(card, ["dataset_query", "query", "source-table"], tableId);
+    }
+
+    if (databaseId != null) {
+      card = assocIn(card, ["dataset_query", "database"], databaseId);
+    }
+
+    return new Question(card, metadata, parameterValues);
   }
 }

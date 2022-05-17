@@ -89,6 +89,7 @@ export function CurrentPicker(props: CurrentPickerProps) {
             <TippyPopover
               key={period}
               placement="bottom"
+              delay={[500, null]}
               content={
                 <CurrentPopover>{periodPopoverText(period)}</CurrentPopover>
               }

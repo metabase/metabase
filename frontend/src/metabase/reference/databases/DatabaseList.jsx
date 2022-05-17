@@ -28,8 +28,7 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class DatabaseList extends Component {
+class DatabaseList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,
     entities: PropTypes.object.isRequired,
@@ -86,3 +85,5 @@ export default class DatabaseList extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(DatabaseList);

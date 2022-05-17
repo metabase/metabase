@@ -66,6 +66,7 @@
                                              :exclusions  [org.clojure/clojure
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
+  io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
   javax.xml.bind/jaxb-api                   {:mvn/version "2.4.0-b180830.0359"} ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
@@ -119,7 +120,7 @@
   org.eclipse.jetty/jetty-server            {:mvn/version "9.4.44.v20210927"}   ; web server
   org.flatland/ordered                      {:mvn/version "1.15.10"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.0.0.2"}           ; JavaScript engine
-  org.liquibase/liquibase-core              {:mvn/version "4.8.0"               ; migration management (Java lib)
+  org.liquibase/liquibase-core              {:mvn/version "4.10.0"              ; migration management (Java lib)
                                              :exclusions  [ch.qos.logback/logback-classic]}
   org.mariadb.jdbc/mariadb-java-client      {:mvn/version "2.7.5"}              ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
