@@ -45,12 +45,13 @@ export function SegmentedControl({
 }) {
   const id = useMemo(() => _.uniqueId("radio-"), []);
   const name = nameFromProps || id;
+  const selectedOptionIndex = options.findIndex(
+    option => option.value === value,
+  );
   return (
     <SegmentedList {...props} fullWidth={fullWidth}>
       {options.map((option, index) => {
-        const isSelected = option.value === value;
-        const isFirst = index === 0;
-        const isLast = index === options.length - 1;
+        const isSelected = index === selectedOptionIndex;
         const id = `${name}-${option.value}`;
         const labelId = `${name}-${option.value}`;
         const iconOnly = !option.name;
@@ -59,8 +60,9 @@ export function SegmentedControl({
           <SegmentedItem
             key={option.value}
             isSelected={isSelected}
-            isFirst={isFirst}
-            isLast={isLast}
+            index={index}
+            total={options.length}
+            selectedOptionIndex={selectedOptionIndex}
             fullWidth={fullWidth}
             variant={variant}
             selectedColor={selectedColor}
