@@ -6,7 +6,7 @@ interface ISectionOption {
 }
 
 export interface ISection {
-  name: string;
+  name: string | null;
   icon: string;
   items: ISectionOption[];
 }

@@ -47,7 +47,7 @@ export default class DimensionOptions implements IDimensionOptions {
     const tableName =
       table && !table.isSavedQuestion() ? table.objectName() : null;
     const mainSection: ISection = {
-      name: this.name || tableName || "Table 2",
+      name: this.name || tableName || null,
       icon: this.icon || "table2",
       items: [
         ...extraItems,
