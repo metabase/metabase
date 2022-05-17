@@ -325,6 +325,7 @@
           :let  [target-id (:fk_target_field_id field)]]
       (assoc field :target (id->target-field target-id)))))
 
+
 (defn qualified-name-components
   "Return the pieces that represent a path to `field`, of the form `[table-name parent-fields-name* field-name]`."
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
