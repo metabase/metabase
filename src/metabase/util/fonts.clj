@@ -17,14 +17,14 @@
 (defn- available-fonts*
   []
   (u.files/with-open-path-to-resource [font-path "frontend_client/app/fonts"]
-    (let [font-path-str (str (.toString font-path) "/")]
+    (let [font-path-str (str font-path "/")]
       (log/info (str "Reading available fonts from " font-path))
       (->> font-path
            u.files/files-seq
            (filter contains-font-file?)
            (map #(str/replace (str %) font-path-str ""))
            (map normalize-font-dirname)
-           (sort-by #(str/lower-case %))))))
+           (sort-by str/lower-case)))))
 
 (def ^{:arglists '([])} available-fonts
   "Return an alphabetically sorted list of available fonts, as Strings."
