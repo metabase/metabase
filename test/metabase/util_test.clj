@@ -74,8 +74,8 @@
     "http:/"                                                                                 false))
 
 (deftest ^:parallel state?-test
-  (mt/are+ [s expected] (= expected
-                        (u/state? s))
+  (mt/are+ [x expected] (= expected
+                           (u/state? x))
     "louisiana"      true
     "north carolina" true
     "WASHINGTON"     true
@@ -102,12 +102,6 @@
   (testing "we shouldn't ignore non-nil values -- `u/qualified-name` should throw an Exception if `name` would"
     (is (thrown? ClassCastException
                  (u/qualified-name false)))))
-
-(deftest ^:parallel rpartial-test
-  (is (= 3
-         ((u/rpartial - 5) 8)))
-  (is (= -7
-         ((u/rpartial - 5 10) 8))))
 
 (deftest ^:parallel key-by-test
   (is (= {1 {:id 1, :name "Rasta"}
@@ -235,7 +229,7 @@
 
 (deftest ^:parallel one-or-many-test
   (mt/are+ [input expected] (= expected
-                            (u/one-or-many input))
+                               (u/one-or-many input))
     nil   nil
     [nil] [nil]
     42    [42]
@@ -322,7 +316,7 @@
     (let [limit 5
           rf    (u/sorted-take limit compare)]
       (reduce (fn [q x]
-                (let [q' (rf q x)]
+                (let [_q' (rf q x)]
                   ;; a bit internal but this is really what we're after: bounded size while we look for the biggest
                   ;; elements
                   (is (<= (count q) limit))
