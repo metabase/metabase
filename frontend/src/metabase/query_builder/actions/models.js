@@ -87,3 +87,9 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(setMetadataDiff({ field_ref, changes }));
   dispatch(setResultsMetadata(nextResultsMetadata));
 };
+
+export const onModelPersistenceChange = isEnabled => (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const nextQuestion = question.setPersisted(isEnabled);
+  dispatch(updateQuestion(nextQuestion, { shouldStartAdHocQuestion: false }));
+};

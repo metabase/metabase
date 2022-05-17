@@ -56,7 +56,7 @@ function QuestionDetailsSidebarPanel({
           description={description}
           onEdit={onDescriptionEdit}
         />
-        {isDataset && (
+        {isDataset && question.isPersisted() && (
           <PLUGIN_MODEL_PERSISTENCE.ModelCacheManagementSection
             model={question}
           />

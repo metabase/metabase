@@ -11,6 +11,7 @@ import {
   checkDatabaseCanPersistDatasets,
 } from "metabase/lib/data-modeling/utils";
 
+import { onModelPersistenceChange } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getNestedQueriesEnabled } from "metabase/selectors/settings";
 
@@ -38,6 +39,7 @@ QuestionActionButtons.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
+  onModelPersistenceChange: PropTypes.func.isRequired,
 };
 
 function mapStateToProps(state) {
@@ -46,6 +48,10 @@ function mapStateToProps(state) {
   };
 }
 
+const mapDispatchToProps = {
+  onModelPersistenceChange,
+};
+
 function QuestionActionButtons({
   question,
   canWrite,
@@ -53,6 +59,7 @@ function QuestionActionButtons({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
+  onModelPersistenceChange,
 }) {
   const [animation, setAnimation] = useState(null);
 
@@ -137,6 +144,7 @@ function QuestionActionButtons({
         <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
           model={question}
           size={ICON_SIZE}
+          onChange={onModelPersistenceChange}
           data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
         />
       )}
@@ -177,4 +185,7 @@ function QuestionActionButtons({
   );
 }
 
-export default connect(mapStateToProps)(QuestionActionButtons);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(QuestionActionButtons);
