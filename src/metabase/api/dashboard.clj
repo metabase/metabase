@@ -9,7 +9,7 @@
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
-            [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -532,7 +532,7 @@
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
-                               (:id (magic.populate/get-or-create-root-container-collection))
+                               (:id (populate/get-or-create-root-container-collection))
                                (db/select-one-field :id 'Collection
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)

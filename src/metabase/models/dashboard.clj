@@ -4,7 +4,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
@@ -348,9 +348,9 @@
   [dashboard parent-collection-id]
   (let [dashboard  (ui18n/localized-strings->strings dashboard)
         dashcards  (:ordered_cards dashboard)
-        collection (magic.populate/create-collection!
+        collection (populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)
-                    (rand-nth magic.populate/colors)
+                    (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (db/insert! Dashboard
