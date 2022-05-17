@@ -148,22 +148,6 @@
                                         (sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -1 :hour)]]})]
     (prune-deletables! refresher deletables)))
 
-(defn- refresh-with-results! [refresher database stats persisted-info]
-  ;; Since this could be long running, double check state just before refreshing
-  (when (contains? refreshable-states (db/select-one-field :state PersistedInfo :id (:id persisted-info)))
-    (let [results (try
-                    (refresh-with-state! refresher database persisted-info)
-                    (catch Exception e
-                      (log/info e (trs "Error refreshing persisting model with card-id {0}"
-                                       (:card_id persisted-info)))
-                      {:state :error :error (ex-message e)}))]
-      (if (= :success (:state results))
-        (update stats :success inc)
-        (-> stats
-            (update :error-details conj {:persisted-info-id (:id persisted-info)
-                                         :error (:error results)})
-            (update :error inc))))))
-
 (defn- refresh-tables!
   "Refresh tables backing the persisted models. Updates all persisted tables with that database id which are in a state
   of \"persisted\"."
