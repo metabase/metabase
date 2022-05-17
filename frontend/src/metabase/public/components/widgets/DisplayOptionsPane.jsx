@@ -3,6 +3,8 @@ import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
 import CheckBox from "metabase/core/components/CheckBox";
+import Select from "metabase/core/components/Select";
+import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
 
 const THEME_OPTIONS = [
@@ -46,6 +48,19 @@ const DisplayOptionsPane = ({
       onChange={value =>
         onChangeDisplayOptions({ ...displayOptions, theme: value })
       }
+    />
+    <Select
+      value={displayOptions.font}
+      options={MetabaseSettings.get("available-fonts").map(font => ({
+        name: font,
+        value: font,
+      }))}
+      onChange={e => {
+        onChangeDisplayOptions({
+          ...displayOptions,
+          font: e.target.value,
+        });
+      }}
     />
   </div>
 );
