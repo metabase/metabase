@@ -699,7 +699,7 @@
                      :returns           [:database-local]}
            :allowed {:setting-name      :test-database-local-allowed-setting
                      :setting-getter-fn test-database-local-allowed-setting
-                     :setting-setter-fn test-database-local-only-setting!
+                     :setting-setter-fn test-database-local-allowed-setting!
                      :returns           [:database-local :site-wide]}
            :never   {:setting-name      :test-database-local-never-setting
                      :setting-getter-fn test-database-local-never-setting
