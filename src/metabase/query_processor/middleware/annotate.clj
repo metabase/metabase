@@ -183,81 +183,84 @@
 
 (s/defn ^:private col-info-for-field-clause*
   [{:keys [source-metadata source-card-id], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
-  (let [join                      (when (:join-alias opts)
-                                    (join-with-alias inner-query (:join-alias opts)))
-        join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
-        ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
-        ;; needs to add extra info to track things that it did (e.g. the
-        ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
-        ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
-        ;; remapping based on that info)
-        namespaced-options        (not-empty (into {}
-                                                   (filter (fn [[k _v]]
-                                                             (and (keyword? k) (namespace k))))
-                                                   opts))]
-    ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
-    ;; level, and one for referring to the Field from the PARENT level.
-    (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
-      (:base-type opts)
-      (assoc :base_type (:base-type opts))
+  (if (:canonical-field opts)
+    (col-info-for-field-clause* inner-query (:canonical-field opts))
+    (let [join                      (when (:join-alias opts)
+                                      (join-with-alias inner-query (:join-alias opts)))
+          join-is-at-current-level? (some #(= (:alias %) (:join-alias opts)) (:joins inner-query))
+          ;; record additional information that may have been added by middleware. Sometimes pre-processing middleware
+          ;; needs to add extra info to track things that it did (e.g. the
+          ;; [[metabase.query-processor.middleware.add-dimension-projections]] pre-processing middleware adds keys to
+          ;; track which Fields it adds or needs to remap, and then the post-processing middleware does the actual
+          ;; remapping based on that info)
+          namespaced-options        (not-empty (into {}
+                                                     (filter (fn [[k _v]]
+                                                               (and (keyword? k) (namespace k))))
+                                                     opts))]
+      ;; TODO -- I think we actually need two `:field_ref` columns -- one for referring to the Field at the SAME
+      ;; level, and one for referring to the Field from the PARENT level.
+      (cond-> {:field_ref (mbql.u/remove-namespaced-options clause)}
 
-      namespaced-options
-      (assoc :options namespaced-options)
+        (:base-type opts)
+        (assoc :base_type (:base-type opts))
 
-      (string? id-or-name)
-      (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
-                         (dissoc :field_ref))
-                 {:name         id-or-name
-                  :display_name (humanization/name->human-readable-name id-or-name)}))
+        namespaced-options
+        (assoc :options namespaced-options)
 
-      (integer? id-or-name)
-      (merge (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
-               (if-not parent-id
-                 field
-                 (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
-                   (update field :name #(str (:name parent) \. %))))))
+        (string? id-or-name)
+        (merge (or (some-> (some #(when (= (:name %) id-or-name) %) source-metadata)
+                           (dissoc :field_ref))
+                   {:name         id-or-name
+                    :display_name (humanization/name->human-readable-name id-or-name)}))
 
-      (:binning opts)
-      (assoc :binning_info (-> (:binning opts)
-                               (set/rename-keys {:strategy :binning-strategy})
-                               u/snake-keys))
+        (integer? id-or-name)
+        (merge (let [{parent-id :parent_id, :as field} (dissoc (qp.store/field id-or-name) :database_type)]
+                 (if-not parent-id
+                   field
+                   (let [parent (col-info-for-field-clause inner-query [:field parent-id nil])]
+                     (update field :name #(str (:name parent) \. %))))))
 
-      (:temporal-unit opts)
-      (assoc :unit (:temporal-unit opts))
+        (:binning opts)
+        (assoc :binning_info (-> (:binning opts)
+                                 (set/rename-keys {:strategy :binning-strategy})
+                                 u/snake-keys))
 
-      (or (:join-alias opts) (:alias join))
-      (assoc :source_alias (or (:join-alias opts) (:alias join)))
+        (:temporal-unit opts)
+        (assoc :unit (:temporal-unit opts))
 
-      join
-      (update :display_name display-name-for-joined-field join)
+        (or (:join-alias opts) (:alias join))
+        (assoc :source_alias (or (:join-alias opts) (:alias join)))
 
-      ;; Join with fk-field-id => IMPLICIT JOIN
-      ;; Join w/o fk-field-id  => EXPLICIT JOIN
-      (:fk-field-id join)
-      (assoc :fk_field_id (:fk-field-id join))
+        join
+        (update :display_name display-name-for-joined-field join)
 
-      ;; For IMPLICIT joins, remove `:join-alias` in the resulting Field ref -- it got added there during
-      ;; preprocessing by us, and wasn't there originally. Make sure the ref has `:source-field`.
-      (:fk-field-id join)
-      (update :field_ref mbql.u/update-field-options (fn [opts]
-                                                       (-> opts
-                                                           (dissoc :join-alias)
-                                                           (assoc :source-field (:fk-field-id join)))))
+        ;; Join with fk-field-id => IMPLICIT JOIN
+        ;; Join w/o fk-field-id  => EXPLICIT JOIN
+        (:fk-field-id join)
+        (assoc :fk_field_id (:fk-field-id join))
 
-      ;; If source Field (for an IMPLICIT join) is specified in either the field ref or matching join, make sure we
-      ;; return it as `fk_field_id`. (Not sure what situations it would actually be present in one but not the other
-      ;; -- but it's in the tests :confused:)
-      (or (:source-field opts)
-          (:fk-field-id join))
-      (assoc :fk_field_id (or (:source-field opts)
-                              (:fk-field-id join)))
+        ;; For IMPLICIT joins, remove `:join-alias` in the resulting Field ref -- it got added there during
+        ;; preprocessing by us, and wasn't there originally. Make sure the ref has `:source-field`.
+        (:fk-field-id join)
+        (update :field_ref mbql.u/update-field-options (fn [opts]
+                                                         (-> opts
+                                                             (dissoc :join-alias)
+                                                             (assoc :source-field (:fk-field-id join)))))
 
-      ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
-      ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
-      ;; removing `:join-alias` from fields from the right side of the join.
-      (and source-card-id
-           (not join-is-at-current-level?))
-      (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
+        ;; If source Field (for an IMPLICIT join) is specified in either the field ref or matching join, make sure we
+        ;; return it as `fk_field_id`. (Not sure what situations it would actually be present in one but not the other
+        ;; -- but it's in the tests :confused:)
+        (or (:source-field opts)
+            (:fk-field-id join))
+        (assoc :fk_field_id (or (:source-field opts)
+                                (:fk-field-id join)))
+
+        ;; If the source query is from a saved question, remove the join alias as the caller should not be aware of joins
+        ;; happening inside the saved question. The `not join-is-at-current-level?` check is to ensure that we are not
+        ;; removing `:join-alias` from fields from the right side of the join.
+        (and source-card-id
+             (not join-is-at-current-level?))
+        (update :field_ref mbql.u/update-field-options dissoc :join-alias)))))
 
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"

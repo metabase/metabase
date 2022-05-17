@@ -252,6 +252,16 @@
                   ;; Needed to name this inner alias
                   ") as bin(" column-names ")")}))
 
+(defn- replace-bin-field [bin-field-set
+                          [_ id attrs :as bin-field]
+                          table-alias]
+  (if (contains? bin-field-set bin-field)
+    [:field id
+     (assoc attrs
+            :join-alias table-alias
+            :canonical-field bin-field)]
+    bin-field))
+
 (defn fill-empty-bins
   "Rewrites breakouts to add empty bins when possible. (#12004)
 
@@ -265,10 +275,10 @@
                         (filter (fn [[_ _ {:keys [binning]}]] (some? binning))))
         table-alias "bin"
         join-conditions (mapv
-                          #(do [:=
-                                [:field (bin-field->name %) {:base-type :type/Number :join-alias table-alias}]
-                                %])
-                          bin-fields)
+                         (fn [bin-field]
+                           [:= (replace-bin-field (set bin-fields) bin-field table-alias)
+                            bin-field])
+                         bin-fields)
         bin-count (count bin-fields)]
     (if (pos? bin-count)
       (-> outer-query
@@ -282,13 +292,12 @@
                       :condition (if (= bin-count 1) (first join-conditions) (into [:and] join-conditions))}])
           (update-in [:query :breakout] (fn [breakout-fields]
                                           (mapv
-                                            #(if (contains? (set bin-fields) %)
-                                               [:field (bin-field->name %) {:base-type :type/Number :join-alias table-alias}]
-                                               %)
-                                            breakout-fields)))
+                                           #(replace-bin-field (set bin-fields) % table-alias)
+                                           breakout-fields)))
           (m/update-existing-in [:query :order-by]
-                                #(mapv (fn fill-ob [[direction order-by-field :as ordered-by]]
-                                         (if (contains? (set bin-fields) order-by-field)
-                                           [direction [:field (bin-field->name order-by-field) {:base-type :type/Number :join-alias table-alias}]]
-                                           ordered-by)) %)))
+                                (fn [order-by-clause]
+                                  (mapv
+                                   (fn fill-order-by [[direction order-by-field]]
+                                     [direction (replace-bin-field (set bin-fields) order-by-field table-alias)])
+                                   order-by-clause))))
       outer-query)))
