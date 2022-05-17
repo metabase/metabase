@@ -1,4 +1,4 @@
-import React, { ErrorInfo, ReactNode, useMemo, useState } from "react";
+import React, { ErrorInfo, ReactNode, useState } from "react";
 import { connect } from "react-redux";
 import { Location } from "history";
 
@@ -7,27 +7,28 @@ import AppErrorCard from "metabase/components/AppErrorCard/AppErrorCard";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import {
   Archived,
-  NotFound,
   GenericError,
+  NotFound,
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 import UndoListing from "metabase/containers/UndoListing";
 
-import { getErrorPage } from "metabase/selectors/app";
-import { getEmbedOptions } from "metabase/selectors/embed";
-import { getUser } from "metabase/selectors/user";
-import { getIsEditing as getIsEditingDashboard } from "metabase/dashboard/selectors";
+import {
+  getErrorPage,
+  getIsAdminApp,
+  getIsAppBarVisible,
+  getIsNavBarVisible,
+} from "metabase/selectors/app";
 import { useOnMount } from "metabase/hooks/use-on-mount";
-import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
+import { initializeIframeResizer } from "metabase/lib/dom";
 
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
 import StatusListing from "metabase/status/containers/StatusListing";
 
-import { User } from "metabase-types/api";
-import { AppErrorDescriptor, EmbedOptions, State } from "metabase-types/store";
+import { AppErrorDescriptor, State } from "metabase-types/store";
 
-import { AppContentContainer, AppContent } from "./App.styled";
+import { AppContent, AppContentContainer } from "./App.styled";
 
 const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   if (status === 403 || data?.error_code === "unauthorized") {
@@ -45,21 +46,11 @@ const getErrorComponent = ({ status, data, context }: AppErrorDescriptor) => {
   return <GenericError details={data?.message} />;
 };
 
-const PATHS_WITHOUT_NAVBAR = [/\/model\/.*\/query/, /\/model\/.*\/metadata/];
-
-const HOMEPAGE_PATTERN = /^\/$/;
-const EMBEDDED_ROUTES_WITH_NAVBAR = [
-  HOMEPAGE_PATTERN,
-  /^\/collection\/.*/,
-  /^\/archive/,
-];
-
 interface AppStateProps {
-  currentUser?: User;
   errorPage: AppErrorDescriptor | null;
-  isEditingDashboard: boolean;
-  isEmbedded: boolean;
-  embedOptions: EmbedOptions;
+  isAdminApp: boolean;
+  isAppBarVisible: boolean;
+  isNavBarVisible: boolean;
 }
 
 interface AppRouterOwnProps {
@@ -69,15 +60,15 @@ interface AppRouterOwnProps {
 
 type AppProps = AppStateProps & AppRouterOwnProps;
 
-function mapStateToProps(state: State): AppStateProps {
-  return {
-    currentUser: getUser(state),
-    errorPage: getErrorPage(state),
-    isEditingDashboard: getIsEditingDashboard(state),
-    isEmbedded: IFRAMED,
-    embedOptions: getEmbedOptions(state),
-  };
-}
+const mapStateToProps = (
+  state: State,
+  props: AppRouterOwnProps,
+): AppStateProps => ({
+  errorPage: getErrorPage(state),
+  isAdminApp: getIsAdminApp(state, props),
+  isAppBarVisible: getIsAppBarVisible(state, props),
+  isNavBarVisible: getIsNavBarVisible(state, props),
+});
 
 class ErrorBoundary extends React.Component<{
   onError: (errorInfo: ErrorInfo) => void;
@@ -92,12 +83,10 @@ class ErrorBoundary extends React.Component<{
 }
 
 function App({
-  currentUser,
   errorPage,
-  location: { pathname, hash },
-  isEditingDashboard,
-  isEmbedded,
-  embedOptions,
+  isAdminApp,
+  isAppBarVisible,
+  isNavBarVisible,
   children,
 }: AppProps) {
   const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
@@ -106,52 +95,16 @@ function App({
     initializeIframeResizer();
   });
 
-  const isAdminApp = useMemo(() => pathname.startsWith("/admin/"), [pathname]);
-
-  const hasNavbar = useMemo(() => {
-    if (!currentUser || isEditingDashboard) {
-      return false;
-    }
-    if (isEmbedded && !embedOptions.side_nav) {
-      return false;
-    }
-    if (isEmbedded && embedOptions.side_nav === "default") {
-      return EMBEDDED_ROUTES_WITH_NAVBAR.some(pattern =>
-        pattern.test(pathname),
-      );
-    }
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  }, [currentUser, pathname, isEditingDashboard, isEmbedded, embedOptions]);
-
-  const hasAppBar = useMemo(() => {
-    const isFullscreen = hash.includes("fullscreen");
-    if (
-      !currentUser ||
-      (isEmbedded && !embedOptions.top_nav) ||
-      isAdminApp ||
-      isEditingDashboard ||
-      isFullscreen
-    ) {
-      return false;
-    }
-    return !PATHS_WITHOUT_NAVBAR.some(pattern => pattern.test(pathname));
-  }, [
-    currentUser,
-    pathname,
-    isEditingDashboard,
-    isEmbedded,
-    embedOptions,
-    isAdminApp,
-    hash,
-  ]);
-
   return (
     <ErrorBoundary onError={setErrorInfo}>
       <ScrollToTop>
         <div className="spread">
-          {hasAppBar && <AppBar />}
-          <AppContentContainer hasAppBar={hasAppBar} isAdminApp={isAdminApp}>
-            {hasNavbar && <Navbar />}
+          {isAppBarVisible && <AppBar isNavBarVisible={isNavBarVisible} />}
+          <AppContentContainer
+            isAdminApp={isAdminApp}
+            isAppBarVisible={isAppBarVisible}
+          >
+            {isNavBarVisible && <Navbar />}
             <AppContent>
               {errorPage ? getErrorComponent(errorPage) : children}
             </AppContent>

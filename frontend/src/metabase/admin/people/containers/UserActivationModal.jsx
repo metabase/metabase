@@ -12,14 +12,7 @@ import Text from "metabase/components/type/Text";
 
 // NOTE: we have to load the list of users because /api/user/:id doesn't return deactivated users
 // but that's ok because it's probably already loaded through the people PeopleListingApp
-@User.loadList({
-  query: { include_deactivated: true },
-  wrapped: true,
-})
-@connect((state, { users, params: { userId } }) => ({
-  user: _.findWhere(users, { id: parseInt(userId) }),
-}))
-class UserActivationModal extends React.Component {
+class UserActivationModalInner extends React.Component {
   render() {
     const { user, onClose } = this.props;
     if (!user) {
@@ -63,5 +56,15 @@ class UserActivationModal extends React.Component {
     }
   }
 }
+
+const UserActivationModal = _.compose(
+  User.loadList({
+    query: { include_deactivated: true },
+    wrapped: true,
+  }),
+  connect((state, { users, params: { userId } }) => ({
+    user: _.findWhere(users, { id: parseInt(userId) }),
+  })),
+)(UserActivationModalInner);
 
 export default UserActivationModal;

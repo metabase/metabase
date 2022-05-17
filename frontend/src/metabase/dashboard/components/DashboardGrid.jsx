@@ -30,8 +30,7 @@ import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
-@ExplicitSize()
-export default class DashboardGrid extends Component {
+class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -369,3 +368,5 @@ export default class DashboardGrid extends Component {
     );
   }
 }
+
+export default ExplicitSize()(DashboardGrid);

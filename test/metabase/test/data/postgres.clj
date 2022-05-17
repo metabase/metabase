@@ -72,7 +72,7 @@
   ;; add an additional statement to the front to kill open connections to the DB before dropping
   (cons
    (kill-connections-to-db-sql database-name)
-   (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) :postgres dbdef options)))
+   (apply (get-method ddl/drop-db-ddl-statements :sql-jdbc/test-extensions) driver dbdef options)))
 
 (defmethod load-data/load-data! :postgres [& args]
   (apply load-data/load-data-all-at-once! args))

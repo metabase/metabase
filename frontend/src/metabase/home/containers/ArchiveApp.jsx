@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ArchivedItem from "../../components/ArchivedItem";
 import Button from "metabase/core/components/Button";
@@ -38,14 +39,7 @@ const mapDispatchToProps = {
 
 const ROW_HEIGHT = 68;
 
-@Search.loadList({
-  query: { archived: true },
-  reload: true,
-  wrapped: true,
-})
-@listSelect({ keyForItem: item => `${item.model}:${item.id}` })
-@connect(mapStateToProps, mapDispatchToProps)
-export default class ArchiveApp extends Component {
+class ArchiveApp extends Component {
   componentDidMount() {
     if (!isSmallScreen()) {
       this.props.openNavbar();
@@ -128,6 +122,16 @@ export default class ArchiveApp extends Component {
     );
   }
 }
+
+export default _.compose(
+  Search.loadList({
+    query: { archived: true },
+    reload: true,
+    wrapped: true,
+  }),
+  listSelect({ keyForItem: item => `${item.model}:${item.id}` }),
+  connect(mapStateToProps, mapDispatchToProps),
+)(ArchiveApp);
 
 const BulkActionControls = ({ selected, reload }) => (
   <span>

@@ -71,7 +71,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
           {lastRunAtLabel}
         </Tooltip>
       </th>
-      <th>{job.creator.common_name}</th>
+      <th>{job.creator?.common_name || t`Automatic`}</th>
       <th>
         <Tooltip tooltip={t`Refresh`}>
           <IconButtonContainer onClick={onRefresh}>

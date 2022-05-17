@@ -28,19 +28,19 @@ msgstr "Jelajahi data ini"
 msgid "Select a database type"
 msgstr "Pilih tipe database"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:241
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:239
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.jsx:35
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:150
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:461
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:145
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:181
 #: frontend/src/metabase/components/ActionButton.jsx:30
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:163
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:170
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:149
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:75
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:429
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:437
 #: frontend/src/metabase/reference/components/EditHeader.jsx:53
 #: frontend/src/metabase/reference/components/EditHeader.jsx:68
 msgid "Save"
@@ -111,7 +111,7 @@ msgid "Saving..."
 msgstr "Sedang menyimpan..."
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:41
-#: frontend/src/metabase/components/form/FormMessage.jsx:7
+#: frontend/src/metabase/components/form/FormMessage/FormMessage.tsx:40
 msgid "Server error encountered"
 msgstr "Terjadi galat di server"
 
@@ -143,7 +143,7 @@ msgstr "di kotak ini:"
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationDeleteModal/AuditNotificationDeleteModal.jsx:40
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:68
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:32
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:234
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:232
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:85
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:67
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:50
@@ -153,11 +153,11 @@ msgstr "di kotak ini:"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:46
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:49
 #: frontend/src/metabase/admin/permissions/hooks/use-leave-confirmation.jsx:49
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:59
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:76
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:91
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:131
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:401
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:74
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:91
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:111
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:151
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:405
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:180
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:236
 #: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:26
@@ -172,12 +172,12 @@ msgstr "di kotak ini:"
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:143
 #: frontend/src/metabase/hooks/use-confirmation.tsx:46
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:191
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:366
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:184
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:359
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditor.jsx:428
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:41
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:39
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:109
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:110
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 #: frontend/src/metabase/reference/components/EditHeader.jsx:33
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
@@ -185,7 +185,7 @@ msgstr "di kotak ini:"
 #: frontend/src/metabase/timelines/common/components/DeleteTimelineModal/DeleteTimelineModal.tsx:32
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:58
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:48
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:353
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:356
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:471
 msgid "Cancel"
 msgstr "Batal"
@@ -203,18 +203,18 @@ msgid "Delete"
 msgstr "Hapus"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:56
-#: frontend/src/metabase/admin/app/reducers.ts:20
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:113
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:128
+#: frontend/src/metabase/admin/app/reducers.ts:22
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:129
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:130
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx:27
-#: frontend/src/metabase/admin/routes.jsx:72
+#: frontend/src/metabase/admin/routes.jsx:102
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:17
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:20
 msgid "Databases"
 msgstr "Database"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:114
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:130
 msgid "Add Database"
 msgstr "Tambah Database"
 
@@ -227,7 +227,7 @@ msgid "Scheduling"
 msgstr "Penjadwalan"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:182
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:150
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:63
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:81
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:35
@@ -236,24 +236,24 @@ msgstr "Penjadwalan"
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:219
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetupForm/SlackSetupForm.tsx:26
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:221
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:368
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:361
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditor.jsx:433
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:53
 msgid "Save changes"
 msgstr "Simpan perubahan"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:37
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:43
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:31
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:31
 msgid "Actions"
 msgstr "Tindakan"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:48
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:54
 msgid "Sync database schema now"
 msgstr "Sinkronisasi skema database sekarang"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:49
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:59
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:55
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:65
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:16
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:24
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:97
@@ -261,49 +261,49 @@ msgstr "Sinkronisasi skema database sekarang"
 msgid "Starting…"
 msgstr "Mulai..."
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:50
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:56
 msgid "Failed to sync"
 msgstr "Gagal sinkronisasi"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:51
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:57
 msgid "Sync triggered!"
 msgstr "Sinkronisasi terpicu!"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:58
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:64
 msgid "Re-scan field values now"
 msgstr "Periksa ulang nilai kolom ini sekarang"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:60
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:66
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:98
 msgid "Failed to start scan"
 msgstr "Gagal untuk mulai pemeriksaan"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:61
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:67
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:18
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:99
 msgid "Scan triggered!"
 msgstr "Sinkronisasi terpicu!"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:68
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:411
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:99
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:404
 msgid "Danger Zone"
 msgstr "Zona Bahaya"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:75
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:78
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:106
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:109
 msgid "Discard saved field values"
 msgstr "Buang nilai kolom yang disimpan"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:93
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:124
 msgid "Remove this database"
 msgstr "Hapus database ini"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:126
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:128
 msgid "Add database"
 msgstr "Tambah database"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:139
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:141
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:29
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:29
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:78
@@ -311,18 +311,18 @@ msgstr "Tambah database"
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:220
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:67
 #: frontend/src/metabase/collections/components/BaseItemsTable.jsx:154
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:146
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:153
 #: frontend/src/metabase/entities/collections/forms.js:22
 #: frontend/src/metabase/entities/dashboards/forms.js:8
 #: frontend/src/metabase/entities/questions/forms.js:6
 #: frontend/src/metabase/entities/timelines/forms.js:9
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:480
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:512
 #: frontend/src/metabase/visualizations/lib/settings/column.js:324
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:83
 msgid "Name"
 msgstr "Nama"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:140
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:142
 msgid "Engine"
 msgstr "Mesin"
 
@@ -330,7 +330,7 @@ msgstr "Mesin"
 msgid "Deleting..."
 msgstr "Menghapus..."
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:180
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:182
 msgid "Loading ..."
 msgstr "Pemuatan..."
 
@@ -351,7 +351,7 @@ msgid "Successfully saved!"
 msgstr "Berhasil dibuat!"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:48
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:460
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:464
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:185
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:88
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:84
@@ -386,6 +386,8 @@ msgstr "Mundur"
 msgid "Retiring…"
 msgstr "Pensiun..."
 
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:80
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:89
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:60
 #: frontend/src/metabase/components/form/CustomForm.jsx:221
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:94
@@ -399,7 +401,7 @@ msgid "Success"
 msgstr "Berhasil"
 
 #: frontend/src/metabase/admin/datamodel/components/PartialQueryBuilder.jsx:131
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:460
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:464
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:72
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:191
 #: frontend/src/metabase/query_builder/components/view/QuestionPreviewToggle.jsx:16
@@ -422,7 +424,7 @@ msgstr "Tidak ada tipe khusus"
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:201
 #: frontend/src/metabase/lib/core.js:324
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
-#: frontend/src/metabase/reference/components/Field.jsx:54
+#: frontend/src/metabase/reference/components/Field.jsx:58
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:36
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:299
 #: src/metabase/pulse/render/body.clj
@@ -436,13 +438,13 @@ msgstr "Pilih jenis khusus"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/FKTargetPicker.tsx:90
-#: frontend/src/metabase/reference/components/Field.jsx:91
+#: frontend/src/metabase/reference/components/Field.jsx:95
 msgid "Select a target"
 msgstr "Pilih target"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable/MetadataTable.tsx:137
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:852
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:171
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:173
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:19
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:86
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:98
@@ -451,7 +453,7 @@ msgstr "Pilih target"
 msgid "Columns"
 msgstr "Kolom"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:477
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:475
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList/ColumnsList.jsx:107
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema/MetadataSchema.tsx:54
 msgid "Column"
@@ -867,15 +869,15 @@ msgstr "Di sini Anda bisa menjadi lebih spesifik mengenai aturan-aturan segmen y
 msgid "This will show up in the revision history for this segment to help everyone remember why things changed"
 msgstr "Catatan ini akan muncul pada sejarah revisi segmen ini untuk membantu orang lain mengingat alasan segmen ini diubah"
 
-#: frontend/src/metabase/admin/app/reducers.ts:15
+#: frontend/src/metabase/admin/app/reducers.ts:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:76
-#: frontend/src/metabase/admin/routes.jsx:162
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:237
+#: frontend/src/metabase/admin/routes.jsx:192
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:252
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:131
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:76
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:255
 msgid "Settings"
 msgstr "Pengaturan"
 
@@ -905,7 +907,7 @@ msgid "Last name"
 msgstr "Nama belakang"
 
 #: frontend/src/metabase/entities/users/forms.js:127
-#: frontend/src/metabase/entities/users/forms.js:166
+#: frontend/src/metabase/entities/users/forms.js:167
 msgid "Email address"
 msgstr "Alamat email"
 
@@ -937,7 +939,7 @@ msgstr "Members"
 
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:80
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:185
-#: frontend/src/metabase/admin/settings/selectors.js:139
+#: frontend/src/metabase/admin/settings/selectors.js:144
 #: frontend/src/metabase/entities/users/forms.js:28
 #: frontend/src/metabase/entities/users/forms.js:104
 #: frontend/src/metabase/lib/core.js:165
@@ -952,7 +954,7 @@ msgstr "Grup hanya sebagus anggotanya."
 
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx:17
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:16
-#: frontend/src/metabase/admin/routes.jsx:67
+#: frontend/src/metabase/admin/routes.jsx:97
 msgid "Admin"
 msgstr "Admin"
 
@@ -992,8 +994,8 @@ msgstr "Apakah Anda yakin? Semua anggota grup ini akan kehilangan permission set
 "Tindakan ini tidak dapat dibatalkan."
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/constants.ts:5
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:28
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:17
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:30
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:19
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:72
 #: frontend/src/metabase/admin/permissions/constants/data-permissions.js:29
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:44
@@ -1002,9 +1004,9 @@ msgid "Yes"
 msgstr "Ya"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/constants.ts:11
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:22
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:11
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:23
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:24
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:13
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:40
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:75
 #: frontend/src/metabase/admin/permissions/constants/data-permissions.js:23
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:44
@@ -1019,6 +1021,8 @@ msgstr "Sunting Nama"
 msgid "Remove Group"
 msgstr "Hapus Grup"
 
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:81
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:90
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:141
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:43
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:42
@@ -1027,17 +1031,17 @@ msgstr "Hapus Grup"
 #: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.jsx:210
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:664
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:44
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:193
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:186
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:123
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:359
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:362
 msgid "Done"
 msgstr "Selesai"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:76
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:125
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:271
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:274
 msgid "Group name"
 msgstr "Nama grup"
 
@@ -1047,7 +1051,7 @@ msgstr "Nama grup"
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:193
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx:23
-#: frontend/src/metabase/admin/routes.jsx:117
+#: frontend/src/metabase/admin/routes.jsx:147
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:149
 #: frontend/src/metabase/entities/users/forms.js:76
 msgid "Groups"
@@ -1078,9 +1082,9 @@ msgid "Deactivate"
 msgstr "Deaktivasi"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:52
-#: frontend/src/metabase/admin/app/reducers.ts:30
+#: frontend/src/metabase/admin/app/reducers.ts:32
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:21
-#: frontend/src/metabase/admin/routes.jsx:113
+#: frontend/src/metabase/admin/routes.jsx:143
 msgid "People"
 msgstr "Pengguna"
 
@@ -1247,7 +1251,7 @@ msgstr " akan nantinya bisa untuk "
 msgid " native queries for "
 msgstr " native query untuk "
 
-#: frontend/src/metabase/admin/app/reducers.ts:35
+#: frontend/src/metabase/admin/app/reducers.ts:37
 #: frontend/src/metabase/admin/permissions/routes.jsx:17
 msgid "Permissions"
 msgstr "Permissions"
@@ -1300,40 +1304,40 @@ msgstr "Setiap pengguna Metabase milik grup Semua Pengguna. Jika Anda ingin memb
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot adalah bot Slack Metabase. Anda dapat memilih apa yang memiliki akses ke sini."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:28
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:41
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
 msgstr "Grup \"{0}\" mungkin memiliki akses ke set {1} berbeda dari grup ini, yang dapat memberikan grup ini akses tambahan ke beberapa {2}."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:31
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:14
 msgid "The \"{0}\" group has a higher level of access than this, which will override this setting. You should limit or revoke the \"{1}\" group's access to this item."
 msgstr "Grup \"{0}\" memiliki tingkat akses yang lebih tinggi daripada ini, yang akan menimpa pengaturan ini. Anda harus membatasi atau mencabut akses grup \"{1}\" ke item ini."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:53
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:68
 msgid "Limit"
 msgstr "Batas"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:53
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:68
 msgid "Revoke"
 msgstr "Mencabut"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:55
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:70
 msgid "access even though \"{0}\" has greater access?"
 msgstr "akses meskipun \"{0}\" memiliki akses yang lebih besar?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:58
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:73
 msgid "Limit access"
 msgstr "Batasi akses"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:58
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:130
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:73
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:150
 msgid "Revoke access"
 msgstr "Mencabut akses"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:74
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:89
 msgid "Change access to this database to limited?"
 msgstr "Ubah akses ke basis data ini menjadi terbatas?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:75
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:90
 msgid "Change"
 msgstr "Perubahan"
 
@@ -1341,19 +1345,19 @@ msgstr "Perubahan"
 msgid "Allow Raw Query Writing?"
 msgstr "Izinkan Penulisan Pertanyaan Baku?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:89
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:109
 msgid "This will also change this group's data access to Unrestricted for this database."
 msgstr "Ini juga akan mengubah akses data grup ini menjadi Tidak Terbatas untuk database ini."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:90
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:110
 msgid "Allow"
 msgstr "Mengizinkan"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:128
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:148
 msgid "Revoke access to all tables?"
 msgstr "Cabut akses ke semua tabel?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:129
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:149
 msgid "This will also revoke this group's access to raw queries for this database."
 msgstr "Tindakan ini juga akan membatalkan akses grup ini kepada query mentah untuk database ini."
 
@@ -1409,8 +1413,8 @@ msgstr "SQL Queries"
 msgid "View schemas"
 msgstr "Melihat skema"
 
-#: frontend/src/metabase/admin/app/reducers.ts:25
-#: frontend/src/metabase/admin/routes.jsx:81
+#: frontend/src/metabase/admin/app/reducers.ts:27
+#: frontend/src/metabase/admin/routes.jsx:111
 msgid "Data Model"
 msgstr "Model Data"
 
@@ -1441,7 +1445,7 @@ msgstr "Perbolehkan pengguna yang terdaftar dalam direktori LDAP Anda untuk masu
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:20
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:62
-#: frontend/src/metabase/admin/settings/selectors.js:187
+#: frontend/src/metabase/admin/settings/selectors.js:192
 msgid "That's not a valid email address"
 msgstr "Ini bukan alamat email yang valid"
 
@@ -1480,7 +1484,7 @@ msgstr "Bersihkan"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:58
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:45
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:17
-#: frontend/src/metabase/admin/settings/selectors.js:198
+#: frontend/src/metabase/admin/settings/selectors.js:203
 msgid "Authentication"
 msgstr "Otentikasi"
 
@@ -1558,7 +1562,7 @@ msgstr "Metabase {0} tersedia. Anda menjalankan {1}"
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:86
 #: frontend/src/metabase/components/form/StandardForm.jsx:20
 #: frontend/src/metabase/dashboard/components/DashboardDetailsModal.jsx:74
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:123
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
 msgid "Update"
 msgstr "Pembaruan"
 
@@ -1584,17 +1588,17 @@ msgstr "Hapus peta khusus"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:240
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:284
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:380
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:384
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:91
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:134
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:135
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:167
 msgid "Remove"
 msgstr "Hapus"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:272
 #: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:130
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:193
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:195
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:208
 msgid "Select…"
@@ -1629,6 +1633,7 @@ msgid "Like https://my-mb-server.com/maps/my-map.json"
 msgstr "Seperti https://my-mb-server.com/maps/my-map.json"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:355
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:76
 msgid "Refresh"
 msgstr "Muat ulang"
 
@@ -1644,31 +1649,31 @@ msgstr "Properti mana yang menentukan pengidentifikasi kawasan?"
 msgid "Which property specifies the region’s display name?"
 msgstr "Properti mana yang menentukan nama tampilan kawasan?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:391
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:395
 msgid "Load a GeoJSON file to see a preview"
 msgstr "Muat file GeoJSON untuk melihat pratinjau"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:413
 msgid "Save map"
 msgstr "Simpan peta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:413
 msgid "Add map"
 msgstr "Tambah peta"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:9
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:11
 msgid "Using embedding"
 msgstr "Menggunakan embedding"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:11
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:13
 msgid "By enabling embedding you're agreeing to the embedding license located at"
 msgstr "Dengan mengaktifkan penyematan, Anda menyetujui lisensi penyematan yang terletak di"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:21
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:23
 msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Dalam bahasa Inggris biasa, ketika Anda menyematkan bagan atau dasbor dari Metabase dalam aplikasi Anda sendiri, aplikasi itu tidak tunduk pada Lisensi Publik Umum Affero yang mencakup seluruh Metabase, asalkan Anda menjaga agar logo Metabase dan \"Powered by Metabase\" tetap terlihat pada embed tersebut. Namun, Anda harus membaca teks lisensi yang ditautkan di atas karena itu adalah lisensi aktual yang akan Anda setujui dengan mengaktifkan fitur ini."
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:34
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:41
 msgid "Enable"
 msgstr "Enable"
 
@@ -1780,46 +1785,46 @@ msgstr "Kembali membuat kunci"
 msgid "Generate Key"
 msgstr "Membuat kunci"
 
-#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:12
+#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:15
 msgid "Enabled"
 msgstr "Aktif"
 
-#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:12
-#: frontend/src/metabase/admin/settings/selectors.js:109
+#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:15
+#: frontend/src/metabase/admin/settings/selectors.js:114
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:82
 msgid "Disabled"
 msgstr "Nonaktif"
 
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:127
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:135
 msgid "Unknown setting {0}"
 msgstr "Setelan {0} tidak diketahui"
 
-#: frontend/src/metabase/admin/settings/selectors.js:54
+#: frontend/src/metabase/admin/settings/selectors.js:59
 msgid "Setup"
 msgstr "Atur"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
-#: frontend/src/metabase/admin/settings/selectors.js:61
+#: frontend/src/metabase/admin/settings/selectors.js:66
 msgid "General"
 msgstr "Umum"
 
-#: frontend/src/metabase/admin/settings/selectors.js:66
+#: frontend/src/metabase/admin/settings/selectors.js:71
 msgid "Site Name"
 msgstr "Nama Website"
 
-#: frontend/src/metabase/admin/settings/selectors.js:71
+#: frontend/src/metabase/admin/settings/selectors.js:76
 msgid "Site URL"
 msgstr "URL Website"
 
-#: frontend/src/metabase/admin/settings/selectors.js:85
+#: frontend/src/metabase/admin/settings/selectors.js:90
 msgid "Email Address for Help Requests"
 msgstr "Alamat surel untuk meminta bantuan"
 
-#: frontend/src/metabase/admin/settings/selectors.js:242
+#: frontend/src/metabase/admin/settings/selectors.js:247
 msgid "Report Timezone"
 msgstr "Laporkan zona waktu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:245
+#: frontend/src/metabase/admin/settings/selectors.js:250
 msgid "Database Default"
 msgstr "Standar Database"
 
@@ -1827,7 +1832,7 @@ msgstr "Standar Database"
 msgid "Select a timezone"
 msgstr "Pilih zona waktu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:248
+#: frontend/src/metabase/admin/settings/selectors.js:253
 msgid "Not all databases support timezones, in which case this setting won't take effect."
 msgstr "Tidak semua database mendukung zona waktu, dalam hal ini pengaturan ini tidak akan berlaku."
 
@@ -1839,11 +1844,11 @@ msgstr "Bahasa"
 msgid "Select a language"
 msgstr "Pilih bahasa"
 
-#: frontend/src/metabase/admin/settings/selectors.js:91
+#: frontend/src/metabase/admin/settings/selectors.js:96
 msgid "Anonymous Tracking"
 msgstr "Pelacakan Anonim"
 
-#: frontend/src/metabase/admin/settings/selectors.js:102
+#: frontend/src/metabase/admin/settings/selectors.js:107
 msgid "Friendly Table and Field Names"
 msgstr "Tabel Ramah dan Nama Lapangan"
 
@@ -1851,44 +1856,44 @@ msgstr "Tabel Ramah dan Nama Lapangan"
 msgid "Only replace underscores and dashes with spaces"
 msgstr "Hanya ganti garis bawah dan tanda hubung dengan spasi"
 
-#: frontend/src/metabase/admin/settings/selectors.js:115
+#: frontend/src/metabase/admin/settings/selectors.js:120
 msgid "Enable Nested Queries"
 msgstr "Aktifkan kueri bersarang"
 
-#: frontend/src/metabase/admin/settings/selectors.js:126
+#: frontend/src/metabase/admin/settings/selectors.js:131
 msgid "Updates"
 msgstr "Pembaruan"
 
-#: frontend/src/metabase/admin/settings/selectors.js:132
+#: frontend/src/metabase/admin/settings/selectors.js:137
 msgid "Check for updates"
 msgstr "Cek pembaruan"
 
-#: frontend/src/metabase/admin/settings/selectors.js:145
+#: frontend/src/metabase/admin/settings/selectors.js:150
 msgid "SMTP Host"
 msgstr "Host SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:153
+#: frontend/src/metabase/admin/settings/selectors.js:158
 msgid "SMTP Port"
 msgstr "Port SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:157
+#: frontend/src/metabase/admin/settings/selectors.js:162
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:50
 msgid "That's not a valid port number"
 msgstr "Itu bukan nomor port yang valid"
 
-#: frontend/src/metabase/admin/settings/selectors.js:161
+#: frontend/src/metabase/admin/settings/selectors.js:166
 msgid "SMTP Security"
 msgstr "Keamanan SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:169
+#: frontend/src/metabase/admin/settings/selectors.js:174
 msgid "SMTP Username"
 msgstr "Nama Pengguna SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:176
+#: frontend/src/metabase/admin/settings/selectors.js:181
 msgid "SMTP Password"
 msgstr "Kata sandi SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:183
+#: frontend/src/metabase/admin/settings/selectors.js:188
 msgid "From Address"
 msgstr "Dari alamat"
 
@@ -1974,63 +1979,63 @@ msgstr "Sinkronisasi keanggotaan kelompok"
 msgid "Group search base"
 msgstr "Basis pencarian grup"
 
-#: frontend/src/metabase/admin/settings/selectors.js:203
+#: frontend/src/metabase/admin/settings/selectors.js:208
 msgid "Maps"
 msgstr "Peta"
 
-#: frontend/src/metabase/admin/settings/selectors.js:208
+#: frontend/src/metabase/admin/settings/selectors.js:213
 msgid "Map tile server URL"
 msgstr "URL server ubin"
 
-#: frontend/src/metabase/admin/settings/selectors.js:209
+#: frontend/src/metabase/admin/settings/selectors.js:214
 msgid "Metabase uses OpenStreetMaps by default."
 msgstr "Metabase menggunakan openstreetmap secara default."
 
-#: frontend/src/metabase/admin/settings/selectors.js:214
+#: frontend/src/metabase/admin/settings/selectors.js:219
 msgid "Custom Maps"
 msgstr "Peta khusus"
 
-#: frontend/src/metabase/admin/settings/selectors.js:215
+#: frontend/src/metabase/admin/settings/selectors.js:220
 msgid "Add your own GeoJSON files to enable different region map visualizations"
 msgstr "Tambahkan file GeoJSON Anda sendiri untuk mengaktifkan visualisasi peta wilayah yang berbeda"
 
-#: frontend/src/metabase/admin/settings/selectors.js:277
+#: frontend/src/metabase/admin/settings/selectors.js:282
 msgid "Public Sharing"
 msgstr "Bagikan ke Publik"
 
-#: frontend/src/metabase/admin/settings/selectors.js:282
+#: frontend/src/metabase/admin/settings/selectors.js:287
 msgid "Enable Public Sharing"
 msgstr "Aktifkan Berbagi Publik"
 
-#: frontend/src/metabase/admin/settings/selectors.js:287
+#: frontend/src/metabase/admin/settings/selectors.js:292
 msgid "Shared Dashboards"
 msgstr "Dashboard bersama"
 
-#: frontend/src/metabase/admin/settings/selectors.js:293
+#: frontend/src/metabase/admin/settings/selectors.js:298
 msgid "Shared Questions"
 msgstr "Pertanyaan bersama"
 
-#: frontend/src/metabase/admin/settings/selectors.js:300
+#: frontend/src/metabase/admin/settings/selectors.js:305
 msgid "Embedding in other Applications"
 msgstr "Menanamkan dalam aplikasi lain"
 
-#: frontend/src/metabase/admin/settings/selectors.js:327
+#: frontend/src/metabase/admin/settings/selectors.js:332
 msgid "Enable Embedding Metabase in other Applications"
 msgstr "Aktifkan Metabase Embedding di Aplikasi Lain"
 
-#: frontend/src/metabase/admin/settings/selectors.js:338
+#: frontend/src/metabase/admin/settings/selectors.js:354
 msgid "Embedding secret key"
 msgstr "Menanamkan kunci rahasia"
 
-#: frontend/src/metabase/admin/settings/selectors.js:344
+#: frontend/src/metabase/admin/settings/selectors.js:360
 msgid "Embedded Dashboards"
 msgstr "Dashboard tertanam"
 
-#: frontend/src/metabase/admin/settings/selectors.js:350
+#: frontend/src/metabase/admin/settings/selectors.js:366
 msgid "Embedded Questions"
 msgstr "Pertanyaan tertanam"
 
-#: frontend/src/metabase/admin/settings/selectors.js:368
+#: frontend/src/metabase/admin/settings/selectors.js:385
 #: frontend/src/metabase/entities/questions/forms.js:35
 msgid "Caching"
 msgstr "Caching"
@@ -2039,15 +2044,15 @@ msgstr "Caching"
 msgid "Enable Caching"
 msgstr "Aktifkan caching"
 
-#: frontend/src/metabase/admin/settings/selectors.js:378
+#: frontend/src/metabase/admin/settings/selectors.js:395
 msgid "Minimum Query Duration"
 msgstr "Durasi kueri minimum"
 
-#: frontend/src/metabase/admin/settings/selectors.js:385
+#: frontend/src/metabase/admin/settings/selectors.js:402
 msgid "Cache Time-To-Live (TTL) multiplier"
 msgstr "Pengganda Cache Time-to-Live (TTL)"
 
-#: frontend/src/metabase/admin/settings/selectors.js:392
+#: frontend/src/metabase/admin/settings/selectors.js:409
 msgid "Max Cache Entry Size"
 msgstr "Ukuran entri cache max"
 
@@ -2098,7 +2103,7 @@ msgstr "Silakan kontak administrator untuk menyetel ulang kata sandi Anda"
 msgid "Forgot password"
 msgstr "Lupa kata sandi"
 
-#: frontend/src/metabase/entities/users/forms.js:167
+#: frontend/src/metabase/entities/users/forms.js:168
 msgid "The email you use for your Metabase account"
 msgstr "Email yang kamu gunakan untuk Metabase akun"
 
@@ -2218,7 +2223,7 @@ msgstr "Dasbor, koleksi, dan pulsa dalam koleksi ini juga akan diarsipkan."
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:233
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:238
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:239
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:136
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:171
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:59
 #: frontend/src/metabase/routes.jsx:213
 msgid "Archive"
@@ -2268,31 +2273,31 @@ msgstr "Tersimpan!"
 msgid "Saving failed."
 msgstr "Gagal menyimpan."
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Su"
 msgstr "Min"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Mo"
 msgstr "Sen"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Tu"
 msgstr "Sel"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "We"
 msgstr "Rab"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Th"
 msgstr "Kam"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Fr"
 msgstr "Jum"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Sa"
 msgstr "Sab"
 
@@ -2348,7 +2353,7 @@ msgstr "Seret sesuatu ke sini untuk menjepit ke atas"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:20
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:78
 #: frontend/src/metabase/home/containers/SearchApp.jsx:37
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:225
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:227
 msgid "Collections"
 msgstr "Koleksi"
 
@@ -2375,7 +2380,7 @@ msgstr "Pindahkan \"{0}\"?"
 #: frontend/src/metabase/components/EntityMenu.info.js:87
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:332
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:98
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:113
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:60
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:50
 msgid "Move"
@@ -2393,7 +2398,7 @@ msgstr "Arsip koleksi ini"
 msgid "My personal collection"
 msgstr "Koleksi pribadi saya"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:200
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:202
 msgid "New collection"
 msgstr "Koleksi baru"
 
@@ -2457,7 +2462,7 @@ msgid "How would you like to refer to this database?"
 msgstr "Bagaimana Anda ingin merujuk pada basis data ini?"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:153
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:216
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:203
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:148
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:74
@@ -2507,7 +2512,7 @@ msgstr "Aksi arsip"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:47
 #: frontend/src/metabase/components/EntityMenu.info.js:99
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:88
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:103
 msgid "Add to dashboard"
 msgstr "Tambahkan ke Dasbor"
 
@@ -2565,7 +2570,7 @@ msgstr "Berdasarkan skema"
 msgid "A look at your"
 msgstr "Lihat Anda"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:164
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:167
 msgid "Search the list"
 msgstr "Cari daftar"
 
@@ -2581,19 +2586,20 @@ msgstr " atau masukkan ID"
 msgid "Enter an ID"
 msgstr "Masukkan ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:148
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:150
 msgid "Enter a number"
 msgstr "Masukkan nomor"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:150
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:148
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:154
 msgid "Enter some text"
 msgstr "Masukkan beberapa teks"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:520
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:524
 msgid "No matching {0} found."
 msgstr "Tidak ada yang cocok {0} ditemukan."
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:529
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:533
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "Termasuk setiap opsi di filter Anda mungkin tidak akan banyak..."
 
@@ -2691,12 +2697,13 @@ msgid "Dashboards"
 msgstr "Dasbor"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:61
+#: enterprise/frontend/src/metabase-enterprise/tools/index.js:17
 #: frontend/src/metabase/home/containers/SearchApp.jsx:57
 msgid "Questions"
 msgstr "Pertanyaan"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:62
-#: frontend/src/metabase/routes.jsx:344
+#: frontend/src/metabase/routes.jsx:346
 msgid "Pulses"
 msgstr "Pulsa"
 
@@ -2714,7 +2721,7 @@ msgstr "Cari..."
 msgid "An error occured"
 msgstr "Kesalahan terjadi"
 
-#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:35
+#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:36
 msgid "Loading..."
 msgstr "Memuat..."
 
@@ -2744,14 +2751,14 @@ msgstr "Kata Sandi Sementara"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:227
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:467
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:466
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:481
 msgid "Hide"
 msgstr "Bersembunyi"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:468
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:467
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
 msgid "Show"
 msgstr "Tampilkan"
 
@@ -2771,45 +2778,45 @@ msgstr "Tidak sekarang"
 msgid "Error:"
 msgstr "Kesalahan:"
 
-#: frontend/src/metabase/admin/settings/selectors.js:258
+#: frontend/src/metabase/admin/settings/selectors.js:263
 #: frontend/src/metabase/components/SchedulePicker.jsx:29
-#: frontend/src/metabase/lib/time.js:147
+#: frontend/src/metabase/lib/time.js:149
 msgid "Sunday"
 msgstr "Minggu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:259
+#: frontend/src/metabase/admin/settings/selectors.js:264
 #: frontend/src/metabase/components/SchedulePicker.jsx:30
-#: frontend/src/metabase/lib/time.js:135
+#: frontend/src/metabase/lib/time.js:137
 msgid "Monday"
 msgstr "Senin"
 
-#: frontend/src/metabase/admin/settings/selectors.js:260
+#: frontend/src/metabase/admin/settings/selectors.js:265
 #: frontend/src/metabase/components/SchedulePicker.jsx:31
-#: frontend/src/metabase/lib/time.js:137
+#: frontend/src/metabase/lib/time.js:139
 msgid "Tuesday"
 msgstr "Selasa"
 
-#: frontend/src/metabase/admin/settings/selectors.js:261
+#: frontend/src/metabase/admin/settings/selectors.js:266
 #: frontend/src/metabase/components/SchedulePicker.jsx:32
-#: frontend/src/metabase/lib/time.js:139
+#: frontend/src/metabase/lib/time.js:141
 msgid "Wednesday"
 msgstr "Rabu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:262
+#: frontend/src/metabase/admin/settings/selectors.js:267
 #: frontend/src/metabase/components/SchedulePicker.jsx:33
-#: frontend/src/metabase/lib/time.js:141
+#: frontend/src/metabase/lib/time.js:143
 msgid "Thursday"
 msgstr "Kamis"
 
-#: frontend/src/metabase/admin/settings/selectors.js:263
+#: frontend/src/metabase/admin/settings/selectors.js:268
 #: frontend/src/metabase/components/SchedulePicker.jsx:34
-#: frontend/src/metabase/lib/time.js:143
+#: frontend/src/metabase/lib/time.js:145
 msgid "Friday"
 msgstr "Jumat"
 
-#: frontend/src/metabase/admin/settings/selectors.js:264
+#: frontend/src/metabase/admin/settings/selectors.js:269
 #: frontend/src/metabase/components/SchedulePicker.jsx:35
-#: frontend/src/metabase/lib/time.js:145
+#: frontend/src/metabase/lib/time.js:147
 msgid "Saturday"
 msgstr "Sabtu"
 
@@ -2823,7 +2830,7 @@ msgid "Last"
 msgstr "Akhir"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:41
-#: frontend/src/metabase/lib/time.js:160
+#: frontend/src/metabase/lib/time.js:162
 msgid "15th (Midpoint)"
 msgstr "15 (titik tengah)"
 
@@ -2872,7 +2879,8 @@ msgstr "Tidak ada yang perlu dipilih"
 msgid "Sorry, you don’t have permission to see that."
 msgstr "Maaf, Anda tidak memiliki izin untuk melihatnya."
 
-#: frontend/src/metabase/components/form/FormMessage.jsx:8
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:110
+#: frontend/src/metabase/components/form/FormMessage/FormMessage.tsx:42
 msgid "Unknown error encountered"
 msgstr "Kesalahan yang tidak diketahui ditemui"
 
@@ -2929,9 +2937,10 @@ msgstr "Setelah Anda menghubungkan data Anda sendiri, saya dapat menunjukkan beb
 msgid "Start here"
 msgstr "Mulai di sini"
 
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:64
 #: frontend/src/metabase/entities/collections/constants.js:5
 #: frontend/src/metabase/query_builder/components/view/QuestionDataSource.jsx:112
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:339
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:338
 #: src/metabase/models/collection.clj
 #: target/classes/metabase/models/collection.clj
 msgid "Our analytics"
@@ -2941,33 +2950,33 @@ msgstr "Analytics kami"
 msgid "Browse all items"
 msgstr "Jelajahi semua barang"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:130
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:137
 msgid "Replace or save as new?"
 msgstr "Ganti atau simpan sebagai yang baru?"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:177
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:184
 msgid "Replace original question, \"{0}\""
 msgstr "Ganti pertanyaan asli, \"{0}\""
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:181
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:188
 msgid "Save as new question"
 msgstr "Simpan sebagai pertanyaan baru"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:101
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:104
 msgid "First, save your question"
 msgstr "Pertama, simpan pertanyaan Anda"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:102
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:105
 msgid "Save question"
 msgstr "Simpan Pertanyaan"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:147
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:154
 msgid "What is the name of your card?"
 msgstr "Apa nama kartu Anda?"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:35
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:19
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:152
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:159
 #: frontend/src/metabase/entities/collections/forms.js:31
 #: frontend/src/metabase/entities/dashboards/forms.js:15
 #: frontend/src/metabase/entities/questions/forms.js:9
@@ -2985,7 +2994,7 @@ msgstr "Apa nama kartu Anda?"
 msgid "Description"
 msgstr "Keterangan"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:153
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:160
 #: frontend/src/metabase/entities/collections/forms.js:33
 #: frontend/src/metabase/entities/dashboards/forms.js:17
 #: frontend/src/metabase/entities/questions/forms.js:11
@@ -2994,7 +3003,7 @@ msgstr "Keterangan"
 msgid "It's optional but oh, so helpful"
 msgstr "Ini opsional tapi oh, sangat membantu"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:157
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:164
 #: frontend/src/metabase/entities/dashboards/forms.js:21
 msgid "Which collection should this go in?"
 msgstr "Koleksi mana yang harus dilakukan ini?"
@@ -3073,7 +3082,7 @@ msgstr "Tambahkan pertanyaan"
 msgid "Add a question to this dashboard"
 msgstr "Tambahkan pertanyaan ke dasbor ini"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:496
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:494
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:233
 msgid "Add a filter"
 msgstr "Tambahkan Filter"
@@ -3258,9 +3267,9 @@ msgid "received the latest data from"
 msgstr "menerima data terbaru dari"
 
 #: frontend/src/metabase/home/components/Activity.jsx:257
-#: frontend/src/metabase/lib/query_time.js:212
+#: frontend/src/metabase/lib/query_time.js:218
 #: frontend/src/metabase/lib/revisions/revisions.js:74
-#: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:27
+#: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:29
 #: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
 #: src/metabase/integrations/ldap/default_implementation.clj
@@ -3519,7 +3528,7 @@ msgid "Income"
 msgstr "Pendapatan"
 
 #: frontend/src/metabase/lib/core.js:107
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:468
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:500
 msgid "Discount"
 msgstr "Diskon"
 
@@ -3652,7 +3661,7 @@ msgid "Metabase will never retrieve this field. Use this for sensitive or irrele
 msgstr "Metabase tidak akan pernah mengambil bidang ini. Gunakan ini untuk informasi sensitif atau tidak relevan."
 
 #: frontend/src/metabase/lib/query/description.js:77
-#: frontend/src/metabase/lib/query/description.js:266
+#: frontend/src/metabase/lib/query/description.js:269
 #: frontend/src/metabase/lib/schema_metadata.js:609
 #: frontend/src/metabase/visualizations/lib/utils.js:144
 #: src/metabase/query_processor/middleware/annotate.clj
@@ -3696,14 +3705,14 @@ msgstr "Rata-rata"
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/lib/schema_metadata.js:672
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:496
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:495
 msgid "Min"
 msgstr "Menit"
 
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/lib/schema_metadata.js:681
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:504
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
 msgid "Max"
 msgstr "Maks"
 
@@ -3711,12 +3720,12 @@ msgstr "Maks"
 msgid "sad sad panda, lexing errors detected"
 msgstr "Panda sedih sedih, kesalahan lexing terdeteksi"
 
-#: frontend/src/metabase/lib/formatting.js:900
+#: frontend/src/metabase/lib/formatting.js:898
 msgid "{0} second"
 msgid_plural "{0} seconds"
 msgstr[0] "{0} Kedua"
 
-#: frontend/src/metabase/lib/formatting.js:897
+#: frontend/src/metabase/lib/formatting.js:895
 msgid "{0} minute"
 msgid_plural "{0} minutes"
 msgstr[0] "{0} Menit"
@@ -3755,7 +3764,7 @@ msgid "What do you want to find out?"
 msgstr "Apa yang ingin Anda temukan?"
 
 #: frontend/src/metabase/lib/query/description.js:75
-#: frontend/src/metabase/lib/query/description.js:264
+#: frontend/src/metabase/lib/query/description.js:267
 #: frontend/src/metabase/lib/schema_metadata.js:600
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:60
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:211
@@ -3763,58 +3772,58 @@ msgid "Raw data"
 msgstr "Data mentah"
 
 #: frontend/src/metabase/lib/query/description.js:79
-#: frontend/src/metabase/lib/query/description.js:268
+#: frontend/src/metabase/lib/query/description.js:271
 #: frontend/src/metabase/lib/schema_metadata.js:654
 msgid "Cumulative count"
 msgstr "Jumlah kumulatif"
 
 #: frontend/src/metabase/lib/query/description.js:82
-#: frontend/src/metabase/lib/query/description.js:270
+#: frontend/src/metabase/lib/query/description.js:273
 msgid "Average of "
 msgstr "Rata-rata dari 8"
 
 #: frontend/src/metabase/lib/query/description.js:87
-#: frontend/src/metabase/lib/query/description.js:272
+#: frontend/src/metabase/lib/query/description.js:275
 msgid "Distinct values of "
 msgstr "Nilai yang berbeda dari"
 
 #: frontend/src/metabase/lib/query/description.js:92
-#: frontend/src/metabase/lib/query/description.js:274
+#: frontend/src/metabase/lib/query/description.js:277
 msgid "Standard deviation of "
 msgstr "Standar deviasi"
 
 #: frontend/src/metabase/lib/query/description.js:97
-#: frontend/src/metabase/lib/query/description.js:276
+#: frontend/src/metabase/lib/query/description.js:279
 msgid "Sum of "
 msgstr "Jumlah dari"
 
 #: frontend/src/metabase/lib/query/description.js:102
-#: frontend/src/metabase/lib/query/description.js:278
+#: frontend/src/metabase/lib/query/description.js:281
 msgid "Cumulative sum of "
 msgstr "Jumlah kumulatif dari"
 
 #: frontend/src/metabase/lib/query/description.js:107
-#: frontend/src/metabase/lib/query/description.js:280
+#: frontend/src/metabase/lib/query/description.js:283
 msgid "Maximum of "
 msgstr "Maksimal maksimal"
 
 #: frontend/src/metabase/lib/query/description.js:112
-#: frontend/src/metabase/lib/query/description.js:282
+#: frontend/src/metabase/lib/query/description.js:285
 msgid "Minimum of "
 msgstr "Minimal dari."
 
 #: frontend/src/metabase/lib/query/description.js:126
-#: frontend/src/metabase/lib/query/description.js:294
+#: frontend/src/metabase/lib/query/description.js:297
 msgid "Grouped by "
 msgstr "Dikelompokkan oleh"
 
 #: frontend/src/metabase/lib/query/description.js:140
-#: frontend/src/metabase/lib/query/description.js:308
+#: frontend/src/metabase/lib/query/description.js:311
 msgid "Filtered by "
 msgstr "Disaring oleh"
 
 #: frontend/src/metabase/lib/query/description.js:169
-#: frontend/src/metabase/lib/query/description.js:333
+#: frontend/src/metabase/lib/query/description.js:336
 msgid "Sorted by "
 msgstr "Disortir oleh"
 
@@ -3875,7 +3884,7 @@ msgstr "Tidak"
 #: frontend/src/metabase/lib/schema_metadata.js:470
 #: frontend/src/metabase/lib/schema_metadata.js:476
 #: frontend/src/metabase/lib/schema_metadata.js:495
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:136
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:137
 msgid "Is empty"
 msgstr "Kosong"
 
@@ -4066,8 +4075,12 @@ msgstr "huruf kecil"
 msgid "upper case letter"
 msgstr "huruf kapital"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:455
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:445
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:450
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:462
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:471
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:482
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:487
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "number"
@@ -4325,7 +4338,7 @@ msgid "Custom"
 msgstr "Kebiasaan"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:61
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:250
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:249
 msgid "New question"
 msgstr "Pertanyaan baru"
 
@@ -4345,19 +4358,19 @@ msgstr "Kueri asli"
 msgid "For more complicated questions, you can write your own SQL or native query."
 msgstr "Untuk pertanyaan yang lebih rumit, Anda dapat menulis kueri SQL atau asli Anda sendiri."
 
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:192
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:194
 msgid "Select a default value…"
 msgstr "Pilih nilai default ..."
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:152
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:188
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:272
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 msgid "Update filter"
 msgstr "Perbarui Filter"
 
-#: frontend/src/metabase/lib/query_time.js:144
-#: frontend/src/metabase/lib/query_time.js:155
+#: frontend/src/metabase/lib/query_time.js:150
+#: frontend/src/metabase/lib/query_time.js:161
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:10
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:145
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:33
@@ -4366,7 +4379,7 @@ msgstr "Perbarui Filter"
 msgid "Today"
 msgstr "Hari ini"
 
-#: frontend/src/metabase/lib/query_time.js:150
+#: frontend/src/metabase/lib/query_time.js:156
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:15
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:43
@@ -4384,7 +4397,6 @@ msgid "Past 30 days"
 msgstr "30 hari terakhir"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1721
-#: frontend/src/metabase/lib/query_time.js:230
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4392,7 +4404,6 @@ msgid "Week"
 msgstr "Pekan"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1727
-#: frontend/src/metabase/lib/query_time.js:232
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4400,7 +4411,6 @@ msgid "Month"
 msgstr "Bulan"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1739
-#: frontend/src/metabase/lib/query_time.js:236
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4441,17 +4451,17 @@ msgstr "Bulan ini"
 msgid "This Year"
 msgstr "Tahun ini"
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:84
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:85
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:56
 msgid "Enter a value..."
 msgstr "Masukkan nilai ..."
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:99
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:100
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:92
 msgid "Enter a default value..."
 msgstr "Masukkan nilai default ..."
 
-#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:49
+#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:68
 #: frontend/src/metabase/containers/Form.jsx:230
 #: frontend/src/metabase/containers/Form.jsx:239
 #: frontend/src/metabase/public/components/PublicError.jsx:13
@@ -4630,7 +4640,7 @@ msgid "This pulse will no longer be emailed to {0} {1}"
 msgstr "Pulsa ini tidak akan lagi diemail ke {0} {1}"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:113
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:386
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:379
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:245
 msgid "{0} address"
 msgid_plural "{0} addresses"
@@ -4684,7 +4694,7 @@ msgstr "Lampiran"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:105
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:112
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:672
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:665
 msgid "Heads up"
 msgstr "Heads Up"
 
@@ -4813,30 +4823,30 @@ msgstr "Bantu semua orang di tim Anda tetap sinkron dengan data Anda."
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "Pulsa memungkinkan Anda mengirim data dari metabase ke email atau kendur pada jadwal pilihan Anda."
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:72
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:73
 msgid "After {0}"
 msgstr "Setelah {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:74
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:75
 msgid "Before {0}"
 msgstr "Sebelum {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:76
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:77
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:260
 msgid "Is Empty"
 msgstr "Kosong"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:78
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:79
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:266
 msgid "Not Empty"
 msgstr "Tidak kosong"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:81
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:82
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:180
 msgid "All Time"
 msgstr "Sepanjang waktu"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:126
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:128
 msgid "Apply"
 msgstr "Menerapkan"
 
@@ -4898,7 +4908,7 @@ msgstr "Bandingkan {0} {1} ke sisanya"
 msgid "Distribution"
 msgstr "Distribusi"
 
-#: frontend/src/metabase/modes/components/drill/ObjectDetailDrill.jsx:50
+#: frontend/src/metabase/modes/components/drill/ObjectDetailDrill.jsx:30
 msgid "View details"
 msgstr "Melihat rincian"
 
@@ -4992,91 +5002,91 @@ msgstr "Anda menerima peringatan {0}"
 msgid "{0} set up an alert"
 msgstr "{0} Siapkan peringatan"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:161
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:154
 msgid "alerts"
 msgstr "peringatan"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:184
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:177
 msgid "Let's set up your alert"
 msgstr "Mari kita atur peringatan Anda"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:211
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:204
 msgid "The wide world of alerts"
 msgstr "Dunia peringatan yang luas"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:212
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:205
 msgid "There are a few different kinds of alerts you can get"
 msgstr "Ada beberapa jenis peringatan yang bisa Anda dapatkan"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:232
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:225
 msgid "When a raw data question {0}"
 msgstr "Ketika pertanyaan data mentah {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:233
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:226
 msgid "returns any results"
 msgstr "mengembalikan hasil apa pun"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:250
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:243
 msgid "When a line or bar {0}"
 msgstr "Saat garis atau bilah {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:251
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:244
 msgid "crosses a goal line"
 msgstr "melintasi garis gawang"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:268
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:261
 msgid "When a progress bar {0}"
 msgstr "Saat progres bar {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:269
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:262
 msgid "reaches its goal"
 msgstr "mencapai tujuannya"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:277
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:270
 msgid "Set up an alert"
 msgstr "Mengatur peringatan"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:342
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:335
 msgid "Edit your alert"
 msgstr "Edit Peringatan Anda"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:342
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:335
 msgid "Edit alert"
 msgstr "Edit Peringatan"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:384
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:377
 msgid "This alert will no longer be emailed to {0}."
 msgstr "Peringatan ini tidak akan lagi diemail ke {0}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:392
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:385
 msgid "Slack channel {0} will no longer get this alert."
 msgstr "Slack channel {0} tidak akan lagi mendapatkan peringatan ini."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:396
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:389
 msgid "Channel {0} will no longer receive this alert."
 msgstr "Saluran {0} tidak akan lagi menerima peringatan ini."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:117
 #: frontend/src/metabase/account/notifications/components/ArchiveModal/ArchiveModal.jsx:90
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:413
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:406
 msgid "Delete this alert"
 msgstr "Hapus peringatan ini"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:415
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:408
 msgid "Stop delivery and delete this alert. There's no undo, so be careful."
 msgstr "Hentikan pengiriman dan hapus peringatan ini. Tidak ada undo, jadi berhati-hatilah."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationDeleteModal/AuditNotificationDeleteModal.jsx:78
 #: frontend/src/metabase/account/notifications/components/ArchiveModal/ArchiveModal.jsx:79
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:423
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:416
 msgid "Delete this alert?"
 msgstr "Hapus peringatan ini?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:504
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:497
 msgid "Alert me when the line…"
 msgstr "Peringatkan saya ketika garis ..."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:505
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:498
 msgid "Alert me when the progress bar…"
 msgstr "Beri tahu saya saat progres bar ..."
 
@@ -5084,60 +5094,60 @@ msgstr "Beri tahu saya saat progres bar ..."
 msgid "Goes above the goal line"
 msgstr "Pergi di atas garis gawang"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:507
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
 msgid "Reaches the goal"
 msgstr "Mencapai tujuan"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:509
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "Goes below the goal line"
 msgstr "Pergi di bawah garis gawang"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:509
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "Goes below the goal"
 msgstr "Pergi di bawah gawang"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:517
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:510
 msgid "The first time it crosses, or every time?"
 msgstr "Pertama kali melintasi, atau setiap saat?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:518
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:511
 msgid "The first time it reaches the goal, or every time?"
 msgstr "Pertama kali mencapai tujuan, atau setiap saat?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:520
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:513
 msgid "The first time"
 msgstr "Pertama kali"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:521
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:514
 msgid "Every time"
 msgstr "Setiap saat"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:615
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:608
 msgid "Where do you want to send these alerts?"
 msgstr "Di mana Anda ingin mengirim peringatan ini?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:626
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:619
 msgid "Email alerts to:"
 msgstr "Peringatan email ke:"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:671
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:664
 msgid "{0} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has {1}."
 msgstr "{0} Lansiran berbasis tujuan belum didukung untuk grafik dengan lebih dari satu baris, jadi peringatan ini akan dikirim setiap kali grafik memiliki {1}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:674
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:667
 #: src/metabase/pulse.clj target/classes/metabase/pulse.clj
 msgid "results"
 msgstr "HASIL"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:678
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:671
 msgid "{0} This kind of alert is most useful when your saved question doesn’t {1} return any results, but you want to know when it does."
 msgstr "{0} Alert semacam ini paling berguna ketika pertanyaan Anda yang disimpan tidak {1} mengembalikan hasil apa pun, tetapi Anda ingin tahu kapan itu terjadi."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:679
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:672
 msgid "Tip"
 msgstr "Tip"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:681
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:674
 msgid "usually"
 msgstr "biasanya"
 
@@ -5229,14 +5239,14 @@ msgstr "Tambahkan pengelompokan"
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:55
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:60
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:19
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:136
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:138
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:284
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:39
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:75
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:116
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:91
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:137
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:189
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:188
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:66
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:106
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:113
@@ -5262,7 +5272,7 @@ msgstr "Melihat"
 msgid "Grouped By"
 msgstr "Dikelompokkan oleh"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:177
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:179
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx:69
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:53
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:28
@@ -5486,7 +5496,7 @@ msgstr "Dapatkan Peringatan"
 msgid "Back to last run"
 msgstr "Kembali ke Last Run"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:227
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
 msgid "Visualization"
 msgstr "Visualisasi."
 
@@ -5580,7 +5590,7 @@ msgstr "Lihat data mentah untuk {0}"
 msgid "More"
 msgstr "Lagi"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:246
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:247
 msgid "Invalid expression"
 msgstr "Ekspresi tidak valid."
 
@@ -5592,25 +5602,26 @@ msgstr "kesalahan yang tidak diketahui"
 msgid "Field formula"
 msgstr "Formula Field."
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:77
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:78
 msgid "Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost."
 msgstr "Pikirkan ini sebagai jenis seperti menulis formula dalam program spreadsheet: Anda dapat menggunakan angka, bidang dalam tabel ini, simbol matematika seperti +, dan beberapa fungsi. Jadi Anda bisa mengetikkan sesuatu seperti biaya subtotal."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:130
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:20
+#: frontend/src/metabase/admin/settings/selectors.js:424
 #: frontend/src/metabase/entities/databases/forms.js:149
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorHelpText.tsx:66
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:84
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:230
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:405
 msgid "Learn more"
 msgstr "Belajarlah lagi"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:87
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:88
 msgid "Give it a name"
 msgstr "Berikan nama"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:93
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:94
 msgid "Something nice and descriptive"
 msgstr "Sesuatu yang bagus dan deskriptif"
 
@@ -5648,12 +5659,12 @@ msgid "this year"
 msgstr "tahun ini"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:27
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:133
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:134
 msgid "this minute"
 msgstr "menit ini"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:28
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:134
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:135
 msgid "this hour"
 msgstr "Jam ini"
 
@@ -5671,8 +5682,8 @@ msgstr "benar"
 msgid "false"
 msgstr "Salah"
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:188
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:272
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 msgid "Add filter"
@@ -5703,7 +5714,7 @@ msgid "Enter desired number"
 msgstr "Masukkan nomor yang diinginkan."
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:61
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:42
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:48
 msgid "Empty"
 msgstr "Kosong"
 
@@ -5711,13 +5722,13 @@ msgstr "Kosong"
 msgid "Find a value"
 msgstr "Temukan nilai"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:79
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:81
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/SpecificDatePicker.jsx:102
 msgid "Hide calendar"
 msgstr "Sembunyikan kalender"
 
 #: frontend/src/metabase/core/components/DateInput/DateInput.tsx:132
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:79
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:81
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/SpecificDatePicker.jsx:102
 msgid "Show calendar"
 msgstr "Tampilkan kalender."
@@ -5784,7 +5795,7 @@ msgstr "Tipe variabel."
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.js:40
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:149
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:254
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:252
 msgid "Text"
 msgstr "Teks"
 
@@ -5823,10 +5834,10 @@ msgstr "Arsip pertanyaan ini?"
 msgid "This question will be removed from any dashboards or pulses using it."
 msgstr "Pertanyaan ini akan dihapus dari dasbor atau pulsa apa pun yang menggunakannya."
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:19
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:20
 #: frontend/src/metabase/nav/containers/NewButton/NewButton.tsx:89
 #: frontend/src/metabase/nav/utils/model-names.ts:4
-#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:435
+#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:439
 msgid "Question"
 msgstr "Pertanyaan"
 
@@ -5852,8 +5863,8 @@ msgstr "Subset dari"
 msgid "Select a field type"
 msgstr "Pilih jenis bidang"
 
-#: frontend/src/metabase/reference/components/Field.jsx:53
-#: frontend/src/metabase/reference/components/Field.jsx:77
+#: frontend/src/metabase/reference/components/Field.jsx:57
+#: frontend/src/metabase/reference/components/Field.jsx:81
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:35
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:53
 msgid "No field type"
@@ -6370,7 +6381,7 @@ msgstr "Gabung"
 msgid "Search"
 msgstr "Mencari"
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:25
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:26
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:567
 #: frontend/src/metabase/nav/containers/NewButton/NewButton.tsx:115
 #: frontend/src/metabase/nav/utils/model-names.ts:6
@@ -6438,7 +6449,7 @@ msgstr "Izinkan Metabase Untuk Mengumpulkan Acara Penggunaan Anonim"
 msgid "Metabase {0} collects anything about your data or question results."
 msgstr "Metabase {0} mengumpulkan apa pun tentang data atau hasil pertanyaan Anda."
 
-#: frontend/src/metabase/lib/settings.ts:228
+#: frontend/src/metabase/lib/settings.ts:230
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:85
 msgid "never"
 msgstr "tidak pernah"
@@ -6497,7 +6508,7 @@ msgstr "buat sebuah kata sandi"
 
 #: frontend/src/metabase/entities/users/forms.js:51
 #: frontend/src/metabase/entities/users/forms.js:136
-#: frontend/src/metabase/entities/users/forms.js:156
+#: frontend/src/metabase/entities/users/forms.js:157
 msgid "Shhh..."
 msgstr "Shhh ..."
 
@@ -6679,7 +6690,7 @@ msgstr "Segera Kata Sandi!"
 msgid "Account updated successfully!"
 msgstr "Akun berhasil diperbarui!"
 
-#: frontend/src/metabase/entities/users/forms.js:155
+#: frontend/src/metabase/entities/users/forms.js:156
 msgid "Current password"
 msgstr "Kata sandi saat ini"
 
@@ -6691,7 +6702,7 @@ msgstr "Masuk dengan alamat email Google"
 msgid "User Details"
 msgstr "Details pengguna"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:369
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:372
 msgid "Reset to defaults"
 msgstr "Atur ulang ke default."
 
@@ -6716,15 +6727,15 @@ msgstr "Bidang mana yang ingin Anda gunakan untuk sumbu X dan Y?"
 msgid "Choose fields"
 msgstr "Pilih bidang"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:216
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:221
 msgid "Save as default view"
 msgstr "Simpan sebagai tampilan default"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:238
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:243
 msgid "Draw box to filter"
 msgstr "Menggambar kotak untuk memfilter"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:238
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:243
 msgid "Cancel filter"
 msgstr "Batalkan Filter"
 
@@ -6732,40 +6743,40 @@ msgstr "Batalkan Filter"
 msgid "Pin Map"
 msgstr "PIN PET."
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:382
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:380
 msgid "Unset"
 msgstr "Tak disetel"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:135
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:138
 msgid "Rows {0}-{1} of {2}"
 msgstr "Baris {0} - {1} dari {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:127
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:130
 msgid "Data truncated to {0} rows."
 msgstr "Data terpotong ke baris {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:347
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:350
 msgid "Could not find visualization"
 msgstr "Tidak dapat menemukan visualisasi"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:354
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:357
 msgid "Could not display this chart with this data."
 msgstr "Tidak dapat menampilkan bagan ini dengan data ini."
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:475
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:478
 msgid "No results!"
 msgstr "Tidak ada hasil!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:496
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:499
 msgid "Still Waiting..."
 msgstr "Masih menunggu..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:499
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:502
 msgid "This usually takes an average of {0}."
 msgstr "Ini biasanya membutuhkan rata-rata {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:505
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:508
 msgid "(This is a bit long for a dashboard)"
 msgstr "(Ini agak lama untuk dasbor)"
 
@@ -6781,11 +6792,11 @@ msgstr "Pilih bidang"
 msgid "error"
 msgstr "kesalahan"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:121
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:119
 msgid "Click and drag to change their order"
 msgstr "Klik dan seret untuk mengubah pesanan mereka"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:133
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:131
 msgid "Add fields from the list below"
 msgstr "Tambahkan bidang dari daftar di bawah ini"
 
@@ -6953,7 +6964,7 @@ msgstr "Jenis grafik ini membutuhkan setidaknya 2 kolom."
 msgid "This chart type doesn't support more than {0} series of data."
 msgstr "Jenis bagan ini tidak mendukung lebih dari serangkaian data {0}."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:310
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:309
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:66
 msgid "Goal"
 msgstr "Sasaran"
@@ -6962,8 +6973,8 @@ msgstr "Sasaran"
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
 msgstr "Doh! Data dari kueri Anda tidak sesuai dengan pilihan tampilan yang dipilih. Visualisasi ini membutuhkan setidaknya {0} {1} data."
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:235
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:121
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:237
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:20
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:23
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:27
@@ -7004,12 +7015,12 @@ msgstr "Doh! Data dari kueri Anda tidak sesuai dengan pilihan tampilan yang dipi
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:387
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:431
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:436
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:451
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:466
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:471
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:478
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:483
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:462
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:467
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:498
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:503
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:510
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:515
 #: frontend/src/metabase/visualizations/lib/errors.js:7
 msgid "column"
 msgstr "kolom"
@@ -7053,11 +7064,11 @@ msgstr "Tambahkan breakout seri ..."
 msgid "Y-axis"
 msgstr "Y-axis."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:174
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:173
 msgid "Add another series..."
 msgstr "Tambahkan seri lain ..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:190
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:189
 msgid "Bubble size"
 msgstr "Ukuran gelembung"
 
@@ -7077,19 +7088,19 @@ msgstr "Melangkah"
 msgid "Show point markers on lines"
 msgstr "Tampilkan penanda titik pada garis"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:232
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
 msgid "Stacking"
 msgstr "Penumpukan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:236
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:235
 msgid "Don't stack"
 msgstr "Jangan tumpukan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:237
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:236
 msgid "Stack"
 msgstr "Tumpukan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:238
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:237
 msgid "Stack - 100%"
 msgstr "Stack - 100%"
 
@@ -7097,7 +7108,7 @@ msgstr "Stack - 100%"
 msgid "Show goal"
 msgstr "Tampilkan tujuan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:300
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:299
 msgid "Goal value"
 msgstr "Nilai tujuan"
 
@@ -7117,83 +7128,83 @@ msgstr "Tidak"
 msgid "Linear Interpolated"
 msgstr "Linear interpolated."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:416
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:415
 msgid "X-axis scale"
 msgstr "Skala sumbu x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:434
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:433
 msgid "Timeseries"
 msgstr "Timesery."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:454
 msgid "Linear"
 msgstr "Linear."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:438
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
 msgid "Power"
 msgstr "Kekuatan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:440
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
 msgid "Log"
 msgstr "Catatan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:442
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:441
 msgid "Histogram"
 msgstr "Histogram"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
 msgid "Ordinal"
 msgstr "Urut"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
 msgid "Y-axis scale"
 msgstr "Skala sumbu y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:463
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:462
 msgid "Show x-axis line and marks"
 msgstr "Tampilkan garis dan tanda sumbu x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:362
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:361
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:468
 msgid "Compact"
 msgstr "Compact."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
 msgid "Rotate 45°"
 msgstr "Putar 45 °."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:471
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
 msgid "Rotate 90°"
 msgstr "Putar 90 °."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:478
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
 msgid "Show y-axis line and marks"
 msgstr "Tunjukkan garis sumbu y dan tanda"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:490
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:489
 msgid "Auto y-axis range"
 msgstr "Rentang Auto Y-Axis"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
 msgid "Use a split y-axis when necessary"
 msgstr "Gunakan split y-sumbu bila perlu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:541
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
 msgid "Show label on x-axis"
 msgstr "Tampilkan label pada sumbu x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:547
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
 msgid "X-axis label"
 msgstr "Label sumbu x"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:556
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:555
 msgid "Show label on y-axis"
 msgstr "Tampilkan label pada sumbu y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:562
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
 msgid "Y-axis label"
 msgstr "Label sumbu y"
 
@@ -7329,18 +7340,18 @@ msgstr "via {0}"
 msgid "This {0} is connected to:"
 msgstr "Ini {0} terhubung ke:"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:352
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:376
 msgid "Object Detail"
 msgstr "Detail objek"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:355
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:379
 msgid "object"
 msgstr "obyek"
 
 #: frontend/src/metabase/static-viz/components/CategoricalDonutChart/CategoricalDonutChart.jsx:57
-#: frontend/src/metabase/visualizations/lib/apply_axis.js:137
-#: frontend/src/metabase/visualizations/lib/apply_axis.js:254
-#: frontend/src/metabase/visualizations/lib/apply_axis.js:326
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:136
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:253
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:325
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:403
 msgid "Total"
 msgstr "Total"
@@ -7781,27 +7792,24 @@ msgstr "Auto Bin."
 msgid "Don''t bin"
 msgstr "Jangan Bin"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1715
-#: frontend/src/metabase/lib/query_time.js:228 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1715 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr "Hari"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1703
-#: frontend/src/metabase/lib/query_time.js:224 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1703 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr "Menit"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1709
-#: frontend/src/metabase/lib/query_time.js:226 src/metabase/api/table.clj
-#: target/classes/metabase/api/table.clj
+#: frontend/src/metabase/admin/settings/selectors.js:442
+#: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr "Jam"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1733
-#: frontend/src/metabase/lib/query_time.js:234 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1733 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter"
 msgstr "Perempat"
@@ -9704,10 +9712,10 @@ msgstr "N/A"
 msgid "Windows domain"
 msgstr "domain Windows"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:555
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:539
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:545
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:554
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
 msgid "Labels"
 msgstr "Label"
 
@@ -9737,16 +9745,16 @@ msgstr "MetaBot"
 msgid "Sharing"
 msgstr "Sharing"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:27
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:264
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:293
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:299
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:307
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:315
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:353
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:28
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:230
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:263
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:292
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:298
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:306
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:314
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:328
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:336
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:352
 #: frontend/src/metabase/visualizations/lib/settings/nested.js:86
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:121
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:115
@@ -9765,14 +9773,14 @@ msgstr "Sharing"
 msgid "Display"
 msgstr "Tampilan"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:415
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:462
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:489
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:495
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:414
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:448
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:461
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:476
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:488
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:494
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:502
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:532
 msgid "Axes"
 msgstr "Axes"
 
@@ -9854,12 +9862,12 @@ msgstr "Pilih jenis mata uang"
 msgid "Field Type"
 msgstr "Jenis bidang"
 
-#: frontend/src/metabase/admin/app/reducers.ts:41
-#: frontend/src/metabase/admin/routes.jsx:142
+#: frontend/src/metabase/admin/app/reducers.ts:59
+#: frontend/src/metabase/admin/routes.jsx:172
 msgid "Troubleshooting"
 msgstr "Penyelesaian masalah"
 
-#: frontend/src/metabase/admin/settings/selectors.js:120
+#: frontend/src/metabase/admin/settings/selectors.js:125
 msgid "Enable X-ray features"
 msgstr "Aktifkan fitur x-ray"
 
@@ -10033,11 +10041,11 @@ msgstr "Di mana menampilkan unit mata uang"
 msgid "Minimum number of decimal places"
 msgstr "Jumlah minimum tempat desimal"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:265
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:264
 msgid "Stacked chart type"
 msgstr "Tipe Bagan Stacked."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:308
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:307
 msgid "Goal label"
 msgstr "Label tujuan"
 
@@ -10053,7 +10061,7 @@ msgstr "Gaya garis"
 msgid "Show dots on lines"
 msgstr "Tunjukkan titik-titik pada garis"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:361
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:360
 #: frontend/src/metabase/visualizations/lib/settings/series.js:80
 #: frontend/src/metabase/visualizations/lib/settings/series.js:117
 msgid "Auto"
@@ -10087,11 +10095,11 @@ msgstr "Rentang Gauge."
 msgid "Field to show"
 msgstr "Bidang untuk menunjukkan"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:140
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:142
 msgid "last {0}"
 msgstr "terakhir {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:214
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:216
 msgid "{0} was {1} {2}"
 msgstr "{0} adalah {1} {2}"
 
@@ -10115,32 +10123,32 @@ msgstr "Kolom sel."
 msgid "Visible columns"
 msgstr "Kolom yang terlihat"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:202
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:200
 msgid "Conditional Formatting"
 msgstr "Pemformatan bersyarat"
 
 #: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:188
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:238
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:236
 msgid "Column title"
 msgstr "Judul Kolom."
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:246
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:244
 msgid "Show a mini bar chart"
 msgstr "Tampilkan grafik mini bar"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:255
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:253
 msgid "Link"
 msgstr "Tautan"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:260
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
 msgid "Email link"
 msgstr "Tautan email"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:264
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:262
 msgid "Image"
 msgstr "Gambar"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:268
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:266
 msgid "Automatic"
 msgstr "Otomatis"
 
@@ -10148,7 +10156,7 @@ msgstr "Otomatis"
 msgid "View as link or image"
 msgstr "Lihat sebagai tautan atau gambar"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:285
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:283
 msgid "Link text"
 msgstr "Tautan teks"
 
@@ -10223,7 +10231,7 @@ msgstr "pekan"
 msgid "month"
 msgstr "bulan"
 
-#: frontend/src/metabase/lib/query_time.js:652
+#: frontend/src/metabase/lib/query_time.js:669
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "quarter"
@@ -11558,6 +11566,7 @@ msgid "Sessions by page where the session began"
 msgstr "Sesi oleh halaman tempat sesi dimulai"
 
 #: frontend/src/metabase/lib/schema_metadata.js:636
+#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:23
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -11948,42 +11957,42 @@ msgstr "Duplikat \"{0}\""
 msgid "Duplicate"
 msgstr "Duplikat"
 
-#: frontend/src/metabase/lib/query_time.js:147
+#: frontend/src/metabase/lib/query_time.js:153
 msgid "Tomorrow"
 msgstr "Besok"
 
-#: frontend/src/metabase/lib/query_time.js:161
-#: frontend/src/metabase/lib/query_time.js:175
+#: frontend/src/metabase/lib/query_time.js:167
+#: frontend/src/metabase/lib/query_time.js:181
 msgid "This {0}"
 msgstr "Ini {0}"
 
-#: frontend/src/metabase/lib/query_time.js:164
+#: frontend/src/metabase/lib/query_time.js:170
 msgid "Next {0}"
 msgstr "Selanjutnya {0}"
 
-#: frontend/src/metabase/lib/query_time.js:167
+#: frontend/src/metabase/lib/query_time.js:173
 #: src/metabase/pulse/render/datetime.clj
 #: target/classes/metabase/pulse/render/datetime.clj
 msgid "Previous {0}"
 msgstr "Sebelumnya {0}"
 
-#: frontend/src/metabase/lib/query_time.js:171
+#: frontend/src/metabase/lib/query_time.js:177
 msgid "Previous {0} {1}"
 msgstr "Sebelumnya {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:173
+#: frontend/src/metabase/lib/query_time.js:179
 msgid "Next {0} {1}"
 msgstr "Selanjutnya {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:203
+#: frontend/src/metabase/lib/query_time.js:209
 msgid "Now"
 msgstr "Sekarang"
 
-#: frontend/src/metabase/lib/query_time.js:206
+#: frontend/src/metabase/lib/query_time.js:212
 msgid "{0} {1} ago"
 msgstr "{0} {1} lalu"
 
-#: frontend/src/metabase/lib/query_time.js:207
+#: frontend/src/metabase/lib/query_time.js:213
 msgid "{0} {1} from now"
 msgstr "{0} {1} Mulai sekarang"
 
@@ -12057,7 +12066,7 @@ msgstr "Tidak sah"
 msgid "Add a time"
 msgstr "Tambahkan waktu"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:202
 msgid "Nothing to compare for the previous {0}."
 msgstr "Tidak ada yang bisa dibandingkan dengan {0} sebelumnya."
 
@@ -13284,7 +13293,7 @@ msgstr "Tambahkan metrik"
 msgid "Profile"
 msgstr "Profil"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:509
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:512
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "Ini biasanya cukup cepat tetapi tampaknya memakan waktu saat ini."
 
@@ -13964,27 +13973,27 @@ msgstr "Tabel ini didasarkan pada"
 msgid "(empty)"
 msgstr "(kosong)"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:294
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:293
 msgid "Goal line"
 msgstr "Garis gawang"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:316
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:315
 msgid "Trend line"
 msgstr "Garis tren"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:330
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
 msgid "Show values on data points"
 msgstr "Tampilkan nilai pada titik data"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:338
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
 msgid "Values to show"
 msgstr "Nilai untuk menunjukkan."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:345
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:344
 msgid "As many as can fit nicely"
 msgstr "Sebanyak yang bisa pas dengan baik"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:346
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:345
 #: src/metabase/driver/util.clj
 msgid "All"
 msgstr "Semua"
@@ -14336,7 +14345,7 @@ msgstr "Untuk alasan keamanan, tautan reset kata sandi kedaluwarsa setelah beber
 msgid "Save new password"
 msgstr "Simpan kata sandi baru"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:515
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:519
 msgid "No matching result"
 msgstr "Tidak ada hasil yang cocok"
 
@@ -14386,7 +14395,7 @@ msgstr "Ini adalah proses ringan yang memeriksa pembaruan untuk skema basis data
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "Metabase dapat memindai nilai yang ada di setiap bidang dalam database ini untuk mengaktifkan filter kotak centang di dashboard dan pertanyaan. Ini bisa menjadi proses yang agak intensif sumber daya, terutama jika Anda memiliki basis data yang sangat besar."
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:31
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:32
 #: frontend/src/metabase/entities/questions/forms.js:21
 #: frontend/src/metabase/nav/containers/NewButton/NewButton.tsx:121
 #: frontend/src/metabase/nav/utils/model-names.ts:9
@@ -14472,13 +14481,13 @@ msgstr "Peringkat"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:111
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:118
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:131
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:510
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:526
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:542
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:558
 msgid "condition"
 msgstr "kondisi"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:510
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:530
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:542
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:562
 msgid "output"
 msgstr "keluaran"
 
@@ -14486,27 +14495,27 @@ msgstr "keluaran"
 msgid "Tests a list of cases and returns the corresponding value of the first true case, with an optional default value if nothing else is met."
 msgstr "Menguji daftar kasus dan mengembalikan nilai yang sesuai dari kasus nyata pertama, dengan nilai default opsional jika tidak ada yang terpenuhi."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:514
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:518
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:546
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:550
 msgid "Weight"
 msgstr "Berat"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:516
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:548
 msgid "Large"
 msgstr "Besar"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:520
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:552
 msgid "Medium"
 msgstr "Sedang"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:522
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:554
 msgid "Small"
 msgstr "Kecil"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:100
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:112
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:132
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:527
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:559
 msgid "Something that should evaluate to true or false."
 msgstr "Sesuatu yang harus dievaluasi untuk benar atau salah."
 
@@ -14516,31 +14525,31 @@ msgstr "Nilai yang akan dikembalikan jika kondisi sebelumnya benar."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:233
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:237
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:490
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:501
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:522
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:533
 msgid "value1"
 msgstr "nilai1."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:233
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:239
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:490
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:503
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:522
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:535
 msgid "value2"
 msgstr "Nilai2."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:491
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:523
 msgid "Looks at the values in each argument in order and returns the first non-null value for each row."
 msgstr "Melihat nilai-nilai di setiap argumen secara berurutan dan mengembalikan nilai non-nol pertama untuk setiap baris."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:494
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:526
 msgid "Comments"
 msgstr "Komentar"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:496
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:528
 msgid "Notes"
 msgstr "Catatan"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:498
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:530
 msgid "No comments"
 msgstr "Tidak ada komentar"
 
@@ -14587,6 +14596,7 @@ msgstr "string2."
 msgid "Checks to see if string1 contains string2 within it."
 msgstr "Cek untuk melihat apakah string1 mengandung string2 di dalamnya."
 
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:134
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:180
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:192
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:396
@@ -14663,8 +14673,12 @@ msgstr "Kolom yang nilai-nilai berbeda untuk dihitung."
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:409
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:418
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:422
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:459
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:445
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:454
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:462
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:475
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:482
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:491
 msgid "text"
 msgstr "teks"
 
@@ -14887,15 +14901,15 @@ msgstr "Mengembalikan string teks dalam semua huruf besar."
 msgid "The column with values to convert to upper case."
 msgstr "Kolom dengan nilai untuk dikonversi ke huruf besar."
 
-#: frontend/src/metabase/lib/settings.ts:347
+#: frontend/src/metabase/lib/settings.ts:349
 msgid "must be {0} and include {1}."
 msgstr "harus {0} dan termasuk {1}."
 
-#: frontend/src/metabase/lib/settings.ts:349
+#: frontend/src/metabase/lib/settings.ts:351
 msgid "must be {0}."
 msgstr "harus {0}."
 
-#: frontend/src/metabase/lib/settings.ts:351
+#: frontend/src/metabase/lib/settings.ts:353
 msgid "must include {0}."
 msgstr "harus menyertakan {0}."
 
@@ -14962,7 +14976,7 @@ msgstr "Pilih pertanyaan yang disimpan"
 msgid "Pick a different question"
 msgstr "Pilih pertanyaan yang berbeda"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:228
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:233
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:68
 msgid "Loading…"
 msgstr "Memuat…"
@@ -15023,15 +15037,15 @@ msgstr "Dalam judul kolom"
 msgid "In every table cell"
 msgstr "Di setiap sel tabel"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:354
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:353
 msgid "Value formatting"
 msgstr "Pemformatan nilai"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:363
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:362
 msgid "Full"
 msgstr "Penuh"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:202
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:204
 msgid "No change from last {0}"
 msgstr "Tidak ada perubahan dari {0}"
 
@@ -15454,19 +15468,19 @@ msgstr "Memeriksa HTTPS ..."
 msgid "It looks like HTTPS is not properly configured"
 msgstr "Sepertinya HTTPS tidak dikonfigurasi dengan benar"
 
-#: frontend/src/metabase/admin/settings/selectors.js:78
+#: frontend/src/metabase/admin/settings/selectors.js:83
 msgid "Redirect to HTTPS"
 msgstr "Redirect ke HTTPS."
 
-#: frontend/src/metabase/admin/settings/selectors.js:222
+#: frontend/src/metabase/admin/settings/selectors.js:227
 msgid "Localization"
 msgstr "Lokalisasi"
 
-#: frontend/src/metabase/admin/settings/selectors.js:226
+#: frontend/src/metabase/admin/settings/selectors.js:231
 msgid "Instance language"
 msgstr "Bahasa instance."
 
-#: frontend/src/metabase/admin/settings/selectors.js:269
+#: frontend/src/metabase/admin/settings/selectors.js:274
 msgid "Localization options"
 msgstr "Opsi lokalisasi"
 
@@ -15622,7 +15636,7 @@ msgstr "Apa bahasa pilihan Anda?"
 msgid "This language will be used throughout Metabase and will be the default for new users."
 msgstr "Bahasa ini akan digunakan di seluruh metabase dan akan menjadi default untuk pengguna baru."
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:141
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:143
 msgid "We filtered out {0} row(s) containing null values."
 msgstr "Kami menyaring {0} baris yang berisi nilai nol."
 
@@ -16140,90 +16154,90 @@ msgstr "Menyematkan seluruh aplikasi metabase"
 msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "Jika Anda ingin menanamkan semua metabase, masukkan asal-usul situs web atau aplikasi web di mana Anda ingin mengizinkan embedding dalam iframe, dipisahkan oleh suatu ruang. Berikut adalah {0} untuk apa yang bisa dimasukkan."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:150
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:148
 msgid "Grant sandboxed access to this table"
 msgstr "Berikan akses kotak pasir ke tabel ini"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:157
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:155
 msgid "When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question."
 msgstr "Ketika pengguna dalam grup ini melihat tabel ini mereka akan melihat versi itu yang disaring oleh atribut pengguna mereka, atau tampilan khusus yang didasarkan pada pertanyaan yang disimpan."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:160
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:158
 msgid "How do you want to filter this table for users in this group?"
 msgstr "Bagaimana Anda ingin memfilter tabel ini untuk pengguna di grup ini?"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:179
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:177
 msgid "Pick a saved question that returns the custom view of this table that these users should see."
 msgstr "Pilih pertanyaan yang disimpan yang mengembalikan tampilan kustom dari tabel ini yang harus dilihat pengguna ini."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:195
 msgid "You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question."
 msgstr "Anda dapat secara opsional menambahkan filter tambahan di sini berdasarkan atribut pengguna. Filter-filter ini akan diterapkan di atas semua filter yang sudah dalam pertanyaan yang disimpan ini."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:217
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:215
 msgid "For this option to work, your users need to have some attributes"
 msgstr "Untuk opsi ini untuk bekerja, pengguna Anda perlu memiliki beberapa atribut"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:218
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:216
 msgid "To add additional filters, your users need to have some attributes"
 msgstr "Untuk menambahkan filter tambahan, pengguna Anda perlu memiliki beberapa atribut"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:262
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:260
 msgid "No user attributes"
 msgstr "Tidak ada atribut pengguna"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:263
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:455
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:261
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:453
 msgid "Pick a user attribute"
 msgstr "Pilih atribut pengguna"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:282
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:474
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:280
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:472
 msgid "Pick a parameter"
 msgstr "Pilih parameter"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:300
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:474
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:298
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:472
 msgid "Pick a column"
 msgstr "Pilih kolom"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:320
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:318
 msgid "Users in {0} can view"
 msgstr "Pengguna di {0} dapat melihat"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:328
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:326
 msgid "rows in the {0} question"
 msgstr "baris dalam pertanyaan {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:331
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:329
 msgid "rows in the {0} table"
 msgstr "baris dalam tabel {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:341
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:339
 msgid "where {0} equals {1}"
 msgstr "dimana {0} sama dengan {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:344
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:342
 msgid "and {0} equals {1}"
 msgstr "dan {0} sama dengan {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:439
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:437
 msgid "You can add attributes automatically by setting up an SSO that uses SAML, or you can enter them manually by going to the People section and clicking on the … menu on the far right."
 msgstr "Anda dapat menambahkan atribut secara otomatis dengan mengatur SSO yang menggunakan SAML, atau Anda dapat memasukkannya secara manual dengan pergi ke bagian orang dan mengklik ... menu di ujung kanan."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:458
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:456
 msgid "User attribute"
 msgstr "Atribut Pengguna"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:460
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:458
 msgid "We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the \"…\" menu in the People section of the Admin Panel."
 msgstr "Kami dapat secara otomatis mendapatkan atribut pengguna Anda jika Anda telah mengatur SSO, atau Anda dapat menambahkannya secara manual dari menu \"...\" di bagian orang panel admin."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:477
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:475
 msgid "Parameter or variable"
 msgstr "Parameter atau variabel"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:495
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:493
 msgid "equals"
 msgstr "sama dengan."
 
@@ -16453,7 +16467,7 @@ msgstr "Tidak dapat melihat atau memasukkan cuplikan di folder ini"
 msgid "Also change sub-folders"
 msgstr "Juga mengubah sub-folder"
 
-#: frontend/src/metabase/admin/settings/selectors.js:255
+#: frontend/src/metabase/admin/settings/selectors.js:260
 msgid "First day of the week"
 msgstr "Hari pertama minggu ini"
 
@@ -16476,7 +16490,7 @@ msgstr "Buka menu Metabase Tindakan"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:374
-#: frontend/src/metabase/lib/click-behavior.js:169
+#: frontend/src/metabase/lib/click-behavior.js:179
 msgid "Do nothing"
 msgstr "Tidak melakukan apapun"
 
@@ -16568,12 +16582,12 @@ msgid "Pass values to filter this question (optional)"
 msgstr "Lulus nilai untuk memfilter pertanyaan ini (opsional)"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:859
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:170
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:172
 msgid "Dashboard filters"
 msgstr "Filter dasbor."
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:866
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:172
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:174
 msgid "User attributes"
 msgstr "Atribut Pengguna"
 
@@ -16589,20 +16603,20 @@ msgstr "Mantan. Detail untuk {{kolom nama}}"
 msgid "Values you can reference"
 msgstr "Nilai yang dapat Anda referensi"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:77
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:79
 msgid "No available targets"
 msgstr "Tidak ada target yang tersedia"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:236
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:121
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:238
 msgid "filter"
 msgstr "Saring"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:121
 msgid "variable"
 msgstr "variabel"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:128
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:130
 msgid "Other available filters"
 msgstr "Filter lain yang tersedia"
 
@@ -16610,7 +16624,7 @@ msgstr "Filter lain yang tersedia"
 msgid "Avaliable filters"
 msgstr "Filter yang tersedia"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:133
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:135
 msgid "Other available variables"
 msgstr "Variabel lain yang tersedia"
 
@@ -16618,7 +16632,7 @@ msgstr "Variabel lain yang tersedia"
 msgid "Avaliable variables"
 msgstr "Variabel yang tersedia"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:138
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:140
 msgid "Other available columns"
 msgstr "Kolom lainnya yang tersedia"
 
@@ -16626,31 +16640,31 @@ msgstr "Kolom lainnya yang tersedia"
 msgid "Avaliable columns"
 msgstr "Kolom yang tersedia"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:237
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:239
 msgid "user attribute"
 msgstr "Atribut Pengguna"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:250
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:253
 msgid "Text card"
 msgstr "Kartu teks"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:353
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:357
 msgid "Click behavior"
 msgstr "Klik Perilaku"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:396
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:400
 msgid "Visualization options"
 msgstr "Opsi visualisasi"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:436
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:440
 msgid "Edit series"
 msgstr "Edit Seri"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:436
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:440
 msgid "Add series"
 msgstr "Tambahkan Seri"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:512
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:516
 msgid "On click"
 msgstr "Pada Klik"
 
@@ -16696,32 +16710,32 @@ msgstr "Sesuatu yang pendek tapi manis"
 msgid "Folder this should be in"
 msgstr "Folder ini harus masuk"
 
-#: frontend/src/metabase/lib/click-behavior.js:168
+#: frontend/src/metabase/lib/click-behavior.js:178
 msgid "Open the action menu"
 msgstr "Buka menu Tindakan"
 
-#: frontend/src/metabase/lib/click-behavior.js:177
+#: frontend/src/metabase/lib/click-behavior.js:187
 msgid "{0} column has custom behavior"
 msgid_plural "{0} columns have custom behavior"
 msgstr[0] "{0} kolom memiliki perilaku khusus"
 
-#: frontend/src/metabase/lib/click-behavior.js:190
+#: frontend/src/metabase/lib/click-behavior.js:200
 msgid "Go to..."
 msgstr "Pergi ke..."
 
-#: frontend/src/metabase/lib/click-behavior.js:192
+#: frontend/src/metabase/lib/click-behavior.js:202
 msgid "Go to dashboard"
 msgstr "Pergi ke dashboard"
 
-#: frontend/src/metabase/lib/click-behavior.js:194
+#: frontend/src/metabase/lib/click-behavior.js:204
 msgid "Go to question"
 msgstr "Pergi ke Pertanyaan"
 
-#: frontend/src/metabase/lib/click-behavior.js:195
+#: frontend/src/metabase/lib/click-behavior.js:205
 msgid "Go to url"
 msgstr "Pergi ke URL"
 
-#: frontend/src/metabase/lib/click-behavior.js:198
+#: frontend/src/metabase/lib/click-behavior.js:208
 msgid "Filter this dashboard"
 msgstr "Saring dasbor ini"
 
@@ -16951,7 +16965,7 @@ msgid "Checks a date or number column's values to see if they're within the spec
 msgstr "Memeriksa nilai atau nilai kolom nomor untuk melihat apakah mereka berada dalam rentang yang ditentukan."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:433
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:448
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:464
 msgid "Created At"
 msgstr "Dibuat di"
 
@@ -16967,15 +16981,17 @@ msgstr "Awal kisaran."
 msgid "The end of the range."
 msgstr "Akhir kisaran."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:447
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:463
 msgid "Checks a date column's values to see if they're within the relative range."
 msgstr "Memeriksa nilai kolom tanggal untuk melihat apakah mereka berada dalam rentang relatif."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:452
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:468
 msgid "The date column to return interval of."
 msgstr "Kolom Tanggal untuk mengembalikan interval."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:456
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:451
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:472
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:488
 msgid "Period of interval, where negative values are back in time."
 msgstr "Periode interval, di mana nilai negatif kembali pada waktunya."
 
@@ -16983,19 +16999,19 @@ msgstr "Periode interval, di mana nilai negatif kembali pada waktunya."
 msgid "Type of internal like \"day\", \"month\", \"year\"."
 msgstr "Jenis internal seperti \"hari\", \"bulan\", \"tahun\"."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:501
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:533
 msgid "The column or value to return."
 msgstr "Kolom atau nilai untuk kembali."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:504
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:536
 msgid "If value1 is empty, value2 gets returned if its not empty, and so on."
 msgstr "Jika Value1 kosong, Nilai2 akan dikembalikan jika tidak kosong, dan sebagainya."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:511
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:543
 msgid "Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
 msgstr "Menguji ekspresi terhadap daftar kasus dan mengembalikan nilai yang sesuai dari kasus pencocokan pertama, dengan nilai default opsional jika tidak ada yang terpenuhi."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:531
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:563
 msgid "The value that will be returned if the preceding condition is true, and so on."
 msgstr "Nilai yang akan dikembalikan jika kondisi sebelumnya benar, dan sebagainya."
 
@@ -17078,15 +17094,15 @@ msgstr "Masukkan nama pengguna atau alamat email"
 msgid "New snippet"
 msgstr "Cuplikan baru"
 
-#: frontend/src/metabase/lib/time.js:121
+#: frontend/src/metabase/lib/time.js:123
 msgid "{0}:00 PM"
 msgstr "{0}: 00 sore"
 
-#: frontend/src/metabase/lib/time.js:123
+#: frontend/src/metabase/lib/time.js:125
 msgid "12:00 AM"
 msgstr "12:00 PAGI"
 
-#: frontend/src/metabase/lib/time.js:127
+#: frontend/src/metabase/lib/time.js:129
 msgid "{0}:00 AM"
 msgstr "{0}: 00 pagi"
 
@@ -17502,11 +17518,11 @@ msgstr "Edit Koleksi"
 msgid "Pinned items"
 msgstr "Item yang disematkan"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:208
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:210
 msgid "Other users' personal collections"
 msgstr "Koleksi Pribadi Pengguna Lainnya"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:216
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:218
 msgid "View archive"
 msgstr "Lihat Arsip."
 
@@ -17526,15 +17542,15 @@ msgstr "Gunakan koleksi untuk mengatur dan mengelompokkan dasbor dan pertanyaan 
 msgid "Unpin this item"
 msgstr "Unpin item ini"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:129
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:131
 msgid "Available filters"
 msgstr "Filter yang tersedia"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:134
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:136
 msgid "Available variables"
 msgstr "Variabel yang tersedia"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:139
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:141
 msgid "Available columns"
 msgstr "Kolom yang tersedia"
 
@@ -17568,7 +17584,9 @@ msgstr "Waktu yang diperbarui"
 msgid "Updated timestamp"
 msgstr "Timestamp yang diperbarui"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:460
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:455
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:476
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:492
 msgid "Type of interval like \"day\", \"month\", \"year\"."
 msgstr "Jenis interval seperti \"hari\", \"bulan\", \"tahun\"."
 
@@ -17588,7 +17606,7 @@ msgstr "Urutkan naik"
 msgid "Sort descending"
 msgstr "Sortir turun."
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:148
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:150
 msgid "Browse data"
 msgstr "Jelajahi data"
 
@@ -17604,11 +17622,11 @@ msgstr "Ada masalah dengan visualisasi ini"
 msgid "Showing first {0} rows"
 msgstr "Menampilkan baris {0} pertama"
 
-#: frontend/src/metabase/lib/time.js:156
+#: frontend/src/metabase/lib/time.js:158
 msgid "first"
 msgstr "pertama"
 
-#: frontend/src/metabase/lib/time.js:158
+#: frontend/src/metabase/lib/time.js:160
 msgid "last"
 msgstr "terakhir"
 
@@ -17681,7 +17699,7 @@ msgstr "Anda harus {0} terlebih dahulu."
 msgid "First, you'll have to {0}."
 msgstr "Pertama, Anda harus {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:133
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:136
 msgid "Rows {0}-{1} of first {2}"
 msgstr "Baris {0} - {1} dari {2}"
 
@@ -18616,16 +18634,16 @@ msgstr "Tidak menemukan apa pun"
 msgid "There weren't any results for your search."
 msgstr "Tidak ada hasil untuk pencarian Anda."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:467
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:499
 msgid "Checks if a column is null"
 msgstr "Cek apakah kolom null"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:472
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:484
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:504
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:516
 msgid "The column to check."
 msgstr "Kolom untuk memeriksa."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:479
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:511
 msgid "Checks if a column is empty"
 msgstr "Cek apakah kolom kosong"
 
@@ -18643,7 +18661,7 @@ msgstr[0] "Fungsi {0} mengharapkan argumen {1}"
 msgid "Expecting boolean but found {0}"
 msgstr "Mengharapkan boolean tetapi ditemukan {0}"
 
-#: frontend/src/metabase/lib/time.js:125
+#: frontend/src/metabase/lib/time.js:127
 msgid "12:00 PM"
 msgstr "12:00."
 
@@ -18679,7 +18697,7 @@ msgstr "Nilai-nilai cocok dengan teks yang dimasukkan."
 msgid "Match values that end with the entered text."
 msgstr "Cocokkan nilai yang diakhiri dengan teks yang dimasukkan."
 
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:64
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:73
 msgid "Duplicate this question"
 msgstr "Duplikat pertanyaan ini"
 
@@ -18981,7 +18999,7 @@ msgid "Question name"
 msgstr "Nama Tanya."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/QuestionsAuditTable.jsx:23
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:76
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:78
 msgid "Collection name"
 msgstr "Nama koleksi"
 
@@ -19029,11 +19047,11 @@ msgid "Sorry, we were unable to check for updates at this time. Last successful 
 msgstr "Maaf, kami tidak dapat memeriksa pembaruan saat ini. Pemeriksaan yang terakhir berhasil adalah\n"
 "{0}."
 
-#: frontend/src/metabase/admin/settings/selectors.js:74
+#: frontend/src/metabase/admin/settings/selectors.js:79
 msgid "Only change this if you know what you're doing!"
 msgstr "Hanya ubah ini jika Anda tahu apa yang Anda lakukan!"
 
-#: frontend/src/metabase/admin/settings/selectors.js:107
+#: frontend/src/metabase/admin/settings/selectors.js:112
 msgid "Replace underscores and dashes with spaces"
 msgstr "Ganti garis bawah dan tanda hubung dengan spasi"
 
@@ -19106,7 +19124,7 @@ msgstr "Tambahkan pertanyaan"
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorContent.jsx:98
 #: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.jsx:189
 #: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:52
-#: frontend/src/metabase/nav/components/RecentsList.jsx:102
+#: frontend/src/metabase/nav/components/RecentsList.jsx:111
 #: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionList.jsx:42
 msgid "Nothing here"
 msgstr "Tidak ada disini"
@@ -19184,15 +19202,15 @@ msgstr "Mengharapkan {0} membuka tanda kurung"
 msgid "Expecting an opening parenthesis after function {0}"
 msgstr "Mengharapkan tanda kurung pembuka setelah fungsi {0}"
 
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:519
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:527
 msgid "Explore results"
 msgstr "Jelajahi hasil."
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:282
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:280
 msgid "You can use the value of any column here like this: {{COLUMN}}"
 msgstr "Anda dapat menggunakan nilai kolom apa pun di sini seperti ini: {{kolom}}"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:295
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:293
 msgid "Link URL"
 msgstr "Tautan URL"
 
@@ -19519,7 +19537,7 @@ msgid "{0} edited this"
 msgstr "{0} mengedit ini"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/constants.js:5
-#: frontend/src/metabase/plugins/index.ts:88
+#: frontend/src/metabase/plugins/index.ts:95
 msgid "Regular"
 msgstr "Reguler"
 
@@ -19565,7 +19583,7 @@ msgstr "Awan"
 msgid "Cloud Settings"
 msgstr "Pengaturan Cloud."
 
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:78
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:93
 msgid "Edit details"
 msgstr "Edit detail"
 
@@ -19573,7 +19591,7 @@ msgstr "Edit detail"
 msgid "History"
 msgstr "Sejarah"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:421
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:419
 msgid "Every field is hidden right now"
 msgstr "Setiap bidang disembunyikan sekarang"
 
@@ -19729,11 +19747,11 @@ msgstr "jam"
 msgid "Error name"
 msgstr "Nama kesalahan"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:75
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:77
 msgid "DB name"
 msgstr "Nama DB."
 
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:81
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:83
 msgid "Rerun Selected"
 msgstr "Rerun dipilih"
 
@@ -19803,11 +19821,11 @@ msgstr "Berlangganan"
 
 #: frontend/src/metabase/entities/pulses.js:42
 #: frontend/src/metabase/entities/timeline-events.js:18
-#: frontend/src/metabase/entities/timelines.js:42
+#: frontend/src/metabase/entities/timelines.js:46
 msgid "moved"
 msgstr "terharu"
 
-#: frontend/src/metabase/lib/formatting.js:893
+#: frontend/src/metabase/lib/formatting.js:891
 msgid "{0} hour"
 msgid_plural "{0} hours"
 msgstr[0] "{0} jam"
@@ -19878,12 +19896,12 @@ msgstr "{0} Verifikasi yang dihapus"
 msgid "{0} changed status to {1}"
 msgstr "{0} Berubah status ke {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/index.js:9
-#: enterprise/frontend/src/metabase-enterprise/tools/routes.jsx:14
+#: frontend/src/metabase/admin/app/reducers.ts:52
+#: frontend/src/metabase/admin/routes.jsx:210
 msgid "Tools"
 msgstr "Peralatan"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/routes.jsx:20
+#: enterprise/frontend/src/metabase-enterprise/tools/index.js:26
 msgid "Erroring Questions"
 msgstr "Pertanyaan yang salah"
 
@@ -19968,10 +19986,10 @@ msgstr "Pilih koleksi untuk melihat izinnya"
 msgid "Search for a collection"
 msgstr "Cari koleksi"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:74
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:123
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:210
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/group-sidebar.ts:44
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:333
 msgid "Search for a group"
 msgstr "Cari grup"
 
@@ -19994,7 +20012,7 @@ msgstr "Lebih banyak pilihan"
 msgid "Expecting field but found {0}"
 msgstr "Bidang yang mengharapkan tetapi ditemukan {0}"
 
-#: frontend/src/metabase/nav/components/RecentsList.jsx:55
+#: frontend/src/metabase/nav/components/RecentsList.jsx:57
 msgid "Recently viewed"
 msgstr "Baru saja dilihat"
 
@@ -20178,8 +20196,8 @@ msgstr "Anda akan berhenti menerima langganan ini mulai sekarang."
 msgid "Unrestricted"
 msgstr "Tidak dibatasi"
 
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:34
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:41
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:36
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:58
 #: frontend/src/metabase/admin/permissions/constants/data-permissions.js:11
 msgid "Granular"
 msgstr "Granular."
@@ -20196,7 +20214,7 @@ msgstr "Akses editor kueri asli memerlukan akses data penuh."
 msgid "Select a database to see group permissions"
 msgstr "Pilih database untuk melihat izin grup"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:88
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:108
 msgid "Allow native query editing?"
 msgstr "Izinkan pengeditan kueri asli?"
 
@@ -20219,20 +20237,20 @@ msgid "Search for a table"
 msgstr "Cari tabel"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:155
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:275
 msgid "Data access"
 msgstr "Akses data"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:156
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:276
 msgid "Native query editing"
 msgstr "Pengeditan Kueri Asli"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:321
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:324
 msgid "The Administrators group is special, and always has Unrestricted access."
 msgstr "Grup administrator khusus, dan selalu memiliki akses yang tidak dibatasi."
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:329
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:332
 msgid "Permissions for"
 msgstr "Izin untuk"
 
@@ -20248,11 +20266,11 @@ msgstr "Nama Skema."
 msgid "Search for a schema"
 msgstr "Cari skema"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:229
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:231
 msgid "Permissions for the "
 msgstr "Izin untuk"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:236
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:238
 msgid "{0} person"
 msgid_plural "{0} people"
 msgstr[0] "{0} orang"
@@ -20360,11 +20378,11 @@ msgstr "Pengaturan admin"
 msgid "and is built with care by a team from all across this pale blue dot."
 msgstr "dan dibangun dengan hati-hati oleh tim dari seluruh titik biru pucat ini."
 
-#: frontend/src/metabase/query_builder/actions.js:1675
+#: frontend/src/metabase/query_builder/actions/models.js:37
 msgid "This is a model now."
 msgstr "Ini adalah model sekarang."
 
-#: frontend/src/metabase/query_builder/actions.js:1688
+#: frontend/src/metabase/query_builder/actions/models.js:50
 msgid "This is a question now."
 msgstr "Ini pertanyaan sekarang."
 
@@ -20373,11 +20391,11 @@ msgstr "Ini pertanyaan sekarang."
 msgid "You're only allowed to email subscriptions to addresses ending in {0}"
 msgstr "Anda hanya diizinkan untuk mengirim email ke alamat yang berakhir di {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:20
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:19
 msgid "Primary color"
 msgstr "Warna primer."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:21
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:20
 msgid "The main color used throughout the app for buttons, links, and the default chart color."
 msgstr "Warna utama yang digunakan di seluruh aplikasi untuk tombol, tautan, dan warna grafik default."
 
@@ -20389,27 +20407,27 @@ msgstr "Warna bar navigasi."
 msgid "The top nav bar of Metabase. Defaults to the Primary Color if not set."
 msgstr "Bar nav top metabase. Default ke warna primer jika tidak diatur."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:28
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:23
 msgid "Accent 1"
 msgstr "Aksen 1."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:29
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:24
 msgid "The color of aggregations and breakouts in the graphical query builder."
 msgstr "Warna agregasi dan breakout di Builder Query Graphical."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:32
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:27
 msgid "Accent 2"
 msgstr "Aksen 2."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:33
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:28
 msgid "The color of filters in the query builder and buttons and links in filter widgets."
 msgstr "Warna filter di builder kueri dan tombol dan tautan dalam widget filter."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:36
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:39
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:42
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:45
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:48
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:31
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:34
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:37
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:40
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:43
 msgid "Additional chart color"
 msgstr "Warna grafik tambahan."
 
@@ -20417,7 +20435,7 @@ msgstr "Warna grafik tambahan."
 msgid "Rerun this question"
 msgstr "Jalankan kembali pertanyaan ini"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:41
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:47
 #: frontend/src/metabase/status/components/DatabaseStatusSmall/DatabaseStatusSmall.tsx:55
 msgid "Syncing database…"
 msgstr "Sinkronisasi basis data ..."
@@ -20519,11 +20537,11 @@ msgid "License and billing"
 msgstr "Lisensi dan Penagihan"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:134
-#: frontend/src/metabase/admin/settings/selectors.js:362
+#: frontend/src/metabase/admin/settings/selectors.js:379
 msgid "License"
 msgstr "Lisensi"
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:37
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:38
 msgid "New…"
 msgstr "Baru…"
 
@@ -20581,6 +20599,7 @@ msgstr "{0} kami"
 msgid "Choose what this data will be called in Metabase."
 msgstr "Pilih apa yang akan dipanggil data ini dalam metabase."
 
+#: frontend/src/metabase/admin/settings/selectors.js:419
 #: frontend/src/metabase/home/containers/SearchApp.jsx:47
 #: frontend/src/metabase/query_builder/components/DataSelector.jsx:1188
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:51
@@ -20602,8 +20621,8 @@ msgstr "Metrik Tidak Diketahui: {0}"
 msgid "Unknown Segment: {0}"
 msgstr "Segmen Tidak Dikenal: {0}"
 
-#: frontend/src/metabase/lib/expressions/diagnostics.js:119
-#: frontend/src/metabase/lib/expressions/process.js:33
+#: frontend/src/metabase/lib/expressions/diagnostics.js:121
+#: frontend/src/metabase/lib/expressions/process.js:35
 msgid "Unknown Field: {0}"
 msgstr "Bidang Tidak Dikenal: {0}"
 
@@ -20724,12 +20743,12 @@ msgstr "Himpunan data"
 msgid "You're only allowed to email pulses to addresses ending in {0}"
 msgstr "Anda hanya diizinkan mengirim pulsa email ke alamat yang berakhir di {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:507
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
 msgid "Reaches the goal line"
 msgstr "Mencapai garis gawang"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditAlertEditModal/AuditAlertEditModal.jsx:15
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:628
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:621
 msgid "You're only allowed to email alerts to addresses ending in {0}"
 msgstr "Anda hanya diizinkan untuk mengirim email ke alamat yang berakhir di {0}"
 
@@ -20779,7 +20798,7 @@ msgid "Use any question’s results to start a new question."
 msgstr "Gunakan hasil pertanyaan apa pun untuk memulai pertanyaan baru."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:46
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:109
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:124
 msgid "Turn this into a model"
 msgstr "Ubah ini menjadi model"
 
@@ -20801,7 +20820,7 @@ msgid "Live in collections to keep them separate from messy database\n"
 msgstr "Hidup dalam koleksi untuk membuat mereka terpisah dari basis data yang berantakan\n"
 "Schemas."
 
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:63
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:72
 msgid "Duplicate this model"
 msgstr "Duplikat model ini"
 
@@ -20829,19 +20848,19 @@ msgstr "Model # {0}"
 msgid "Model in {0}"
 msgstr "Model dalam {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:273
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:271
 msgid "Display as"
 msgstr "Tampilan sebagai"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:74
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:76
 msgid "Error contents"
 msgstr "Konten Kesalahan"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:195
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:197
 msgid "Restoring the sample database..."
 msgstr "Memulihkan contoh basis data ..."
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:202
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:204
 msgid "Bring the sample database back"
 msgstr "Bawa basis data sampel kembali"
 
@@ -20913,6 +20932,7 @@ msgstr "kosong"
 msgid "not empty"
 msgstr "tidak kosong"
 
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobModal.tsx:70
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:22
 msgid "Edit model"
 msgstr "Edit Model."
@@ -22299,15 +22319,15 @@ msgstr "Jangan buang"
 msgid "Invalid template tag: {0}"
 msgstr "Tag kerangka tidak valid: {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:77
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:126
 msgid "Settings access"
 msgstr "Akses pengaturan"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:80
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:129
 msgid "This grants access to Tools, Audit, and Troubleshooting"
 msgstr "Ini memberikan akses ke Alat, Audit, dan Pemecahan Masalah"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:82
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:131
 msgid "Subscriptions and Alerts"
 msgstr "Langganan dan Peringatan"
 
@@ -22319,11 +22339,11 @@ msgstr "Mengelola akses database membutuhkan akses data penuh."
 msgid "Download results access requires full data access."
 msgstr "Akses hasil unduhan memerlukan akses data penuh."
 
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:29
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:46
 msgid "10 thousand rows"
 msgstr "10 ribu baris"
 
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:35
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:52
 msgid "1 million rows"
 msgstr "1 juta baris"
 
@@ -22389,7 +22409,7 @@ msgstr "Menit"
 msgid "Remove time"
 msgstr "Hapus waktu"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:161
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:163
 msgid "Add your own data"
 msgstr "Tambahkan data Anda sendiri"
 
@@ -22490,39 +22510,39 @@ msgstr "Berikut adalah beberapa model populer"
 msgid "Here are some popular dashboards"
 msgstr "Berikut adalah beberapa dasbor populer"
 
-#: frontend/src/metabase/home/homepage/components/HomeRecentSection/HomeRecentSection.tsx:19
+#: frontend/src/metabase/home/homepage/components/HomeRecentSection/HomeRecentSection.tsx:25
 msgid "Pick up where you left off"
 msgstr "Lanjutkan di mana Anda tinggalkan"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:40
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:41
 msgid "Try out these sample x-rays to see what Metabase can do."
 msgstr "Cobalah sampel sinar-x ini untuk melihat apa yang dapat dilakukan Metabase."
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:44
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:45
 msgid "Here are some explorations of the"
 msgstr "Berikut adalah beberapa eksplorasi dari"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:50
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:51
 msgid "schema in"
 msgstr "skema dalam"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:55
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:56
 msgid "Here are some explorations of"
 msgstr "Berikut adalah beberapa eksplorasi"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:121
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:123
 msgid "A look at"
 msgstr "Lihat"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:122
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:124
 msgid "A summary of"
 msgstr "Ringkasan dari"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:123
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:125
 msgid "A glance at"
 msgstr "Sekilas"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:124
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:126
 msgid "Some insights about"
 msgstr "Beberapa wawasan tentang"
 
@@ -22535,7 +22555,7 @@ msgid "Bookmarks"
 msgstr "Bookmark"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:121
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:216
 msgid "Past"
 msgstr "Masa lalu"
 
@@ -22728,34 +22748,34 @@ msgid "Hours of the day..."
 msgstr "Jam sehari..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:471
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:145
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:146
 msgid "Is not empty"
 msgstr "Tidak kosong"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:159
 msgid "Select none..."
 msgstr "Pilih tidak ada..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:159
 msgid "Select all..."
 msgstr "Pilih Semua..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:51
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:50
 msgid "Right now, this is {0}"
 msgstr "Saat ini, ini adalah {0}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:55
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:59
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:63
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:67
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:54
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:58
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:62
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:66
 msgid "Right now, this is {0} - {1}"
 msgstr "Saat ini, ini adalah {0} - {1}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:187
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:189
 msgid "Starting from..."
 msgstr "Mulai dari..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:248
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:259
 msgid "Starting from"
 msgstr "Mulai dari"
 
@@ -22767,15 +22787,15 @@ msgstr "0/{0} dimuat"
 msgid "Your dashboard is ready"
 msgstr "Dasbor Anda sudah siap"
 
-#: frontend/src/metabase/query_builder/actions.js:1379
+#: frontend/src/metabase/query_builder/actions/querying.js:163
 msgid "Doing Science..."
 msgstr "Melakukan Ilmu..."
 
-#: frontend/src/metabase/query_builder/actions.js:1381
+#: frontend/src/metabase/query_builder/actions/querying.js:165
 msgid "Still Here..."
 msgstr "Masih di sini..."
 
-#: frontend/src/metabase/query_builder/actions.js:1438
+#: frontend/src/metabase/query_builder/actions/querying.js:59
 msgid "Your question is ready!"
 msgstr "Pertanyaan Anda sudah siap!"
 
@@ -22794,14 +22814,14 @@ msgstr "Sumber daya dan dukungan"
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionHeader.jsx:110
 #: frontend/src/metabase/components/EntityItem.jsx:128
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:301
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:73
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:88
 msgid "Remove from bookmarks"
 msgstr "Hapus dari bookmark"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionHeader.jsx:110
 #: frontend/src/metabase/components/EntityItem.jsx:128
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:301
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:73
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:88
 msgid "Bookmark"
 msgstr "Penanda buku"
 
@@ -22811,12 +22831,12 @@ msgid "event"
 msgstr "peristiwa"
 
 #: frontend/src/metabase/entities/timeline-events.js:26
-#: frontend/src/metabase/entities/timelines.js:50
+#: frontend/src/metabase/entities/timelines.js:54
 msgid "archived"
 msgstr "diarsipkan"
 
 #: frontend/src/metabase/entities/timeline-events.js:26
-#: frontend/src/metabase/entities/timelines.js:50
+#: frontend/src/metabase/entities/timelines.js:54
 msgid "unarchived"
 msgstr "tidak diarsipkan"
 
@@ -22828,8 +22848,8 @@ msgstr "Rilis produk"
 msgid "Default icon"
 msgstr "Ikon bawaan"
 
-#: frontend/src/metabase/entities/timelines.js:42
-#: frontend/src/metabase/entities/timelines.js:50
+#: frontend/src/metabase/entities/timelines.js:46
+#: frontend/src/metabase/entities/timelines.js:54
 msgid "timeline"
 msgstr "linimasa"
 
@@ -22861,58 +22881,58 @@ msgstr "Linimasa"
 msgid "Excludes"
 msgstr "tidak termasuk"
 
-#: frontend/src/metabase/lib/query_time.js:131
+#: frontend/src/metabase/lib/query_time.js:137
 msgid "{0}, starting {1} {2}"
 msgstr "{0}, mulai {1} {2}"
 
-#: frontend/src/metabase/lib/query_time.js:363
+#: frontend/src/metabase/lib/query_time.js:381
 msgid "minute {0}"
 msgid_plural "minutes {0}"
 msgstr[0] "menit {0}"
 
-#: frontend/src/metabase/lib/query_time.js:365
+#: frontend/src/metabase/lib/query_time.js:383
 msgid "hour {0}"
 msgid_plural "hours {0}"
 msgstr[0] "jam {0}"
 
-#: frontend/src/metabase/lib/query_time.js:367
+#: frontend/src/metabase/lib/query_time.js:385
 msgid "day {0}"
 msgid_plural "days {0}"
 msgstr[0] "hari {0}"
 
-#: frontend/src/metabase/lib/query_time.js:369
+#: frontend/src/metabase/lib/query_time.js:387
 msgid "week {0}"
 msgid_plural "weeks {0}"
 msgstr[0] "minggu {0}"
 
-#: frontend/src/metabase/lib/query_time.js:371
+#: frontend/src/metabase/lib/query_time.js:389
 msgid "month {0}"
 msgid_plural "months {0}"
 msgstr[0] "bulan {0}"
 
-#: frontend/src/metabase/lib/query_time.js:373
+#: frontend/src/metabase/lib/query_time.js:391
 msgid "quarter {0}"
 msgid_plural "quarters {0}"
 msgstr[0] "kuartal {0}"
 
-#: frontend/src/metabase/lib/query_time.js:375
+#: frontend/src/metabase/lib/query_time.js:393
 msgid "year {0}"
 msgid_plural "years {0}"
 msgstr[0] "tahun {0}"
 
-#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:128
+#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:132
 msgid "All Set! {0} is ready."
 msgstr "Siap! {0} sudah siap."
 
-#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:129
+#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:133
 msgid "All questions loaded"
 msgstr "Semua pertanyaan dimuat"
 
-#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:154
+#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:158
 msgid "Would you like to be notified when this dashboard is done loading?"
 msgstr "Apakah Anda ingin diberi tahu saat dasbor ini selesai dimuat?"
 
-#: frontend/src/metabase/lib/expressions/diagnostics.js:141
+#: frontend/src/metabase/lib/expressions/diagnostics.js:143
 msgid "Custom columns do not support boolean expressions"
 msgstr "Kolom khusus tidak mendukung ekspresi boolean"
 
@@ -22920,23 +22940,23 @@ msgstr "Kolom khusus tidak mendukung ekspresi boolean"
 msgid "Downloading…"
 msgstr "Mengunduh…"
 
-#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:394
+#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:398
 msgid "All Set! Your question is ready."
 msgstr "Siap! Pertanyaan Anda sudah siap."
 
-#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:395
+#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:399
 msgid "{0} is loaded."
 msgstr "{0} dimuat."
 
-#: frontend/src/metabase/query_builder/components/view/View.jsx:520
+#: frontend/src/metabase/query_builder/components/view/View.jsx:524
 msgid "Would you like to be notified when this question is done loading?"
 msgstr "Apakah Anda ingin diberi tahu saat pertanyaan ini selesai dimuat?"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:275
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:289
 msgid "Switch to data"
 msgstr "Beralih ke data"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:280
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:294
 msgid "Switch to visualization"
 msgstr "Beralih ke visualisasi"
 
@@ -23067,7 +23087,7 @@ msgstr "nilai harus berupa string tanggal yang valid"
 msgid "Confirm"
 msgstr "Mengonfirmasi"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:101
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:103
 msgid "Home"
 msgstr "Rumah"
 
@@ -23119,7 +23139,7 @@ msgstr "Tidak ada login"
 msgid "You need unrestricted data access on this table to map custom display values."
 msgstr "Anda memerlukan akses data tak terbatas pada tabel ini untuk memetakan nilai tampilan kustom."
 
-#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1062
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1065
 msgid "View Details"
 msgstr "Melihat rincian"
 
@@ -23134,4 +23154,398 @@ msgstr "Tidak ada kunci yang tersedia"
 #: src/metabase/cmd/rotate_encryption_key.clj
 msgid "Connected to"
 msgstr "Terhubung dengan"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobModal.tsx:65
+msgid "Retry now"
+msgstr "Coba lagi sekarang"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobModal.tsx:75
+msgid "Oh oh…"
+msgstr "Oh oh…"
+
+#: frontend/src/metabase/admin/routes.jsx:214
+#: frontend/src/metabase/admin/tools/containers/Tools.tsx:63
+msgid "Model Caching Log"
+msgstr "Log Caching Model"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:43
+msgid "Refreshing"
+msgstr "Menyegarkan"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:46
+msgid "Completed"
+msgstr "Lengkap"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:62
+msgid "in"
+msgstr "di"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:133
+msgid "Model"
+msgstr "Model"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:135
+msgid "Last run at"
+msgstr "Lari terakhir di"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:136
+msgid "Created by"
+msgstr "Dibuat oleh"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:32
+msgid "Failed to update model cache"
+msgstr "Gagal memperbarui cache model"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:35
+msgid "Refreshing model cache"
+msgstr "Menyegarkan cache model"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:38
+msgid "Model last cached {0}"
+msgstr "Model terakhir di-cache {0}"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:71
+msgid "Last attempt {0}"
+msgstr "Upaya terakhir {0}"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:76
+msgid "Refresh now"
+msgstr "Segarkan sekarang"
+
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:133
+msgid "this quarter"
+msgstr "kuartal ini"
+
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/query-downloads.ts:9
+msgid "You're allowed to download up to 10,000 rows."
+msgstr "Anda diizinkan untuk mengunduh hingga 10.000 baris."
+
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:24
+msgid "Groups with Block data access can't download results"
+msgstr "Grup dengan akses data Blokir tidak dapat mengunduh hasil"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:78
+msgid "Disable model persistence"
+msgstr "Nonaktifkan persistensi model"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:79
+msgid "Disabling…"
+msgstr "Menonaktifkan…"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:87
+msgid "Enable model persistence"
+msgstr "Aktifkan ketekunan model"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:88
+msgid "Enabling…"
+msgstr "Mengaktifkan…"
+
+#: frontend/src/metabase/lib/query_time.js:232
+msgid "Default period{0}"
+msgid_plural "Default periods{0}"
+msgstr[0] "Periode bawaan{0}"
+
+#: frontend/src/metabase/lib/query_time.js:234
+msgid "Minute{0}"
+msgid_plural "Minutes{0}"
+msgstr[0] "Menit{0}"
+
+#: frontend/src/metabase/lib/query_time.js:236
+msgid "Hour{0}"
+msgid_plural "Hours{0}"
+msgstr[0] "Jam{0}"
+
+#: frontend/src/metabase/lib/query_time.js:238
+msgid "Day{0}"
+msgid_plural "Days{0}"
+msgstr[0] "Hari{0}"
+
+#: frontend/src/metabase/lib/query_time.js:240
+msgid "Week{0}"
+msgid_plural "Weeks{0}"
+msgstr[0] "Minggu{0}"
+
+#: frontend/src/metabase/lib/query_time.js:242
+msgid "Month{0}"
+msgid_plural "Months{0}"
+msgstr[0] "Bulan{0}"
+
+#: frontend/src/metabase/lib/query_time.js:244
+msgid "Quarter{0}"
+msgid_plural "Quarters{0}"
+msgstr[0] "Seperempat{0}"
+
+#: frontend/src/metabase/lib/query_time.js:246
+msgid "Year{0}"
+msgid_plural "Years{0}"
+msgstr[0] "Tahun{0}"
+
+#: frontend/src/metabase/lib/query_time.js:248
+msgid "Minute of hour{0}"
+msgid_plural "Minutes of hour{0}"
+msgstr[0] "Menit jam{0}"
+
+#: frontend/src/metabase/lib/query_time.js:250
+msgid "Hour of day{0}"
+msgid_plural "Hours of day{0}"
+msgstr[0] "jam dalam sehari{0}"
+
+#: frontend/src/metabase/lib/query_time.js:252
+msgid "Day of week{0}"
+msgid_plural "Days of week{0}"
+msgstr[0] "Hari dalam seminggu{0}"
+
+#: frontend/src/metabase/lib/query_time.js:254
+msgid "Day of month{0}"
+msgid_plural "Days of month{0}"
+msgstr[0] "Hari dalam sebulan{0}"
+
+#: frontend/src/metabase/lib/query_time.js:256
+msgid "Day of year{0}"
+msgid_plural "Days of year{0}"
+msgstr[0] "Hari dalam setahun{0}"
+
+#: frontend/src/metabase/lib/query_time.js:258
+msgid "Week of year{0}"
+msgid_plural "Weeks of year{0}"
+msgstr[0] "Minggu dalam setahun{0}"
+
+#: frontend/src/metabase/lib/query_time.js:260
+msgid "Month of year{0}"
+msgid_plural "Months of year{0}"
+msgstr[0] "Bulan tahun{0}"
+
+#: frontend/src/metabase/lib/query_time.js:262
+msgid "Quarter of year{0}"
+msgid_plural "Quarters of year{0}"
+msgstr[0] "Kuartal tahun{0}"
+
+#: frontend/src/metabase/admin/settings/selectors.js:390
+msgid "Saved questions"
+msgstr "Pertanyaan tersimpan"
+
+#: frontend/src/metabase/admin/settings/selectors.js:420
+msgid "Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. {0}."
+msgstr "Mengaktifkan cache akan membuat tabel untuk model Anda dalam skema khusus dan Metabase akan menyegarkannya sesuai jadwal. Pertanyaan berdasarkan model Anda akan menanyakan tabel ini. {0}."
+
+#: frontend/src/metabase/admin/settings/selectors.js:439
+msgid "Refresh every"
+msgstr "Segarkan setiap"
+
+#: frontend/src/metabase/admin/settings/selectors.js:443
+msgid "2 hours"
+msgstr "2 jam"
+
+#: frontend/src/metabase/admin/settings/selectors.js:444
+msgid "3 hours"
+msgstr "3 jam"
+
+#: frontend/src/metabase/admin/settings/selectors.js:445
+msgid "6 hours"
+msgstr "6 jam"
+
+#: frontend/src/metabase/admin/settings/selectors.js:446
+msgid "12 hours"
+msgstr "12 jam"
+
+#: frontend/src/metabase/admin/settings/selectors.js:447
+msgid "24 hours"
+msgstr "24 jam"
+
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
+msgid "Gets a time interval of specified length"
+msgstr "Mendapat interval waktu dengan panjang yang ditentukan"
+
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:483
+msgid "Gets a timestamp relative to the current time"
+msgstr "Mendapat stempel waktu relatif terhadap waktu saat ini"
+
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:141
+msgid "Unpersist model"
+msgstr "Model tidak bertahan"
+
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:150
+msgid "Persist model"
+msgstr "Pertahankan model"
+
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:73
+msgid "Questions that errored when last run"
+msgstr "Pertanyaan yang salah saat dijalankan terakhir"
+
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:426
+msgid "You don't have permission to save this question."
+msgstr "Anda tidak memiliki izin untuk menyimpan pertanyaan ini."
+
+#: modules/drivers/bigquery-cloud-sdk/src/metabase/driver/bigquery_cloud_sdk.clj
+msgid "Looks like we cannot find any matching datasets."
+msgstr "Sepertinya kami tidak dapat menemukan kumpulan data yang cocok."
+
+#: src/metabase/actions.clj
+msgid "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)"
+msgstr "Apakah akan mengaktifkan menggunakan fitur Tindakan eksperimental baru secara global. (Tindakan juga harus diaktifkan untuk setiap Database.)"
+
+#: src/metabase/api/actions.clj
+msgid "Actions are not enabled."
+msgstr "Tindakan tidak diaktifkan."
+
+#: src/metabase/api/card.clj
+msgid "Database does not support persisting"
+msgstr "Basis data tidak mendukung persisten"
+
+#: src/metabase/api/card.clj
+msgid "Persisting models not enabled for database"
+msgstr "Model yang bertahan tidak diaktifkan untuk database"
+
+#: src/metabase/api/card.clj
+msgid "Card is not a model"
+msgstr "Kartu bukan model"
+
+#: src/metabase/api/database.clj
+msgid "Persisting models is not enabled."
+msgstr "Model yang bertahan tidak diaktifkan."
+
+#: src/metabase/api/persist.clj
+msgid "Integer greater than or equal to one and less than or equal to twenty-four"
+msgstr "Bilangan bulat lebih besar dari atau sama dengan satu dan kurang dari atau sama dengan dua puluh empat"
+
+#: src/metabase/api/persist.clj
+msgid "Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four"
+msgstr "Nilai harus berupa bilangan bulat yang mewakili jam lebih besar atau sama dengan satu dan kurang dari atau sama dengan dua puluh empat"
+
+#: src/metabase/api/persist.clj
+msgid "Enabling model persistence"
+msgstr "Mengaktifkan persistensi model"
+
+#: src/metabase/api/persist.clj
+msgid "Disabling model persistence"
+msgstr "Menonaktifkan persistensi model"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."
+msgstr "Peringatan: Konteks analisis otomatis tidak memiliki metadata hasil. Tidak dapat menyelesaikan Bidang berdasarkan nama."
+
+#. otherwise this isn't returning something, and that's probably an error. Log it.
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Cannot resolve Field {0} in automagic analysis context"
+msgstr "Tidak dapat menyelesaikan Bidang {0} dalam konteks analisis otomatis"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Error decomposing question: {0}"
+msgstr "Kesalahan saat menguraikan pertanyaan: {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permissions to create {0} schema"
+msgstr "Tidak memiliki izin untuk membuat {0} skema"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permission to create table in schema {0}"
+msgstr "Tidak memiliki izin untuk membuat tabel dalam skema {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permission to read table in schema {0}"
+msgstr "Kurang izin untuk membaca tabel dalam skema {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permission to delete table in schema {0}"
+msgstr "Tidak memiliki izin untuk menghapus tabel dalam skema {0}"
+
+#: src/metabase/driver/ddl/postgres.clj
+msgid "Step {0} was successful for db {1}"
+msgstr "Langkah {0} berhasil untuk db {1}"
+
+#: src/metabase/driver/ddl/postgres.clj
+msgid "Error in `{0}` while checking for model persistence permissions."
+msgstr "Kesalahan dalam `{0}` saat memeriksa izin persistensi model."
+
+#: src/metabase/public_settings.clj
+msgid "Allow persisting models into the source database."
+msgstr "Izinkan model yang bertahan ke dalam database sumber."
+
+#: src/metabase/public_settings.clj
+msgid "Hour interval to refresh persisted models."
+msgstr "Interval jam untuk menyegarkan model yang bertahan."
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "The :feature option is required when using defenterprise in an EE namespace!"
+msgstr "Opsi :feature diperlukan saat menggunakan defenterprise di namespace EE!"
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "{0} option for defenterprise should not be set in an OSS namespace! Set it on the EE function instead."
+msgstr "{0} opsi untuk perusahaan pertahanan tidak boleh disetel di ruang nama OSS! Atur pada fungsi EE sebagai gantinya."
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "An EE namespace must be provided when using defenterprise in an OSS namespace!"
+msgstr "Namespace EE harus disediakan saat menggunakan defenterprise di namespace OSS!"
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "Add it immediately before the argument list."
+msgstr "Tambahkan segera sebelum daftar argumen."
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "Enterprise function {0}/{1} does not have a docstring. Go add one!"
+msgstr "Fungsi perusahaan {0}/{1} tidak memiliki docstring. Ayo tambahkan satu!"
+
+#: src/metabase/pulse.clj
+msgid "The maximum number of attempts for delivering a single notification."
+msgstr "Jumlah maksimum upaya untuk mengirimkan satu notifikasi."
+
+#: src/metabase/pulse.clj
+msgid "The initial retry delay in milliseconds when delivering notifications."
+msgstr "Penundaan percobaan ulang awal dalam milidetik saat mengirimkan pemberitahuan."
+
+#: src/metabase/pulse.clj
+msgid "The delay multiplier between attempts to deliver a single notification."
+msgstr "Pengganda penundaan antara upaya untuk mengirimkan satu notifikasi."
+
+#: src/metabase/pulse.clj
+msgid "The randomization factor of the retry delay when delivering notifications."
+msgstr "Faktor pengacakan penundaan percobaan ulang saat mengirimkan pemberitahuan."
+
+#: src/metabase/pulse.clj
+msgid "The maximum delay between attempts to deliver a single notification."
+msgstr "Penundaan maksimum antara upaya untuk mengirimkan satu notifikasi."
+
+#: src/metabase/pulse.clj
+msgid "Reconfiguring notification sender"
+msgstr "Mengonfigurasi ulang pengirim notifikasi"
+
+#: src/metabase/query_processor/middleware/fetch_source_query.clj
+msgid "Substituting cached query for card {0} from {1}.{2}"
+msgstr "Mengganti kueri yang di-cache untuk kartu {0} dari {1}.{2}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Unpersisting model with card-id {0}"
+msgstr "Model tanpa henti dengan kartu-id {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Error unpersisting model with card-id {0}"
+msgstr "Kesalahan model yang tidak bertahan lama dengan id kartu {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Starting persisted model refresh task for Database {0}."
+msgstr "Memulai tugas penyegaran model tetap untuk Database {0}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Error refreshing persisting model with card-id {0}"
+msgstr "Terjadi kesalahan saat menyegarkan model yang ada dengan id kartu {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Finished persisted model refresh task for Database {0}."
+msgstr "Menyelesaikan tugas penyegaran model bertahan untuk Database {0}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Attempting to refresh individual for persisted-info {0}."
+msgstr "Mencoba menyegarkan individu untuk informasi yang bertahan {0}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Finished updated model-id {0} from persisted-info {1}."
+msgstr "ID model yang telah diperbarui {0} dari info-persistent {1}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Unable to refresh model with card-id {0}"
+msgstr "Tidak dapat menyegarkan model dengan id kartu {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Unknown payload type {0}"
+msgstr "Jenis muatan tidak diketahui {0}"
 

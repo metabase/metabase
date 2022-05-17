@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 
 // import TimeseriesGroupingWidget
 //     from "metabase/modes/components/TimeseriesGroupingWidget";
@@ -15,9 +16,9 @@ import TimeseriesGroupingWidget from "metabase/modes/components/TimeseriesGroupi
 export const TimeseriesModeFooter = props => {
   return (
     <div className="flex layout-centered">
-      <span className="mr1">View</span>
+      <span className="mr1">{t`View`}</span>
       <TimeseriesFilterWidget {...props} card={props.lastRunCard} />
-      <span className="mx1">by</span>
+      <span className="mx1">{t`by`}</span>
       <TimeseriesGroupingWidget {...props} card={props.lastRunCard} />
     </div>
   );

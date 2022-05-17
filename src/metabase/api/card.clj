@@ -765,10 +765,9 @@
   query in place of the model's query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-superuser)
-  ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [{:keys [dataset database_id] :as card} (Card card-id)]
     (let [database (Database database_id)]
+      (api/write-check database)
       (when-not (driver/database-supports? (:engine database)
                                            :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
@@ -781,7 +780,7 @@
                          :database    (:name database)})))
       (when-not dataset
         (throw (ex-info (tru "Card is not a model") {:status-code 400})))
-      (when-let [persisted-info (persisted-info/make-ready! api/*current-user-id* card)]
+      (when-let [persisted-info (persisted-info/turn-on! api/*current-user-id* card)]
         (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
       api/generic-204-no-content)))
 
@@ -789,8 +788,8 @@
   "Refresh the persisted model caching `card-id`."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-superuser)
   (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+    (api/write-check (Database (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
@@ -799,11 +798,10 @@
   query rather than the saved version of the query."
   [card-id]
   {card-id su/IntGreaterThanZero}
-  (api/check-superuser)
-  ;; if we change from superuser make sure to start on read/write checks
   (api/let-404 [_card (Card card-id)]
     (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
-      (persisted-info/mark-for-deletion! {:id (:id persisted-info)})
+      (api/write-check (Database (:database_id persisted-info)))
+      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
       api/generic-204-no-content)))
 
 (api/define-routes)

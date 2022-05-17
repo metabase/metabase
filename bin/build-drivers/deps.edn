@@ -1,7 +1,8 @@
 {:paths ["src"]
 
  :deps
- {common/common                   {:local/root "../common"}
+ {org.clojure/clojure             {:mvn/version "1.11.1"} ; explicit otherwise version is picked up from cli
+  common/common                   {:local/root "../common"}
   com.github.seancorfield/depstar {:mvn/version "2.1.278"}
   cheshire/cheshire               {:mvn/version "5.8.1"}
   commons-codec/commons-codec     {:mvn/version "1.14"}

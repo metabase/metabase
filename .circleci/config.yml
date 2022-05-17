@@ -11,12 +11,12 @@ executors:
   builder:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
 
   tester:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-node-browsers
       - image: maildev/maildev:1.1.0
       - image: metabase/qa-databases:postgres-sample-12
       - image: metabase/qa-databases:mongo-sample-4.0
@@ -28,19 +28,19 @@ executors:
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
-  java-16:
+  java-17:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-16-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-17-clj-1.11.0.1100.04-2022-build
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -56,7 +56,7 @@ executors:
   postgres-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: postgres
           MB_DB_PORT: 5432
@@ -73,7 +73,7 @@ executors:
   mysql-5-7:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -86,7 +86,7 @@ executors:
   mysql-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -99,7 +99,7 @@ executors:
   mariadb-10-2:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -112,7 +112,7 @@ executors:
   mariadb-latest:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
@@ -129,19 +129,19 @@ executors:
   mongo-4-0:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
        - image: circleci/mongo:4.0
 
   mongo-latest:
      working_directory: /home/circleci/metabase/metabase/
      docker:
-       - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
        - image: circleci/mongo:latest
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/presto-mb-ci:0.186
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -152,7 +152,7 @@ executors:
   presto-jdbc-env:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/presto-mb-ci:latest # version 0.254
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -171,20 +171,20 @@ executors:
   sparksql:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/spark:3.2.1
     resource_class: large
 
   vertica:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: sumitchawla/vertica
 
   sqlserver:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
           MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
@@ -198,7 +198,7 @@ executors:
   druid:
     working_directory: /home/circleci/metabase/metabase/
     docker:
-      - image: metabase/ci:circleci-java-11-clj-1.10.3.929-07-27-2021-node-browsers
+      - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
       - image: metabase/druid:0.20.2
         environment:
           CLUSTER_SIZE: nano-quickstart

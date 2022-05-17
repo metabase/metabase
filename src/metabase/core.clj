@@ -3,6 +3,7 @@
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
             [clojure.tools.trace :as trace]
+            [java-time :as t]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
             [metabase.db :as mdb]
@@ -13,6 +14,7 @@
             [metabase.models.user :refer [User]]
             [metabase.plugins :as plugins]
             [metabase.plugins.classloader :as classloader]
+            [metabase.public-settings :as public-settings]
             [metabase.sample-data :as sample-data]
             [metabase.server :as server]
             [metabase.server.handler :as handler]
@@ -76,7 +78,7 @@
   (server/stop-web-server!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
-(defn init!
+(defn- init!*
   "General application initialization function which should be run once at application startup."
   []
   (log/info (trs "Starting Metabase version {0} ..." config/mb-version-string))
@@ -104,8 +106,8 @@
     (events/initialize-events!)
     (init-status/set-progress! 0.7)
 
-    ;; Now start the task runner
-    (task/start-scheduler!)
+    ;; Now initialize the task runner
+    (task/init-scheduler!)
     (init-status/set-progress! 0.8)
 
     (when new-install?
@@ -123,8 +125,19 @@
       ;; otherwise update if appropriate
       (sample-data/update-sample-database-if-needed!)))
 
+  ;; start scheduler at end of init!
+  (task/start-scheduler!)
   (init-status/set-complete!)
   (log/info (trs "Metabase Initialization COMPLETE")))
+
+(defn init!
+  "General application initialization function which should be run once at application startup. Calls `[[init!*]] and
+  records the duration of startup."
+  []
+  (let [start-time (t/zoned-date-time)]
+    (init!*)
+    (public-settings/startup-time-millis
+     (.toMillis (t/duration start-time (t/zoned-date-time))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------
 

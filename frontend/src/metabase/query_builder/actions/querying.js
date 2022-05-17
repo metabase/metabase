@@ -160,10 +160,19 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
-    dispatch(setDocumentTitle(t`Doing Science...`));
+    const title = {
+      onceQueryIsRun: t`Doing Science...`,
+      ifQueryTakesLong: t`Still Here...`,
+    };
+
+    dispatch(setDocumentTitle(title.onceQueryIsRun));
+
     const timeoutId = setTimeout(() => {
-      dispatch(setDocumentTitle(t`Still Here...`));
+      if (document.title.includes(title.onceQueryIsRun)) {
+        dispatch(setDocumentTitle(title.ifQueryTakesLong));
+      }
     }, 10000);
+
     dispatch(setDocumentTitleTimeoutId(timeoutId));
   },
 );
@@ -234,6 +243,8 @@ export const cancelQuery = () => (dispatch, getState) => {
     if (cancelQueryDeferred) {
       cancelQueryDeferred.resolve();
     }
+    dispatch(setDocumentTitle(""));
+
     return { type: CANCEL_QUERY };
   }
 };

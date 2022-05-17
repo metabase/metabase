@@ -1,3 +1,7 @@
+// Enables hot reload in development and noop in production
+// MUST be imported BEFORE `react` and `react-dom`
+import "metabase-dev";
+
 import { push } from "react-router-redux";
 import _ from "underscore";
 

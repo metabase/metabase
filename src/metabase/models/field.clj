@@ -147,7 +147,7 @@
 
 (defn- perms-objects-set
   "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-   same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
+   same as permissions to access its parent Table."
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   {:arglists '([field read-or-write])}
   (if db-id

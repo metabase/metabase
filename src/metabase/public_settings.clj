@@ -54,6 +54,12 @@
   :type       :timestamp
   :default    nil)
 
+(defsetting startup-time-millis
+  (deferred-tru "The startup time in milliseconds")
+  :visibility :public
+  :type       :double
+  :default    0.0)
+
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
   :default "Metabase")

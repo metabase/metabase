@@ -8,6 +8,7 @@ import _ from "underscore";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getCrumbs } from "metabase/lib/collections";
 
 import { color } from "metabase/lib/colors";
 
@@ -30,19 +31,7 @@ const getCollectionIconColor = () => color("text-light");
 
 const isRoot = collection => collection.id === "root" || collection.id == null;
 
-@entityListLoader({
-  entityType: (state, props) => {
-    return props.entity ? props.entity.name : "collections";
-  },
-  loadingAndErrorWrapper: false,
-})
-@connect((state, props) => ({
-  collectionsById: (
-    props.entity || Collections
-  ).selectors.getExpandedCollectionsById(state),
-  getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
-}))
-export default class ItemPicker extends React.Component {
+class ItemPicker extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -61,27 +50,6 @@ export default class ItemPicker extends React.Component {
     showSearch: PropTypes.bool,
     showScroll: PropTypes.bool,
   };
-
-  // returns a list of "crumbs" starting with the "root" collection
-  getCrumbs(collection, collectionsById) {
-    if (collection && collection.path) {
-      return [
-        ...collection.path.map(id => [
-          collectionsById[id].name,
-          () => this.setState({ parentId: id }),
-        ]),
-        [collection.name],
-      ];
-    } else {
-      return [
-        [
-          collectionsById["root"].name,
-          () => this.setState({ parentId: collectionsById["root"].id }),
-        ],
-        ["Unknown"],
-      ];
-    }
-  }
 
   checkHasWritePermissionForItem(item, models) {
     const { collectionsById } = this.props;
@@ -126,7 +94,9 @@ export default class ItemPicker extends React.Component {
       this.props.models.filter(model => model !== "collection").length > 0;
 
     const collection = collectionsById[parentId];
-    const crumbs = this.getCrumbs(collection, collectionsById);
+    const crumbs = getCrumbs(collection, collectionsById, id =>
+      this.setState({ parentId: id }),
+    );
 
     let allCollections = (collection && collection.children) || [];
 
@@ -292,6 +262,21 @@ export default class ItemPicker extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  entityListLoader({
+    entityType: (state, props) => {
+      return props.entity ? props.entity.name : "collections";
+    },
+    loadingAndErrorWrapper: false,
+  }),
+  connect((state, props) => ({
+    collectionsById: (
+      props.entity || Collections
+    ).selectors.getExpandedCollectionsById(state),
+    getCollectionIcon: (props.entity || Collections).objectSelectors.getIcon,
+  })),
+)(ItemPicker);
 
 const Item = ({
   item,

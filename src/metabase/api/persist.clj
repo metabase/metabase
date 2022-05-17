@@ -3,10 +3,12 @@
             [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
+            [metabase.api.common.validation :as validation]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
+            [metabase.models.interface :as mi]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.offset-paging :as mw.offset-paging]
@@ -20,7 +22,7 @@
 
 (defn- fetch-persisted-info
   "Returns a list of persisted info, annotated with database_name, card_name, and schema_name."
-  [{:keys [persisted-info-id card-id]} limit offset]
+  [{:keys [persisted-info-id card-id db-ids]} limit offset]
   (let [site-uuid-str    (public-settings/site-uuid)
         db-id->fire-time (task.persist-refresh/job-info-by-db-id)]
     (-> (cond-> {:select    [:p.id :p.database_id :p.definition
@@ -37,6 +39,7 @@
                              [Collection :col] [:= :c.collection_id :col.id]]
                  :order-by  [[:p.refresh_begin :desc]]}
           persisted-info-id (hh/merge-where [:= :p.id persisted-info-id])
+          (seq db-ids) (hh/merge-where [:in :p.database_id db-ids])
           card-id (hh/merge-where [:= :p.card_id card-id])
           limit (hh/limit limit)
           offset (hh/offset offset))
@@ -51,25 +54,35 @@
 (api/defendpoint GET "/"
   "List the entries of [[PersistedInfo]] in order to show a status page."
   []
-  (api/check-superuser)
-  {:data   (fetch-persisted-info nil mw.offset-paging/*limit* mw.offset-paging/*offset*)
-   :total  (db/count PersistedInfo)
-   :limit  mw.offset-paging/*limit*
-   :offset mw.offset-paging/*offset*})
+  (validation/check-has-application-permission :setting)
+  (let [db-ids (db/select-field :database_id PersistedInfo)
+        writable-db-ids (when (seq db-ids)
+                          (->> (db/select Database :id [:in db-ids])
+                               (filter mi/can-write?)
+                               (map :id)
+                               set))
+        persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
+    {:data   persisted-infos
+     :total  (if (seq writable-db-ids)
+               (db/count PersistedInfo :database_id [:in writable-db-ids])
+               0)
+     :limit  mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}))
 
 (api/defendpoint GET "/:persisted-info-id"
   "Fetch a particular [[PersistedInfo]] by id."
   [persisted-info-id]
   {persisted-info-id (s/maybe su/IntGreaterThanZero)}
-  (api/check-superuser)
-  (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil)))
+  (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
+    (api/write-check (Database (:database_id persisted-info)))
+    persisted-info))
 
 (api/defendpoint GET "/card/:card-id"
   "Fetch a particular [[PersistedInfo]] by card-id."
   [card-id]
   {card-id (s/maybe su/IntGreaterThanZero)}
-  (api/check-superuser)
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
+    (api/write-check (Database (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private HoursInterval
@@ -83,7 +96,7 @@
   "Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}."
   [:as {{:keys [hours], :as _body} :body}]
   {hours HoursInterval}
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (public-settings/persisted-model-refresh-interval-hours hours)
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
@@ -91,7 +104,7 @@
 (api/defendpoint POST "/enable"
   "Enable global setting to allow databases to persist models."
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (log/info (tru "Enabling model persistence"))
   (public-settings/persisted-models-enabled true)
   (task.persist-refresh/enable-persisting!)
@@ -115,7 +128,7 @@
   "Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables."
   []
-  (api/check-superuser)
+  (validation/check-has-application-permission :setting)
   (when (public-settings/persisted-models-enabled)
     (try (public-settings/persisted-models-enabled false)
          (disable-persisting)

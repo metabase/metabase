@@ -9,6 +9,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const HtmlWebpackHarddiskPlugin = require("html-webpack-harddisk-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
+const ReactRefreshPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 const fs = require("fs");
 
@@ -126,6 +127,7 @@ const config = (module.exports = {
       "metabase-lib": LIB_SRC_PATH,
       "metabase-enterprise": ENTERPRISE_SRC_PATH,
       "metabase-types": TYPES_SRC_PATH,
+      "metabase-dev": `${SRC_PATH}/dev${devMode ? "" : "-noop"}.js`,
       cljs: CLJS_SRC_PATH,
       __support__: TEST_SUPPORT_PATH,
       style: SRC_PATH + "/css/core/index",
@@ -151,6 +153,7 @@ const config = (module.exports = {
       }
     : undefined,
   optimization: {
+    runtimeChunk: "single",
     splitChunks: {
       cacheGroups: {
         vendors: {
@@ -221,25 +224,24 @@ if (WEBPACK_BUNDLE === "hot") {
     "http://localhost:8080/" + config.output.publicPath;
 
   config.module.rules.unshift({
-    test: /\.jsx$/,
-    // NOTE: our verison of react-hot-loader doesn't play nice with react-dnd's DragLayer, so we exclude files named `*DragLayer.jsx`
-    exclude: /node_modules|cljs|DragLayer\.jsx$/,
+    test: /\.(tsx?|jsx?)$/,
+    exclude: /node_modules|cljs/,
     use: [
-      // NOTE Atte Keinänen 10/19/17: We are currently sticking to an old version of react-hot-loader
-      // because newer versions would require us to upgrade to react-router v4 and possibly deal with
-      // asynchronous route issues as well. See https://github.com/gaearon/react-hot-loader/issues/249
-      { loader: "react-hot-loader/webpack" },
-      { loader: "babel-loader", options: BABEL_CONFIG },
+      {
+        loader: "babel-loader",
+        options: {
+          ...BABEL_CONFIG,
+          plugins: ["@emotion", "react-refresh/babel"],
+        },
+      },
     ],
   });
 
   config.devServer = {
     hot: true,
+    client: { overlay: false },
     headers: {
       "Access-Control-Allow-Origin": "*",
-    },
-    static: {
-      directory: "frontend",
     },
     // tweak stats to make the output in the console more legible
     // TODO - once we update webpack to v4+ we can just use `errors-warnings` preset
@@ -270,6 +272,9 @@ if (WEBPACK_BUNDLE === "hot") {
   config.plugins.unshift(
     new webpack.NoEmitOnErrorsPlugin(),
     new webpack.HotModuleReplacementPlugin(),
+    new ReactRefreshPlugin({
+      overlay: false,
+    }),
   );
 }
 

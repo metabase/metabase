@@ -7,9 +7,9 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "./widgets/DateSingleWidget";
 import DateRangeWidget from "./widgets/DateRangeWidget";
-import DateRelativeWidget from "./widgets/DateRelativeWidget";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
-import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
+import DateRelativeWidget from "metabase/components/DateRelativeWidget";
+import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
+import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
@@ -20,7 +20,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
-import { hasFieldValues } from "metabase/parameters/utils/fields";
+import { hasFieldValues, getFieldIds } from "metabase/parameters/utils/fields";
 
 import S from "./ParameterWidget.css";
 
@@ -48,8 +48,7 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
-export default class ParameterValueWidget extends Component {
+class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
     name: PropTypes.string,
@@ -240,23 +239,10 @@ export default class ParameterValueWidget extends Component {
   }
 }
 
-function getFields(metadata, parameter) {
-  if (!metadata) {
-    return [];
-  }
-  return (
-    parameter.fields ??
-    getFieldIds(parameter)
-      .map(id => metadata.field(id))
-      .filter(f => f != null)
-  );
-}
-
-function getFieldIds(parameter) {
-  const { field_ids = [], field_id } = parameter;
-  const fieldIds = field_id ? [field_id] : field_ids;
-  return fieldIds.filter(id => typeof id === "number");
-}
+export default connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)(ParameterValueWidget);
 
 function Widget({
   parameter,
@@ -275,7 +261,7 @@ function Widget({
   target,
 }) {
   const DateWidget = DATE_WIDGETS[parameter.type];
-  const fields = getFields(metadata, parameter);
+  const fields = parameter.fields || [];
 
   if (disabled) {
     return (
@@ -329,12 +315,10 @@ Widget.propTypes = {
 };
 
 function getWidgetDefinition(metadata, parameter) {
+  const fields = parameter.fields || [];
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (
-    getFields(metadata, parameter).length > 0 &&
-    parameter.hasOnlyFieldTargets
-  ) {
+  } else if (fields.length > 0 && parameter.hasOnlyFieldTargets) {
     return ParameterFieldWidget;
   } else {
     return TextWidget;

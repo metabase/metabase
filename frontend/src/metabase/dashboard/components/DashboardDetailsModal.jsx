@@ -21,9 +21,7 @@ const mapDispatchToProps = { setDashboardAttributes };
 
 const COLLAPSED_FIELDS = ["cache_ttl"];
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-class DashboardDetailsModal extends React.Component {
+class DashboardDetailsModalInner extends React.Component {
   render() {
     const {
       onClose,
@@ -79,5 +77,10 @@ class DashboardDetailsModal extends React.Component {
     );
   }
 }
+
+const DashboardDetailsModal = _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardDetailsModalInner);
 
 export default DashboardDetailsModal;

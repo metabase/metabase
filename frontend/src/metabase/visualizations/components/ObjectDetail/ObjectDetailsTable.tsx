@@ -5,6 +5,8 @@ import { t } from "ttag";
 import { DatasetData } from "metabase-types/types/Dataset";
 
 import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import EmptyState from "metabase/components/EmptyState";
+
 import { isID } from "metabase/lib/schema_metadata";
 import { TYPE, isa } from "metabase/lib/types";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
@@ -100,7 +102,7 @@ export function DetailsTableCell({
 
 export interface DetailsTableProps {
   data: DatasetData;
-  zoomedRow: unknown[] | undefined;
+  zoomedRow: unknown[];
   settings: unknown;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
@@ -113,8 +115,12 @@ export function DetailsTable({
   onVisualizationClick,
   visualizationIsClickable,
 }: DetailsTableProps): JSX.Element {
-  const { rows, cols } = data;
-  const row = zoomedRow || rows[0];
+  const { cols } = data;
+  const row = zoomedRow;
+
+  if (!row?.length) {
+    return <EmptyState message={t`No details found`} />;
+  }
 
   return (
     <ObjectDetailsTable>
@@ -124,7 +130,7 @@ export function DetailsTable({
             <GridCell>
               <DetailsTableCell
                 column={column}
-                value={row[columnIndex]}
+                value={row[columnIndex] ?? t`Empty`}
                 isColumnName
                 settings={settings}
                 className="text-bold text-medium"

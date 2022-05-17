@@ -281,15 +281,15 @@
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
-               (hsql/format (#'postgres/json-query boop-identifier boop-field))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh,foobar,1234}"]
-               (hsql/format (#'postgres/json-query boop-identifier weird-field))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
-               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres
@@ -445,6 +445,15 @@
         (is (= []
                (mt/rows (mt/run-mbql-query users
                           {:filter [:= $user_id nil]})))))
+      (testing "check that is-empty doesn't barf (#22667)"
+        (is (= []
+               (mt/rows (mt/run-mbql-query users
+                          {:filter [:is-empty $user_id]})))))
+      (testing "check that not-empty doesn't barf (#22667)"
+        (is (= (map-indexed (fn [i [uuid]] [(inc i) uuid])
+                            (-> with-uuid :table-definitions first :rows))
+               (mt/rows (mt/run-mbql-query users
+                          {:filter [:not-empty $user_id]})))))
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows

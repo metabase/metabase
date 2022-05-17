@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
@@ -45,10 +46,7 @@ const mapDispatchToProps = {
   addFields,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@title(({ card }) => card && card.name)
-@ExplicitSize({ refreshMode: "debounceLeading" })
-export default class PublicQuestion extends Component {
+class PublicQuestion extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -233,3 +231,9 @@ export default class PublicQuestion extends Component {
     );
   }
 }
+
+export default _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  title(({ card }) => card && card.name),
+  ExplicitSize({ refreshMode: "debounceLeading" }),
+)(PublicQuestion);
