@@ -11638,7 +11638,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v44.00-001
+      id: v44.00-002
       author: braden
       comment: Added 0.44.0 - add entity_id column to all internal entities
       changes:
@@ -11652,6 +11652,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: metric
+  - changeSet:
+      id: v44.00-003
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11662,6 +11667,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: segment
+  - changeSet:
+      id: v44.00-004
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11672,6 +11682,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: collection
+  - changeSet:
+      id: v44.00-005
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11682,6 +11697,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: report_dashboard
+  - changeSet:
+      id: v44.00-006
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11692,6 +11712,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: dimension
+  - changeSet:
+      id: v44.00-007
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11702,6 +11727,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: pulse
+  - changeSet:
+      id: v44.00-008
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11712,6 +11742,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: report_card
+  - changeSet:
+      id: v44.00-009
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
@@ -11722,6 +11757,11 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: native_query_snippet
+  - changeSet:
+      id: v44.00-010
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
         - addColumn:
             columns:
             - column:
