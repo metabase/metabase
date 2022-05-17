@@ -25,7 +25,7 @@ const propTypes = {
   name: PropTypes.string,
   value: PropTypes.any,
   options: PropTypes.arrayOf(optionShape).isRequired,
-  variant: PropTypes.oneOf(["fill-text", "fill-background"]),
+  variant: PropTypes.oneOf(["fill-text", "fill-background", "fill-all"]),
   inactiveColor: PropTypes.string,
   onChange: PropTypes.func,
   fullWidth: PropTypes.bool,

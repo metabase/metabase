@@ -2,7 +2,7 @@ import React from "react";
 import styled from "@emotion/styled";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
-import { color, darken } from "metabase/lib/colors";
+import { color, darken, alpha } from "metabase/lib/colors";
 
 const BORDER_RADIUS = "8px";
 
@@ -29,6 +29,14 @@ const COLORS = {
       isSelected ? color(selectedColor) : getDefaultBorderColor(),
     text: ({ isSelected, inactiveColor }) =>
       color(isSelected ? "text-white" : inactiveColor),
+  },
+  "fill-all": {
+    background: ({ isSelected, selectedColor }) =>
+      isSelected ? alpha(color(selectedColor), 0.2) : "transparent",
+    border: ({ isSelected, selectedColor }) =>
+      isSelected ? color(selectedColor) : getDefaultBorderColor(),
+    text: ({ isSelected, selectedColor, inactiveColor }) =>
+      color(isSelected ? selectedColor : inactiveColor),
   },
 };
 
