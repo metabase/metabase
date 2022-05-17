@@ -4,29 +4,55 @@
 
 
 ## Duplicated rows
-Before you start, make sure you know the [schemas of your source tables or nested queries](#debugging-sql-logic).
+Before you start, make sure you know the [schemas of your source tables or nested queries][debugging-sql-logic].
 
 1. Are you missing a `GROUP BY` clause?
-2. Check if your source tables or upstream queries have duplicated rows.
+2. Check if your source tables or nested queries have duplicated rows. You'll need to repeat the steps below for every data source that contains duplicate rows.
     ```sql
-    -- Replace the column and table names in the query below.
-    -- If the row_count is greater than 1, you have duplicated rows in your results.
+    -- If the row_count is greater than 1,
+    -- you have duplicated rows in your results.
+
     SELECT <your_columns>, COUNT(*) AS row_count
     FROM <your_table_or_upstream_query>
     GROUP BY <your_columns>
     ORDER BY row_count DESC
     ;
     ```
-3. If your source tables or query results have duplicated rows:
-    - Treat your schema relationships as one-to-many or many-to-many.
-    - If the duplicates don’t seem intentional, let your database or Metabase admin know.
-4. Check the [table below](#join-types-and-schema-relationships) to see how your join type interacts with your schema relationships.
-5. Reduce one or both of your schemas to fit one of the situations where duplicates are not possible. See the code snippet below for some options.
+4. Check the [table below](#join-types-and-schema-relationships) to see how your join type interacts with your table relationships.
+5. Change your join type or reduce your tables to get a one-to-one relationship. For example:
     ```sql
-    # Put the "many" table(s) in a CTE.
+    -- Assume table_a is a one-to-many with table_b.
+
+    -- The query below will duplicate rows from table_b 
+    -- for every matching row in table_a.
+
+    SELECT <your_columns>
+    FROM table_a
+    LEFT JOIN table_b
+    ON key_a = key_b
+    ;
+
+    -- Option 1: 
+    -- Use an INNER JOIN.
+
+    -- The query below will get one row from table_b
+    -- for every matching row in table_a.
+
+    SELECT <your_columns>
+    FROM table_a
+    INNER JOIN table_b
+    ON key_a = key_b
+    ;
+
+    -- Option 2: 
+    -- Use a CTE to aggregate the rows in table_b 
+    -- so that it has a one-to-one relationship with table_a.
+
+    -- The query below will get aggregated values from table_b
+    -- for every matching row in table_a.
 
     WITH table_b_reduced AS (
-    SELECT <your_columns>
+    SELECT AGGREGATE_FUNCTION(<your_columns>)
     FROM table_b_reduced
     GROUP BY <your_columns>
     )
@@ -37,37 +63,47 @@ Before you start, make sure you know the [schemas of your source tables or neste
     ON key_a = key_b_reduced
     ;
     ```
-6. If you’re getting an error message, go to [Troubleshooting error messages][troubleshooting-error-messages].
-7. If you're still stuck, search or ask the [Metabase community][discourse].
 
-### Join types and schema relationships
-|  | A is one-to-one with B | A is one-to-many with B | A is many-to-many with B |
-| --- | --- | --- | --- |
-| A `INNER JOIN` B | No duplicate rows. | No duplicate rows. | You will get duplicated rows from A or B. |
-| A `LEFT JOIN` B | No duplicate rows. | You may get duplicated rows because of matches from table B. | You will get duplicated rows from A or B. |
-| B `LEFT JOIN` A | No duplicate rows. | You will get duplicated rows because of matches from table B. | You will get duplicated rows from A or B. |
-| A `OUTER JOIN` B | No duplicate rows. | You may get duplicated rows because of matches from table B. | You will get duplicated rows from A or B. |
-| A `FULL JOIN` B | No duplicate rows. | You will get duplicated rows because of matches from table B. | You will get duplicated rows from A or B. |
+### Join types and table relationships
 
+How [join types][join-types-learn] interact with [table-relationships][table-relationships-learn] to produce duplicates when matching rows are found.
+
+```
++----------------+------------------------+-----------------------------------+------------------------------+
+|                | A is one-to-one with B | A is one-to-many with B           | A is many-to-many with B     |
++----------------+------------------------+-----------------------------------+------------------------------+
+| A INNER JOIN B | No duplicate rows.     | No duplicate rows.                | Duplicated rows from A or B. |
++----------------+------------------------+-----------------------------------+------------------------------+
+| A LEFT JOIN B  | No duplicate rows.     | Possible duplicates from table B. | Duplicated rows from A or B. |
++----------------+------------------------+-----------------------------------+------------------------------+
+| B LEFT JOIN A  | No duplicate rows.     | Possible duplicates from table B. | Duplicated rows from A or B. |
++----------------+------------------------+-----------------------------------+------------------------------+
+| A OUTER JOIN B | No duplicate rows.     | Possible duplicates from table B. | Duplicated rows from A or B. |
++----------------+------------------------+-----------------------------------+------------------------------+
+| A FULL JOIN B  | No duplicate rows.     | Duplicate rows from table B.      | Duplicated rows from A or B. |
++----------------+------------------------+-----------------------------------+------------------------------+
+```
 
 **Explanation**
 
 Rows can get duplicated by accident when data gets refreshed in upstream systems or ETL jobs. 
 
-Some tables have rows that look like duplicates at a glance. This is common with tables that track state changes (e.g. an order status table that adds a row every time the status changes) may have have rows that look exactly the same, except for the timestamp of the row. It can be difficult to detect if you have tables with a lot of columns, so be sure to run through Step 2 above or ask your database admin if you're unsure.
+Some tables have rows that look like duplicates at a glance. This is common with tables that track state changes (e.g. an order status table that adds a row every time the status changes). State tables may have have rows that look exactly the same, except for the timestamp of the row. It can be difficult to detect if you have tables with a lot of columns, so be sure to run through Step 2 above or ask your database admin if you're unsure.
 
-If you’ve written your joins assuming a one-to-one relationship for tables that actually have a one-to-many or many-to-many relationship, you'll get duplicated rows for _each_ match in the "many" table.
+If you’ve written your joins assuming a [one-to-one][one-to-one] relationship for tables that actually have a [one-to-many][one-to-many] or [many-to-many][many-to-many] relationship, you'll get duplicated rows for _each_ match in the "many" table.
 
 **Further reading**
 
 - [Common reasons for unexpected query results][common-reasons-for-sql-logic-errors]
+- [Combining tables with joins][joins-learn]
+- [Common problems with SQL joins][common-join-problems]
 - [What is a schema?][schema-def]
-- [SQL join types][types-of-joins]
+- [Database table relationships][table-relationships-learn]
 
 
 ## Duplicated columns
 
-1. If you are joining data, check if your `SELECT` statement is including both primary and foreign key columns.
+1. If you are joining data, check if your `SELECT` statement is including both [primary key][primary-key-def] and [foreign key][foreign-key-def] columns.
 2. Check if your source tables or query results have duplicated columns by following step 1 under [Debugging SQL logic][debugging-sql-logic].
 3. Learn more about [common reasons for unexpected query results][common-reasons-for-sql-logic-errors].
 
@@ -80,21 +116,28 @@ If you’ve written your joins assuming a one-to-one relationship for tables tha
 - [My dates and times are wrong][troubleshooting-datetimes].
 - [My data isn't up to date][troubleshooting-database-syncs].
 
-If you’re not having one of the problems above, go to [Troubleshooting SQL logic][troubleshooting-sql-logic].
-
 
 ## Are you still stuck?
 
 Search or ask the [Metabase community][discourse].
 
 
+[common-join-problems]: /learn/sql-questions/sql-join-types#common-problems-with-sql-joins
 [common-reasons-for-sql-logic-errors]: ./sql-logic.md#common-reasons-for-unexpected-query-results
 [debugging-sql-logic]: ./sql-logic.html#debugging-sql-logic
 [discourse]: https://discourse.metabase.com/
+[foreign-key-def]: /glossary/foreign_key
+[joins-learn]: /learn/sql-questions/sql-joins.html
+[join-types-learn]: /learn/sql-questions/sql-join-types
+[many-to-many]: /learn/databases/table-relationships#many-to-many-relationship
+[one-to-many]: /learn/databases/table-relationships#one-to-many-relationship
+[one-to-one]: /learn/databases/table-relationships#one-to-one-relationship
+[primary-key-def]: /glossary/primary_key
 [schema-def]: /glossary/schema.html
+[table-relationships-learn]: /learn/databases/table-relationships
 [troubleshooting-aggregations]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
 [troubleshooting-database-syncs]: ./sync-fingerprint-scan.html 
 [troubleshooting-datetimes]: ./timezones.html
 [troubleshooting-error-messages]: ./error-message.html
 [troubleshooting-missing-data]: ./sql-logic-missing-data.html
-[types-of-joins]: /learn/sql-questions/sql-join-types.html
+[troubleshooting-sql-logic]: ./sql-logic.html
