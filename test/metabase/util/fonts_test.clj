@@ -1,6 +1,5 @@
 (ns metabase.util.fonts-test
   (:require [clojure.test :refer :all]
-            [metabase.util.files :as u.files]
             [metabase.util.fonts :as u.fonts]))
 
 (deftest normalize-font-dirname-test
