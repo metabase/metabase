@@ -52,7 +52,7 @@ const BulkFilterSelect = ({
 
   return (
     <TippyPopoverWithTrigger
-      placement="bottom"
+      sizeToFit
       renderTrigger={({ onClick }) => (
         <SelectFilterButton
           hasValue={filter != null}
