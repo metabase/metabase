@@ -12,8 +12,6 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(comment api.actions/keep-me)
-
 (defn- do-check-actions-enabled [database-id f]
   {:pre [(integer? database-id)]}
   (let [db-settings (db/select-one-field :settings Database :id database-id)
