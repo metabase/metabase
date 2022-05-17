@@ -19,8 +19,8 @@ export interface IDimensionFK {
 }
 
 export interface IDimensionOptionsProps {
-  name: string;
-  icon: string;
+  name?: string;
+  icon?: string;
   count: number;
   dimensions: Dimension[];
   fks: IDimensionFK[];

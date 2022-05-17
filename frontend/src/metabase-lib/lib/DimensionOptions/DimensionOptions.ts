@@ -7,18 +7,14 @@ import {
 } from "./types";
 
 export default class DimensionOptions implements IDimensionOptions {
-  name: string;
-  icon: string;
+  name?: string;
+  icon?: string;
   count: number = 0;
   dimensions: Dimension[] = [];
   fks: IDimensionFK[] = [];
 
-  constructor({ name, icon, count, dimensions, fks }: IDimensionOptionsProps) {
-    this.name = name;
-    this.icon = icon;
-    this.count = count;
-    this.dimensions = dimensions;
-    this.fks = fks;
+  constructor(properties: IDimensionOptionsProps) {
+    Object.assign(this, properties);
   }
 
   all(): Dimension[] {
