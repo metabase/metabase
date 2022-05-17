@@ -13,6 +13,7 @@ import Tooltip from "metabase/components/Tooltip";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import TextWidget from "metabase/components/TextWidget";
+import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import DateSingleWidget from "./widgets/DateSingleWidget";
@@ -93,8 +94,8 @@ class ParameterValueWidget extends Component {
       dashboard,
     );
     const isDashParamWithoutMappingText = t`This filter needs to be connected to a card.`;
-    const WidgetDefinition = getWidgetDefinition(parameter);
-    const { noPopover } = WidgetDefinition;
+    const { noPopover, format } = getWidgetDefinition(parameter);
+    const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
     if (noPopover) {
@@ -110,7 +111,13 @@ class ParameterValueWidget extends Component {
               [S.isEditing]: isEditing,
             })}
           >
-            {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
+            {showTypeIcon && (
+              <Icon
+                name={parameterTypeIcon}
+                className="flex-align-left mr1 flex-no-shrink"
+                size={14}
+              />
+            )}
             <Widget
               {...this.props}
               target={this.getTargetRef()}
@@ -149,9 +156,15 @@ class ParameterValueWidget extends Component {
                   "cursor-not-allowed": isDashParamWithoutMapping,
                 })}
               >
-                {showTypeIcon && <ParameterTypeIcon parameter={parameter} />}
+                {showTypeIcon && (
+                  <Icon
+                    name={parameterTypeIcon}
+                    className="flex-align-left mr1 flex-no-shrink"
+                    size={14}
+                  />
+                )}
                 <div className="mr1 text-nowrap">
-                  {hasValue ? WidgetDefinition.format(value) : placeholderText}
+                  {hasValue ? format(value) : placeholderText}
                 </div>
                 <WidgetStatusIcon
                   isFullscreen={isFullscreen}
@@ -259,81 +272,3 @@ function getWidgetDefinition(parameter) {
     return TextWidget;
   }
 }
-
-function ParameterTypeIcon({ parameter }) {
-  return (
-    <Icon
-      name={getParameterIconName(parameter)}
-      className="flex-align-left mr1 flex-no-shrink"
-      size={14}
-    />
-  );
-}
-
-ParameterTypeIcon.propTypes = {
-  parameter: PropTypes.object.isRequired,
-};
-
-function WidgetStatusIcon({
-  isFullscreen,
-  hasValue,
-  noReset,
-  noPopover,
-  isFocused,
-  setValue,
-}) {
-  if (isFullscreen) {
-    return null;
-  }
-
-  if (hasValue && !noReset) {
-    return (
-      <Icon
-        name="close"
-        className="flex-align-right cursor-pointer flex-no-shrink"
-        size={12}
-        onClick={e => {
-          if (hasValue) {
-            e.stopPropagation();
-            setValue(null);
-          }
-        }}
-      />
-    );
-  } else if (noPopover && isFocused) {
-    return (
-      <Icon
-        name="enter_or_return"
-        className="flex-align-right flex-no-shrink"
-        size={12}
-      />
-    );
-  } else if (noPopover) {
-    return (
-      <Icon
-        name="empty"
-        className="flex-align-right cursor-pointer flex-no-shrink"
-        size={12}
-      />
-    );
-  } else if (!noPopover) {
-    return (
-      <Icon
-        name="chevrondown"
-        className="flex-align-right flex-no-shrink"
-        size={12}
-      />
-    );
-  }
-
-  return null;
-}
-
-WidgetStatusIcon.propTypes = {
-  isFullscreen: PropTypes.bool.isRequired,
-  hasValue: PropTypes.bool.isRequired,
-  noReset: PropTypes.bool.isRequired,
-  noPopover: PropTypes.bool.isRequired,
-  isFocused: PropTypes.bool.isRequired,
-  setValue: PropTypes.func.isRequired,
-};
