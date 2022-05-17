@@ -137,10 +137,10 @@
         :when                         (and tag-type
                                            (or widget-type (not= tag-type :dimension)))]
     {:id      (:id tag)
-     :type    (or widget-type (cond (= tag-type :date)                                                  :date/single
+     :type    (or widget-type (cond (= tag-type :date)   :date/single
                                     (= tag-type :string) :string/=
                                     (= tag-type :number) :number/=
-                                    :else                                                               :category))
+                                    :else                :category))
      :target  (if (= tag-type :dimension)
                 [:dimension [:template-tag (:name tag)]]
                 [:variable  [:template-tag (:name tag)]])

@@ -1,11 +1,19 @@
-/* eslint-disable react/prop-types */
-import React, { Component } from "react";
-import PropTypes from "prop-types";
+import React from "react";
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-const SHORTCUTS = [
+type Shortcut = {
+  name: string;
+  operator: string | string[];
+  values: any[];
+};
+
+type ShortcutMap = {
+  [name: string]: Shortcut[];
+};
+
+const SHORTCUTS: Shortcut[] = [
   {
     name: t`Today`,
     operator: ["=", "<", ">"],
@@ -20,7 +28,7 @@ const SHORTCUTS = [
   { name: t`Past 30 days`, operator: "time-interval", values: [-30, "day"] },
 ];
 
-const RELATIVE_SHORTCUTS = {
+const RELATIVE_SHORTCUTS: ShortcutMap = {
   [t`Last`]: [
     { name: t`Week`, operator: "time-interval", values: ["last", "week"] },
     { name: t`Month`, operator: "time-interval", values: ["last", "month"] },
@@ -33,19 +41,21 @@ const RELATIVE_SHORTCUTS = {
   ],
 };
 
-export class PredefinedRelativeDatePicker extends Component {
-  constructor(props, context) {
-    super(props, context);
+type PredefinedRelativeDatePickerProps = {
+  filter: any[];
+  onFilterChange: (filter: any[]) => void;
+};
+
+export class PredefinedRelativeDatePicker extends React.Component<
+  PredefinedRelativeDatePickerProps
+> {
+  constructor(props: PredefinedRelativeDatePickerProps) {
+    super(props);
 
     _.bindAll(this, "isSelectedShortcut", "onSetShortcut");
   }
 
-  static propTypes = {
-    filter: PropTypes.array.isRequired,
-    onFilterChange: PropTypes.func.isRequired,
-  };
-
-  isSelectedShortcut(shortcut) {
+  isSelectedShortcut(shortcut: Shortcut) {
     const { filter } = this.props;
     return (
       (Array.isArray(shortcut.operator)
@@ -55,7 +65,7 @@ export class PredefinedRelativeDatePicker extends Component {
     );
   }
 
-  onSetShortcut(shortcut) {
+  onSetShortcut(shortcut: Shortcut) {
     const { filter } = this.props;
     let operator;
     if (Array.isArray(shortcut.operator)) {
@@ -81,6 +91,7 @@ export class PredefinedRelativeDatePicker extends Component {
             >
               <button
                 key={index}
+                aria-selected={this.isSelectedShortcut(s)}
                 className={cx(
                   "Button Button-normal Button--medium text-normal text-centered full",
                   { "Button--purple": this.isSelectedShortcut(s) },
@@ -113,6 +124,7 @@ export class PredefinedRelativeDatePicker extends Component {
               {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
                 <button
                   key={index}
+                  aria-selected={this.isSelectedShortcut(s)}
                   data-ui-tag={
                     "relative-date-shortcut-" +
                     sectionName.toLowerCase() +
@@ -139,8 +151,15 @@ export class PredefinedRelativeDatePicker extends Component {
   }
 }
 
+type FilterMap = {
+  [name: string]: {
+    name: string;
+    mapping: any[];
+  };
+};
+
 // HACK: easiest way to get working with RelativeDatePicker
-const FILTERS = {
+const FILTERS: FilterMap = {
   today: {
     name: t`Today`,
     mapping: ["=", null, ["relative-datetime", "current"]],
@@ -183,16 +202,19 @@ const FILTERS = {
   },
 };
 
-export default class DateRelativeWidget extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {};
+type DateRelativeWidgetProps = {
+  value: string;
+  setValue: (v?: string) => void;
+  onClose: () => void;
+};
+
+class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
+  constructor(props: DateRelativeWidgetProps) {
+    super(props);
   }
 
-  static propTypes = {};
-  static defaultProps = {};
-
-  static format = value => (FILTERS[value] ? FILTERS[value].name : "");
+  static format = (value: string) =>
+    FILTERS[value] ? FILTERS[value].name : "";
 
   render() {
     const { value, setValue, onClose } = this.props;
@@ -209,3 +231,5 @@ export default class DateRelativeWidget extends Component {
     );
   }
 }
+
+export default DateRelativeWidget;

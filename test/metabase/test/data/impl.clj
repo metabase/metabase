@@ -295,15 +295,15 @@
   (copy-db-fks! old-db-id new-db-id))
 
 (def ^:dynamic *db-is-temp-copy?*
-  "Whether the current test database is a temp copy created with the `with-temp-copy-of-db` macro."
+  "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
 
 (defn do-with-temp-copy-of-db
-  "Internal impl of `data/with-temp-copy-of-db`. Run `f` with a temporary Database that copies the details from the
-  standard test database, and syncs it."
+  "Internal impl of [[metabase.test/with-temp-copy-of-db]]. Run `f` with a temporary Database that copies the details
+  from the standard test database, and syncs it."
   [f]
-  (let [{old-db-id :id, :as old-db}                            (*get-db*)
-        {:keys [engine], original-name :name, :as original-db} (select-keys old-db [:details :engine :name])]
+  (let [{old-db-id :id, :as old-db} (*get-db*)
+        original-db                 (select-keys old-db [:details :engine :name])]
     (let [{new-db-id :id, :as new-db} (db/insert! Database original-db)]
       (try
         (copy-db-tables-and-fields! old-db-id new-db-id)
@@ -318,8 +318,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn resolve-dataset-definition
-  "Impl for `data/dataset` macro. Resolve a dataset definition (e.g. `test-data` or `sad-toucan-incidents` in a
-  namespace."
+  "Impl for [[metabase.test/dataset]] macro. Resolve a dataset definition (e.g. `test-data` or `sad-toucan-incidents` in
+  a namespace."
   [namespace-symb symb]
   @(or (ns-resolve namespace-symb symb)
        (do
@@ -329,8 +329,7 @@
                                   namespace-symb symb symb)))))
 
 (defn do-with-dataset
-  "Impl for `data/dataset` macro."
-  {:style/indent 1}
+  "Impl for [[metabase.test/dataset]] macro."
   [dataset-definition f]
   (let [dbdef             (tx/get-dataset-definition dataset-definition)
         get-db-for-driver (mdb.conn/memoize-for-application-db

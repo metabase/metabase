@@ -7,6 +7,7 @@ import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 
+import Button from "metabase/core/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
 import Link from "metabase/core/components/Link";
 import ViewButton from "metabase/query_builder/components/view/ViewButton";
@@ -14,6 +15,7 @@ import ViewButton from "metabase/query_builder/components/view/ViewButton";
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
 import RunButtonWithTooltip from "../RunButtonWithTooltip";
@@ -64,6 +66,7 @@ const viewTitleHeaderPropTypes = {
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
+  isWritebackEnabled: PropTypes.bool,
 
   runQuestionQuery: PropTypes.func,
   cancelQuery: PropTypes.func,
@@ -365,6 +368,7 @@ ViewTitleHeaderRightSide.propTypes = {
   isNativeEditorOpen: PropTypes.bool,
   isShowingFilterSidebar: PropTypes.bool,
   isShowingSummarySidebar: PropTypes.bool,
+  isWritebackEnabled: PropTypes.bool,
   isDirty: PropTypes.bool,
   isResultDirty: PropTypes.bool,
   isActionListVisible: PropTypes.bool,
@@ -395,6 +399,7 @@ function ViewTitleHeaderRightSide(props) {
     isNativeEditorOpen,
     isShowingFilterSidebar,
     isShowingSummarySidebar,
+    isWritebackEnabled,
     isDirty,
     isResultDirty,
     isActionListVisible,
@@ -432,6 +437,8 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
+  const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
+
   return (
     <div
       className="ml-auto flex align-center"
@@ -464,14 +471,23 @@ function ViewTitleHeaderRightSide(props) {
           onCollapse={onCollapseFilters}
         />
       )}
+      {hasNewRowButton && (
+        <Button
+          primary
+          icon="add"
+          onClick={() => onOpenModal(MODAL_TYPES.INSERT_ROW)}
+          ml={1}
+        >
+          {t`New row`}
+        </Button>
+      )}
       {QuestionFilterWidget.shouldRender(props) && (
         <QuestionFilterWidget
-          className="hide sm-show"
-          ml={1}
+          className="hide sm-show ml1"
           isShowingFilterSidebar={isShowingFilterSidebar}
           onAddFilter={onAddFilter}
+          onOpenModal={onOpenModal}
           onCloseFilter={onCloseFilter}
-          data-metabase-event={`View Mode; Open Filter Widget`}
         />
       )}
       {QuestionSummarizeWidget.shouldRender(props) && (

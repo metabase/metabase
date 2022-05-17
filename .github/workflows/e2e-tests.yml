@@ -64,6 +64,7 @@ jobs:
           - "dashboard"
           - "dashboard-filters"
           - "downloads"
+          - "embedding"
           - "joins"
     services:
       maildev:

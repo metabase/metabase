@@ -28,19 +28,19 @@ msgstr "Prozkoumat tyto data"
 msgid "Select a database type"
 msgstr "Zvolte typ databáze"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:241
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:239
 #: frontend/src/metabase/account/password/components/UserPasswordForm/UserPasswordForm.jsx:35
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:150
 #: frontend/src/metabase/admin/datamodel/components/FieldRemapping.jsx:461
 #: frontend/src/metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal.jsx:145
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:181
 #: frontend/src/metabase/components/ActionButton.jsx:30
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:8
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:163
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:170
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:149
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:47
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:75
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:429
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:437
 #: frontend/src/metabase/reference/components/EditHeader.jsx:53
 #: frontend/src/metabase/reference/components/EditHeader.jsx:68
 msgid "Save"
@@ -108,7 +108,7 @@ msgid "Saving..."
 msgstr "Ukládání..."
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:41
-#: frontend/src/metabase/components/form/FormMessage.jsx:7
+#: frontend/src/metabase/components/form/FormMessage/FormMessage.tsx:40
 msgid "Server error encountered"
 msgstr "Vyskytla se chyba serveru"
 
@@ -140,7 +140,7 @@ msgstr "v tomto boxu:"
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationDeleteModal/AuditNotificationDeleteModal.jsx:40
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:68
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/UnsubscribeUserForm/UnsubscribeUserForm.jsx:32
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:234
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:232
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:85
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:67
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:50
@@ -150,11 +150,11 @@ msgstr "v tomto boxu:"
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:46
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:49
 #: frontend/src/metabase/admin/permissions/hooks/use-leave-confirmation.jsx:49
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:59
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:76
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:91
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:131
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:401
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:74
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:91
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:111
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:151
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:405
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:180
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:236
 #: frontend/src/metabase/admin/settings/slack/components/SlackDeleteModal/SlackDeleteModal.tsx:26
@@ -169,12 +169,12 @@ msgstr "v tomto boxu:"
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:143
 #: frontend/src/metabase/hooks/use-confirmation.tsx:46
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:228
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:191
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:366
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:184
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:359
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditor.jsx:428
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:41
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:39
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:109
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:110
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 #: frontend/src/metabase/reference/components/EditHeader.jsx:33
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:58
@@ -182,7 +182,7 @@ msgstr "v tomto boxu:"
 #: frontend/src/metabase/timelines/common/components/DeleteTimelineModal/DeleteTimelineModal.tsx:32
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:58
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:48
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:353
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:356
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:471
 msgid "Cancel"
 msgstr "Storno"
@@ -200,18 +200,18 @@ msgid "Delete"
 msgstr "Smazat"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:56
-#: frontend/src/metabase/admin/app/reducers.ts:20
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:113
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:128
+#: frontend/src/metabase/admin/app/reducers.ts:22
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:129
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:130
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx:27
-#: frontend/src/metabase/admin/routes.jsx:72
+#: frontend/src/metabase/admin/routes.jsx:102
 #: frontend/src/metabase/home/containers/SearchApp.jsx:42
 #: frontend/src/metabase/reference/databases/DatabaseSidebar.jsx:17
 #: frontend/src/metabase/reference/databases/TableSidebar.jsx:20
 msgid "Databases"
 msgstr "Databáze"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:114
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:130
 msgid "Add Database"
 msgstr "Přidat databázi"
 
@@ -224,7 +224,7 @@ msgid "Scheduling"
 msgstr "Plánování"
 
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:182
-#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:134
+#: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:150
 #: frontend/src/metabase/admin/datamodel/components/MetricForm.jsx:63
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm.jsx:81
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsEditBar.jsx:35
@@ -233,24 +233,24 @@ msgstr "Plánování"
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:219
 #: frontend/src/metabase/admin/settings/slack/components/SlackSetupForm/SlackSetupForm.tsx:26
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:221
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:368
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:361
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetEditor.jsx:433
 #: frontend/src/metabase/reference/components/RevisionMessageModal.jsx:53
 msgid "Save changes"
 msgstr "Uložit změny"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:37
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:43
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:31
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:31
 msgid "Actions"
 msgstr "Akce"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:48
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:54
 msgid "Sync database schema now"
 msgstr "Synchronizovat databázové schéma"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:49
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:59
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:55
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:65
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:16
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:24
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:97
@@ -258,49 +258,49 @@ msgstr "Synchronizovat databázové schéma"
 msgid "Starting…"
 msgstr "Spouštění..."
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:50
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:56
 msgid "Failed to sync"
 msgstr "Synchronizace selhala"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:51
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:57
 msgid "Sync triggered!"
 msgstr "Synchronizace zahájena!"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:58
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:64
 msgid "Re-scan field values now"
 msgstr "Prohledat hodnoty políček"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:60
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:66
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:98
 msgid "Failed to start scan"
 msgstr "Nelze zahájit prohledávaní"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:61
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:67
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:18
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:99
 msgid "Scan triggered!"
 msgstr "Prohledávání zahájeno!"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:68
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:411
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:99
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:404
 msgid "Danger Zone"
 msgstr "Na vlastní nebezpečí!"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:75
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:78
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:106
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:109
 msgid "Discard saved field values"
 msgstr "Smazat nalezené hodnoty políček"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:93
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:124
 msgid "Remove this database"
 msgstr "Odstranit tuto databázi"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:126
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:128
 msgid "Add database"
 msgstr "Přidat databázi"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:139
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:141
 #: frontend/src/metabase/admin/datamodel/containers/MetricListApp.jsx:29
 #: frontend/src/metabase/admin/datamodel/containers/SegmentListApp.jsx:29
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:78
@@ -308,18 +308,18 @@ msgstr "Přidat databázi"
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:220
 #: frontend/src/metabase/admin/settings/components/widgets/PublicLinksListing.jsx:67
 #: frontend/src/metabase/collections/components/BaseItemsTable.jsx:154
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:146
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:153
 #: frontend/src/metabase/entities/collections/forms.js:22
 #: frontend/src/metabase/entities/dashboards/forms.js:8
 #: frontend/src/metabase/entities/questions/forms.js:6
 #: frontend/src/metabase/entities/timelines/forms.js:9
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:480
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:512
 #: frontend/src/metabase/visualizations/lib/settings/column.js:324
 #: frontend/src/metabase/visualizations/visualizations/Scalar.jsx:83
 msgid "Name"
 msgstr "Jméno"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:140
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:142
 msgid "Engine"
 msgstr "Typ"
 
@@ -327,7 +327,7 @@ msgstr "Typ"
 msgid "Deleting..."
 msgstr "Odstraňování..."
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:180
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:182
 msgid "Loading ..."
 msgstr "Načítání..."
 
@@ -348,7 +348,7 @@ msgid "Successfully saved!"
 msgstr "Úspěšně uloženo!"
 
 #: frontend/src/metabase/admin/datamodel/components/ObjectActionSelect.jsx:48
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:460
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:464
 #: frontend/src/metabase/query_builder/components/AlertListPopoverContent.jsx:185
 #: frontend/src/metabase/query_builder/components/template_tags/snippet-sidebar/SnippetRow.jsx:88
 #: frontend/src/metabase/reference/components/EditableReferenceHeader.jsx:84
@@ -383,6 +383,8 @@ msgstr "Odebrat"
 msgid "Retiring…"
 msgstr "Odebírání..."
 
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:80
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:89
 #: frontend/src/metabase/admin/datamodel/components/ObjectRetireModal.jsx:60
 #: frontend/src/metabase/components/form/CustomForm.jsx:221
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:94
@@ -396,7 +398,7 @@ msgid "Success"
 msgstr "Hotovo"
 
 #: frontend/src/metabase/admin/datamodel/components/PartialQueryBuilder.jsx:131
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:460
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:464
 #: frontend/src/metabase/public/components/widgets/AdvancedEmbedPane.jsx:72
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:191
 #: frontend/src/metabase/query_builder/components/view/QuestionPreviewToggle.jsx:16
@@ -419,7 +421,7 @@ msgstr "Obecný typ"
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:201
 #: frontend/src/metabase/lib/core.js:324
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:66
-#: frontend/src/metabase/reference/components/Field.jsx:54
+#: frontend/src/metabase/reference/components/Field.jsx:58
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:36
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:299
 #: src/metabase/pulse/render/body.clj
@@ -433,13 +435,13 @@ msgstr "Vybrat typ"
 
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnItem/ColumnItem.jsx:125
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/FKTargetPicker.tsx:90
-#: frontend/src/metabase/reference/components/Field.jsx:91
+#: frontend/src/metabase/reference/components/Field.jsx:95
 msgid "Select a target"
 msgstr "Vybrat cíl"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTable/MetadataTable.tsx:137
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:852
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:171
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:173
 #: frontend/src/metabase/query_builder/components/notebook/steps/FieldsPicker.jsx:19
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:86
 #: frontend/src/metabase/visualizations/visualizations/Table.jsx:98
@@ -448,7 +450,7 @@ msgstr "Vybrat cíl"
 msgid "Columns"
 msgstr "Sloupce"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:477
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:475
 #: frontend/src/metabase/admin/datamodel/components/database/ColumnsList/ColumnsList.jsx:107
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataSchema/MetadataSchema.tsx:54
 msgid "Column"
@@ -868,15 +870,15 @@ msgstr "Vysvětlete uživatelům méně zřejmé vlastnosti segmentu."
 msgid "This will show up in the revision history for this segment to help everyone remember why things changed"
 msgstr "Toto bude vidět v historii revizí segmentu, aby každý věděl, proč došlo ke změně."
 
-#: frontend/src/metabase/admin/app/reducers.ts:15
+#: frontend/src/metabase/admin/app/reducers.ts:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:76
-#: frontend/src/metabase/admin/routes.jsx:162
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:237
+#: frontend/src/metabase/admin/routes.jsx:192
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:252
 #: frontend/src/metabase/nav/components/ProfileLink.jsx:107
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:19
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/DatasetFieldMetadataSidebar.jsx:131
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorSidebar.jsx:76
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:255
 msgid "Settings"
 msgstr "Nastavení"
 
@@ -906,7 +908,7 @@ msgid "Last name"
 msgstr "Příjmení"
 
 #: frontend/src/metabase/entities/users/forms.js:127
-#: frontend/src/metabase/entities/users/forms.js:166
+#: frontend/src/metabase/entities/users/forms.js:167
 msgid "Email address"
 msgstr "E-mail"
 
@@ -938,7 +940,7 @@ msgstr "Členové"
 
 #: frontend/src/metabase/admin/people/components/GroupMembersTable/GroupMembersTable.tsx:80
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:185
-#: frontend/src/metabase/admin/settings/selectors.js:139
+#: frontend/src/metabase/admin/settings/selectors.js:144
 #: frontend/src/metabase/entities/users/forms.js:28
 #: frontend/src/metabase/entities/users/forms.js:104
 #: frontend/src/metabase/lib/core.js:165
@@ -953,7 +955,7 @@ msgstr "Skupina je dobrá tak, jako jsou její členové."
 
 #: enterprise/frontend/src/metabase-enterprise/group_managers/components/UserTypeCell/UserTypeCell.tsx:17
 #: frontend/src/metabase/admin/people/components/GroupSummary.jsx:16
-#: frontend/src/metabase/admin/routes.jsx:67
+#: frontend/src/metabase/admin/routes.jsx:97
 msgid "Admin"
 msgstr "Správa Metabase"
 
@@ -994,8 +996,8 @@ msgstr "Opravdu? Všichni členové skupiny ztratí jakákoliv oprávnění, kte
 "Toto nelze odvolat."
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/constants.ts:5
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:28
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:17
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:30
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:19
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:72
 #: frontend/src/metabase/admin/permissions/constants/data-permissions.js:29
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:44
@@ -1004,9 +1006,9 @@ msgid "Yes"
 msgstr "Ano"
 
 #: enterprise/frontend/src/metabase-enterprise/application_permissions/constants.ts:11
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:22
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:11
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:23
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:24
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/details-permission.ts:13
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:40
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:75
 #: frontend/src/metabase/admin/permissions/constants/data-permissions.js:23
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:44
@@ -1021,6 +1023,8 @@ msgstr "Upravit jméno"
 msgid "Remove Group"
 msgstr "Odebrat skupinu"
 
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:81
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:90
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:141
 #: frontend/src/metabase/admin/people/containers/UserPasswordResetModal.jsx:43
 #: frontend/src/metabase/admin/people/containers/UserSuccessModal.jsx:42
@@ -1029,17 +1033,17 @@ msgstr "Odebrat skupinu"
 #: frontend/src/metabase/dashboard/components/AddSeriesModal/AddSeriesModal.jsx:210
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:664
 #: frontend/src/metabase/dashboard/components/Sidebar.jsx:44
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:193
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:186
 #: frontend/src/metabase/query_builder/components/ExpressionPopover.jsx:87
 #: frontend/src/metabase/query_builder/components/SidebarContent/SidebarContent.tsx:31
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:123
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:359
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:362
 msgid "Done"
 msgstr "Hotovo"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:76
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:125
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:219
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:271
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:274
 msgid "Group name"
 msgstr "Název skupiny"
 
@@ -1049,7 +1053,7 @@ msgstr "Název skupiny"
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:193
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:22
 #: frontend/src/metabase/admin/permissions/components/EntityViewSwitch/EntityViewSwitch.tsx:23
-#: frontend/src/metabase/admin/routes.jsx:117
+#: frontend/src/metabase/admin/routes.jsx:147
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:149
 #: frontend/src/metabase/entities/users/forms.js:76
 msgid "Groups"
@@ -1080,9 +1084,9 @@ msgid "Deactivate"
 msgstr "Deaktivovat"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:52
-#: frontend/src/metabase/admin/app/reducers.ts:30
+#: frontend/src/metabase/admin/app/reducers.ts:32
 #: frontend/src/metabase/admin/people/containers/AdminPeopleApp.jsx:21
-#: frontend/src/metabase/admin/routes.jsx:113
+#: frontend/src/metabase/admin/routes.jsx:143
 msgid "People"
 msgstr "Lidé"
 
@@ -1249,7 +1253,7 @@ msgstr " bude nyní moci "
 msgid " native queries for "
 msgstr " nativní dotazy pro "
 
-#: frontend/src/metabase/admin/app/reducers.ts:35
+#: frontend/src/metabase/admin/app/reducers.ts:37
 #: frontend/src/metabase/admin/permissions/routes.jsx:17
 msgid "Permissions"
 msgstr "Oprávnění"
@@ -1302,40 +1306,40 @@ msgstr "Každý uživatel Metabase patří do skupiny Všichni uživatelé. Poku
 msgid "MetaBot is Metabase's Slack bot. You can choose what it has access to here."
 msgstr "MetaBot je náš bot pro Slack. Zde můžete nastavit, k čemu má přístup."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:28
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:41
 msgid "The \"{0}\" group may have access to a different set of {1} than this group, which may give this group additional access to some {2}."
 msgstr "Skupina \"{0}\" může mít přístup k jiné množině {1} než má tato skupina, což může dát této skupině další přístup k některým {2}"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:31
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:14
 msgid "The \"{0}\" group has a higher level of access than this, which will override this setting. You should limit or revoke the \"{1}\" group's access to this item."
 msgstr "Skupina \"{0}\" má vyšší úroveň přístupu než to, čím toto nastavení přepíšete. Měli by jste omezit nebo zrušit přístup skupiny \"{1}\" k této položce."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:53
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:68
 msgid "Limit"
 msgstr "Omezit"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:53
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:68
 msgid "Revoke"
 msgstr "Odvolat"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:55
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:70
 msgid "access even though \"{0}\" has greater access?"
 msgstr "přístup, ikdyž \"{0}\" má vyšší přístup?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:58
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:73
 msgid "Limit access"
 msgstr "Omezit přístup"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:58
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:130
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:73
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:150
 msgid "Revoke access"
 msgstr "Odvolat přístup"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:74
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:89
 msgid "Change access to this database to limited?"
 msgstr "Změnit přístup k této databázi na omezený?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:75
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:90
 msgid "Change"
 msgstr "Změnit"
 
@@ -1343,19 +1347,19 @@ msgstr "Změnit"
 msgid "Allow Raw Query Writing?"
 msgstr "Povolit přímé psaní dotazů?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:89
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:109
 msgid "This will also change this group's data access to Unrestricted for this database."
 msgstr "Toto změní i přístup této skupiny k datům databáze na Neomezený."
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:90
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:110
 msgid "Allow"
 msgstr "Povolit"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:128
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:148
 msgid "Revoke access to all tables?"
 msgstr "Chcete zrušit přístup ke všem tabulkám?"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:129
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:149
 msgid "This will also revoke this group's access to raw queries for this database."
 msgstr "Tímto se také zruší přístup této skupiny k přímým dotazům pro tuto databázi."
 
@@ -1411,8 +1415,8 @@ msgstr "SQL dotazy"
 msgid "View schemas"
 msgstr "Zobrazit schémata"
 
-#: frontend/src/metabase/admin/app/reducers.ts:25
-#: frontend/src/metabase/admin/routes.jsx:81
+#: frontend/src/metabase/admin/app/reducers.ts:27
+#: frontend/src/metabase/admin/routes.jsx:111
 msgid "Data Model"
 msgstr "Datový model"
 
@@ -1443,7 +1447,7 @@ msgstr "Umožní uživatelům ve vašem LDAP adresáři přihlásit se pomocí L
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:20
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:62
-#: frontend/src/metabase/admin/settings/selectors.js:187
+#: frontend/src/metabase/admin/settings/selectors.js:192
 msgid "That's not a valid email address"
 msgstr "Toto není platná e-mailová adresa."
 
@@ -1482,7 +1486,7 @@ msgstr "Vymazat"
 #: enterprise/frontend/src/metabase-enterprise/auth/components/SettingsSAMLForm.jsx:58
 #: frontend/src/metabase/admin/settings/components/SettingsGoogleForm.jsx:45
 #: frontend/src/metabase/admin/settings/components/SettingsLdapForm.jsx:17
-#: frontend/src/metabase/admin/settings/selectors.js:198
+#: frontend/src/metabase/admin/settings/selectors.js:203
 msgid "Authentication"
 msgstr "Autentifikace"
 
@@ -1560,7 +1564,7 @@ msgstr "Metabase {0} je k dispozici. Provozujete {1}"
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:86
 #: frontend/src/metabase/components/form/StandardForm.jsx:20
 #: frontend/src/metabase/dashboard/components/DashboardDetailsModal.jsx:74
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:123
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:124
 msgid "Update"
 msgstr "Aktualizovat"
 
@@ -1586,17 +1590,17 @@ msgstr "Smazat mapu"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:240
 #: frontend/src/metabase/admin/settings/components/widgets/GroupMappingsWidget.jsx:284
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:380
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:384
 #: frontend/src/metabase/dashboard/components/RemoveFromDashboardModal.jsx:34
 #: frontend/src/metabase/parameters/components/ParameterSidebar.jsx:91
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:134
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:135
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:167
 msgid "Remove"
 msgstr "Odstranit"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:272
 #: frontend/src/metabase/dashboard/components/DashCardCardParameterMapper.jsx:130
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:193
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:195
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:146
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:208
 msgid "Select…"
@@ -1631,6 +1635,7 @@ msgid "Like https://my-mb-server.com/maps/my-map.json"
 msgstr "Například https://muj-server.cz/moje-mapa.json"
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:355
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:76
 msgid "Refresh"
 msgstr "Obnovit"
 
@@ -1646,31 +1651,31 @@ msgstr "Která položka určuje identifikátor regionu?"
 msgid "Which property specifies the region’s display name?"
 msgstr "Která položka určuje zobrazovaný název regionu?"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:391
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:395
 msgid "Load a GeoJSON file to see a preview"
 msgstr "Pro zobrazení náhledu, načtěte GeoJSON soubor"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:413
 msgid "Save map"
 msgstr "Uložit mapu"
 
-#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:409
+#: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:413
 msgid "Add map"
 msgstr "Přidat mapu"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:9
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:11
 msgid "Using embedding"
 msgstr "Používáno vkládání"
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:11
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:13
 msgid "By enabling embedding you're agreeing to the embedding license located at"
 msgstr "Povolením vkládání souhlasíte se související licencí umístěné na "
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:21
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:23
 msgid "In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the \"Powered by Metabase\" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature."
 msgstr "Jednoduše, pokud vkládáte grafy nebo nástěnky z Metabase do vaší aplikace, tato nemusí splňovat podmínky licence AGPL, pokud ve vložených částech ponecháte viditelné logo Metabase a nápis \"Powered by Metabase\". Přesto byste si měli text licence přečíst, abyste věděli, s čím souhlasíte."
 
-#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:34
+#: frontend/src/metabase/admin/settings/components/widgets/EmbeddingLegalese.jsx:41
 msgid "Enable"
 msgstr "Zapnout"
 
@@ -1781,46 +1786,46 @@ msgstr "Znovu vytvořit klíč"
 msgid "Generate Key"
 msgstr "Vytvořit klíč"
 
-#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:12
+#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:15
 msgid "Enabled"
 msgstr "Povoleno"
 
-#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:12
-#: frontend/src/metabase/admin/settings/selectors.js:109
+#: frontend/src/metabase/admin/settings/components/widgets/SettingToggle.jsx:15
+#: frontend/src/metabase/admin/settings/selectors.js:114
 #: frontend/src/metabase/public/components/widgets/AdvancedSettingsPane.jsx:82
 msgid "Disabled"
 msgstr "Zakázáno"
 
-#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:127
+#: frontend/src/metabase/admin/settings/containers/SettingsEditorApp.jsx:135
 msgid "Unknown setting {0}"
 msgstr "Neznámé nastavení {0}"
 
-#: frontend/src/metabase/admin/settings/selectors.js:54
+#: frontend/src/metabase/admin/settings/selectors.js:59
 msgid "Setup"
 msgstr "Nastavení"
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:191
-#: frontend/src/metabase/admin/settings/selectors.js:61
+#: frontend/src/metabase/admin/settings/selectors.js:66
 msgid "General"
 msgstr "Obecné"
 
-#: frontend/src/metabase/admin/settings/selectors.js:66
+#: frontend/src/metabase/admin/settings/selectors.js:71
 msgid "Site Name"
 msgstr "Jméno stránky"
 
-#: frontend/src/metabase/admin/settings/selectors.js:71
+#: frontend/src/metabase/admin/settings/selectors.js:76
 msgid "Site URL"
 msgstr "URL stránky"
 
-#: frontend/src/metabase/admin/settings/selectors.js:85
+#: frontend/src/metabase/admin/settings/selectors.js:90
 msgid "Email Address for Help Requests"
 msgstr "E-mailová adresa pro požadavky o pomoc"
 
-#: frontend/src/metabase/admin/settings/selectors.js:242
+#: frontend/src/metabase/admin/settings/selectors.js:247
 msgid "Report Timezone"
 msgstr "Časové pásmo reportu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:245
+#: frontend/src/metabase/admin/settings/selectors.js:250
 msgid "Database Default"
 msgstr "Výchozí z databáze"
 
@@ -1828,7 +1833,7 @@ msgstr "Výchozí z databáze"
 msgid "Select a timezone"
 msgstr "Zvolit časovou zónu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:248
+#: frontend/src/metabase/admin/settings/selectors.js:253
 msgid "Not all databases support timezones, in which case this setting won't take effect."
 msgstr "Ne všechny databáze podporují časová pásma. V takovém případě se toto nastavení neprojeví."
 
@@ -1840,11 +1845,11 @@ msgstr "Jazyk"
 msgid "Select a language"
 msgstr "Zvolit jazyk"
 
-#: frontend/src/metabase/admin/settings/selectors.js:91
+#: frontend/src/metabase/admin/settings/selectors.js:96
 msgid "Anonymous Tracking"
 msgstr "Anonymní sledování"
 
-#: frontend/src/metabase/admin/settings/selectors.js:102
+#: frontend/src/metabase/admin/settings/selectors.js:107
 msgid "Friendly Table and Field Names"
 msgstr "Snadno pochopitelné názvy tabulek a polí"
 
@@ -1852,44 +1857,44 @@ msgstr "Snadno pochopitelné názvy tabulek a polí"
 msgid "Only replace underscores and dashes with spaces"
 msgstr "Pouze podtržítka a pomlčky nahradit za mezery"
 
-#: frontend/src/metabase/admin/settings/selectors.js:115
+#: frontend/src/metabase/admin/settings/selectors.js:120
 msgid "Enable Nested Queries"
 msgstr "Povolit vnořené dotazy"
 
-#: frontend/src/metabase/admin/settings/selectors.js:126
+#: frontend/src/metabase/admin/settings/selectors.js:131
 msgid "Updates"
 msgstr "Aktualizace"
 
-#: frontend/src/metabase/admin/settings/selectors.js:132
+#: frontend/src/metabase/admin/settings/selectors.js:137
 msgid "Check for updates"
 msgstr "Kontrola aktualizací"
 
-#: frontend/src/metabase/admin/settings/selectors.js:145
+#: frontend/src/metabase/admin/settings/selectors.js:150
 msgid "SMTP Host"
 msgstr "SMTP server"
 
-#: frontend/src/metabase/admin/settings/selectors.js:153
+#: frontend/src/metabase/admin/settings/selectors.js:158
 msgid "SMTP Port"
 msgstr "SMTP port"
 
-#: frontend/src/metabase/admin/settings/selectors.js:157
+#: frontend/src/metabase/admin/settings/selectors.js:162
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:50
 msgid "That's not a valid port number"
 msgstr "Toto není validní číslo portu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:161
+#: frontend/src/metabase/admin/settings/selectors.js:166
 msgid "SMTP Security"
 msgstr "Zabezpečení SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:169
+#: frontend/src/metabase/admin/settings/selectors.js:174
 msgid "SMTP Username"
 msgstr "Přihlašovací jméno SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:176
+#: frontend/src/metabase/admin/settings/selectors.js:181
 msgid "SMTP Password"
 msgstr "Heslo SMTP"
 
-#: frontend/src/metabase/admin/settings/selectors.js:183
+#: frontend/src/metabase/admin/settings/selectors.js:188
 msgid "From Address"
 msgstr "Adresa Od"
 
@@ -1975,63 +1980,63 @@ msgstr "Synchronizovat členství ve skupinách"
 msgid "Group search base"
 msgstr "Základna pro hledání skupin"
 
-#: frontend/src/metabase/admin/settings/selectors.js:203
+#: frontend/src/metabase/admin/settings/selectors.js:208
 msgid "Maps"
 msgstr "Mapy"
 
-#: frontend/src/metabase/admin/settings/selectors.js:208
+#: frontend/src/metabase/admin/settings/selectors.js:213
 msgid "Map tile server URL"
 msgstr "Namapujte pole z URL serveru"
 
-#: frontend/src/metabase/admin/settings/selectors.js:209
+#: frontend/src/metabase/admin/settings/selectors.js:214
 msgid "Metabase uses OpenStreetMaps by default."
 msgstr "Metabase používá ve výchozím nastavení OpenStreetMaps."
 
-#: frontend/src/metabase/admin/settings/selectors.js:214
+#: frontend/src/metabase/admin/settings/selectors.js:219
 msgid "Custom Maps"
 msgstr "Vlastní mapy"
 
-#: frontend/src/metabase/admin/settings/selectors.js:215
+#: frontend/src/metabase/admin/settings/selectors.js:220
 msgid "Add your own GeoJSON files to enable different region map visualizations"
 msgstr "Přidejte vlastní soubory GeoJSON, abyste povolili různé vizualizace map regionů"
 
-#: frontend/src/metabase/admin/settings/selectors.js:277
+#: frontend/src/metabase/admin/settings/selectors.js:282
 msgid "Public Sharing"
 msgstr "Veřejné sdílení"
 
-#: frontend/src/metabase/admin/settings/selectors.js:282
+#: frontend/src/metabase/admin/settings/selectors.js:287
 msgid "Enable Public Sharing"
 msgstr "Povolit veřejné sdílení"
 
-#: frontend/src/metabase/admin/settings/selectors.js:287
+#: frontend/src/metabase/admin/settings/selectors.js:292
 msgid "Shared Dashboards"
 msgstr "Sdílené nástěnky"
 
-#: frontend/src/metabase/admin/settings/selectors.js:293
+#: frontend/src/metabase/admin/settings/selectors.js:298
 msgid "Shared Questions"
 msgstr "Sdílené dotazy"
 
-#: frontend/src/metabase/admin/settings/selectors.js:300
+#: frontend/src/metabase/admin/settings/selectors.js:305
 msgid "Embedding in other Applications"
 msgstr "Vkládání do ostatních aplikací"
 
-#: frontend/src/metabase/admin/settings/selectors.js:327
+#: frontend/src/metabase/admin/settings/selectors.js:332
 msgid "Enable Embedding Metabase in other Applications"
 msgstr "Povolit vkládání do ostatních aplikací"
 
-#: frontend/src/metabase/admin/settings/selectors.js:338
+#: frontend/src/metabase/admin/settings/selectors.js:354
 msgid "Embedding secret key"
 msgstr "Klíč pro vkládání"
 
-#: frontend/src/metabase/admin/settings/selectors.js:344
+#: frontend/src/metabase/admin/settings/selectors.js:360
 msgid "Embedded Dashboards"
 msgstr "Vložené nástěnky"
 
-#: frontend/src/metabase/admin/settings/selectors.js:350
+#: frontend/src/metabase/admin/settings/selectors.js:366
 msgid "Embedded Questions"
 msgstr "Vložené dotazy"
 
-#: frontend/src/metabase/admin/settings/selectors.js:368
+#: frontend/src/metabase/admin/settings/selectors.js:385
 #: frontend/src/metabase/entities/questions/forms.js:35
 msgid "Caching"
 msgstr "Mezipaměť"
@@ -2040,15 +2045,15 @@ msgstr "Mezipaměť"
 msgid "Enable Caching"
 msgstr "Povolit mezipaměť"
 
-#: frontend/src/metabase/admin/settings/selectors.js:378
+#: frontend/src/metabase/admin/settings/selectors.js:395
 msgid "Minimum Query Duration"
 msgstr "Minimální trvání dotazu"
 
-#: frontend/src/metabase/admin/settings/selectors.js:385
+#: frontend/src/metabase/admin/settings/selectors.js:402
 msgid "Cache Time-To-Live (TTL) multiplier"
 msgstr "Násobitel platnosti mezipaměti"
 
-#: frontend/src/metabase/admin/settings/selectors.js:392
+#: frontend/src/metabase/admin/settings/selectors.js:409
 msgid "Max Cache Entry Size"
 msgstr "Maximální velikost mezipaměti"
 
@@ -2099,7 +2104,7 @@ msgstr "Kontaktujte správce pro reset hesla."
 msgid "Forgot password"
 msgstr "Zapomenuté heslo"
 
-#: frontend/src/metabase/entities/users/forms.js:167
+#: frontend/src/metabase/entities/users/forms.js:168
 msgid "The email you use for your Metabase account"
 msgstr "E-mail vašeho Metabase účtu"
 
@@ -2218,7 +2223,7 @@ msgstr "Nástěnky, sbírky a pulzy v této kolekci budou také archivovány."
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:233
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:238
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:239
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:136
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:171
 #: frontend/src/metabase/query_builder/components/template_tags/SnippetModal.jsx:59
 #: frontend/src/metabase/routes.jsx:213
 msgid "Archive"
@@ -2267,31 +2272,31 @@ msgstr "Uloženo!"
 msgid "Saving failed."
 msgstr "Ukládání selhalo."
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Su"
 msgstr "Ne"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Mo"
 msgstr "Po"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Tu"
 msgstr "Út"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "We"
 msgstr "St"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Th"
 msgstr "Čt"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Fr"
 msgstr "Pá"
 
-#: frontend/src/metabase/components/Calendar.tsx:133
+#: frontend/src/metabase/components/Calendar.tsx:134
 msgid "Sa"
 msgstr "So"
 
@@ -2347,7 +2352,7 @@ msgstr "Přetáhněte něco sem a připnete to nahoru."
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:20
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:78
 #: frontend/src/metabase/home/containers/SearchApp.jsx:37
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:225
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:227
 msgid "Collections"
 msgstr "Sbírky"
 
@@ -2376,7 +2381,7 @@ msgstr "Přesunout \"{0}\"?"
 #: frontend/src/metabase/components/EntityMenu.info.js:87
 #: frontend/src/metabase/containers/CollectionMoveModal.jsx:69
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:332
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:98
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:113
 #: frontend/src/metabase/timelines/common/components/MoveEventModal/MoveEventModal.tsx:60
 #: frontend/src/metabase/timelines/common/components/MoveTimelineModal/MoveTimelineModal.tsx:50
 msgid "Move"
@@ -2394,7 +2399,7 @@ msgstr "Archivovat tuto sbírku"
 msgid "My personal collection"
 msgstr "Moje osobní sbírka"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:200
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:202
 msgid "New collection"
 msgstr "Nová sbírka"
 
@@ -2456,7 +2461,7 @@ msgid "How would you like to refer to this database?"
 msgstr "Jak by jste se chtěli odkazovat na tuto databázi?"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:153
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:216
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:203
 #: frontend/src/metabase/setup/components/DatabaseStep/DatabaseStep.tsx:148
 #: frontend/src/metabase/setup/components/LanguageStep/LanguageStep.tsx:74
@@ -2506,7 +2511,7 @@ msgstr "Archivovat akci"
 
 #: frontend/src/metabase/components/EntityMenu.info.js:47
 #: frontend/src/metabase/components/EntityMenu.info.js:99
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:88
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:103
 msgid "Add to dashboard"
 msgstr "Přidat na nástěnku"
 
@@ -2564,7 +2569,7 @@ msgstr "Založeno na schéma"
 msgid "A look at your"
 msgstr "Podívejte se na svou"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:164
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:167
 msgid "Search the list"
 msgstr "Prohledat seznam"
 
@@ -2580,19 +2585,20 @@ msgstr " a nebo zadejte ID "
 msgid "Enter an ID"
 msgstr "Zadejte ID"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:148
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:150
 msgid "Enter a number"
 msgstr "Zadejte číslo"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:150
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:148
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:154
 msgid "Enter some text"
 msgstr "Zadejte nějaký text"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:520
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:524
 msgid "No matching {0} found."
 msgstr "Žádná shoda pro {0} se nenašla."
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:529
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:533
 msgid "Including every option in your filter probably won’t do much…"
 msgstr "Zahrnutí každé možnosti do filtru pravděpodobně moc nepomůže..."
 
@@ -2690,12 +2696,13 @@ msgid "Dashboards"
 msgstr "Nástěnky"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:61
+#: enterprise/frontend/src/metabase-enterprise/tools/index.js:17
 #: frontend/src/metabase/home/containers/SearchApp.jsx:57
 msgid "Questions"
 msgstr "Otázky"
 
 #: frontend/src/metabase/home/containers/SearchApp.jsx:62
-#: frontend/src/metabase/routes.jsx:344
+#: frontend/src/metabase/routes.jsx:346
 msgid "Pulses"
 msgstr "Pulzy"
 
@@ -2713,7 +2720,7 @@ msgstr "Najít..."
 msgid "An error occured"
 msgstr "Nastala chyba"
 
-#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:35
+#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:36
 msgid "Loading..."
 msgstr "Nahrávám..."
 
@@ -2743,14 +2750,14 @@ msgstr "Dočasné heslo"
 
 #: frontend/src/metabase/admin/datamodel/components/database/MetadataTableList.jsx:227
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:467
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:466
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:481
 msgid "Hide"
 msgstr "Skrýt"
 
 #: frontend/src/metabase/components/PasswordReveal.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:468
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:483
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:467
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:482
 msgid "Show"
 msgstr "Zobrazit"
 
@@ -2770,45 +2777,45 @@ msgstr "Teď ne"
 msgid "Error:"
 msgstr "Chyba:"
 
-#: frontend/src/metabase/admin/settings/selectors.js:258
+#: frontend/src/metabase/admin/settings/selectors.js:263
 #: frontend/src/metabase/components/SchedulePicker.jsx:29
-#: frontend/src/metabase/lib/time.js:147
+#: frontend/src/metabase/lib/time.js:149
 msgid "Sunday"
 msgstr "Neděle"
 
-#: frontend/src/metabase/admin/settings/selectors.js:259
+#: frontend/src/metabase/admin/settings/selectors.js:264
 #: frontend/src/metabase/components/SchedulePicker.jsx:30
-#: frontend/src/metabase/lib/time.js:135
+#: frontend/src/metabase/lib/time.js:137
 msgid "Monday"
 msgstr "Pondělí"
 
-#: frontend/src/metabase/admin/settings/selectors.js:260
+#: frontend/src/metabase/admin/settings/selectors.js:265
 #: frontend/src/metabase/components/SchedulePicker.jsx:31
-#: frontend/src/metabase/lib/time.js:137
+#: frontend/src/metabase/lib/time.js:139
 msgid "Tuesday"
 msgstr "Úterý"
 
-#: frontend/src/metabase/admin/settings/selectors.js:261
+#: frontend/src/metabase/admin/settings/selectors.js:266
 #: frontend/src/metabase/components/SchedulePicker.jsx:32
-#: frontend/src/metabase/lib/time.js:139
+#: frontend/src/metabase/lib/time.js:141
 msgid "Wednesday"
 msgstr "Středa"
 
-#: frontend/src/metabase/admin/settings/selectors.js:262
+#: frontend/src/metabase/admin/settings/selectors.js:267
 #: frontend/src/metabase/components/SchedulePicker.jsx:33
-#: frontend/src/metabase/lib/time.js:141
+#: frontend/src/metabase/lib/time.js:143
 msgid "Thursday"
 msgstr "Čtvrtek"
 
-#: frontend/src/metabase/admin/settings/selectors.js:263
+#: frontend/src/metabase/admin/settings/selectors.js:268
 #: frontend/src/metabase/components/SchedulePicker.jsx:34
-#: frontend/src/metabase/lib/time.js:143
+#: frontend/src/metabase/lib/time.js:145
 msgid "Friday"
 msgstr "Pátek"
 
-#: frontend/src/metabase/admin/settings/selectors.js:264
+#: frontend/src/metabase/admin/settings/selectors.js:269
 #: frontend/src/metabase/components/SchedulePicker.jsx:35
-#: frontend/src/metabase/lib/time.js:145
+#: frontend/src/metabase/lib/time.js:147
 msgid "Saturday"
 msgstr "Sobota"
 
@@ -2822,7 +2829,7 @@ msgid "Last"
 msgstr "Poslední"
 
 #: frontend/src/metabase/components/SchedulePicker.jsx:41
-#: frontend/src/metabase/lib/time.js:160
+#: frontend/src/metabase/lib/time.js:162
 msgid "15th (Midpoint)"
 msgstr "15. (uprostřed)"
 
@@ -2871,7 +2878,8 @@ msgstr "Nic není vybráno"
 msgid "Sorry, you don’t have permission to see that."
 msgstr "Promiňte, ale nemáte dostatečné oprávnění k zobrazení."
 
-#: frontend/src/metabase/components/form/FormMessage.jsx:8
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:110
+#: frontend/src/metabase/components/form/FormMessage/FormMessage.tsx:42
 msgid "Unknown error encountered"
 msgstr "Došlo k neznámé chybě"
 
@@ -2928,9 +2936,10 @@ msgstr "Po připojení vašich dat vám ukážu několik automatických průzkum
 msgid "Start here"
 msgstr "Začněte zde"
 
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:64
 #: frontend/src/metabase/entities/collections/constants.js:5
 #: frontend/src/metabase/query_builder/components/view/QuestionDataSource.jsx:112
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:339
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:338
 #: src/metabase/models/collection.clj
 #: target/classes/metabase/models/collection.clj
 msgid "Our analytics"
@@ -2940,33 +2949,33 @@ msgstr "Naše analytika"
 msgid "Browse all items"
 msgstr "Procházet všechny položky"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:130
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:137
 msgid "Replace or save as new?"
 msgstr "Přepsat nebo uložit jako novou?"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:177
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:184
 msgid "Replace original question, \"{0}\""
 msgstr "Přepsat původní otázku, \"{0}\""
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:181
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:188
 msgid "Save as new question"
 msgstr "Uložit jako novou otázku"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:101
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:104
 msgid "First, save your question"
 msgstr "Nejprve uložte vaši otázku"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:102
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:105
 msgid "Save question"
 msgstr "Uložit otázku"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:147
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:154
 msgid "What is the name of your card?"
 msgstr "Jaký je název vaší karty?"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:35
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:19
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:152
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:159
 #: frontend/src/metabase/entities/collections/forms.js:31
 #: frontend/src/metabase/entities/dashboards/forms.js:15
 #: frontend/src/metabase/entities/questions/forms.js:9
@@ -2984,7 +2993,7 @@ msgstr "Jaký je název vaší karty?"
 msgid "Description"
 msgstr "Popis"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:153
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:160
 #: frontend/src/metabase/entities/collections/forms.js:33
 #: frontend/src/metabase/entities/dashboards/forms.js:17
 #: frontend/src/metabase/entities/questions/forms.js:11
@@ -2993,7 +3002,7 @@ msgstr "Popis"
 msgid "It's optional but oh, so helpful"
 msgstr "Je to nepovinné, ale užitečné"
 
-#: frontend/src/metabase/containers/SaveQuestionModal.jsx:157
+#: frontend/src/metabase/containers/SaveQuestionModal.jsx:164
 #: frontend/src/metabase/entities/dashboards/forms.js:21
 msgid "Which collection should this go in?"
 msgstr "Do které sbírky to chcete zařadit?"
@@ -3072,7 +3081,7 @@ msgstr "Vložit otázku"
 msgid "Add a question to this dashboard"
 msgstr "Vlož otázku do této nástěnky"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:496
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:494
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:233
 msgid "Add a filter"
 msgstr "Přidat filtr"
@@ -3257,9 +3266,9 @@ msgid "received the latest data from"
 msgstr "přijal nejnovější data z"
 
 #: frontend/src/metabase/home/components/Activity.jsx:257
-#: frontend/src/metabase/lib/query_time.js:212
+#: frontend/src/metabase/lib/query_time.js:218
 #: frontend/src/metabase/lib/revisions/revisions.js:74
-#: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:27
+#: frontend/src/metabase/visualizations/components/ObjectDetail/utils.ts:29
 #: enterprise/backend/src/metabase_enterprise/enhancements/integrations/ldap.clj
 #: enterprise/backend/src/metabase_enterprise/sso/integrations/jwt.clj
 #: src/metabase/integrations/ldap/default_implementation.clj
@@ -3518,7 +3527,7 @@ msgid "Income"
 msgstr "Příjem"
 
 #: frontend/src/metabase/lib/core.js:107
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:468
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:500
 msgid "Discount"
 msgstr "Sleva"
 
@@ -3651,7 +3660,7 @@ msgid "Metabase will never retrieve this field. Use this for sensitive or irrele
 msgstr "Metabase toto pole nikdy nezíská. Použijte na citlivé nebo irelevantní informace."
 
 #: frontend/src/metabase/lib/query/description.js:77
-#: frontend/src/metabase/lib/query/description.js:266
+#: frontend/src/metabase/lib/query/description.js:269
 #: frontend/src/metabase/lib/schema_metadata.js:609
 #: frontend/src/metabase/visualizations/lib/utils.js:144
 #: src/metabase/query_processor/middleware/annotate.clj
@@ -3695,14 +3704,14 @@ msgstr "Průměr"
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:104
 #: frontend/src/metabase/lib/schema_metadata.js:672
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:50
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:496
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:495
 msgid "Min"
 msgstr "Min"
 
 #: frontend/src/metabase/components/MetadataInfo/FieldFingerprintInfo/FieldFingerprintInfo.jsx:105
 #: frontend/src/metabase/lib/schema_metadata.js:681
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingGaugeSegments.jsx:59
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:504
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
 msgid "Max"
 msgstr "Max"
 
@@ -3710,14 +3719,14 @@ msgstr "Max"
 msgid "sad sad panda, lexing errors detected"
 msgstr "Byla detekována slovníková chyba"
 
-#: frontend/src/metabase/lib/formatting.js:900
+#: frontend/src/metabase/lib/formatting.js:898
 msgid "{0} second"
 msgid_plural "{0} seconds"
 msgstr[0] "{0} sekund"
 msgstr[1] "{0} sekundy"
 msgstr[2] "{0} sekund"
 
-#: frontend/src/metabase/lib/formatting.js:897
+#: frontend/src/metabase/lib/formatting.js:895
 msgid "{0} minute"
 msgid_plural "{0} minutes"
 msgstr[0] "{0} minuta"
@@ -3758,7 +3767,7 @@ msgid "What do you want to find out?"
 msgstr "Co chcete zjistit?"
 
 #: frontend/src/metabase/lib/query/description.js:75
-#: frontend/src/metabase/lib/query/description.js:264
+#: frontend/src/metabase/lib/query/description.js:267
 #: frontend/src/metabase/lib/schema_metadata.js:600
 #: frontend/src/metabase/query_builder/components/AggregationWidget.jsx:60
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:211
@@ -3766,58 +3775,58 @@ msgid "Raw data"
 msgstr "Surové data"
 
 #: frontend/src/metabase/lib/query/description.js:79
-#: frontend/src/metabase/lib/query/description.js:268
+#: frontend/src/metabase/lib/query/description.js:271
 #: frontend/src/metabase/lib/schema_metadata.js:654
 msgid "Cumulative count"
 msgstr "Kumulativní počet"
 
 #: frontend/src/metabase/lib/query/description.js:82
-#: frontend/src/metabase/lib/query/description.js:270
+#: frontend/src/metabase/lib/query/description.js:273
 msgid "Average of "
 msgstr "Průměr z "
 
 #: frontend/src/metabase/lib/query/description.js:87
-#: frontend/src/metabase/lib/query/description.js:272
+#: frontend/src/metabase/lib/query/description.js:275
 msgid "Distinct values of "
 msgstr "Jedinečné hodnoty z "
 
 #: frontend/src/metabase/lib/query/description.js:92
-#: frontend/src/metabase/lib/query/description.js:274
+#: frontend/src/metabase/lib/query/description.js:277
 msgid "Standard deviation of "
 msgstr "Směrodatná odchylka z "
 
 #: frontend/src/metabase/lib/query/description.js:97
-#: frontend/src/metabase/lib/query/description.js:276
+#: frontend/src/metabase/lib/query/description.js:279
 msgid "Sum of "
 msgstr "Součet z "
 
 #: frontend/src/metabase/lib/query/description.js:102
-#: frontend/src/metabase/lib/query/description.js:278
+#: frontend/src/metabase/lib/query/description.js:281
 msgid "Cumulative sum of "
 msgstr "Kumulativní součet z "
 
 #: frontend/src/metabase/lib/query/description.js:107
-#: frontend/src/metabase/lib/query/description.js:280
+#: frontend/src/metabase/lib/query/description.js:283
 msgid "Maximum of "
 msgstr "Maximum z "
 
 #: frontend/src/metabase/lib/query/description.js:112
-#: frontend/src/metabase/lib/query/description.js:282
+#: frontend/src/metabase/lib/query/description.js:285
 msgid "Minimum of "
 msgstr "Minimum z "
 
 #: frontend/src/metabase/lib/query/description.js:126
-#: frontend/src/metabase/lib/query/description.js:294
+#: frontend/src/metabase/lib/query/description.js:297
 msgid "Grouped by "
 msgstr "Seskupené podle "
 
 #: frontend/src/metabase/lib/query/description.js:140
-#: frontend/src/metabase/lib/query/description.js:308
+#: frontend/src/metabase/lib/query/description.js:311
 msgid "Filtered by "
 msgstr "Filtrované podle "
 
 #: frontend/src/metabase/lib/query/description.js:169
-#: frontend/src/metabase/lib/query/description.js:333
+#: frontend/src/metabase/lib/query/description.js:336
 msgid "Sorted by "
 msgstr "Seřazené podle "
 
@@ -3878,7 +3887,7 @@ msgstr "Není"
 #: frontend/src/metabase/lib/schema_metadata.js:470
 #: frontend/src/metabase/lib/schema_metadata.js:476
 #: frontend/src/metabase/lib/schema_metadata.js:495
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:136
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:137
 msgid "Is empty"
 msgstr "Je prázdný"
 
@@ -4070,8 +4079,12 @@ msgstr "malé písmeno"
 msgid "upper case letter"
 msgstr "velké písmeno"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:455
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:445
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:450
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:462
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:471
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:482
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:487
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "number"
@@ -4329,7 +4342,7 @@ msgid "Custom"
 msgstr "Volitelný"
 
 #: frontend/src/metabase/query_builder/components/view/QuestionDescription.jsx:61
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:250
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:249
 msgid "New question"
 msgstr "Nová otázka"
 
@@ -4349,19 +4362,19 @@ msgstr "Nativní dotaz"
 msgid "For more complicated questions, you can write your own SQL or native query."
 msgstr "Pro složitější otázky můžete napsat svůj vlastní SQL nebo nativní dotaz."
 
-#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:192
+#: frontend/src/metabase/parameters/components/ParameterValueWidget.jsx:194
 msgid "Select a default value…"
 msgstr "Vyberte výchozí hodnotu..."
 
 #: frontend/src/metabase/parameters/components/widgets/DateAllOptionsWidget.tsx:152
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:188
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:272
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 msgid "Update filter"
 msgstr "Aktualizovat filtr"
 
-#: frontend/src/metabase/lib/query_time.js:144
-#: frontend/src/metabase/lib/query_time.js:155
+#: frontend/src/metabase/lib/query_time.js:150
+#: frontend/src/metabase/lib/query_time.js:161
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:10
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:145
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:33
@@ -4370,7 +4383,7 @@ msgstr "Aktualizovat filtr"
 msgid "Today"
 msgstr "Dnes"
 
-#: frontend/src/metabase/lib/query_time.js:150
+#: frontend/src/metabase/lib/query_time.js:156
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:15
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:149
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePickerShortcuts.tsx:43
@@ -4388,7 +4401,6 @@ msgid "Past 30 days"
 msgstr "Posledních 30 dní"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1721
-#: frontend/src/metabase/lib/query_time.js:230
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:25
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:30
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4396,7 +4408,6 @@ msgid "Week"
 msgstr "Týden"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1727
-#: frontend/src/metabase/lib/query_time.js:232
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:26
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:31
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4404,7 +4415,6 @@ msgid "Month"
 msgstr "Měsíc"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1739
-#: frontend/src/metabase/lib/query_time.js:236
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:27
 #: frontend/src/metabase/parameters/components/widgets/DateRelativeWidget.jsx:32
 #: src/metabase/api/table.clj target/classes/metabase/api/table.clj
@@ -4445,17 +4455,17 @@ msgstr "Tento měsíc"
 msgid "This Year"
 msgstr "Tento rok"
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:84
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:85
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:56
 msgid "Enter a value..."
 msgstr "Zadejte hodnotu..."
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:99
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:100
 #: frontend/src/metabase/parameters/components/widgets/TextWidget.jsx:92
 msgid "Enter a default value..."
 msgstr "Zadejte výchozí hodnotu..."
 
-#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:49
+#: frontend/src/metabase/components/LoadingAndErrorWrapper.jsx:68
 #: frontend/src/metabase/containers/Form.jsx:230
 #: frontend/src/metabase/containers/Form.jsx:239
 #: frontend/src/metabase/public/components/PublicError.jsx:13
@@ -4634,7 +4644,7 @@ msgid "This pulse will no longer be emailed to {0} {1}"
 msgstr "Tento pulz již nebude doručován emailem na {0} {1}"
 
 #: frontend/src/metabase/pulse/components/PulseEdit.jsx:113
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:386
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:379
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:245
 msgid "{0} address"
 msgid_plural "{0} addresses"
@@ -4690,7 +4700,7 @@ msgstr "Příloha"
 
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:105
 #: frontend/src/metabase/pulse/components/PulseEditCards.jsx:112
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:672
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:665
 msgid "Heads up"
 msgstr "Pozor"
 
@@ -4819,30 +4829,30 @@ msgstr "Pomozte všem v týmu aby byli synchronizováni s vašimi daty."
 msgid "Pulses let you send data from Metabase to email or Slack on the schedule of your choice."
 msgstr "Pulzy umožňují odesílat data z Metabase na email nebo Slack na základě plánu a podle vašeho výběru."
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:72
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:73
 msgid "After {0}"
 msgstr "Po {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:74
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:75
 msgid "Before {0}"
 msgstr "Před {0}"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:76
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:77
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:260
 msgid "Is Empty"
 msgstr "Je prázdný"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:78
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:79
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:266
 msgid "Not Empty"
 msgstr "Není prázdný"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:81
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:82
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/DatePicker.jsx:180
 msgid "All Time"
 msgstr "Všechno"
 
-#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:126
+#: frontend/src/metabase/modes/components/TimeseriesFilterWidget.jsx:128
 msgid "Apply"
 msgstr "Aplikovat"
 
@@ -4904,7 +4914,7 @@ msgstr "Porovnejte {0} {1} se zbytkem"
 msgid "Distribution"
 msgstr "Distribuce"
 
-#: frontend/src/metabase/modes/components/drill/ObjectDetailDrill.jsx:50
+#: frontend/src/metabase/modes/components/drill/ObjectDetailDrill.jsx:30
 msgid "View details"
 msgstr "Zobrazit detaily"
 
@@ -5000,91 +5010,91 @@ msgstr "Dostáváte upozornění {0}"
 msgid "{0} set up an alert"
 msgstr "{0} nastavit upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:161
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:154
 msgid "alerts"
 msgstr "upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:184
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:177
 msgid "Let's set up your alert"
 msgstr "Vytvoříme vaše upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:211
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:204
 msgid "The wide world of alerts"
 msgstr "Široké možnosti upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:212
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:205
 msgid "There are a few different kinds of alerts you can get"
 msgstr "Existuje několik různých druhů upozornění, které můžete získat"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:232
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:225
 msgid "When a raw data question {0}"
 msgstr "Kdy je dotaz na surové data {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:233
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:226
 msgid "returns any results"
 msgstr "vrátí nějaké výsledky"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:250
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:243
 msgid "When a line or bar {0}"
 msgstr "Když linie nebo sloupec {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:251
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:244
 msgid "crosses a goal line"
 msgstr "dosáhne cíle"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:268
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:261
 msgid "When a progress bar {0}"
 msgstr "Když sloupec {0}"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:269
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:262
 msgid "reaches its goal"
 msgstr "dosáhne svůj cíl"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:277
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:270
 msgid "Set up an alert"
 msgstr "Nastavte upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:342
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:335
 msgid "Edit your alert"
 msgstr "Upravte své upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:342
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:335
 msgid "Edit alert"
 msgstr "Upravit upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:384
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:377
 msgid "This alert will no longer be emailed to {0}."
 msgstr "Toto upozornění již nebude odesíláno emailem na adresu {0}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:392
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:385
 msgid "Slack channel {0} will no longer get this alert."
 msgstr "Slack kanál {0} již nebude dostávat toto upozornění."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:396
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:389
 msgid "Channel {0} will no longer receive this alert."
 msgstr "Kanál {0} již nebude dostávat toto upozornění."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationEditModal/AuditNotificationEditModal.jsx:117
 #: frontend/src/metabase/account/notifications/components/ArchiveModal/ArchiveModal.jsx:90
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:413
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:406
 msgid "Delete this alert"
 msgstr "Odstranit toto upozornění"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:415
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:408
 msgid "Stop delivery and delete this alert. There's no undo, so be careful."
 msgstr "Zastavit odesílání upozornění a odstranit ho. Tento krok nelze vrátit zpět, takže buďte opatrní."
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditNotificationDeleteModal/AuditNotificationDeleteModal.jsx:78
 #: frontend/src/metabase/account/notifications/components/ArchiveModal/ArchiveModal.jsx:79
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:423
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:416
 msgid "Delete this alert?"
 msgstr "Smazat toto upozornění?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:504
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:497
 msgid "Alert me when the line…"
 msgstr "Upozornit mě, když..."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:505
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:498
 msgid "Alert me when the progress bar…"
 msgstr "Upozornit mě, když..."
 
@@ -5092,60 +5102,60 @@ msgstr "Upozornit mě, když..."
 msgid "Goes above the goal line"
 msgstr "Překročí cílovou linii"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:507
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
 msgid "Reaches the goal"
 msgstr "Dosáhne cíle"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:509
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "Goes below the goal line"
 msgstr "Spadne pod cílovou linii"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:509
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:502
 msgid "Goes below the goal"
 msgstr "Spadne pod cíl"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:517
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:510
 msgid "The first time it crosses, or every time?"
 msgstr "Pouze poprvé nebo vždy?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:518
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:511
 msgid "The first time it reaches the goal, or every time?"
 msgstr "Pouze poprvé, když dosáhne cíle, nebo vždy?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:520
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:513
 msgid "The first time"
 msgstr "Poprvé"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:521
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:514
 msgid "Every time"
 msgstr "Vždy"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:615
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:608
 msgid "Where do you want to send these alerts?"
 msgstr "Kam chcete poslat tato upozornění?"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:626
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:619
 msgid "Email alerts to:"
 msgstr "Emailové upozornění na adresu:"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:671
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:664
 msgid "{0} Goal-based alerts aren't yet supported for charts with more than one line, so this alert will be sent whenever the chart has {1}."
 msgstr "{0} Upozornění na základě cíle zatím nejsou podporovány pro grafy s více než jedním řádkem, takže toto upozornění se odešle vždy, když graf má {1}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:674
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:667
 #: src/metabase/pulse.clj target/classes/metabase/pulse.clj
 msgid "results"
 msgstr "výsledek"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:678
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:671
 msgid "{0} This kind of alert is most useful when your saved question doesn’t {1} return any results, but you want to know when it does."
 msgstr "{0} Tento druh upozornění je nejužitečnější, když vaše uložená otázka nevrátí žádné výsledky, ale chcete vědět když to nastane."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:679
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:672
 msgid "Tip"
 msgstr "Tip"
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:681
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:674
 msgid "usually"
 msgstr "obvykle"
 
@@ -5237,14 +5247,14 @@ msgstr "Přidat seskupení"
 #: enterprise/frontend/src/metabase-enterprise/audit_app/components/AuditSidebar.jsx:55
 #: frontend/src/metabase/admin/datamodel/containers/DataModelApp/DataModelApp.jsx:60
 #: frontend/src/metabase/admin/permissions/components/PermissionsPageLayout/PermissionsTabs.jsx:19
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:136
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:138
 #: frontend/src/metabase/query_builder/components/GuiQueryEditor.jsx:284
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:39
 #: frontend/src/metabase/query_builder/components/view/sidebars/ChartTypeSidebar.jsx:75
 #: frontend/src/metabase/visualizations/components/LineAreaBarChart.jsx:116
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:91
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:137
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:189
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:188
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:66
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:106
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:113
@@ -5270,7 +5280,7 @@ msgstr "Zobrazit"
 msgid "Grouped By"
 msgstr "Seskupeno podle"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:177
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:179
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/MappedFieldPicker/MappedFieldPicker.tsx:69
 #: frontend/src/metabase/query_builder/components/DatasetEditor/DatasetFieldMetadataSidebar/SemanticTypePicker/SemanticTypePicker.jsx:53
 #: frontend/src/metabase/query_builder/components/LimitWidget.jsx:28
@@ -5496,7 +5506,7 @@ msgstr "získat upozornění"
 msgid "Back to last run"
 msgstr "Zpět na poslední spuštění"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:227
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:241
 msgid "Visualization"
 msgstr "Vizualizace"
 
@@ -5590,7 +5600,7 @@ msgstr "Ukaž surové data pro {0}"
 msgid "More"
 msgstr "Více"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:246
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorTextfield.jsx:247
 msgid "Invalid expression"
 msgstr "Nesprávný výraz"
 
@@ -5602,25 +5612,26 @@ msgstr "neznámá chyba"
 msgid "Field formula"
 msgstr "Vzorec pole"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:77
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:78
 msgid "Think of this as being kind of like writing a formula in a spreadsheet program: you can use numbers, fields in this table, mathematical symbols like +, and some functions. So you could type something like Subtotal - Cost."
 msgstr "Uvažujte o tom, jakoby to bylo jako psaní vzorce v tabulkovém programu: můžete použít čísla, pole v této tabulce, matematické symboly jako + a některé funkce. Můžete tedy zadat něco jako Mezisoučet - Náklady."
 
 #: frontend/src/metabase/admin/settings/components/SettingsUpdatesForm/VersionUpdateNotice/VersionUpdateNotice.jsx:130
 #: frontend/src/metabase/admin/settings/components/widgets/MarginHostingCTA.jsx:20
+#: frontend/src/metabase/admin/settings/selectors.js:424
 #: frontend/src/metabase/entities/databases/forms.js:149
 #: frontend/src/metabase/query_builder/components/expressions/ExpressionEditorHelpText.tsx:66
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:83
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:84
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:230
 #: frontend/src/metabase/sharing/components/AddEditSidebar.jsx:405
 msgid "Learn more"
 msgstr "Dozvědět se více"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:87
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:88
 msgid "Give it a name"
 msgstr "Přidejte název"
 
-#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:93
+#: frontend/src/metabase/query_builder/components/expressions/ExpressionWidget.jsx:94
 msgid "Something nice and descriptive"
 msgstr "Něco pěkné a praktické"
 
@@ -5658,12 +5669,12 @@ msgid "this year"
 msgstr "tento rok"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:27
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:133
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:134
 msgid "this minute"
 msgstr "tuto minutu"
 
 #: frontend/src/metabase/query_builder/components/filters/FilterOptions.jsx:28
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:134
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:135
 msgid "this hour"
 msgstr "tuto hodinu"
 
@@ -5681,8 +5692,8 @@ msgstr "pravda"
 msgid "false"
 msgstr "nepravda"
 
-#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:179
-#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:273
+#: frontend/src/metabase/parameters/components/widgets/ParameterFieldWidget/ParameterFieldWidget.jsx:188
+#: frontend/src/metabase/query_builder/components/filters/FilterPopover.tsx:272
 #: frontend/src/metabase/query_builder/components/filters/FilterPopoverFooter.tsx:57
 #: frontend/src/metabase/query_builder/components/view/sidebars/FilterSidebar.jsx:33
 msgid "Add filter"
@@ -5713,7 +5724,7 @@ msgid "Enter desired number"
 msgstr "Zadejte požadované číslo"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/SelectPicker.jsx:61
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:42
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetailsTable.tsx:48
 msgid "Empty"
 msgstr "Prázdné"
 
@@ -5721,13 +5732,13 @@ msgstr "Prázdné"
 msgid "Find a value"
 msgstr "Najít hodnotu"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:79
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:81
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/SpecificDatePicker.jsx:102
 msgid "Hide calendar"
 msgstr "Skrýt kalendář"
 
 #: frontend/src/metabase/core/components/DateInput/DateInput.tsx:132
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:79
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/SpecificDatePicker.tsx:81
 #: frontend/src/metabase/query_builder/components/filters/pickers/LegacyDatePicker/SpecificDatePicker.jsx:102
 msgid "Show calendar"
 msgstr "Zobrazit kalendář"
@@ -5794,7 +5805,7 @@ msgstr "Typ proměnné"
 
 #: frontend/src/metabase/parameters/utils/dashboard-options.js:40
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:149
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:254
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:252
 msgid "Text"
 msgstr "Text"
 
@@ -5833,10 +5844,10 @@ msgstr "Archivovat tuto otázku?"
 msgid "This question will be removed from any dashboards or pulses using it."
 msgstr "Tato otázka bude odstraněna ze všech nástěnek nebo pulzů, které ji používají."
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:19
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:20
 #: frontend/src/metabase/nav/containers/NewButton/NewButton.tsx:89
 #: frontend/src/metabase/nav/utils/model-names.ts:4
-#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:435
+#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:439
 msgid "Question"
 msgstr "Otázka"
 
@@ -5862,8 +5873,8 @@ msgstr "Podmnožina"
 msgid "Select a field type"
 msgstr "Vyberte typ pole"
 
-#: frontend/src/metabase/reference/components/Field.jsx:53
-#: frontend/src/metabase/reference/components/Field.jsx:77
+#: frontend/src/metabase/reference/components/Field.jsx:57
+#: frontend/src/metabase/reference/components/Field.jsx:81
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:35
 #: frontend/src/metabase/reference/components/FieldTypeDetail.jsx:53
 msgid "No field type"
@@ -6380,7 +6391,7 @@ msgstr "Přihlásit se"
 msgid "Search"
 msgstr "Hledat"
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:25
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:26
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:567
 #: frontend/src/metabase/nav/containers/NewButton/NewButton.tsx:115
 #: frontend/src/metabase/nav/utils/model-names.ts:6
@@ -6448,7 +6459,7 @@ msgstr "Povolit Metabase anonymně sbírat záznamy o používání"
 msgid "Metabase {0} collects anything about your data or question results."
 msgstr "Metabase {0} shromažďuje cokoliv o vašich datech nebo o výsledcích otázek."
 
-#: frontend/src/metabase/lib/settings.ts:228
+#: frontend/src/metabase/lib/settings.ts:230
 #: frontend/src/metabase/setup/components/PreferencesStep/PreferencesStep.tsx:85
 msgid "never"
 msgstr "nikdy"
@@ -6507,7 +6518,7 @@ msgstr "Vytvořit heslo"
 
 #: frontend/src/metabase/entities/users/forms.js:51
 #: frontend/src/metabase/entities/users/forms.js:136
-#: frontend/src/metabase/entities/users/forms.js:156
+#: frontend/src/metabase/entities/users/forms.js:157
 msgid "Shhh..."
 msgstr "Šššš..."
 
@@ -6689,7 +6700,7 @@ msgstr "Heslo bylo úspěšně aktualizováno!"
 msgid "Account updated successfully!"
 msgstr "Účet byl úspěšně aktualizován!"
 
-#: frontend/src/metabase/entities/users/forms.js:155
+#: frontend/src/metabase/entities/users/forms.js:156
 msgid "Current password"
 msgstr "Aktuální heslo"
 
@@ -6701,7 +6712,7 @@ msgstr "Přihlaste se pomocí e-mailové adresy Google"
 msgid "User Details"
 msgstr "Detaily uživatele"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:369
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:372
 msgid "Reset to defaults"
 msgstr "Reset na výchozí hodnoty"
 
@@ -6726,15 +6737,15 @@ msgstr "Která pole chcete použít pro osy X a Y?"
 msgid "Choose fields"
 msgstr "Vyberte pole"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:216
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:221
 msgid "Save as default view"
 msgstr "Uložit jako výchozí zobrazení"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:238
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:243
 msgid "Draw box to filter"
 msgstr "Přidat rámeček na filtrování"
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:238
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:243
 msgid "Cancel filter"
 msgstr "Zrušit filtr"
 
@@ -6742,40 +6753,40 @@ msgstr "Zrušit filtr"
 msgid "Pin Map"
 msgstr "Připnout mapu"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:382
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:380
 msgid "Unset"
 msgstr "Zrušit"
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:135
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:138
 msgid "Rows {0}-{1} of {2}"
 msgstr "Řádky {0} - {1} z {2}"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:127
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:130
 msgid "Data truncated to {0} rows."
 msgstr "Data byly zkráceny na {0} řádky."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:347
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:350
 msgid "Could not find visualization"
 msgstr "Nelze najít vizualizaci"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:354
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:357
 msgid "Could not display this chart with this data."
 msgstr "Tento graf se nedal zobrazit s těmito daty."
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:68
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:475
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:478
 msgid "No results!"
 msgstr "Žádné výsledky!"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:496
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:499
 msgid "Still Waiting..."
 msgstr "Stále čekám..."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:499
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:502
 msgid "This usually takes an average of {0}."
 msgstr "Obvykle to trvá průměrně {0}."
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:505
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:508
 msgid "(This is a bit long for a dashboard)"
 msgstr "(Toto je pro nástěnku poněkud dlouhé)"
 
@@ -6792,11 +6803,11 @@ msgstr "Vyberte pole"
 msgid "error"
 msgstr "chyba"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:121
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:119
 msgid "Click and drag to change their order"
 msgstr "Kliknutím a tažením změníte jejich pořadí"
 
-#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:133
+#: frontend/src/metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx:131
 msgid "Add fields from the list below"
 msgstr "Přidejte pole ze seznamu níže"
 
@@ -6964,7 +6975,7 @@ msgstr "Tento typ grafu vyžaduje nejméně 2 sloupce."
 msgid "This chart type doesn't support more than {0} series of data."
 msgstr "Tento typ grafu nepodporuje více než {0} řad."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:310
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:309
 #: frontend/src/metabase/visualizations/visualizations/Progress.jsx:66
 msgid "Goal"
 msgstr "Cíl"
@@ -6973,8 +6984,8 @@ msgstr "Cíl"
 msgid "Doh! The data from your query doesn't fit the chosen display choice. This visualization requires at least {0} {1} of data."
 msgstr "Data z vašeho dotazu se neshodují s vybranou volbou zobrazení. Tato vizualizace vyžaduje nejméně {0} {1} z dat."
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:235
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:121
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:237
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:20
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:23
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:27
@@ -7015,12 +7026,12 @@ msgstr "Data z vašeho dotazu se neshodují s vybranou volbou zobrazení. Tato v
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:387
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:431
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:436
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:451
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:466
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:471
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:478
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:483
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:462
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:467
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:498
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:503
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:510
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:515
 #: frontend/src/metabase/visualizations/lib/errors.js:7
 msgid "column"
 msgstr "sloupec"
@@ -7066,11 +7077,11 @@ msgstr "Přidat do série souhrn..."
 msgid "Y-axis"
 msgstr "osa Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:174
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:173
 msgid "Add another series..."
 msgstr "Přidat další sérii..."
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:190
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:189
 msgid "Bubble size"
 msgstr "Velikost bubliny"
 
@@ -7090,19 +7101,19 @@ msgstr "Skupina"
 msgid "Show point markers on lines"
 msgstr "Zobrazit značky na čáře"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:232
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
 msgid "Stacking"
 msgstr "Skládání"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:236
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:235
 msgid "Don't stack"
 msgstr "Neskládat"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:237
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:236
 msgid "Stack"
 msgstr "Skládat"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:238
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:237
 msgid "Stack - 100%"
 msgstr "Skládat - 100%"
 
@@ -7110,7 +7121,7 @@ msgstr "Skládat - 100%"
 msgid "Show goal"
 msgstr "Zobrazit cíl"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:300
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:299
 msgid "Goal value"
 msgstr "Hodnota cíle"
 
@@ -7130,83 +7141,83 @@ msgstr "Nic"
 msgid "Linear Interpolated"
 msgstr "Lineárně interpolované"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:416
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:415
 msgid "X-axis scale"
 msgstr "Měřítko osy X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:434
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:433
 msgid "Timeseries"
 msgstr "Časová série"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:437
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:436
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:454
 msgid "Linear"
 msgstr "Lineární"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:438
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:455
 msgid "Power"
 msgstr "Výkon"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:440
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:457
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:439
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:456
 msgid "Log"
 msgstr "Log"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:442
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:441
 msgid "Histogram"
 msgstr "Sloupcový graf"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:444
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:443
 msgid "Ordinal"
 msgstr "Řady"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:450
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
 msgid "Y-axis scale"
 msgstr "Měřítko osy Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:463
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:462
 msgid "Show x-axis line and marks"
 msgstr "Zobrazit čáru a značky na ose Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:362
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:361
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:468
 msgid "Compact"
 msgstr "Kompaktní"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:469
 msgid "Rotate 45°"
 msgstr "Otočit o 45°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:471
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:470
 msgid "Rotate 90°"
 msgstr "Otočit o 90°"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:478
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
 msgid "Show y-axis line and marks"
 msgstr "Zobrazit čáru a značky na ose Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:490
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:489
 msgid "Auto y-axis range"
 msgstr "Automatický rozsah osy Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:534
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
 msgid "Use a split y-axis when necessary"
 msgstr "V případě potřeby použijte rozdělenou osu Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:541
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
 msgid "Show label on x-axis"
 msgstr "Zobrazit popis na ose X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:547
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
 msgid "X-axis label"
 msgstr "Popis na ose X"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:556
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:555
 msgid "Show label on y-axis"
 msgstr "Zobrazit popis na ose Y"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:562
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
 msgid "Y-axis label"
 msgstr "Popis na ose Y"
 
@@ -7342,18 +7353,18 @@ msgstr "prostřednictvím {0}"
 msgid "This {0} is connected to:"
 msgstr "Toto {0} je spojené s:"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:352
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:376
 msgid "Object Detail"
 msgstr "Detail objektu"
 
-#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:355
+#: frontend/src/metabase/visualizations/components/ObjectDetail/ObjectDetail.tsx:379
 msgid "object"
 msgstr "objekt"
 
 #: frontend/src/metabase/static-viz/components/CategoricalDonutChart/CategoricalDonutChart.jsx:57
-#: frontend/src/metabase/visualizations/lib/apply_axis.js:137
-#: frontend/src/metabase/visualizations/lib/apply_axis.js:254
-#: frontend/src/metabase/visualizations/lib/apply_axis.js:326
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:136
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:253
+#: frontend/src/metabase/visualizations/lib/apply_axis.js:325
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:403
 msgid "Total"
 msgstr "Celkem"
@@ -7796,27 +7807,24 @@ msgstr "Auto intervaly"
 msgid "Don''t bin"
 msgstr "Bez intervalů"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1715
-#: frontend/src/metabase/lib/query_time.js:228 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1715 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Day"
 msgstr "Den"
 
 #. note the order of these options corresponds to the order they will be shown to the user in the UI
-#: frontend/src/metabase-lib/lib/Dimension.ts:1703
-#: frontend/src/metabase/lib/query_time.js:224 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1703 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Minute"
 msgstr "Minuta"
 
 #: frontend/src/metabase-lib/lib/Dimension.ts:1709
-#: frontend/src/metabase/lib/query_time.js:226 src/metabase/api/table.clj
-#: target/classes/metabase/api/table.clj
+#: frontend/src/metabase/admin/settings/selectors.js:442
+#: src/metabase/api/table.clj target/classes/metabase/api/table.clj
 msgid "Hour"
 msgstr "Hodina"
 
-#: frontend/src/metabase-lib/lib/Dimension.ts:1733
-#: frontend/src/metabase/lib/query_time.js:234 src/metabase/api/table.clj
+#: frontend/src/metabase-lib/lib/Dimension.ts:1733 src/metabase/api/table.clj
 #: target/classes/metabase/api/table.clj
 msgid "Quarter"
 msgstr "Kvartál"
@@ -9722,10 +9730,10 @@ msgstr "N/A"
 msgid "Windows domain"
 msgstr "Windows Doména"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:540
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:546
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:555
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:561
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:539
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:545
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:554
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:560
 msgid "Labels"
 msgstr "Štítky"
 
@@ -9755,16 +9763,16 @@ msgstr "MetaBot"
 msgid "Sharing"
 msgstr "Sdílení"
 
-#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:27
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:231
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:264
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:293
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:299
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:307
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:315
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:353
+#: frontend/src/metabase/visualizations/components/ChartSettings.jsx:28
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:230
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:263
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:292
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:298
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:306
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:314
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:328
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:336
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:352
 #: frontend/src/metabase/visualizations/lib/settings/nested.js:86
 #: frontend/src/metabase/visualizations/visualizations/Funnel.jsx:121
 #: frontend/src/metabase/visualizations/visualizations/PieChart.jsx:115
@@ -9783,14 +9791,14 @@ msgstr "Sdílení"
 msgid "Display"
 msgstr "Zobrazení"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:415
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:449
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:462
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:477
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:489
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:495
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:503
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:533
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:414
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:448
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:461
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:476
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:488
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:494
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:502
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:532
 msgid "Axes"
 msgstr "Osy"
 
@@ -9871,12 +9879,12 @@ msgstr "Zvol typ měny"
 msgid "Field Type"
 msgstr "Typ pole"
 
-#: frontend/src/metabase/admin/app/reducers.ts:41
-#: frontend/src/metabase/admin/routes.jsx:142
+#: frontend/src/metabase/admin/app/reducers.ts:59
+#: frontend/src/metabase/admin/routes.jsx:172
 msgid "Troubleshooting"
 msgstr "Řešení problémů"
 
-#: frontend/src/metabase/admin/settings/selectors.js:120
+#: frontend/src/metabase/admin/settings/selectors.js:125
 msgid "Enable X-ray features"
 msgstr "Povolit automatické průzkumy"
 
@@ -10050,11 +10058,11 @@ msgstr "Kde zobrazit jednotku měny"
 msgid "Minimum number of decimal places"
 msgstr "Minimální počet desetinných míst"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:265
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:264
 msgid "Stacked chart type"
 msgstr "Skládaný typ grafu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:308
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:307
 msgid "Goal label"
 msgstr "Popis cíle"
 
@@ -10070,7 +10078,7 @@ msgstr "Styl čáry"
 msgid "Show dots on lines"
 msgstr "Zobrazit značky na čárách"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:361
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:360
 #: frontend/src/metabase/visualizations/lib/settings/series.js:80
 #: frontend/src/metabase/visualizations/lib/settings/series.js:117
 msgid "Auto"
@@ -10104,11 +10112,11 @@ msgstr "Rozsah měřidla"
 msgid "Field to show"
 msgstr "Pole k zobrazení"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:140
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:142
 msgid "last {0}"
 msgstr "poslední {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:214
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:216
 msgid "{0} was {1} {2}"
 msgstr "{0} bylo {1} {2}"
 
@@ -10132,32 +10140,32 @@ msgstr "Hodnoty sloupce"
 msgid "Visible columns"
 msgstr "Viditelné sloupce"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:202
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:200
 msgid "Conditional Formatting"
 msgstr "Podmíněné formátování"
 
 #: frontend/src/metabase/visualizations/visualizations/PivotTable.jsx:188
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:238
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:236
 msgid "Column title"
 msgstr "Popisek sloupce"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:246
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:244
 msgid "Show a mini bar chart"
 msgstr "Zobrazit mini sloupcový graf"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:255
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:253
 msgid "Link"
 msgstr "Odkaz"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:260
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:258
 msgid "Email link"
 msgstr "Odkaz na e-mail"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:264
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:262
 msgid "Image"
 msgstr "Obrázek"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:268
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:266
 msgid "Automatic"
 msgstr "Automatický"
 
@@ -10165,7 +10173,7 @@ msgstr "Automatický"
 msgid "View as link or image"
 msgstr "Zobrazit jako odkaz nebo obrázek"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:285
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:283
 msgid "Link text"
 msgstr "Text odkazu"
 
@@ -10241,7 +10249,7 @@ msgstr "týden"
 msgid "month"
 msgstr "měsíc"
 
-#: frontend/src/metabase/lib/query_time.js:652
+#: frontend/src/metabase/lib/query_time.js:669
 #: src/metabase/automagic_dashboards/core.clj
 #: target/classes/metabase/automagic_dashboards/core.clj
 msgid "quarter"
@@ -11578,6 +11586,7 @@ msgid "Sessions by page where the session began"
 msgstr "Relace podle stránky, kde se relace začala"
 
 #: frontend/src/metabase/lib/schema_metadata.js:636
+#: frontend/src/metabase/modes/components/drill/SummarizeColumnDrill.js:23
 #: resources/automagic_dashboards/field/DateTime.yaml
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Number.yaml
@@ -11970,42 +11979,42 @@ msgstr "Duplikovat \"{0}\""
 msgid "Duplicate"
 msgstr "Duplikovat"
 
-#: frontend/src/metabase/lib/query_time.js:147
+#: frontend/src/metabase/lib/query_time.js:153
 msgid "Tomorrow"
 msgstr "Zítra"
 
-#: frontend/src/metabase/lib/query_time.js:161
-#: frontend/src/metabase/lib/query_time.js:175
+#: frontend/src/metabase/lib/query_time.js:167
+#: frontend/src/metabase/lib/query_time.js:181
 msgid "This {0}"
 msgstr "Tento {0}"
 
-#: frontend/src/metabase/lib/query_time.js:164
+#: frontend/src/metabase/lib/query_time.js:170
 msgid "Next {0}"
 msgstr "Dalších {0}"
 
-#: frontend/src/metabase/lib/query_time.js:167
+#: frontend/src/metabase/lib/query_time.js:173
 #: src/metabase/pulse/render/datetime.clj
 #: target/classes/metabase/pulse/render/datetime.clj
 msgid "Previous {0}"
 msgstr "Předchozí {0}"
 
-#: frontend/src/metabase/lib/query_time.js:171
+#: frontend/src/metabase/lib/query_time.js:177
 msgid "Previous {0} {1}"
 msgstr "Předchozí {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:173
+#: frontend/src/metabase/lib/query_time.js:179
 msgid "Next {0} {1}"
 msgstr "Dalších {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:203
+#: frontend/src/metabase/lib/query_time.js:209
 msgid "Now"
 msgstr "Nyní"
 
-#: frontend/src/metabase/lib/query_time.js:206
+#: frontend/src/metabase/lib/query_time.js:212
 msgid "{0} {1} ago"
 msgstr "Před {0} {1}"
 
-#: frontend/src/metabase/lib/query_time.js:207
+#: frontend/src/metabase/lib/query_time.js:213
 msgid "{0} {1} from now"
 msgstr "{0} {1} odteď"
 
@@ -12099,7 +12108,7 @@ msgstr "Neplatný"
 msgid "Add a time"
 msgstr "Přidat čas"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:200
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:202
 msgid "Nothing to compare for the previous {0}."
 msgstr "Nic pro srovnání z předchozím {0}."
 
@@ -13333,7 +13342,7 @@ msgstr "Přidejte metriku"
 msgid "Profile"
 msgstr "Profil"
 
-#: frontend/src/metabase/visualizations/components/Visualization.jsx:509
+#: frontend/src/metabase/visualizations/components/Visualization.jsx:512
 msgid "This is usually pretty fast but seems to be taking a while right now."
 msgstr "To je obvykle dost rychlé, ale nyní se zdá, že to chvíli trvá."
 
@@ -14018,27 +14027,27 @@ msgstr "Tabulka je postavena na základě"
 msgid "(empty)"
 msgstr "(prázdné)"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:294
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:293
 msgid "Goal line"
 msgstr "Cílová čára"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:316
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:315
 msgid "Trend line"
 msgstr "Spojnice trendu"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:330
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:329
 msgid "Show values on data points"
 msgstr "Zobrazit hodnoty v datových bodech"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:338
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:337
 msgid "Values to show"
 msgstr "Hodnoty k zobrazení"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:345
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:344
 msgid "As many as can fit nicely"
 msgstr "Tolik, kolik přehlednost umožní"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:346
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:345
 #: src/metabase/driver/util.clj
 msgid "All"
 msgstr "Vše"
@@ -14390,7 +14399,7 @@ msgstr "Z bezpečnostních důvodů platnost odkazů na obnovení hesla za chví
 msgid "Save new password"
 msgstr "Uložit nové heslo"
 
-#: frontend/src/metabase/components/FieldValuesWidget.jsx:515
+#: frontend/src/metabase/components/FieldValuesWidget.jsx:519
 msgid "No matching result"
 msgstr "Žádný odpovídající výsledek"
 
@@ -14440,7 +14449,7 @@ msgstr "Toto je odlehčený proces, který zjišťuje aktualizace schématu tét
 msgid "Metabase can scan the values present in each field in this database to enable checkbox filters in dashboards and questions. This can be a somewhat resource-intensive process, particularly if you have a very large database."
 msgstr "Metabase může skenovat hodnoty přítomné v každém poli v této databázi kvůli povolení fitrů v nástěnkách a otázkách. Může to být proces, který je trochu náročný na prostředky, zejména pokud máte velmi velkou databázi."
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:31
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:32
 #: frontend/src/metabase/entities/questions/forms.js:21
 #: frontend/src/metabase/nav/containers/NewButton/NewButton.tsx:121
 #: frontend/src/metabase/nav/utils/model-names.ts:9
@@ -14526,13 +14535,13 @@ msgstr "Hodnocení"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:111
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:118
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:131
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:510
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:526
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:542
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:558
 msgid "condition"
 msgstr "podmínka"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:510
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:530
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:542
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:562
 msgid "output"
 msgstr "výstup"
 
@@ -14540,27 +14549,27 @@ msgstr "výstup"
 msgid "Tests a list of cases and returns the corresponding value of the first true case, with an optional default value if nothing else is met."
 msgstr "Testuje seznam případů a vrací odpovídající hodnotu prvního shodného případu, s volitelnou výchozí hodnotou pro případ pokud není žádný splněn."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:514
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:518
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:546
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:550
 msgid "Weight"
 msgstr "Váha"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:516
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:548
 msgid "Large"
 msgstr "Velká"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:520
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:552
 msgid "Medium"
 msgstr "Střední"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:522
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:554
 msgid "Small"
 msgstr "Malá"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:100
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:112
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:132
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:527
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:559
 msgid "Something that should evaluate to true or false."
 msgstr "Něco, co by se mělo vyhodnocovat jako PRAVDA nebo NEPRAVDA."
 
@@ -14570,31 +14579,31 @@ msgstr "Hodnota, která se vrátí, pokud je předchozí podmínka splněna."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:233
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:237
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:490
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:501
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:522
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:533
 msgid "value1"
 msgstr "hodnota1"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:233
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:239
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:490
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:503
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:522
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:535
 msgid "value2"
 msgstr "hodnota2"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:491
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:523
 msgid "Looks at the values in each argument in order and returns the first non-null value for each row."
 msgstr "Projde hodnoty v každém argumentu dle jejich pořadí a vrátí první nenulovou hodnotu pro každý řádek."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:494
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:526
 msgid "Comments"
 msgstr "Komentáře"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:496
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:528
 msgid "Notes"
 msgstr "Poznámky"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:498
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:530
 msgid "No comments"
 msgstr "Žádné komentáře"
 
@@ -14641,6 +14650,7 @@ msgstr "řetězec2"
 msgid "Checks to see if string1 contains string2 within it."
 msgstr "Zkontroluje, zda řetězec1 obsahuje řetězec2."
 
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:134
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:180
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:192
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:396
@@ -14717,8 +14727,12 @@ msgstr "Sloupec jehož jedinečné hodnoty se mají sečíst."
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:409
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:418
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:422
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:459
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:445
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:454
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:462
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:475
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:482
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:491
 msgid "text"
 msgstr "text"
 
@@ -14941,15 +14955,15 @@ msgstr "Vrátí řetězec textu ve velkých písmenech."
 msgid "The column with values to convert to upper case."
 msgstr "Sloupec s hodnotami pro převod na velká písmena."
 
-#: frontend/src/metabase/lib/settings.ts:347
+#: frontend/src/metabase/lib/settings.ts:349
 msgid "must be {0} and include {1}."
 msgstr "musí být {0} a musí obsahovat {1}."
 
-#: frontend/src/metabase/lib/settings.ts:349
+#: frontend/src/metabase/lib/settings.ts:351
 msgid "must be {0}."
 msgstr "musí být {0}."
 
-#: frontend/src/metabase/lib/settings.ts:351
+#: frontend/src/metabase/lib/settings.ts:353
 msgid "must include {0}."
 msgstr "musí obsahovat {0}."
 
@@ -15026,7 +15040,7 @@ msgstr "Vyberte uloženou otázku"
 msgid "Pick a different question"
 msgstr "Vyberte jinou otázku"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:228
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarContainer.tsx:233
 #: frontend/src/metabase/query_builder/components/template_tags/CardTagEditor.jsx:68
 msgid "Loading…"
 msgstr "Načítám..."
@@ -15087,15 +15101,15 @@ msgstr "V záhlaví sloupce"
 msgid "In every table cell"
 msgstr "V každé buňce tabulky"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:354
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:353
 msgid "Value formatting"
 msgstr "Formátování hodnoty"
 
-#: frontend/src/metabase/visualizations/lib/settings/graph.js:363
+#: frontend/src/metabase/visualizations/lib/settings/graph.js:362
 msgid "Full"
 msgstr "Plný"
 
-#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:202
+#: frontend/src/metabase/visualizations/visualizations/SmartScalar.jsx:204
 msgid "No change from last {0}"
 msgstr "Žádná změna od poslední {0}"
 
@@ -15518,19 +15532,19 @@ msgstr "Ověřuji HTTPS..."
 msgid "It looks like HTTPS is not properly configured"
 msgstr "Vypadá to, že HTTPS není správně nakonfigurované"
 
-#: frontend/src/metabase/admin/settings/selectors.js:78
+#: frontend/src/metabase/admin/settings/selectors.js:83
 msgid "Redirect to HTTPS"
 msgstr "Přesměrovat na HTTPS"
 
-#: frontend/src/metabase/admin/settings/selectors.js:222
+#: frontend/src/metabase/admin/settings/selectors.js:227
 msgid "Localization"
 msgstr "Nastavení jazyka"
 
-#: frontend/src/metabase/admin/settings/selectors.js:226
+#: frontend/src/metabase/admin/settings/selectors.js:231
 msgid "Instance language"
 msgstr "Jazyk rozhraní"
 
-#: frontend/src/metabase/admin/settings/selectors.js:269
+#: frontend/src/metabase/admin/settings/selectors.js:274
 msgid "Localization options"
 msgstr "Možnosti jazyka"
 
@@ -15686,7 +15700,7 @@ msgstr "Jaký je tvůj preferovaný jazyk?"
 msgid "This language will be used throughout Metabase and will be the default for new users."
 msgstr "Tento jazyk bude použit v celém Metabase a bude použit jako výchozí pro nové uživatele."
 
-#: frontend/src/metabase/visualizations/components/PinMap.jsx:141
+#: frontend/src/metabase/visualizations/components/PinMap.jsx:143
 msgid "We filtered out {0} row(s) containing null values."
 msgstr "Odfiltrovali jsme {0} záznam(ů) bez hodnoty."
 
@@ -16201,90 +16215,90 @@ msgstr "Vkládání celé Metabase aplikace"
 msgid "If you want to embed all of Metabase, enter the origins of the websites or web apps where you want to allow embedding in an iframe, separated by a space. Here are the {0} for what can be entered."
 msgstr "Pokud chce povolit kompletní vkládání pro celou Metabase, vložte původ stránek nebo webových aplikací které chcete vložit do iframe, oddělit čárkou. Zde je přehled {0} toho co lze zadat."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:150
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:148
 msgid "Grant sandboxed access to this table"
 msgstr "Povolit sandboxový přístup k této tabulce"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:157
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:155
 msgid "When users in this group view this table they'll see a version of it that's filtered by their user attributes, or a custom view of it based on a saved question."
 msgstr "Uživatelé v této pohledové skupině pro tuto tabulku můžou vidět to co mají filtrováno na základě jeho uživatelského atributu. Nebo taky vlastní pohled založený na uložené otázce."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:160
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:158
 msgid "How do you want to filter this table for users in this group?"
 msgstr "Jak chcete uživatelům v této skupině filtrovat tuto tabulku ?"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:179
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:177
 msgid "Pick a saved question that returns the custom view of this table that these users should see."
 msgstr "Zvolte uloženou otázku, která vrací vlastní pohled této tabulky, tak aby ji tito uživatelé viděli."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:197
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:195
 msgid "You can optionally add additional filters here based on user attributes. These filters will be applied on top of any filters that are already in this saved question."
 msgstr "Také zde můžete zadat další filtry na základě uživatelských atributů. Tyto filtry jsou aplikovány jako první, před těmi které jsou v otázce již uloženy."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:217
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:215
 msgid "For this option to work, your users need to have some attributes"
 msgstr "Aby tahle možnost fungovala, vaši uživatelé musí mít nějaké atributy."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:218
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:216
 msgid "To add additional filters, your users need to have some attributes"
 msgstr "Pro přidání dalších filtrů, vaši uživatelé musí mít nějaké atributy."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:262
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:260
 msgid "No user attributes"
 msgstr "Žádné uživatelské atributy."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:263
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:455
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:261
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:453
 msgid "Pick a user attribute"
 msgstr "Zvolte uživatelský atribut."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:282
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:474
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:280
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:472
 msgid "Pick a parameter"
 msgstr "Zvolte parametr"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:300
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:474
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:298
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:472
 msgid "Pick a column"
 msgstr "Zvolte kolonku"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:320
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:318
 msgid "Users in {0} can view"
 msgstr "Uživatelé v {0} můžou vidět"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:328
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:326
 msgid "rows in the {0} question"
 msgstr "řádků v otázce {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:331
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:329
 msgid "rows in the {0} table"
 msgstr "řádků v tabulce {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:341
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:339
 msgid "where {0} equals {1}"
 msgstr "kde {0} se rovná {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:344
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:342
 msgid "and {0} equals {1}"
 msgstr "a {0} se rovná {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:439
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:437
 msgid "You can add attributes automatically by setting up an SSO that uses SAML, or you can enter them manually by going to the People section and clicking on the … menu on the far right."
 msgstr "Můžete automaticky přidat atributy konfigurací SSO které používá SAML, nebo je zadat ručně v sekci Lidé a kliknout na menu ... v pravé části obrazovky."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:458
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:456
 msgid "User attribute"
 msgstr "Atribut uživatele"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:460
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:458
 msgid "We can automatically get your users’ attributes if you’ve set up SSO, or you can add them manually from the \"…\" menu in the People section of the Admin Panel."
 msgstr "Můžeme automaticky přidat atributy vašich uživatelů, pokud jste nakonfiguroval SSO, nebo je zadejte ručně ve správcovské sekci Lidé, kliknutím na menu ... v pravé části obrazovky."
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:477
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:475
 msgid "Parameter or variable"
 msgstr "Parametr nebo proměnná"
 
-#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:495
+#: enterprise/frontend/src/metabase-enterprise/sandboxes/components/GTAPModal.jsx:493
 msgid "equals"
 msgstr "se rovná"
 
@@ -16514,7 +16528,7 @@ msgstr "Nemůže zobrazit nebo vložit výstřižky v této složce"
 msgid "Also change sub-folders"
 msgstr "Může změnit podsložky"
 
-#: frontend/src/metabase/admin/settings/selectors.js:255
+#: frontend/src/metabase/admin/settings/selectors.js:260
 msgid "First day of the week"
 msgstr "První den v týdnu"
 
@@ -16537,7 +16551,7 @@ msgstr "Otevřít menu s akcemi"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:47
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:374
-#: frontend/src/metabase/lib/click-behavior.js:169
+#: frontend/src/metabase/lib/click-behavior.js:179
 msgid "Do nothing"
 msgstr "Nedělat nic"
 
@@ -16631,12 +16645,12 @@ msgid "Pass values to filter this question (optional)"
 msgstr "Předat hodnoty k filtru této otázky (volitelné)"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:859
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:170
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:172
 msgid "Dashboard filters"
 msgstr "Filtry nástěnky"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar.jsx:866
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:172
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:174
 msgid "User attributes"
 msgstr "Atributy uživatele"
 
@@ -16652,20 +16666,20 @@ msgstr "Např. detaily pro {{Nazev Sloupce}}"
 msgid "Values you can reference"
 msgstr "Hodnoty na které se možno odkázat"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:77
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:79
 msgid "No available targets"
 msgstr "Nedostupné cíle"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:236
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:121
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:238
 msgid "filter"
 msgstr "filtr"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:119
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:121
 msgid "variable"
 msgstr "proměnná"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:128
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:130
 msgid "Other available filters"
 msgstr "Ostatní dostupné filtry"
 
@@ -16673,7 +16687,7 @@ msgstr "Ostatní dostupné filtry"
 msgid "Avaliable filters"
 msgstr "Dostupné filtry"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:133
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:135
 msgid "Other available variables"
 msgstr "Ostatní dostupné proměnné"
 
@@ -16681,7 +16695,7 @@ msgstr "Ostatní dostupné proměnné"
 msgid "Avaliable variables"
 msgstr "Dostupné proměnné"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:138
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:140
 msgid "Other available columns"
 msgstr "Ostatní dostupné sloupce"
 
@@ -16689,31 +16703,31 @@ msgstr "Ostatní dostupné sloupce"
 msgid "Avaliable columns"
 msgstr "Dostupné sloupce"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:237
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:239
 msgid "user attribute"
 msgstr "atribut uživatele"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:250
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:253
 msgid "Text card"
 msgstr "Karta s textem"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:353
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:357
 msgid "Click behavior"
 msgstr "Akce pro kliknutí"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:396
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:400
 msgid "Visualization options"
 msgstr "Možnosti vizualizace"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:436
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:440
 msgid "Edit series"
 msgstr "Upravit série"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:436
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:440
 msgid "Add series"
 msgstr "Přidat série"
 
-#: frontend/src/metabase/dashboard/components/DashCard.jsx:512
+#: frontend/src/metabase/dashboard/components/DashCard.jsx:516
 msgid "On click"
 msgstr "Po kliknutí"
 
@@ -16759,34 +16773,34 @@ msgstr "Něco krátkého ale výstižného"
 msgid "Folder this should be in"
 msgstr "Složka by měl být v"
 
-#: frontend/src/metabase/lib/click-behavior.js:168
+#: frontend/src/metabase/lib/click-behavior.js:178
 msgid "Open the action menu"
 msgstr "Otevřít menu akcí"
 
-#: frontend/src/metabase/lib/click-behavior.js:177
+#: frontend/src/metabase/lib/click-behavior.js:187
 msgid "{0} column has custom behavior"
 msgid_plural "{0} columns have custom behavior"
 msgstr[0] "{0} složka má vlastní chování"
 msgstr[1] "{0} složky mají vlastní chování"
 msgstr[2] "{0} složek má vlastní chování"
 
-#: frontend/src/metabase/lib/click-behavior.js:190
+#: frontend/src/metabase/lib/click-behavior.js:200
 msgid "Go to..."
 msgstr "Jít na..."
 
-#: frontend/src/metabase/lib/click-behavior.js:192
+#: frontend/src/metabase/lib/click-behavior.js:202
 msgid "Go to dashboard"
 msgstr "Jít na nástěnku"
 
-#: frontend/src/metabase/lib/click-behavior.js:194
+#: frontend/src/metabase/lib/click-behavior.js:204
 msgid "Go to question"
 msgstr "Jít na otázku"
 
-#: frontend/src/metabase/lib/click-behavior.js:195
+#: frontend/src/metabase/lib/click-behavior.js:205
 msgid "Go to url"
 msgstr "Jít na adresu"
 
-#: frontend/src/metabase/lib/click-behavior.js:198
+#: frontend/src/metabase/lib/click-behavior.js:208
 msgid "Filter this dashboard"
 msgstr "Filtruj tuto nástěnku"
 
@@ -17016,7 +17030,7 @@ msgid "Checks a date or number column's values to see if they're within the spec
 msgstr "Ověří jestli je číslo nebo datum uvnitř zadaného rozsahu."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:433
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:448
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:464
 msgid "Created At"
 msgstr "Vytvořeno dne"
 
@@ -17032,15 +17046,17 @@ msgstr "Počátek rozsahu."
 msgid "The end of the range."
 msgstr "Konec rozsahu."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:447
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:463
 msgid "Checks a date column's values to see if they're within the relative range."
 msgstr "Ověří jestli je datum uvnitř relativního rozsahu."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:452
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:468
 msgid "The date column to return interval of."
 msgstr "Sloupec s datem pro získání relativního intervalu."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:456
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:451
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:472
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:488
 msgid "Period of interval, where negative values are back in time."
 msgstr "Doba intervalu, kde záporné hodnoty znamenají návrat v čase."
 
@@ -17048,19 +17064,19 @@ msgstr "Doba intervalu, kde záporné hodnoty znamenají návrat v čase."
 msgid "Type of internal like \"day\", \"month\", \"year\"."
 msgstr "Typ intervalu jako \"den\", \"měsíc\", \"rok\"."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:501
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:533
 msgid "The column or value to return."
 msgstr "Sloupec nebo hodnota k navrácení."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:504
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:536
 msgid "If value1 is empty, value2 gets returned if its not empty, and so on."
 msgstr "Pokud je hodnota1 prázdná, bude vrácena hodnota2 pokud tato není prázdná, a tak dále."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:511
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:543
 msgid "Tests an expression against a list of cases and returns the corresponding value of the first matching case, with an optional default value if nothing else is met."
 msgstr "Otestuje hodnotu oproti seznamu výrazů a vrátí odpovídající hodnotu prvního odpovídajícího výrazu. Volitelně lze nastavit návratovou hodnotu pro případ žádné shody."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:531
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:563
 msgid "The value that will be returned if the preceding condition is true, and so on."
 msgstr "Hodnota která bude navrácena, pokud je platná předešlá podmínka, a tak dále."
 
@@ -17143,15 +17159,15 @@ msgstr "Zadejte jméno uživatele nebo mailovou adresu."
 msgid "New snippet"
 msgstr "Nový výstřižek"
 
-#: frontend/src/metabase/lib/time.js:121
+#: frontend/src/metabase/lib/time.js:123
 msgid "{0}:00 PM"
 msgstr "{0}:00 odpoledne"
 
-#: frontend/src/metabase/lib/time.js:123
+#: frontend/src/metabase/lib/time.js:125
 msgid "12:00 AM"
 msgstr "12:00 v noci"
 
-#: frontend/src/metabase/lib/time.js:127
+#: frontend/src/metabase/lib/time.js:129
 msgid "{0}:00 AM"
 msgstr "{0}:00 dopoledne"
 
@@ -17567,11 +17583,11 @@ msgstr "Upravit sbírku"
 msgid "Pinned items"
 msgstr "Připnuté položky"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:208
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:210
 msgid "Other users' personal collections"
 msgstr "Osobní sbírky jiných uživatelů"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:216
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:218
 msgid "View archive"
 msgstr "Zobrazit archív"
 
@@ -17591,15 +17607,15 @@ msgstr "Použijte sbírky k zatřízení a seskupení nástěnek a dotazů pro v
 msgid "Unpin this item"
 msgstr "Odepnout tuto položku"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:129
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:131
 msgid "Available filters"
 msgstr "Dostupné filtry"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:134
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:136
 msgid "Available variables"
 msgstr "Dostupné proměnné"
 
-#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:139
+#: frontend/src/metabase/dashboard/components/ClickMappings.jsx:141
 msgid "Available columns"
 msgstr "Dostupné sloupce"
 
@@ -17633,7 +17649,9 @@ msgstr "Aktualizoval čas"
 msgid "Updated timestamp"
 msgstr "Aktualizoval časový otisk"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:460
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:455
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:476
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:492
 msgid "Type of interval like \"day\", \"month\", \"year\"."
 msgstr "Typ intervalu jako \"den\", \"měsíc\", \"rok\"."
 
@@ -17653,7 +17671,7 @@ msgstr "Seřadit vzestupně"
 msgid "Sort descending"
 msgstr "Seřadit sestupně"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:148
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:150
 msgid "Browse data"
 msgstr "Procházet data"
 
@@ -17669,11 +17687,11 @@ msgstr "Nastal problém s touto vizualizací"
 msgid "Showing first {0} rows"
 msgstr "Zobrazuji prvních {0} řádků"
 
-#: frontend/src/metabase/lib/time.js:156
+#: frontend/src/metabase/lib/time.js:158
 msgid "first"
 msgstr "první"
 
-#: frontend/src/metabase/lib/time.js:158
+#: frontend/src/metabase/lib/time.js:160
 msgid "last"
 msgstr "poslední"
 
@@ -17748,7 +17766,7 @@ msgstr "Nejdříve musíte {0}."
 msgid "First, you'll have to {0}."
 msgstr "Nejdříve musíte {0}."
 
-#: frontend/src/metabase/visualizations/components/TableSimple.jsx:133
+#: frontend/src/metabase/visualizations/components/TableSimple.jsx:136
 msgid "Rows {0}-{1} of first {2}"
 msgstr " Řádků {0}-{1} z prvních {2}"
 
@@ -18680,16 +18698,16 @@ msgstr "Nic nebylo nalezeno"
 msgid "There weren't any results for your search."
 msgstr "Vaše hledání nemá žádné výsledky."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:467
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:499
 msgid "Checks if a column is null"
 msgstr "Ověřit jestli je sloupec bez hodnoty"
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:472
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:484
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:504
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:516
 msgid "The column to check."
 msgstr "Sloupec k ověření."
 
-#: frontend/src/metabase/lib/expressions/helper_text_strings.js:479
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:511
 msgid "Checks if a column is empty"
 msgstr "Ověřit jestli je sloupec prázdný"
 
@@ -18712,7 +18730,7 @@ msgstr "Očekávána logická hodnota ale nalezeno {0}"
 #. for what purpose is this string used ? is it 12 noon ??
 #. 
 #. https://en.wikipedia.org/wiki/12-hour_clock#Confusion_at_noon_and_midnight
-#: frontend/src/metabase/lib/time.js:125
+#: frontend/src/metabase/lib/time.js:127
 msgid "12:00 PM"
 msgstr "V poledne"
 
@@ -18748,7 +18766,7 @@ msgstr "Zahrnout hodnoty, které začínají na zadaný text."
 msgid "Match values that end with the entered text."
 msgstr "Zahrnout hodnoty, které končí na zadaný text."
 
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:64
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:73
 msgid "Duplicate this question"
 msgstr "Duplikovat tuto otázku"
 
@@ -19054,7 +19072,7 @@ msgid "Question name"
 msgstr "Název otázky"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/QuestionsAuditTable.jsx:23
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:76
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:78
 msgid "Collection name"
 msgstr "Název kolekce"
 
@@ -19105,11 +19123,11 @@ msgid "Sorry, we were unable to check for updates at this time. Last successful 
 "{0}."
 msgstr "Omlouváme se, ale v tuto chvíli se nám nepodařilo zkontrolovat aktualizace. Poslední úspěšná kontrola proběhla v {0}."
 
-#: frontend/src/metabase/admin/settings/selectors.js:74
+#: frontend/src/metabase/admin/settings/selectors.js:79
 msgid "Only change this if you know what you're doing!"
 msgstr "Změňte to pouze v případě, že víte, co děláte!"
 
-#: frontend/src/metabase/admin/settings/selectors.js:107
+#: frontend/src/metabase/admin/settings/selectors.js:112
 msgid "Replace underscores and dashes with spaces"
 msgstr "Nahradit podtržítka a pomlčky mezerami"
 
@@ -19119,7 +19137,7 @@ msgstr "Další podrobnosti (kliknutím je stáhnete)"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:135
 msgid "Connection Pool Details"
-msgstr "Detaily sdružování připojení"
+msgstr "Detaily sdružených připojení"
 
 #: frontend/src/metabase/admin/tasks/containers/Help.jsx:136
 msgid "Information about active and idle connections for all pools"
@@ -19182,7 +19200,7 @@ msgstr "Přidat otázky"
 #: frontend/src/metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorContent.jsx:98
 #: frontend/src/metabase/dashboard/components/AddSeriesModal/QuestionList.jsx:189
 #: frontend/src/metabase/dashboard/components/add-card-sidebar/QuestionList.jsx:52
-#: frontend/src/metabase/nav/components/RecentsList.jsx:102
+#: frontend/src/metabase/nav/components/RecentsList.jsx:111
 #: frontend/src/metabase/query_builder/components/saved-question-picker/SavedQuestionList.jsx:42
 msgid "Nothing here"
 msgstr "Nic tu není"
@@ -19260,15 +19278,15 @@ msgstr "Očekávám {0} počátečních závorek"
 msgid "Expecting an opening parenthesis after function {0}"
 msgstr "Očekávám počáteční závorku za funkcí {0}"
 
-#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:519
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:527
 msgid "Explore results"
 msgstr "Prozkoumat výsledky"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:282
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:280
 msgid "You can use the value of any column here like this: {{COLUMN}}"
 msgstr "Můžete zde použít hodnotu libovolného sloupce jako: {{COLUMN}}"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:295
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:293
 msgid "Link URL"
 msgstr "URL odkazu"
 
@@ -19594,7 +19612,7 @@ msgid "{0} edited this"
 msgstr "{0} upraveno"
 
 #: enterprise/frontend/src/metabase-enterprise/collections/constants.js:5
-#: frontend/src/metabase/plugins/index.ts:88
+#: frontend/src/metabase/plugins/index.ts:95
 msgid "Regular"
 msgstr "Pravidelné"
 
@@ -19640,7 +19658,7 @@ msgstr "Cloud"
 msgid "Cloud Settings"
 msgstr "Nastavení cloudu"
 
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:78
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:93
 msgid "Edit details"
 msgstr "Upravit podrobnosti"
 
@@ -19648,7 +19666,7 @@ msgstr "Upravit podrobnosti"
 msgid "History"
 msgstr "Historie"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:421
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:419
 msgid "Every field is hidden right now"
 msgstr "Každé pole je nyní skryté"
 
@@ -19804,11 +19822,11 @@ msgstr "hodin"
 msgid "Error name"
 msgstr "Název chyby"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:75
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:77
 msgid "DB name"
 msgstr "Název DB"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:81
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:83
 msgid "Rerun Selected"
 msgstr "Vybráno opětovné spuštění"
 
@@ -19877,11 +19895,11 @@ msgstr "odběr"
 
 #: frontend/src/metabase/entities/pulses.js:42
 #: frontend/src/metabase/entities/timeline-events.js:18
-#: frontend/src/metabase/entities/timelines.js:42
+#: frontend/src/metabase/entities/timelines.js:46
 msgid "moved"
 msgstr "přesunut"
 
-#: frontend/src/metabase/lib/formatting.js:893
+#: frontend/src/metabase/lib/formatting.js:891
 msgid "{0} hour"
 msgid_plural "{0} hours"
 msgstr[0] "{0} hodina"
@@ -19958,12 +19976,12 @@ msgstr "{0} odstranil ověření"
 msgid "{0} changed status to {1}"
 msgstr "{0} změnil status na {1}"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/index.js:9
-#: enterprise/frontend/src/metabase-enterprise/tools/routes.jsx:14
+#: frontend/src/metabase/admin/app/reducers.ts:52
+#: frontend/src/metabase/admin/routes.jsx:210
 msgid "Tools"
 msgstr "Nástroje"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/routes.jsx:20
+#: enterprise/frontend/src/metabase-enterprise/tools/index.js:26
 msgid "Erroring Questions"
 msgstr "Chybující otázky"
 
@@ -20048,10 +20066,10 @@ msgstr "Výběrem sbírky zobrazíte její oprávnění"
 msgid "Search for a collection"
 msgstr "Vyhledat sbírku"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:74
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:123
 #: frontend/src/metabase/admin/permissions/selectors/collection-permissions.js:210
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/group-sidebar.ts:44
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:330
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:333
 msgid "Search for a group"
 msgstr "Vyhledat skupinu"
 
@@ -20074,7 +20092,7 @@ msgstr "Více možností"
 msgid "Expecting field but found {0}"
 msgstr "Očekávám pole ale nalezeno {0}"
 
-#: frontend/src/metabase/nav/components/RecentsList.jsx:55
+#: frontend/src/metabase/nav/components/RecentsList.jsx:57
 msgid "Recently viewed"
 msgstr "Nedávno zobrazeno"
 
@@ -20258,8 +20276,8 @@ msgstr "Od této chvíle přestanete tento odběr dostávat. "
 msgid "Unrestricted"
 msgstr "Neomezené"
 
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:34
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:41
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/data-model-permission.ts:36
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:58
 #: frontend/src/metabase/admin/permissions/constants/data-permissions.js:11
 msgid "Granular"
 msgstr "Strukturovaně"
@@ -20276,7 +20294,7 @@ msgstr "Editor nativního dotazu vyžaduje plný přístup k datům."
 msgid "Select a database to see group permissions"
 msgstr "Výběrem databáze zobrazíte oprávnění skupiny"
 
-#: frontend/src/metabase/admin/permissions/selectors/confirmations.js:88
+#: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:108
 msgid "Allow native query editing?"
 msgstr "Povolit nativní úpravy dotazu?"
 
@@ -20299,20 +20317,20 @@ msgid "Search for a table"
 msgstr "Vyhledat tabulku"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:155
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:272
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:275
 msgid "Data access"
 msgstr "Přístup k datům"
 
 #: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:156
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:273
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:276
 msgid "Native query editing"
 msgstr "Nativní editace dotazu"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:321
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:324
 msgid "The Administrators group is special, and always has Unrestricted access."
 msgstr "Skupina Správci je speciální a má vždy neomezený přístup."
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:329
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:332
 msgid "Permissions for"
 msgstr "Oprávnění pro"
 
@@ -20328,11 +20346,11 @@ msgstr "Název schéma"
 msgid "Search for a schema"
 msgstr "Vyhledat schéma"
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:229
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:231
 msgid "Permissions for the "
 msgstr "Oprávnění pro "
 
-#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:236
+#: frontend/src/metabase/admin/permissions/selectors/data-permissions/permission-editor.ts:238
 msgid "{0} person"
 msgid_plural "{0} people"
 msgstr[0] "{0} osoba"
@@ -20442,11 +20460,11 @@ msgstr "Nastavení správce"
 msgid "and is built with care by a team from all across this pale blue dot."
 msgstr "a je pečlivě budován týmem z celé této bleděmodré země."
 
-#: frontend/src/metabase/query_builder/actions.js:1675
+#: frontend/src/metabase/query_builder/actions/models.js:37
 msgid "This is a model now."
 msgstr "Nyní se jedná o model."
 
-#: frontend/src/metabase/query_builder/actions.js:1688
+#: frontend/src/metabase/query_builder/actions/models.js:50
 msgid "This is a question now."
 msgstr "To je nyní otázka."
 
@@ -20455,11 +20473,11 @@ msgstr "To je nyní otázka."
 msgid "You're only allowed to email subscriptions to addresses ending in {0}"
 msgstr "Odběry můžete zasílat pouze na adresy končící na {0}."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:20
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:19
 msgid "Primary color"
 msgstr "Hlavní barva"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:21
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:20
 msgid "The main color used throughout the app for buttons, links, and the default chart color."
 msgstr "Hlavní barva používaná v celé aplikaci pro tlačítka, odkazy a výchozí barvu grafu."
 
@@ -20471,27 +20489,27 @@ msgstr "Barva navigačního panelu"
 msgid "The top nav bar of Metabase. Defaults to the Primary Color if not set."
 msgstr "Horní navigační panel Metabase. Pokud není nastaven, je výchozí hodnotou Primární barva."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:28
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:23
 msgid "Accent 1"
 msgstr "Přízvuk 1"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:29
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:24
 msgid "The color of aggregations and breakouts in the graphical query builder."
 msgstr "Barva agregací a rozdělení v grafickém nástroji pro tvorbu dotazů."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:32
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:27
 msgid "Accent 2"
 msgstr "Přízvuk 2"
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:33
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:28
 msgid "The color of filters in the query builder and buttons and links in filter widgets."
 msgstr "Barva filtrů v nástroji pro sestavování dotazů a tlačítek a odkazů ve widgetech filtrů."
 
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:36
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:39
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:42
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:45
-#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:48
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:31
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:34
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:37
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:40
+#: enterprise/frontend/src/metabase-enterprise/whitelabel/components/ColorSchemeWidget.jsx:43
 msgid "Additional chart color"
 msgstr "Další barva grafu"
 
@@ -20499,7 +20517,7 @@ msgstr "Další barva grafu"
 msgid "Rerun this question"
 msgstr "Zopakujte tuto otázku"
 
-#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:41
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:47
 #: frontend/src/metabase/status/components/DatabaseStatusSmall/DatabaseStatusSmall.tsx:55
 msgid "Syncing database…"
 msgstr "Synchronizuji databázi..."
@@ -20601,11 +20619,11 @@ msgid "License and billing"
 msgstr "Licence a fakturace"
 
 #: enterprise/frontend/src/metabase-enterprise/license/components/LicenseAndBillingSettings/LicenseAndBillingSettings.tsx:134
-#: frontend/src/metabase/admin/settings/selectors.js:362
+#: frontend/src/metabase/admin/settings/selectors.js:379
 msgid "License"
 msgstr "Licence"
 
-#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:37
+#: frontend/src/metabase/collections/components/NewCollectionItemMenu.jsx:38
 msgid "New…"
 msgstr "Nový..."
 
@@ -20665,6 +20683,7 @@ msgstr "Naše {0}"
 msgid "Choose what this data will be called in Metabase."
 msgstr "Zvolte, jak se tato data budou v Metabase nazývat."
 
+#: frontend/src/metabase/admin/settings/selectors.js:419
 #: frontend/src/metabase/home/containers/SearchApp.jsx:47
 #: frontend/src/metabase/query_builder/components/DataSelector.jsx:1188
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:51
@@ -20686,8 +20705,8 @@ msgstr "Neznámá metrika: {0}"
 msgid "Unknown Segment: {0}"
 msgstr "Neznámý segment: {0}"
 
-#: frontend/src/metabase/lib/expressions/diagnostics.js:119
-#: frontend/src/metabase/lib/expressions/process.js:33
+#: frontend/src/metabase/lib/expressions/diagnostics.js:121
+#: frontend/src/metabase/lib/expressions/process.js:35
 msgid "Unknown Field: {0}"
 msgstr "Neznámé pole: {0}"
 
@@ -20812,12 +20831,12 @@ msgstr "Datová sada"
 msgid "You're only allowed to email pulses to addresses ending in {0}"
 msgstr "Pulzy smíte posílat pouze na adresy končící na {0}."
 
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:507
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:500
 msgid "Reaches the goal line"
 msgstr "Dosáhne cílovou linii"
 
 #: enterprise/frontend/src/metabase-enterprise/audit_app/containers/AuditAlertEditModal/AuditAlertEditModal.jsx:15
-#: frontend/src/metabase/query_builder/components/AlertModals.jsx:628
+#: frontend/src/metabase/query_builder/components/AlertModals.jsx:621
 msgid "You're only allowed to email alerts to addresses ending in {0}"
 msgstr "Upozornění smíte zasílat pouze na adresy končící na {0}."
 
@@ -20867,7 +20886,7 @@ msgid "Use any question’s results to start a new question."
 msgstr "Výsledky libovolné otázky můžete použít k založení nové otázky."
 
 #: frontend/src/metabase/query_builder/components/NewDatasetModal/NewDatasetModal.jsx:46
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:109
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:124
 msgid "Turn this into a model"
 msgstr "Přeměňte to na model"
 
@@ -20887,7 +20906,7 @@ msgid "Live in collections to keep them separate from messy database\n"
 "schemas."
 msgstr "Nechat ve sbírkách, aby byly odděleny od nepřehledných databázových schémat."
 
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:63
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:72
 msgid "Duplicate this model"
 msgstr "Duplikovat tento model"
 
@@ -20915,19 +20934,19 @@ msgstr "Model #{0}"
 msgid "Model in {0}"
 msgstr "Model v {0}"
 
-#: frontend/src/metabase/visualizations/visualizations/Table.jsx:273
+#: frontend/src/metabase/visualizations/visualizations/Table.jsx:271
 msgid "Display as"
 msgstr "Zobrazit jako"
 
-#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:74
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:76
 msgid "Error contents"
 msgstr "Obsah chyby"
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:195
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:197
 msgid "Restoring the sample database..."
 msgstr "Obnovení vzorové databáze..."
 
-#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:202
+#: frontend/src/metabase/admin/databases/containers/DatabaseListApp.jsx:204
 msgid "Bring the sample database back"
 msgstr "Vrátit vzorovou databázi zpět"
 
@@ -20999,6 +21018,7 @@ msgstr "prázdný"
 msgid "not empty"
 msgstr "není prázdný"
 
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobModal.tsx:70
 #: frontend/src/metabase/query_builder/components/view/EditQuestionInfoModal.jsx:22
 msgid "Edit model"
 msgstr "Upravit model"
@@ -22387,15 +22407,15 @@ msgstr "Neseskupovat"
 msgid "Invalid template tag: {0}"
 msgstr "Neplatná značka šablony: {0}"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:77
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:126
 msgid "Settings access"
 msgstr "Přístup k nastavení"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:80
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:129
 msgid "This grants access to Tools, Audit, and Troubleshooting"
 msgstr "Toto umožňuje přístup k nástrojům, auditu a řešení problémů"
 
-#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:82
+#: enterprise/frontend/src/metabase-enterprise/application_permissions/selectors.ts:131
 msgid "Subscriptions and Alerts"
 msgstr "Předplatné a upozornění"
 
@@ -22407,11 +22427,11 @@ msgstr "Správa přístupu k databázi vyžaduje plný přístup k datům."
 msgid "Download results access requires full data access."
 msgstr "Přístup k výsledkům stahování vyžaduje úplný přístup k datům."
 
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:29
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:46
 msgid "10 thousand rows"
 msgstr "10 tisíc řádků"
 
-#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:35
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:52
 msgid "1 million rows"
 msgstr "1 million řádků"
 
@@ -22477,7 +22497,7 @@ msgstr "Minuty"
 msgid "Remove time"
 msgstr "Odstranit čas"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:161
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:163
 msgid "Add your own data"
 msgstr "Přidejte vlastní data"
 
@@ -22578,39 +22598,39 @@ msgstr "Zde jsou některé oblíbené modely"
 msgid "Here are some popular dashboards"
 msgstr "Zde jsou některé oblíbené nástěnky"
 
-#: frontend/src/metabase/home/homepage/components/HomeRecentSection/HomeRecentSection.tsx:19
+#: frontend/src/metabase/home/homepage/components/HomeRecentSection/HomeRecentSection.tsx:25
 msgid "Pick up where you left off"
 msgstr "Pokračujte tam, kde jste skončili"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:40
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:41
 msgid "Try out these sample x-rays to see what Metabase can do."
 msgstr "Vyzkoušejte si tyto ukázkové náhledy a zjistěte, co Metabase umí."
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:44
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:45
 msgid "Here are some explorations of the"
 msgstr "Zde je několik průzkumů"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:50
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:51
 msgid "schema in"
 msgstr "schéma v"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:55
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:56
 msgid "Here are some explorations of"
 msgstr "Zde je několik průzkumů"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:121
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:123
 msgid "A look at"
 msgstr "Podívejte se na"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:122
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:124
 msgid "A summary of"
 msgstr "Přehled"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:123
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:125
 msgid "A glance at"
 msgstr "Nahlédnutí do"
 
-#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:124
+#: frontend/src/metabase/home/homepage/components/HomeXraySection/HomeXraySection.tsx:126
 msgid "Some insights about"
 msgstr "Několik postřehů o"
 
@@ -22623,7 +22643,7 @@ msgid "Bookmarks"
 msgstr "Záložky"
 
 #: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/DatePicker.tsx:121
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:210
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:216
 msgid "Past"
 msgstr "Minulost"
 
@@ -22818,34 +22838,34 @@ msgid "Hours of the day..."
 msgstr "Hodiny dne..."
 
 #: frontend/src/metabase/lib/schema_metadata.js:471
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:145
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:146
 msgid "Is not empty"
 msgstr "Není prázdný"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:159
 msgid "Select none..."
 msgstr "Nevybrat žádný..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:158
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker.tsx:159
 msgid "Select all..."
 msgstr "Vybrat vše..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:51
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:50
 msgid "Right now, this is {0}"
 msgstr "Nyní je to {0}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:55
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:59
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:63
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:67
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:54
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:58
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:62
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:66
 msgid "Right now, this is {0} - {1}"
 msgstr "Nyní je to {0} - {1}"
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:187
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:189
 msgid "Starting from..."
 msgstr "Začínám od..."
 
-#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:248
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:259
 msgid "Starting from"
 msgstr "Začínám od"
 
@@ -22857,15 +22877,15 @@ msgstr "0/{0} načteno"
 msgid "Your dashboard is ready"
 msgstr "Vaše nástěnka je připravena"
 
-#: frontend/src/metabase/query_builder/actions.js:1379
+#: frontend/src/metabase/query_builder/actions/querying.js:163
 msgid "Doing Science..."
 msgstr "Provádím výpočty..."
 
-#: frontend/src/metabase/query_builder/actions.js:1381
+#: frontend/src/metabase/query_builder/actions/querying.js:165
 msgid "Still Here..."
 msgstr "Stále tady..."
 
-#: frontend/src/metabase/query_builder/actions.js:1438
+#: frontend/src/metabase/query_builder/actions/querying.js:59
 msgid "Your question is ready!"
 msgstr "Vaše otázka je připravena!"
 
@@ -22884,14 +22904,14 @@ msgstr "Prostředky a podpora"
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionHeader.jsx:110
 #: frontend/src/metabase/components/EntityItem.jsx:128
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:301
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:73
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:88
 msgid "Remove from bookmarks"
 msgstr "Odstranit ze záložek"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionHeader.jsx:110
 #: frontend/src/metabase/components/EntityItem.jsx:128
 #: frontend/src/metabase/dashboard/containers/DashboardHeader.jsx:301
-#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:73
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:88
 msgid "Bookmark"
 msgstr "Záložka"
 
@@ -22901,12 +22921,12 @@ msgid "event"
 msgstr "událost"
 
 #: frontend/src/metabase/entities/timeline-events.js:26
-#: frontend/src/metabase/entities/timelines.js:50
+#: frontend/src/metabase/entities/timelines.js:54
 msgid "archived"
 msgstr "archivováné"
 
 #: frontend/src/metabase/entities/timeline-events.js:26
-#: frontend/src/metabase/entities/timelines.js:50
+#: frontend/src/metabase/entities/timelines.js:54
 msgid "unarchived"
 msgstr "nearchivované"
 
@@ -22918,8 +22938,8 @@ msgstr "Vydání produktu"
 msgid "Default icon"
 msgstr "Výchozí ikona"
 
-#: frontend/src/metabase/entities/timelines.js:42
-#: frontend/src/metabase/entities/timelines.js:50
+#: frontend/src/metabase/entities/timelines.js:46
+#: frontend/src/metabase/entities/timelines.js:54
 msgid "timeline"
 msgstr "časová osa"
 
@@ -22951,72 +22971,72 @@ msgstr "Časová osa"
 msgid "Excludes"
 msgstr "Nezahrnuje"
 
-#: frontend/src/metabase/lib/query_time.js:131
+#: frontend/src/metabase/lib/query_time.js:137
 msgid "{0}, starting {1} {2}"
 msgstr "{0}, začíná {1} {2}"
 
-#: frontend/src/metabase/lib/query_time.js:363
+#: frontend/src/metabase/lib/query_time.js:381
 msgid "minute {0}"
 msgid_plural "minutes {0}"
 msgstr[0] "{0} minuta"
 msgstr[1] " {0} minuty"
 msgstr[2] "minut {0}"
 
-#: frontend/src/metabase/lib/query_time.js:365
+#: frontend/src/metabase/lib/query_time.js:383
 msgid "hour {0}"
 msgid_plural "hours {0}"
 msgstr[0] "{0} hodina"
 msgstr[1] "{0} hodiny"
 msgstr[2] "{0} hodin"
 
-#: frontend/src/metabase/lib/query_time.js:367
+#: frontend/src/metabase/lib/query_time.js:385
 msgid "day {0}"
 msgid_plural "days {0}"
 msgstr[0] "{0} den"
 msgstr[1] "{0} dny"
 msgstr[2] "{0} dní"
 
-#: frontend/src/metabase/lib/query_time.js:369
+#: frontend/src/metabase/lib/query_time.js:387
 msgid "week {0}"
 msgid_plural "weeks {0}"
 msgstr[0] "{0} týden"
 msgstr[1] "{0} týdny"
 msgstr[2] "{0} týdnů"
 
-#: frontend/src/metabase/lib/query_time.js:371
+#: frontend/src/metabase/lib/query_time.js:389
 msgid "month {0}"
 msgid_plural "months {0}"
 msgstr[0] "{0} měsíc"
 msgstr[1] "{0} měsíce"
 msgstr[2] "{0} měsíců"
 
-#: frontend/src/metabase/lib/query_time.js:373
+#: frontend/src/metabase/lib/query_time.js:391
 msgid "quarter {0}"
 msgid_plural "quarters {0}"
 msgstr[0] "{0} kvartál"
 msgstr[1] "{0} kvartály"
 msgstr[2] "{0} kvartálů"
 
-#: frontend/src/metabase/lib/query_time.js:375
+#: frontend/src/metabase/lib/query_time.js:393
 msgid "year {0}"
 msgid_plural "years {0}"
 msgstr[0] "{0} rok"
 msgstr[1] "{0} roků"
 msgstr[2] "{0} roků"
 
-#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:128
+#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:132
 msgid "All Set! {0} is ready."
 msgstr "Vše připraveno! {0} je připraven."
 
-#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:129
+#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:133
 msgid "All questions loaded"
 msgstr "Všechny otázky jsou načteny"
 
-#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:154
+#: frontend/src/metabase/dashboard/containers/DashboardApp.jsx:158
 msgid "Would you like to be notified when this dashboard is done loading?"
 msgstr "Chcete být upozorněni na dokončení načítání této nástěnky?"
 
-#: frontend/src/metabase/lib/expressions/diagnostics.js:141
+#: frontend/src/metabase/lib/expressions/diagnostics.js:143
 msgid "Custom columns do not support boolean expressions"
 msgstr "Vlastní sloupce nepodporují logické výrazy"
 
@@ -23024,23 +23044,23 @@ msgstr "Vlastní sloupce nepodporují logické výrazy"
 msgid "Downloading…"
 msgstr "Stahuji..."
 
-#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:394
+#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:398
 msgid "All Set! Your question is ready."
 msgstr "Vše připraveno! Vaše otázka je připravena."
 
-#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:395
+#: frontend/src/metabase/query_builder/containers/QueryBuilder.jsx:399
 msgid "{0} is loaded."
 msgstr "{0} je načten."
 
-#: frontend/src/metabase/query_builder/components/view/View.jsx:520
+#: frontend/src/metabase/query_builder/components/view/View.jsx:524
 msgid "Would you like to be notified when this question is done loading?"
 msgstr "Chcete být upozorněni na dokončení načítání této otázky?"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:275
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:289
 msgid "Switch to data"
 msgstr "Přepnout na data"
 
-#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:280
+#: frontend/src/metabase/query_builder/components/view/ViewFooter.jsx:294
 msgid "Switch to visualization"
 msgstr "Přepnout na vizualizaci"
 
@@ -23170,7 +23190,7 @@ msgstr "hodnota musí být platný datový řetězec"
 msgid "Confirm"
 msgstr "Potvrďte"
 
-#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:101
+#: frontend/src/metabase/nav/containers/MainNavbar/MainNavbarView.tsx:103
 msgid "Home"
 msgstr "Home"
 
@@ -23222,7 +23242,7 @@ msgstr "Žádné přihlášení"
 msgid "You need unrestricted data access on this table to map custom display values."
 msgstr "K mapování vlastních hodnot zobrazení je třeba mít k této tabulce neomezený přístup k datům."
 
-#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1062
+#: frontend/src/metabase/visualizations/components/TableInteractive.jsx:1065
 msgid "View Details"
 msgstr "Zobrazit podrobnosti"
 
@@ -23237,4 +23257,430 @@ msgstr "Klíč není k dispozici"
 #: src/metabase/cmd/rotate_encryption_key.clj
 msgid "Connected to"
 msgstr "Připojeno k"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobModal.tsx:65
+msgid "Retry now"
+msgstr "Zkuste to znovu"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobModal.tsx:75
+msgid "Oh oh…"
+msgstr "Ale ne..."
+
+#: frontend/src/metabase/admin/routes.jsx:214
+#: frontend/src/metabase/admin/tools/containers/Tools.tsx:63
+msgid "Model Caching Log"
+msgstr "Log mezipaměti modelu"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:43
+msgid "Refreshing"
+msgstr "Obnovuji"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:46
+msgid "Completed"
+msgstr "Hotovo"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:62
+msgid "in"
+msgstr "v"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:133
+msgid "Model"
+msgstr "Model"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:135
+msgid "Last run at"
+msgstr "Naposledy proběhlo"
+
+#: frontend/src/metabase/admin/tasks/containers/ModelCacheRefreshJobs/ModelCacheRefreshJobs.tsx:136
+msgid "Created by"
+msgstr "Vytvořil"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:32
+msgid "Failed to update model cache"
+msgstr "Nepodařilo se aktualizovat mezipaměť modelu"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:35
+msgid "Refreshing model cache"
+msgstr "Aktualizuji mezipaměť modelu"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:38
+msgid "Model last cached {0}"
+msgstr "Poslední mezipaměť modelu {0}"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:71
+msgid "Last attempt {0}"
+msgstr "Poslední pokus {0}"
+
+#: frontend/src/metabase/query_builder/components/view/sidebars/ModelCacheSection/ModelCacheSection.tsx:76
+msgid "Refresh now"
+msgstr "Obnovit nyní"
+
+#: frontend/src/metabase/query_builder/components/filters/pickers/DatePicker/RelativeDatePicker.tsx:133
+msgid "this quarter"
+msgstr "tento kvartál"
+
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/query-downloads.ts:9
+msgid "You're allowed to download up to 10,000 rows."
+msgstr "Můžete stáhnout až 10 000 řádků."
+
+#: enterprise/frontend/src/metabase-enterprise/feature_level_permissions/permission-management/download-permission.ts:24
+msgid "Groups with Block data access can't download results"
+msgstr "Skupiny s blokovým datovým přístupem nemohou stahovat výsledky"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:78
+msgid "Disable model persistence"
+msgstr "Zakázat perzistenci modelu"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:79
+msgid "Disabling…"
+msgstr "Zakazuji..."
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:87
+msgid "Enable model persistence"
+msgstr "Povolit perzistenci modelu"
+
+#: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:88
+msgid "Enabling…"
+msgstr "Povoluji..."
+
+#: frontend/src/metabase/lib/query_time.js:232
+msgid "Default period{0}"
+msgid_plural "Default periods{0}"
+msgstr[0] "Výchozí období{0}"
+msgstr[1] "Výchozí období{0}"
+msgstr[2] "Výchozích období{0}"
+
+#: frontend/src/metabase/lib/query_time.js:234
+msgid "Minute{0}"
+msgid_plural "Minutes{0}"
+msgstr[0] "Minuta{0}"
+msgstr[1] "Minuty{0}"
+msgstr[2] "Minut{0}"
+
+#: frontend/src/metabase/lib/query_time.js:236
+msgid "Hour{0}"
+msgid_plural "Hours{0}"
+msgstr[0] "Hodina{0}"
+msgstr[1] "Hodiny{0}"
+msgstr[2] "Hodin{0}"
+
+#: frontend/src/metabase/lib/query_time.js:238
+msgid "Day{0}"
+msgid_plural "Days{0}"
+msgstr[0] "Den{0}"
+msgstr[1] "Dny{0}"
+msgstr[2] "Dnů{0}"
+
+#: frontend/src/metabase/lib/query_time.js:240
+msgid "Week{0}"
+msgid_plural "Weeks{0}"
+msgstr[0] "Týden{0}"
+msgstr[1] "Týdny{0}"
+msgstr[2] "Týdnů{0}"
+
+#: frontend/src/metabase/lib/query_time.js:242
+msgid "Month{0}"
+msgid_plural "Months{0}"
+msgstr[0] "Měsíc{0}"
+msgstr[1] "Měsíce{0}"
+msgstr[2] "Měsíců{0}"
+
+#: frontend/src/metabase/lib/query_time.js:244
+msgid "Quarter{0}"
+msgid_plural "Quarters{0}"
+msgstr[0] "kvartál{0}"
+msgstr[1] "kvartály{0}"
+msgstr[2] "kvartálů{0}"
+
+#: frontend/src/metabase/lib/query_time.js:246
+msgid "Year{0}"
+msgid_plural "Years{0}"
+msgstr[0] "Rok{0}"
+msgstr[1] "Roky{0}"
+msgstr[2] "Roků{0}"
+
+#: frontend/src/metabase/lib/query_time.js:248
+msgid "Minute of hour{0}"
+msgid_plural "Minutes of hour{0}"
+msgstr[0] "Minuta v hodině{0}"
+msgstr[1] "Minuty v hodině{0}"
+msgstr[2] "Minut v hodině{0}"
+
+#: frontend/src/metabase/lib/query_time.js:250
+msgid "Hour of day{0}"
+msgid_plural "Hours of day{0}"
+msgstr[0] "Hodina dne{0}"
+msgstr[1] "Hodiny dne{0}"
+msgstr[2] "Hodin dne{0}"
+
+#: frontend/src/metabase/lib/query_time.js:252
+msgid "Day of week{0}"
+msgid_plural "Days of week{0}"
+msgstr[0] "Den týdnu{0}"
+msgstr[1] "Dny týdnu{0}"
+msgstr[2] "Dnů týdne{0}"
+
+#: frontend/src/metabase/lib/query_time.js:254
+msgid "Day of month{0}"
+msgid_plural "Days of month{0}"
+msgstr[0] "Den měsíce{0}"
+msgstr[1] "Dny měsíce{0}"
+msgstr[2] "Dní měsíce{0}"
+
+#: frontend/src/metabase/lib/query_time.js:256
+msgid "Day of year{0}"
+msgid_plural "Days of year{0}"
+msgstr[0] "Den roku{0}"
+msgstr[1] "Dny roku{0}"
+msgstr[2] "Dní roku{0}"
+
+#: frontend/src/metabase/lib/query_time.js:258
+msgid "Week of year{0}"
+msgid_plural "Weeks of year{0}"
+msgstr[0] "Týden roku{0}"
+msgstr[1] "Týdny roku{0}"
+msgstr[2] "Týdnů roku{0}"
+
+#: frontend/src/metabase/lib/query_time.js:260
+msgid "Month of year{0}"
+msgid_plural "Months of year{0}"
+msgstr[0] "Měsíc roku{0}"
+msgstr[1] "Měsíce roku{0}"
+msgstr[2] "Měsíců roku{0}"
+
+#: frontend/src/metabase/lib/query_time.js:262
+msgid "Quarter of year{0}"
+msgid_plural "Quarters of year{0}"
+msgstr[0] "kvartál roku{0}"
+msgstr[1] "kvartály roku{0}"
+msgstr[2] "kvartálů roku{0}"
+
+#: frontend/src/metabase/admin/settings/selectors.js:390
+msgid "Saved questions"
+msgstr "Uložené otázky"
+
+#: frontend/src/metabase/admin/settings/selectors.js:420
+msgid "Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. {0}."
+msgstr "Zapnutím mezipaměti se vytvoří tabulky pro vaše modely ve vyhrazeném schématu a Metabase je bude podle plánu aktualizovat. Otázky založené na vašich modelech se budou dotazovat na tyto tabulky. {0}."
+
+#: frontend/src/metabase/admin/settings/selectors.js:439
+msgid "Refresh every"
+msgstr "Aktualizovat každé"
+
+#: frontend/src/metabase/admin/settings/selectors.js:443
+msgid "2 hours"
+msgstr "2 hodiny"
+
+#: frontend/src/metabase/admin/settings/selectors.js:444
+msgid "3 hours"
+msgstr "3 hodiny"
+
+#: frontend/src/metabase/admin/settings/selectors.js:445
+msgid "6 hours"
+msgstr "6 hodin"
+
+#: frontend/src/metabase/admin/settings/selectors.js:446
+msgid "12 hours"
+msgstr "12 hodin"
+
+#: frontend/src/metabase/admin/settings/selectors.js:447
+msgid "24 hours"
+msgstr "24 hodin"
+
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:446
+msgid "Gets a time interval of specified length"
+msgstr "Získá časový interval zadané délky"
+
+#: frontend/src/metabase/lib/expressions/helper_text_strings.js:483
+msgid "Gets a timestamp relative to the current time"
+msgstr "Získá časové razítko relativní k aktuálnímu času"
+
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:141
+msgid "Unpersist model"
+msgstr "Zrušit trvalý model"
+
+#: frontend/src/metabase/query_builder/components/QuestionActionButtons.jsx:150
+msgid "Persist model"
+msgstr "Trvalý model"
+
+#: enterprise/frontend/src/metabase-enterprise/tools/containers/ErrorOverview.jsx:73
+msgid "Questions that errored when last run"
+msgstr "Otázky, které při posledním spuštění chybovaly"
+
+#: frontend/src/metabase/query_builder/components/view/ViewHeader.jsx:426
+msgid "You don't have permission to save this question."
+msgstr "K uložení této otázky nemáte oprávnění."
+
+#: modules/drivers/bigquery-cloud-sdk/src/metabase/driver/bigquery_cloud_sdk.clj
+msgid "Looks like we cannot find any matching datasets."
+msgstr "Vypadá to, že nemůžeme najít žádné odpovídající datové sady."
+
+#: src/metabase/actions.clj
+msgid "Whether to enable using the new experimental Actions features globally. (Actions must also be enabled for each Database.)"
+msgstr "Zda chcete globálně povolit používání nových experimentálních akčních funkcí. (Akce musí být také povoleny pro každou databázi.)"
+
+#: src/metabase/api/actions.clj
+msgid "Actions are not enabled."
+msgstr "Akce nejsou povoleny."
+
+#: src/metabase/api/card.clj
+msgid "Database does not support persisting"
+msgstr "Databáze neumožňuje trvalé modely"
+
+#: src/metabase/api/card.clj
+msgid "Persisting models not enabled for database"
+msgstr "Trvalé modely nejsou povoleny pro databázi"
+
+#: src/metabase/api/card.clj
+msgid "Card is not a model"
+msgstr "Karta není model"
+
+#: src/metabase/api/database.clj
+msgid "Persisting models is not enabled."
+msgstr "Trvalé modely nejsou povoleny."
+
+#: src/metabase/api/persist.clj
+msgid "Integer greater than or equal to one and less than or equal to twenty-four"
+msgstr "Číslo větší nebo rovno jedné a menší nebo rovno dvaceti čtyřem"
+
+#: src/metabase/api/persist.clj
+msgid "Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four"
+msgstr "Hodnota musí být celé číslo představující hodiny větší nebo rovno jedné a menší nebo rovno dvaceti čtyřem"
+
+#: src/metabase/api/persist.clj
+msgid "Enabling model persistence"
+msgstr "Povoluji trvalé modely"
+
+#: src/metabase/api/persist.clj
+msgid "Disabling model persistence"
+msgstr "Zakazuji trvalé modely"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."
+msgstr "Varování: V kontextu automatické analýze chybí metadata o výsledku. Nelze rozpoznat pole podle názvu."
+
+#. otherwise this isn't returning something, and that's probably an error. Log it.
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Cannot resolve Field {0} in automagic analysis context"
+msgstr "Nelze rozpoznat pole {0} v kontextu automatické analýzy"
+
+#: src/metabase/automagic_dashboards/core.clj
+msgid "Error decomposing question: {0}"
+msgstr "Chyba při rozkladu otázky: {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permissions to create {0} schema"
+msgstr "Chybí oprávnění k vytvoření schématu {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permission to create table in schema {0}"
+msgstr "Chybí oprávnění k vytvoření tabulky ve schématu {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permission to read table in schema {0}"
+msgstr "Chybí oprávnění ke čtení tabulky ve schématu {0}"
+
+#: src/metabase/driver/ddl/interface.clj
+msgid "Lack permission to delete table in schema {0}"
+msgstr "Chybí oprávnění k mazání tabulky ve schématu {0}"
+
+#: src/metabase/driver/ddl/postgres.clj
+msgid "Step {0} was successful for db {1}"
+msgstr "Krok {0} byl úspěšný pro db {1}"
+
+#: src/metabase/driver/ddl/postgres.clj
+msgid "Error in `{0}` while checking for model persistence permissions."
+msgstr "Chyba v `{0}` při kontrole oprávnění trvalých modelů."
+
+#: src/metabase/public_settings.clj
+msgid "Allow persisting models into the source database."
+msgstr "Povolit trvalé modely do zdrojové databáze."
+
+#: src/metabase/public_settings.clj
+msgid "Hour interval to refresh persisted models."
+msgstr "Hodinový interval k aktualizaci trvalých modelů."
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "The :feature option is required when using defenterprise in an EE namespace!"
+msgstr "Volba :feature je požadovaná při použití defenterprise v EE namespace!"
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "{0} option for defenterprise should not be set in an OSS namespace! Set it on the EE function instead."
+msgstr "{0} volba pro defenterprise by neměla být nastavena ve jmenném prostoru OSS! Nastavte ji raději ve funkci EE."
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "An EE namespace must be provided when using defenterprise in an OSS namespace!"
+msgstr "Při použití defenterprise ve jmenném prostoru OSS musí být uveden jmenný prostor EE!"
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "Add it immediately before the argument list."
+msgstr "Přidejte jej bezprostředně před seznam argumentů."
+
+#: src/metabase/public_settings/premium_features.clj
+msgid "Enterprise function {0}/{1} does not have a docstring. Go add one!"
+msgstr "Funkce Enterprise {0}/{1} nemá řetězec dokumentů. Přidejte ho!"
+
+#: src/metabase/pulse.clj
+msgid "The maximum number of attempts for delivering a single notification."
+msgstr "Maximální počet pokusů o doručení jednoho oznámení."
+
+#: src/metabase/pulse.clj
+msgid "The initial retry delay in milliseconds when delivering notifications."
+msgstr "Počáteční opakované zpoždění v milisekundách pro doručování oznámení."
+
+#: src/metabase/pulse.clj
+msgid "The delay multiplier between attempts to deliver a single notification."
+msgstr "Násobitel zpoždění mezi pokusy o doručení jednoho oznámení."
+
+#: src/metabase/pulse.clj
+msgid "The randomization factor of the retry delay when delivering notifications."
+msgstr "Faktor randomizace zpoždění opakování pro doručování oznámení."
+
+#: src/metabase/pulse.clj
+msgid "The maximum delay between attempts to deliver a single notification."
+msgstr "Maximální prodleva mezi pokusy o doručení jednoho oznámení."
+
+#: src/metabase/pulse.clj
+msgid "Reconfiguring notification sender"
+msgstr "Překonfigurování odesílatele oznámení"
+
+#: src/metabase/query_processor/middleware/fetch_source_query.clj
+msgid "Substituting cached query for card {0} from {1}.{2}"
+msgstr "Nahrazení dotazu z mezipaměti pro kartu {0} z {1}.{2}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Unpersisting model with card-id {0}"
+msgstr "Ruším trvání modelu s card-id {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Error unpersisting model with card-id {0}"
+msgstr "Chyba odtrvání modelu s card-id {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Starting persisted model refresh task for Database {0}."
+msgstr "Spuštění úlohy aktualizace trvalého modelu pro databázi {0}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Error refreshing persisting model with card-id {0}"
+msgstr "Chyba při aktualizaci trvalého modelu s card-id {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Finished persisted model refresh task for Database {0}."
+msgstr "Dokončena úloha aktualizace persistovaného modelu pro databázi {0}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Attempting to refresh individual for persisted-info {0}."
+msgstr "Pokus o aktualizaci jednotlivého persisted-info {0}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Finished updated model-id {0} from persisted-info {1}."
+msgstr "Dokončena aktualizace model-id {0} z persisted-info {1}."
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Unable to refresh model with card-id {0}"
+msgstr "Nelze obnovit model s card-id {0}"
+
+#: src/metabase/task/persist_refresh.clj
+msgid "Unknown payload type {0}"
+msgstr "Neznámý typ payloadu {0}"
 
