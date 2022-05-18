@@ -125,6 +125,7 @@
    :description             nil
    :embedding_params        nil
    :enable_embedding        false
+   :entity_id               nil
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil

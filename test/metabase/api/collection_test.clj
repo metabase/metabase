@@ -193,6 +193,7 @@
           (testing "Make sure each Collection comes back with the expected keys"
             (is (= {:description       nil
                     :archived          false
+                    :entity_id         nil
                     :slug              "rasta_toucan_s_personal_collection"
                     :color             "#31698A"
                     :name              "Rasta Toucan's Personal Collection"
@@ -222,6 +223,7 @@
       (with-french-user-and-personal-collection user collection
         (is (= {:description       nil
                 :archived          false
+                :entity_id         nil
                 :slug              "collection_personnelle_de_taco_bell"
                 :color             "#ABCDEF"
                 :name              "Collection personnelle de Taco Bell"
@@ -418,6 +420,7 @@
                   :collection_position nil
                   :display             "table"
                   :description         nil
+                  :entity_id           nil
                   :moderated_status    "verified"
                   :model               "card"}])
                (mt/obj->json->obj
@@ -459,10 +462,10 @@
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (is (= (map default-item [{:name "Acme Products", :model "pulse"}
-                                    {:name "Birthday Card", :description nil, :model "card", :display "table"}
-                                    {:name "Dine & Dashboard", :description nil, :model "dashboard"}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse"}])
+          (is (= (map default-item [{:name "Acme Products", :model "pulse", :entity_id false}
+                                    {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id false}
+                                    {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false}
+                                    {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id false}])
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -473,11 +476,11 @@
             (is (= ()
                    (mt/boolean-ids-and-timestamps
                      (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
-            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
-                    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id false})
+                    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
 
@@ -487,7 +490,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
           (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
-          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]

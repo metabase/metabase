@@ -185,6 +185,7 @@
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select    [:p.id
                    :p.name
+                   :p.entity_id
                    :p.collection_position
                    [(hx/literal "pulse") :model]]
        :modifiers [:distinct]
@@ -206,7 +207,7 @@
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
-  {:select [:id :name [(hx/literal "snippet") :model]]
+  {:select [:id :name :entity_id [(hx/literal "snippet") :model]]
    :from   [[NativeQuerySnippet :nqs]]
    :where  [:and
             [:= :collection_id (:id collection)]
@@ -214,7 +215,7 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
+  {:select [:id :name [(hx/literal "timeline") :model] :description :entity_id :icon]
    :from   [[Timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
@@ -234,7 +235,7 @@
             :moderated_status :icon :personal_owner_id)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
+  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
                    [(hx/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
@@ -287,7 +288,7 @@
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:d.id :d.name :d.description :d.collection_position [(hx/literal "dashboard") :model]
+  (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position [(hx/literal "dashboard") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
@@ -323,6 +324,7 @@
              :select [:id
                       :name
                       :description
+                      :entity_id
                       :personal_owner_id
                       [(hx/literal "collection") :model]
                       :authority_level])
@@ -398,7 +400,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :display :model :collection_position :authority_level [:personal_owner_id :integer]
+  [:id :name :description :entity_id :display :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -429,7 +431,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection]]
+        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 
@@ -500,12 +502,14 @@
                       (assoc rows-query
                              :limit  mw.offset-paging/*limit*
                              :offset mw.offset-paging/*offset*))
-        res          {:total  (->> (db/query total-query) first :count)
+        res          {:total  (->> (db/debug-print-queries (db/query total-query)) first :count)
                       :data   (->> (db/query limit-query) post-process-rows)
                       :models models}
         limit-res   (assoc res
                            :limit  mw.offset-paging/*limit*
-                           :offset mw.offset-paging/*offset*)]
+                           :offset mw.offset-paging/*offset*)
+        _ (prn "res" total-query res)
+        ]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
@@ -522,6 +526,7 @@
                            :when    (or (= model-kw :collection)
                                         (contains? allowed-namespaces (keyword collection-namespace)))]
                        model-kw)]
+    (prn "collection-children" valid-models options)
     (if (seq valid-models)
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
       {:total  0
@@ -633,6 +638,7 @@
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
+    (prn "root/items" root-collection model-set model-kwds)
     (collection-children
       root-collection
       {:models       model-kwds
