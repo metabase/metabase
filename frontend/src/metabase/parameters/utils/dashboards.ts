@@ -100,20 +100,6 @@ export function isDashboardParameterWithoutMapping(
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-export function getMappingTargetField(
-  card: SavedCard,
-  mapping: DashboardParameterMapping,
-  metadata: Metadata,
-) {
-  if (!card?.dataset_query) {
-    return null;
-  }
-
-  const question = new Question(card, metadata);
-  const field = getParameterTargetField(mapping.target, metadata, question);
-  return field;
-}
-
 export function getDashboardUiParameters(
   dashboard: Dashboard,
   metadata: Metadata,
@@ -146,7 +132,8 @@ function buildFieldFilterUiParameter(
     return getTargetField(target, card, metadata);
   });
   const fields = mappedFields.filter((field): field is Field => field != null);
-  const hasOnlyFieldTargets = mappedFields.length === fields.length;
+  const hasOnlyFieldTargets =
+    mappedFields.length !== 0 && mappedFields.length === fields.length;
   const uniqueFieldsWithFKResolved = _.uniq(
     fields.map(field => field.target ?? field),
     field => field.id,
@@ -178,7 +165,7 @@ function getMappings(ordered_cards: DashboardOrderedCard[]): Mapping[] {
   });
 }
 
-function getTargetField(
+export function getTargetField(
   target: ParameterVariableTarget | ParameterDimensionTarget,
   card: SavedCard,
   metadata: Metadata,
@@ -235,12 +222,12 @@ export function hasMatchingParameters({
   }
 
   const mappings = getMappings(dashboard.ordered_cards);
-  const dashcardMappings = mappings.filter(
-    mapping => mapping.dashcard_id === dashcard.id,
+  const mappingsForDashcard = mappings.filter(
+    mapping => mapping.dashcard_id === dashcardId,
   );
 
   const dashcardMappingsByParameterId = _.indexBy(
-    dashcardMappings,
+    mappingsForDashcard,
     "parameter_id",
   );
 

@@ -8,11 +8,14 @@ import {
   hasMatchingParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
-  getMappingTargetField,
+  getTargetField,
+  getDashboardUiParameters,
 } from "metabase/parameters/utils/dashboards";
-import { metadata } from "__support__/sample_database_fixture";
+import Field from "metabase-lib/lib/metadata/Field";
 
-describe("meta/Dashboard", () => {
+import { PRODUCTS, metadata } from "__support__/sample_database_fixture";
+
+describe("metabase/parameters/utils/dashboards", () => {
   describe("createParameter", () => {
     it("should create a new parameter using the given parameter option", () => {
       expect(
@@ -301,7 +304,7 @@ describe("meta/Dashboard", () => {
       ],
     };
 
-    const dashboardWithNoParameters = {};
+    const dashboardWithNoParameters = { parameters: [] };
 
     const dashcard = {
       parameter_mappings: [
@@ -348,8 +351,10 @@ describe("meta/Dashboard", () => {
           {
             id: 1,
             card_id: 123,
+            card: { id: 123 },
             parameter_mappings: [
               {
+                card_id: 123,
                 parameter_id: "foo",
               },
             ],
@@ -384,8 +389,10 @@ describe("meta/Dashboard", () => {
           {
             id: 1,
             card_id: 123,
+            card: { id: 123 },
             parameter_mappings: [
               {
+                card_id: 123,
                 parameter_id: "foo",
               },
             ],
@@ -393,8 +400,10 @@ describe("meta/Dashboard", () => {
           {
             id: 2,
             card_id: 456,
+            card: { id: 456 },
             parameter_mappings: [
               {
+                card_id: 456,
                 parameter_id: "bar",
               },
             ],
@@ -426,11 +435,14 @@ describe("meta/Dashboard", () => {
           {
             id: 1,
             card_id: 123,
+            card: { id: 123 },
             parameter_mappings: [
               {
+                card_id: 123,
                 parameter_id: "foo",
               },
               {
+                card_id: 123,
                 parameter_id: "bar",
               },
             ],
@@ -577,27 +589,19 @@ describe("meta/Dashboard", () => {
     });
   });
 
-  describe("getMappingTargetField", () => {
-    const mapping = {
-      parameter_id: "dbe38f17",
-      card_id: 1,
-      target: ["dimension", ["field", 4, null]],
-    };
+  describe("getTargetField", () => {
+    const target = ["dimension", ["field", 4, null]];
 
     const metadata = {
       field: jest.fn(),
     };
-
-    it("should return null when not given a card", () => {
-      expect(getMappingTargetField(null, mapping, metadata)).toBe(null);
-    });
 
     it("should return null when given a card without a `dataset_query`", () => {
       const card = {
         id: 1,
       };
 
-      expect(getMappingTargetField(card, mapping, metadata)).toBe(null);
+      expect(getTargetField(target, card, metadata)).toBe(null);
     });
 
     it("should return the field that maps to the mapping target", () => {
@@ -623,7 +627,217 @@ describe("meta/Dashboard", () => {
         },
       };
 
-      expect(getMappingTargetField(card, mapping, metadata)).toEqual(field);
+      expect(getTargetField(target, card, metadata)).toEqual(field);
+    });
+  });
+
+  describe("getDashboardUiParameters", () => {
+    const dashboard = {
+      id: 1,
+      ordered_cards: [
+        {
+          id: 1,
+          card_id: 123,
+          card: { id: 123, dataset_query: { type: "query" } },
+          series: [{ id: 789, dataset_query: { type: "query" } }],
+          parameter_mappings: [
+            {
+              card_id: 123,
+              parameter_id: "b",
+              target: ["breakout", 0],
+            },
+            {
+              card_id: 789,
+              parameter_id: "d",
+              target: ["dimension", ["field", PRODUCTS.RATING.id, null]],
+            },
+            {
+              card_id: 123,
+              parameter_id: "f",
+              target: ["dimension", ["field", PRODUCTS.TITLE.id, null]],
+            },
+            {
+              card_id: 123,
+              parameter_id: "g",
+              target: ["dimension", ["field", PRODUCTS.TITLE.id, null]],
+            },
+          ],
+        },
+        {
+          id: 2,
+          card_id: 456,
+          card: {
+            id: 456,
+            dataset_query: {
+              type: "native",
+              native: {
+                query: "{{foo}}",
+                "template-tags": {
+                  foo: {
+                    type: "text",
+                  },
+                  bar: {
+                    type: "dimension",
+                    "widget-type": "string/contains",
+                    dimension: ["field", PRODUCTS.TITLE.id, null],
+                  },
+                },
+              },
+            },
+          },
+          parameter_mappings: [
+            {
+              card_id: 456,
+              parameter_id: "e",
+              target: ["variable", "foo"],
+            },
+            {
+              card_id: 456,
+              parameter_id: "f",
+              target: ["dimension", ["template-tag", "bar"]],
+            },
+            {
+              card_id: 456,
+              parameter_id: "h",
+              target: ["variable", "foo"],
+            },
+          ],
+        },
+        {
+          id: 3,
+          card_id: 999,
+          card: { id: 999, dataset_query: { type: "query" } },
+          parameter_mappings: [
+            {
+              card_id: 999,
+              parameter_id: "g",
+              target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            },
+            {
+              card_id: 999,
+              parameter_id: "h",
+              target: ["dimension", ["field", PRODUCTS.CATEGORY.id, null]],
+            },
+          ],
+        },
+        {
+          id: 4,
+          card_id: 888,
+          card: { id: 888, dataset_query: { type: "query" } },
+          parameter_mappings: [],
+        },
+      ],
+      parameters: [
+        // unmapped, not field filter
+        {
+          id: "a",
+          slug: "slug-a",
+          type: "foo",
+        },
+        // mapped, not field filter
+        {
+          id: "b",
+          slug: "slug-b",
+          type: "granularity",
+          default: ["day"],
+        },
+        // unmapped, field filter
+        {
+          id: "c",
+          slug: "slug-c",
+          type: "string/=",
+        },
+        // mapped, field filter
+        {
+          id: "d",
+          slug: "slug-d",
+          type: "number/=",
+          default: [1, 2, 3],
+        },
+        // mapped to variable, field filter
+        {
+          id: "e",
+          slug: "slug-e",
+          type: "category",
+        },
+        // field filter, mapped to two cards, same field
+        {
+          id: "f",
+          slug: "slug-f",
+          type: "string/contains",
+        },
+        // field filter, mapped to two, different fields
+        {
+          id: "g",
+          slug: "slug-g",
+          type: "string/starts-with",
+        },
+        // field filter, mapped to field and variable
+        {
+          id: "h",
+          slug: "slug-h",
+          type: "string/=",
+        },
+      ],
+    };
+
+    it("should return a list of UiParameter objects from the given dashboard", () => {
+      expect(getDashboardUiParameters(dashboard, metadata)).toEqual([
+        {
+          id: "a",
+          slug: "slug-a",
+          type: "foo",
+        },
+        {
+          id: "b",
+          slug: "slug-b",
+          type: "granularity",
+          default: ["day"],
+        },
+        {
+          id: "c",
+          slug: "slug-c",
+          type: "string/=",
+          fields: [],
+          hasOnlyFieldTargets: false,
+        },
+        {
+          id: "d",
+          slug: "slug-d",
+          type: "number/=",
+          default: [1, 2, 3],
+          fields: [expect.any(Field)],
+          hasOnlyFieldTargets: true,
+        },
+        {
+          id: "e",
+          slug: "slug-e",
+          type: "category",
+          fields: [],
+          hasOnlyFieldTargets: false,
+        },
+        {
+          id: "f",
+          slug: "slug-f",
+          type: "string/contains",
+          fields: [expect.any(Field)],
+          hasOnlyFieldTargets: true,
+        },
+        {
+          id: "g",
+          slug: "slug-g",
+          type: "string/starts-with",
+          fields: [expect.any(Field), expect.any(Field)],
+          hasOnlyFieldTargets: true,
+        },
+        {
+          id: "h",
+          slug: "slug-h",
+          type: "string/=",
+          fields: [expect.any(Field)],
+          hasOnlyFieldTargets: false,
+        },
+      ]);
     });
   });
 });
