@@ -219,6 +219,12 @@
   :default    6
   :visibility :admin)
 
+(defsetting persisted-model-refresh-anchor-time
+  (deferred-tru "Anchor time to begin refreshing persisted models.")
+  :type       :string
+  :default    "00:00"
+  :visibility :admin)
+
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
   MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in

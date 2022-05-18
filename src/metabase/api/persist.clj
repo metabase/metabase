@@ -1,5 +1,6 @@
 (ns metabase.api.persist
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [GET POST]]
             [honeysql.helpers :as hh]
             [metabase.api.common :as api]
@@ -92,12 +93,27 @@
                    (deferred-tru "Integer greater than or equal to one and less than or equal to twenty-four"))
     (deferred-tru "Value must be an integer representing hours greater than or equal to one and less than or equal to twenty-four")))
 
+(def ^:private AnchorTime
+  "Schema representing valid anchor time for refreshing persisted models."
+  (su/with-api-error-message
+    (s/constrained s/Str (fn [t]
+                           (let [[hours minutes] (map parse-long (str/split t #":"))]
+                             (and (<= 0 hours 23) (<= 0 minutes 59))))
+                   (deferred-tru "String representing a time in format HH:mm"))
+    (deferred-tru "Value must be a string representing a time in format HH:mm")))
+
 (api/defendpoint POST "/set-interval"
-  "Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}."
-  [:as {{:keys [hours], :as _body} :body}]
-  {hours HoursInterval}
+  "Set the interval (in hours) to refresh persisted models.
+   Anchor can be provided to set the time to begin the interval (local to reporting-timezone or system).
+   Shape should be JSON like {hours: 4, anchor: 16:45}."
+  [:as {{:keys [hours anchor], :as _body} :body}]
+  {hours (s/maybe HoursInterval)
+   anchor (s/maybe AnchorTime)}
   (validation/check-has-application-permission :setting)
-  (public-settings/persisted-model-refresh-interval-hours hours)
+  (when hours
+    (public-settings/persisted-model-refresh-interval-hours hours))
+  (when anchor
+    (public-settings/persisted-model-refresh-anchor-time anchor))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
