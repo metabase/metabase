@@ -502,14 +502,12 @@
                       (assoc rows-query
                              :limit  mw.offset-paging/*limit*
                              :offset mw.offset-paging/*offset*))
-        res          {:total  (->> (db/debug-print-queries (db/query total-query)) first :count)
+        res          {:total  (->> (db/query total-query) first :count)
                       :data   (->> (db/query limit-query) post-process-rows)
                       :models models}
         limit-res   (assoc res
                            :limit  mw.offset-paging/*limit*
-                           :offset mw.offset-paging/*offset*)
-        _ (prn "res" total-query res)
-        ]
+                           :offset mw.offset-paging/*offset*)]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
@@ -526,7 +524,6 @@
                            :when    (or (= model-kw :collection)
                                         (contains? allowed-namespaces (keyword collection-namespace)))]
                        model-kw)]
-    (prn "collection-children" valid-models options)
     (if (seq valid-models)
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
       {:total  0
@@ -638,7 +635,6 @@
   (let [root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (visible-model-kwds root-collection model-set)]
-    (prn "root/items" root-collection model-set model-kwds)
     (collection-children
       root-collection
       {:models       model-kwds

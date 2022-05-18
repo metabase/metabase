@@ -254,6 +254,7 @@
 (defn- default-alert [card]
   {:id                  true
    :name                nil
+   :entity_id           false
    :creator_id          true
    :creator             (user-details :rasta)
    :created_at          true
