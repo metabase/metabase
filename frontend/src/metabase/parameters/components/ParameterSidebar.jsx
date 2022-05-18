@@ -6,10 +6,8 @@ import cx from "classnames";
 import { DashboardApi } from "metabase/services";
 import Fields from "metabase/entities/fields";
 import Tables from "metabase/entities/tables";
-import {
-  canUseLinkedFilters,
-  usableAsLinkedFilter,
-} from "metabase/parameters/utils/linked-filters";
+import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
+import { isFieldFilterParameter } from "metabase/parameters/utils/parameter-type";
 
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
@@ -143,9 +141,9 @@ class OtherParameterList extends React.Component {
     }
 
     const { parameter, otherParameters } = this.props;
-    const filtered = parameter.field_ids;
+    const filtered = parameter.fields.map(field => field.id);
     const parameterForId = otherParameters.find(p => p.id === id);
-    const filtering = parameterForId.field_ids;
+    const filtering = parameterForId.fields.map(field => field.id);
     if (filtered.length === 0 || filtering.length === 0) {
       const param = filtered.length === 0 ? parameter : parameterForId;
       const error = t`To view this, ${param.name} must be connected to at least one field.`;
@@ -173,7 +171,7 @@ class OtherParameterList extends React.Component {
       showAddParameterPopover,
     } = this.props;
     const { expandedParameterId, columnPairs } = this.state;
-    const usableParameters = otherParameters.filter(usableAsLinkedFilter);
+    const usableParameters = otherParameters.filter(isFieldFilterParameter);
 
     return (
       <div className="py3 px2">

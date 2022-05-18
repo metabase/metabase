@@ -30,6 +30,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
@@ -42,9 +43,11 @@ import Base from "./Base";
  */
 
 class FieldInner extends Base {
+  id: number | FieldRef;
   name: string;
   semantic_type: string | null;
   table?: Table;
+  target?: Field;
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
@@ -211,6 +214,14 @@ class FieldInner extends Base {
 
   icon() {
     return getIconForField(this);
+  }
+
+  getId(): number {
+    if (Array.isArray(this.id)) {
+      return this.id[1];
+    } else {
+      return this.id;
+    }
   }
 
   reference() {
