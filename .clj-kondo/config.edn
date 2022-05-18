@@ -124,9 +124,7 @@
                                         java-time                                                       t
                                         metabase-enterprise.audit-app.pages.common                      common
                                         metabase-enterprise.sandbox.api.table                           table
-                                        metabase.actions                                                actions
                                         metabase.analytics.stats                                        stats
-                                        metabase.api.actions                                            api.actions
                                         metabase.api.activity                                           api.activity
                                         metabase.api.alert                                              api.alert
                                         metabase.api.automagic-dashboards                               api.magic

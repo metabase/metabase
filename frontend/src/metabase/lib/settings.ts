@@ -94,7 +94,9 @@ export type SettingName =
   | "deprecation-notice-version"
   | "show-database-syncing-modal"
   | "premium-embedding-token"
-  | "metabase-store-managed";
+  | "metabase-store-managed"
+  | "application-font"
+  | "available-fonts";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
