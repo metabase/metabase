@@ -105,7 +105,7 @@
                 3000
                 10000))
 
-(defn- connection-error? [throwable]
+(defn- connection-error? [^Throwable throwable]
   (and (some? throwable)
        (or (instance? java.net.ConnectException throwable)
            (recur (.getCause throwable)))))

@@ -174,7 +174,29 @@
                                              :cache_field_values monthly-schedule}})]
         (is (:let-user-control-scheduling details))
         (is (= "monthly" (-> cache_field_values_schedule u.cron/cron-string->schedule-map :schedule_type)))
-        (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))))
+        (is (= "monthly" (-> metadata_sync_schedule u.cron/cron-string->schedule-map :schedule_type)))))
+    (testing "well known connection errors are reported properly"
+      (let [dbname (mt/random-name)
+            exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
+        (is (= {:errors {:dbname "check your database name settings"},
+                :message "Looks like the Database name is incorrect."}
+               (with-redefs [driver/can-connect? (fn [& _] (throw exception))]
+                 (mt/user-http-request :crowberto :post 400 "database"
+                                       {:name         dbname
+                                        :engine       "postgres"
+                                        :details      {:host "localhost", :port 5432
+                                                       :dbname "fakedb", :user "rastacan"}}))))))
+    (testing "unknown connection errors are reported properly"
+      (let [exception (Exception. "Unknown driver message" (java.net.ConnectException. "Failed!"))]
+        (is (= {:errors  {:host "check your host settings"
+                          :port "check your port settings"}
+                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
+               (with-redefs [driver/available?   (constantly true)
+                             driver/can-connect? (fn [& _] (throw exception))]
+                 (mt/user-http-request :crowberto :post 400 "database"
+                                       {:name    (mt/random-name)
+                                        :engine  (u/qualified-name ::test-driver)
+                                        :details {:db "my_db"}}))))))))
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
