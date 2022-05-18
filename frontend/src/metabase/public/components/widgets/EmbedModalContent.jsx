@@ -22,6 +22,9 @@ import {
   getIsPublicSharingEnabled,
   getIsApplicationEmbeddingEnabled,
 } from "metabase/selectors/settings";
+
+import { PLUGIN_SELECTORS } from "metabase/plugins";
+
 import { getUserIsAdmin } from "metabase/selectors/user";
 
 import MetabaseSettings from "metabase/lib/settings";
@@ -34,22 +37,25 @@ const mapStateToProps = (state, props) => ({
   secretKey: getEmbeddingSecretKey(state, props),
   isPublicSharingEnabled: getIsPublicSharingEnabled(state, props),
   isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
+  canWhitelabel: PLUGIN_SELECTORS.canWhitelabel(),
 });
 
 class EmbedModalContent extends Component {
   constructor(props) {
     super(props);
+    const displayOptions = {
+      theme: null,
+      bordered: true,
+      titled: true,
+    };
+    if (props.canWhitelabel) {
+      displayOptions.font = MetabaseSettings.get("application-font");
+    }
     this.state = {
       pane: "preview",
       embedType: null,
       embeddingParams: props.resource.embedding_params || {},
-      displayOptions: {
-        theme: null,
-        bordered: true,
-        titled: true,
-        font: MetabaseSettings.get("application-font"),
-      },
-
+      displayOptions,
       parameterValues: {},
     };
   }

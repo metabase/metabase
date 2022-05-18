@@ -41,11 +41,6 @@ export function initializeEmbedding(store) {
         }
       }
     });
-    console.log(
-      "embedded",
-      window.location.hash,
-      parseHashOptions(window.location.hash),
-    );
     store.dispatch(
       setOptions({
         ...parseSearchOptions(window.location.search),

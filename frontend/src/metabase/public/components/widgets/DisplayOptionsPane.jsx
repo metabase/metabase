@@ -1,10 +1,13 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
+import { connect } from "react-redux";
 
 import Radio from "metabase/core/components/Radio/";
 import CheckBox from "metabase/core/components/CheckBox";
 import Select from "metabase/core/components/Select";
 import MetabaseSettings from "metabase/lib/settings";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import { t } from "ttag";
 
 import {
@@ -18,10 +21,15 @@ const THEME_OPTIONS = [
   { name: t`Dark`, value: "night" },
 ];
 
+const mapStateToProps = state => ({
+  canWhitelabel: PLUGIN_SELECTORS.canWhitelabel(),
+});
+
 const DisplayOptionsPane = ({
   className,
   displayOptions,
   onChangeDisplayOptions,
+  canWhitelabel,
 }) => (
   <div className={className}>
     <DisplayOptionSection title={t`Style`}>
@@ -60,21 +68,23 @@ const DisplayOptionsPane = ({
         vertical
       />
     </DisplayOptionSection>
-    <DisplayOptionSection title={t`Font`}>
-      <Select
-        value={displayOptions.font}
-        options={MetabaseSettings.get("available-fonts").map(font => ({
-          name: font,
-          value: font,
-        }))}
-        onChange={e => {
-          onChangeDisplayOptions({
-            ...displayOptions,
-            font: e.target.value,
-          });
-        }}
-      />
-    </DisplayOptionSection>
+    {canWhitelabel && (
+      <DisplayOptionSection title={t`Font`}>
+        <Select
+          value={displayOptions.font}
+          options={MetabaseSettings.get("available-fonts").map(font => ({
+            name: font,
+            value: font,
+          }))}
+          onChange={e => {
+            onChangeDisplayOptions({
+              ...displayOptions,
+              font: e.target.value,
+            });
+          }}
+        />
+      </DisplayOptionSection>
+    )}
   </div>
 );
 
@@ -85,4 +95,4 @@ const DisplayOptionSection = ({ title, children }) => (
   </DisplayOption>
 );
 
-export default DisplayOptionsPane;
+export default _.compose(connect(mapStateToProps))(DisplayOptionsPane);
