@@ -18,13 +18,33 @@
 
 ;;;; API docs page title
 
-(defn handle-enterprise-ns
+(defn- handle-enterprise-ns
   "Some paid endpoints have different formatting. This way we don't combine
   the api/table endpoint with sandbox.api.table, for example."
   [endpoint]
   (if (str/includes? endpoint "metabase-enterprise")
     (str/split endpoint #"metabase-enterprise.")
     (str/split endpoint #"\.")))
+
+(def initialisms '["SSO" "GTAP" "LDAP" "SQL" "JSON"])
+
+(defn capitalize-initialisms
+  "Converts initialisms to upper case."
+  [name initialisms]
+  (let [re (re-pattern (str "(?i)(?:" (str/join "|" initialisms) ")"))
+        matches (re-seq re name)]
+    (if matches
+      (reduce (fn [n m] (str/replace n m (str/upper-case m))) name matches)
+      name)))
+
+(defn ^:private capitalize-first-char
+  "Like string/capitalize, only it ignores the rest of the string
+  to retain case-sensitive capitalization, e.g., initialisms."
+  [s]
+  (if (< (count s) 2)
+    (str/upper-case s)
+    (str (str/upper-case (subs s 0 1))
+         (subs s 1))))
 
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
@@ -35,9 +55,10 @@
       name
       handle-enterprise-ns
       last
-      str/capitalize
+      capitalize-first-char
       (str/replace #"(.api.|-)" " ")
-      (str/replace "Sso sso" "SSO")))
+      (capitalize-initialisms initialisms)
+      (str/replace "SSO SSO" "SSO")))
 
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
@@ -153,7 +174,7 @@
                  str/lower-case)]
     (str dir file ext)))
 
-(defn- build-endpoint-link
+(defn build-endpoint-link
   "Creates a link to the page for each endpoint. Used to build links
   on the API index page at `docs/api-documentation.md`."
   [ep ep-data]
@@ -162,7 +183,7 @@
 
 (defn- build-index
   "Creates a string that lists links to all endpoint groups,
-  e.g., - [Activity](docs/api/activity.md)."
+  e.g., - [Activity](api/activity.md)."
   [endpoints]
   (str/join "\n" (map (fn [[ep ep-data]] (build-endpoint-link ep ep-data)) endpoints)))
 

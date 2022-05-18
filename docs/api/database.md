@@ -55,7 +55,7 @@ Fetch all `Databases`.
     questions virtual DB). Prefer using `include` and `saved` instead.
 
   * `include_editable_data_model` will only include DBs for which the current user has data model editing
-    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Has no effect unless
+    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if
     Enterprise Edition code is available the advanced-permissions feature is enabled.
 
   * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no
@@ -93,7 +93,9 @@ Get a single Database with `id`. Optionally pass `?include=tables` or `?include=
 
 *  **`include`** value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`.
 
-*  **`include_editable_data_model`**
+*  **`include_editable_data_model`** 
+
+*  **`exclude_uneditable_details`**
 
 ## `GET /api/database/:id/autocomplete_suggestions`
 
@@ -128,7 +130,9 @@ Get a list of all primary key `Fields` for `Database`.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** 
+
+*  **`include_editable_data_model`**
 
 ## `GET /api/database/:id/metadata`
 
@@ -243,8 +247,6 @@ Discards all saved field values for this `Database`.
 
 Attempt to enable model persistence for a database. If already enabled returns a generic 204.
 
-You must be a superuser to do this.
-
 ### PARAMS:
 
 *  **`id`**
@@ -276,8 +278,6 @@ Trigger a manual update of the schema metadata for this `Database`.
 ## `POST /api/database/:id/unpersist`
 
 Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204.
-
-You must be a superuser to do this.
 
 ### PARAMS:
 

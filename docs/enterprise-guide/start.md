@@ -20,8 +20,9 @@ Paid plans include more ways to authenticate people and manage groups.
 Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
 - [Data sandboxes](data-sandboxes.md)
-- [Block permissions](../administration-guide/data-permissions.html#block-access)
+- [Block permissions](../administration-guide/data-permissions.md#block-access)
 - [SQL snippet controls](sql-snippets.md)
+- [Application permissions](../administration-guide/application-permissions.md)
 
 ## Embedding
 
