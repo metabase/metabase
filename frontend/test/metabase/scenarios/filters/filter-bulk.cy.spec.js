@@ -22,15 +22,13 @@ describe("scenarios > filters > bulk filtering", () => {
     });
 
     cy.findByLabelText("Show more filters").click();
-    cy.findByLabelText("Total").click();
-    cy.findByText("Equal to").click();
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").type("150");
+    cy.findByLabelText("User ID").click();
+    cy.findByPlaceholderText("Enter an ID").type("1");
     cy.button("Add filter").click();
     cy.button("Apply").click();
     cy.wait("@dataset");
 
-    cy.findByText("Total is greater than 150").should("be.visible");
-    cy.findByText("Showing 256 rows").should("be.visible");
+    cy.findByText("User ID is 1").should("be.visible");
+    cy.findByText("Showing 11 rows").should("be.visible");
   });
 });
