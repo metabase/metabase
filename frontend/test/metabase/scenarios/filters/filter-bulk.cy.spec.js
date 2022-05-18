@@ -1,21 +1,20 @@
-import { restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import { popover, restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
-const questionWithFilter = {
+const rawQuestionDetails = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
       "source-table": ORDERS_ID,
-      filter: ["=", ["field", ORDERS.USER_ID, null], 1],
     },
   },
 };
 
-const questionWithBreakout = {
+const aggregatedQuestionDetails = {
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
@@ -33,36 +32,81 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.signInAsAdmin();
   });
 
-  it("should set filters for a raw query", () => {
-    visitQuestionAdhoc(questionWithFilter);
-
+  it("should add filters for a raw query", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
     cy.findByLabelText("Show more filters").click();
-    cy.findByLabelText("User ID").within(() => cy.icon("close").click());
-    cy.findByLabelText("Quantity").click();
-    cy.findByPlaceholderText("Search the list").type("20");
-    cy.findByText("20").click();
-    cy.button("Add filter").click();
-    cy.button("Apply").click();
-    cy.wait("@dataset");
 
-    cy.findByText("User ID is 1").should("not.exist");
+    modal().within(() => {
+      cy.findByLabelText("Quantity").click();
+    });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type("21");
+      cy.findByText("20").click();
+      cy.button("Add filter").click();
+    });
+
+    modal().within(() => {
+      cy.button("Apply").click();
+      cy.wait("@dataset");
+    });
+
     cy.findByText("Quantity is equal to 20").should("be.visible");
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
-  it("should set filters for an aggregated query", () => {
-    visitQuestionAdhoc(questionWithBreakout);
-
+  it("should add filters for an aggregated query", () => {
+    visitQuestionAdhoc(aggregatedQuestionDetails);
     cy.findByLabelText("Show more filters").click();
-    cy.findByLabelText("Count").click();
-    cy.findByText("Equal to").click();
-    cy.findByText("Greater than").click();
-    cy.findByPlaceholderText("Enter a number").type("500");
-    cy.button("Add filter").click();
-    cy.button("Apply").click();
-    cy.wait("@dataset");
+
+    modal().within(() => {
+      cy.findByLabelText("Count").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Equal to").click();
+    });
+
+    popover({ index: 1 }).within(() => {
+      cy.findByText("Greater than").click();
+    });
+
+    popover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("500");
+      cy.button("Add filter").click();
+    });
+
+    modal().within(() => {
+      cy.button("Apply").click();
+      cy.wait("@dataset");
+    });
 
     cy.findByText("Count is greater than 500").should("be.visible");
     cy.findByText("Showing 21 rows").should("be.visible");
   });
+
+  it("should add filters for linked tables", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
+    cy.findByLabelText("Show more filters").click();
+
+    modal().within(() => {
+      cy.findByText("Product").click();
+      cy.findByLabelText("Category").click();
+    });
+
+    popover().within(() => {
+      cy.findByText("Gadget").click();
+      cy.button("Add filter").click();
+    });
+
+    modal().within(() => {
+      cy.button("Apply").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByText("Category is Gadget").should("be.visible");
+    cy.findByText("Showing first 2,000 rows").should("be.visible");
+  });
 });
+
+const modal = () => cy.get(".Modal");
