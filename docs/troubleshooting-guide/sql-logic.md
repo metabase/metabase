@@ -2,7 +2,7 @@
 
 1. Get the [schemas][schema-def] for the data sources used in your query.
     - If you’re using tables from your database, get the schemas from the [data reference][data-reference-docs].
-    - If you’re using nested queries such as subqueries, [CTEs][cte-def], [saved questions][saved-question-def], or [models][model-def], go to [How to get the schema for a nested query](#how-to-get-the-schema-for-a-nested-query).
+    - If you’re using nested queries such as subqueries, [CTEs][cte-def], [saved questions][saved-question-def], or [models][model-def], you'll need to run each nested query individually and [manually inspect the results](#how-to-get-the-schema-for-a-nested-query).
     - [I don’t know if I’m using a nested query](#how-to-identify-a-nested-query).
 2. Review the [foreign keys][foreign-key-docs] of your tables or nested queries.
     - Is there more than one possible foreign key?
@@ -82,28 +82,29 @@ If your SQL contains:
 1. Get a sample of data from your nested query.
     - For **subqueries** or **CTEs**, [run each `SELECT` block separately][how-to-run-query-selections] and use the`LIMIT` clause.
     - For **saved questions or models**, go to the underlying Metabase question from the variables panel or by pasting the ID number into the search bar. Add a row limit using the notebook editor, or add a `LIMIT` clause in the SQL editor.
-2. Compare the column names and values between your samples to check for foreign keys. For example:
+2. Compare the column names and values between your samples to check for [foreign keys][foreign-key-def]. For example:
     - In the [Metabase Sample Database][sample-database-def], the `Products` table has an `ID` column, and the `Orders` table has a `Product ID` column.
     - `ID` and `Product ID` both contain integer values, and many of those values show up in both columns.
-3. Compare the rows between your samples to check for schema relationships. For example:
+3. Compare the rows between your samples to check for [table relationships][table-relationships-learn]. For example:
     - The `Products` table has unique values in the `ID` column.
     - The `Orders` table has multiple rows with the same `Product ID`.
-    - The schema relationship from `Products` to `Orders` is [one-to-many][one-to-many] (assuming that the foreign key relationship is valid).
+    - The table relationship from `Products` to `Orders` is [one-to-many][one-to-many] (assuming that the foreign key relationship is valid).
 4. If you're using a [model][model-foreign-keys], you can look for explicitly defined metadata by hovering over the column name.
 5. If you're building off of someone else's work, ask the original creator of the query, saved question, or model.
 
+
 **Explanation**
 
-A schema describes the columns in a table, the data types of those columns, and the relationships between columns across different tables. This [metadata][metadata-def] is usually explicitly defined for tables stored in your database by the people who manage your data. 
+A [schema][schema-def] describes the columns in a table, the data types of those columns, and the relationships between columns across different tables. This [metadata][metadata-def] is usually explicitly defined for tables stored in your database by the people who manage your data. 
 
-Since the results of nested queries are only stored temporarily, the metadata isn't defined or stored anywhere. The steps above will help you manually inspect the query results instead.
+Since the results of nested queries are only stored temporarily, the metadata about the results isn't defined or stored anywhere. The steps above will help you manually inspect the query results instead.
 
 Once you have the schemas for your nested queries, you can follow the steps under [Debugging SQL logic][debugging-sql-logic].
 
-If you don't know what type of nested query you have, go to [How to identify a nested query](#how-to-identify-a-nested-query).
 
 **Further reading**
 
+- [How to identify a nested query](#how-to-identify-a-nested-query)
 - [What is a schema?][schema-def]
 - [Database table relationships][table-relationships-learn]
 - [How Metabase executes SQL queries][how-metabase-executes-sql-queries]
@@ -128,7 +129,7 @@ Search or ask the [Metabase community][discourse].
 [discourse]: https://discourse.metabase.com/
 [foreign-key-docs]: ../users-guide/12-data-model-reference.html#foreign-keys
 [how-metabase-executes-sql-queries]: ../users-guide/writing-sql.html#how-metabase-executes-sql-queries
-[how-metabase-executes-sql-variables]: ../users-guide/referencing-saved-questions-in-queries.html#saved-question-as-a-common-table-expression-cte
+[how-metabase-executes-sql-variables]: ../users-guide/writing-sql.html#how-metabase-executes-sql-variables
 [how-to-run-query-selections]: ../users-guide/writing-sql.html#running-query-selections
 [how-to-view-sql]: /users-guide/04-asking-questions.html#viewing-the-sql-that-powers-your-question
 [metadata-def]: /glossary/metadata

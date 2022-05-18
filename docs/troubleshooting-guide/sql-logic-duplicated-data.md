@@ -7,7 +7,7 @@
 Before you start, make sure you know the [schemas of your source tables or nested queries][debugging-sql-logic].
 
 1. Are you missing a `GROUP BY` clause?
-2. Check if your source tables or nested queries have duplicated rows. You'll need to repeat the steps below for every data source that contains duplicate rows.
+2. Check if your source tables or nested queries have duplicated rows. You'll need to repeat the steps below for every table or query result that contains duplicate rows.
     ```sql
     -- If the row_count is greater than 1,
     -- you have duplicated rows in your results.
@@ -18,51 +18,8 @@ Before you start, make sure you know the [schemas of your source tables or neste
     ORDER BY row_count DESC
     ;
     ```
-4. Check the [table below](#join-types-and-schema-relationships) to see how your join type interacts with your table relationships.
-5. Change your join type or reduce your tables to get a one-to-one relationship. For example:
-    ```sql
-    -- Assume table_a is a one-to-many with table_b.
-
-    -- The query below will duplicate rows from table_b 
-    -- for every matching row in table_a.
-
-    SELECT <your_columns>
-    FROM table_a
-    LEFT JOIN table_b
-    ON key_a = key_b
-    ;
-
-    -- Option 1: 
-    -- Use an INNER JOIN.
-
-    -- The query below will get one row from table_b
-    -- for every matching row in table_a.
-
-    SELECT <your_columns>
-    FROM table_a
-    INNER JOIN table_b
-    ON key_a = key_b
-    ;
-
-    -- Option 2: 
-    -- Use a CTE to aggregate the rows in table_b 
-    -- so that it has a one-to-one relationship with table_a.
-
-    -- The query below will get aggregated values from table_b
-    -- for every matching row in table_a.
-
-    WITH table_b_reduced AS (
-    SELECT AGGREGATE_FUNCTION(<your_columns>)
-    FROM table_b_reduced
-    GROUP BY <your_columns>
-    )
-
-    SELECT <your_columns>
-    FROM table_a
-    JOIN table_b_reduced
-    ON key_a = key_b_reduced
-    ;
-    ```
+4. Check your [table below](#join-types-and-schema-relationships) to see how your join type interacts with your table relationships.
+5. [Change your join type or reduce your table relationships](#how-to-reduce-table-relationships).
 
 ### Join types and table relationships
 
@@ -107,6 +64,61 @@ If you’ve written your joins assuming a [one-to-one][one-to-one] relationship 
 2. Check if your source tables or query results have duplicated columns by following step 1 under [Debugging SQL logic][debugging-sql-logic].
 3. Learn more about [common reasons for unexpected query results][common-reasons-for-sql-logic-errors].
 
+
+## How to reduce table relationships
+
+If you have duplicated rows because you're assuming a [one-to-one][one-to-one] relationship when you actually have tables that are [one-to-many][one-to-many] or [many-to-many][many-to-many], you can remove the duplicates using:
+
+- An [INNER JOIN](#option-1-use-an-inner-join-with-a-one-to-many-relationship) for a one-to-many relationship.
+- A [CTE with an aggregate function](#option-2-use-a-cte-to-reduce-the-table-relationship) for a one-to-many or many-to-many relationship.
+
+For example:
+```sql
+-- Assume table_a is a one-to-many with table_b.
+
+-- The query below will duplicate rows from table_b 
+-- for every matching row in table_a.
+
+SELECT
+    < your_columns >
+FROM
+    table_a
+    LEFT JOIN table_b ON key_a = key_b;
+```
+
+### Option 1: Use an `INNER JOIN` with a one-to-many relationship.
+
+```sql
+-- The query below will get one row from table_b
+-- for every matching row in table_a.
+
+SELECT
+    < your_columns >
+FROM
+    table_a
+    INNER JOIN table_b ON key_a = key_b;
+```
+
+### Option 2: Use a CTE to reduce the table relationship.
+
+```sql
+-- The query below will get aggregated values from table_b
+-- for every matching row in table_a.
+
+WITH table_b_reduced AS (
+    SELECT
+        AGGREGATE_FUNCTION (< your_columns >)
+    FROM
+        table_b_reduced
+    GROUP BY
+        < your_columns >
+)
+SELECT
+    < your_columns >
+FROM
+    table_a
+    JOIN table_b_reduced ON key_a = key_b_reduced;
+```
 
 ## Do you have a different problem?
 
