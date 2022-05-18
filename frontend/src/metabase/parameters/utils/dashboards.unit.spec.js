@@ -4,7 +4,6 @@ import {
   setParameterDefaultValue,
   hasMapping,
   isDashboardParameterWithoutMapping,
-  getMappingsByParameter,
   getParametersMappedToDashcard,
   hasMatchingParameters,
   getFilteringParameterValuesMap,
@@ -12,10 +11,6 @@ import {
   getMappingTargetField,
 } from "metabase/parameters/utils/dashboards";
 import { metadata } from "__support__/sample_database_fixture";
-
-import DASHBOARD_WITH_BOOLEAN_PARAMETER from "./fixtures/dashboard-with-boolean-parameter.json";
-
-import Field from "metabase-lib/lib/metadata/Field";
 
 describe("meta/Dashboard", () => {
   describe("createParameter", () => {
@@ -283,119 +278,6 @@ describe("meta/Dashboard", () => {
 
       expect(isDashboardParameterWithoutMapping(parameter, dashboard)).toBe(
         true,
-      );
-    });
-  });
-
-  describe("getMappingsByParameter", () => {
-    let metadata;
-    let dashboard;
-    beforeEach(() => {
-      metadata = {
-        fields: {
-          120: new Field({
-            values: {
-              values: [false, true],
-              human_readable_values: [],
-              field_id: 120,
-            },
-            id: 120,
-            table_id: 6,
-            display_name: "CouponUsed",
-            base_type: "type/Boolean",
-            semantic_type: null,
-            has_field_values: "list",
-            name_field: null,
-            dimensions: {},
-            fieldValues: () => [],
-          }),
-          134: new Field({
-            values: {
-              values: [false, true],
-              human_readable_values: [],
-              field_id: 134,
-            },
-            id: 134,
-            table_id: 8,
-            display_name: "Bool",
-            base_type: "type/Boolean",
-            semantic_type: "type/Category",
-            has_field_values: "list",
-            name_field: null,
-            dimensions: {},
-            fieldValues: () => [],
-          }),
-        },
-        field(id) {
-          return this.fields[id];
-        },
-        tables: {
-          6: {
-            id: 6,
-          },
-          8: {
-            id: 8,
-          },
-        },
-        table(id) {
-          return this.tables[id];
-        },
-      };
-
-      dashboard = DASHBOARD_WITH_BOOLEAN_PARAMETER;
-    });
-
-    it("should generate a map of parameter mappings with added field metadata", () => {
-      const mappings = getMappingsByParameter(metadata, dashboard);
-
-      expect(mappings).toEqual({
-        parameter1: {
-          "81": {
-            "56": {
-              card_id: 56,
-              dashcard_id: 81,
-              field: expect.any(Field),
-              field_id: 120,
-              parameter_id: "parameter1",
-              target: ["dimension", ["field", 120, null]],
-            },
-          },
-          "86": {
-            "59": {
-              card_id: 59,
-              dashcard_id: 86,
-              field: expect.any(Field),
-              field_id: 134,
-              parameter_id: "parameter1",
-              target: ["dimension", ["template-tag", "bbb"]],
-            },
-          },
-          "87": {
-            "62": {
-              card_id: 62,
-              dashcard_id: 87,
-              field: expect.any(Field),
-              field_id: "boolean",
-              parameter_id: "parameter1",
-              target: [
-                "dimension",
-                ["field", "boolean", { "base-type": "type/Boolean" }],
-              ],
-            },
-          },
-        },
-      });
-
-      expect(mappings.parameter1["81"]["56"].field.getPlainObject()).toEqual(
-        expect.objectContaining(metadata.field(120).getPlainObject()),
-      );
-      expect(mappings.parameter1["86"]["59"].field.getPlainObject()).toEqual(
-        expect.objectContaining(metadata.field(134).getPlainObject()),
-      );
-      expect(mappings.parameter1["87"]["62"].field.getPlainObject()).toEqual(
-        expect.objectContaining({
-          name: "boolean",
-        }),
       );
     });
   });
