@@ -7,16 +7,16 @@ set -o pipefail
 #!/bin/sh
 
 ##
-## metabase で解析する postgres データベースに uuuo-web 環境のデータベースからデータをコピーするスクリプt。
-## heroku Addons Schedular から実行。
+## metabase で解析する postgres データベースに uuuo-web 環境のデータベースからデータをコピーするスクリプト。
+## スクリプトは heroku Addons Schedular から実行。
 ## 注意：uuuo-metabase は２基データベースを持つ。解析側（HEROKU_POSTGRESQL_BLUE_URL 現在27/4/2022）を指定すること。
 ##
-## 結果は Slack へ通知する。
-readonly WEBHOOKURL=https://hooks.slack.com/services/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
+## 結果を Slack へ通知する。成功は1日1回、失敗は常に通知。
+## WEBHOOKURL は heroku 環境変数に事前に設定する事。
 readonly EMOJI_FAIL=":waning_crescent_moon:"
 readonly EMOJI_SUCCESS=":sun_with_face:"
 ##
-## 引数は、text欄に表示する文字列
+## 引数は、Slackのtext欄に表示する文字列
 function toSlack() {
   SLACKTEXT=$1
   curl -X POST \
@@ -41,9 +41,12 @@ echo -e "<<<<<  Copying DB from uuuo-web to uuuo-metabase. >>>>>"
 heroku pg:reset HEROKU_POSTGRESQL_BLUE_URL -a uuuo-metabase --confirm uuuo-metabase
 heroku pg:copy uuuo-web::HEROKU_POSTGRESQL_CHARCOAL_URL HEROKU_POSTGRESQL_BLUE_URL --app uuuo-metabase --confirm uuuo-metabase
 
-## 本スクリプトに引数を与えると成功時にSlackに通知する。
-## Heroku Scheduler で通知したい日時を設定する。
-## 例えば、'Every day at 9:15AM UTC 本スクリプト 成功表示'
-if [ $# -ne 0 ]; then
+## 成功はSlackに通知する。
+## 通知頻度を指定：　現時刻が Heroku 環境変数（NOTIFY_WHEN_SUCCESS）の条件に合えば通知する。
+## 例：時刻が 13:00-13:30 の範囲であれば通知したい場合、次の様に指定。
+## 　　NOTIFY_WHEN_SUCCESS='-ge 1300 -a 1330 -gt'
+now=$(date '+%H%M')
+cmp=${NOTIFY_WHEN_SUCCESS-'-ge 1300 -a 1330 -gt'}
+if [ $now $cmp $now ]; then
   toSlack "データベースコピー成功　${EMOJI_SUCCESS}"
 fi
