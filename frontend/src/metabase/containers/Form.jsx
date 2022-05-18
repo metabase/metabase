@@ -227,7 +227,11 @@ class Form extends React.Component {
         const errorNames = Object.keys(error.data.errors);
         const hasUnknownFields = errorNames.some(name => !fieldNames.has(name));
         throw {
-          _error: hasUnknownFields ? t`An error occurred` : null,
+          _error:
+            error.data?.message ||
+            error.message ||
+            error.data ||
+            (hasUnknownFields ? t`An error occurred` : null),
           ...error.data.errors,
         };
       } else if (error) {
