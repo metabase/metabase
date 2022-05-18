@@ -123,6 +123,34 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
 
+  it("should update the existing filter", () => {
+    visitQuestionAdhoc(filteredQuestionDetails);
+    cy.findByLabelText("Show more filters").click();
+
+    modal().within(() => {
+      cy.findByText("is less than 30").click();
+    });
+
+    popover().within(() => {
+      cy.findByRole("textbox")
+        .click()
+        .type("30")
+        .clear()
+        .type("25");
+
+      cy.button("Update filter").click();
+    });
+
+    modal().within(() => {
+      cy.button("Apply").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByText("Quantity is greater than 20").should("be.visible");
+    cy.findByText("Quantity is less than 25").should("be.visible");
+    cy.findByText("Showing 17 rows").should("be.visible");
+  });
+
   it("should remove the existing filter", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
     cy.findByLabelText("Show more filters").click();
