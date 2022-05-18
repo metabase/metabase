@@ -57,6 +57,7 @@ const BulkFilterSelect = ({
         <SelectFilterButton
           hasValue={filter != null}
           highlighted
+          aria-label={dimension.displayName()}
           onClick={onClick}
           onClear={filter ? handleClear : undefined}
         >
