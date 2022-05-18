@@ -47,7 +47,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.signInAsAdmin();
   });
 
-  it("should add filters for a raw query", () => {
+  it("should add a filter for a raw query", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     cy.findByLabelText("Show more filters").click();
 
@@ -70,7 +70,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 4 rows").should("be.visible");
   });
 
-  it("should add filters for an aggregated query", () => {
+  it("should add a filter for an aggregated query", () => {
     visitQuestionAdhoc(aggregatedQuestionDetails);
     cy.findByLabelText("Show more filters").click();
 
@@ -100,7 +100,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 21 rows").should("be.visible");
   });
 
-  it("should add filters for linked tables", () => {
+  it("should add a filter for linked tables", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     cy.findByLabelText("Show more filters").click();
 
@@ -123,7 +123,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
 
-  it("should update the existing filter", () => {
+  it("should update an existing filter", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
     cy.findByLabelText("Show more filters").click();
 
@@ -151,7 +151,7 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Showing 17 rows").should("be.visible");
   });
 
-  it("should remove the existing filter", () => {
+  it("should remove an existing filter", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
     cy.findByLabelText("Show more filters").click();
 
