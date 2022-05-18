@@ -82,9 +82,9 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Equal to").click();
     });
 
-    popover({ index: 1 }).within(() => {
-      cy.findByText("Greater than").click();
-    });
+    popover()
+      .eq(1)
+      .within(() => cy.findByText("Greater than").click());
 
     popover().within(() => {
       cy.findByPlaceholderText("Enter a number").type("500");
