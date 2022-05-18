@@ -8,7 +8,9 @@
 
   as
 
-    (let [_args [\"Description\" :type :boolean]}
+    (let [_ \"Description\"
+          _ :type 
+          _ :boolean]
       (defn my-setting \"Docstring.\" [])
       (defn my-setting! \"Docstring.\" [_value-or-nil]))
 
