@@ -57,11 +57,11 @@
 
 (def ^:private db-connection-details
   (delay
-   {:host     (tx/db-test-env-var :ocient :host "localhost")
-    :port     (tx/db-test-env-var :ocient :port "4051")
+   {:host     (tx/db-test-env-var :ocient :host "tableau-sim.corp.ocient.com")
+    :port     (tx/db-test-env-var :ocient :port "7050")
     :user     (tx/db-test-env-var :ocient :user "admin@system")
     :password (tx/db-test-env-var :ocient :password "admin")
-    :additional-options "loglevel=TRACE;logfile=/ocient/db/metabase/ocient_jdbc.log;pooling=OFF"}))
+    :additional-options "loglevel=TRACE;logfile=/tmp/ocient_jdbc.log;pooling=OFF"}))
 
 (defmethod tx/dbdef->connection-details :ocient
   [driver context {:keys [database-name]}]
