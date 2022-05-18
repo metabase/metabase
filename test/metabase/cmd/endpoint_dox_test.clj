@@ -34,7 +34,6 @@
 (deftest build-endpoint-link-test
   (testing "Links to endpoint pages are generated correctly."
     (let [[ep ep-data] (first endpoints)]
-      (println "EP" ep)
       (is (= "- [Activity](api/activity.md)"
              (endpoint-dox/build-endpoint-link ep ep-data))))))
 
