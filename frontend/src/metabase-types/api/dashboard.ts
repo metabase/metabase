@@ -10,15 +10,15 @@ export interface Dashboard {
   name: string;
   model?: string;
   ordered_cards: DashboardOrderedCard[];
-  parameters: Parameter[];
+  parameters?: Parameter[] | null;
 }
 
 export type DashboardOrderedCard = {
   id: number;
   card: SavedCard;
   card_id: CardId;
-  parameter_mappings: DashboardParameterMapping[];
-  series: SavedCard[];
+  parameter_mappings?: DashboardParameterMapping[] | null;
+  series?: SavedCard[];
 };
 
 export type DashboardParameterMapping = {

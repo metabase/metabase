@@ -92,7 +92,7 @@ export function isDashboardParameterWithoutMapping(
     return false;
   }
 
-  const parameterExistsOnDashboard = dashboard.parameters.some(
+  const parameterExistsOnDashboard = dashboard.parameters?.some(
     dashParam => dashParam.id === parameter.id,
   );
   const parameterHasMapping = hasMapping(parameter, dashboard);
@@ -106,7 +106,7 @@ export function getDashboardUiParameters(
 ): UiParameter[] {
   const { parameters, ordered_cards } = dashboard;
   const mappings = getMappings(ordered_cards);
-  const uiParameters: UiParameter[] = parameters.map(parameter => {
+  const uiParameters: UiParameter[] = (parameters || []).map(parameter => {
     if (isFieldFilterParameter(parameter)) {
       return buildFieldFilterUiParameter(parameter, mappings, metadata);
     }
@@ -150,7 +150,7 @@ function getMappings(ordered_cards: DashboardOrderedCard[]): Mapping[] {
   return ordered_cards.flatMap(dashcard => {
     const { parameter_mappings, card, series } = dashcard;
     const cards = [card, ...(series || [])];
-    return parameter_mappings
+    return (parameter_mappings || [])
       .map(parameter_mapping => {
         const card = _.findWhere(cards, { id: parameter_mapping.card_id });
         return card
@@ -185,9 +185,9 @@ export function getParametersMappedToDashcard(
 ): ParameterWithTarget[] {
   const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
-  return parameters
+  return (parameters || [])
     .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings, {
+      const mapping = _.findWhere(parameter_mappings || [], {
         parameter_id: parameter.id,
       });
 
