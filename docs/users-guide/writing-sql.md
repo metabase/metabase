@@ -66,7 +66,7 @@ For an example, see the documentation on [Referencing models and saved questions
 
 ## Need help?
 
-If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshooting-sql].
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshoot-sql].
 
 ---
 
@@ -79,5 +79,4 @@ Now that you have an answer to your question, you can learn about [visualizing a
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: /glossary/sample_database
 [sql-gloss]: /glossary/sql
-[troubleshooting-sql]: ../troubleshooting-guide/sql.html
 [variable-gloss]: /glossary/variable
