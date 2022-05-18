@@ -2,5 +2,5 @@
 
 (defmacro defmodel [model-name & _args]
   `(do
-     (def ~model-name)
+     (def ~model-name "Docstring." nil)
      (defrecord ~(symbol (str model-name "Instance")) [])))
