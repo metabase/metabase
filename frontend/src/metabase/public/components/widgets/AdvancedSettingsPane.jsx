@@ -47,7 +47,7 @@ const AdvancedSettingsPane = ({
       className={cx(className, "p4 full-height flex flex-column bg-light")}
       style={{ width: 400 }}
     >
-      <Section title={t`Style`}>
+      <Section>
         <DisplayOptionsPane
           className="pt1"
           displayOptions={displayOptions}
@@ -110,7 +110,7 @@ const AdvancedSettingsPane = ({
 
 const Section = ({ className, title, children }) => (
   <div className={cx(className, "mb3 pb4 border-row-divider border-medium")}>
-    <h3>{title}</h3>
+    {title && <h3>{title}</h3>}
     {children}
   </div>
 );

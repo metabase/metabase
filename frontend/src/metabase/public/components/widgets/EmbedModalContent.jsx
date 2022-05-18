@@ -24,6 +24,8 @@ import {
 } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
+import MetabaseSettings from "metabase/lib/settings";
+
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 const mapStateToProps = (state, props) => ({
@@ -45,6 +47,7 @@ class EmbedModalContent extends Component {
         theme: null,
         bordered: true,
         titled: true,
+        font: MetabaseSettings.get("application-font"),
       },
 
       parameterValues: {},
