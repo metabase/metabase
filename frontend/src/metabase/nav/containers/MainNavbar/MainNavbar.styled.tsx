@@ -30,7 +30,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-shrink: 0;
   align-items: center;
   padding: 0.5rem 0;
-  background-color: ${color("nav")};
+  background-color: ${color("white")};
 
   overflow: auto;
   overflow-x: hidden;
