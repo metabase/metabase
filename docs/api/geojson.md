@@ -1,4 +1,4 @@
-# Geojson
+# GeoJSON
 
   - [GET /api/geojson/](#get-apigeojson)
   - [GET /api/geojson/:key](#get-apigeojsonkey)
