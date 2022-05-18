@@ -14,6 +14,21 @@ const rawQuestionDetails = {
   },
 };
 
+const filteredQuestionDetails = {
+  dataset_query: {
+    database: SAMPLE_DB_ID,
+    type: "query",
+    query: {
+      "source-table": ORDERS_ID,
+      filter: [
+        "and",
+        [">", ["field", ORDERS.QUANTITY, null], 20],
+        ["<", ["field", ORDERS.QUANTITY, null], 30],
+      ],
+    },
+  },
+};
+
 const aggregatedQuestionDetails = {
   dataset_query: {
     database: SAMPLE_DB_ID,
@@ -107,6 +122,26 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Category is Gadget").should("be.visible");
     cy.findByText("Showing first 2,000 rows").should("be.visible");
   });
+
+  it("should remove the existing filter", () => {
+    visitQuestionAdhoc(filteredQuestionDetails);
+    cy.findByLabelText("Show more filters").click();
+
+    modal().within(() => {
+      cy.findByText("is less than 30")
+        .parent()
+        .within(() => cy.icon("close").click());
+
+      cy.button("Apply").click();
+      cy.wait("@dataset");
+    });
+
+    cy.findByText("Quantity is greater than 20").should("be.visible");
+    cy.findByText("Quantity is less than 30").should("not.exist");
+    cy.findByText("Showing 138 rows").should("be.visible");
+  });
 });
 
-const modal = () => cy.get(".Modal");
+const modal = () => {
+  return cy.get(".Modal");
+};
