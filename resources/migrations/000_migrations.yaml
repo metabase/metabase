@@ -11772,6 +11772,21 @@ databaseChangeLog:
                   nullable: true
                   unique: true
             tableName: timeline
+  - changeSet:
+      id: v44.00-011
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboardcard
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
