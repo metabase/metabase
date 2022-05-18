@@ -13,8 +13,9 @@ var payload = {
 };
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
-var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true${isEE &&
-      "&font=Lato"}";`
+var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true${
+      isEE ? "&font=Lato" : ""
+    }";`
       .split("\n")
       .join("")
       .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
