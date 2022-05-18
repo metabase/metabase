@@ -35,7 +35,7 @@
 ;; Use the public schema for all tables
 (defonce session-schema (str "public"))
 
-;; Additional columns required by the Ocient database 
+;; Additional columns required by the Ocient database
 (defonce id-column-key (str "id"))
 
 ;; Define the primary key type
@@ -269,7 +269,7 @@
   ;; next, get a set of statements for creating the DB & Tables
   (let [statements (apply ddl/create-db-tables-ddl-statements driver dbdef options)]
     ;; TODO Add support for combined statements in JDBC
-    ;; execute each statement. Notice we're now executing in the `:db` context e.g. executing 
+    ;; execute each statement. Notice we're now executing in the `:db` context e.g. executing
     ;; them for a specific DB rather than on `:server` (no DB in particular)
     (doseq [statement statements]
       (execute-sql! driver :db dbdef statement)))
@@ -356,16 +356,16 @@
         (jdbc/print-sql-exception-chain e)
         (throw e)))))
 
-;; So this is kind of stupid - but the column order in each row provided 
-;; will match the order of the table definition IFF the number of columns in the 
-;; table is <9. 
-;; 
+;; So this is kind of stupid - but the column order in each row provided
+;; will match the order of the table definition IFF the number of columns in the
+;; table is <9.
+;;
 ;; TLDR;
 ;; This has to do with the usage of `zipmap` in the load-data module. The intent is
 ;; to zip two vectors mapping the values in vec1 to values in vec2. The result is a
-;; map. When the number of columns is <=8, returned value is an PersistentArrayMap, 
-;; but when >9, the value is a PersistentHashMap. Ocient requires the order of the 
-;; values in INSERT INTO statement to match the table definition. 
+;; map. When the number of columns is <=8, returned value is an PersistentArrayMap,
+;; but when >9, the value is a PersistentHashMap. Ocient requires the order of the
+;; values in INSERT INTO statement to match the table definition.
 ;; https://clojuredocs.org/clojure.core/zipmap#example-5de00830e4b0ca44402ef7ed
 
 (defn- add-ids-preserve-field-order
@@ -394,11 +394,11 @@
     ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
       ;; Field order is preserved by using array-map supplying all KV pairs to the
-      ;; array-map constructor. The key list is first interleaved with the value list 
-      ;; producing a flat KV list (i.e. [k1, v1, ..., kN, vN]) which is then piped 
+      ;; array-map constructor. The key list is first interleaved with the value list
+      ;; producing a flat KV list (i.e. [k1, v1, ..., kN, vN]) which is then piped
       ;; through to the array-map constructor.
       ;;
-      ;; The default implementation uses zipmap which may produce an unordered 
+      ;; The default implementation uses zipmap which may produce an unordered
       ;; hash map (see load-data/load-data-get-rows).
       (apply array-map (interleave fields-for-insert row)))))
 
