@@ -52,7 +52,13 @@ You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code a
 
 ## How Metabase executes SQL queries
 
-When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
+When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or syntax errors displayed in Metabase are the same as the results or syntax errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
+
+## How Metabase executes SQL variables
+
+When your query includes a SQL variable, the `{% raw %}{{#5}}{% endraw %}` tag will be substituted with the SQL query of the referenced question or model, surrounded by parentheses.
+
+For an example, see the documentation on [Referencing models and saved questions in SQL queries](../users-guide/referencing-saved-questions-in-queries.html).
 
 ## Learn more
 
@@ -60,7 +66,7 @@ When you run a query from the SQL editor, Metabase sends the query to your datab
 
 ## Need help?
 
-If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshoot-sql].
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshooting-sql].
 
 ---
 
@@ -73,4 +79,5 @@ Now that you have an answer to your question, you can learn about [visualizing a
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: /glossary/sample_database
 [sql-gloss]: /glossary/sql
+[troubleshooting-sql]: ../troubleshooting-guide/sql.html
 [variable-gloss]: /glossary/variable
