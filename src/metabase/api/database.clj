@@ -693,7 +693,7 @@
 (api/defendpoint PUT "/:id"
   "Update a `Database`."
   [id :as {{:keys [name engine details is_full_sync is_on_demand description caveats points_of_interest schedules
-                   auto_run_queries refingerprint cache_ttl]} :body}]
+                   auto_run_queries refingerprint cache_ttl settings]} :body}]
   {name               (s/maybe su/NonBlankString)
    engine             (s/maybe DBEngineString)
    refingerprint      (s/maybe s/Bool)
@@ -703,7 +703,8 @@
    caveats            (s/maybe s/Str)   ; whether someone sets these to blank strings
    points_of_interest (s/maybe s/Str)
    auto_run_queries   (s/maybe s/Bool)
-   cache_ttl          (s/maybe su/IntGreaterThanZero)}
+   cache_ttl          (s/maybe su/IntGreaterThanZero)
+   settings           (s/maybe su/Map)}
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (let [existing-database (api/write-check (Database id))
         details           (driver.u/db-details-client->server engine details)
@@ -745,7 +746,15 @@
 
                                                    ;; if user is controlling schedules
                                                    (:let-user-control-scheduling details)
-                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))))))
+                                                   (sync.schedules/schedule-map->cron-strings (sync.schedules/scheduling schedules))
+
+                                                   ;; upsert settings with a PATCH-style update. `nil` key means unset
+                                                   ;; the Setting.
+                                                   (seq settings)
+                                                   {:settings (into {}
+                                                                    (remove (fn [[_k v]] (nil? v)))
+                                                                    (merge (:settings existing-database)
+                                                                           settings))}))))
         ;; do nothing in the case that user is not in control of
         ;; scheduling. leave them as they are in the db
 
