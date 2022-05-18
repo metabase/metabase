@@ -45,6 +45,7 @@ heroku pg:copy uuuo-web::HEROKU_POSTGRESQL_CHARCOAL_URL HEROKU_POSTGRESQL_BLUE_U
 ## 通知頻度を指定：　現時刻が Heroku 環境変数（NOTIFY_WHEN_SUCCESS）の条件に合えば通知する。
 ## 例：時刻が 13:00-13:30 の範囲であれば通知したい場合、次の様に指定。
 ## 　　NOTIFY_WHEN_SUCCESS='-ge 1300 -a 1330 -gt'
+## 注意：時刻はセミコロン（：）無しで指定する事。
 now=$(date '+%H%M')
 cmp=${NOTIFY_WHEN_SUCCESS-'-ge 1300 -a 1330 -gt'}
 if [ $now $cmp $now ]; then
