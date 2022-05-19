@@ -11643,6 +11643,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: action
+            remarks: An action is something you can do, such as run a readwrite query
             columns:
               - column:
                   name: id
@@ -11678,10 +11679,12 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: query_action
+            remarks: A readwrite query type of action
             columns:
               - column:
                   name: action_id
                   type: int
+                  remarks: The related action
                   constraints:
                     nullable: false
                     referencedTableName: action
@@ -11691,6 +11694,7 @@ databaseChangeLog:
               - column:
                   name: card_id
                   type: int
+                  remarks: The related card
                   constraints:
                     nullable: false
                     referencedTableName: report_card
@@ -11713,6 +11717,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: emitter
+            remarks: An Emitter reperents the fact an Action can act upon the given object
             columns:
               - column:
                   name: id
@@ -11743,10 +11748,12 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: emitter_action
+            remarks: Join table for emitter and actions
             columns:
               - column:
                   name: emitter_id
                   type: int
+                  remarks: The related emitter
                   constraints:
                     nullable: false
                     referencedTableName: emitter
@@ -11756,6 +11763,7 @@ databaseChangeLog:
               - column:
                   name: action_id
                   type: int
+                  remarks: The related action
                   constraints:
                     nullable: false
                     referencedTableName: action
@@ -11778,10 +11786,12 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: dashboard_emitter
+            remarks: Emitter for this dashboard
             columns:
               - column:
                   name: emitter_id
                   type: int
+                  remarks: The related emitter
                   constraints:
                     nullable: false
                     referencedTableName: emitter
@@ -11791,6 +11801,7 @@ databaseChangeLog:
               - column:
                   name: dashboard_id
                   type: int
+                  remarks: The related dashboard
                   constraints:
                     nullable: false
                     referencedTableName: report_dashboard
@@ -11813,10 +11824,12 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: card_emitter
+            remarks: Emitter for this card
             columns:
               - column:
                   name: emitter_id
                   type: int
+                  remarks: The related emitter
                   constraints:
                     nullable: false
                     referencedTableName: emitter
@@ -11826,6 +11839,7 @@ databaseChangeLog:
               - column:
                   name: card_id
                   type: int
+                  remarks: The related card
                   constraints:
                     nullable: false
                     referencedTableName: report_card
@@ -11852,6 +11866,7 @@ databaseChangeLog:
                   name: is_readwrite
                   type: boolean
                   defaultValueBoolean: false
+                  remarks: Indicates that this is a readwrite question that may perform writes to a db
                   constraints:
                     nullable: false
             tableName: report_card
