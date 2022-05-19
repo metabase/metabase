@@ -25,9 +25,3 @@ export interface IDimensionOptionsProps {
   dimensions: Dimension[];
   fks: IDimensionFK[];
 }
-
-export interface IDimensionOptions {
-  all(): Dimension[];
-  hasDimension(dimension: Dimension): boolean;
-  sections(options?: { extraItems?: ISectionOption[] }): ISection[];
-}

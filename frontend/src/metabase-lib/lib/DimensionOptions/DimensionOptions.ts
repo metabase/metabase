@@ -1,12 +1,7 @@
 import Dimension from "metabase-lib/lib/Dimension";
-import {
-  IDimensionFK,
-  IDimensionOptions,
-  IDimensionOptionsProps,
-  ISection,
-} from "./types";
+import { IDimensionFK, IDimensionOptionsProps, ISection } from "./types";
 
-export default class DimensionOptions implements IDimensionOptions {
+export default class DimensionOptions {
   name?: string;
   icon?: string;
   count: number = 0;
