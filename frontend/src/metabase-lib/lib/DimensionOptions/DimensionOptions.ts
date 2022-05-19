@@ -1,14 +1,18 @@
 import Dimension from "metabase-lib/lib/Dimension";
-import { IDimensionFK, IDimensionOptionsProps, ISection } from "./types";
+import {
+  DimensionFK,
+  DimensionOptionsProps,
+  DimensionOptionsSection,
+} from "./types";
 
 export default class DimensionOptions {
   name?: string;
   icon?: string;
   count: number = 0;
   dimensions: Dimension[] = [];
-  fks: IDimensionFK[] = [];
+  fks: DimensionFK[] = [];
 
-  constructor(properties?: IDimensionOptionsProps) {
+  constructor(properties?: DimensionOptionsProps) {
     Object.assign(this, properties || {});
   }
 
@@ -31,12 +35,12 @@ export default class DimensionOptions {
     return !!this.all().find(dim => dimension.isSameBaseDimension(dim));
   }
 
-  sections({ extraItems = [] } = {}): ISection[] {
+  sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
     const [dimension] = this.dimensions;
     const table = dimension && dimension.field().table;
     const tableName =
       table && !table.isSavedQuestion() ? table.objectName() : null;
-    const mainSection: ISection = {
+    const mainSection: DimensionOptionsSection = {
       name: this.name || tableName,
       icon: this.icon || "table2",
       items: [
@@ -47,7 +51,7 @@ export default class DimensionOptions {
       ],
     };
 
-    const sections: ISection[] = this.fks.map(fk => ({
+    const sections: DimensionOptionsSection[] = this.fks.map(fk => ({
       name: fk.name || (fk.field && fk.field.targetObjectName()),
       icon: fk.icon || "connections",
       items: fk.dimensions.map(dimension => ({
