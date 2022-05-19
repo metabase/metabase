@@ -1465,6 +1465,7 @@
        (core/>= max-results max-results-bare-rows)))
    "max-results-bare-rows must be less or equal to than max-results"))
 
+
 (def ^:private MiddlewareOptions
   "Additional options that can be used to toggle middleware on or off."
   {;; should we skip adding results_metadata to query results after running the query? Used by
@@ -1576,6 +1577,7 @@
   `:source-table \"card__id\"` shorthand for a source query resolved by middleware (since clients might not know the
   actual DB for that source query.)"
   (s/cond-pre (s/eq saved-questions-virtual-database-id) helpers/IntGreaterThanZero))
+
 
 (def Query
   "Schema for an [outer] query, e.g. the sort of thing you'd pass to the query processor or save in
