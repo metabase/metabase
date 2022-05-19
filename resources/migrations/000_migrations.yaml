@@ -11870,10 +11870,10 @@ databaseChangeLog:
         - addColumn:
             columns:
               - column:
-                  name: is_readwrite
+                  name: is_write
                   type: boolean
                   defaultValueBoolean: false
-                  remarks: Indicates that this is a readwrite question that may perform writes to a db
+                  remarks: Indicates that this query will perform writes to a db
                   constraints:
                     nullable: false
             tableName: report_card
