@@ -4,6 +4,7 @@ import { Moment } from "moment";
 import Tooltip from "metabase/components/Tooltip";
 
 import useTimeInput, { BaseTimeInputProps } from "./useTimeInput";
+import CompactTimeInput from "./CompactTimeInput";
 
 import {
   InputClearButton,
@@ -87,4 +88,6 @@ const TimeInput = forwardRef(function TimeInput(
   );
 });
 
-export default TimeInput;
+export default Object.assign(TimeInput, {
+  Compact: CompactTimeInput,
+});
