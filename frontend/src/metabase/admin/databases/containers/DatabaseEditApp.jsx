@@ -132,7 +132,7 @@ class DatabaseEditApp extends Component {
                 {() => (
                   <Databases.Form
                     database={database}
-                    form={Databases.forms.connection}
+                    form={Databases.forms.details}
                     formName={DATABASE_FORM_NAME}
                     onSubmit={this.props.saveDatabase}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
