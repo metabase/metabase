@@ -112,7 +112,7 @@
   (validation/check-has-application-permission :setting)
   (when hours
     (public-settings/persisted-model-refresh-interval-hours! hours))
-  (if (< hours 6)
+  (if (and hours (< hours 6))
     (public-settings/persisted-model-refresh-anchor-time! "00:00")
     (when anchor
       (public-settings/persisted-model-refresh-anchor-time! anchor)))
