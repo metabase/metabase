@@ -37,7 +37,7 @@ const mapStateToProps = (state, props) => ({
   secretKey: getEmbeddingSecretKey(state, props),
   isPublicSharingEnabled: getIsPublicSharingEnabled(state, props),
   isApplicationEmbeddingEnabled: getIsApplicationEmbeddingEnabled(state, props),
-  canWhitelabel: PLUGIN_SELECTORS.canWhitelabel(),
+  canWhitelabel: PLUGIN_SELECTORS.canWhitelabel(state),
 });
 
 class EmbedModalContent extends Component {

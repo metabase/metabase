@@ -22,7 +22,7 @@ const THEME_OPTIONS = [
 ];
 
 const mapStateToProps = state => ({
-  canWhitelabel: PLUGIN_SELECTORS.canWhitelabel(),
+  canWhitelabel: PLUGIN_SELECTORS.canWhitelabel(state),
 });
 
 const DisplayOptionsPane = ({
