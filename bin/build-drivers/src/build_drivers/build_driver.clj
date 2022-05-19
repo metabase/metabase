@@ -19,7 +19,7 @@
   ([driver edition]
    (build-driver! driver edition nil))
 
-  ([driver edition {:keys [project-dir target-dir], :as options}]
+  ([driver edition {:keys [project-dir target-dir skip-compilation?], :as options}]
    (let [edition       (or edition :oss)
          start-time-ms (System/currentTimeMillis)]
      (binding [c/*driver-project-dir* (or project-dir
@@ -29,7 +29,9 @@
        (u/step (format "Build driver %s (edition = %s, options = %s)" driver edition (pr-str options))
          (clean! driver)
          (copy-source-files/copy-source-files! driver edition)
-         (compile-source-files/compile-clojure-source-files! driver edition)
+         (when-not skip-compilation?
+             (compile-source-files/compile-clojure-source-files! driver edition))
+         (u/announce "Skipping compiling")
          (create-uberjar/create-uberjar! driver edition)
          (u/announce "Built %s driver in %d ms." driver (- (System/currentTimeMillis) start-time-ms))
-         (verify/verify-driver driver))))))
+         (verify/verify-driver driver skip-compilation?))))))

@@ -29,6 +29,16 @@
         (u/announce "Driver init class file found.")
         (throw (ex-info (format "Driver verification failed: init class file %s not found" driver-init-class-filename) {}))))))
 
+(defn- verify-has-driver-file [driver]
+  (let [jar-filename    (c/driver-jar-destination-path driver)
+        driver-filename (format "metabase/driver/%s.clj" (name driver))]
+    (u/step (format "Check %s contains driver file %s"
+                    jar-filename driver-filename)
+      (if (jar-contains-file? jar-filename driver-filename)
+        (u/announce "Driver file file found.")
+        (throw (ex-info (format "Driver verification failed: driver file %s not found"
+                                driver-filename) {}))))))
+
 (defn- verify-does-not-have-clojure-core [driver]
   (let [jar-filename (c/driver-jar-destination-path driver)]
     (u/step (format "Check %s does not contain Clojure core classes" jar-filename)
@@ -59,11 +69,13 @@
 
 (defn verify-driver
   "Run a series of checks to make sure `driver` was built correctly. Throws exception if any checks fail."
-  [driver]
+  [driver & [skip-compilation?]]
   {:pre [(keyword? driver)]}
   (u/step (str (colorize/green "Verify ") (colorize/yellow driver) (colorize/green " driver"))
     (u/assert-file-exists (c/driver-jar-destination-path driver))
-    (verify-has-init-class driver)
+    (if skip-compilation?
+      (verify-has-driver-file driver)
+      (verify-has-init-class driver))
     (verify-has-plugin-manifest driver)
     (verify-does-not-have-clojure-core driver)
     (u/announce (format "%s driver verification successful." driver))))
