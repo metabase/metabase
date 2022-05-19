@@ -55,6 +55,8 @@ function updateSectionsWithPlugins(sections) {
   }
 }
 
+const CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING = 6;
+
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
     name: t`Setup`,
@@ -458,7 +460,18 @@ const SECTIONS = updateSectionsWithPlugins({
         display_name: t`Anchoring time`,
         disableDefaultUpdate: true,
         widget: PersistedModelAnchorTimeWidget,
-        getHidden: settings => !settings["persisted-models-enabled"],
+        getHidden: settings => {
+          if (!settings["persisted-models-enabled"]) {
+            return true;
+          }
+          const DEFAULT_REFRESH_INTERVAL = 6;
+          const refreshInterval =
+            settings["persisted-model-refresh-interval-hours"] ||
+            DEFAULT_REFRESH_INTERVAL;
+          return (
+            refreshInterval < CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING
+          );
+        },
         onChanged: (oldAnchor, anchor) =>
           PersistedModelsApi.setRefreshInterval({ anchor }),
       },
