@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { TabContext, TabContextType } from "../Tab";
-import { TabListRoot } from "./TabList.styled";
+import { TabListContent, TabListRoot } from "./TabList.styled";
 
 export interface TabListProps<T>
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -30,9 +30,11 @@ const TabList = forwardRef(function TabGroup<T>(
 
   return (
     <TabListRoot {...props} ref={ref} role="tablist">
-      <TabContext.Provider value={activeContext as TabContextType}>
-        {children}
-      </TabContext.Provider>
+      <TabListContent>
+        <TabContext.Provider value={activeContext as TabContextType}>
+          {children}
+        </TabContext.Provider>
+      </TabListContent>
     </TabListRoot>
   );
 });

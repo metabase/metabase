@@ -31,7 +31,7 @@ import registerVisualizations from "metabase/visualizations/register";
 import React from "react";
 import ReactDOM from "react-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider, Global } from "@emotion/react";
+import { ThemeProvider } from "@emotion/react";
 
 import { createTracker } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
@@ -52,7 +52,7 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
-import { applicationFontStyles } from "metabase/styled-components/theme/global";
+import GlobalStyles from "metabase/styled-components/theme/global";
 
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
@@ -79,7 +79,7 @@ function _init(reducers, getRoutes, callback) {
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
-          <Global styles={applicationFontStyles} />
+          <GlobalStyles />
           <Router history={history}>{routes}</Router>
         </ThemeProvider>
       </DragDropContextProvider>

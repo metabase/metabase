@@ -111,9 +111,9 @@
    anchor (s/maybe AnchorTime)}
   (validation/check-has-application-permission :setting)
   (when hours
-    (public-settings/persisted-model-refresh-interval-hours hours))
+    (public-settings/persisted-model-refresh-interval-hours! hours))
   (when anchor
-    (public-settings/persisted-model-refresh-anchor-time anchor))
+    (public-settings/persisted-model-refresh-anchor-time! anchor))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
@@ -122,7 +122,7 @@
   []
   (validation/check-has-application-permission :setting)
   (log/info (tru "Enabling model persistence"))
-  (public-settings/persisted-models-enabled true)
+  (public-settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
 
@@ -146,11 +146,11 @@
   []
   (validation/check-has-application-permission :setting)
   (when (public-settings/persisted-models-enabled)
-    (try (public-settings/persisted-models-enabled false)
+    (try (public-settings/persisted-models-enabled! false)
          (disable-persisting)
          (catch Exception e
            ;; re-enable so can continue to attempt to clean up
-           (public-settings/persisted-models-enabled true)
+           (public-settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)
 

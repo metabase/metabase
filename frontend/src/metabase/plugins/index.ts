@@ -76,6 +76,7 @@ export const PLUGIN_SELECTORS = {
   getHasCustomLogo: (state: State) => false,
   getHasCustomColors: (state: State) => false,
   getHasCustomBranding: (state: State) => false,
+  canWhitelabel: (state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
@@ -175,4 +176,10 @@ export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
   deleteGroup: null,
   confirmDeleteMembershipAction: null,
   confirmUpdateMembershipAction: null,
+};
+
+export const PLUGIN_MODEL_PERSISTENCE = {
+  isModelLevelPersistenceEnabled: () => false,
+  ModelCacheControl: PluginPlaceholder as any,
+  ModelCacheManagementSection: PluginPlaceholder as any,
 };

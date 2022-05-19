@@ -88,6 +88,7 @@ if (hasPremiumFeature("whitelabel")) {
   enabledApplicationNameReplacement();
 
   PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
+  PLUGIN_SELECTORS.canWhitelabel = () => true;
 }
 
 // these selectors control whitelabeling UI

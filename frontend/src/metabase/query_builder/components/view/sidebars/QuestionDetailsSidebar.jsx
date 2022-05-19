@@ -9,8 +9,6 @@ QuestionDetailsSidebar.propTypes = {
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
-  persistDataset: PropTypes.func.isRequired,
-  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebar({
@@ -18,8 +16,6 @@ function QuestionDetailsSidebar({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
-  persistDataset,
-  unpersistDataset,
 }) {
   const [view, setView] = useState(view);
 
@@ -33,8 +29,6 @@ function QuestionDetailsSidebar({
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
-          persistDataset={persistDataset}
-          unpersistDataset={unpersistDataset}
         />
       );
   }

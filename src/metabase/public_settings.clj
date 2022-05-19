@@ -113,7 +113,7 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
-(declare redirect-all-requests-to-https)
+(declare redirect-all-requests-to-https!)
 
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
@@ -132,7 +132,7 @@
                   https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
-                (redirect-all-requests-to-https false))
+                (redirect-all-requests-to-https! false))
               (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
