@@ -5,6 +5,7 @@
    [metabase.actions.test-util :as actions.test-util]
    [metabase.api.actions :as api.actions]
    [metabase.models.database :refer [Database]]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (comment api.actions/keep-me)
@@ -82,10 +83,14 @@
             (is (re= #"Value does not match schema:.*"
                      (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k)))))))))))
 
-(deftest unknown-row-action-gives-404
+(deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/with-temporary-setting-values [experimental-enable-actions true]
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))
+      (let [query-that-returns-more-than-one (mt/mbql-query venues {:filter [:> $id -10]})]
+        (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
+        (doseq [{:keys [action]} (mock-requests)]
+          (is (re= #"Sorry, this would effect \d+ rows, but you can only act on 1"
+                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))))))))
 
 (deftest four-oh-four-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
