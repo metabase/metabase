@@ -11,6 +11,7 @@ import title from "metabase/hoc/Title";
 
 import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
+import FormError from "metabase/components/form/FormError";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -156,6 +157,7 @@ class DatabaseEditApp extends Component {
                       values,
                       submitTitle,
                       onChangeField,
+                      error,
                     }) => {
                       return (
                         <DatabaseEditContent>
@@ -171,12 +173,16 @@ class DatabaseEditApp extends Component {
                                   onChangeField("engine", engine)
                                 }
                               />
+                              <FormError
+                                className="mt3 mb4"
+                                anchorMarginTop={24}
+                                error={error}
+                              />
                               {_.reject(formFields, { name: "engine" }).map(
                                 ({ name }) => (
                                   <FormField key={name} name={name} />
                                 ),
                               )}
-                              <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
                                   {submitTitle}

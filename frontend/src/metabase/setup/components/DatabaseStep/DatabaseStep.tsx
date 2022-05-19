@@ -2,6 +2,8 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
+import Button from "metabase/core/components/Button";
+import FormError from "metabase/components/form/FormError";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import DriverWarning from "metabase/containers/DriverWarning";
@@ -9,12 +11,7 @@ import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
-import {
-  StepActions,
-  StepDescription,
-  StepFormGroup,
-  StepButton,
-} from "./DatabaseStep.styled";
+import { StepDescription, StepFormGroup } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 
 export interface DatabaseStepProps {
@@ -78,12 +75,8 @@ const DatabaseStep = ({
         engine={engine}
         onSubmit={onDatabaseSubmit}
         onEngineChange={onEngineChange}
+        onSkip={handleCancel}
       />
-      <StepActions>
-        <StepButton onClick={handleCancel}>
-          {t`I'll add my data later`}
-        </StepButton>
-      </StepActions>
       {isEmailConfigured && (
         <SetupSection
           title={t`Need help connecting to your data?`}
@@ -101,6 +94,7 @@ interface DatabaseFormProps {
   engine?: string;
   onSubmit: (database: DatabaseInfo) => void;
   onEngineChange: (engine?: string) => void;
+  onSkip: () => void;
 }
 
 const DatabaseForm = ({
@@ -108,6 +102,7 @@ const DatabaseForm = ({
   engine,
   onSubmit,
   onEngineChange,
+  onSkip,
 }: DatabaseFormProps): JSX.Element => {
   const handleSubmit = async (database: DatabaseInfo) => {
     try {
@@ -127,14 +122,18 @@ const DatabaseForm = ({
       formName="database"
       database={database}
       onSubmit={handleSubmit}
+      submitTitle={t`Connect database`}
     >
       {({
         Form,
         FormField,
-        FormFooter,
+        FormMessage,
+        FormSubmit,
         formFields,
         values,
         onChangeField,
+        submitTitle,
+        error,
       }: FormProps) => (
         <Form>
           <FormField name="engine" onChange={handleEngineChange} />
@@ -142,10 +141,18 @@ const DatabaseForm = ({
             engine={values.engine}
             onChange={engine => onChangeField("engine", engine)}
           />
+          <FormError className="mt3 mb4" anchorMarginTop={24} error={error} />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
-          {engine && <FormFooter submitTitle={t`Next`} />}
+          {engine && (
+            <>
+              <div className="flex mb2 justify-end">
+                <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
+                <FormSubmit className="ml2">{submitTitle}</FormSubmit>
+              </div>
+            </>
+          )}
         </Form>
       )}
     </Databases.Form>
