@@ -1,20 +1,54 @@
-# Community-built database drivers
+# Partner and community drivers
 
-As of Metabase 0.32, we now support community-built database drivers!
+In addition to our [Officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), many people build and maintain drivers for database integrations.
 
-Several folks have already started to build drivers for database integrations that Metabase doesn't natively support. While we don't specifically endorse any of these drivers, we thought it would be helpful to have a central place to list them.
+We have two types of third-party drivers:
 
-Want to build your own driver? Take a look at the [driver development](#driver-development) section below.
+- [Partner drivers](#partner-drivers)
+- [Community drivers](#community-drivers)
 
-## How to use a community-built driver
+## How to use a third-party driver
 
-In order to install a community driver, you would typically download the latest jar file from the relevant repository release page and copy it into the plugins directory.
+### Self-hosted
 
-All Metabase plugins live in the plugins directory, which defaults to `./plugins` in the same directory as `metabase.jar`. The plugins directory can be changed by setting the environment variable `MB_PLUGINS_DIR`.
+To use a Partner or Community driver on a self-hosted Metabase:
 
-**Note:** You install these at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
+1. Download the latest jar file from the driver's repository (see the repo's Releases section for the JAR files).
+2. Copy the JAR file into the plugins directory in your Metabase directory (the directory where you run the Metabase JAR).
 
-These are the currently known 3rd-party database drivers for Metabase. Some versions of Metabase introduces changes, which requires drivers to be updated, so make sure you are using a driver that is compatible with your version of Metabase.
+You can change the location of the plugins directory by setting the environment variable `MB_PLUGINS_DIR`.
+
+### Metabase Cloud
+
+Partner drivers, like officially supported drivers, are available out-of-the-box on Metabase cloud. No action needed.
+
+Community drivers are not supported on Metabase Cloud.
+
+## Partner drivers
+
+Partner drivers are available both on Metabase Cloud and on self-hosted Metabases.
+
+To qualify as a partner driver, the driver must:
+
+- Have a sponsor (usually the database's vendor) who has committed to maintaining the driver for future releases.
+- Pass the Metabase test suite and a code review by our team.
+- Have a permissive license.
+
+Current partner drivers:
+
+- [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
+
+Partner drivers are available to Cloud customers out-of-the-box.
+
+If you have interest in becoming a partner, please fill the [partner form](https://www.metabase.com/partners/join/) and we will get in touch.
+
+## Community drivers
+
+> Note: Metabase Cloud doesn't support community drivers
+
+Anyone can build a community driver. These are the currently known third-party database drivers for Metabase.
+
+You install these drivers at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
 
 | Database                                                                                | GitHub Stars                                                                                          | Last release (_if available_)                                                                                                 |
 | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -34,16 +68,10 @@ These are the currently known 3rd-party database drivers for Metabase. Some vers
 
 If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
 
-If you are having problems with installing or using a community driver, your best bet is to contact the author of the driver.
+If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
-## Driver development
+[Metabase Cloud](https://www.metabase.com/start/hosted/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), and the partner drivers listed above.
 
-If the driver you're looking for isn't available, take a look at the [Guide to writing a Metabase driver](./developers-guide/drivers/start.md). It's still a work in progress, but should give you a good start. A few things to keep in mind:
+## Write your own driver
 
-- If your database has a JDBC driver, you'll be able to make use of some common classes that already exist in Metabase.
-- We're still working on providing an independent test framework for drivers, but you can copy or symlink your driver into a local copy of the Metabase source code in order to utilize pre-existing tests. Take a look at [Test Extension Basics](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Adding-Test-Extensions,-Tests,-and-Setting-up-CI#test-extensions-basics) on the wiki.
-- If you have questions related to driver development, feel free to post on our [driver development forum](https://discourse.metabase.com/c/driver-development).
-
-## Driver development announcements
-
-Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give folks as much of a heads up as possible. For notifications regarding this, please use the form below to subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9). This will be a low-volume email list that we will only use to notify you of important annoucements related to driver development.
+Check out [Guide to writing a Metabase driver](./developers-guide/drivers/start.md).

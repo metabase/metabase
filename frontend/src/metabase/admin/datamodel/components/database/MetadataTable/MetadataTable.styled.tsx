@@ -10,6 +10,7 @@ interface VisibilityTypeProps {
 export const VisibilityType = styled.span<VisibilityTypeProps>`
   margin: 0 0.5rem;
   font-weight: bold;
+  cursor: pointer;
 
   color: ${props => (props.isSelected ? color("brand") : color("text-dark"))};
 

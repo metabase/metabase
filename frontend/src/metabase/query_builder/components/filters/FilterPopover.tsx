@@ -19,7 +19,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { isStartingFrom } from "metabase/lib/query_time";
-import Button from "metabase/core/components/Button";
+import { Button } from "./FilterPopover.styled";
 import DatePicker from "./pickers/DatePicker/DatePicker";
 import TimePicker from "./pickers/TimePicker";
 
@@ -122,7 +122,8 @@ export default class FilterPopover extends Component<Props, State> {
 
   handleDimensionChange = (dimension: FieldDimension) => {
     let filter = this.state.filter;
-    if (!filter || filter.query() !== dimension.query()) {
+    const field = dimension?.field();
+    if (!filter || filter.query() !== dimension.query() || field?.isDate?.()) {
       filter = new Filter(
         [],
         null,
@@ -261,8 +262,7 @@ export default class FilterPopover extends Component<Props, State> {
               {!isSidebar ? (
                 <Button
                   data-ui-tag="add-filter"
-                  purple
-                  style={{ backgroundColor: primaryColor }}
+                  primaryColor={primaryColor}
                   disabled={!filter.isValid()}
                   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                   // @ts-ignore

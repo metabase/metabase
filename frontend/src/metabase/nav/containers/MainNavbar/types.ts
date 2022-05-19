@@ -4,7 +4,7 @@ export type SelectedEntityItem = {
 };
 
 export type SelectedNonEntityItem = {
-  type: "unknown";
+  type: "non-entity";
   url: string;
 };
 

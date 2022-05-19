@@ -4,10 +4,12 @@
   #?@
   (:clj
    [(:require [clojure.string :as str]
+              [clojure.tools.logging :as log]
               [metabase.mbql.schema :as mbql.s]
               [metabase.mbql.schema.helpers :as schema.helpers]
               [metabase.mbql.util.match :as mbql.match]
               [metabase.shared.util.i18n :as i18n]
+              metabase.util.i18n
               [potemkin :as p]
               [schema.core :as s])]
    :cljs
@@ -661,10 +663,18 @@
 
 (defn with-temporal-unit
   "Set the `:temporal-unit` of a `:field` clause to `unit`."
-  [clause unit]
+  [[_ _ {:keys [base-type]} :as clause] unit]
   ;; it doesn't make sense to call this on an `:expression` or `:aggregation`.
   (assert (is-clause? :field clause))
-  (assoc-field-options clause :temporal-unit unit))
+  (if (or (not base-type)
+          (mbql.s/valid-temporal-unit-for-base-type? base-type unit))
+    (assoc-field-options clause :temporal-unit unit)
+    #_{:clj-kondo/ignore [:redundant-do]} ; The linter detects that this is redundant in CLJS and warns for it.
+    (do
+      #?(:clj
+         (log/warn (metabase.util.i18n/trs "{0} is not a valid temporal unit for {1}; not adding to clause {2}"
+                                           unit base-type (pr-str clause))))
+      clause)))
 
 (defn remove-namespaced-options
   "Update a `:field`, `:expression` reference, or `:aggregation` reference clause by removing all namespaced keys in the

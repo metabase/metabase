@@ -32,7 +32,7 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 - Relative Date
 - All Options
 
-Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the graphical query builder, choose All options.
+Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
 
 #### Location filters
 

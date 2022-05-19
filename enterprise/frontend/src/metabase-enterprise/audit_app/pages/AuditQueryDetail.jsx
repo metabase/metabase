@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import _ from "underscore";
 
 import AuditContent from "../components/AuditContent";
 import AuditCustomView from "../containers/AuditCustomView";
@@ -66,9 +67,7 @@ import { loadMetadataForCard } from "metabase/query_builder/actions";
 const mapStateToProps = state => ({ metadata: getMetadata(state) });
 const mapDispatchToProps = { loadMetadataForCard };
 
-@connect(mapStateToProps, mapDispatchToProps)
-@ExplicitSize()
-class QueryBuilderReadOnly extends React.Component {
+class QueryBuilderReadOnlyInner extends React.Component {
   state = {
     isNativeEditorOpen: false,
   };
@@ -114,5 +113,10 @@ class QueryBuilderReadOnly extends React.Component {
     }
   }
 }
+
+const QueryBuilderReadOnly = _.compose(
+  connect(mapStateToProps, mapDispatchToProps),
+  ExplicitSize(),
+)(QueryBuilderReadOnlyInner);
 
 export default AuditQueryDetail;

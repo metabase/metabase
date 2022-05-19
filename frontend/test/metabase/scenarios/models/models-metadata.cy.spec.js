@@ -1,4 +1,10 @@
-import { restore, sidebar, visualize } from "__support__/e2e/cypress";
+import {
+  restore,
+  sidebar,
+  visualize,
+  visitDashboard,
+  popover,
+} from "__support__/e2e/cypress";
 
 import {
   openDetailsSidebar,
@@ -10,6 +16,7 @@ import {
   renameColumn,
   setColumnType,
   mapColumnTo,
+  setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
 
 describe("scenarios > models metadata", () => {
@@ -161,4 +168,127 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Tax ($)").should("not.exist");
     cy.findByText("TAX");
   });
+
+  describe("native models metadata overwrites", () => {
+    beforeEach(() => {
+      cy.createNativeQuestion(
+        {
+          name: "Native Model",
+          dataset: true,
+          native: {
+            query: "select * from orders",
+          },
+        },
+        { wrapId: true, idAlias: "modelId" },
+      );
+
+      cy.get("@modelId").then(modelId => {
+        setModelMetadata(modelId, field => {
+          if (field.display_name === "USER_ID") {
+            return {
+              ...field,
+              id: 11,
+              display_name: "User ID",
+              semantic_type: "type/FK",
+              fk_target_field_id: 30,
+            };
+          }
+          if (field.display_name !== "QUANTITY") {
+            return field;
+          }
+          return {
+            ...field,
+            display_name: "Review ID",
+            semantic_type: "type/FK",
+            fk_target_field_id: 36,
+          };
+        });
+      });
+
+      cy.intercept("POST", "/api/dataset").as("dataset");
+    });
+
+    it("should allow drills on FK columns", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.visit(`/model/${modelId}`);
+        cy.wait("@dataset");
+
+        // Drill to People table
+        // FK column is mapped to real DB column
+        drillFK({ id: 1 });
+        cy.wait("@dataset");
+        cy.findByTestId("object-detail").within(() => {
+          cy.findByText("68883"); // zip
+          cy.findAllByText("Hudson Borer");
+        });
+
+        cy.go("back"); // close modal
+        cy.wait("@dataset");
+        cy.go("back"); // navigate away from drilled table
+        cy.wait("@dataset");
+
+        // Drill to Reviews table
+        // FK column has a FK semantic type, no mapping to real DB columns
+        drillFK({ id: 7 });
+        cy.wait("@dataset");
+        cy.findByTestId("object-detail").within(() => {
+          cy.findAllByText("7");
+          cy.findAllByText("perry.ruecker");
+        });
+      });
+    });
+
+    it("should allow drills on FK columns from dashboards", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.createDashboard().then(response => {
+          const dashboardId = response.body.id;
+          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
+            cardId: modelId,
+            sizeX: 18,
+            sizeY: 9,
+          });
+
+          visitDashboard(dashboardId);
+
+          // Drill to People table
+          // FK column is mapped to real DB column
+          drillDashboardFK({ id: 1 });
+          cy.wait("@dataset");
+          cy.findByTestId("object-detail").within(() => {
+            cy.findAllByText("1");
+            cy.findAllByText("Hudson Borer");
+          });
+
+          cy.go("back");
+          cy.wait("@dataset");
+
+          // Drill to Reviews table
+          // FK column has a FK semantic type, no mapping to real DB columns
+          drillDashboardFK({ id: 7 });
+          cy.wait("@dataset");
+          cy.findByTestId("object-detail").within(() => {
+            cy.findAllByText("7");
+            cy.findAllByText("perry.ruecker");
+          });
+        });
+      });
+    });
+  });
 });
+
+function drillFK({ id }) {
+  cy.get(".Table-FK")
+    .contains(id)
+    .first()
+    .click();
+  popover()
+    .findByText("View details")
+    .click();
+}
+
+function drillDashboardFK({ id }) {
+  cy.get(".Table-FK")
+    .contains(id)
+    .first()
+    .click();
+}

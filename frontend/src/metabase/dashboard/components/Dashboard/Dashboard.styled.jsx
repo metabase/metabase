@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
+import { IFRAMED } from "metabase/lib/dom";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
@@ -110,6 +110,7 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)`
   ${({ isSticky, isNavbarOpen }) =>
     isSticky &&
     isNavbarOpen &&
+    !IFRAMED &&
     css`
       width: calc(100% - ${NAV_SIDEBAR_WIDTH});
       left: ${NAV_SIDEBAR_WIDTH};

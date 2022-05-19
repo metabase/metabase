@@ -2,9 +2,16 @@
   composes: flex align-center from "style";
   transition: opacity 500ms linear;
   border: 2px solid var(--color-border);
-  margin-right: 0.85em;
-  margin-bottom: 0.5em;
-  padding: 0.25em 1em 0.25em 1em;
+  margin: 0 0 0.5em 0;
+  padding: 0.25em 1em;
+  width: 100%;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  :local(.container) {
+    margin-right: 0.85em;
+    width: auto;
+  }
 }
 
 :local(.container) legend {

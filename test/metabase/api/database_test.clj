@@ -178,10 +178,14 @@
 
 (deftest delete-database-test
   (testing "DELETE /api/database/:id"
-    (testing "Check that we can delete a Database"
+    (testing "Check that a superuser can delete a Database"
       (mt/with-temp Database [db]
         (mt/user-http-request :crowberto :delete 204 (format "database/%d" (:id db)))
-        (is (false? (db/exists? Database :id (u/the-id db))))))))
+        (is (false? (db/exists? Database :id (u/the-id db))))))
+
+    (testing "Check that a non-superuser cannot delete a Database"
+      (mt/with-temp Database [db]
+        (mt/user-http-request :rasta :delete 403 (format "database/%d" (:id db)))))))
 
 (deftest update-database-test
   (testing "PUT /api/database/:id"
@@ -306,10 +310,14 @@
                         (some (partial = "PRICE"))))))))))
 
 (deftest autocomplete-suggestions-test
-  (let [suggest-fn (fn [db-id prefix]
-                     (mt/user-http-request :rasta :get 200
-                                           (format "database/%d/autocomplete_suggestions" db-id)
-                                           :prefix prefix))]
+  (let [prefix-fn (fn [db-id prefix]
+                    (mt/user-http-request :rasta :get 200
+                                          (format "database/%d/autocomplete_suggestions" db-id)
+                                          :prefix prefix))
+        search-fn (fn [db-id search]
+                    (mt/user-http-request :rasta :get 200
+                                          (format "database/%d/autocomplete_suggestions" db-id)
+                                          :search search))]
     (testing "GET /api/database/:id/autocomplete_suggestions"
       (doseq [[prefix expected] {"u"   [["USERS" "Table"]
                                         ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
@@ -318,8 +326,8 @@
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
                                  "cat" [["CATEGORIES" "Table"]
                                         ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
-        (is (= expected (suggest-fn (mt/id) prefix))))
-      (testing " handles large numbers of tables and fields sensibly"
+        (is (= expected (prefix-fn (mt/id) prefix))))
+      (testing " handles large numbers of tables and fields sensibly with prefix"
         (mt/with-model-cleanup [Field Table Database]
           (let [tmp-db (db/insert! Database {:name "Temp Autocomplete Pagination DB" :engine "h2" :details "{}"})]
             ;; insert more than 50 temporary tables and fields
@@ -327,15 +335,23 @@
               (let [tmp-tbl (db/insert! Table {:name (format "My Table %d" i) :db_id (u/the-id tmp-db) :active true})]
                 (db/insert! Field {:name (format "My Field %d" i) :table_id (u/the-id tmp-tbl) :base_type "type/Text" :database_type "varchar"})))
             ;; for each type-specific prefix, we should get 50 fields
-            (is (= 50 (count (suggest-fn (u/the-id tmp-db) "My Field"))))
-            (is (= 50 (count (suggest-fn (u/the-id tmp-db) "My Table"))))
-            (let [my-results (suggest-fn (u/the-id tmp-db) "My")]
+            (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Field"))))
+            (is (= 50 (count (prefix-fn (u/the-id tmp-db) "My Table"))))
+            (let [my-results (prefix-fn (u/the-id tmp-db) "My")]
               ;; for this prefix, we should a mixture of 25 fields and 25 tables
               (is (= 50 (count my-results)))
               (is (= 25 (-> (filter #(str/starts-with? % "My Field") (map first my-results))
                             count)))
               (is (= 25 (-> (filter #(str/starts-with? % "My Table") (map first my-results))
-                          count))))))))))
+                            count))))
+            (testing " behaves differently with search and prefix query params"
+              (is (= 0 (count (prefix-fn (u/the-id tmp-db) "a"))))
+              (is (= 50 (count (search-fn (u/the-id tmp-db) "a"))))
+              ;; setting both uses search:
+              (is (= 50 (count (mt/user-http-request :rasta :get 200
+                                                     (format "database/%d/autocomplete_suggestions" (u/the-id tmp-db))
+                                                     :prefix "a"
+                                                     :search "a")))))))))))
 
 
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
@@ -1214,3 +1230,67 @@
                      (mt/user-http-request :crowberto :get 200 d)
                      (:details d)
                      (select-keys d [:password-source :password-value]))))))))
+
+(deftest database-local-settings-come-back-with-database-test
+  (testing "Database-local Settings should come back with"
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:max-results-bare-rows 1337}}
+      ;; only returned for admin users at this point in time. See #22683 -- issue to return them for non-admins as well.
+      (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
+                                            :response (fn []
+                                                        (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id))))}
+                                           {:endpoint "GET /api/database"
+                                            :response (fn []
+                                                        (some
+                                                         (fn [database]
+                                                           (when (= (:id database) (mt/id))
+                                                             database))
+                                                         (:data (mt/user-http-request :crowberto :get 200 "database"))))}]]
+        (testing endpoint
+          (let [{:keys [settings], :as response} (response)]
+            (testing (format "\nresponse = %s" (u/pprint-to-str response))
+              (is (map? response))
+              (is (partial= {:max-results-bare-rows 1337}
+                            settings)))))))))
+
+(deftest admins-set-database-local-settings-test
+  (testing "Admins should be allowed to update Database-local Settings (#19409)"
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings nil}
+      (letfn [(settings []
+                (db/select-one-field :settings Database :id (mt/id)))
+              (set-settings! [m]
+                (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
+                                      {:settings m}))]
+        (testing "Should initially be nil"
+          (is (nil? (settings))))
+        (testing "Set initial value"
+          (testing "response"
+            (is (partial= {:settings {:max-results-bare-rows 1337}}
+                          (set-settings! {:max-results-bare-rows 1337}))))
+          (testing "App DB"
+            (is (= {:max-results-bare-rows 1337}
+                   (settings)))))
+        (testing "Setting a different value should not affect anything not specified (PATCH-style update)"
+          (testing "response"
+            (is (partial= {:settings {:max-results-bare-rows   1337
+                                      :database-enable-actions true}}
+                          (set-settings! {:database-enable-actions true}))))
+          (testing "App DB"
+            (is (= {:max-results-bare-rows   1337
+                    :database-enable-actions true}
+                   (settings)))))
+        (testing "Update existing value"
+          (testing "response"
+            (is (partial= {:settings {:max-results-bare-rows   1337
+                                      :database-enable-actions false}}
+                          (set-settings! {:database-enable-actions false}))))
+          (testing "App DB"
+            (is (= {:max-results-bare-rows   1337
+                    :database-enable-actions false}
+                   (settings)))))
+        (testing "Unset a value"
+          (testing "response"
+            (is (partial= {:settings {:database-enable-actions false}}
+                          (set-settings! {:max-results-bare-rows nil}))))
+          (testing "App DB"
+            (is (= {:database-enable-actions false}
+                   (settings)))))))))

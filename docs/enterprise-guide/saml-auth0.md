@@ -33,7 +33,7 @@ In the **Addons** section, select the **SAML 2 Web App** to load the settings po
 
 ### Mapping fields from users in Auth0 to Metabase
 
-On the top of the the **Settings** section on this page, you need to re-enter the value you included in **Allowed Callback URLs** in the field named **Application Callback URL**. Copy and paste the following JSON file in the settings box so that Auth0 can send the correct mappings to Metabase when a user logs in:
+On the top of the **Settings** section on this page, you need to re-enter the value you included in **Allowed Callback URLs** in the field named **Application Callback URL**. Copy and paste the following JSON file in the settings box so that Auth0 can send the correct mappings to Metabase when a user logs in:
 
 ```
 {

@@ -2,6 +2,7 @@
   "Public API for sending Pulses."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.config :as config]
             [metabase.email :as email]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
@@ -10,6 +11,7 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.database :refer [Database]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.public-settings :as public-settings]
             [metabase.pulse.markdown :as markdown]
             [metabase.pulse.parameters :as params]
@@ -20,12 +22,14 @@
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.server.middleware.session :as mw.session]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.retry :as retry]
             [metabase.util.ui-logic :as ui-logic]
             [metabase.util.urls :as urls]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import metabase.models.card.CardInstance))
+  (:import clojure.lang.ExceptionInfo
+           metabase.models.card.CardInstance))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -132,7 +136,7 @@
                 :attachment-name "image.png"
                 :channel-id      channel-id
                 :fallback        card-name}
-               (let [mrkdwn (markdown/process-markdown (:text card-result) :mrkdwn)]
+               (let [mrkdwn (markdown/process-markdown (:text card-result) :slack)]
                  (when (not (str/blank? mrkdwn))
                    {:blocks [{:type "section"
                               :text {:type "mrkdwn"
@@ -373,22 +377,100 @@
 (defmethod send-notification! :slack
   [{:keys [channel-id message attachments]}]
   (let [attachments (create-and-upload-slack-attachments! attachments)]
-    (slack/post-chat-message! channel-id message attachments)))
+    (try
+      (slack/post-chat-message! channel-id message attachments)
+      (catch ExceptionInfo e
+        ;; Token errors have already been logged and we should not retry.
+        (when-not (contains? (:errors (ex-data e)) :slack-token)
+          (throw e))))))
 
 (defmethod send-notification! :email
   [{:keys [subject recipients message-type message]}]
-  (email/send-message!
-    :subject      subject
-    :recipients   recipients
-    :message-type message-type
-    :message      message))
+  (try
+    (email/send-message-or-throw! {:subject      subject
+                                   :recipients   recipients
+                                   :message-type message-type
+                                   :message      message})
+    (catch ExceptionInfo e
+      (when (not= :smtp-host-not-set (:cause (ex-data e)))
+        (throw e)))))
+
+(declare ^:private reconfigure-retrying)
+
+(defsetting notification-retry-max-attempts
+  (deferred-tru "The maximum number of attempts for delivering a single notification.")
+  :type :integer
+  :default 7
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-initial-interval
+  (deferred-tru "The initial retry delay in milliseconds when delivering notifications.")
+  :type :integer
+  :default 500
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-multiplier
+  (deferred-tru "The delay multiplier between attempts to deliver a single notification.")
+  :type :double
+  :default 2.0
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-randomizaion-factor
+  (deferred-tru "The randomization factor of the retry delay when delivering notifications.")
+  :type :double
+  :default 0.1
+  :on-change reconfigure-retrying)
+
+(defsetting notification-retry-max-interval-millis
+  (deferred-tru "The maximum delay between attempts to deliver a single notification.")
+  :type :integer
+  :default 30000
+  :on-change reconfigure-retrying)
+
+(defn- retry-configuration []
+  (cond-> {:max-attempts (notification-retry-max-attempts)
+           :initial-interval-millis (notification-retry-initial-interval)
+           :multiplier (notification-retry-multiplier)
+           :randomization-factor (notification-retry-randomizaion-factor)
+           :max-interval-millis (notification-retry-max-interval-millis)}
+    (or config/is-dev? config/is-test?) (assoc :max-attempts 1)))
+
+(defn- make-retry-state
+  "Returns a notification sender wrapping [[send-notifications!]] retrying
+  according to `retry-configuration`."
+  []
+  (let [retry (retry/random-exponential-backoff-retry "send-notification-retry"
+                                                      (retry-configuration))]
+    {:retry retry
+     :sender (retry/decorate send-notification! retry)}))
+
+(defonce
+  ^{:private true
+    :doc "Stores the current retry state. Updated whenever the notification
+  retry settings change.
+  It starts with value `nil` but is set whenever the settings change or when
+  the first call with retry is made. (See #22790 for more details.)"}
+  retry-state
+  (atom nil))
+
+(defn- reconfigure-retrying [_old-value _new-value]
+  (log/info (trs "Reconfiguring notification sender"))
+  (reset! retry-state (make-retry-state)))
+
+(defn- send-notification-retrying!
+  "Like [[send-notification!]] but retries sending on errors according
+  to the retry settings."
+  [& args]
+  (when-not @retry-state
+    (compare-and-set! retry-state nil (make-retry-state)))
+  (apply (:sender @retry-state) args))
 
 (defn- send-notifications! [notifications]
   (doseq [notification notifications]
     ;; do a try-catch around each notification so if one fails, we'll still send the other ones for example, an Alert
     ;; set up to send over both Slack & email: if Slack fails, we still want to send the email (#7409)
     (try
-      (send-notification! notification)
+      (send-notification-retrying! notification)
       (catch Throwable e
         (log/error e (trs "Error sending notification!"))))))
 

@@ -8,8 +8,8 @@ import { Card as BaseCard } from "metabase-types/types/Card";
 
 import { appendSlug, extractQueryParams } from "./utils";
 
-type Card = BaseCard & {
-  id?: string;
+type Card = Partial<BaseCard> & {
+  id?: number | string;
   card_id?: string;
   name?: string;
   model?: "card" | "dataset";
@@ -34,6 +34,7 @@ export function question(
 
   if (query && typeof query === "object") {
     query = extractQueryParams(query)
+      .filter(([key, value]) => value !== undefined)
       .map(kv => kv.map(encodeURIComponent).join("="))
       .join("&");
   }

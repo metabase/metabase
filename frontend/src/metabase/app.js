@@ -12,7 +12,7 @@ import "number-to-locale-string";
 import "metabase/lib/i18n-debug";
 
 // set the locale before loading anything else
-import { loadLocalization } from "metabase/lib/i18n";
+import "metabase/lib/i18n";
 
 // NOTE: why do we need to load this here?
 import "metabase/lib/colors";
@@ -52,6 +52,8 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
+import GlobalStyles from "metabase/styled-components/theme/global";
+
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
@@ -77,6 +79,7 @@ function _init(reducers, getRoutes, callback) {
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
+          <GlobalStyles />
           <Router history={history}>{routes}</Router>
         </ThemeProvider>
       </DragDropContextProvider>
@@ -89,16 +92,6 @@ function _init(reducers, getRoutes, callback) {
   initializeEmbedding(store);
 
   store.dispatch(refreshSiteSettings());
-
-  MetabaseSettings.on("user-locale", async locale => {
-    // reload locale definition and site settings with the new locale
-    await Promise.all([
-      loadLocalization(locale),
-      store.dispatch(refreshSiteSettings({ locale })),
-    ]);
-    // force re-render of React application
-    root.forceUpdate();
-  });
 
   PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));
 

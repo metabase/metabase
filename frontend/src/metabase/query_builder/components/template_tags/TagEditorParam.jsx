@@ -18,8 +18,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchField })
-export default class TagEditorParam extends Component {
+class TagEditorParam extends Component {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -291,3 +290,7 @@ export default class TagEditorParam extends Component {
     );
   }
 }
+
+export default connect(state => ({ metadata: getMetadata(state) }), {
+  fetchField,
+})(TagEditorParam);

@@ -14,6 +14,7 @@ import _ from "underscore";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
+
 import { closeNavbar } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -87,6 +88,9 @@ import {
   getPageFavicon,
   getIsTimeseries,
   getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsActionListVisible,
+  getIsAdditionalInfoVisible,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -162,6 +166,9 @@ const mapStateToProps = (state, props) => {
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isActionListVisible: getIsActionListVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
@@ -373,7 +380,7 @@ function QueryBuilder(props) {
   const { isRunning } = uiControls;
 
   const onTimeout = useCallback(() => {
-    if (Notification.permission === "default") {
+    if ("Notification" in window && Notification.permission === "default") {
       setIsShowingToaster(true);
     }
   }, []);
@@ -389,7 +396,11 @@ function QueryBuilder(props) {
     if (isLoadingComplete) {
       setIsShowingToaster(false);
 
-      if (Notification.permission === "granted" && document.hidden) {
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
         showNotification(
           t`All Set! Your question is ready.`,
           t`${card.name} is loaded.`,

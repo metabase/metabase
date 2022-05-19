@@ -16,8 +16,7 @@ const mapDispatchToProps = {
   fetchTableMetadata,
 };
 
-@connect(null, mapDispatchToProps)
-export default class Formula extends Component {
+class Formula extends Component {
   render() {
     const {
       type,
@@ -55,3 +54,5 @@ export default class Formula extends Component {
     );
   }
 }
+
+export default connect(null, mapDispatchToProps)(Formula);

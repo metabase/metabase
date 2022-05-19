@@ -11,7 +11,7 @@ import {
 
 import { setMonthAndYear } from "../../native-filters/helpers/e2e-date-filter-helpers";
 
-describe.skip("issue 17139", () => {
+describe("issue 17139", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -35,7 +35,7 @@ describe.skip("issue 17139", () => {
     saveDashboard();
   });
 
-  it("should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#17139)", () => {
+  it("should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)", () => {
     filterWidget()
       .contains("Month and Year")
       .click();

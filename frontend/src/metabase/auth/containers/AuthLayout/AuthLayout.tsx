@@ -4,7 +4,7 @@ import AuthLayout from "../../components/AuthLayout";
 import { State } from "metabase-types/store";
 
 const mapStateToProps = (state: State) => ({
-  showScene: PLUGIN_SELECTORS.getShowBrandScene(state),
+  showScene: !PLUGIN_SELECTORS.getHasCustomBranding(state),
 });
 
 export default connect(mapStateToProps)(AuthLayout);

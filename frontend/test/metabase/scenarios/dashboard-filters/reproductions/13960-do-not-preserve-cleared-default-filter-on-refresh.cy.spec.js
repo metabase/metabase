@@ -79,9 +79,12 @@ describe("issue 13960", () => {
 
     cy.location("search").should("eq", "?category=&id=1");
 
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     cy.reload();
-    // Alias was previously defined in `visitDashboard()` helper function
-    cy.wait("@getParentCollection");
+    cy.wait("@dashcardQuery");
 
     cy.findByText("13960");
     cy.findAllByText("Doohickey").should("not.exist");

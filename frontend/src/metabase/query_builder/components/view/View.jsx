@@ -40,12 +40,12 @@ import NewQuestionView from "./View/NewQuestionView";
 import QueryViewNotebook from "./View/QueryViewNotebook";
 
 import {
-  QueryBuilderViewRoot,
+  BorderedViewTitleHeader,
+  NativeQueryEditorContainer,
   QueryBuilderContentContainer,
   QueryBuilderMain,
   QueryBuilderViewHeaderContainer,
-  BorderedViewTitleHeader,
-  NativeQueryEditorContainer,
+  QueryBuilderViewRoot,
   StyledDebouncedFrame,
   StyledSyncedParametersList,
 } from "./View.styled";
@@ -57,8 +57,7 @@ const DEFAULT_POPOVER_STATE = {
   breakoutPopoverTarget: null,
 };
 
-@ExplicitSize()
-export default class View extends React.Component {
+class View extends React.Component {
   state = {
     ...DEFAULT_POPOVER_STATE,
   };
@@ -297,17 +296,40 @@ export default class View extends React.Component {
     );
   };
 
+  renderNativeQueryEditor = () => {
+    const { question, query, card, height, isDirty } = this.props;
+
+    // Normally, when users open native models,
+    // they open an ad-hoc GUI question using the model as a data source
+    // (using the `/dataset` endpoint instead of the `/card/:id/query`)
+    // However, users without data permission open a real model as they can't use the `/dataset` endpoint
+    // So the model is opened as an underlying native question and the query editor becomes visible
+    // This check makes it hide the editor in this particular case
+    // More details: https://github.com/metabase/metabase/pull/20161
+    if (question.isDataset() && !query.isEditable()) {
+      return null;
+    }
+
+    return (
+      <NativeQueryEditorContainer>
+        <NativeQueryEditor
+          {...this.props}
+          viewHeight={height}
+          isOpen={!card.dataset_query.native.query || isDirty}
+          datasetQuery={card && card.dataset_query}
+        />
+      </NativeQueryEditorContainer>
+    );
+  };
+
   renderMain = ({ leftSidebar, rightSidebar }) => {
     const {
       query,
-      card,
       mode,
       parameters,
-      isDirty,
       isLiveResizable,
       isPreviewable,
       isPreviewing,
-      height,
       setParameterValue,
       setIsPreviewing,
     } = this.props;
@@ -334,14 +356,7 @@ export default class View extends React.Component {
     return (
       <QueryBuilderMain isSidebarOpen={isSidebarOpen}>
         {isNative ? (
-          <NativeQueryEditorContainer>
-            <NativeQueryEditor
-              {...this.props}
-              viewHeight={height}
-              isOpen={!card.dataset_query.native.query || isDirty}
-              datasetQuery={card && card.dataset_query}
-            />
-          </NativeQueryEditorContainer>
+          this.renderNativeQueryEditor()
         ) : (
           <StyledSyncedParametersList
             parameters={parameters}
@@ -431,16 +446,16 @@ export default class View extends React.Component {
       isShowingNewbModal,
       isShowingTimelineSidebar,
       queryBuilderMode,
-      fitClassNames,
       closeQbNewbModal,
       onDismissToast,
       onConfirmToast,
       isShowingToaster,
+      isHeaderVisible,
     } = this.props;
 
     // if we don't have a card at all or no databases then we are initializing, so keep it simple
     if (!card || !databases) {
-      return <LoadingAndErrorWrapper className={fitClassNames} loading />;
+      return <LoadingAndErrorWrapper className="full-height" loading />;
     }
 
     const isStructured = query instanceof StructuredQuery;
@@ -449,7 +464,7 @@ export default class View extends React.Component {
       isStructured && !query.sourceTableId() && !query.sourceQuery();
 
     if (isNewQuestion && queryBuilderMode === "view") {
-      return <NewQuestionView query={query} fitClassNames={fitClassNames} />;
+      return <NewQuestionView query={query} className="full-height" />;
     }
 
     if (card.dataset && queryBuilderMode === "dataset") {
@@ -466,9 +481,9 @@ export default class View extends React.Component {
       : SIDEBAR_SIZES.NORMAL;
 
     return (
-      <div className={fitClassNames}>
+      <div className="full-height">
         <QueryBuilderViewRoot className="QueryBuilder">
-          {this.renderHeader()}
+          {isHeaderVisible && this.renderHeader()}
           <QueryBuilderContentContainer>
             {isStructured && (
               <QueryViewNotebook
@@ -512,3 +527,5 @@ export default class View extends React.Component {
     );
   }
 }
+
+export default ExplicitSize({ refreshMode: "debounceLeading" })(View);

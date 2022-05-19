@@ -1,13 +1,29 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
-            [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3
-                                                  test-user-local-allowed-setting test-user-local-only-setting]]
+            [metabase.models.setting :as setting :refer [defsetting]]
+            [metabase.models.setting-test :as models.setting-test]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
+            [metabase.util.i18n :refer [deferred-tru]]
             [schema.core :as s]))
 
 (use-fixtures :once (fixtures/initialize :db))
+
+(defsetting test-api-setting-boolean
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :public
+  :type :boolean)
+
+(defsetting test-api-setting-double
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :public
+  :type :double)
+
+(defsetting test-api-setting-integer
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :public
+  :type :integer)
 
 ;; ## Helper Fns
 (defn- fetch-test-settings
@@ -28,9 +44,9 @@
 (deftest fetch-setting-test
   (testing "GET /api/setting"
     (testing "Check that we can fetch all Settings, except `:visiblity :internal` ones"
-      (test-setting-1 nil)
-      (test-setting-2 "FANCY")
-      (test-setting-3 "oh hai")         ; internal setting that should not be returned
+      (models.setting-test/test-setting-1! nil)
+      (models.setting-test/test-setting-2! "FANCY")
+      (models.setting-test/test-setting-3! "oh hai") ; internal setting that should not be returned
       (is (= [{:key            "test-setting-1"
                :value          nil
                :is_env_setting false
@@ -51,13 +67,23 @@
 
   (testing "GET /api/setting/:key"
     (testing "Test that we can fetch a single setting"
-      (test-setting-2 "OK!")
+      (models.setting-test/test-setting-2! "OK!")
       (is (= "OK!"
              (fetch-setting :test-setting-2 200))))
 
     (testing "Check that non-superusers cannot fetch a single setting if it is not user-local"
       (is (= "You don't have permissions to do that."
-             (fetch-setting :rasta :test-setting-2 403))))))
+             (fetch-setting :rasta :test-setting-2 403))))
+    (testing "non-string values work over the api (#20735)"
+      ;; n.b. the api will return nil if a setting is its default value.
+      (test-api-setting-double! 3.14)
+      (is (= 3.14 (fetch-setting :test-api-setting-double 200)))
+
+      (test-api-setting-boolean! true)
+      (is (= true (fetch-setting :test-api-setting-boolean 200)))
+
+      (test-api-setting-integer! 42)
+      (is (= 42 (fetch-setting :test-api-setting-integer 200))))))
 
 (deftest fetch-calculated-settings-test
   (testing "GET /api/setting"
@@ -77,7 +103,7 @@
 
 (deftest fetch-internal-settings-test
   (testing "Test that we can't fetch internal settings"
-    (test-setting-3 "NOPE!")
+    (models.setting-test/test-setting-3! "NOPE!")
     (is (= "Setting :test-setting-3 is internal"
            (:message (fetch-setting :test-setting-3 500))))))
 
@@ -85,7 +111,7 @@
   (testing "PUT /api/setting/:key"
     (mt/user-http-request :crowberto :put 204 "setting/test-setting-1" {:value "NICE!"})
     (is (= "NICE!"
-           (test-setting-1))
+           (models.setting-test/test-setting-1))
         "Updated setting should be visible from setting getter")
 
     (is (= "NICE!"
@@ -103,12 +129,12 @@
 (deftest fetch-sensitive-setting-test
   (testing "Sensitive settings should always come back obfuscated"
     (testing "GET /api/setting/:name"
-      (test-sensitive-setting "ABCDEF")
+      (models.setting-test/test-sensitive-setting! "ABCDEF")
       (is (= "**********EF"
              (fetch-setting :test-sensitive-setting 200))))
 
     (testing "GET /api/setting"
-      (test-sensitive-setting "GHIJKLM")
+      (models.setting-test/test-sensitive-setting! "GHIJKLM")
       (is (= {:key            "test-sensitive-setting"
               :value          "**********LM"
               :is_env_setting false
@@ -125,34 +151,34 @@
                 "should *not* obfuscate sensitive Setting values -- that should be done by the API")
     (mt/user-http-request :crowberto :put 204 "setting/test-sensitive-setting" {:value "123456"})
     (is (= "123456"
-           (test-sensitive-setting))))
+           (models.setting-test/test-sensitive-setting))))
 
   (testing "Attempts to set the Setting to an obfuscated value should be ignored"
     (testing "PUT /api/setting/:name"
-      (test-sensitive-setting "123456")
+      (models.setting-test/test-sensitive-setting! "123456")
       (is (= nil
              (mt/user-http-request :crowberto :put 204 "setting/test-sensitive-setting" {:value "**********56"})))
       (is (= "123456"
-             (test-sensitive-setting))))
+             (models.setting-test/test-sensitive-setting))))
 
     (testing "PUT /api/setting"
-      (test-sensitive-setting "123456")
+      (models.setting-test/test-sensitive-setting! "123456")
       (is (= nil
              (mt/user-http-request :crowberto :put 204 "setting" {:test-sensitive-setting "**********56"})))
       (is (= "123456"
-             (test-sensitive-setting))))))
+             (models.setting-test/test-sensitive-setting))))))
 
-;; there are additional tests for this functionality in `metabase.model.setting-test/set-many!-test`, since this API
-;; endpoint is just a thin wrapper around that function
+;; there are additional tests for this functionality in [[metabase.models.models.setting-test/set-many!-test]], since
+;; this API endpoint is just a thin wrapper around that function
 (deftest update-multiple-settings-test
   (testing "PUT /api/setting/"
     (testing "admin should be able to update multiple settings at once"
       (is (= nil
              (mt/user-http-request :crowberto :put 204 "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
       (is (= "ABC"
-             (test-setting-1)))
+             (models.setting-test/test-setting-1)))
       (is (= "DEF"
-             (test-setting-2))))
+             (models.setting-test/test-setting-2))))
 
     (testing "non-admin should not be able to update multiple settings at once if any of them are not user-local"
       (is (= "You don't have permissions to do that."
@@ -167,19 +193,19 @@
 
 (defn- set-initial-user-local-values []
   (mt/with-current-user (mt/user->id :crowberto)
-    (test-user-local-only-setting "ABC")
-    (test-user-local-allowed-setting "ABC"))
+    (models.setting-test/test-user-local-only-setting! "ABC")
+    (models.setting-test/test-user-local-allowed-setting! "ABC"))
   (mt/with-current-user (mt/user->id :rasta)
-    (test-user-local-only-setting "DEF")
-    (test-user-local-allowed-setting "DEF")))
+    (models.setting-test/test-user-local-only-setting! "DEF")
+    (models.setting-test/test-user-local-allowed-setting! "DEF")))
 
 (defn- clear-user-local-values []
   (mt/with-current-user (mt/user->id :crowberto)
-    (test-user-local-only-setting nil)
-    (test-user-local-allowed-setting nil))
+    (models.setting-test/test-user-local-only-setting! nil)
+    (models.setting-test/test-user-local-allowed-setting! nil))
   (mt/with-current-user (mt/user->id :rasta)
-    (test-user-local-only-setting nil)
-    (test-user-local-allowed-setting nil)))
+    (models.setting-test/test-user-local-only-setting! nil)
+    (models.setting-test/test-user-local-allowed-setting! nil)))
 
 (deftest user-local-settings-test
   (testing "GET /api/setting/"
@@ -252,9 +278,9 @@
 
     (testing "if a non-admin tries to set multiple settings and any aren't user-local, none are updated"
       (set-initial-user-local-values)
-      (test-setting-1 "ABC")
+      (models.setting-test/test-setting-1! "ABC")
       (mt/user-http-request :rasta :put 403 "setting" {:test-user-local-only-setting "MNO"
                                                        :test-setting-1               "PQR"})
       (is (= "DEF" (mt/with-current-user (mt/user->id :rasta)
-                     (test-user-local-only-setting))))
-      (is (= "ABC" (test-setting-1))))))
+                     (models.setting-test/test-user-local-only-setting))))
+      (is (= "ABC" (models.setting-test/test-setting-1))))))

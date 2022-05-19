@@ -96,14 +96,14 @@
 
 (defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
-  (public-settings/site-name site-name)
-  (public-settings/admin-email email)
+  (public-settings/site-name! site-name)
+  (public-settings/admin-email! email)
   (when site-locale
-    (public-settings/site-locale site-locale))
+    (public-settings/site-locale! site-locale))
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
   ;; boolean string is specified
-  (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
-                                             allow-tracking?)))
+  (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
+                                              allow-tracking?)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and

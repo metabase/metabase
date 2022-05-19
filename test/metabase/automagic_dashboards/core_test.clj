@@ -484,8 +484,7 @@
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
 (deftest temporal-humanization-test
-  (let [tz    "UTC"
-        dt    #t "1990-09-09T12:30"
+  (let [dt    #t "1990-09-09T12:30"
         t-str "1990-09-09T12:30:00"]
     (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
                              :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))

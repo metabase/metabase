@@ -160,15 +160,10 @@
                                        api/*is-group-manager?*)
                                   (hh/merge-where
                                    [:in :group_id {:select [:group_id]
-                                                   :from [:permissions_group_membership]
-                                                   :where [:and
-                                                           [:= :user_id api/*current-user-id*]
-                                                           [:= :is_group_manager true]]}])))))
-
-(defn- check-advanced-permissions-enabled
-  []
-  (api/check (premium-features/enable-advanced-permissions?)
-             [402 (tru "Group Manager is only enabled if you have a premium token with the advanced permissions feature.")]))
+                                                   :from   [:permissions_group_membership]
+                                                   :where  [:and
+                                                            [:= :user_id api/*current-user-id*]
+                                                            [:= :is_group_manager true]]}])))))
 
 (api/defendpoint POST "/membership"
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
@@ -180,7 +175,7 @@
     (validation/check-manager-of-group group_id)
     (when is_group_manager
       ;; enable `is_group_manager` require advanced-permissions enabled
-      (check-advanced-permissions-enabled)
+      (validation/check-advanced-permissions-enabled :group-manager)
       (api/check
        (db/exists? User :id user_id :is_superuser false)
        [400 (tru "Admin cant be a group manager.")]))
@@ -196,13 +191,12 @@
   "Update a Permission Group membership. Returns the updated record."
   [id :as {{:keys [is_group_manager]} :body}]
   {is_group_manager schema.core/Bool}
-  ;; currently this API is only used to update the `is_group_manager` flag and it's require advanced-permissions
-  (check-advanced-permissions-enabled)
-  ;; Make sure only Group Managers can call this
+  ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
+  (validation/check-advanced-permissions-enabled :group-manager)
+  ;; Make sure only Super user or Group Managers can call this
   (validation/check-group-manager)
   (let [old (db/select-one PermissionsGroupMembership :id id)]
     (api/check-404 old)
-    ;; only Group manager of this group could update
     (validation/check-manager-of-group (:group_id old))
     (api/check
        (db/exists? User :id (:user_id old) :is_superuser false)

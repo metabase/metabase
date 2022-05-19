@@ -20,8 +20,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { ColumnItemInput } from "./ColumnItem.styled";
 import { getFieldRawName } from "../../../utils";
 
-@withRouter
-export default class Column extends Component {
+class Column extends Component {
   static propTypes = {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
@@ -49,7 +48,10 @@ export default class Column extends Component {
   render() {
     const { field, idfields, dragHandle } = this.props;
     return (
-      <div className="py2 pl2 pr1 mt1 mb3 flex bordered rounded">
+      <div
+        className="py2 pl2 pr1 mt1 mb3 flex bordered rounded"
+        data-testid={`column-${field.name}`}
+      >
         <div className="flex flex-column flex-auto">
           <div className="text-monospace mb1" style={{ fontSize: "12px" }}>
             {getFieldRawName(field)}
@@ -107,6 +109,22 @@ export default class Column extends Component {
     );
   }
 }
+
+export default withRouter(Column);
+
+const getFkFieldPlaceholder = (field, idfields) => {
+  const hasIdFields = idfields?.length > 0;
+  const isRestrictedFKTargedSelected =
+    isFK(field.semantic_type) &&
+    field.fk_target_field_id != null &&
+    !idfields?.some(idField => idField.id === field.fk_target_field_id);
+
+  if (isRestrictedFKTargedSelected) {
+    return t`Field access denied`;
+  }
+
+  return hasIdFields ? t`Select a target` : t`No key available`;
+};
 
 // FieldVisibilityPicker and SemanticTypeSelect are also used in FieldApp
 
@@ -174,6 +192,7 @@ export class SemanticTypeAndTargetPicker extends Component {
 
   render() {
     const { field, className, selectSeparator } = this.props;
+    let { idfields } = this.props;
 
     const semanticTypes = [
       ...MetabaseCore.field_semantic_types,
@@ -184,11 +203,9 @@ export class SemanticTypeAndTargetPicker extends Component {
       },
     ];
 
+    const hasIdFields = idfields?.length > 0;
     const showFKTargetSelect = isFK(field.semantic_type);
-
     const showCurrencyTypeSelect = isCurrency(field);
-
-    let { idfields } = this.props;
 
     // If all FK target fields are in the same schema (like `PUBLIC` for sample database)
     // or if there are no schemas at all, omit the schema name
@@ -245,12 +262,13 @@ export class SemanticTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
+            disabled={!hasIdFields}
             className={cx(
               "TableEditor-field-target text-wrap",
               selectSeparator ? "mt0" : "mt1",
               className,
             )}
-            placeholder={t`Select a target`}
+            placeholder={getFkFieldPlaceholder(field, idfields)}
             searchProp={[
               "display_name",
               "table.display_name",

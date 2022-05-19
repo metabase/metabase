@@ -1,7 +1,10 @@
 import styled from "@emotion/styled";
 
 export const PermissionEditorContentRoot = styled.div`
+  display: flex;
+  flex-direction: column;
   padding-left: 40px;
+  height: 100%;
 `;
 
 export const EditorFilterContainer = styled.div`
@@ -15,6 +18,7 @@ export const EditorEmptyStateContainer = styled.div`
 
 export const PermissionTableWrapper = styled.div`
   position: relative;
+  flex: 1;
   overflow-x: auto;
-  padding-bottom: 20px;
+  padding-bottom: 2rem;
 `;

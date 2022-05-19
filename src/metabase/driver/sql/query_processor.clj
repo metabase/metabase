@@ -118,6 +118,7 @@
 
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+  `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))
 
@@ -137,22 +138,32 @@
       (truncate-fn expr))))
 
 (s/defn adjust-day-of-week
-  "Adjust day of week wrt start of week setting."
+  "Adjust day of week to respect the [[metabase.public-settings/start-of-week]] Setting.
+
+  The value a `:day-of-week` extract should return depends on the value of `start-of-week`, by default Sunday.
+
+  * `1` = first day of the week (e.g. Sunday)
+  * `7` = last day of the week (e.g. Saturday)
+
+  This assumes `day-of-week` as returned by the driver is already between `1` and `7` (adjust it if it's not). It
+  adjusts as needed to match `start-of-week` by the [[driver.common/start-of-week-offset]], which comes
+  from [[driver/db-start-of-week]]."
   ([driver day-of-week]
    (adjust-day-of-week driver day-of-week (driver.common/start-of-week-offset driver)))
 
   ([driver day-of-week offset]
    (adjust-day-of-week driver day-of-week offset hx/mod))
 
-  ([_driver
+  ([driver
     day-of-week
     offset :- s/Int
     mod-fn :- (s/pred fn?)]
-   (if (not= offset 0)
-     (hsql/call :case
-       (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
-       :else                                                 (mod-fn (hx/+ day-of-week offset) 7))
-     day-of-week)))
+   (cond
+     (zero? offset) day-of-week
+     (neg? offset)  (recur driver day-of-week (+ offset 7) mod-fn)
+     :else          (hsql/call :case
+                      (hsql/call := (mod-fn (hx/+ day-of-week offset) 7) 0) 7
+                      :else                                                 (mod-fn (hx/+ day-of-week offset) 7)))))
 
 (defmulti quote-style
   "Return the quoting style that should be used by [HoneySQL](https://github.com/jkk/honeysql) when building a SQL
@@ -221,6 +232,15 @@
 (defmethod apply-top-level-clause :default
   [_ _ honeysql-form _]
   honeysql-form)
+
+(defmulti json-query
+  "Reaches into a JSON field (that is, a field with a defined :nfc_path).
+
+  Lots of SQL DB's have denormalized JSON fields and they all have some sort of special syntax for dealing with indexing into it. Implement the special syntax in this multimethod."
+  {:arglists '([driver identifier json-field]), :added "0.43.1"}
+  (fn [driver _ _] (driver/dispatch-on-initialized-driver driver))
+  :hierarchy #'driver/hierarchy)
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -589,6 +609,27 @@
       [honeysql-form field-alias]
       honeysql-form)))
 
+;; Certain SQL drivers require that we refer to Fields using the alias we give in the `SELECT` clause in
+;; `ORDER BY` and `GROUP BY` rather than repeating definitions.
+;; BigQuery does this generally, other DB's require this in JSON columns.
+;;
+;; See #17536 and #18742
+
+(defn rewrite-fields-to-force-using-column-aliases
+  "Rewrite `:field` clauses to force them to use the column alias regardless of where they appear."
+  [form]
+  (mbql.u/replace form
+    [:field id-or-name opts]
+    [:field id-or-name (-> opts
+                           (assoc ::add/source-alias        (::add/desired-alias opts)
+                                  ::add/source-table        ::add/none
+                                  ;; sort of a HACK but this key will tell the SQL QP not to apply casting here either.
+                                  ::nest-query/outer-select true
+                                  ;; used to indicate that this is a forced alias
+                                  ::forced-alias            true)
+                           ;; don't want to do temporal bucketing or binning inside the order by or breakout either.
+                           ;; That happens inside the `SELECT`
+                           (dissoc :temporal-unit :binning))]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Clause Handlers                                                 |

@@ -4,6 +4,7 @@
             [metabase.driver.druid.client :as druid.client]
             [metabase.driver.util :as driver.u]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.context.default :as default]
             [metabase.test :as mt]
             [metabase.test.util.log :as tu.log]
             [metabase.timeseries-query-processor-test.util :as tqpt]))
@@ -28,6 +29,18 @@
                 (a/close! out-chan)))
             (is (= ::cancel
                    (mt/wait-for-result cancel-chan 2000)))))))))
+
+(deftest query-timeout-test
+  (mt/test-driver :druid
+    (tqpt/with-flattened-dbdef
+      (let [query (mt/mbql-query checkins)
+            executed-query (atom nil)]
+        (with-redefs [druid.client/do-query-with-cancellation (fn [_chan _details query]
+                                                                (reset! executed-query query)
+                                                                [])]
+          (qp/process-query-sync query)
+          (is (partial= {:context {:timeout default/query-timeout-ms}}
+                        @executed-query)))))))
 
 (deftest ssh-tunnel-test
   (mt/test-driver

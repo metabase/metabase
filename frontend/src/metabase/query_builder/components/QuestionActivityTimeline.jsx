@@ -121,6 +121,7 @@ export function QuestionActivityTimeline({
     >
       <Timeline
         items={events}
+        data-testid="saved-question-history-list"
         renderFooter={item => {
           const { isRevertable, revision } = item;
           if (isRevertable) {

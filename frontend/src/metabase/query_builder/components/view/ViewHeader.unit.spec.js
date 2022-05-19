@@ -94,7 +94,14 @@ function mockSettings({ enableNestedQueries = true } = {}) {
   });
 }
 
-function setup({ question, isRunnable = true, settings, ...props } = {}) {
+function setup({
+  question,
+  settings,
+  isRunnable = true,
+  isActionListVisible = true,
+  isAdditionalInfoVisible = true,
+  ...props
+} = {}) {
   mockSettings(settings);
 
   const callbacks = {
@@ -113,8 +120,10 @@ function setup({ question, isRunnable = true, settings, ...props } = {}) {
     <ViewTitleHeader
       {...callbacks}
       {...props}
-      isRunnable={isRunnable}
       question={question}
+      isRunnable={isRunnable}
+      isActionListVisible={isActionListVisible}
+      isAdditionalInfoVisible={isAdditionalInfoVisible}
     />,
     {
       withRouter: true,
@@ -220,6 +229,9 @@ describe("ViewHeader", () => {
 
           setup({ question });
           expect(screen.queryByText("Filter")).not.toBeInTheDocument();
+          expect(
+            screen.queryByLabelText("Show more filters"),
+          ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
             screen.queryByLabelText("notebook icon"),
@@ -252,6 +264,7 @@ describe("ViewHeader", () => {
             queryBuilderMode: "view",
           });
           fireEvent.click(screen.getByText("Filter"));
+          fireEvent.click(screen.getByLabelText("Show more filters"));
           expect(onAddFilter).toHaveBeenCalled();
         });
 

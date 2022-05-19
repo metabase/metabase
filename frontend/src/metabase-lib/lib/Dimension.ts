@@ -5,26 +5,30 @@ import _ from "underscore";
 import { merge } from "icepick";
 import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
-import { TemplateTagVariable } from "./Variable";
-import Field from "./metadata/Field";
+import { TemplateTagVariable } from "metabase-lib/lib/Variable";
+import Field from "metabase-lib/lib/metadata/Field";
 import {
   AggregationOperator,
   FilterOperator,
   Metadata,
   Query,
-} from "./metadata/Metadata";
+} from "metabase-lib/lib/metadata/Metadata";
 import {
+  Field as AbstractField,
   ConcreteField,
   LocalFieldReference,
   ExpressionReference,
   DatetimeUnit,
 } from "metabase-types/types/Query";
-import { ValidationError, VALIDATION_ERROR_TYPES } from "./ValidationError";
+import {
+  ValidationError,
+  VALIDATION_ERROR_TYPES,
+} from "metabase-lib/lib/ValidationError";
 import { IconName } from "metabase-types/types";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
-import Aggregation from "./queries/structured/Aggregation";
-import StructuredQuery from "./queries/StructuredQuery";
+import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { infer, MONOTYPE } from "metabase/lib/expressions/typeinferencer";
 import { isa } from "cljs/metabase.types";
 
@@ -635,7 +639,7 @@ export default class Dimension {
     return this._parent ? this._parent.render() : this.displayName();
   }
 
-  mbql() {
+  mbql(): AbstractField | null | undefined {
     throw new Error("Abstract method `mbql` not implemented");
   }
 
@@ -807,6 +811,13 @@ export class FieldDimension extends Dimension {
   }
 
   field(): Field {
+    if (
+      this._fieldInstance &&
+      this._fieldInstance._comesFromEndpoint === true
+    ) {
+      return this._fieldInstance;
+    }
+
     const question = this.query()?.question();
     const lookupField = this.isIntegerFieldId() ? "id" : "name";
     const fieldMetadata = question
@@ -915,6 +926,9 @@ export class FieldDimension extends Dimension {
       { ...this._options, ...options },
       this._metadata,
       this._query,
+      this._fieldInstance && {
+        _fieldInstance: this._fieldInstance,
+      },
     );
   }
 
@@ -1025,7 +1039,7 @@ export class FieldDimension extends Dimension {
   }
 
   _dimensionForOption(option): FieldDimension {
-    const dimension = option.mbql
+    let dimension = option.mbql
       ? FieldDimension.parseMBQLOrWarn(option.mbql, this._metadata, this._query)
       : this;
 
@@ -1036,6 +1050,15 @@ export class FieldDimension extends Dimension {
         option,
       );
       return null;
+    }
+
+    // Field literal's sub-dimensions sometimes don't have a specified base-type
+    // This can break a query, so here we need to ensure it mirrors the parent dimension
+    if (this.getOption("base-type") && !dimension.getOption("base-type")) {
+      dimension = dimension.withOption(
+        "base-type",
+        this.getOption("base-type"),
+      );
     }
 
     const additionalProperties = {

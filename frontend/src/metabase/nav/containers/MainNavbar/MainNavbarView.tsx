@@ -1,9 +1,9 @@
 import React, { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
+import { BookmarksType, Collection, User } from "metabase-types/api";
 
+import Link from "metabase/core/components/Link";
 import { IconProps } from "metabase/components/Icon";
 import { Tree } from "metabase/components/tree";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
@@ -26,6 +26,7 @@ import {
   CollectionsMoreIconContainer,
   CollectionsMoreIcon,
   CollectionMenuList,
+  HomePageLink,
   ProfileLinkContainer,
   SidebarContentRoot,
   SidebarHeading,
@@ -39,6 +40,7 @@ interface CollectionTreeItem extends Collection {
 }
 
 type Props = {
+  isAdmin: boolean;
   isOpen: boolean;
   currentUser: User;
   bookmarks: BookmarksType;
@@ -47,6 +49,8 @@ type Props = {
   collections: CollectionTreeItem[];
   selectedItem: SelectedItem;
   handleCloseNavbar: () => void;
+  handleLogout: () => void;
+  handleCreateNewCollection: () => void;
   reorderBookmarks: ({
     newIndex,
     oldIndex,
@@ -62,6 +66,7 @@ const ARCHIVE_URL = "/archive";
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
 
 function MainNavbarView({
+  isAdmin,
   isOpen,
   currentUser,
   bookmarks,
@@ -69,10 +74,12 @@ function MainNavbarView({
   hasOwnDatabase,
   selectedItem,
   hasDataAccess,
-  handleCloseNavbar,
   reorderBookmarks,
+  handleCreateNewCollection,
+  handleCloseNavbar,
+  handleLogout,
 }: Props) {
-  const isMiscLinkSelected = selectedItem.type === "unknown";
+  const isNonEntityLinkSelected = selectedItem.type === "non-entity";
   const isCollectionSelected =
     selectedItem.type === "collection" && selectedItem.id !== "users";
 
@@ -85,20 +92,37 @@ function MainNavbarView({
   return (
     <SidebarContentRoot>
       <div>
+        <SidebarSection>
+          <ul>
+            <HomePageLink
+              isSelected={isNonEntityLinkSelected && selectedItem.url === "/"}
+              icon="home"
+              onClick={onItemSelect}
+              url="/"
+            >
+              {t`Home`}
+            </HomePageLink>
+          </ul>
+        </SidebarSection>
+
         {bookmarks.length > 0 && (
           <SidebarSection>
             <BookmarkList
               bookmarks={bookmarks}
               selectedItem={
-                selectedItem.type !== "unknown" ? selectedItem : undefined
+                selectedItem.type !== "non-entity" ? selectedItem : undefined
               }
               onSelect={onItemSelect}
               reorderBookmarks={reorderBookmarks}
             />
           </SidebarSection>
         )}
+
         <SidebarSection>
-          <CollectionSectionHeading currentUser={currentUser} />
+          <CollectionSectionHeading
+            currentUser={currentUser}
+            handleCreateNewCollection={handleCreateNewCollection}
+          />
           <Tree
             data={collections}
             selectedId={isCollectionSelected ? selectedItem.id : undefined}
@@ -117,19 +141,20 @@ function MainNavbarView({
                 icon="database"
                 url={BROWSE_URL}
                 isSelected={
-                  isMiscLinkSelected && selectedItem.url.startsWith(BROWSE_URL)
+                  isNonEntityLinkSelected &&
+                  selectedItem.url.startsWith(BROWSE_URL)
                 }
                 onClick={onItemSelect}
                 data-metabase-event="NavBar;Data Browse"
               >
                 {t`Browse data`}
               </BrowseLink>
-              {!hasOwnDatabase && (
+              {!hasOwnDatabase && isAdmin && (
                 <AddYourOwnDataLink
                   icon="add"
                   url={ADD_YOUR_OWN_DATA_URL}
                   isSelected={
-                    isMiscLinkSelected &&
+                    isNonEntityLinkSelected &&
                     selectedItem.url.startsWith(ADD_YOUR_OWN_DATA_URL)
                   }
                   onClick={onItemSelect}
@@ -144,7 +169,11 @@ function MainNavbarView({
       </div>
       {!IFRAMED && (
         <ProfileLinkContainer isOpen={isOpen}>
-          <ProfileLink user={currentUser} handleCloseNavbar={onItemSelect} />
+          <ProfileLink
+            user={currentUser}
+            handleCloseNavbar={onItemSelect}
+            handleLogout={handleLogout}
+          />
         </ProfileLinkContainer>
       )}
     </SidebarContentRoot>
@@ -153,29 +182,44 @@ function MainNavbarView({
 
 interface CollectionSectionHeadingProps {
   currentUser: User;
+  handleCreateNewCollection: () => void;
 }
 
 function CollectionSectionHeading({
   currentUser,
+  handleCreateNewCollection,
 }: CollectionSectionHeadingProps) {
   const renderMenu = useCallback(
-    ({ onClose }) => (
+    ({ closePopover }) => (
       <CollectionMenuList>
+        <SidebarLink
+          icon="add"
+          onClick={() => {
+            closePopover();
+            handleCreateNewCollection();
+          }}
+        >
+          {t`New collection`}
+        </SidebarLink>
         {currentUser.is_superuser && (
           <SidebarLink
             icon={getCollectionIcon(PERSONAL_COLLECTIONS)}
             url={OTHER_USERS_COLLECTIONS_URL}
-            onClick={onClose}
+            onClick={closePopover}
           >
             {t`Other users' personal collections`}
           </SidebarLink>
         )}
-        <SidebarLink icon="view_archive" url={ARCHIVE_URL} onClick={onClose}>
+        <SidebarLink
+          icon="view_archive"
+          url={ARCHIVE_URL}
+          onClick={closePopover}
+        >
           {t`View archive`}
         </SidebarLink>
       </CollectionMenuList>
     ),
-    [currentUser],
+    [currentUser, handleCreateNewCollection],
   );
 
   return (

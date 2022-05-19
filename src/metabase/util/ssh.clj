@@ -50,6 +50,7 @@
   callers responsibility to call `close-tunnel` on the returned connection object."
   [{:keys [^String tunnel-host ^Integer tunnel-port ^String tunnel-user tunnel-pass tunnel-private-key
            tunnel-private-key-passphrase host port]}]
+  {:pre [(integer? port)]}
   (let [^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
         ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
         hb-sec                     (public-settings/ssh-heartbeat-interval-sec)

@@ -18,13 +18,14 @@ function getScale(chart) {
   return chart.x();
 }
 
-function getEventMapping(events, scale) {
+function getEventMapping({ events, scale, xInterval }) {
   const mapping = new Map();
   let group = [];
   let groupPoint = 0;
 
   events.forEach(event => {
-    const eventPoint = scale(event.timestamp);
+    const eventDate = event.timestamp.clone().startOf(xInterval.interval);
+    const eventPoint = scale(eventDate);
     const groupDistance = eventPoint - groupPoint;
 
     if (!group.length || groupDistance < ICON_SIZE) {
@@ -220,6 +221,7 @@ export function renderEvents(
   {
     events = [],
     selectedEventIds = [],
+    xInterval,
     isTimeseries,
     onHoverChange,
     onOpenTimelines,
@@ -234,7 +236,7 @@ export function renderEvents(
   }
 
   const scale = getScale(chart);
-  const eventMapping = getEventMapping(events, scale);
+  const eventMapping = getEventMapping({ events, scale, xInterval });
   const eventPoints = getEventPoints(eventMapping);
   const eventGroups = getEventGroups(eventMapping);
 

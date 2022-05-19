@@ -9,6 +9,7 @@ import moment, { Moment } from "moment";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 import { alpha, color } from "metabase/lib/colors";
+import { CalendarDay } from "./Calendar.styled";
 
 export type SelectAll = "after" | "before";
 
@@ -161,6 +162,7 @@ export default class Calendar extends Component<Props, State> {
           onClickDay={this.onClickDay}
           isRangePicker={this.props.isRangePicker}
           selected={this.props.selected}
+          primaryColor={this.props.primaryColor}
           selectedEnd={this.props.selectedEnd}
           selectAll={this.props.selectAll}
         />,
@@ -224,21 +226,22 @@ class Week extends Component<WeekProps> {
     for (let i = 0; i < 7; i++) {
       const isSelected =
         date.isSame(selected, "day") ||
-        (isRangePicker && date.isSame(selectedEnd, "day"));
-      let inRange = false;
+        (isRangePicker &&
+          selectedEnd?.isAfter(selected) &&
+          date.isSame(selectedEnd, "day"));
+      let isInRange = false;
       if (
         selected &&
         date.isAfter(selected, "day") &&
         selectedEnd &&
         selectedEnd.isAfter(date, "day")
       ) {
-        inRange = true;
+        isInRange = true;
       } else if (selectAll === "after") {
-        inRange = !!(selected && date.isAfter(selected, "day"));
+        isInRange = !!(selected && date.isAfter(selected, "day"));
       } else if (selectAll === "before") {
-        inRange = !!(selected && selected.isAfter(date, "day"));
+        isInRange = !!(selected && selected.isAfter(date, "day"));
       }
-      const bgColor = isSelected ? primaryColor : alpha(primaryColor, 0.1);
       const isEnd = selectAll === "before" && date.isSame(selected, "day");
       const classes = cx("Calendar-day cursor-pointer text-centered", {
         "Calendar-day--this-month": date.month() === month.month(),
@@ -249,7 +252,7 @@ class Week extends Component<WeekProps> {
         "Calendar-day--week-start": i === 0,
         "Calendar-day--week-end": i === 6,
         "Calendar-day--in-range":
-          (selectAll && inRange) ||
+          (selectAll && isInRange) ||
           (!(date.isSame(selected, "day") || date.isSame(selectedEnd, "day")) &&
             (date.isSame(selected, "day") ||
               date.isSame(selectedEnd, "day") ||
@@ -258,17 +261,16 @@ class Week extends Component<WeekProps> {
                 date.isAfter(selected, "day")))),
       });
       days.push(
-        <span
+        <CalendarDay
           key={date.toString()}
           className={classes}
           onClick={this.props.onClickDay.bind(null, date)}
-          style={{
-            backgroundColor: isSelected || inRange ? bgColor : undefined,
-            color: !isSelected && inRange ? primaryColor : undefined,
-          }}
+          isInRange={isInRange}
+          isSelected={isSelected}
+          primaryColor={this.props.primaryColor}
         >
           {date.date()}
-        </span>,
+        </CalendarDay>,
       );
       date = moment(date).add(1, "d");
     }

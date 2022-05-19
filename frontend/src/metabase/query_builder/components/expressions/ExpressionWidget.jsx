@@ -57,7 +57,7 @@ export default class ExpressionWidget extends Component {
 
   render() {
     const { query } = this.props;
-    const { expression } = this.state;
+    const { expression, name } = this.state;
 
     return (
       <div style={{ maxWidth: "600px" }}>
@@ -67,6 +67,7 @@ export default class ExpressionWidget extends Component {
             <ExpressionEditorTextfield
               helpTextTarget={this.helpTextTarget.current}
               expression={expression}
+              name={name}
               query={query}
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })

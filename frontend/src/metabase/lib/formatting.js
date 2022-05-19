@@ -208,7 +208,10 @@ function formatNumberScientific(value, options) {
   if (options.maximumFractionDigits) {
     value = d3.round(value, options.maximumFractionDigits);
   }
-  const exp = value.toExponential(options.minimumFractionDigits);
+  const exp = replaceNumberSeparators(
+    value.toExponential(options.minimumFractionDigits),
+    options?.number_separators,
+  );
   if (options.jsx) {
     const [m, n] = exp.split("e");
     return (
@@ -421,13 +424,11 @@ function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
 
 export function formatDateTimeWithUnit(value, unit, options = {}) {
   if (options.isExclude && unit === "hour-of-day") {
-    return moment(value)
-      .utc()
-      .format("h A");
+    return moment.utc(value).format("h A");
   } else if (options.isExclude && unit === "day-of-week") {
-    const date = moment(value);
+    const date = moment.utc(value);
     if (date.isValid()) {
-      return date.utc().format("dddd");
+      return date.format("dddd");
     }
   }
 

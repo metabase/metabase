@@ -15,11 +15,7 @@ import * as Urls from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
-@Questions.load({
-  id: (state, { tag }) => tag["card-id"],
-  loadingAndErrorWrapper: false,
-})
-export default class CardTagEditor extends Component {
+class CardTagEditor extends Component {
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
     setDatasetQuery(
@@ -130,6 +126,11 @@ export default class CardTagEditor extends Component {
     );
   }
 }
+
+export default Questions.load({
+  id: (state, { tag }) => tag["card-id"],
+  loadingAndErrorWrapper: false,
+})(CardTagEditor);
 
 // This formats a timestamp as a date using any custom formatting options.
 function formatDate(value) {

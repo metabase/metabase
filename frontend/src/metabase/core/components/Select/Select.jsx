@@ -18,8 +18,7 @@ import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 
 const MIN_ICON_WIDTH = 20;
 
-@Uncontrollable()
-export default class Select extends Component {
+class Select extends Component {
   static propTypes = {
     className: PropTypes.string,
 
@@ -260,6 +259,8 @@ export default class Select extends Component {
     );
   }
 }
+
+export default Uncontrollable()(Select);
 export class OptionSection extends Component {
   static propTypes = {
     name: PropTypes.any,

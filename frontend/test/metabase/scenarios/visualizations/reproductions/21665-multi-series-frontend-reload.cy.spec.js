@@ -17,7 +17,7 @@ const Q2 = {
   display: "scalar",
 };
 
-describe.skip("issue 21665", () => {
+describe("issue 21665", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -30,7 +30,7 @@ describe.skip("issue 21665", () => {
         "GET",
         `/api/dashboard/${id}`,
         cy.spy().as("dashboardLoaded"),
-      );
+      ).as("getDashboard");
 
       cy.wrap(id).as("dashboardId");
 
@@ -59,18 +59,10 @@ describe.skip("issue 21665", () => {
       visitDashboard(id);
     });
 
-    /**
-     * WARNING!
-     * Until this issue gets resolved, you will have to manually stop this test EVEN AFTER IT FAILS!
-     * It will send your browser in the infinite loop and can eventually freeze your browser or even the whole system if left unattended.
-     *
-     * TODO:
-     * Once this issue gets fixed, please remove the arbitrary wait and replace it with the positive assertion.
-     */
-
-    cy.wait(1000);
-
     cy.get("@dashboardLoaded").should("have.been.calledThrice");
+    cy.findByText("There was a problem displaying this chart.").should(
+      "be.visible",
+    );
   });
 });
 

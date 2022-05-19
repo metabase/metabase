@@ -362,6 +362,24 @@ describe("collection permissions", () => {
               );
             });
 
+            it("should not be able to use bulk actions on collection items (metabase#16490)", () => {
+              cy.visit("/collection/root");
+
+              cy.findByText("Orders")
+                .closest("tr")
+                .within(() => {
+                  cy.icon("table").trigger("mouseover");
+                  cy.findByRole("checkbox").should("not.exist");
+                });
+
+              cy.findByText("Orders in a dashboard")
+                .closest("tr")
+                .within(() => {
+                  cy.icon("dashboard").trigger("mouseover");
+                  cy.findByRole("checkbox").should("not.exist");
+                });
+            });
+
             ["/", "/collection/root"].forEach(route => {
               it("should not be offered to save dashboard in collections they have `read` access to (metabase#15281)", () => {
                 const { first_name, last_name } = USERS[user];

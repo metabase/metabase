@@ -54,7 +54,7 @@ export function suggest({
       name: "True",
       text: "True",
       index: targetOffset,
-      icon: "compare",
+      icon: "io",
       order: 1,
     },
     {
@@ -62,7 +62,7 @@ export function suggest({
       name: "False",
       text: "False",
       index: targetOffset,
-      icon: "compare",
+      icon: "io",
       order: 1,
     },
   );

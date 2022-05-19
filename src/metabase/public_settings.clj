@@ -10,6 +10,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
+            [metabase.util.fonts :as u.fonts]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as u.password]
             [toucan.db :as db])
@@ -53,6 +54,12 @@
   :visibility :public
   :type       :timestamp
   :default    nil)
+
+(defsetting startup-time-millis
+  (deferred-tru "The startup time in milliseconds")
+  :visibility :public
+  :type       :double
+  :default    0.0)
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
@@ -106,7 +113,7 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
-(declare redirect-all-requests-to-https)
+(declare redirect-all-requests-to-https!)
 
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
@@ -125,7 +132,7 @@
                   https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
-                (redirect-all-requests-to-https false))
+                (redirect-all-requests-to-https! false))
               (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
@@ -200,6 +207,18 @@
   :type    :boolean
   :default false)
 
+(defsetting persisted-models-enabled
+  (deferred-tru "Allow persisting models into the source database.")
+  :type       :boolean
+  :default    false
+  :visibility :admin)
+
+(defsetting persisted-model-refresh-interval-hours
+  (deferred-tru "Hour interval to refresh persisted models.")
+  :type       :integer
+  :default    6
+  :visibility :admin)
+
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
   MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
@@ -260,6 +279,17 @@
   :visibility :public
   :type       :json
   :default    {})
+
+(defsetting application-font
+  (deferred-tru "This is the primary font used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  :visibility :public
+  :type       :string
+  :default    "Lato"
+  :setter (fn [new-value]
+                (when new-value
+                  (when-not (u.fonts/available-font? new-value)
+                    (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-value-of-type! :string :application-font new-value)))
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -351,6 +381,12 @@
            (not (enable-public-sharing)))
     (assoc object :public_uuid nil)
     object))
+
+(defsetting available-fonts
+  "Available fonts"
+  :visibility :public
+  :setter     :none
+  :getter     u.fonts/available-fonts)
 
 (defsetting available-locales
   "Available i18n locales"

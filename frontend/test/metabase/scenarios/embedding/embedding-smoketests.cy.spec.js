@@ -113,6 +113,14 @@ describe("scenarios > embedding > smoke tests", () => {
 
         visitAndEnableSharing(object);
 
+        if (isEE) {
+          cy.findByText("Font");
+        }
+
+        if (isOSS) {
+          cy.findByText("Font").should("not.exist");
+        }
+
         cy.findByText("Parameters");
         cy.findByText(
           /This (question|dashboard) doesn't have any parameters to configure yet./,

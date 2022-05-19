@@ -14,9 +14,10 @@ import {
 DimensionInfo.propTypes = {
   className: PropTypes.string,
   dimension: PropTypes.instanceOf(Dimension).isRequired,
+  showAllFieldValues: PropTypes.bool,
 };
 
-export function DimensionInfo({ className, dimension }) {
+export function DimensionInfo({ className, dimension, showAllFieldValues }) {
   const field = dimension.field();
   const description = field?.description;
   return (
@@ -27,7 +28,10 @@ export function DimensionInfo({ className, dimension }) {
         <EmptyDescription>{t`No description`}</EmptyDescription>
       )}
       <DimensionSemanticTypeLabel dimension={dimension} />
-      <FieldFingerprintInfo field={field} />
+      <FieldFingerprintInfo
+        field={field}
+        showAllFieldValues={showAllFieldValues}
+      />
     </InfoContainer>
   );
 }

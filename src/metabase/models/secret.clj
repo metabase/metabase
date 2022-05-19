@@ -245,7 +245,7 @@
                       (instance? (class Secret) secret-or-id)
                       secret-or-id
 
-                      true ; default; app DB look up from the ID in db-details
+                      :else ; default; app DB look up from the ID in db-details
                       (latest-for-id (get db-details (subprop "-id"))))
         src     (:source secret*)]
     ;; always populate the -source, -creator-id, and -created-at sub properties

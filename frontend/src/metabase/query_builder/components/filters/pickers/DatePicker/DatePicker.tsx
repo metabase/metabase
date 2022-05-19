@@ -107,6 +107,7 @@ export type DatePickerGroup = "relative" | "specific";
 export type DateOperator = {
   name: string;
   displayName: string;
+  displayPrefix?: string;
   init: (filter: Filter) => any[];
   test: (filter: Filter) => boolean;
   widget: any;
@@ -211,6 +212,7 @@ export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "exclude",
     displayName: t`Exclude...`,
+    displayPrefix: t`Exclude`,
     init: ([op, field, ...values]) =>
       op === "!=" ? [op, field, ...values] : [op, field],
     test: ([op]) => ["!=", "is-null", "not-null"].indexOf(op) > -1,
@@ -230,8 +232,6 @@ type Props = {
   operators?: DateOperator[];
 
   hideTimeSelectors?: boolean;
-  disableStartingFrom?: boolean;
-  hideExcludeOperators?: boolean;
   hideEmptinessOperators?: boolean;
   disableOperatorSelection?: boolean;
 
@@ -255,25 +255,20 @@ const DatePicker: React.FC<Props> = props => {
     onCommit,
     children,
     hideTimeSelectors,
-    hideExcludeOperators,
+    operators = DATE_OPERATORS,
   } = props;
 
-  const [showShortcuts, setShowShortcuts] = React.useState(
-    !filter?.isValid?.() && !disableOperatorSelection,
-  );
-  const operators = React.useMemo(() => {
-    let ops = props.operators || DATE_OPERATORS;
-    if (props.hideExcludeOperators) {
-      ops = ops.filter(op => op.name !== "exclude");
-    }
-    return ops;
-  }, [props.operators, props.hideExcludeOperators]);
-
   const operator = getOperator(props.filter, operators);
+  const [showShortcuts, setShowShortcuts] = React.useState(
+    !operator && !disableOperatorSelection,
+  );
   const Widget = operator && operator.widget;
 
+  const enableBackButton =
+    (!showShortcuts && !disableOperatorSelection) ||
+    (showShortcuts && props.onBack);
   const onBack = () => {
-    if (showShortcuts) {
+    if (!operator || showShortcuts) {
       props.onBack?.();
     } else {
       setShowShortcuts(true);
@@ -290,10 +285,9 @@ const DatePicker: React.FC<Props> = props => {
             setShowShortcuts(false);
             onFilterChange(filter);
           }}
-          hideExcludeOperators={hideExcludeOperators}
           onCommit={onCommit}
           filter={filter}
-          onBack={onBack}
+          onBack={enableBackButton ? onBack : undefined}
         />
       ) : (
         <>
@@ -302,6 +296,7 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onBack={onBack}
               operators={operators}
+              primaryColor={primaryColor}
               onFilterChange={onFilterChange}
             />
           ) : null}

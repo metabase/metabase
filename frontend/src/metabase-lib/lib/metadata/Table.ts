@@ -5,8 +5,8 @@ import Question from "../Question";
 import Schema from "./Schema";
 import Base from "./Base";
 import { singularize } from "metabase/lib/formatting";
-import { getAggregationOperatorsWithFields } from "metabase/lib/schema_metadata";
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import { getAggregationOperators } from "metabase/lib/schema_metadata";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 
 /**
  * @typedef { import("./metadata").SchemaName } SchemaName
@@ -16,7 +16,7 @@ import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
 
 /** This is the primary way people interact with tables */
 
-export default class Table extends Base {
+class TableInner extends Base {
   id: number;
   description?: string;
   fks?: any[];
@@ -91,12 +91,10 @@ export default class Table extends Base {
   }
 
   // AGGREGATIONS
-  @memoize
   aggregationOperators() {
-    return getAggregationOperatorsWithFields(this);
+    return getAggregationOperators(this);
   }
 
-  @memoize
   aggregationOperatorsLookup() {
     return createLookupByProperty(this.aggregationOperators(), "short");
   }
@@ -116,7 +114,6 @@ export default class Table extends Base {
   }
 
   // FIELDS
-  @memoize
   fieldsLookup() {
     return createLookupByProperty(this.fields, "id");
   }
@@ -155,3 +152,9 @@ export default class Table extends Base {
     this.entity_type = entity_type;
   }
 }
+
+export default class Table extends memoizeClass<TableInner>(
+  "aggregationOperators",
+  "aggregationOperatorsLookup",
+  "fieldsLookup",
+)(TableInner) {}

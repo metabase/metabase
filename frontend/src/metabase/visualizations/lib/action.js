@@ -21,8 +21,13 @@ export function performAction(action, { dispatch, onChangeCardAndRun }) {
   }
   if (action.question) {
     const question = action.question();
+    const extra = action?.extra?.() ?? {};
     if (question) {
-      onChangeCardAndRun({ nextCard: question.card() });
+      onChangeCardAndRun({
+        nextCard: question.card(),
+        ...extra,
+        objectId: extra.objectId,
+      });
       didPerform = true;
     }
   }

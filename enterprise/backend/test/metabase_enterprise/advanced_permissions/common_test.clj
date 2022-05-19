@@ -2,27 +2,32 @@
   (:require [cheshire.core :as json]
             [clojure.core.memoize :as memoize]
             [clojure.test :refer :all]
-            [metabase.models :refer [Database Field Permissions Table]]
+            [metabase.api.database :as api.database]
+            [metabase.models :refer [Database Field FieldValues Permissions Table]]
             [metabase.models.database :as database]
             [metabase.models.field :as field]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
+            [metabase.sync.concurrent :as sync.concurrent]
             [metabase.test :as mt]
-            [metabase.util :as u]))
+            [metabase.util :as u]
+            [toucan.db :as db]))
 
 (defn- do-with-all-user-data-perms
   [graph f]
-  (let [all-users-group-id  (u/the-id (group/all-users))
+  (let [all-users-group-id  (u/the-id (perms-group/all-users))
         current-graph       (get-in (perms/data-perms-graph) [:groups all-users-group-id])]
     (premium-features-test/with-premium-features #{:advanced-permissions}
       (memoize/memo-clear! @#'field/cached-perms-object-set)
       (try
         (mt/with-model-cleanup [Permissions]
-          (@#'perms/update-group-permissions! all-users-group-id graph)
+          (u/ignore-exceptions
+           (@#'perms/update-group-permissions! all-users-group-id graph))
           (f))
         (finally
-          (@#'perms/update-group-permissions! all-users-group-id current-graph))))))
+          (u/ignore-exceptions
+           (@#'perms/update-group-permissions! all-users-group-id current-graph)))))))
 
 (defmacro ^:private with-all-users-data-perms
   "Runs `f` with perms for the All Users group temporarily set to the values in `graph`. Also enables the advanced
@@ -74,7 +79,7 @@
 ;;; |                                        Data model permission enforcement                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest fetch-databases-include-editable-data-model-test
+(deftest fetch-databases-test
   (testing "GET /api/database?include_editable_data_model=true"
     (letfn [(get-test-db
               ([] (get-test-db "database?include_editable_data_model=true"))
@@ -82,11 +87,13 @@
                           :data
                           (filter (fn [db] (= (mt/id) (:id db))))
                           first)))]
-      (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
-                                           :data-model {:schemas :all}}}
-        (is (partial= {:id (mt/id)} (get-test-db))))
+      (testing "Sanity check: a non-admin can fetch a DB when they have full data access and data model perms"
+        (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
+                                             :data-model {:schemas :all}}}
+          (is (partial= {:id (mt/id)} (get-test-db)))))
 
-      (testing "DB with no data model perms is excluded"
+      (testing "A non-admin cannot fetch a DB for which they do not have data model perms if
+               include_editable_data_model=true"
         (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
                                              :data-model {:schemas :none}}}
             (is (= nil (get-test-db)))))
@@ -97,7 +104,8 @@
                                                                               id-2 :none
                                                                               id-3 :none
                                                                               id-4 :none}}}}}
-          (testing "DB with data model perms for a single table is included"
+          (testing "If a non-admin has data model perms for a single table in a DB, the DB is returned when listing
+                   all DBs"
             (is (partial= {:id (mt/id)} (get-test-db))))
 
           (testing "if include=tables, only tables with data model perms are included"
@@ -105,7 +113,19 @@
                                :tables
                                (map :id))))))))))
 
-(deftest fetch-database-metadata-exclude-uneditable-test
+(deftest fetch-database-test
+  (testing "GET /api/database/:id?include_editable_data_model=true"
+    (testing "A non-admin without data model perms for a DB cannot fetch the DB when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :write :schemas :all}
+                                           :data-model {:schemas :none}}}
+        (mt/user-http-request :rasta :get 403 (format "database/%d?include_editable_data_model=true" (mt/id)))))
+
+    (testing "A non-admin with only data model perms for a DB can fetch the DB when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
+                                           :data-model {:schemas :all}}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d?include_editable_data_model=true" (mt/id)))))))
+
+(deftest fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata?include_editable_data_model=true"
     (let [[id-1 id-2 id-3 id-4] (map u/the-id (database/tables (mt/db)))]
       (with-all-users-data-perms {(mt/id) {:data       {:schemas :all :native :write}
@@ -134,6 +154,18 @@
                                              (format "database/%d/metadata?include_editable_data_model=true" (mt/id)))]
             (is (= {:id (mt/id) :name (:name (mt/db))} (dissoc result :tables)))
             (is (= [id-1] (map :id (:tables result))))))))))
+
+(deftest fetch-id-fields-test
+  (testing "GET /api/database/:id/idfields?include_editable_data_model=true"
+    (testing "A non-admin without data model perms for a DB cannot fetch id fields when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :write :schemas :all}
+                                           :data-model {:schemas :none}}}
+        (mt/user-http-request :rasta :get 403 (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))
+
+    (testing "A non-admin with only data model perms for a DB can fetch id fields when include_editable_data_model=true"
+      (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
+                                           :data-model {:schemas :all}}}
+        (mt/user-http-request :rasta :get 200 (format "database/%d/idfields?include_editable_data_model=true" (mt/id)))))))
 
 (deftest update-field-test
   (mt/with-temp Field [{field-id :id, table-id :table_id} {:name "Field Test"}]
@@ -176,8 +208,17 @@
         (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {schema {table-id :none}}}}}
             (mt/user-http-request :rasta :post 403 (format "field/%d/rescan_values" field-id)))
+
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {schema {table-id :all}}}}}
-            (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" field-id)))))
+            (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" field-id))))
+
+        (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
+          (db/delete! FieldValues :field_id (mt/id :venues :price))
+          (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+          (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
+                                               :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
+            (mt/user-http-request :rasta :post 200 (format "field/%d/rescan_values" (mt/id :venues :price))))
+          (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))
 
       (testing "POST /api/field/:id/discard_values"
         (testing "A non-admin can discard field values if they have data model perms for the table"
@@ -185,7 +226,14 @@
             (mt/user-http-request :rasta :post 403 (format "field/%d/discard_values" field-id)))
 
           (with-all-users-data-perms {(mt/id) {:data-model {:schemas {schema {table-id :all}}}}}
-            (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" field-id))))))))
+            (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" field-id))))
+
+        (testing "A non-admin with no data access can discard field values if they have data model perms"
+          (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+          (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
+                                               :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
+            (mt/user-http-request :rasta :post 200 (format "field/%d/discard_values" (mt/id :venues :price))))
+          (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))))))))
 
 (deftest update-table-test
   (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
@@ -226,8 +274,18 @@
       (testing "A non-admin can trigger a rescan of field values if they have data model perms for the table"
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :none}}}}}
           (mt/user-http-request :rasta :post 403 (format "table/%d/rescan_values" table-id)))
+
         (with-all-users-data-perms {(mt/id) {:data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id)))))
+          (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" table-id))))
+
+      (testing "A non-admin with no data access can trigger a re-scan of field values if they have data model perms"
+        (db/delete! FieldValues :field_id (mt/id :venues :price))
+        (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+        (with-redefs [sync.concurrent/submit-task (fn [task] (task))]
+          (with-all-users-data-perms {(mt/id) {:data       {:schemas :block :native :none}
+                                               :data-model {:schemas {"PUBLIC" {(mt/id :venues) :all}}}}}
+            (mt/user-http-request :rasta :post 200 (format "table/%d/rescan_values" (mt/id :venues)))))
+        (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))
 
     (testing "POST /api/table/:id/discard_values"
       (testing "A non-admin can discard field values if they have data model perms for the table"
@@ -254,25 +312,43 @@
     (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
       (testing "A non-admin without self-service perms for a table cannot fetch the table normally"
         (with-all-users-data-perms {(mt/id) {:data {:native :none :schemas :none}}}
-          (mt/user-http-request :rasta :get 403 (format "table/%d" table-id))))
+          (mt/user-http-request :rasta :get 403 (format "table/%d?include_editable_data_model=true" table-id))))
 
       (testing "A non-admin without self-service perms for a table can fetch the table if they have data model perms for
                the DB"
         (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
                                              :data-model {:schemas :all}}}
-          (mt/user-http-request :rasta :get 200 (format "table/%d" table-id))))
+          (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id))))
 
       (testing "A non-admin without self-service perms for a table can fetch the table if they have data model perms for
                the schema"
         (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
                                              :data-model {:schemas {"PUBLIC" :all}}}}
-          (mt/user-http-request :rasta :get 200 (format "table/%d" table-id))))
+          (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id))))
 
       (testing "A non-admin without self-service perms for a table can fetch the table if they have data model perms for
                the table"
         (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
                                              :data-model {:schemas {"PUBLIC" {table-id :all}}}}}
-          (mt/user-http-request :rasta :get 200 (format "table/%d" table-id)))))))
+          (mt/user-http-request :rasta :get 200 (format "table/%d?include_editable_data_model=true" table-id)))))))
+
+(deftest fetch-query-metadata-test
+  (testing "GET /api/table/:id/query_metadata?include_editable_data_model=true"
+    (mt/with-temp Table [{table-id :id} {:db_id (mt/id) :schema "PUBLIC"}]
+      (testing "A non-admin without data model perms for a table cannot fetch the query metadata when
+               include_editable_data_model=true"
+        (with-all-users-data-perms {(mt/id) {:data       {:native :write :schemas :all}
+                                             :data-model {:schemas :none}}}
+          (mt/user-http-request :rasta :get 403
+                                (format "table/%d/query_metadata?include_editable_data_model=true" table-id))))
+
+      (testing "A non-admin with only data model perms for a table can fetch the query metadata when
+               include_editable_data_model=true"
+        (with-all-users-data-perms {(mt/id) {:data       {:native :none :schemas :none}
+                                             :data-model {:schemas :all}}}
+          (mt/user-http-request :rasta :get 200
+                                (format "table/%d/query_metadata?include_editable_data_model=true" table-id)))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                  Database details permission enforcement                                       |
@@ -296,51 +372,63 @@
 
 (deftest delete-database-test
   (mt/with-temp Database [{db-id :id}]
-    (testing "A non-admin cannot delete a database if the advanced-permissions feature flag is not present"
+    (testing "A non-admin cannot delete a database even if they have DB details permissions"
       (with-all-users-data-perms {db-id {:details :yes}}
-        (premium-features-test/with-premium-features #{}
-          (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id)))))
-
-    (testing "A non-admin cannot update database metadata if they do not have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :no}}
-        (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))
-
-    (testing "A non-admin can update database metadata if they have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :put 200 (format "database/%d" db-id) {:name "Database Test"})))))
+        (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
 (deftest db-operations-test
-  (mt/with-temp Database [{db-id :id}]
-    (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
+  (mt/with-temp* [Database    [{db-id :id}     {:engine "h2", :details (:details (mt/db))}]
+                  Table       [{table-id :id}  {:db_id db-id}]
+                  Field       [{field-id :id}  {:table_id table-id}]
+                  FieldValues [{values-id :id} {:field_id field-id, :values [1 2 3 4]}]]
+    (with-redefs [metabase.api.database/*rescan-values-async* false]
+      (testing "A non-admin can trigger a sync of the DB schema if they have DB details permissions"
+        (with-all-users-data-perms {db-id {:details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/sync_schema" db-id))))
 
-    (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" db-id))))
+      (testing "A non-admin can discard saved field values if they have DB details permissions"
+        (with-all-users-data-perms {db-id {:details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))
 
-    (testing "A non-admin can discard saved field values if they have DB details permissions"
-      (with-all-users-data-perms {db-id {:details :yes}}
-        (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id))))))
+      (testing "A non-admin with no data access can discard field values if they have DB details perms"
+        (db/insert! FieldValues :id values-id :field_id field-id :values [1 2 3 4])
+        (with-all-users-data-perms {db-id {:data    {:schemas :block :native :none}
+                                           :details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/discard_values" db-id)))
+        (is (= nil (db/select-one-field :values FieldValues, :field_id field-id)))
+        (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" db-id)))
+
+      ;; Use test database for rescan_values tests so we can verify that scan actually succeeds
+      (testing "A non-admin can trigger a re-scan of field values if they have DB details permissions"
+        (with-all-users-data-perms {(mt/id) {:details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id)))))
+
+      (testing "A non-admin with no data access can trigger a re-scan of field values if they have DB details perms"
+        (db/delete! FieldValues :field_id (mt/id :venues :price))
+        (is (= nil (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))
+        (with-all-users-data-perms {(mt/id) {:data   {:schemas :block :native :none}
+                                             :details :yes}}
+          (mt/user-http-request :rasta :post 200 (format "database/%d/rescan_values" (mt/id))))
+        (is (= [1 2 3 4] (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price))))))))
 
 (deftest fetch-db-test
   (mt/with-temp Database [{db-id :id}]
     (testing "A non-admin without self-service perms for a DB cannot fetch the DB normally"
       (with-all-users-data-perms {db-id {:data {:native :none :schemas :none}}}
-        (mt/user-http-request :rasta :get 403 (format "database/%d" db-id))))
+        (mt/user-http-request :rasta :get 403 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "A non-admin without self-service perms for a DB can fetch the DB if they have DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :none}
                                          :details :yes}}
-        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+        (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "A non-admin with block perms for a DB can fetch the DB if they have DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
                                          :details :yes}}
-        (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))
+        (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))
 
     (testing "The returned database contains a :details field for a user with DB details permissions"
       (with-all-users-data-perms {db-id {:data    {:native :none :schemas :block}
                                          :details :yes}}
         (is (partial= {:details {}}
-             (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))))))))
+             (mt/user-http-request :rasta :get 200 (format "database/%d?exclude_uneditable_details=true" db-id))))))))

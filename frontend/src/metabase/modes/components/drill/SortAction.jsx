@@ -1,11 +1,9 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
 export default ({ question, clicked }) => {
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
+  if (!question.isStructured() || !query.isEditable()) {
     return [];
   }
 

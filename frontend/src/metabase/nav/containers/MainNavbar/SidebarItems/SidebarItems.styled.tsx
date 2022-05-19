@@ -35,11 +35,14 @@ const activeColorCSS = css`
   color: ${color("brand")};
 `;
 
+function getTextColor(isSelected: boolean) {
+  return isSelected ? color("brand") : darken(color("text-medium"), 0.25);
+}
+
 export const NodeRoot = styled(TreeNode.Root)<{
   hasDefaultIconStyle?: boolean;
 }>`
-  color: ${props =>
-    props.isSelected ? color("brand") : darken(color("text-medium"), 0.25)};
+  color: ${props => getTextColor(props.isSelected)};
 
   background-color: ${props =>
     props.isSelected ? lighten(color("brand"), 0.6) : "unset"};
@@ -78,10 +81,29 @@ export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
     `}
 `;
 
-export const FullWidthLink = styled(Link)`
+const itemContentStyle = css`
   display: flex;
   align-items: center;
   width: 100%;
+`;
+
+export const FullWidthButton = styled.button<{ isSelected: boolean }>`
+  cursor: pointer;
+  ${itemContentStyle}
+
+  ${TreeNode.NameContainer} {
+    font-weight: 700;
+    color: ${props => getTextColor(props.isSelected)};
+    text-align: start;
+
+    &:hover {
+      color: ${color("brand")};
+    }
+  }
+`;
+
+export const FullWidthLink = styled(Link)`
+  ${itemContentStyle}
 `;
 
 const ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD = 35;

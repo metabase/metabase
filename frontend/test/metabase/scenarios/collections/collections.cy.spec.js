@@ -224,7 +224,7 @@ describe("scenarios > collection defaults", () => {
         });
       });
 
-      it.skip("should be able to choose a child collection when saving a question (metabase#14052)", () => {
+      it("should be able to choose a child collection when saving a question (metabase#14052)", () => {
         openOrdersTable();
         cy.findByText("Save").click();
         // Click to choose which collection should this question be saved to
@@ -315,6 +315,20 @@ describe("scenarios > collection defaults", () => {
       describe("selection", () => {
         it("should be possible to apply bulk selection to all items (metabase#14705)", () => {
           bulkSelectDeselectWorkflow();
+        });
+
+        it("should clean up selection when opening another collection (metabase#16491)", () => {
+          cy.request("PUT", "/api/card/1", {
+            collection_id: 1,
+          });
+          cy.visit("/collection/root");
+          cy.findByText("Your personal collection").click();
+
+          selectItemUsingCheckbox("Orders");
+          cy.findByText("1 item selected").should("be.visible");
+
+          cy.findByText("Our analytics").click();
+          cy.findByTestId("bulk-action-bar").should("not.be.visible");
         });
 
         function bulkSelectDeselectWorkflow() {

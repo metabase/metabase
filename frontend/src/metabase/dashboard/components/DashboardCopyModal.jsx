@@ -3,6 +3,7 @@ import React from "react";
 import { withRouter } from "react-router";
 import { connect } from "react-redux";
 import { dissoc } from "icepick";
+import _ from "underscore";
 
 import { replace } from "react-router-redux";
 import * as Urls from "metabase/lib/urls";
@@ -30,9 +31,7 @@ const mapDispatchToProps = {
   onReplaceLocation: replace,
 };
 
-@withRouter
-@connect(mapStateToProps, mapDispatchToProps)
-class DashboardCopyModal extends React.Component {
+class DashboardCopyModalInner extends React.Component {
   render() {
     const {
       onClose,
@@ -62,5 +61,10 @@ class DashboardCopyModal extends React.Component {
     );
   }
 }
+
+const DashboardCopyModal = _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardCopyModalInner);
 
 export default DashboardCopyModal;

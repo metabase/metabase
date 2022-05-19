@@ -48,6 +48,9 @@ const isCompatible = (a, b) => {
   if (a === "aggregation" && b === "number") {
     return true;
   }
+  if (a === "number" && b === "aggregation") {
+    return true;
+  }
   return false;
 };
 

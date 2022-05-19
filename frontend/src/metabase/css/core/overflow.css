@@ -26,9 +26,9 @@
   overflow-x: scroll;
 }
 
-.bounded-overflow-x-scroll {
+.bounded-overflow-x-auto {
   width: 100%;
-  overflow-x: scroll;
+  overflow-x: auto;
 }
 
 .overflow-y-scroll {

@@ -68,6 +68,9 @@
   columns (i.e., `TIMESTAMP WITH TIME ZONE`) instead of `:type/DateType`, to make it easier to use this test data
   across multiple databases.")
 
+(tx/defdataset-edn json
+  "Dataset with some JSON columns in it. Used to test JSON columns.")
+
 (defn- date-only
   "Convert date or datetime temporal value to `t` to an appropriate date type, discarding time information."
   [t]

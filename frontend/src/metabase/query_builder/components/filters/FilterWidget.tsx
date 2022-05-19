@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import FilterPopover from "./FilterPopover";
 import FilterComponent from "metabase/query_builder/components/Filter";
@@ -128,23 +127,12 @@ export default class FilterWidget extends Component<Props, State> {
   }
 
   render() {
-    const { index, removeFilter } = this.props;
     return (
-      <div
-        className={cx("Query-filter p1 pl2", { selected: this.state.isOpen })}
-      >
+      <div className={cx("Query-filter", { selected: this.state.isOpen })}>
         <div className="flex justify-center" onClick={this.open}>
           {this.renderFilter()}
           {this.renderPopover()}
         </div>
-        {removeFilter && (
-          <a
-            className="text-light no-decoration px1 flex align-center"
-            onClick={() => removeFilter(index)}
-          >
-            <Icon name="close" size={14} />
-          </a>
-        )}
       </div>
     );
   }

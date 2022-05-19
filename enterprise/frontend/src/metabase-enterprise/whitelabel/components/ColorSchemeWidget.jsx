@@ -11,18 +11,13 @@ import { originalColors } from "../lib/whitelabel";
 
 const THEMEABLE_COLORS = [
   "brand",
-  "nav",
   ...Object.keys(originalColors).filter(name => name.startsWith("accent")),
 ];
 
-const COLOR_DISPLAY_PROPERTIES = {
+const getColorDisplayProperties = () => ({
   brand: {
     name: t`Primary color`,
     description: t`The main color used throughout the app for buttons, links, and the default chart color.`,
-  },
-  nav: {
-    name: t`Navigation bar color`,
-    description: t`The top nav bar of Metabase. Defaults to the Primary Color if not set.`,
   },
   accent1: {
     name: t`Accent 1`,
@@ -47,7 +42,7 @@ const COLOR_DISPLAY_PROPERTIES = {
   accent7: {
     name: t`Additional chart color`,
   },
-};
+});
 
 const ColorSchemeWidget = ({ setting, onChange }) => {
   const value = setting.value || {};
@@ -58,7 +53,7 @@ const ColorSchemeWidget = ({ setting, onChange }) => {
       <table>
         <tbody>
           {THEMEABLE_COLORS.map(name => {
-            const properties = COLOR_DISPLAY_PROPERTIES[name] || {};
+            const properties = getColorDisplayProperties()[name] || {};
             return (
               <tr key={name}>
                 <td>{properties.name || humanize(name)}:</td>

@@ -12,6 +12,7 @@
             [medley.core :as m]
             [metabase.db :as mdb]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.table :refer [Table]]
@@ -305,17 +306,7 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
-(defmulti format-name
-  "Transform a lowercase string Table or Field name in a way appropriate for this dataset (e.g., `h2` would want to
-  upcase these names; `mongo` would want to use `\"_id\"` in place of `\"id\"`. This method should return a string.
-  Defaults to an identity implementation."
-  {:arglists '([driver table-or-field-name])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
-
+(defmethod ddl.i/format-name ::test-extensions [_ table-or-field-name] table-or-field-name)
 
 (defmulti has-questionable-timezone-support?
   "Does this driver have \"questionable\" timezone support? (i.e., does it group things by UTC instead of the
@@ -473,7 +464,7 @@
 (p.types/deftype+ ^:private EDNDatasetDefinition [dataset-name def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'edn-dataset-definition dataset-name)))
+    (list `edn-dataset-definition dataset-name)))
 
 (defmethod get-dataset-definition EDNDatasetDefinition
   [^EDNDatasetDefinition this]
@@ -505,7 +496,7 @@
 (p.types/deftype+ ^:private TransformedDatasetDefinition [new-name wrapped-definition def]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
+    (list `transformed-dataset-definition new-name (pretty/pretty wrapped-definition))))
 
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to

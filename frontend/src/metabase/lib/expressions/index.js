@@ -1,6 +1,6 @@
 export * from "./config";
 
-import Dimension from "metabase-lib/lib/Dimension";
+import Dimension, { ExpressionDimension } from "metabase-lib/lib/Dimension";
 import { FK_SYMBOL } from "metabase/lib/formatting";
 import {
   OPERATORS,
@@ -102,11 +102,16 @@ export function formatSegmentName(segment, options) {
 /**
  * Find dimension with matching `name` in query. TODO - How is this "parsing" a dimension? Not sure about this name.
  */
-export function parseDimension(name, { query }) {
+export function parseDimension(name, { reference, query }) {
   // FIXME: this is pretty inefficient, create a lookup table?
   return query
     .dimensionOptions()
     .all()
+    .filter(
+      d =>
+        !(d instanceof ExpressionDimension) ||
+        getDimensionName(d) !== reference,
+    )
     .find(d =>
       EDITOR_FK_SYMBOLS.symbols.some(
         separator => getDimensionName(d, separator) === name,

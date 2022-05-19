@@ -15,7 +15,8 @@ export default ({ question, clicked }) => {
     !clicked ||
     !clicked.column ||
     clicked.value !== undefined ||
-    _.any(DENYLIST_TYPES, t => isa(clicked.column.semantic_type, t))
+    _.any(DENYLIST_TYPES, t => isa(clicked.column.semantic_type, t)) ||
+    !question.query().isEditable()
   ) {
     return [];
   }
