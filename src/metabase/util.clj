@@ -188,27 +188,6 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
-(defn ^:deprecated rpartial
-  "Like `partial`, but applies additional args *before* `bound-args`.
-   Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
-
-    ((partial - 5) 8)  -> (- 5 8) -> -3
-    ((rpartial - 5) 8) -> (- 8 5) -> 3
-
-  DEPRECATED: just use `#()` function literals instead. No need to be needlessly confusing."
-  [f & bound-args]
-  (fn [& args]
-    (apply f (concat args bound-args))))
-
-(defmacro pdoseq
-  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and
-  only supports a single binding </3"
-  {:style/indent 1}
-  [[binding collection] & body]
-  `(dorun (pmap (fn [~binding]
-                  ~@body)
-                ~collection)))
-
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.

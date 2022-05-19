@@ -130,7 +130,7 @@
   (ldap/connect (settings->ldap-options)))
 
 (defn do-with-ldap-connection
-  "Impl for `with-ldap-connection` macro."
+  "Impl for [[with-ldap-connection]] macro."
   [f]
   (with-open [conn (get-connection)]
     (f conn)))
