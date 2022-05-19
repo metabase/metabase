@@ -296,6 +296,10 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
+  setPersisted(isPersisted) {
+    return this.setCard(assoc(this.card(), "persisted", isPersisted));
+  }
+
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }
