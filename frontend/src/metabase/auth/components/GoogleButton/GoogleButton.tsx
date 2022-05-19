@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
 import AuthButton from "../AuthButton";
+import { TextLink } from "../AuthButton/AuthButton.styled";
+
 import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
-import { GoogleLogin, useGoogleLogin } from "@react-oauth/google";
+import { GoogleLogin } from "@react-oauth/google";
 import MetabaseSettings from "metabase/lib/settings";
 
 export type AttachCallback = (
@@ -30,22 +32,8 @@ const GoogleButton = ({
 
   const siteLocale = MetabaseSettings.get("site-locale");
 
-  const login = useGoogleLogin({
-    onSuccess: async tokenResponse => {
-      console.log("🚀", tokenResponse);
-      // try {
-      //   setErrors([]);
-      //   await onLogin(tokenResponse.access_token, redirectUrl);
-      // } catch (error) {
-      //   setErrors(getErrors(error));
-      // }
-    },
-    flow: "auth-code",
-  });
-
   const handleLogin = useCallback(
     async (response: string) => {
-      console.log("🚀", response);
       try {
         setErrors([]);
         await onLogin(response, redirectUrl);
@@ -62,18 +50,22 @@ const GoogleButton = ({
 
   return (
     <div>
-      <AuthButton onClick={() => login()} icon="google" isCard={isCard}>
-        {t`Sign in with Google`}
-      </AuthButton>
-
-      <GoogleLogin
-        onSuccess={({ credential }) => {
-          handleLogin(credential ?? "");
-        }}
-        onError={(error: any) => setErrors([error])}
-        locale={siteLocale}
-        width="386"
-      />
+      {isCard ? (
+        <GoogleLogin
+          onSuccess={({ credential }) => {
+            handleLogin(credential ?? "");
+          }}
+          onError={() =>
+            handleError(t`Google Sign In has errored. Please try again.`)
+          }
+          locale={siteLocale}
+          width="366"
+        />
+      ) : (
+        <TextLink to={"#"} onClick={() => null}>
+          {t`Sign in with Google`}
+        </TextLink>
+      )}
 
       {errors.length > 0 && (
         <AuthErrorContainer>
