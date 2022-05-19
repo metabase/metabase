@@ -2,7 +2,7 @@
   "Tests for special behavior of `/api/metabase/dashboard` endpoints in the Metabase Enterprise Edition."
   (:require [clojure.test :refer :all]
             [metabase.api.dashboard-test :as api.dashboard-test]
-            [metabase.models :refer [Card Dashboard DashboardCard FieldValues Table]]
+            [metabase.models :refer [DashboardCard FieldValues]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
