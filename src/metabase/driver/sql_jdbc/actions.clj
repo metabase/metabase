@@ -15,7 +15,7 @@
                     :status-code status-code}
                    more-info))))
 
-(defn- check-one-row-effected [conn query raw-hsql] ;
+(defn- check-one-row-affected [conn query raw-hsql]
   (let [select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
         row-count       (:row_count (first (jdbc/query conn (hformat/format select-hsql))) 0)]
     (when (not= 1 row-count)
