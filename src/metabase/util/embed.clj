@@ -52,7 +52,7 @@
 
 ;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
-(setting/defsetting ^:private embedding-secret-key
+(setting/defsetting embedding-secret-key
   (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
   :visibility :admin
   :setter (fn [new-value]
