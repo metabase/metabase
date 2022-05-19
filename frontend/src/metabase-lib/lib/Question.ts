@@ -11,7 +11,6 @@ import NativeQuery, {
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/lib/queries/InternalQuery";
-import Query from "metabase-lib/lib/queries/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
@@ -71,11 +70,6 @@ import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
 import { ClickObject } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
@@ -478,45 +472,6 @@ class QuestionInner {
   canAutoRun(): boolean {
     const db = this.database();
     return (db && db.auto_run_queries) || false;
-  }
-
-  /**
-   * Returns the type of alert that current question supports
-   *
-   * The `visualization_settings` in card object doesn't contain default settings,
-   * so you can provide the complete visualization settings object to `alertType`
-   * for taking those into account
-   */
-  alertType(visualizationSettings) {
-    const display = this.display();
-
-    if (!this.canRun()) {
-      return null;
-    }
-
-    const isLineAreaBar =
-      display === "line" || display === "area" || display === "bar";
-
-    if (display === "progress") {
-      return ALERT_TYPE_PROGRESS_BAR_GOAL;
-    } else if (isLineAreaBar) {
-      const vizSettings = visualizationSettings
-        ? visualizationSettings
-        : this.card().visualization_settings;
-      const goalEnabled = vizSettings["graph.show_goal"];
-      const hasSingleYAxisColumn =
-        vizSettings["graph.metrics"] &&
-        vizSettings["graph.metrics"].length === 1;
-
-      // We don't currently support goal alerts for multiseries question
-      if (goalEnabled && hasSingleYAxisColumn) {
-        return ALERT_TYPE_TIMESERIES_GOAL;
-      } else {
-        return ALERT_TYPE_ROWS;
-      }
-    } else {
-      return ALERT_TYPE_ROWS;
-    }
   }
 
   /**
