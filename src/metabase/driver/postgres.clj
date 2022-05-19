@@ -39,7 +39,7 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database] (get-in database [:details :json-unfolding]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
