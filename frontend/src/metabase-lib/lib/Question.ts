@@ -11,6 +11,7 @@ import NativeQuery, {
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import InternalQuery from "metabase-lib/lib/queries/InternalQuery";
+import Query from "metabase-lib/lib/queries/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
