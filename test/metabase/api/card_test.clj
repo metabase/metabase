@@ -314,7 +314,7 @@
                        :collection             true
                        :creator_id             (mt/user->id :rasta)
                        :dataset_query          true
-                       :is_readwrite           false
+                       :is_write               false
                        :query_type             "query"
                        :visualization_settings {:global {:title nil}}
                        :database_id            true
@@ -654,7 +654,7 @@
                                              :first_name   "Rasta"
                                              :email        "rasta@metabase.com"})
                    :dataset_query          (mt/obj->json->obj (:dataset_query card))
-                   :is_readwrite           false
+                   :is_write               false
                    :display                "table"
                    :query_type             "query"
                    :visualization_settings {}
