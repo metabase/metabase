@@ -11653,14 +11653,14 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  remarks: The timestamp of when the timeline was created
+                  remarks: The timestamp of when the action was created
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
-                  remarks: The timestamp of when the timeline was updated
+                  remarks: The timestamp of when the action was updated
                   name: updated_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
@@ -11727,15 +11727,22 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  remarks: The timestamp of when the timeline was created
+                  remarks: The timestamp of when the emitter was created
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
               - column:
-                  remarks: JSON with vis settings and other things frontend related
-                  name: viz_settings
+                  remarks: The timestamp of when the emitter was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON for vis settings and other things frontend related
+                  name: options
                   type: ${text.type}
               - column:
                   remarks: JSON that has a mapping of columns to parameters in the query
