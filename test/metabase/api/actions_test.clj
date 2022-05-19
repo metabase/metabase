@@ -89,7 +89,7 @@
       (let [query-that-returns-more-than-one (mt/mbql-query venues {:filter [:> $id -10]})]
         (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
         (doseq [{:keys [action]} (mock-requests)]
-          (is (re= #"Sorry, this would effect \d+ rows, but you can only act on 1"
+          (is (re= #"Sorry, this would affect \d+ rows, but you can only act on 1"
                    (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))))))))
 
 (deftest four-oh-four-test

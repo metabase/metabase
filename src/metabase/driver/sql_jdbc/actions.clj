@@ -15,11 +15,11 @@
                     :status-code status-code}
                    more-info))))
 
-(defn- check-one-row-effected [conn query raw-hsql] ;
+(defn- check-one-row-affected [conn query raw-hsql]
   (let [select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
         row-count       (:row_count (first (jdbc/query conn (hformat/format select-hsql))) 0)]
-    (when (not= 1 row-count)
-      (throw (ex-info (i18n/tru "Sorry, this would effect {0} rows, but you can only act on 1" row-count)
+    (when-not (= row-count 1)
+      (throw (ex-info (i18n/tru "Sorry, this would affect {0} rows, but you can only act on 1" row-count)
                       {:query       query
                        :sql         select-hsql
                        :status-code 400})))))
@@ -29,11 +29,11 @@
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
-                            (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                            (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                             (sql.qp/mbql->honeysql driver query)
                             (catch Exception e
                               (catch-throw e 404))))]
-    (check-one-row-effected connection-spec query raw-hsql)
+    (check-one-row-affected connection-spec query raw-hsql)
     (let [delete-hsql (-> raw-hsql
                           (dissoc :select)
                           (assoc :delete []))
@@ -48,11 +48,11 @@
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
-                            (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                            (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                             (sql.qp/mbql->honeysql driver query)
                             (catch Exception e
                               (catch-throw e 404))))]
-    (check-one-row-effected connection-spec query raw-hsql)
+    (check-one-row-affected connection-spec query raw-hsql)
     (let [update-values (:update_row query)
           target-table (first (:from raw-hsql))
           update-hsql (-> raw-hsql
