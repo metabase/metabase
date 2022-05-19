@@ -96,8 +96,15 @@
       (let [query-that-returns-more-than-one (mt/mbql-query venues {:filter [:> $id -10]})]
         (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
         (doseq [{:keys [action]} (mock-requests)]
-          (is (re= #"Sorry, this would effect \d+ rows, but you can only act on 1"
+          (is (re= #"Sorry, this would affect \d+ rows, but you can only act on 1"
                    (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))))))))
+
+(deftest unknown-row-action-gives-404
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (testing "404 for unknown Row action"
+        (is (= "Unknown row action \"fake\"."
+               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))))))
 
 (deftest four-oh-four-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
@@ -106,7 +113,4 @@
         (testing action
           (testing "404 for unknown Table"
             (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
-                   (:message (mt/user-http-request :crowberto :post 404 action (assoc (mt/mbql-query venues {:filter [:= $id 1]}) :source-table Integer/MAX_VALUE))))))))
-      (testing "404 for unknown Row action"
-        (is (= "Unknown row action \"fake\"."
-               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))))))
+                   (:message (mt/user-http-request :crowberto :post 404 action (assoc (mt/mbql-query venues {:filter [:= $id 1]}) :source-table Integer/MAX_VALUE)))))))))))
