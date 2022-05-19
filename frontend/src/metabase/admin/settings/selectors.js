@@ -20,6 +20,7 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
+import PersistedModelAnchorTimeWidget from "./components/widgets/PersistedModelAnchorTimeWidget";
 import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
 import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
@@ -449,8 +450,17 @@ const SECTIONS = updateSectionsWithPlugins({
         disableDefaultUpdate: true,
         widget: PersistedModelRefreshIntervalWidget,
         getHidden: settings => !settings["persisted-models-enabled"],
-        onChanged: async (oldValue, newValue) =>
-          PersistedModelsApi.setRefreshInterval({ hours: newValue }),
+        onChanged: (oldHours, hours) =>
+          PersistedModelsApi.setRefreshInterval({ hours }),
+      },
+      {
+        key: "persisted-model-refresh-anchor-time",
+        display_name: t`Anchoring time`,
+        disableDefaultUpdate: true,
+        widget: PersistedModelAnchorTimeWidget,
+        getHidden: settings => !settings["persisted-models-enabled"],
+        onChanged: (oldAnchor, anchor) =>
+          PersistedModelsApi.setRefreshInterval({ anchor }),
       },
     ],
   },
