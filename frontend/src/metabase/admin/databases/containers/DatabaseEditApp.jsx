@@ -19,11 +19,7 @@ import { getSetting } from "metabase/selectors/settings";
 
 import Database from "metabase-lib/lib/metadata/Database";
 
-import {
-  getEditingDatabase,
-  getDatabaseCreationStep,
-  getInitializeError,
-} from "../selectors";
+import { getEditingDatabase, getInitializeError } from "../selectors";
 
 import {
   reset,
@@ -53,7 +49,6 @@ const mapStateToProps = state => {
 
   return {
     database: database ? new Database(database) : undefined,
-    databaseCreationStep: getDatabaseCreationStep(state),
     initializeError: getInitializeError(state),
     isAdmin: getUserIsAdmin(state),
     isModelPersistenceEnabled: getSetting(state, "persisted-models-enabled"),
@@ -81,7 +76,6 @@ class DatabaseEditApp extends Component {
   static propTypes = {
     database: PropTypes.object,
     metadata: PropTypes.object,
-    databaseCreationStep: PropTypes.string,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
     initializeDatabase: PropTypes.func.isRequired,

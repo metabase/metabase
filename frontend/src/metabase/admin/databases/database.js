@@ -367,13 +367,6 @@ const deletionError = handleActions(
   null,
 );
 
-const databaseCreationStep = handleActions(
-  {
-    [RESET]: () => DB_EDIT_FORM_CONNECTION_TAB,
-  },
-  DB_EDIT_FORM_CONNECTION_TAB,
-);
-
 const sampleDatabase = handleActions(
   {
     [ADDING_SAMPLE_DATABASE]: () => ({ loading: true }),
@@ -389,7 +382,6 @@ export default combineReducers({
   editingDatabase,
   initializeError,
   deletionError,
-  databaseCreationStep,
   deletes,
   sampleDatabase,
 });
