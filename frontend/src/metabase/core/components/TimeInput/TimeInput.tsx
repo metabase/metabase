@@ -1,7 +1,10 @@
-import React, { forwardRef, Ref, useCallback } from "react";
+import React, { forwardRef, Ref } from "react";
 import { t } from "ttag";
-import moment, { Moment } from "moment";
+import { Moment } from "moment";
 import Tooltip from "metabase/components/Tooltip";
+
+import useTimeInput, { BaseTimeInputProps } from "./useTimeInput";
+
 import {
   InputClearButton,
   InputClearIcon,
@@ -12,12 +15,8 @@ import {
   InputRoot,
 } from "./TimeInput.styled";
 
-export interface TimeInputProps {
-  value: Moment;
-  is24HourMode?: boolean;
-  autoFocus?: boolean;
+export interface TimeInputProps extends BaseTimeInputProps {
   hasClearButton?: boolean;
-  onChange?: (value: Moment) => void;
   onClear?: (value: Moment) => void;
 }
 
@@ -32,57 +31,19 @@ const TimeInput = forwardRef(function TimeInput(
   }: TimeInputProps,
   ref: Ref<HTMLDivElement>,
 ): JSX.Element {
-  const hoursText = value.format(is24HourMode ? "HH" : "hh");
-  const minutesText = value.format("mm");
-  const isAm = value.hours() < 12;
-  const isPm = !isAm;
-  const amText = moment.localeData().meridiem(0, 0, false);
-  const pmText = moment.localeData().meridiem(12, 0, false);
-
-  const handleHoursChange = useCallback(
-    (hours = 0) => {
-      const newValue = value.clone();
-      if (is24HourMode) {
-        newValue.hours(hours % 24);
-      } else {
-        newValue.hours((hours % 12) + (isAm ? 0 : 12));
-      }
-      onChange?.(newValue);
-    },
-    [value, isAm, is24HourMode, onChange],
-  );
-
-  const handleMinutesChange = useCallback(
-    (minutes = 0) => {
-      const newValue = value.clone();
-      newValue.minutes(minutes % 60);
-      onChange?.(newValue);
-    },
-    [value, onChange],
-  );
-
-  const handleAmClick = useCallback(() => {
-    if (isPm) {
-      const newValue = value.clone();
-      newValue.hours(newValue.hours() - 12);
-      onChange?.(newValue);
-    }
-  }, [value, isPm, onChange]);
-
-  const handlePmClick = useCallback(() => {
-    if (isAm) {
-      const newValue = value.clone();
-      newValue.hours(newValue.hours() + 12);
-      onChange?.(newValue);
-    }
-  }, [value, isAm, onChange]);
-
-  const handleClearClick = useCallback(() => {
-    const newValue = value.clone();
-    newValue.hours(0);
-    newValue.minutes(0);
-    onClear?.(newValue);
-  }, [value, onClear]);
+  const {
+    isAm,
+    isPm,
+    hoursText,
+    minutesText,
+    amText,
+    pmText,
+    handleHoursChange,
+    handleMinutesChange,
+    handleAM: handleAmClick,
+    handlePM: handlePmClick,
+    handleClear: handleClearClick,
+  } = useTimeInput({ value, is24HourMode, onChange, onClear });
 
   return (
     <InputRoot ref={ref}>
