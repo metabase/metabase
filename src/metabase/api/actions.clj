@@ -1,23 +1,20 @@
 (ns metabase.api.actions
   "`/api/actions/` endpoints."
-  (:require
-   [clojure.walk :as walk]
-   [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
-   [metabase.api.common :as api]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.models.database :refer [Database]]
-   [metabase.models.setting :as setting]
-   [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [schema.core :as s]))
+  (:require [compojure.core :as compojure :refer [POST]]
+            [metabase.actions :as actions]
+            [metabase.api.common :as api]
+            [metabase.driver :as driver]
+            [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.schema :as mbql.s]
+            [metabase.models.database :refer [Database]]
+            [metabase.models.setting :as setting]
+            [metabase.util :as u]
+            [metabase.util.i18n :as i18n]
+            [schema.core :as s]))
 
 (defn- do-check-actions-enabled [database-id f]
   {:pre [(integer? database-id)]}
-  (let [{db-settings :settings, :as db} (Database database-id)
-        driver                          (driver.u/database->driver database-id)]
+  (let [{db-settings :settings, driver :engine, :as db} (Database database-id)]
     (when-not (driver/database-supports? driver :actions db)
       (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                                 (u/qualified-name driver)
@@ -34,31 +31,28 @@
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."
   [action :as {{:keys [database], :as query} :body}]
-  {database s/Int query {:filter mbql.s/Filter}}
+  {database s/Int
+   ;; Note -- this isn't going to work because filter isn't normalized yet, e.g. the API is going to get
+   ;;
+   ;;    ["=" ["field" ...] ...]
+   ;;
+   ;; instead of
+   ;;
+   ;;    [:= [:field ...] ...]
+   ;;
+   ;; So I disabled it for not since it broke my new test. -- Cam
+   query    {(s/optional-key :filter) mbql.s/Filter
+             s/Keyword                s/Any}}
   (do-check-actions-enabled
    database
    (fn [_driver]
      (actions/table-action! (keyword action) query))))
 
-(defn- kwdize-filter [strings-to-kw query]
-  (-> query
-      (update :type keyword)
-      (update-in [:query :filter]
-                 #(walk/postwalk
-                   (fn [x] (if (and (string? x) (contains? strings-to-kw x)) (keyword x) x))
-                   %))))
-
 (api/defendpoint POST "/row/:action"
   "Generic API endpoint for doing an action against a specific row."
   [action :as {{:keys [database] :as query} :body}]
   {database s/Int}
-  (let [query (kwdize-filter
-               ;; the mbql-query's filter clause needs to have forms like:
-               ;; [:= [:field ...]]
-               ;; but we recieve forms like
-               ;; ["=" ["field" ...]]
-               #{"=" "<" ">" "field" "and"}
-               query)]
+  (let [query (mbql.normalize/normalize query)]
     (try
       (s/validate mbql.s/Query query)
       (catch Exception e

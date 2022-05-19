@@ -88,8 +88,11 @@
         (is (partial= {:message (format "%s Database %d \"Birds\" does not support actions."
                                         (u/qualified-name ::feature-flag-test-driver)
                                         db-id)}
+                      ;; TODO -- not sure what the actual shape of this API is supposed to look like. We'll have to
+                      ;; update this test when the PR to support row insertion is in.
                       (mt/user-http-request :crowberto :post 400 "actions/table/insert"
-                                            {:table-id table-id
+                                            {:database db-id
+                                             :table-id table-id
                                              :values   {:name "Toucannery"}})))))))
 
 (deftest validation-test
@@ -114,7 +117,10 @@
         (testing action
           (testing "404 for unknown Table"
             (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
-                   (:message (mt/user-http-request :crowberto :post 404 action (assoc (mt/mbql-query venues {:filter [:= $id 1]}) :source-table Integer/MAX_VALUE))))))))
+                   (:message (mt/user-http-request :crowberto :post 404 action
+                                                   (mt/mbql-query venues {:source-table Integer/MAX_VALUE
+                                                                          :filter       [:= $id 1]}))))))))
       (testing "404 for unknown Row action"
         (is (= "Unknown row action \"fake\"."
-               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))))))
+               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake"
+                                               (mt/mbql-query venues {:filter [:= $id 1]})))))))))
