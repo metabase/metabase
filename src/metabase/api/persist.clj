@@ -112,8 +112,10 @@
   (validation/check-has-application-permission :setting)
   (when hours
     (public-settings/persisted-model-refresh-interval-hours! hours))
-  (when anchor
-    (public-settings/persisted-model-refresh-anchor-time! anchor))
+  (if (< hours 6)
+    (public-settings/persisted-model-refresh-anchor-time! "00:00")
+    (when anchor
+      (public-settings/persisted-model-refresh-anchor-time! anchor)))
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
