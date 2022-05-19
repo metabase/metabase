@@ -1,4 +1,4 @@
-# Ldap
+# LDAP
 
 /api/ldap endpoints.
 

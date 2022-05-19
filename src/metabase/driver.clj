@@ -433,7 +433,10 @@
     :advanced-math-expressions
 
     ;; Does the driver support percentile calculations (including median)
-    :percentile-aggregations})
+    :percentile-aggregations
+
+    ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
+    :actions})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in

@@ -59,6 +59,17 @@ export const STRUCTURED_QUERY_TEMPLATE = {
     "source-table": null,
   },
 };
+
+export interface FilterSection {
+  name: string;
+  icon: string;
+  items: DimensionOption[];
+}
+
+export interface DimensionOption {
+  dimension: Dimension;
+}
+
 /**
  * A wrapper around an MBQL (`query` type @type {DatasetQuery}) object
  */
@@ -830,7 +841,7 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns An array of MBQL @type {Filter}s from the last two query stages
    */
-  topLevelFilters(stages = 2): Filter[] {
+  topLevelFilters(stages = 2): FilterWrapper[] {
     const queries = this.queries().slice(-stages);
     return [].concat(...queries.map(q => q.filters()));
   }
@@ -853,7 +864,10 @@ class StructuredQueryInner extends AtomicQuery {
     });
   }
 
-  topLevelFilterFieldOptionSections(filter = null, stages = 2) {
+  topLevelFilterFieldOptionSections(
+    filter = null,
+    stages = 2,
+  ): FilterSection[] {
     const queries = this.queries().slice(-stages);
 
     // allow post-aggregation filtering

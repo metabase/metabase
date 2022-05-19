@@ -52,6 +52,8 @@ import { syncHistoryWithStore } from "react-router-redux";
 import HTML5Backend from "react-dnd-html5-backend";
 import { DragDropContextProvider } from "react-dnd";
 
+import GlobalStyles from "metabase/styled-components/theme/global";
+
 // remove trailing slash
 const BASENAME = window.MetabaseRoot.replace(/\/+$/, "");
 
@@ -77,6 +79,7 @@ function _init(reducers, getRoutes, callback) {
     <Provider store={store} ref={ref => (root = ref)}>
       <DragDropContextProvider backend={HTML5Backend} context={{ window }}>
         <ThemeProvider theme={theme}>
+          <GlobalStyles />
           <Router history={history}>{routes}</Router>
         </ThemeProvider>
       </DragDropContextProvider>

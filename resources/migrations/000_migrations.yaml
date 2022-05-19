@@ -11627,6 +11627,256 @@ databaseChangeLog:
                     foreignKeyName: fk_persisted_info_ref_creator_id
                     deferrable: false
                     initiallyDeferred: false
+  - changeSet:
+      id: v44.00-001
+      author: snoe
+      comment: Added 0.44.0 - Remove not null constraint from persisted_info.creator_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: creator_id
+            columnDataType: int
+  - changeSet:
+      id: v44.00-012
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: action
+            remarks: An action is something you can do, such as run a readwrite query
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the action was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Type of action
+                  name: type
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v44.00-013
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: query_action
+            remarks: A readwrite query type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_action_ref_card_id
+                    deleteCascade: true
+  - changeSet:
+      id: v44.00-014
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - addPrimaryKey:
+            tableName: query_action
+            columnNames: action_id, card_id
+            constraintName: pk_query_action
+  - changeSet:
+      id: v44.00-015
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: emitter
+            remarks: An Emitter reperents the fact an Action can act upon the given object
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the emitter was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the emitter was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON for vis settings and other things frontend related
+                  name: options
+                  type: ${text.type}
+              - column:
+                  remarks: JSON that has a mapping of columns to parameters in the query
+                  name: parameter_mappings
+                  type: ${text.type}
+  - changeSet:
+      id: v44.00-016
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: emitter_action
+            remarks: Join table for emitter and actions
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_emitter_action_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_emitter_action_ref_action_id
+                    deleteCascade: true
+  - changeSet:
+      id: v44.00-017
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - addPrimaryKey:
+            tableName: emitter_action
+            columnNames: emitter_id, action_id
+            constraintName: pk_emitter_action
+  - changeSet:
+      id: v44.00-018
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: dashboard_emitter
+            remarks: Emitter for this dashboard
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_emitter_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: dashboard_id
+                  type: int
+                  remarks: The related dashboard
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_dashboard
+                    referencedColumnNames: id
+                    foreignKeyName: fk_dashboard_emitter_ref_dashboard_id
+                    deleteCascade: true
+  - changeSet:
+      id: v44.00-019
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - addPrimaryKey:
+            tableName: dashboard_emitter
+            columnNames: dashboard_id, emitter_id
+            constraintName: pk_dashboard_emitter
+  - changeSet:
+      id: v44.00-020
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: card_emitter
+            remarks: Emitter for this card
+            columns:
+              - column:
+                  name: emitter_id
+                  type: int
+                  remarks: The related emitter
+                  constraints:
+                    nullable: false
+                    referencedTableName: emitter
+                    referencedColumnNames: id
+                    foreignKeyName: fk_card_emitter_ref_emitter_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: The related card
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_card_emitter_ref_card_id
+                    deleteCascade: true
+  - changeSet:
+      id: v44.00-021
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - addPrimaryKey:
+            tableName: card_emitter
+            columnNames: card_id, emitter_id
+            constraintName: pk_card_emitter
+  - changeSet:
+      id: v44.00-022
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_write
+                  type: boolean
+                  defaultValueBoolean: false
+                  remarks: Indicates that this query will perform writes to a db
+                  constraints:
+                    nullable: false
+            tableName: report_card
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

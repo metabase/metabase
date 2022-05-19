@@ -63,7 +63,9 @@
                                set))
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
     {:data   persisted-infos
-     :total  (db/count PersistedInfo :database_id [:in writable-db-ids])
+     :total  (if (seq writable-db-ids)
+               (db/count PersistedInfo :database_id [:in writable-db-ids])
+               0)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
@@ -95,7 +97,7 @@
   [:as {{:keys [hours], :as _body} :body}]
   {hours HoursInterval}
   (validation/check-has-application-permission :setting)
-  (public-settings/persisted-model-refresh-interval-hours hours)
+  (public-settings/persisted-model-refresh-interval-hours! hours)
   (task.persist-refresh/reschedule-refresh!)
   api/generic-204-no-content)
 
@@ -104,7 +106,7 @@
   []
   (validation/check-has-application-permission :setting)
   (log/info (tru "Enabling model persistence"))
-  (public-settings/persisted-models-enabled true)
+  (public-settings/persisted-models-enabled! true)
   (task.persist-refresh/enable-persisting!)
   api/generic-204-no-content)
 
@@ -128,11 +130,11 @@
   []
   (validation/check-has-application-permission :setting)
   (when (public-settings/persisted-models-enabled)
-    (try (public-settings/persisted-models-enabled false)
+    (try (public-settings/persisted-models-enabled! false)
          (disable-persisting)
          (catch Exception e
            ;; re-enable so can continue to attempt to clean up
-           (public-settings/persisted-models-enabled true)
+           (public-settings/persisted-models-enabled! true)
            (throw e))))
   api/generic-204-no-content)
 

@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t, ngettext, msgid } from "ttag";
 
-import { useAsyncFunction } from "metabase/hooks/use-async-function";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
 import Field from "metabase-lib/lib/metadata/Field";
 import Fields from "metabase/entities/fields";
 import { formatNumber } from "metabase/lib/formatting";
@@ -61,7 +61,7 @@ export function CategoryFingerprint({
   const formattedDistinctCount = formatNumber(distinctCount);
 
   const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
-  const safeFetchFieldValues = useAsyncFunction(fetchFieldValues);
+  const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
   useEffect(() => {
     if (shouldFetchFieldValues) {
       setIsLoading(true);

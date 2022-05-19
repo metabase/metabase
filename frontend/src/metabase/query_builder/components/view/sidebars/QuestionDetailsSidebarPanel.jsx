@@ -5,7 +5,7 @@ import QuestionActionButtons from "metabase/query_builder/components/QuestionAct
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import {
   Container,
@@ -14,15 +14,12 @@ import {
   ModerationSectionContainer,
 } from "./QuestionDetailsSidebarPanel.styled";
 import DatasetManagementSection from "./DatasetManagementSection";
-import ModelCacheSection from "./ModelCacheSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
   onOpenModal: PropTypes.func.isRequired,
   isBookmarked: PropTypes.bool.isRequired,
   toggleBookmark: PropTypes.func.isRequired,
-  persistDataset: PropTypes.func.isRequired,
-  unpersistDataset: PropTypes.func.isRequired,
 };
 
 function QuestionDetailsSidebarPanel({
@@ -30,8 +27,6 @@ function QuestionDetailsSidebarPanel({
   onOpenModal,
   isBookmarked,
   toggleBookmark,
-  persistDataset,
-  unpersistDataset,
 }) {
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
@@ -55,15 +50,17 @@ function QuestionDetailsSidebarPanel({
           onOpenModal={onOpenModal}
           isBookmarked={isBookmarked}
           toggleBookmark={toggleBookmark}
-          persistDataset={persistDataset}
-          unpersistDataset={unpersistDataset}
         />
         <ClampedDescription
           visibleLines={8}
           description={description}
           onEdit={onDescriptionEdit}
         />
-        {isDataset && <ModelCacheSection model={question} />}
+        {isDataset && question.isPersisted() && (
+          <PLUGIN_MODEL_PERSISTENCE.ModelCacheManagementSection
+            model={question}
+          />
+        )}
         {hasSecondarySection && (
           <BorderedSectionContainer>
             {isDataset && canWrite && (

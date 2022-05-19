@@ -92,6 +92,43 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
       cy.findByText("Learn how to create metrics");
     });
+
+    it.skip("custom expression aggregation should work in metrics (metabase#22700)", () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const customExpression = "Count / Distinct([Product ID])";
+
+      cy.visit("/admin/datamodel/metrics");
+
+      cy.button("New metric").click();
+      cy.findByText("Select a table").click();
+      cy.findByText("Orders").click();
+      // It sees that there is one dataset query for each of the fields:
+      // `data`, `filtered by` and `view`
+      cy.wait(["@dataset", "@dataset", "@dataset"]);
+
+      cy.findByText("Count").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+
+      cy.get(".ace_text-input")
+        .click()
+        .type(`{selectall}{del}${customExpression}`)
+        .blur();
+
+      cy.findByPlaceholderText("Name (required)").type("Foo");
+
+      cy.button("Done").click();
+      cy.wait("@dataset");
+
+      // The test should fail on this step first
+      cy.findByText("Result: 93.8");
+
+      // Let's make sure the custom expression is still preserved
+      cy.findByText("Foo").click();
+      cy.get(".ace_content").should("contain", customExpression);
+    });
   });
 
   describe("with metrics", () => {

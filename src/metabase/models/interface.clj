@@ -344,13 +344,3 @@
   permissions for the paths returned by its implementation of `perms-objects-set`. (`read-or-write` is either `:read` or
   `:write` and passed to `perms-objects-set`; you'll usually want to partially bind it in the implementation map)."
   (partial check-perms-with-fn 'metabase.models.permissions/set-has-partial-permissions-for-set?))
-
-(defn has-any-permissions?
-  "Accepts multiple permission-checking functions, such as the ones returned by `current-user-has-full-permissions?`
-  and `current-user-has-partial-permissions?`, and returns a function which returns true if any permission functions
-  return true."
-  [& permission-check-fns]
-  (fn [object]
-    (->> ((apply juxt permission-check-fns) object)
-         (some true?)
-         boolean)))

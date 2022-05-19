@@ -23,7 +23,7 @@
   strategy defined by the Setting `humanization-strategy`. With two args, you may specify a custom strategy (intended
   mainly for the internal implementation):
 
-     (humanization-strategy :simple)
+     (humanization-strategy! :simple)
      (name->human-readable-name \"cool_toucans\")                         ;-> \"Cool Toucans\"
      ;; this is the same as:
      (name->human-readable-name (humanization-strategy) \"cool_toucans\") ;-> \"Cool Toucans\"
@@ -86,7 +86,6 @@
   [old-strategy :- s/Keyword]
   (doseq [model ['Table 'Field]]
     (re-humanize-names! old-strategy model)))
-
 
 (defn- set-humanization-strategy! [new-value]
   (let [new-strategy (keyword (or new-value :simple))]

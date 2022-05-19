@@ -1,6 +1,6 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
-import { parseSearchOptions } from "metabase/lib/browser";
+import { parseSearchOptions, parseHashOptions } from "metabase/lib/browser";
 import { IFRAMED, IFRAMED_IN_SELF } from "metabase/lib/dom";
 import { setOptions } from "metabase/redux/embed";
 import { isFitViewportMode } from "metabase/hoc/FitViewPort";
@@ -41,7 +41,12 @@ export function initializeEmbedding(store) {
         }
       }
     });
-    store.dispatch(setOptions(parseSearchOptions(window.location.search)));
+    store.dispatch(
+      setOptions({
+        ...parseSearchOptions(window.location.search),
+        ...parseHashOptions(window.location.hash),
+      }),
+    );
   }
 }
 

@@ -29,8 +29,11 @@
 
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
-                              :percentile-aggregations false}]
-  (defmethod driver/supports? [:h2 feature] [_ _] supported?))
+                              :percentile-aggregations false
+                              :actions                 true}]
+  (defmethod driver/database-supports? [:h2 feature]
+    [_driver _feature _database]
+    supported?))
 
 (defmethod driver/connection-properties :h2
   [_]

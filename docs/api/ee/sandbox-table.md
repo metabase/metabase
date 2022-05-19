@@ -18,6 +18,8 @@ This endpoint essentially acts as a wrapper for the OSS version of this route. W
 
 *  **`include_hidden_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
+*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
 ---
 
 [<< Back to API index](../../api-documentation.md)
