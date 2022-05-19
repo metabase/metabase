@@ -55,7 +55,7 @@
       ;; (assoc :pooling "OFF")
       ;; remove :ssl in case it's false; DB will still try (& fail) to connect if the key is there
       (dissoc :ssl)
-      (merge {:sslmode "disable", :pooling "OFF"})
+      (merge {:sslmode "disable", :pooling "OFF", :force "true"})
       (set/rename-keys {:dbname :db})
       ocient
       ;; note: seperator style is misspelled in metabase core code
