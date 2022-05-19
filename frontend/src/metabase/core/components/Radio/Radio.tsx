@@ -17,7 +17,6 @@ import {
   RadioLabelBubble,
   RadioLabelNormal,
   RadioLabelText,
-  RadioGroup,
   RadioGroupBubble,
   RadioGroupNormal,
 } from "./Radio.styled";
@@ -223,5 +222,11 @@ function isDefaultOption<TValue>(
 }
 
 export default Object.assign(Radio, {
-  RadioGroup,
+  RadioGroupVariants: [RadioGroupBubble, RadioGroupNormal],
+  RadioLabelVariants: [RadioLabelBubble, RadioLabelNormal, RadioLabelText],
+  RadioContainerVariants: [
+    RadioContainerBubble,
+    RadioContainerNormal,
+    RadioContainerUnderlined,
+  ],
 });

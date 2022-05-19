@@ -30,8 +30,7 @@ import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
-@ExplicitSize()
-export default class DashboardGrid extends Component {
+class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -92,9 +91,10 @@ export default class DashboardGrid extends Component {
         card => String(card.id) === layoutItem.i,
       );
 
+      const keys = ["h", "w", "x", "y"];
       const changed = !_.isEqual(
-        layoutItem,
-        this.getLayoutForDashCard(dashboardCard),
+        _.pick(layoutItem, keys),
+        _.pick(this.getLayoutForDashCard(dashboardCard), keys),
       );
 
       if (changed) {
@@ -368,3 +368,5 @@ export default class DashboardGrid extends Component {
     );
   }
 }
+
+export default ExplicitSize()(DashboardGrid);

@@ -3,7 +3,7 @@ import React, { Component } from "react";
 
 import Tooltip from "metabase/components/Tooltip";
 
-import ResizeObserver from "resize-observer-polyfill";
+import resizeObserver from "metabase/lib/resize-observer";
 
 export default class Ellipsified extends Component {
   constructor(props, context) {
@@ -20,25 +20,23 @@ export default class Ellipsified extends Component {
     showTooltip: true,
   };
 
+  _content = null;
+
   componentDidMount() {
-    // NOTE: Assumes _content won't change. Is this safe?
-    this._ro = new ResizeObserver((entries, observer) => {
-      this._updateTruncated();
-    });
-    this._ro.observe(this._content);
+    resizeObserver.subscribe(this._content, this._updateTruncated);
     this._updateTruncated();
   }
 
   componentWillUnmount() {
-    this._ro.disconnect();
+    resizeObserver.unsubscribe(this._content, this._updateTruncated);
   }
 
-  _updateTruncated() {
+  _updateTruncated = () => {
     const isTruncated = this._content.offsetWidth < this._content.scrollWidth;
     if (this.state.isTruncated !== isTruncated) {
       this.setState({ isTruncated });
     }
-  }
+  };
 
   render() {
     const {

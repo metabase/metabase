@@ -36,6 +36,18 @@ describe("scenarios > dashboard > text-box", () => {
       cy.icon("edit_document");
     });
 
+    it("should render visualization options (metabase#22061)", () => {
+      showDashboardCardActions(1);
+
+      // edit mode
+      cy.icon("palette")
+        .eq(1)
+        .click();
+
+      cy.findByText("Vertical Alignment");
+      cy.findByText("Horizontal Alignment");
+    });
+
     it("should not render edit and preview actions when not editing", () => {
       // Exit edit mode and check for edit options
       cy.findByText("Save").click();

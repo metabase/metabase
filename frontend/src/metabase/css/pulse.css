@@ -38,7 +38,7 @@
 }
 
 .PulseListItem button {
-  font-family: "Lato", Helvetica, sans-serif;
+  font-family: var(--default-font-family), Helvetica, sans-serif;
 }
 
 .PulseEditButton {

@@ -147,3 +147,19 @@ export const LOCATION_OPTIONS = [
     name: t`Country`,
   },
 ];
+
+export const TYPE_SUPPORTS_LINKED_FILTERS = [
+  "string",
+  "category",
+  "id",
+  "location",
+];
+
+export const TYPE_USABLE_AS_LINKED_FILTER = [
+  "date",
+  "string",
+  "number",
+  "id",
+  "category",
+  "location",
+];

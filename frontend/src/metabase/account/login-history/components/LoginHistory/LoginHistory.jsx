@@ -2,9 +2,14 @@
 import React from "react";
 import _ from "underscore";
 import moment from "moment";
+import { t } from "ttag";
+
 import Card from "metabase/components/Card";
 import Label from "metabase/components/type/Label";
 import Text from "metabase/components/type/Text";
+import EmptyState from "metabase/components/EmptyState";
+import NoResults from "assets/img/no_results.svg";
+
 import {
   LoginGroup,
   LoginItemContent,
@@ -56,6 +61,15 @@ const formatItems = items =>
 function LoginHistoryList({ loginHistory }) {
   const items = formatItems(loginHistory);
   const groups = _.groupBy(items, item => item.date);
+
+  if (!items || !items.length) {
+    return (
+      <EmptyState
+        title={t`No logins`}
+        illustrationElement={<img src={NoResults} />}
+      />
+    );
+  }
 
   return <div>{_.map(groups, LoginHistoryGroup)}</div>;
 }

@@ -67,6 +67,8 @@ export const SearchInput = styled.input<{ isActive: boolean }>`
   color: ${color("text-dark")};
   font-weight: 700;
 
+  width: 100%;
+
   &:focus {
     outline: none;
   }

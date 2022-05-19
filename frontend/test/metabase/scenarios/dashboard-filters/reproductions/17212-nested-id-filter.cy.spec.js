@@ -14,7 +14,7 @@ const baseQuestion = {
   query: { "source-table": PRODUCTS_ID },
 };
 
-describe.skip("issue 17212", () => {
+describe("issue 17212", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

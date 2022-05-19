@@ -19,7 +19,6 @@ import _ from "underscore";
 import { ResizableBox } from "react-resizable";
 
 import { isEventOverElement } from "metabase/lib/dom";
-import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import ExplicitSize from "metabase/components/ExplicitSize";
 
@@ -43,10 +42,7 @@ import "./NativeQueryEditor.css";
 const AUTOCOMPLETE_DEBOUNCE_DURATION = 700;
 const AUTOCOMPLETE_CACHE_DURATION = AUTOCOMPLETE_DEBOUNCE_DURATION * 1.2; // tolerate 20%
 
-@ExplicitSize()
-@Snippets.loadList({ loadingAndErrorWrapper: false })
-@SnippetCollections.loadList({ loadingAndErrorWrapper: false })
-export default class NativeQueryEditor extends Component {
+class NativeQueryEditor extends Component {
   _localUpdate = false;
 
   constructor(props) {
@@ -178,9 +174,14 @@ export default class NativeQueryEditor extends Component {
   }, 100);
 
   handleKeyDown = e => {
-    const ENTER_KEY = 13;
-    if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
-      this.runQuery();
+    const { isRunning, cancelQuery } = this.props;
+
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      if (isRunning) {
+        cancelQuery();
+      } else {
+        this.runQuery();
+      }
     }
   };
 
@@ -202,21 +203,7 @@ export default class NativeQueryEditor extends Component {
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
-      runQuestionQuery()
-        // <hack>
-        // This is an attempt to fix a conflict between Ace and react-draggable.
-        // TableInteractive uses react-draggable for the column headers. When
-        // that's first added (as a result of runninga query), Ace freezes until
-        // the arrow keys are hit or text is deleted.
-        // Bluring and refocusing gets it out of that state. Here we try and
-        // wait until just after a table is added. That's super error prone, but
-        // we're just doing a best effort to eliminate the freezing.
-        .then(() => delay(1500))
-        .then(() => {
-          this._editor.blur();
-          this._editor.focus();
-        });
-      // </hack>
+      runQuestionQuery();
     }
   };
 
@@ -416,6 +403,7 @@ export default class NativeQueryEditor extends Component {
       hasTopBar = true,
       hasEditingSidebar = true,
       resizableBoxProps = {},
+      snippetCollections = [],
     } = this.props;
 
     const parameters = query.question().parameters();
@@ -424,6 +412,10 @@ export default class NativeQueryEditor extends Component {
       <div className="NativeQueryEditorDragHandleWrapper">
         <div className="NativeQueryEditorDragHandle" />
       </div>
+    );
+
+    const canSaveSnippets = snippetCollections.some(
+      collection => collection.can_write,
     );
 
     return (
@@ -483,6 +475,7 @@ export default class NativeQueryEditor extends Component {
             openSnippetModalWithSelectedText={openSnippetModalWithSelectedText}
             runQuery={this.runQuery}
             target={() => this.editor.current.querySelector(".ace_selection")}
+            canSaveSnippets={canSaveSnippets}
           />
 
           {this.props.modalSnippet && (
@@ -510,3 +503,9 @@ export default class NativeQueryEditor extends Component {
     );
   }
 }
+
+export default _.compose(
+  ExplicitSize(),
+  Snippets.loadList({ loadingAndErrorWrapper: false }),
+  SnippetCollections.loadList({ loadingAndErrorWrapper: false }),
+)(NativeQueryEditor);

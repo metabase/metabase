@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 import _ from "underscore";
+import querystring from "querystring";
 
 import Question from "metabase-lib/lib/Question";
 import {
@@ -77,8 +78,8 @@ export default ({ question, clicked }) => {
           clickBehavior,
         });
 
-        const urlSearchParams = new URLSearchParams(queryParams);
-        const url = `/dashboard/${targetId}?${urlSearchParams.toString()}`;
+        const urlSearchParams = querystring.stringify(queryParams);
+        const url = `/dashboard/${targetId}?${urlSearchParams}`;
         behavior = { url: () => url };
       }
     } else if (linkType === "question" && extraData && extraData.questions) {
@@ -105,9 +106,7 @@ export default ({ question, clicked }) => {
 
       const url = targetQuestion.isStructured()
         ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-        : `${targetQuestion.getUrl()}?${new URLSearchParams(
-            queryParams,
-          ).toString()}`;
+        : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
 
       behavior = { url: () => url };
     }

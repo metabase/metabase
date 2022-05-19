@@ -41,7 +41,7 @@ export function Relationships({
   return (
     <ObjectRelationships>
       <div className="text-bold text-medium">
-        {jt`This ${(
+        {jt`${(
           <span className="text-dark" key={objectName}>
             {objectName}
           </span>
@@ -85,8 +85,9 @@ function Relationship({
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && fkCountInfo.value;
+  const originTableName = fk.origin.table.display_name;
 
-  const relationName = inflect(fk.origin.table.display_name, fkCountValue);
+  const relationName = inflect(originTableName, fkCountValue);
 
   const via =
     fkCount > 1 ? (
@@ -102,7 +103,7 @@ function Relationship({
   });
 
   return (
-    <li>
+    <li data-testid={`fk-relation-${originTableName.toLowerCase()}`}>
       <div
         className={classes}
         onClick={fkClickable ? () => foreignKeyClicked(fk) : undefined}

@@ -302,18 +302,21 @@ const loadingDashCards = handleActions(
       }),
     },
     [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dashcardIds: Object.values(payload.entities.dashcard || {})
+      next: (state, { payload }) => {
+        const cardIds = Object.values(payload.entities.dashcard || {})
           .filter(dc => !isVirtualDashCard(dc))
-          .map(dc => dc.id),
-        loadingStatus: "idle",
-      }),
+          .map(dc => dc.id);
+        return {
+          ...state,
+          dashcardIds: cardIds,
+          loadingIds: cardIds,
+          loadingStatus: "idle",
+        };
+      },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: state => ({
         ...state,
-        loadingIds: state.dashcardIds,
         loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
         startTime:
           state.dashcardIds.length > 0 &&

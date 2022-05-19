@@ -201,6 +201,20 @@ describe("metabase/lib/expressions/recursive-parser", () => {
     expect(aggregation("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
   });
 
+  it("should handle aggregation with another function", () => {
+    const type = "aggregation";
+    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+
+    const A = ["dimension", "A"];
+    const B = ["dimension", "B"];
+
+    expect(aggregation("floor(Sum(A))")).toEqual(["floor", ["sum", A]]);
+    expect(aggregation("round(Distinct(B)/2)")).toEqual([
+      "round",
+      ["/", ["distinct", B], 2],
+    ]);
+  });
+
   it("should prioritize existing metrics over functions", () => {
     const mockResolve = (kind, name) => {
       if (name === "Count" || "ABC".indexOf(name) >= 0) {

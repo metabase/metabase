@@ -31,9 +31,13 @@ function setup({
       database: () => ({
         hasFeature: feature =>
           feature === "nested-queries" ? questionDatabaseSupportsModels : true,
+        supportsPersistence: () => false,
+        isPersisted: () => false,
       }),
     }),
     isDataset: () => isDataModel,
+    isSaved: () => true,
+    isPersisted: () => false,
   };
 
   const settingsState = {

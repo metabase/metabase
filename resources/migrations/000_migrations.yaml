@@ -11501,6 +11501,142 @@ databaseChangeLog:
             columnName: icon
             defaultNullValue: "star"
 
+  - changeSet:
+      id: v43.00-062
+      author: snoe
+      comment: Added 0.43.0 - Unify datatype with revision.timestamp for timezone info (see 17829).
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+      id: v44.00-000
+      author: dpsutton
+      comment: Added 0.44.0 - Persisted Info for models
+      changes:
+        - createTable:
+            tableName: persisted_info
+            remarks: Table holding information about persisted models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database associated to the persisted card'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_database_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card model persisted'
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: Slug of the card which will form the persisted table name
+                  name: question_slug
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Name of the table persisted
+                  name: table_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON object that captures the state of the table when we persisted
+                  name: definition
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Hash of the query persisted
+                  name: query_hash
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Indicating whether the persisted table is active and can be swapped
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Persisted table state (creating, persisted, refreshing, deleted)
+                  name: state
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh was started
+                  name: refresh_begin
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh ended
+                  name: refresh_end
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the most recent state changed
+                  name: state_change_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Error message from persisting if applicable
+                  name: error
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the model was first persisted
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The person who persisted a model
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-001
+      author: snoe
+      comment: Added 0.44.0 - Remove not null constraint from persisted_info.creator_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: creator_id
+            columnDataType: int
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

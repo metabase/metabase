@@ -72,7 +72,7 @@ describe("scenarios > question > settings", () => {
         .should("not.exist");
     });
 
-    it("should preserve correct order of columns after column removal or addition via sidebar (metabase#13455)", () => {
+    it.skip("should preserve correct order of columns after column removal via sidebar (metabase#13455)", () => {
       cy.viewport(2000, 1200);
       // Orders join Products
       visitQuestionAdhoc({
@@ -173,10 +173,6 @@ describe("scenarios > question > settings", () => {
         cy.icon("play")
           .last()
           .click();
-
-        // Prevent performing actions while the query is being executed.
-        // Which caused some race condition and failed the test.
-        cy.wait("@dataset");
       }
 
       function findColumnAtIndex(column_name, index) {

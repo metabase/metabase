@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
@@ -15,22 +16,7 @@ import ModalContent from "metabase/components/ModalContent";
 import PasswordReveal from "metabase/components/PasswordReveal";
 import { PasswordSuccessMessage } from "./UserSuccessModal.styled";
 
-@User.load({
-  id: (state, props) => props.params.userId,
-  wrapped: true,
-})
-@connect(
-  (state, props) => ({
-    temporaryPassword: getUserTemporaryPassword(state, {
-      userId: props.params.userId,
-    }),
-  }),
-  {
-    onClose: () => push("/admin/people"),
-    clearTemporaryPassword,
-  },
-)
-export default class UserSuccessModal extends React.Component {
+class UserSuccessModal extends React.Component {
   componentWillUnmount() {
     this.props.clearTemporaryPassword(this.props.params.userId);
   }
@@ -51,6 +37,24 @@ export default class UserSuccessModal extends React.Component {
     );
   }
 }
+
+export default _.compose(
+  User.load({
+    id: (state, props) => props.params.userId,
+    wrapped: true,
+  }),
+  connect(
+    (state, props) => ({
+      temporaryPassword: getUserTemporaryPassword(state, {
+        userId: props.params.userId,
+      }),
+    }),
+    {
+      onClose: () => push("/admin/people"),
+      clearTemporaryPassword,
+    },
+  ),
+)(UserSuccessModal);
 
 const EmailSuccess = ({ user }) => (
   <div>{jt`We’ve sent an invite to ${(

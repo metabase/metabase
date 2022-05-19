@@ -35,8 +35,8 @@ describeOSS("scenarios > admin > troubleshooting > help", () => {
       .parents("a")
       .should("have.prop", "href")
       .and(
-        "equal",
-        "https://www.metabase.com/help?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help",
+        "match",
+        /^https:\/\/www\.metabase\.com\/help\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v(?:(?!diag=).)+$/,
       );
   });
 });
@@ -55,8 +55,8 @@ describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
       .parents("a")
       .should("have.prop", "href")
       .and(
-        "equal",
-        "https://www.metabase.com/help-premium?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help",
+        "match",
+        /^https:\/\/www\.metabase\.com\/help-premium\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v.+&diag=%7B.+%7D$/,
       );
   });
 });

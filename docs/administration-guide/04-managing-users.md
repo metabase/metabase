@@ -20,17 +20,65 @@ To deactivate someone's account, click on the three dots icon on the right of a 
 
 ![Remove a user](images/RemoveUser.png)
 
+### Reactivating an account
+
 To reactivate a deactivated account, click the **Deactivated** radio button at the top of the people list to see the list of deactivated accounts. Click on the icon on the far right to reactivate that account, allowing them to log in to Metabase again.
+
+### Deleting an account
+
+Metabase doesn't explicitly support account deletion. Instead, Metabase deactivates accounts so people can't log in to them, while it preserves any questions, models, dashboards, and other items created by those accounts.
+
+If you want to delete an account because the account information was set up incorrectly, you can deactivate the old account and create a new one instead.
+
+1. Change the name and email associated with the old account.
+2. [Deactivate](#deactivating-an-account) the old account.
+3. [Create a new account](#creating-accounts-for-your-team) with the person's correct information.
 
 ### Editing an account
 
 You can edit someone's name and email address by clicking the three dots icon and choosing **Edit Details**. Note: be careful when changing someone's email address, because _this will change the address they’ll use to log in to Metabase_.
+
+### Checking someone's auth method
+
+Search for a person and look for an icon beside their name.
+
+- If they log in using Google credentials, Metabase displays a Google icon. 
+- If they log in using an email address and password stored in Metabase, no icon is shown. 
+
+Note that the type of user is set when the account is first created: if you create a user in Metabase, but that person then logs in via Google or some other form of [SSO](sso.md), the latter's icon will _not_ show up next to their name.
 
 ### Resetting someone’s password
 
 If you've already [configured your email settings](02-setting-up-email.md), people can reset their passwords using the "forgot password" link on the login screen. If you haven't yet configured your email settings, they will see a message telling them to ask an admin to reset their password for them.
 
 To reset a password for someone, just click the three dots icon next to their account and choose **Reset Password**. If you haven’t [configured your email settings](02-setting-up-email.md) yet, you’ll be given a temporary password that you’ll have to share with that person. Otherwise, they’ll receive a password reset email.
+
+### Resetting the admin password
+
+If you're using Metabase Cloud, [contact support](https://www.metabase.com/help-premium/) to reset your admin password.
+
+If you're a Metabase admin and have access to the server console, you can get Metabase to send you a password reset token:
+
+1.  Stop the running Metabase application.
+2.  Restart Metabase with `reset-password email@example.com`, where "email@example.com" is the email associated with the admin account:
+    ```
+    java -jar metabase.jar reset-password email@example.com
+    ```
+3.  Metabase will print out a random token like this:
+
+    ```
+    ...
+    Resetting password for email@example.com...
+
+    OK [[[1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89]]]
+    ```
+
+4.  Start Metabase normally again (_without_ the `reset-password` option).
+5.  Navigate to it in your browser using the path `/auth/reset_password/:token`, where ":token" is the token that was generated from the step above. The full URL should look something like this:
+    ```
+    https://metabase.example.com/auth/reset_password/1_7db2b600-d538-4aeb-b4f7-0cf5b1970d89
+    ```
+6.  You should now see a page where you can input a new password for the admin account.
 
 ### Unsubscribe from all subscriptions / alerts
 
@@ -45,6 +93,7 @@ To determine [who has access to what](05-setting-permissions.md), you’ll need 
 - Create one or more groups.
 - Choose which level of access that group has to different databases, collections, and so on.
 - Then add people to those groups.
+- (Optional) promote people to [group managers](#group-managers).
 
 To view and manage your groups, go to the **Admin Panel** > **People** tab, and then click on **Groups** from the side menu.
 
@@ -78,9 +127,39 @@ Click into a group and then click `Add members` to add people to that group. Cli
 
 To remove a group, click the X icon to the right of a group in the list to remove it (remember, you can’t remove the special default groups).
 
-### Adding people to groups
+#### Adding people to groups
 
-Adding people to groups allows you to assign [data access](05-setting-permissions.md) and [collection permissions](06-collections.md) to them. To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to.
+Adding people to groups allows you to assign 
+
+- [Data access](05-setting-permissions.md),
+- [Collection permissions](06-collections.md),
+- [Application permissions](application-permissions.md).
+
+To add someone to one or more groups, just click the Groups dropdown and click the checkboxes next to the group(s) you want to add the person to. You can also add people from the group's page.
+
+### Group managers
+
+{% include plans-blockquote.html feature="Group managers" %}
+
+**Group managers** can manage other people within their group.
+
+Group managers can:
+
+- Add or remove people from their group (that is, people who already have accounts in your Metabase).
+- View all people in the **Admin settings** > **People** tab.
+- Promote other people to group manager, or demote them from group manager to member.
+- Rename their group.
+
+Group managers are not admins, so their powers are limited. They cannot create new groups or invite new people to your Metabase.
+
+#### Promoting/demoting group managers
+
+To promote someone to become a group manager:
+
+1. Click on the **Gear** icon at the bottom of the navigation sidebar.
+2. Go to **Admin settings** > **People** > **Groups**.
+3. Select the group you want the person to manage. If the person isn't already in the group, you'll need to add that person to the group.
+4. Find the person you want to promote, hover over their member type, and click the up arrow to promote them to group manager. If you want to demote them, click on the down arrow.
 
 ### Grouping strategies
 

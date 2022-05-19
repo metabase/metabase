@@ -75,6 +75,7 @@ const ViewFooter = ({
   }
 
   const hasDataPermission = question.query().isEditable();
+  const hideChartSettings = result.error && !hasDataPermission;
 
   return (
     <ViewFooterRoot
@@ -84,7 +85,10 @@ const ViewFooter = ({
       <ButtonBar
         className="flex-full"
         left={[
-          QuestionFilterWidget.shouldRender({ question, queryBuilderMode }) && (
+          QuestionFilterWidget.shouldRender({
+            question,
+            queryBuilderMode,
+          }) && (
             <MobileQuestionFilterWidget
               className="sm-hide"
               mr={1}
@@ -107,7 +111,7 @@ const ViewFooter = ({
               onCloseSummary={onCloseSummary}
             />
           ),
-          hasDataPermission && (
+          !hideChartSettings && (
             <VizTypeButton
               key="viz-type"
               question={question}
@@ -118,7 +122,7 @@ const ViewFooter = ({
               }
             />
           ),
-          hasDataPermission && (
+          !hideChartSettings && (
             <VizSettingsButton
               key="viz-settings"
               ml={1}
@@ -146,7 +150,11 @@ const ViewFooter = ({
           )
         }
         right={[
-          QuestionRowCount.shouldRender({ question, result, isObjectDetail }) &&
+          QuestionRowCount.shouldRender({
+            question,
+            result,
+            isObjectDetail,
+          }) &&
             !isPreviewing && (
               <QuestionRowCount
                 key="row_count"

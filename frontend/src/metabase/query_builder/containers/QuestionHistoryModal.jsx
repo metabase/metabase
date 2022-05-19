@@ -4,10 +4,7 @@ import PropTypes from "prop-types";
 import Questions from "metabase/entities/questions";
 import HistoryModal from "metabase/containers/HistoryModal";
 
-@Questions.load({
-  id: (state, props) => props.questionId,
-})
-class QuestionHistoryModal extends React.Component {
+class QuestionHistoryModalInner extends React.Component {
   static propTypes = {
     question: PropTypes.object.isRequired,
     questionId: PropTypes.number.isRequired,
@@ -28,5 +25,9 @@ class QuestionHistoryModal extends React.Component {
     );
   }
 }
+
+const QuestionHistoryModal = Questions.load({
+  id: (state, props) => props.questionId,
+})(QuestionHistoryModalInner);
 
 export default QuestionHistoryModal;

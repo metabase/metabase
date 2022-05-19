@@ -133,6 +133,7 @@ describe("scenarios > question > saved", () => {
 
     cy.findByRole("button", { name: "Revert" }).click();
 
+    cy.findByText(/Reverted to an earlier revision/i);
     cy.findByText(/This is a question/i).should("not.exist");
   });
 

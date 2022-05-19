@@ -30,8 +30,7 @@ export const LogoLink = styled(Link)`
   justify-content: center;
   border-radius: 6px;
   left: 0;
-  padding: ${space(1)};
-  padding-left: ${space(2)};
+  padding: ${space(1)} ${space(2)};
   margin-left: ${space(2)};
   position: absolute;
   transition: opacity 0.3s;
@@ -57,11 +56,12 @@ export const SidebarButtonContainer = styled.div`
   }
 `;
 
-export interface RowLeftProps {
+export interface LeftContainerProps {
+  isLogoActive: boolean;
   isSearchActive: boolean;
 }
 
-export const RowLeft = styled.div<RowLeftProps>`
+export const LeftContainer = styled.div<LeftContainerProps>`
   display: flex;
   height: 100%;
   flex-direction: row;
@@ -70,12 +70,12 @@ export const RowLeft = styled.div<RowLeftProps>`
 
   &:hover {
     ${LogoLink} {
-      opacity: 0;
-      pointer-events: none;
+      opacity: ${props => (props.isLogoActive ? 1 : 0)};
+      pointer-events: ${props => (props.isLogoActive ? "" : "none")};
     }
 
     ${SidebarButtonContainer} {
-      opacity: 1;
+      opacity: ${props => (props.isLogoActive ? 0 : 1)};
     }
   }
 
@@ -93,7 +93,7 @@ export const RowLeft = styled.div<RowLeftProps>`
   }
 `;
 
-export const RowMiddle = styled.div`
+export const MiddleContainer = styled.div`
   display: none;
   justify-content: center;
   width: 80px;
@@ -109,7 +109,7 @@ export const RowMiddle = styled.div`
   }
 `;
 
-export const RowRight = styled.div`
+export const RightContainer = styled.div`
   display: flex;
   height: 100%;
   flex-direction: row;

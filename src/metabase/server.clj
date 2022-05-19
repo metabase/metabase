@@ -56,7 +56,7 @@
   ^Server []
   @instance*)
 
-(defn- ^AbstractHandler async-proxy-handler [handler timeout]
+(defn- async-proxy-handler ^AbstractHandler [handler timeout]
   (proxy [AbstractHandler] []
     (handle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
       (let [^AsyncContext context (doto (.startAsync request)

@@ -136,5 +136,21 @@ describe("deprecated metadata actions", () => {
 
       expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 });
     });
+
+    it("should load extra dependencies if provided", () => {
+      const query = {
+        dependentMetadata: () => [
+          {
+            type: "table",
+            id: 1,
+          },
+        ],
+      };
+
+      loadMetadataForQuery(query, [{ type: "field", id: 3 }])(dispatch);
+
+      expect(Tables.actions.fetchMetadata).toHaveBeenCalledWith({ id: 1 });
+      expect(Fields.actions.fetch).toHaveBeenCalledWith({ id: 3 });
+    });
   });
 });

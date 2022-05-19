@@ -532,6 +532,22 @@ describe("scenarios > models", () => {
     });
   });
 
+  it("should correctly show native models for no-data users", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.createNativeQuestion({
+      name: "TEST MODEL",
+      dataset: true,
+      native: {
+        query: "select * from orders",
+      },
+    });
+    cy.signIn("nodata");
+    cy.visit("/collection/root");
+    cy.findByText("TEST MODEL").click();
+    cy.wait("@cardQuery");
+    cy.findByText(/This question is written in SQL/i).should("not.exist");
+  });
+
   describe("listing", () => {
     beforeEach(() => {
       cy.request("PUT", "/api/card/1", { name: "Orders Model", dataset: true });

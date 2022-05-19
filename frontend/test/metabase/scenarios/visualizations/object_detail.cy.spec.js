@@ -1,4 +1,10 @@
-import { restore, popover, openPeopleTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openOrdersTable,
+  openPeopleTable,
+  openProductsTable,
+} from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -28,10 +34,7 @@ describe("scenarios > question > object details", () => {
 
   it("handles browsing records by PKs", () => {
     cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
-    getFirstTableColumn()
-      .eq(1)
-      .should("contain", FIRST_ORDER_ID)
-      .click();
+    drillPK({ id: FIRST_ORDER_ID });
 
     assertOrderDetailView({ id: FIRST_ORDER_ID });
     getPreviousObjectDetailButton().should("have.attr", "disabled", "disabled");
@@ -50,21 +53,25 @@ describe("scenarios > question > object details", () => {
     assertOrderDetailView({ id: FIRST_ORDER_ID });
   });
 
-  it("handles browsing records by FKs", () => {
-    cy.createQuestion(TEST_QUESTION, { visitQuestion: true });
-    const FIRST_USER_ID = 1283;
+  it("handles browsing records by FKs (metabase#21756)", () => {
+    openOrdersTable();
 
-    cy.findByText(String(FIRST_USER_ID)).click();
-    popover()
-      .findByText("View details")
-      .click();
+    drillFK({ id: 1 });
 
-    assertUserDetailView({ id: FIRST_USER_ID });
-    getPreviousObjectDetailButton().click();
-    assertUserDetailView({ id: FIRST_USER_ID - 1 });
-    getNextObjectDetailButton().click();
-    getNextObjectDetailButton().click();
-    assertUserDetailView({ id: FIRST_USER_ID + 1 });
+    assertUserDetailView({ id: 1, name: "Hudson Borer" });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
+
+    cy.go("back");
+    cy.go("back");
+    cy.wait("@dataset");
+
+    changeSorting("User ID", "desc");
+    drillFK({ id: 2500 });
+
+    assertUserDetailView({ id: 2500, name: "Kenny Schmidt" });
+    getPreviousObjectDetailButton().should("not.exist");
+    getNextObjectDetailButton().should("not.exist");
   });
 
   it("handles opening a filtered out record", () => {
@@ -78,30 +85,48 @@ describe("scenarios > question > object details", () => {
     });
   });
 
-  it("should show orders/reviews connected to a product", () => {
-    cy.visit("/browse/1");
-    cy.contains("Products").click();
-    // click on product #1's id
-    cy.contains(/^1$/).click();
-    // check that the correct counts of related tables appear
-    cy.contains("Orders")
-      .parent()
-      .contains("93");
-    cy.contains("Reviews")
-      .parent()
-      .contains("8");
+  it("should allow to browse linked entities by FKs (metabase#21757)", () => {
+    const PRODUCT_ID = 7;
+    const EXPECTED_LINKED_ORDERS_COUNT = 92;
+    const EXPECTED_LINKED_REVIEWS_COUNT = 8;
+    openProductsTable();
+
+    drillPK({ id: 5 });
+
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByTestId("fk-relation-orders").findByText(97);
+      cy.findByTestId("fk-relation-reviews").findByText(4);
+      cy.findByTestId("view-next-object-detail").click();
+
+      cy.findByTestId("fk-relation-orders").findByText(88);
+      cy.findByTestId("fk-relation-reviews").findByText(5);
+      cy.findByTestId("view-next-object-detail").click();
+
+      cy.findByTestId("fk-relation-reviews").findByText(
+        EXPECTED_LINKED_REVIEWS_COUNT,
+      );
+      cy.findByTestId("fk-relation-orders")
+        .findByText(EXPECTED_LINKED_ORDERS_COUNT)
+        .click();
+    });
+
+    cy.wait("@dataset");
+
+    cy.findByTestId("qb-filters-panel").findByText(
+      `Product ID is ${PRODUCT_ID}`,
+    );
+    cy.findByText(`Showing ${EXPECTED_LINKED_ORDERS_COUNT} rows`);
   });
 
   it("should not offer drill-through on the object detail records (metabase#20560)", () => {
     openPeopleTable({ limit: 2 });
 
-    cy.get(".Table-ID")
-      .contains("2")
-      .click();
+    drillPK({ id: 2 });
     cy.url().should("contain", "objectId=2");
 
     cy.findByTestId("object-detail")
-      .findByText("Domenica Williamson")
+      .findAllByText("Domenica Williamson")
+      .last()
       .click();
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
@@ -111,18 +136,30 @@ describe("scenarios > question > object details", () => {
   });
 });
 
-function getFirstTableColumn() {
-  return cy.get(".TableInteractive-cellWrapper--firstColumn");
+function drillPK({ id }) {
+  cy.get(".Table-ID")
+    .contains(id)
+    .first()
+    .click();
+}
+
+function drillFK({ id }) {
+  cy.get(".Table-FK")
+    .contains(id)
+    .first()
+    .click();
+  popover()
+    .findByText("View details")
+    .click();
 }
 
 function assertDetailView({ id, entityName, byFK = false }) {
-  cy.get("h1")
-    .parent()
+  cy.get("h2")
     .should("contain", entityName)
     .should("contain", id);
 
   const pattern = byFK
-    ? new RegExp(`/question\\?objectId=${id}#*`)
+    ? new RegExp("/question#*")
     : new RegExp(`/question/[1-9]d*.*/${id}`);
 
   cy.url().should("match", pattern);
@@ -132,8 +169,8 @@ function assertOrderDetailView({ id }) {
   assertDetailView({ id, entityName: "Order" });
 }
 
-function assertUserDetailView({ id }) {
-  assertDetailView({ id, entityName: "Person", byFK: true });
+function assertUserDetailView({ id, name }) {
+  assertDetailView({ id, entityName: name, byFK: true });
 }
 
 function getPreviousObjectDetailButton() {
@@ -142,4 +179,13 @@ function getPreviousObjectDetailButton() {
 
 function getNextObjectDetailButton() {
   return cy.findByTestId("view-next-object-detail");
+}
+
+function changeSorting(columnName, direction) {
+  const icon = direction === "asc" ? "arrow_up" : "arrow_down";
+  cy.findByText(columnName).click();
+  popover().within(() => {
+    cy.icon(icon).click();
+  });
+  cy.wait("@dataset");
 }

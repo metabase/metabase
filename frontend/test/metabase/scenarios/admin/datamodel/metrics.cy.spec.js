@@ -85,27 +85,49 @@ describe("scenarios > admin > datamodel > metrics", () => {
       );
     });
 
-    it.skip("should have 'Custom expression' in a filter list (metabase#13069)", () => {
-      cy.visit("/admin/datamodel/metrics");
-      cy.findByText("New metric").click();
-      cy.findByText("Select a table").click();
-      popover().within(() => {
-        cy.findByText("Orders").click();
-      });
-      cy.findByText("Add filters to narrow your answer").click();
-
-      cy.log("Fails in v0.36.0 and v0.36.3. It exists in v0.35.4");
-      popover().within(() => {
-        cy.findByText("Custom Expression");
-      });
-    });
-
     it("should show how to create metrics", () => {
       cy.visit("/reference/metrics");
       cy.findByText(
         "Metrics are the official numbers that your team cares about",
       );
       cy.findByText("Learn how to create metrics");
+    });
+
+    it.skip("custom expression aggregation should work in metrics (metabase#22700)", () => {
+      cy.intercept("POST", "/api/dataset").as("dataset");
+
+      const customExpression = "Count / Distinct([Product ID])";
+
+      cy.visit("/admin/datamodel/metrics");
+
+      cy.button("New metric").click();
+      cy.findByText("Select a table").click();
+      cy.findByText("Orders").click();
+      // It sees that there is one dataset query for each of the fields:
+      // `data`, `filtered by` and `view`
+      cy.wait(["@dataset", "@dataset", "@dataset"]);
+
+      cy.findByText("Count").click();
+      popover()
+        .contains("Custom Expression")
+        .click();
+
+      cy.get(".ace_text-input")
+        .click()
+        .type(`{selectall}{del}${customExpression}`)
+        .blur();
+
+      cy.findByPlaceholderText("Name (required)").type("Foo");
+
+      cy.button("Done").click();
+      cy.wait("@dataset");
+
+      // The test should fail on this step first
+      cy.findByText("Result: 93.8");
+
+      // Let's make sure the custom expression is still preserved
+      cy.findByText("Foo").click();
+      cy.get(".ace_content").should("contain", customExpression);
     });
   });
 
@@ -262,6 +284,22 @@ describe("scenarios > admin > datamodel > metrics", () => {
 
       cy.findByText("13022_Metric"); // Name
       cy.findByText("Orders, CE"); // Definition
+    });
+
+    it("should show CE that uses 'AND/OR' (metabase#13069, metabase#13070)", () => {
+      cy.visit("/admin/datamodel/metrics");
+      cy.findByText("New metric").click();
+      cy.findByText("Select a table").click();
+      cy.findByText("Orders").click();
+      cy.findByText("Add filters to narrow your answer").click();
+      cy.findByText("Custom Expression").click();
+      cy.get(".ace_text-input")
+        .clear()
+        .type("[ID] > 0 OR [ID] < 9876543210");
+      cy.button("Done").click();
+
+      cy.log("**Assert that there is a filter text visible**");
+      cy.findByText("ID > 0 OR ID < 9876543210");
     });
   });
 });

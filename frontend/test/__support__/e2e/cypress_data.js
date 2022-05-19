@@ -59,7 +59,11 @@ export const USERS = {
     last_name: "Tableton",
     email: "normal@metabase.test",
     password: "12341234",
-    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: COLLECTION_GROUP, is_group_manager: false },
+      { id: DATA_GROUP, is_group_manager: false },
+    ],
   },
   // Collection-related users that don't have access to data at all
   nodata: {
@@ -67,7 +71,10 @@ export const USERS = {
     last_name: "Tableton",
     email: "nodata@metabase.test",
     password: "12341234",
-    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: COLLECTION_GROUP, is_group_manager: false },
+    ],
   },
   sandboxed: {
     first_name: "User",
@@ -78,14 +85,20 @@ export const USERS = {
       attr_uid: "1",
       attr_cat: "Widget",
     },
-    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: COLLECTION_GROUP, is_group_manager: false },
+    ],
   },
   readonly: {
     first_name: "Read Only",
     last_name: "Tableton",
     email: "readonly@metabase.test",
     password: "12341234",
-    group_ids: [ALL_USERS_GROUP, READONLY_GROUP],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: READONLY_GROUP, is_group_manager: false },
+    ],
   },
   // Users with access to data, but no access to collections
   nocollection: {
@@ -93,14 +106,20 @@ export const USERS = {
     last_name: "Tableton",
     email: "nocollection@metabase.test",
     password: "12341234",
-    group_ids: [ALL_USERS_GROUP, DATA_GROUP],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: DATA_GROUP, is_group_manager: false },
+    ],
   },
   nosql: {
     first_name: "No SQL",
     last_name: "Tableton",
     email: "nosql@metabase.test",
     password: "12341234",
-    group_ids: [ALL_USERS_GROUP, NOSQL_GROUP],
+    user_group_memberships: [
+      { id: ALL_USERS_GROUP, is_group_manager: false },
+      { id: NOSQL_GROUP, is_group_manager: false },
+    ],
   },
   // No access at all
   none: {
@@ -108,7 +127,7 @@ export const USERS = {
     last_name: "Tableton",
     email: "none@metabase.test",
     password: "12341234",
-    group_ids: [ALL_USERS_GROUP],
+    user_group_memberships: [{ id: ALL_USERS_GROUP, is_group_manager: false }],
   },
 };
 

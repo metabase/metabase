@@ -25,25 +25,35 @@
   nil)
 
 (def ^:dynamic *site-locale-override*
-  "Bind this to a string, keyword, or `Locale` to override the value returned by `site-locale`. For testing purposes,
+  "Bind this to a string, keyword to override the value returned by `site-locale`. For testing purposes,
   such as when swapping out an application database temporarily, when the setting table may not even exist."
   nil)
+
+(defn site-locale-string
+  "The default locale string for this Metabase installation. Normally this is the value of the `site-locale` Setting,
+  which is also a string."
+  []
+  (or *site-locale-override*
+      (i18n.impl/site-locale-from-setting)
+      "en"))
+
+(defn user-locale-string
+  "Locale string we should *use* for the current User (e.g. `tru` messages) -- `*user-locale*` if bound, otherwise the
+  system locale as a string."
+  []
+  (or *user-locale*
+      (site-locale-string)))
 
 (defn site-locale
   "The default locale for this Metabase installation. Normally this is the value of the `site-locale` Setting."
   ^Locale []
-  (locale (or *site-locale-override*
-              (i18n.impl/site-locale-from-setting)
-              ;; if DB is not initialized yet fall back to English
-              "en")))
+  (locale (site-locale-string)))
 
 (defn user-locale
   "Locale we should *use* for the current User (e.g. `tru` messages) -- `*user-locale*` if bound, otherwise the system
   locale."
   ^Locale []
-  (locale
-   (or *user-locale*
-       (site-locale))))
+  (locale (user-locale-string)))
 
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
@@ -57,7 +67,8 @@
   "Translate a string with the System locale."
   [format-string & args]
   (let [translated (apply translate (site-locale) format-string args)]
-    (log/tracef "Translated %s for site locale %s -> %s" (pr-str format-string) (pr-str (site-locale)) (pr-str translated))
+    (log/tracef "Translated %s for site locale %s -> %s"
+                (pr-str format-string) (pr-str (site-locale-string)) (pr-str translated))
     translated))
 
 (defn translate-user-locale
@@ -65,7 +76,8 @@
   [format-string & args]
   (let [translated (apply translate (user-locale) format-string args)]
     (log/tracef "Translating %s for user locale %s (site locale %s) -> %s"
-                (pr-str format-string) (pr-str (user-locale)) (pr-str (site-locale)) (pr-str translated))
+                (pr-str format-string) (pr-str (user-locale-string))
+                (pr-str (site-locale-string)) (pr-str translated))
     translated))
 
 (p.types/defrecord+ UserLocalizedString [format-string args]

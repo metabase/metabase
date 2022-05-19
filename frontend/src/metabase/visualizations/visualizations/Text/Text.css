@@ -197,3 +197,7 @@
 :local .single-row {
   margin: 0;
 }
+
+:local .padded {
+  padding: 0.5em 0.75em;
+}

@@ -237,6 +237,7 @@ describe("dashboard reducers", () => {
             ...initState,
             loadingDashCards: {
               dashcardIds: dashcardIds,
+              loadingIds: dashcardIds,
             },
           },
           {

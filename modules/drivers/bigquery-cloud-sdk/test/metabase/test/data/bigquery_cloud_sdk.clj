@@ -6,6 +6,7 @@
             [metabase.config :as config]
             [metabase.driver :as driver]
             [metabase.driver.bigquery-cloud-sdk :as bigquery]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql :as sql.tx]
@@ -85,7 +86,7 @@
 
 ;;; -------------------------------------------------- Loading Data --------------------------------------------------
 
-(defmethod tx/format-name :bigquery-cloud-sdk [_ table-or-field-name]
+(defmethod ddl.i/format-name :bigquery-cloud-sdk [_ table-or-field-name]
   (u/snake-key table-or-field-name))
 
 (defn- create-dataset! [^String dataset-id]

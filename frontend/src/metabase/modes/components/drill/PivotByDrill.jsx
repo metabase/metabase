@@ -2,13 +2,12 @@
 import React from "react";
 import { jt } from "ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 // PivotByDrill displays a breakout picker, and optionally filters by the
-// clicked dimesion values (and removes corresponding breakouts)
+// clicked dimension values (and removes corresponding breakouts)
 export default (name, icon, fieldFilter) => ({ question, clicked }) => {
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
+  if (!question.isStructured() || !query.isEditable()) {
     return [];
   }
 

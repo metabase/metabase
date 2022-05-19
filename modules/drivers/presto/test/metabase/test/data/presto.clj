@@ -6,6 +6,7 @@
             [honeysql.helpers :as hh]
             [metabase.config :as config]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.presto :as presto]
             [metabase.driver.presto-common :as presto-common]
             [metabase.driver.sql.util :as sql.u]
@@ -71,7 +72,7 @@
             (sql.tx/qualify-and-quote driver database-name table-name)
             (str/join \, dummy-values)
             (str/join \, (for [column columns]
-                           (sql.u/quote-name driver :field (tx/format-name driver column)))))))
+                           (sql.u/quote-name driver :field (ddl.i/format-name driver column)))))))
 
 (defmethod sql.tx/drop-table-if-exists-sql :presto
   [driver {:keys [database-name]} {:keys [table-name]}]
@@ -129,7 +130,7 @@
       (execute! (sql.tx/drop-table-if-exists-sql driver dbdef tabledef))
       (println "[Presto] [ok]"))))
 
-(defmethod tx/format-name :presto
+(defmethod ddl.i/format-name :presto
   [_ s]
   (str/lower-case s))
 

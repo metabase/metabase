@@ -68,7 +68,10 @@ const ChartTypeSidebar = ({
                     question
                       .setDisplay(type)
                       .lockDisplay(true) // prevent viz auto-selection
-                      .update(null, { reload: false, shouldUpdateUrl: true });
+                      .update(null, {
+                        reload: false,
+                        shouldUpdateUrl: question.query().isEditable(),
+                      });
                     onOpenChartSettings({ section: t`Data` });
                     setUIControls({ isShowingRawTable: false });
                   }}

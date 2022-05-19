@@ -29,7 +29,7 @@
   ;; the QP, everything will be normalized.
   {:name                           s/Str
    :display_name                   s/Str
-   (s/optional-key :description)   (s/maybe su/NonBlankString)
+   (s/optional-key :description)   (s/maybe s/Str)
    :base_type                      su/FieldTypeKeywordOrString
    (s/optional-key :semantic_type) (s/maybe su/FieldSemanticOrRelationTypeKeywordOrString)
    (s/optional-key :unit)          (s/maybe DateTimeUnitKeywordOrString)

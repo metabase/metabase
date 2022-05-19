@@ -2,15 +2,15 @@
 import React from "react";
 import { t } from "ttag";
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
 import FilterPopover from "metabase/query_builder/components/filters/FilterPopover";
 
-export default function QuickFilterDrill({ question, clicked }) {
+export default function ColumnFilterDrill({ question, clicked }) {
   const query = question.query();
   if (
-    !(query instanceof StructuredQuery) ||
+    !question.isStructured() ||
+    !query.isEditable() ||
     !clicked ||
     !clicked.column ||
     clicked.column.field_ref == null ||

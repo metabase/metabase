@@ -21,7 +21,7 @@ function filterDashboard(suggests = true) {
   }
   cy.contains("Add filter").click({ force: true });
   cy.contains("Aerodynamic Bronze Hat");
-  cy.contains(/Rows \d-\d of 96/);
+  cy.contains(/Rows \d-\d+ of 96/);
 }
 
 describe("support > permissions (metabase#8472)", () => {

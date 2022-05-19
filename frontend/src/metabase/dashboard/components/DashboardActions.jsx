@@ -50,7 +50,7 @@ export const getDashboardActions = (
 
   if (!isEditing && !isEmpty && !isPublic) {
     // Getting notifications with static text-only cards doesn't make a lot of sense
-    if (canCreateSubscription) {
+    if (canCreateSubscription && !isFullscreen) {
       buttons.push(
         <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
           <span>

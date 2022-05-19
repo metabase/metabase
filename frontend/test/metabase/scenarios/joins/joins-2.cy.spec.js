@@ -117,8 +117,6 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("should join on field literals", () => {
-      cy.intercept("/api/database/1/schema/PUBLIC").as("schema");
-
       // create two native questions
       cy.createNativeQuestion({
         name: "question a",
@@ -137,10 +135,9 @@ describe("scenarios > question > joined questions", () => {
 
       // join to question b
       cy.icon("join_left_outer").click();
-      cy.wait("@schema");
 
       popover().within(() => {
-        cy.findByTextEnsureVisible("Sample Database").click();
+        cy.findByTextEnsureVisible("Sample Database").click({ force: true });
         cy.findByTextEnsureVisible("Saved Questions").click();
         cy.findByText("question b").click();
       });
@@ -405,8 +402,10 @@ describe("scenarios > question > joined questions", () => {
     });
 
     it("x-rays should work on explicit joins when metric is for the joined table (metabase#14793)", () => {
+      const XRAY_DATASETS = 11; // enough to load most questions
+
       cy.intercept("GET", "/api/automagic-dashboards/adhoc/**").as("xray");
-      cy.intercept("POST", "/api/dataset").as("dataset");
+      cy.intercept("POST", "/api/dataset").as("postDataset");
 
       visitQuestionAdhoc({
         dataset_query: {
@@ -443,11 +442,12 @@ describe("scenarios > question > joined questions", () => {
       cy.findByText("X-ray").click();
 
       cy.wait("@xray").then(xhr => {
+        for (let c = 0; c < XRAY_DATASETS; ++c) {
+          cy.wait("@postDataset");
+        }
         expect(xhr.response.body.cause).not.to.exist;
         expect(xhr.status).not.to.eq(500);
       });
-
-      cy.wait("@dataset");
 
       // Metric title
       cy.findByTextEnsureVisible(

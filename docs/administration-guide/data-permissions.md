@@ -45,6 +45,24 @@ Members of the group can access data from all tables (within all namespaces/sche
 
 Keep in mind people can be in multiple groups. If a person belongs to _another_ group that _does_ have access to that database, that more privileged access will take precedence (overruling the block), and they'll be able to view that question.
 
+### Table permissions
+
+When you select [Granular access](#granular-access) for a database, you'll be prompted to set permissions on the tables (or schemas) within that database. Here you'll have two or three options, depending on your Metabase plan.
+
+#### Unrestricted access to the table
+
+Groups with unrestricted access can ask questions about this table and see saved questions and dashboard cards that use the table.
+
+#### No self-service access to the table
+
+Groups with no self-service access to a table can’t access the table at all. They can, however, view questions that use data from that table, provided the group has access to the question's collection.
+
+#### Sandboxed access to the table
+
+{% include plans-blockquote.html feature="Data sandboxing" %}
+
+Sandboxed access to a table can restrict access to columns and rows of a table. Check out [data sandboxing][data-sandboxing].
+
 ## Native querying
 
 Members of a group with Native query editing set to Yes can write new SQL/native queries using the [native query editor](https://www.metabase.com/docs/latest/users-guide/writing-sql.html). This access level requires the group to additionally have Unrestricted data access for the database in question, since SQL queries can circumvent table-level permissions.
@@ -68,32 +86,15 @@ You can set permissions on whether people in a group can download results (and h
 
 You can define whether a group can [edit metadata](03-metadata-editing.md). Options are:
 
+- Yes (meaning, they can edit metadata for that data source).
+- No 
 - Granular (to set permissions specific to each table).
-- Edit (meaning, they can edit metadata for that data source).
 
 ## Manage database
 
 {% include plans-blockquote.html feature="Database management permissions" %}
 
-This setting defines whether a person can edit the connection settings for the data source, as well as to sync and scan the database.
-
-## Table permissions
-
-When you select [Granular access](#granular-access) for a database, you'll be prompted to set permissions on the tables (or schemas) within that database. Here you'll have two or three options, depending on your Metabase plan.
-
-### Unrestricted access to the table
-
-Groups with unrestricted access can ask questions about this table and see saved questions and dashboard cards that use the table.
-
-### No self-service access to the table
-
-Groups with no self-service access to a table can’t access the table at all. They can, however, view questions that use data from that table, provided the group has access to the question's collection.
-
-### Sandboxed access to the table
-
-{% include plans-blockquote.html feature="Data sandboxing" %}
-
-Sandboxed access to a table can restrict access to columns and rows of a table. Check out [data sandboxing][data-sandboxing].
+This setting defines whether a person can edit the connection settings for the data source, as well as to sync and scan the database. Note that this setting still prevents people from deleting database connections entirely. Only admins can delete database connections in your Metabase.
 
 ## Further reading
 

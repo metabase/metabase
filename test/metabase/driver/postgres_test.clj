@@ -281,15 +281,45 @@
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
-               (hsql/format (#'postgres/json-query boop-identifier boop-field))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boop-field))))))
     (testing "What if types are weird and we have lists"
       (let [weird-field {:nfc_path [:bleh "meh" :foobar 1234] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh,foobar,1234}"]
-               (hsql/format (#'postgres/json-query boop-identifier weird-field))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier weird-field))))))
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
-               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
+
+(deftest json-alias-test
+  (mt/test-driver :postgres
+    (testing "json breakouts and order bys have alias coercion"
+      (drop-if-exists-and-create-db! "json-alias-test")
+      (let [details   (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
+            spec      (sql-jdbc.conn/connection-details->spec :postgres details)
+            json-part (json/generate-string {:bob :dobbs})
+            insert    (str "CREATE TABLE json_alias_test (json_part JSON NOT NULL);"
+                         (format "INSERT INTO json_alias_test (json_part) VALUES ('%s');" json-part))]
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [insert]))
+        (mt/with-temp* [Database [database    {:engine :postgres, :details details}]
+                        Table    [table       {:db_id (u/the-id database) :name "json_alias_test"}]
+                        Field    [field       {:table_id (u/the-id table)
+                                               :nfc_path [:bob
+                                                          "injection' OR 1=1--' AND released = 1"
+                                                          (keyword "injection' OR 1=1--' AND released = 1")],
+                                               :name     "json_alias_test"}]]
+          (let [compile-res (qp/compile
+                              {:database (u/the-id database)
+                               :type     :query
+                               :query    {:source-table (u/the-id table)
+                                          :aggregation  [[:count]]
+                                          :breakout     [[:field (u/the-id field) nil]]}})]
+            (is (= (str "SELECT (\"json_alias_test\".\"bob\"#>> ?::text[])::VARCHAR  "
+                        "AS \"json_alias_test\", count(*) AS \"count\" FROM \"json_alias_test\" "
+                        "GROUP BY \"json_alias_test\" ORDER BY \"json_alias_test\" ASC")
+                   (:query compile-res)))
+            (is (= '("{injection' OR 1=1--' AND released = 1,injection' OR 1=1--' AND released = 1}") (:params compile-res)))))))))
 
 (deftest describe-nested-field-columns-test
   (mt/test-driver :postgres
@@ -349,6 +379,28 @@
                    database
                    {:name "describe_json_table"}))))))))
 
+(deftest describe-nested-field-columns-identifier-test
+  (mt/test-driver :postgres
+    (testing "sync goes and runs with identifier if there is a schema other than default public one"
+      (drop-if-exists-and-create-db! "describe-json-with-schema-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-with-schema-test"})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
+                                    "CREATE TABLE bobdobbs.describe_json_table (trivial_json JSONB NOT NULL);"
+                                    "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")]))
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= #{{:name "trivial_json → a",
+                    :database-type "integer",
+                    :base-type :type/Integer,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:trivial_json "a"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:schema "bobdobbs" :name "describe_json_table"}))))))))
+
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
@@ -393,6 +445,15 @@
         (is (= []
                (mt/rows (mt/run-mbql-query users
                           {:filter [:= $user_id nil]})))))
+      (testing "check that is-empty doesn't barf (#22667)"
+        (is (= []
+               (mt/rows (mt/run-mbql-query users
+                          {:filter [:is-empty $user_id]})))))
+      (testing "check that not-empty doesn't barf (#22667)"
+        (is (= (map-indexed (fn [i [uuid]] [(inc i) uuid])
+                            (-> with-uuid :table-definitions first :rows))
+               (mt/rows (mt/run-mbql-query users
+                          {:filter [:not-empty $user_id]})))))
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[1 #uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027"]]
                (mt/rows

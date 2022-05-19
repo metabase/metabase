@@ -9,10 +9,11 @@ import {
   Collection,
   Bookmark,
   GroupsPermissions,
-  User,
   Dataset,
+  Group,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import { AdminPathKey, State } from "metabase-types/store";
+import { PluginGroupManagersType } from "./types";
 
 // Plugin integration points. All exports must be objects or arrays so they can be mutated by plugins.
 const object = () => ({});
@@ -30,6 +31,15 @@ export const PLUGIN_LOGO_ICON_COMPONENTS = [];
 // admin nav items and routes
 export const PLUGIN_ADMIN_NAV_ITEMS = [];
 export const PLUGIN_ADMIN_ROUTES = [];
+export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS: ((
+  user: any,
+) => AdminPathKey[])[] = [];
+
+export const PLUGIN_ADMIN_TOOLS = {
+  INDEX_ROUTE: "model-caching",
+  EXTRA_ROUTES_INFO: [],
+  EXTRA_ROUTES: [],
+};
 
 // functions that update the sections
 export const PLUGIN_ADMIN_SETTINGS_UPDATES = [];
@@ -63,9 +73,10 @@ export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getShowBrandLogo: (state: State) => true,
-  getShowBrandScene: (state: State) => true,
-  getLogoBackgroundClass: (state: State) => "bg-white",
+  getHasCustomLogo: (state: State) => false,
+  getHasCustomColors: (state: State) => false,
+  getHasCustomBranding: (state: State) => false,
+  canWhitelabel: (state: State) => false,
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
@@ -100,6 +111,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 };
 
 export const PLUGIN_MODERATION = {
+  isEnabled: () => false,
   QuestionModerationSection: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIconForQuestion: object,
@@ -134,6 +146,7 @@ export const PLUGIN_FEATURE_LEVEL_PERMISSIONS = {
     _isAdmin: boolean,
     _permissions: GroupsPermissions,
     _dataAccessPermissionValue: string,
+    _defaultGroup: Group,
     _permissionSubject: PermissionSubject,
   ) => {
     return [] as any;
@@ -151,4 +164,22 @@ export const PLUGIN_APPLICATION_PERMISSIONS = {
   selectors: {
     canManageSubscriptions: (_state: any) => true,
   },
+};
+
+export const PLUGIN_GROUP_MANAGERS: PluginGroupManagersType = {
+  UserTypeToggle: () => null as any,
+  UserTypeCell: null,
+
+  getChangeMembershipConfirmation: () => null,
+  getRemoveMembershipConfirmation: () => null,
+
+  deleteGroup: null,
+  confirmDeleteMembershipAction: null,
+  confirmUpdateMembershipAction: null,
+};
+
+export const PLUGIN_MODEL_PERSISTENCE = {
+  isModelLevelPersistenceEnabled: () => false,
+  ModelCacheControl: PluginPlaceholder as any,
+  ModelCacheManagementSection: PluginPlaceholder as any,
 };

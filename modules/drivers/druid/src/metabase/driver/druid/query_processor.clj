@@ -136,8 +136,7 @@
   (merge
    {:intervals   ["1900-01-01/2100-01-01"]
     :granularity :all
-    :context     {:timeout 60000
-                  :queryId (random-query-id)}}
+    :context     {:queryId (random-query-id)}}
    (case query-type
      ::scan               {:queryType :scan
                            :limit     qp.i/absolute-max-results}

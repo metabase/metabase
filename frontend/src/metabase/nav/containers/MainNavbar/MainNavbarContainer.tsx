@@ -1,13 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import { LocationDescriptor } from "history";
 import _ from "underscore";
 
 import { IconProps } from "metabase/components/Icon";
+import Modal from "metabase/components/Modal";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-import { BookmarksType, Collection, User } from "metabase-types/api";
-import Bookmarks from "metabase/entities/bookmarks";
+import { Bookmark, BookmarksType, Collection, User } from "metabase-types/api";
+import { State } from "metabase-types/store";
+
+import Bookmarks, { getOrderedBookmarks } from "metabase/entities/bookmarks";
 import Collections, {
   ROOT_COLLECTION,
   getCollectionIcon,
@@ -15,26 +20,38 @@ import Collections, {
 } from "metabase/entities/collections";
 import { openNavbar, closeNavbar } from "metabase/redux/app";
 import { logout } from "metabase/auth/actions";
+import { getUserIsAdmin, getUser } from "metabase/selectors/user";
 import {
   getHasOwnDatabase,
   getHasDataAccess,
 } from "metabase/new_query/selectors";
-import { getUser } from "metabase/selectors/user";
+
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
 } from "metabase/collections/utils";
 import * as Urls from "metabase/lib/urls";
 
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
+
 import { SelectedItem } from "./types";
 import MainNavbarView from "./MainNavbarView";
-import { NavRoot, LoadingContainer, LoadingTitle } from "./MainNavbar.styled";
+import {
+  Sidebar,
+  NavRoot,
+  LoadingContainer,
+  LoadingTitle,
+} from "./MainNavbar.styled";
 
-function mapStateToProps(state: unknown) {
+type NavbarModal = "MODAL_NEW_COLLECTION" | null;
+
+function mapStateToProps(state: State) {
   return {
     currentUser: getUser(state),
+    isAdmin: getUserIsAdmin(state),
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
+    bookmarks: getOrderedBookmarks(state),
   };
 }
 
@@ -42,6 +59,8 @@ const mapDispatchToProps = {
   openNavbar,
   closeNavbar,
   logout,
+  onChangeLocation: push,
+  onReorderBookmarks: Bookmarks.actions.reorder,
 };
 
 interface CollectionTreeItem extends Collection {
@@ -51,6 +70,7 @@ interface CollectionTreeItem extends Collection {
 
 type Props = {
   isOpen: boolean;
+  isAdmin: boolean;
   currentUser: User;
   bookmarks: BookmarksType;
   collections: Collection[];
@@ -67,10 +87,13 @@ type Props = {
   openNavbar: () => void;
   closeNavbar: () => void;
   logout: () => void;
+  onChangeLocation: (location: LocationDescriptor) => void;
+  onReorderBookmarks: (bookmarks: Bookmark[]) => void;
 };
 
 function MainNavbarContainer({
   bookmarks,
+  isAdmin,
   isOpen,
   currentUser,
   hasOwnDatabase,
@@ -83,15 +106,11 @@ function MainNavbarContainer({
   openNavbar,
   closeNavbar,
   logout,
+  onChangeLocation,
+  onReorderBookmarks,
   ...props
 }: Props) {
-  const [orderedBookmarks, setOrderedBookmarks] = useState([]);
-
-  useEffect(() => {
-    if (bookmarks?.length !== orderedBookmarks?.length) {
-      setOrderedBookmarks(bookmarks as any);
-    }
-  }, [orderedBookmarks, bookmarks]);
+  const [modal, setModal] = useState<NavbarModal>(null);
 
   useEffect(() => {
     function handleSidebarKeyboardShortcut(e: KeyboardEvent) {
@@ -154,47 +173,70 @@ function MainNavbarContainer({
     return [root, ...buildCollectionTree(preparedCollections)];
   }, [rootCollection, collections, currentUser]);
 
-  const reorderBookmarks = ({
-    newIndex,
-    oldIndex,
-  }: {
-    newIndex: number;
-    oldIndex: number;
-  }) => {
-    const bookmarksToBeReordered =
-      orderedBookmarks.length > 0 ? [...orderedBookmarks] : [...bookmarks];
-    const element = bookmarksToBeReordered[oldIndex];
+  const reorderBookmarks = useCallback(
+    ({ newIndex, oldIndex }) => {
+      const newBookmarks = [...bookmarks];
+      const movedBookmark = newBookmarks[oldIndex];
 
-    bookmarksToBeReordered.splice(oldIndex, 1);
-    bookmarksToBeReordered.splice(newIndex, 0, element);
+      newBookmarks.splice(oldIndex, 1);
+      newBookmarks.splice(newIndex, 0, movedBookmark);
 
-    setOrderedBookmarks(bookmarksToBeReordered as any);
-    Bookmarks.actions.reorder(bookmarksToBeReordered);
-  };
+      onReorderBookmarks(newBookmarks);
+    },
+    [bookmarks, onReorderBookmarks],
+  );
+
+  const onCreateNewCollection = useCallback(() => {
+    setModal("MODAL_NEW_COLLECTION");
+  }, []);
+
+  const closeModal = useCallback(() => setModal(null), []);
+
+  const renderModalContent = useCallback(() => {
+    if (modal === "MODAL_NEW_COLLECTION") {
+      return (
+        <CollectionCreate
+          onClose={closeModal}
+          onSaved={(collection: Collection) => {
+            closeModal();
+            onChangeLocation(Urls.collection(collection));
+          }}
+        />
+      );
+    }
+    return null;
+  }, [modal, closeModal, onChangeLocation]);
 
   return (
-    <NavRoot isOpen={isOpen}>
-      {allFetched && rootCollection ? (
-        <MainNavbarView
-          {...props}
-          bookmarks={orderedBookmarks.length > 0 ? orderedBookmarks : bookmarks}
-          isOpen={isOpen}
-          currentUser={currentUser}
-          collections={collectionTree}
-          hasOwnDatabase={hasOwnDatabase}
-          selectedItem={selectedItem}
-          hasDataAccess={hasDataAccess}
-          reorderBookmarks={reorderBookmarks}
-          handleCloseNavbar={closeNavbar}
-          handleLogout={logout}
-        />
-      ) : (
-        <LoadingContainer>
-          <LoadingSpinner />
-          <LoadingTitle>{t`Loading…`}</LoadingTitle>
-        </LoadingContainer>
-      )}
-    </NavRoot>
+    <>
+      <Sidebar className="Nav" isOpen={isOpen} aria-hidden={!isOpen}>
+        <NavRoot isOpen={isOpen}>
+          {allFetched && rootCollection ? (
+            <MainNavbarView
+              {...props}
+              bookmarks={bookmarks}
+              isAdmin={isAdmin}
+              isOpen={isOpen}
+              currentUser={currentUser}
+              collections={collectionTree}
+              hasOwnDatabase={hasOwnDatabase}
+              selectedItem={selectedItem}
+              hasDataAccess={hasDataAccess}
+              reorderBookmarks={reorderBookmarks}
+              handleCreateNewCollection={onCreateNewCollection}
+              handleCloseNavbar={closeNavbar}
+              handleLogout={logout}
+            />
+          ) : (
+            <LoadingContainer>
+              <LoadingSpinner />
+              <LoadingTitle>{t`Loading…`}</LoadingTitle>
+            </LoadingContainer>
+          )}
+        </NavRoot>
+      </Sidebar>
+      {modal && <Modal onClose={closeModal}>{renderModalContent()}</Modal>}
+    </>
   );
 }
 

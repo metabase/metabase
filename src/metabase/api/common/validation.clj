@@ -1,5 +1,6 @@
 (ns metabase.api.common.validation
-  (:require [metabase.api.common :as api]
+  (:require [clojure.string :as str]
+            [metabase.api.common :as api]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
             [metabase.public-settings.premium-features :as premium-features]
@@ -32,6 +33,13 @@
      (api/check-403 (f perm-type))
      (when require-superuser?
        (api/check-superuser)))))
+
+(defn check-advanced-permissions-enabled
+  "Check if advanced permissions is enabled to use permission types such as :group-manager or :application-permissions."
+  [perm-type]
+  (api/check (premium-features/enable-advanced-permissions?)
+             [402 (tru "The {0} permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
+                       (str/replace (name perm-type) "-" " "))]))
 
 (defn check-group-manager
   "If `advanced-permissions` is enabled, check is `*current-user*` a manager of at least one group.

@@ -72,7 +72,7 @@ export default {
       ...getNameFields(),
       getEmailField(),
       {
-        name: "group_ids",
+        name: "user_group_memberships",
         title: t`Groups`,
         type: FormGroupsWidget,
       },
@@ -143,6 +143,7 @@ export default {
           initial: true,
           hidden: cookies,
           horizontal: true,
+          align: "left",
         },
       ],
     };

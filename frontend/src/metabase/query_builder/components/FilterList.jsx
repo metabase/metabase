@@ -11,8 +11,7 @@ const mapStateToProps = state => ({
   metadata: getMetadata(state),
 });
 
-@connect(mapStateToProps)
-export default class FilterList extends Component {
+class FilterList extends Component {
   static defaultProps = {
     filterRenderer: filterWidgetFilterRenderer,
   };
@@ -35,3 +34,5 @@ export default class FilterList extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps)(FilterList);

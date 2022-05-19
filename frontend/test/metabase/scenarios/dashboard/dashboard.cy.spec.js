@@ -3,6 +3,7 @@ import {
   restore,
   selectDashboardFilter,
   expectedRouteCalls,
+  editDashboard,
   showDashboardCardActions,
   filterWidget,
   sidebar,
@@ -79,6 +80,24 @@ describe("scenarios > dashboard", () => {
       .next()
       .trigger("mouseenter");
     cy.findByText("How many orders were placed in each year?");
+  });
+
+  it("should allow empty card title (metabase#12013)", () => {
+    visitDashboard(1);
+
+    cy.findByTextEnsureVisible("Orders");
+    cy.findByTestId("legend-caption").should("exist");
+
+    editDashboard();
+    showDashboardCardActions();
+    cy.icon("palette").click();
+
+    cy.findByDisplayValue("Orders")
+      .click()
+      .clear();
+    cy.get("[data-metabase-event='Chart Settings;Done']").click();
+
+    cy.findByTestId("legend-caption").should("not.exist");
   });
 
   it("should add a filter", () => {

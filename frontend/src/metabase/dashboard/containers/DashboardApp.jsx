@@ -41,6 +41,8 @@ import {
   getDocumentTitle,
   getIsRunning,
   getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsAdditionalInfoVisible,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -83,6 +85,8 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     isRunning: getIsRunning(state),
     isLoadingComplete: getIsLoadingComplete(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
   };
 };
 
@@ -106,7 +110,7 @@ const DashboardApp = props => {
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
   const onTimeout = useCallback(() => {
-    if (Notification.permission === "default") {
+    if ("Notification" in window && Notification.permission === "default") {
       setIsShowingToaster(true);
     }
   }, []);
@@ -123,7 +127,11 @@ const DashboardApp = props => {
   useEffect(() => {
     if (isLoadingComplete) {
       setIsShowingToaster(false);
-      if (Notification.permission === "granted" && document.hidden) {
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
         showNotification(
           t`All Set! ${dashboard?.name} is ready.`,
           t`All questions loaded`,

@@ -59,6 +59,10 @@ const mapStateToProps = (state, props) => {
     databaseId,
     fieldId,
     field: Fields.selectors.getObjectUnfiltered(state, { entityId: fieldId }),
+    fieldsError: Fields.selectors.getError(state, {
+      entityId: fieldId,
+      requestType: "values",
+    }),
     tableId: parseInt(props.params.tableId),
     metadata: getMetadata(state),
     idfields: Databases.selectors.getIdfields(state, { databaseId }),
@@ -77,8 +81,7 @@ const mapDispatchToProps = {
   discardFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class FieldApp extends React.Component {
+class FieldApp extends React.Component {
   state = {
     tab: "general",
   };
@@ -157,6 +160,7 @@ export default class FieldApp extends React.Component {
     const {
       metadata,
       field,
+      fieldsError,
       databaseId,
       tableId,
       idfields,
@@ -217,6 +221,7 @@ export default class FieldApp extends React.Component {
               {section == null || section === "general" ? (
                 <FieldGeneralPane
                   field={field}
+                  fieldsError={fieldsError}
                   idfields={idfields}
                   table={table}
                   metadata={metadata}
@@ -242,8 +247,11 @@ export default class FieldApp extends React.Component {
   }
 }
 
+export default connect(mapStateToProps, mapDispatchToProps)(FieldApp);
+
 const FieldGeneralPane = ({
   field,
+  fieldsError,
   idfields,
   table,
   metadata,
@@ -343,6 +351,7 @@ const FieldGeneralPane = ({
         field={field}
         table={table}
         fields={metadata.fields}
+        fieldsError={fieldsError}
         updateFieldProperties={onUpdateFieldProperties}
         updateFieldValues={onUpdateFieldValues}
         updateFieldDimension={onUpdateFieldDimension}

@@ -26,7 +26,7 @@ Note that Metabase accounts created with Google Sign-In do not have passwords an
 
 ## Enabling LDAP authentication
 
-In the **Admin** > **Authentication** tab, go the the LDAP section and click **Configure**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the following information about your LDAP server:
+In the **Admin** > **Authentication** tab, go to the LDAP section and click **Configure**. Click the toggle at the top of the form to enable LDAP, then fill out the form with the following information about your LDAP server:
 
 - hostname
 - port
@@ -58,13 +58,15 @@ For example, let's say you're configuring LDAP for your company, WidgetCo, where
 
 You'll see the following grayed-out default value in the **User filter** field:
 
-`(&(objectClass=inetOrgPerson)(|uid={login})(mail={login})`
+```
+(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))
+```
 
 When a person logs into Metabase, this command confirms that the login they supplied matches either a UID _or_ email field in your LDAP server, _and_ that the matching entry has an objectClass of `inetOrgPerson`.
 
 This default command will work for most LDAP servers, since `inetOrgPerson` is a widely-adopted objectClass. But if your company for example uses a different objectClass to categorize employees, this field is where you can set a different command for how Metabase finds and authenticates an LDAP entry upon a person logging in.
 
-### LDAP Group mapping
+### LDAP group mapping
 
 Manually assigning people to [groups](04-managing-users.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](/learn/permissions/ldap-auth-access-control.html#group-management).
 
@@ -74,34 +76,26 @@ As you can see below, if you have an **Accounting** group in both your LDAP serv
 
 ![Group Mapping](images/ldap-group-mapping.png)
 
-Note that updates to a person's group membership based on LDAP mappings will only take effect once they have logged into Metabase again after the update.
+#### Notes on group mapping
 
-For a tutorial on setting up LDAP in Metabase, check out this [Learn lesson](/learn/permissions/ldap-auth-access-control.html). If you run into an issue, our [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md) can help.
+- The Administrator group works like any other group.
+- Updates to a person's group membership based on LDAP mappings are not instantaneous; the changes will take effect only after people log back in.
+- People are only ever added to or removed from mapped groups; the sync has no effect on groups in your Metabase that don't have an LDAP mapping.
 
 ## LDAP advanced features
 
-Metabase Pro and Enterprise Editions ship with more advanced LDAP features.
+{% include plans-blockquote.html feature="LDAP advanced features" %}
 
 ### LDAP syncing user attributes
-
-{% include plans-blockquote.html feature="LDAP user attribute syncing" %}
 
 If you're running a [paid version of Metabase](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can use existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
 
 ### LDAP group membership filter
 
-{% include plans-blockquote.html feature="LDAP group membership filter" %}
-
 Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
 
-### LDAP sync administrator group
+## Further reading
 
-{% include plans-blockquote.html feature="LDAP administrator group syncing" %}
-
-You can also enable administrator group syncing.
-
----
-
-## Next: setting data permissions
-
-Find out how to create user groups and define what data they can access with [permissions](05-setting-permissions.md).
+- [Using LDAP for authentication and access control](/learn/permissions/ldap-auth-access-control.html)
+- [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md)
+- [Permissions overview](05-setting-permissions.md)

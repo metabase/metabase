@@ -125,21 +125,19 @@ const MISC_OPTIONS: Option[] = [
   },
   {
     displayName: t`Relative dates...`,
-    init: filter => ["time-interval", getDateTimeField(filter[1]), null],
+    init: filter => ["time-interval", getDateTimeField(filter[1]), -30, "day"],
+  },
+  {
+    displayName: t`Exclude...`,
+    init: filter => ["!=", getDateTimeField(filter[1])],
   },
 ];
-
-const EXCLUDE_OPTION: Option = {
-  displayName: t`Exclude...`,
-  init: filter => ["!=", getDateTimeField(filter[1])],
-};
 
 type Props = {
   className?: string;
   primaryColor?: string;
 
   filter: Filter;
-  hideExcludeOperators?: boolean;
   onCommit: (value: FilterExpression[]) => void;
   onFilterChange: (filter: FilterExpression[]) => void;
   onBack?: () => void;
@@ -150,13 +148,9 @@ export default function DatePickerShortcuts({
   onFilterChange,
   filter,
   onCommit,
-  hideExcludeOperators,
   onBack,
+  primaryColor,
 }: Props) {
-  const options = hideExcludeOperators
-    ? MISC_OPTIONS
-    : [...MISC_OPTIONS, EXCLUDE_OPTION];
-
   const dimension = filter.dimension?.();
   let title = "";
   if (dimension) {
@@ -178,6 +172,7 @@ export default function DatePickerShortcuts({
       {DAY_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
+          primaryColor={primaryColor}
           onClick={() => {
             onCommit(init(filter));
           }}
@@ -189,6 +184,7 @@ export default function DatePickerShortcuts({
       {MONTH_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
+          primaryColor={primaryColor}
           onClick={() => {
             onCommit(init(filter));
           }}
@@ -197,9 +193,10 @@ export default function DatePickerShortcuts({
         </ShortcutButton>
       ))}
       <Separator />
-      {options.map(({ displayName, init }) => (
+      {MISC_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
+          primaryColor={primaryColor}
           onClick={() => {
             onFilterChange(init(filter));
           }}

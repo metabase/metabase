@@ -20,13 +20,13 @@ export const ToolbarUpsell = () => {
           <ExternalLink href={MetabaseSettings.upgradeUrl()}>
             {t`Upgrade to Pro or Enterprise`}
           </ExternalLink>
-        )} and disable download results, control access to the data model, ${(
+        )} and disable download results, control access to the data model, promote group managers, ${(
           <ExternalLink
             href={MetabaseSettings.docsUrl(
               "administration-guide/05-setting-permissions",
             )}
           >
-            and more
+            {t`and more`}
           </ExternalLink>
         )}.`}
       </UpsellContent>

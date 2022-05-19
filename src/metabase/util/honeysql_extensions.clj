@@ -137,16 +137,6 @@
   [s]
   (Literal. (u/qualified-name s)))
 
-
-(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (partial hsql/call :+))
-(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between `exprs` and wrap in parentheses." (partial hsql/call :-))
-(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between `exprs` and wrap in parentheses." (partial hsql/call :/))
-(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (partial hsql/call :*))
-(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (partial hsql/call :%))
-
-(defn inc "Add 1 to `x`."        [x] (+ x 1))
-(defn dec "Subtract 1 from `x`." [x] (- x 1))
-
 (p.types/defprotocol+ TypedHoneySQL
   "Protocol for a HoneySQL form that has type information such as `::database-type`. See #15115 for background."
   (type-info [honeysql-form]
@@ -267,10 +257,28 @@
     (cast-unless-type-in \"timestamp\" #{\"timestamp\" \"timestamptz\" \"date\"} form)"
   {:added "0.42.0"}
   [desired-type acceptable-types expr]
+  {:pre [(string? desired-type) (set? acceptable-types)]}
   (if (some (partial is-of-type? expr)
             acceptable-types)
     expr
     (cast desired-type expr)))
+
+(defn- math-operator [operator]
+  (fn [& args]
+    (let [arg-db-type (some (fn [arg]
+                              (-> arg type-info type-info->db-type))
+                            args)]
+      (cond-> (apply hsql/call operator args)
+        arg-db-type (with-database-type-info arg-db-type)))))
+
+(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (math-operator :+))
+(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between `exprs` and wrap in parentheses." (math-operator :-))
+(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between `exprs` and wrap in parentheses." (math-operator :/))
+(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (math-operator :*))
+(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (math-operator :%))
+
+(defn inc "Add 1 to `x`."        [x] (+ x 1))
+(defn dec "Subtract 1 from `x`." [x] (- x 1))
 
 (defn format
   "SQL `format` function."

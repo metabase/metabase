@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 
 import Icon from "metabase/components/Icon";
 import { SidebarLink } from "../SidebarItems";
@@ -17,6 +16,7 @@ export const DragIcon = styled(Icon)`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
+  cursor: grab;
 `;
 
 export const SidebarBookmarkItem = styled(SidebarLink)<SidebarBookmarkItem>`

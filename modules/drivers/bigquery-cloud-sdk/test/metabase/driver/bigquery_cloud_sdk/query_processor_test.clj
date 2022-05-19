@@ -846,3 +846,11 @@
         (mt/with-native-query-testing-context query
           (is (= [["2" 1]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
+  (testing "cast timestamps to datetimes so we can use datetime_add() if needed for units like month (#21969)"
+    (is (= ["datetime_add(CAST((`absolute-datetime`, ?) AS datetime), INTERVAL 3 month)"
+            #t "2022-04-22T18:27-08:00"]
+           (let [t         [:absolute-datetime #t "2022-04-22T18:27:00-08:00"]
+                 hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
+             (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
