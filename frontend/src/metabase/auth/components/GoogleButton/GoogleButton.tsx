@@ -3,6 +3,8 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import AuthButton from "../AuthButton";
 import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
+import { GoogleLogin, useGoogleLogin } from "@react-oauth/google";
+import MetabaseSettings from "metabase/lib/settings";
 
 export type AttachCallback = (
   element: HTMLElement,
@@ -26,11 +28,27 @@ const GoogleButton = ({
   const ref = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
+  const siteLocale = MetabaseSettings.get("site-locale");
+
+  const login = useGoogleLogin({
+    onSuccess: async tokenResponse => {
+      console.log("🚀", tokenResponse);
+      // try {
+      //   setErrors([]);
+      //   await onLogin(tokenResponse.access_token, redirectUrl);
+      // } catch (error) {
+      //   setErrors(getErrors(error));
+      // }
+    },
+    flow: "auth-code",
+  });
+
   const handleLogin = useCallback(
-    async (token: string) => {
+    async (response: string) => {
+      console.log("🚀", response);
       try {
         setErrors([]);
-        await onLogin(token, redirectUrl);
+        await onLogin(response, redirectUrl);
       } catch (error) {
         setErrors(getErrors(error));
       }
@@ -42,15 +60,21 @@ const GoogleButton = ({
     setErrors([error]);
   }, []);
 
-  useEffect(() => {
-    ref.current && onAttach(ref.current, handleLogin, handleError);
-  }, [onAttach, handleLogin, handleError]);
-
   return (
-    <div ref={ref}>
-      <AuthButton icon="google" isCard={isCard}>
+    <div>
+      <AuthButton onClick={() => login()} icon="google" isCard={isCard}>
         {t`Sign in with Google`}
       </AuthButton>
+
+      <GoogleLogin
+        onSuccess={({ credential }) => {
+          handleLogin(credential ?? "");
+        }}
+        onError={(error: any) => setErrors([error])}
+        locale={siteLocale}
+        width="386"
+      />
+
       {errors.length > 0 && (
         <AuthErrorContainer>
           {errors.map((error, index) => (
