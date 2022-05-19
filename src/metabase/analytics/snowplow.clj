@@ -125,8 +125,8 @@
   []
   (new SelfDescribingJson
        (str "iglu:com.metabase/instance/jsonschema/" (schema->version ::instance))
-       {"id"             (analytics-uuid),
-        "version"        {"tag" (:tag (public-settings/version))},
+       {"id"             (analytics-uuid)
+        "version"        {"tag" (:tag (public-settings/version))}
         "token_features" (m/map-keys name (public-settings/token-features))
         "created_at"     (u.date/format (instance-creation))}))
 

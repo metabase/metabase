@@ -21,6 +21,12 @@
   :getter (partial setting/get-value-of-type :string :multi-setting-test-bird-name)
   :setter (partial setting/set-value-of-type! :string :multi-setting-test-bird-name))
 
+(deftest preserve-metadata-test
+  (testing "define-multi-setting should preserve metadata on the setting symbol in the getter/setter functions"
+    (doseq [varr [#'multi-setting-test-bird-name #'multi-setting-test-bird-name!]]
+      (testing (format "\nvar = %s" (pr-str varr))
+        (is (:private (meta varr)))))))
+
 (deftest multi-setting-test
   (testing :green-friend
     (is (= "Green Friend"
@@ -28,11 +34,11 @@
     (is (thrown-with-msg?
          UnsupportedOperationException
          #"You cannot set :multi-setting-test-bird-name; it is a read-only setting"
-         (multi-setting-test-bird-name "Parroty"))))
+         (multi-setting-test-bird-name! "Parroty"))))
   (testing :yellow-friend
     (binding [*parakeet* :yellow-friend]
       (is (= "Yellow Friend"
-             (multi-setting-test-bird-name "Yellow Friend")))
+             (multi-setting-test-bird-name! "Yellow Friend")))
       (is (= "Yellow Friend"
              (multi-setting-test-bird-name))))))
 
@@ -58,7 +64,10 @@
         (binding [*parakeet* parakeet]
           (is (= "Parroty"
                  (multi-setting-read-only)))
-          (is (thrown-with-msg?
-               UnsupportedOperationException
-               #"You cannot set multi-setting-read-only; it is a read-only setting"
-               (multi-setting-read-only "Parroty"))))))))
+          (testing "No setter function should have been defined"
+            (is (not (resolve 'multi-setting-read-only!))))
+          (testing "Should not be able to set the Setting with `setting/set!`"
+            (is (thrown-with-msg?
+                 UnsupportedOperationException
+                 #"You cannot set multi-setting-read-only; it is a read-only setting"
+                 (setting/set! :multi-setting-read-only "Parroty")))))))))

@@ -16,7 +16,6 @@ Check out an introduction to the [Metabase API](https://www.metabase.com/learn/a
 _* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing/)._
 
 
-- [Actions](api/actions.md)
 - [Activity](api/activity.md)
 - [Advanced permissions application*](api/ee/advanced-permissions-application.md)
 - [Alert](api/alert.md)
@@ -32,8 +31,8 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Email](api/email.md)
 - [Embed](api/embed.md)
 - [Field](api/field.md)
-- [Geojson](api/geojson.md)
-- [Ldap](api/ldap.md)
+- [GeoJSON](api/geojson.md)
+- [LDAP](api/ldap.md)
 - [Login history](api/login-history.md)
 - [Metric](api/metric.md)
 - [Native query snippet](api/native-query-snippet.md)
@@ -46,7 +45,7 @@ _* indicates endpoints used for features available on [paid plans](https://www.m
 - [Pulse](api/pulse.md)
 - [Revision](api/revision.md)
 - [SSO*](api/ee/sso.md)
-- [Sandbox gtap*](api/ee/sandbox-gtap.md)
+- [Sandbox GTAP*](api/ee/sandbox-gtap.md)
 - [Sandbox table*](api/ee/sandbox-table.md)
 - [Sandbox user*](api/ee/sandbox-user.md)
 - [Search](api/search.md)

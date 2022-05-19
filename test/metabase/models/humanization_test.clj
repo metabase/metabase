@@ -120,11 +120,11 @@
               (is (= (:initial expected)
                      (display-name))))
             (testing "switch to :simple"
-              (humanization/humanization-strategy "simple")
+              (humanization/humanization-strategy! "simple")
               (is (= (:simple expected)
                      (display-name))))
             (testing "switch to :none"
-              (humanization/humanization-strategy "none")
+              (humanization/humanization-strategy! "none")
               (is (= (:none expected)
                      (display-name))))))))))
 
@@ -135,6 +135,6 @@
         (tt/with-temp Table [{table-id :id} {:name "toucansare_cool", :display_name "My Favorite Table"}]
           (doseq [new-strategy ["simple" "none"]]
             (testing (format "switch from %s -> %s" initial-strategy new-strategy)
-              (humanization/humanization-strategy new-strategy)
+              (humanization/humanization-strategy! new-strategy)
               (is (= "My Favorite Table"
                      (db/select-one-field :display_name Table, :id table-id))))))))))
