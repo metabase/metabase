@@ -66,4 +66,30 @@ describe("visual tests > visualizations > scatter", () => {
 
     cy.percySnapshot();
   });
+
+  it("with negative values and various bubble sizes", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 X, 1 Y, 20 SIZE
+union all select 2, 10, 10
+union all select 3, -9, 6
+union all select 4, 100, 30
+union all select 5, -20, 70`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+
+      displayIsLocked: true,
+      visualization_settings: {
+        "scatter.bubble": "SIZE",
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+    });
+
+    cy.percySnapshot();
+  });
 });
