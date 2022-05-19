@@ -138,11 +138,10 @@
    :visualization_settings {}
    :dataset_query          {:type "query"}
    :parameters             []
-   :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
-  {:description nil, :parameters [], :ordered_cards [], :param_values nil, :param_fields nil})
+  {:description nil, :parameters [], :ordered_cards [], :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 

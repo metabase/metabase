@@ -49,11 +49,10 @@
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
-                              :archived false, conditions))
-        remove-card-non-public-columns
-        (hydrate :param_values :param_fields))))
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+                            :archived false, conditions))
+      remove-card-non-public-columns
+      (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -165,18 +164,17 @@
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-        (hydrate [:ordered_cards :card :series] :param_values :param_fields)
-        api.dashboard/add-query-average-durations
-        (update :ordered_cards (fn [dashcards]
-                                 (for [dashcard dashcards]
-                                   (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
-                                                              :sizeY :parameter_mappings :visualization_settings])
-                                       (update :card remove-card-non-public-columns)
-                                       (update :series (fn [series]
-                                                         (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
+      (hydrate [:ordered_cards :card :series] :param_fields)
+      api.dashboard/add-query-average-durations
+      (update :ordered_cards (fn [dashcards]
+                               (for [dashcard dashcards]
+                                 (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
+                                                            :sizeY :parameter_mappings :visualization_settings])
+                                     (update :card remove-card-non-public-columns)
+                                     (update :series (fn [series]
+                                                       (for [series series]
+                                                         (remove-card-non-public-columns series))))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
