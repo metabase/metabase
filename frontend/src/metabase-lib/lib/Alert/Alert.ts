@@ -2,14 +2,13 @@ import Question from "metabase-lib/lib/Question";
 import { VisualizationSettings } from "metabase-types/types/Card";
 import { User } from "metabase-types/types/User";
 import { ALERT_TYPE_ROWS } from "./constants";
-import { getAlertType } from "./utils";
 
 export const getDefaultAlert = (
   question: Question,
   user: User,
   visualizationSettings: VisualizationSettings,
 ) => {
-  const alertType = getAlertType(question, visualizationSettings);
+  const alertType = question.alertType(visualizationSettings);
   const typeDependentAlertFields =
     alertType === ALERT_TYPE_ROWS
       ? {
