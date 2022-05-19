@@ -35,6 +35,7 @@
    :cache_ttl              nil
    :query_type             :query
    :table_id               (mt/id :categories)
+   :is_write               false
    :visualization_settings {}})
 
 (defn- dashboard->revision-object [dashboard]
