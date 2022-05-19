@@ -1,13 +1,23 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
+import Question from "metabase-lib/lib/Question";
+import { VisualizationSettings } from "metabase-types/types/Card";
+import { User } from "metabase-types/types/User";
+
 export const ALERT_TYPE_ROWS = "alert-type-rows";
 export const ALERT_TYPE_TIMESERIES_GOAL = "alert-type-timeseries-goal";
 export const ALERT_TYPE_PROGRESS_BAR_GOAL = "alert-type-progress-bar-goal";
-export type AlertType =
-  | ALERT_TYPE_ROWS
-  | ALERT_TYPE_TIMESERIES_GOAL
-  | ALERT_TYPE_PROGRESS_BAR_GOAL;
-export const getDefaultAlert = (question, user, visualizationSettings) => {
+const ALERT_TYPES = [
+  ALERT_TYPE_ROWS,
+  ALERT_TYPE_TIMESERIES_GOAL,
+  ALERT_TYPE_PROGRESS_BAR_GOAL,
+] as const;
+
+export type AlertType = typeof ALERT_TYPES[number];
+
+export const getDefaultAlert = (
+  question: Question,
+  user: User,
+  visualizationSettings: VisualizationSettings,
+) => {
   const alertType = question.alertType(visualizationSettings);
   const typeDependentAlertFields =
     alertType === ALERT_TYPE_ROWS
@@ -29,6 +39,7 @@ export const getDefaultAlert = (question, user, visualizationSettings) => {
     schedule_hour: 0,
     schedule_type: "daily",
   };
+
   return {
     card: {
       id: question.id(),
