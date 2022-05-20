@@ -13,7 +13,7 @@ import CategoryFieldPicker from "./CategoryFieldPicker";
 export interface WritebackFormProps {
   table: Table;
   row?: unknown[];
-  onSubmit?: () => void;
+  onSubmit?: (values: { [key: string]: number | string }) => void;
 
   // Form props
   isModal?: boolean;
@@ -77,9 +77,12 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
     };
   }, [table, row, editableFields]);
 
-  const handleSubmit = useCallback(() => {
-    onSubmit?.();
-  }, [onSubmit]);
+  const handleSubmit = useCallback(
+    values => {
+      onSubmit?.(values);
+    },
+    [onSubmit],
+  );
 
   const submitTitle = row ? t`Update` : t`Create`;
 

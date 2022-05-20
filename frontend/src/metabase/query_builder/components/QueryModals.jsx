@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -29,7 +30,9 @@ import NewEventModal from "metabase/timelines/questions/containers/NewEventModal
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 
-export default class QueryModals extends React.Component {
+import { createRowFromTableView } from "metabase/writeback/actions";
+
+class QueryModals extends React.Component {
   showAlertsAfterQuestionSaved = () => {
     const { questionAlerts, user, onCloseModal, onOpenModal } = this.props;
 
@@ -55,7 +58,13 @@ export default class QueryModals extends React.Component {
       question,
       onCloseModal,
       onOpenModal,
+      createRowFromTableView,
     } = this.props;
+
+    const onInsert = values => {
+      const table = question.table();
+      createRowFromTableView({ table, values });
+    };
 
     return modal === MODAL_TYPES.SAVE ? (
       <Modal form onClose={onCloseModal}>
@@ -254,10 +263,16 @@ export default class QueryModals extends React.Component {
       <Modal onClose={onCloseModal}>
         <WritebackModalForm
           table={question.table()}
-          onSubmit={onCloseModal}
+          onSubmit={onInsert}
           onClose={onCloseModal}
         />
       </Modal>
     ) : null;
   }
 }
+
+const mapDispatchToProps = dispatch => ({
+  createRowFromTableView: payload => dispatch(createRowFromTableView(payload)),
+});
+
+export default connect(() => {}, mapDispatchToProps)(QueryModals);
