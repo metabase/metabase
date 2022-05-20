@@ -1,24 +1,19 @@
-import React, { useCallback } from "react";
-import { ColorState, HuePicker } from "react-color";
+import React from "react";
+import {
+  ColorState,
+  CustomPicker,
+  CustomPickerInjectedProps,
+} from "react-color";
+import { Hue } from "react-color/lib/components/common";
 
-export interface ColorPickerProps {
-  color?: string;
-  onChange?: (color: string) => void;
-}
+export type ColorValue = ColorState;
 
-const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
-  const handleChange = useCallback(
-    (state: ColorState) => {
-      onChange?.(state.hex);
-    },
-    [onChange],
-  );
-
+const ColorPicker = (props: CustomPickerInjectedProps): JSX.Element => {
   return (
     <div>
-      <HuePicker color={color} onChange={handleChange} />
+      <Hue {...props} />
     </div>
   );
 };
 
-export default ColorPicker;
+export default CustomPicker(ColorPicker);
