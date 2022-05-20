@@ -6,8 +6,8 @@
    [metabase.api.actions :as api.actions]
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
-   [metabase.query-processor :as qp]
    [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
