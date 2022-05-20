@@ -244,11 +244,8 @@ export default class DimensionList extends Component {
   };
 
   render() {
-    console.log('query 0',this.props.sections[0].items[0].dimension._query);
-    console.log('display 0',this.props.sections[0].items[0].dimension._query._originalQuestion._card.display);
-    this.props.sections[0].items[0].dimension._query._originalQuestion._card.display = 'bar';
-    console.log('display 1',this.props.sections[0].items[0].dimension._query._originalQuestion._card.display);
-    console.log('query 1',this.props.sections[0].items[0].dimension._query);
+    this.props.sections[0].items[0].dimension._query._originalQuestion._card.display =
+      "bar";
     return (
       <AccordionList
         {...this.props}
