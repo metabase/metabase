@@ -244,10 +244,11 @@ export default class DimensionList extends Component {
   };
 
   render() {
-    var defaultCardDisplay = this.props.sections[0].items[0].dimension._query
-      ._originalQuestion._card.display; // store default display type
-    this.props.sections[0].items[0].dimension._query._originalQuestion._card.display =
-      "bar"; // Forced display to bar
+    console.log('query 0',this.props.sections[0].items[0].dimension._query);
+    console.log('display 0',this.props.sections[0].items[0].dimension._query._originalQuestion._card.display);
+    this.props.sections[0].items[0].dimension._query._originalQuestion._card.display = 'bar';
+    console.log('display 1',this.props.sections[0].items[0].dimension._query._originalQuestion._card.display);
+    console.log('query 1',this.props.sections[0].items[0].dimension._query);
     return (
       <AccordionList
         {...this.props}
