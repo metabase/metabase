@@ -10,9 +10,10 @@
             [metabase.db.data-migrations :refer [DataMigrations]]
             [metabase.db.setup :as mdb.setup]
             [metabase.models :refer [Activity ApplicationPermissionsRevision BookmarkOrdering Card CardBookmark
+                                     CardEmitter
                                      Collection CollectionBookmark CollectionPermissionGraphRevision
-                                     Dashboard DashboardBookmark DashboardCard DashboardCardSeries
-                                     Database Dependency Dimension Field FieldValues
+                                     Dashboard DashboardBookmark DashboardCard DashboardCardSeries DashboardEmitter
+                                     Database Dependency Dimension Emitter Field FieldValues
                                      LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision PersistedInfo Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
@@ -69,6 +70,9 @@
    BookmarkOrdering
    DashboardCard
    DashboardCardSeries
+   CardEmitter
+   DashboardEmitter
+   Emitter
    Activity
    Pulse
    PulseCard

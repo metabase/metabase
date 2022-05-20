@@ -20,6 +20,16 @@
   :visibility :public
   :database-local :only)
 
+(defn +check-actions-enabled
+  "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
+  returns a 403 Unauthorized response "
+  [handler]
+  (fn [request respond raise]
+    (if (experimental-enable-actions)
+      (handler request respond raise)
+      (raise (ex-info (i18n/tru "Actions are not enabled.")
+                      {:status-code 400})))))
+
 ;; TODO -- should these be ASYNC!!!!
 (defmulti table-action!
   "Multimethod for doing an action on a Table as a whole, e.g. inserting a new row."
