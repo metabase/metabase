@@ -27,7 +27,6 @@ const GoogleButton = ({
   onAttach,
   onLogin,
 }: GoogleButtonProps) => {
-  const ref = useRef<HTMLDivElement>(null);
   const [errors, setErrors] = useState<string[]>([]);
 
   const siteLocale = MetabaseSettings.get("site-locale");

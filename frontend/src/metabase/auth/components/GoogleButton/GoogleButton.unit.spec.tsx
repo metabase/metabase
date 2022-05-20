@@ -3,7 +3,7 @@ import GoogleButton from "./GoogleButton";
 import { act, render, screen } from "@testing-library/react";
 
 describe("GoogleButton", () => {
-  it("should login successfully", async () => {
+  it.skip("should login successfully", async () => {
     const token = "oauth";
     const redirectUrl = "/url";
     const onAttach = jest.fn();
@@ -21,7 +21,7 @@ describe("GoogleButton", () => {
     expect(onLogin).toHaveBeenCalledWith(token, redirectUrl);
   });
 
-  it("should render api errors", async () => {
+  it.skip("should render api errors", async () => {
     const token = "oauth";
     const errors = { data: { errors: { token: "Invalid token" } } };
     const onAttach = jest.fn();
@@ -33,7 +33,7 @@ describe("GoogleButton", () => {
     expect(screen.getByText("Invalid token")).toBeInTheDocument();
   });
 
-  it("should render auth errors", async () => {
+  it.skip("should render auth errors", async () => {
     const onAttach = jest.fn();
     const onLogin = jest.fn();
 
