@@ -2,9 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { compose } from "redux";
 
 import { t } from "ttag";
-import _ from "underscore";
+import _ from "lodash";
 import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
@@ -15,6 +16,7 @@ import FormError from "metabase/components/form/FormError";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { getErrorMessageWithBoldFields } from "metabase/lib/form";
 
 import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
@@ -151,7 +153,6 @@ class DatabaseEditApp extends Component {
                     {({
                       Form,
                       FormField,
-                      FormMessage,
                       FormSubmit,
                       formFields,
                       values,
@@ -176,7 +177,10 @@ class DatabaseEditApp extends Component {
                               <FormError
                                 className="mt3 mb4"
                                 anchorMarginTop={24}
-                                error={error}
+                                error={getErrorMessageWithBoldFields(
+                                  error,
+                                  formFields,
+                                )}
                               />
                               {_.reject(formFields, { name: "engine" }).map(
                                 ({ name }) => (
@@ -220,12 +224,16 @@ class DatabaseEditApp extends Component {
 }
 
 const getSubmitError = error => {
-  return updateIn(error, ["data", "errors"], errors => ({
-    details: errors,
-  }));
+  if (_.isObject(error?.data?.errors)) {
+    return updateIn(error, ["data", "errors"], errors => ({
+      details: errors,
+    }));
+  }
+
+  return error;
 };
 
-export default _.compose(
+export default compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ database }) => database && database.name),
 )(DatabaseEditApp);

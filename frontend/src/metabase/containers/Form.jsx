@@ -230,7 +230,6 @@ class Form extends React.Component {
           _error:
             error.data?.message ||
             error.message ||
-            error.data ||
             (hasUnknownFields ? t`An error occurred` : null),
           ...error.data.errors,
         };

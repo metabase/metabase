@@ -12,7 +12,7 @@ export const ErrorCard = styled(Card)`
   display: flex;
   align-items: center;
 
-  > * + * {
+  > :not(:first-child) + * {
     margin-left: 1.5rem;
   }
 `;

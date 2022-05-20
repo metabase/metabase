@@ -7,6 +7,7 @@ import FormError from "metabase/components/form/FormError";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import DriverWarning from "metabase/containers/DriverWarning";
+import { getErrorMessageWithBoldFields } from "metabase/lib/form";
 import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -127,7 +128,6 @@ const DatabaseForm = ({
       {({
         Form,
         FormField,
-        FormMessage,
         FormSubmit,
         formFields,
         values,
@@ -141,7 +141,11 @@ const DatabaseForm = ({
             engine={values.engine}
             onChange={engine => onChangeField("engine", engine)}
           />
-          <FormError className="mt3 mb4" anchorMarginTop={24} error={error} />
+          <FormError
+            className="mt3 mb4"
+            anchorMarginTop={24}
+            error={getErrorMessageWithBoldFields(error, formFields)}
+          />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}

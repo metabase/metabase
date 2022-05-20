@@ -1,11 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { ReactNode, useEffect, useRef } from "react";
 import cx from "classnames";
 
-import Markdown from "metabase/core/components/Markdown";
 import { ErrorCard, ScrollAnchor, WarningIcon } from "./FormError.styled";
 
 interface FormErrorProps {
-  error: string;
+  error?: ReactNode;
   className?: string;
   anchorMarginTop?: number;
 }
@@ -27,7 +26,7 @@ export default function FormError({
       <ErrorCard flat className={cx("bg-error", className)}>
         <ScrollAnchor anchorMarginTop={anchorMarginTop} ref={scrollAnchorRef} />
         <WarningIcon name="warning" />
-        <Markdown>{error}</Markdown>
+        <span>{error}</span>
       </ErrorCard>
     );
   }
