@@ -39,6 +39,7 @@ export const ModalTitle = styled(Ellipsified)`
 
 export const ModalTabList = styled(TabList)`
   padding: 0 2rem;
+  flex-shrink: 0;
 `;
 
 export const ModalTabPanel = styled(TabPanel)`
