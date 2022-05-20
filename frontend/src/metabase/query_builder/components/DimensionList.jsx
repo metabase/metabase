@@ -244,6 +244,8 @@ export default class DimensionList extends Component {
   };
 
   render() {
+    var defaultCardDisplay = this.props.sections[0].items[0].dimension._query._originalQuestion._card.display // store default display type
+    this.props.sections[0].items[0].dimension._query._originalQuestion._card.display = 'bar'; // Forced display to bar
     return (
       <AccordionList
         {...this.props}
