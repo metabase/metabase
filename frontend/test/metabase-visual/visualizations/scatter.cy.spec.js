@@ -37,6 +37,7 @@ describe("visual tests > visualizations > scatter", () => {
       },
     });
 
+    cy.get(".dc-chart");
     cy.percySnapshot();
   });
 
@@ -64,6 +65,7 @@ describe("visual tests > visualizations > scatter", () => {
       },
     });
 
+    cy.get(".dc-chart");
     cy.percySnapshot();
   });
 
@@ -90,6 +92,7 @@ union all select 5, -20, 70`,
       },
     });
 
+    cy.get(".dc-chart");
     cy.percySnapshot();
   });
 });
