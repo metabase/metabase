@@ -21,7 +21,7 @@
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p]
             [toucan.db :as db])
-  (:import [java.util TimeZone]
+  (:import java.util.TimeZone
            [org.quartz ObjectAlreadyExistsException Trigger]))
 
 (defn- job-context->job-type
