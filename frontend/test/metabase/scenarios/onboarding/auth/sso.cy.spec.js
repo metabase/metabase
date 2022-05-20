@@ -32,8 +32,10 @@ describe("scenarios > auth > signin > SSO", () => {
     });
 
     it("should show SSO button", () => {
-      cy.findByText("Sign in with Google");
       cy.findByText("Sign in with email");
+
+      // Google SSO button is piped through an iframe
+      cy.get("iframe");
     });
 
     it("should show login form when directed to sign in with email", () => {
