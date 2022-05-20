@@ -19,6 +19,7 @@ describe("Object Detail", () => {
         canZoomPreviousRow={false}
         isEditing={false}
         canEdit={false}
+        deleteRow={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
@@ -39,6 +40,7 @@ describe("Object Detail", () => {
         canZoomPreviousRow={false}
         isEditing={false}
         canEdit={false}
+        deleteRow={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
@@ -109,6 +111,7 @@ describe("Object Detail", () => {
         visualizationIsClickable={() => false}
         fetchTableFks={() => null}
         loadObjectDetailFKReferences={() => null}
+        deleteRowFromObjectDetail={() => null}
         viewPreviousObjectDetail={() => null}
         viewNextObjectDetail={() => null}
         closeObjectDetail={() => null}
