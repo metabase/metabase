@@ -3,11 +3,16 @@ import { ChromePicker, ColorState } from "react-color";
 import { getStyles } from "./ColorPicker.styled";
 
 export interface ColorPickerProps {
+  className?: string;
   color?: string;
   onChange?: (color: string) => void;
 }
 
-const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
+const ColorPicker = ({
+  className,
+  color,
+  onChange,
+}: ColorPickerProps): JSX.Element => {
   const handleChange = useCallback(
     (state: ColorState) => {
       onChange?.(state.hex);
@@ -17,6 +22,7 @@ const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
 
   return (
     <ChromePicker
+      className={className}
       color={color}
       styles={getStyles()}
       disableAlpha
