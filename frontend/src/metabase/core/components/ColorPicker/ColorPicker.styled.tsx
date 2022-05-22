@@ -1,13 +1,19 @@
-import styled from "@emotion/styled";
-
-export const SaturationContainer = styled.div`
-  position: relative;
-  height: 10rem;
-  margin-bottom: 1rem;
-`;
-
-export const HueContainer = styled.div`
-  position: relative;
-  height: 0.5rem;
-  border-radius: 0.25rem;
-`;
+export const getStyles = () => ({
+  default: {
+    picker: {
+      boxShadow: "none",
+      background: "none",
+      fontFamily: "inherit",
+    },
+    body: {
+      marginTop: "16px",
+      padding: "0",
+    },
+    color: {
+      display: "none",
+    },
+    saturation: {
+      borderRadius: "4px",
+    },
+  },
+});

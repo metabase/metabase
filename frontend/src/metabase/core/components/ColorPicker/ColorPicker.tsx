@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import { ChromePicker, ColorState } from "react-color";
+import { getStyles } from "./ColorPicker.styled";
 
 export interface ColorPickerProps {
   color?: string;
@@ -17,31 +18,11 @@ const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
   return (
     <ChromePicker
       color={color}
-      styles={styles}
+      styles={getStyles()}
       disableAlpha
       onChange={handleChange}
     />
   );
-};
-
-const styles = {
-  default: {
-    picker: {
-      boxShadow: "none",
-      background: "none",
-      fontFamily: "inherit",
-    },
-    body: {
-      marginTop: "16px",
-      padding: "0",
-    },
-    color: {
-      display: "none",
-    },
-    saturation: {
-      borderRadius: "4px",
-    },
-  },
 };
 
 export default ColorPicker;
