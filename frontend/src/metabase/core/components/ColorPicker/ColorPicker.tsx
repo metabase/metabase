@@ -14,7 +14,23 @@ const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
     [onChange],
   );
 
-  return <ChromePicker color={color} onChange={handleChange} />;
+  return (
+    <ChromePicker
+      color={color}
+      styles={styles}
+      disableAlpha
+      onChange={handleChange}
+    />
+  );
+};
+
+const styles = {
+  default: {
+    picker: {
+      boxShadow: "none",
+      background: "none",
+    },
+  },
 };
 
 export default ColorPicker;
