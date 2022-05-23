@@ -44,6 +44,7 @@ const ColorPicker = ({
 
   return (
     <TippyPopoverWithTrigger
+      disableContentSandbox
       renderTrigger={({ onClick }) => (
         <ColorPickerTrigger
           color={color}
