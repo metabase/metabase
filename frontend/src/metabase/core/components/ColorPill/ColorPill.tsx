@@ -2,7 +2,7 @@ import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";
 
 export interface ColorPillProps extends HTMLAttributes<HTMLDivElement> {
-  color?: string;
+  color: string;
   isBordered?: boolean;
   isSelected?: boolean;
   isGenerated?: boolean;

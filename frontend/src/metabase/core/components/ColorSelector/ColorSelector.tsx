@@ -1,4 +1,6 @@
 import React from "react";
+import ColorPill from "../ColorPill";
+import { ColorSelectorRoot } from "./ColorSelector.styled";
 
 export interface ColorSelectorProps {
   color?: string;
@@ -6,8 +8,24 @@ export interface ColorSelectorProps {
   onChange: (color: string) => void;
 }
 
-const ColorSelector = (): JSX.Element => {
-  return <div />;
+const ColorSelector = ({
+  color,
+  colors,
+  onChange,
+}: ColorSelectorProps): JSX.Element => {
+  return (
+    <ColorSelectorRoot>
+      {colors.map((option, index) => (
+        <ColorPill
+          key={index}
+          color={option}
+          isBordered
+          isSelected={color === option}
+          onClick={() => onChange(option)}
+        />
+      ))}
+    </ColorSelectorRoot>
+  );
 };
 
 export default ColorSelector;
