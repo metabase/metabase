@@ -32,16 +32,15 @@
                             (qp/preprocess query) ; seeds qp store as a side-effect so we can generate honeysql
                             (sql.qp/mbql->honeysql driver query)
                             (catch Exception e
-                              (catch-throw e 404))))]
-    (check-one-row-affected connection-spec query raw-hsql)
-    (let [delete-hsql (-> raw-hsql
-                          (dissoc :select)
-                          (assoc :delete []))
-          result      (try (jdbc/execute! connection-spec (hformat/format delete-hsql))
-                           (catch Exception e
-                             (catch-throw e 400 {:query query
-                                                 :sql delete-hsql})))]
-      {:rows-deleted result})))
+                              (catch-throw e 404))))
+        _ (check-one-row-affected connection-spec query raw-hsql)
+        delete-hsql (-> raw-hsql
+                        (dissoc :select)
+                        (assoc :delete []))]
+    {:rows-deleted (try (jdbc/execute! connection-spec (hformat/format delete-hsql))
+                        (catch Exception e
+                          (catch-throw e 400 {:query query
+                                              :sql delete-hsql})))}))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
   [_action driver {database-id :database :as query}]
@@ -53,7 +52,7 @@
                             (catch Exception e
                               (catch-throw e 404))))]
     (check-one-row-affected connection-spec query raw-hsql)
-    (let [update-values (:update_row query)
+    (let [update-values (:update-row query)
           target-table (first (:from raw-hsql))
           update-hsql (-> raw-hsql
                           (assoc
