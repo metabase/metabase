@@ -857,6 +857,56 @@ describe("scenarios > visualizations > pivot tables", () => {
 
     cy.findAllByText(/Totals for .*/i).should("have.length", 0);
   });
+
+  it.skip("should sort by metric (metabase#22872)", () => {
+    const questionDetails = {
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": REVIEWS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", REVIEWS.RATING, null],
+            ["field", REVIEWS.CREATED_AT, { "temporal-unit": "year" }],
+          ],
+        },
+        type: "query",
+      },
+      display: "pivot",
+    };
+
+    visitQuestionAdhoc(questionDetails);
+
+    cy.findByTextEnsureVisible("Created At: Year");
+    cy.findByTextEnsureVisible("Row totals");
+
+    assertTopMostRowTotalValue("149");
+
+    cy.icon("notebook").click();
+
+    cy.findByTextEnsureVisible("Sort").click();
+
+    popover()
+      .contains("Count")
+      .click();
+    cy.wait("@pivotDataset");
+
+    cy.button("Visualize").click();
+
+    assertTopMostRowTotalValue("23");
+
+    /**
+     * @param { string } value
+     */
+    function assertTopMostRowTotalValue(value) {
+      // Warning: Fragile selector!
+      // TODO: refactor once we have a better HTML structure for tables.
+      cy.get("[role=rowgroup] > div")
+        .eq(5)
+        .invoke("text")
+        .should("eq", value);
+    }
+  });
 });
 
 const testQuery = {
