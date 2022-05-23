@@ -1,10 +1,10 @@
 import React, {
-  InputHTMLAttributes,
+  ChangeEvent,
   FocusEvent,
+  InputHTMLAttributes,
   useCallback,
   useMemo,
   useState,
-  ChangeEvent,
 } from "react";
 import Color from "color";
 import Input from "metabase/core/components/Input";
@@ -15,12 +15,12 @@ export type ColorInputAttributes = Omit<
 >;
 
 export interface ColorInputProps extends ColorInputAttributes {
-  value?: string;
+  color?: string;
   onChange?: (value?: string) => void;
 }
 
 const ColorInput = ({
-  value,
+  color,
   onFocus,
   onBlur,
   onChange,
@@ -28,17 +28,17 @@ const ColorInput = ({
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
-  const valueText = useMemo(() => {
-    return value ? Color(value).hex() : "";
-  }, [value]);
+  const colorText = useMemo(() => {
+    return color ? Color(color).hex() : "";
+  }, [color]);
 
   const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
-      setInputText(valueText);
+      setInputText(colorText);
       onFocus?.(event);
     },
-    [valueText, onFocus],
+    [colorText, onFocus],
   );
 
   const handleBlur = useCallback(
@@ -55,8 +55,7 @@ const ColorInput = ({
       setInputText(newText);
 
       try {
-        const color = Color(newText);
-        onChange?.(color.hex());
+        onChange?.(Color(newText).hex());
       } catch (e) {
         onChange?.(undefined);
       }
@@ -66,7 +65,7 @@ const ColorInput = ({
 
   return (
     <Input
-      value={isFocused ? inputText : valueText}
+      value={isFocused ? inputText : colorText}
       onFocus={handleFocus}
       onBlur={handleBlur}
       onChange={handleChange}
