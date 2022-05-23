@@ -6,11 +6,12 @@ on:
       - 'master'
       - 'release-**'
     paths-ignore:
-    - 'docs/**'
-    - 'frontend/test/**'
-    - 'enterprise/frontend/test/**'
-    - ".**"
-    - "test*"
+      - 'docs/**'
+      - 'frontend/test/**'
+      - 'enterprise/frontend/test/**'
+      - ".**"
+      - "test*"
+
 
 jobs:
   build:

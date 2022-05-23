@@ -1,15 +1,15 @@
 # Triggers Build and Docker by adding "@metabase-bot create branch image" comment in a PR
-name: Build + Docker Uberjar
+name: Create Branch Docker Image
 
 on:
   issue_comment:
     types: [created]
     paths-ignore:
-    - 'docs/**'
-    - 'frontend/test/**'
-    - 'enterprise/frontend/test/**'
-    - ".**"
-    - "test*"
+      - 'docs/**'
+      - 'frontend/test/**'
+      - 'enterprise/frontend/test/**'
+      - ".**"
+      - "test*"
 
 jobs:
   build:
