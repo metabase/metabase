@@ -104,7 +104,7 @@ function getEngineName(engine) {
 function getEngineInfo(engine, details, id) {
   const engineInfo = (MetabaseSettings.get("engines") || {})[engine];
   switch (engine) {
-    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
+    // BigQuery has special logic to switch out forms depending on what style of authentication we use.
     case "bigquery":
       return getFieldsForBigQuery(details);
     // Mongo has special logic to switch between a connection URI and broken out fields
