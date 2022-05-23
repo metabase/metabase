@@ -143,7 +143,7 @@
   {:average (or
              (some (comp query/average-execution-time-ms qp.util/query-hash)
                    [query
-                    (assoc query :constraints qp.constraints/default-query-constraints)])
+                    (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
 (api/defendpoint POST "/native"
