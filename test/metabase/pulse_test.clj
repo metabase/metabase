@@ -328,8 +328,8 @@
 
       :fixture
       (fn [_ thunk]
-        (with-redefs [constraints/default-query-constraints {:max-results           10000
-                                                             :max-results-bare-rows 30}]
+        (with-redefs [constraints/default-query-constraints (constantly {:max-results           10000
+                                                                            :max-results-bare-rows 30})]
           (thunk)))
 
       :assert

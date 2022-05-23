@@ -160,7 +160,7 @@
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false
-                          :constraints  constraints/default-query-constraints
+                          :constraints  (constraints/default-query-constraints)
                           :context      :dashboard}
                          options
                          {:parameters   resolved-params
