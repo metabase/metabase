@@ -1,5 +1,10 @@
 import styled from "@emotion/styled";
 
+export const ControlsContainer = styled.div`
+  width: 16.5rem;
+  padding: 1rem;
+`;
+
 export const SaturationContainer = styled.div`
   position: relative;
   height: 10rem;

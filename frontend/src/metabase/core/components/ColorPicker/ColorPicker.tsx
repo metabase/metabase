@@ -5,10 +5,16 @@ import {
   CustomPickerInjectedProps,
 } from "react-color";
 import { Hue, Saturation } from "react-color/lib/components/common";
-import { HueContainer, SaturationContainer } from "./ColorPicker.styled";
+import ColorPill from "metabase/core/components/ColorPill";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import {
+  ControlsContainer,
+  HueContainer,
+  SaturationContainer,
+} from "./ColorPicker.styled";
 
 export interface ColorPickerProps {
-  color?: string;
+  color: string;
   onChange?: (color: string) => void;
 }
 
@@ -20,21 +26,28 @@ const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
     [onChange],
   );
 
-  return <ColorControls color={color} onChange={handleChange} />;
+  return (
+    <TippyPopoverWithTrigger
+      renderTrigger={({ onClick }) => (
+        <ColorPill color={color} onClick={onClick} />
+      )}
+      popoverContent={<ColorControls color={color} onChange={handleChange} />}
+    />
+  );
 };
 
 const ColorControls = CustomPicker(function ColorControls(
   props: CustomPickerInjectedProps,
 ) {
   return (
-    <div>
+    <ControlsContainer>
       <SaturationContainer>
         <Saturation {...props} />
       </SaturationContainer>
       <HueContainer>
         <Hue {...props} />
       </HueContainer>
-    </div>
+    </ControlsContainer>
   );
 });
 
