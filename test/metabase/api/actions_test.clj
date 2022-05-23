@@ -24,7 +24,11 @@
     :expected     {:rows-updated [1]}}
    {:action       "actions/row/delete"
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}])
+    :expected     {:rows-deleted [1]}}
+   {:action       "actions/row/update"
+    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
+                         :update_row {:name "new-category-name"})
+    :expected     {:rows-updated [1]}}])
 
 (defn- row-action? [action]
   (str/starts-with? action "actions/row"))
@@ -129,7 +133,8 @@
 (deftest row-delete-action-gives-400-when-matching-more-than-one
   (mt/with-temporary-setting-values [experimental-enable-actions true]
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (let [query-that-returns-more-than-one (assoc (mt/mbql-query venues {:filter [:> $id -10]}) :update_row {:existing-col "new-value"})]
+      (let [query-that-returns-more-than-one (assoc (mt/mbql-query venues {:filter [:> $id -10]})
+                                                    :update_row {:existing-col "new-value"})]
         (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
         (doseq [{:keys [action]} (mock-requests)
                 :when (not= action "actions/row/create")] ;; the query in create is not used to select values to act upopn.

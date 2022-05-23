@@ -56,6 +56,11 @@ import {
   ErrorWrapper,
   EditingFormContainer,
 } from "./ObjectDetail.styled";
+import {
+  deleteRowFromObjectDetail,
+  DeleteRowPayload,
+} from "metabase/writeback/actions";
+import ActionHeader from "metabase/writeback/components/ObjectDetails/ActionHeader";
 
 const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
@@ -93,6 +98,8 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
+  deleteRowFromObjectDetail: (payload: DeleteRowPayload) =>
+    dispatch(deleteRowFromObjectDetail(payload)),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
 });
 
@@ -113,6 +120,7 @@ export interface ObjectDetailProps {
   isWritebackEnabled: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
+  deleteRowFromObjectDetail: (opts: DeleteRowPayload) => void;
   fetchTableFks: (id: number) => void;
   loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
   followForeignKey: (opts: { objectId: ObjectId; fk: ForeignKey }) => void;
@@ -125,6 +133,7 @@ export function ObjectDetailFn({
   data,
   question,
   table,
+  deleteRowFromObjectDetail,
   zoomedRow,
   zoomedRowID,
   tableForeignKeys,
@@ -212,6 +221,17 @@ export function ObjectDetailFn({
     [zoomedRowID, followForeignKey],
   );
 
+  const canEdit = !!(isWritebackEnabled && table);
+  const deleteRow = React.useMemo(() => {
+    if (canEdit) {
+      return () =>
+        deleteRowFromObjectDetail({
+          id: zoomedRowID,
+          table,
+        });
+    }
+  }, [canEdit, zoomedRowID, table, deleteRowFromObjectDetail]);
+
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: { [key: string]: () => void } = {
       ArrowUp: viewPreviousObjectDetail,
@@ -246,7 +266,6 @@ export function ObjectDetailFn({
     !!tableForeignKeys.length &&
     hasPk
   );
-  const canEdit = !!(isWritebackEnabled && table);
 
   return (
     <Modal
@@ -270,6 +289,7 @@ export function ObjectDetailFn({
               canZoomNextRow={canZoomNextRow}
               isEditing={isEditing}
               canEdit={canEdit}
+              deleteRow={deleteRow}
               viewPreviousObjectDetail={viewPreviousObjectDetail}
               viewNextObjectDetail={viewNextObjectDetail}
               closeObjectDetail={closeObjectDetail}
@@ -309,6 +329,7 @@ export interface ObjectDetailHeaderProps {
   canZoomNextRow: boolean;
   isEditing: boolean;
   canEdit: boolean;
+  deleteRow?: () => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
   closeObjectDetail: () => void;
@@ -323,6 +344,7 @@ export function ObjectDetailHeader({
   canZoomNextRow,
   isEditing,
   canEdit,
+  deleteRow,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
@@ -338,13 +360,10 @@ export function ObjectDetailHeader({
       </div>
       <div className="flex align-center">
         {canEdit && (
-          <Button
-            className="mr1"
-            icon={isEditing ? "eye" : "pencil"}
-            onClick={onToggleEditingModeClick}
-            iconSize={20}
-            onlyIcon
-            borderless
+          <ActionHeader
+            isEditing={isEditing}
+            deleteRow={deleteRow}
+            onToggleEditingModeClick={onToggleEditingModeClick}
           />
         )}
         <div className="flex p2">
