@@ -1,6 +1,6 @@
 import React from "react";
 
-import _ from "lodash";
+import { identity } from "lodash";
 import { BaseFieldDefinition } from "metabase-types/forms";
 import { ReactNode } from "react-markdown";
 
@@ -14,7 +14,7 @@ export function getErrorMessageWithBoldFields(
 
   const fieldTitles = (formFields || [])
     .map(formField => formField.title)
-    .filter(_.identity) as string[];
+    .filter(identity) as string[];
 
   if (fieldTitles.length === 0) {
     return message;

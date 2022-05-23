@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { compose } from "redux";
 
 import { t } from "ttag";
-import _ from "lodash";
+import { isObject, reject } from "lodash";
 import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
@@ -182,7 +182,7 @@ class DatabaseEditApp extends Component {
                                   formFields,
                                 )}
                               />
-                              {_.reject(formFields, { name: "engine" }).map(
+                              {reject(formFields, { name: "engine" }).map(
                                 ({ name }) => (
                                   <FormField key={name} name={name} />
                                 ),
@@ -224,7 +224,7 @@ class DatabaseEditApp extends Component {
 }
 
 const getSubmitError = error => {
-  if (_.isObject(error?.data?.errors)) {
+  if (isObject(error?.data?.errors)) {
     return updateIn(error, ["data", "errors"], errors => ({
       details: errors,
     }));
