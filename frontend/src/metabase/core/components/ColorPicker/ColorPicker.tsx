@@ -8,7 +8,7 @@ import { Hue, Saturation } from "react-color/lib/components/common";
 import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
-  ContentContainer,
+  ControlsContainer,
   HueContainer,
   SaturationContainer,
   TriggerContainer,
@@ -103,14 +103,14 @@ const ColorPickerContent = CustomPicker(function ColorControls(
   props: CustomPickerInjectedProps,
 ) {
   return (
-    <ContentContainer>
+    <ControlsContainer>
       <SaturationContainer>
         <Saturation {...props} />
       </SaturationContainer>
       <HueContainer>
         <Hue {...props} />
       </HueContainer>
-    </ContentContainer>
+    </ControlsContainer>
   );
 });
 
