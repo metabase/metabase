@@ -25,9 +25,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   ref: Ref<HTMLDivElement>,
 ) {
   const handleChange = useCallback(
-    (color?: string) => {
-      color && onChange?.(color);
-    },
+    (color?: string) => color && onChange?.(color),
     [onChange],
   );
 
