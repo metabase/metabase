@@ -5,7 +5,6 @@
 import React from "react";
 import cx from "classnames";
 
-import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -51,13 +50,13 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     <h3
       onClick={onClick}
       className={cx(
-        "Scalar-title overflow-hidden fullscreen-normal-text fullscreen-night-text text-brand-hover",
+        "Scalar-title overflow-hidden text-centered fullscreen-normal-text fullscreen-night-text text-brand-hover",
         {
           "cursor-pointer": !!onClick,
         },
       )}
     >
-      <Ellipsified tooltip={title}>{title}</Ellipsified>
+      {title}
     </h3>
     {description && description.length > 0 && (
       <div
