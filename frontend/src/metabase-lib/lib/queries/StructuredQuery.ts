@@ -33,6 +33,7 @@ import Dimension, {
   ExpressionDimension,
   AggregationDimension,
 } from "metabase-lib/lib/Dimension";
+import { isSegment } from "metabase/lib/query/filter";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import Segment from "../metadata/Segment";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
@@ -50,8 +51,10 @@ import Table from "../metadata/Table";
 import Field from "../metadata/Field";
 import { TYPE } from "metabase/lib/types";
 import { fieldRefForColumn } from "metabase/lib/dataset";
+
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;
+
 export const STRUCTURED_QUERY_TEMPLATE = {
   database: null,
   type: "query",
@@ -63,11 +66,25 @@ export const STRUCTURED_QUERY_TEMPLATE = {
 export interface FilterSection {
   name: string;
   icon: string;
-  items: DimensionOption[];
+  items: (DimensionOption | SegmentOption)[];
 }
 
 export interface DimensionOption {
   dimension: Dimension;
+}
+
+// type guards for determining data types
+export const isSegmentOption = (content: any): content is SegmentOption =>
+  content?.filter && isSegment(content.filter);
+
+export const isDimensionOption = (content: any): content is DimensionOption =>
+  !!content?.dimension;
+
+export interface SegmentOption {
+  name: string;
+  filter: ["segment", number];
+  icon: string;
+  query: StructuredQuery;
 }
 
 /**
@@ -849,10 +866,11 @@ class StructuredQueryInner extends AtomicQuery {
   filterFieldOptionSections(
     filter?: (Filter | FilterWrapper) | null | undefined,
     { includeSegments = true } = {},
+    includeAppliedSegments = false,
   ) {
     const filterDimensionOptions = this.filterDimensionOptions();
     const filterSegmentOptions = includeSegments
-      ? this.filterSegmentOptions(filter)
+      ? this.filterSegmentOptions(filter, includeAppliedSegments)
       : [];
     return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
@@ -867,6 +885,7 @@ class StructuredQueryInner extends AtomicQuery {
   topLevelFilterFieldOptionSections(
     filter = null,
     stages = 2,
+    includeAppliedSegments = false,
   ): FilterSection[] {
     const queries = this.queries().slice(-stages);
 
@@ -877,7 +896,9 @@ class StructuredQueryInner extends AtomicQuery {
 
     queries.reverse();
     const sections = [].concat(
-      ...queries.map(q => q.filterFieldOptionSections(filter)),
+      ...queries.map(q =>
+        q.filterFieldOptionSections(filter, undefined, includeAppliedSegments),
+      ),
     );
 
     // special logic to only show aggregation dimensions for post-aggregation dimensions
@@ -913,7 +934,10 @@ class StructuredQueryInner extends AtomicQuery {
   /**
    * @returns @type {Segment}s that can be used as filters.
    */
-  filterSegmentOptions(filter?: Filter | FilterWrapper): Segment[] {
+  filterSegmentOptions(
+    filter?: Filter | FilterWrapper,
+    includeAppliedSegments = false,
+  ): Segment[] {
     if (filter && !(filter instanceof FilterWrapper)) {
       filter = new FilterWrapper(filter, null, this);
     }
@@ -922,7 +946,8 @@ class StructuredQueryInner extends AtomicQuery {
     return this.table().segments.filter(
       segment =>
         (currentSegmentId != null && currentSegmentId === segment.id) ||
-        (!segment.archived && !this.segments().includes(segment)),
+        (!segment.archived &&
+          (includeAppliedSegments || !this.segments().includes(segment))),
     );
   }
 

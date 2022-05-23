@@ -1,10 +1,17 @@
 import React, { useMemo } from "react";
+import { t } from "ttag";
+
 import StructuredQuery, {
   DimensionOption,
+  SegmentOption,
+  isDimensionOption,
+  isSegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
+import { isSegment } from "metabase/lib/query/filter";
+import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import BulkFilterSelect from "../BulkFilterSelect";
+import { BulkFilterSelect, SegmentFilterSelect } from "../BulkFilterSelect";
 import {
   ListRoot,
   ListRow,
@@ -15,7 +22,7 @@ import {
 export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
-  options: DimensionOption[];
+  options: (DimensionOption | SegmentOption)[];
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
@@ -29,9 +36,27 @@ const BulkFilterList = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterListProps): JSX.Element => {
+  const [dimensions, segments, segmentFilters] = useMemo(
+    () => [
+      options.filter(isDimensionOption),
+      options.filter(isSegmentOption),
+      filters.filter(isSegment),
+    ],
+    [options, filters],
+  );
+
   return (
     <ListRoot>
-      {options.map(({ dimension }, index) => (
+      {!!segments.length && (
+        <SegmentListItem
+          query={query}
+          filters={segmentFilters}
+          segments={segments}
+          onAddFilter={onAddFilter}
+          onRemoveFilter={onRemoveFilter}
+        />
+      )}
+      {dimensions.map(({ dimension }, index) => (
         <BulkFilterListItem
           key={index}
           query={query}
@@ -95,5 +120,37 @@ const BulkFilterListItem = ({
     </ListRow>
   );
 };
+
+interface SegmentListItemProps {
+  query: StructuredQuery;
+  filters: Filter[];
+  segments: SegmentOption[];
+  onAddFilter: (filter: Filter) => void;
+  onRemoveFilter: (filter: Filter) => void;
+}
+
+const SegmentListItem = ({
+  query,
+  filters,
+  segments,
+  onAddFilter,
+  onRemoveFilter,
+}: SegmentListItemProps): JSX.Element => (
+  <>
+    <ListRow>
+      <ListRowLabel>{t`Segments`}</ListRowLabel>
+      <ListRowContent>
+        <SegmentFilterSelect
+          query={query}
+          filters={filters}
+          segments={segments}
+          onAddFilter={onAddFilter}
+          onRemoveFilter={onRemoveFilter}
+        />
+      </ListRowContent>
+    </ListRow>
+    <ModalDivider />
+  </>
+);
 
 export default BulkFilterList;

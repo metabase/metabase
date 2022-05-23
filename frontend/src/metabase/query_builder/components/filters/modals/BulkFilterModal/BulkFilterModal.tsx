@@ -39,7 +39,7 @@ const BulkFilterModal = ({
   }, [query]);
 
   const sections = useMemo(() => {
-    return query.topLevelFilterFieldOptionSections();
+    return query.topLevelFilterFieldOptionSections(null, 2, true);
   }, [query]);
 
   const handleAddFilter = useCallback((filter: Filter) => {

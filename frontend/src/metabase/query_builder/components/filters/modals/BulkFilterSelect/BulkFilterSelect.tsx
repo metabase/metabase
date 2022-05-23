@@ -1,7 +1,13 @@
 import React, { useCallback, useMemo } from "react";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import { xor } from "lodash";
+
+import StructuredQuery, {
+  SegmentOption,
+} from "metabase-lib/lib/queries/StructuredQuery";
+import Select from "metabase/core/components/Select";
+
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import Dimension, { FieldDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
   SelectFilterButton,
@@ -17,7 +23,7 @@ export interface BulkFilterSelectProps {
   onRemoveFilter: (filter: Filter) => void;
 }
 
-const BulkFilterSelect = ({
+export const BulkFilterSelect = ({
   query,
   filter,
   dimension,
@@ -79,9 +85,62 @@ const BulkFilterSelect = ({
   );
 };
 
-const getNewFilter = (query: StructuredQuery, dimension: Dimension) => {
+const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   const filter = new Filter([], null, dimension.query() ?? query);
   return filter.setDimension(dimension.mbql(), { useDefaultOperator: true });
 };
 
-export default BulkFilterSelect;
+export interface SegmentFilterSelectProps {
+  query: StructuredQuery;
+  filters?: Filter[];
+  segments: SegmentOption[];
+  onAddFilter: (filter: Filter) => void;
+  onRemoveFilter: (filter: Filter) => void;
+}
+
+export const SegmentFilterSelect = ({
+  query,
+  filters,
+  segments,
+  onAddFilter,
+  onRemoveFilter,
+}: SegmentFilterSelectProps): JSX.Element => {
+  const activeSegments = useMemo(() => {
+    return segments.filter(segment => {
+      return !!filters?.find(
+        filter => filter[0] === "segment" && filter[1] === segment.filter[1],
+      );
+    });
+  }, [filters, segments]);
+
+  const toggleSegment = useCallback(
+    (newActiveSegments: SegmentOption[]) => {
+      const [changedSegment] = xor(newActiveSegments, activeSegments);
+      const segmentIsActive = activeSegments.includes(changedSegment);
+
+      const segmentFilter = new Filter(changedSegment.filter, null, query);
+
+      segmentIsActive
+        ? onRemoveFilter(segmentFilter)
+        : onAddFilter(segmentFilter);
+    },
+    [query, activeSegments, onRemoveFilter, onAddFilter],
+  );
+
+  return (
+    <div>
+      <Select
+        options={segments.map(segment => ({
+          name: segment.name,
+          value: segment,
+          icon: segment.icon,
+        }))}
+        value={activeSegments}
+        multiple={true}
+        optionNameFn={(o: any) => o?.name}
+        optionValueFn={(o: any) => o?.value ?? o}
+        onChange={(e: any) => toggleSegment(e.target.value)}
+      />
+    </div>
+  );
+};
