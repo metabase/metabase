@@ -264,9 +264,10 @@
   :default 60.0)
 
 (defsetting query-caching-ttl-ratio
-  (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
-       " "
-       (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
+  (deferred-tru
+   (str "To determine how long each saved question''s cached result should stick around, we take the query''s average "
+        "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
+        "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
 
@@ -281,13 +282,17 @@
   :default    "Metabase")
 
 (defsetting application-colors
-  (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru
+   (str "These are the primary colors used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
   :default    {})
 
 (defsetting application-font
-  (deferred-tru "This is the primary font used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru
+   (str "This is the primary font used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :string
   :default    "Lato"
@@ -334,12 +339,16 @@
                     true))))
 
 (defsetting breakout-bins-num
-  (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
+  (deferred-tru
+    (str "When using the default binning strategy and a number of bins is not provided, "
+         "this number will be used as the default."))
   :type :integer
   :default 8)
 
 (defsetting breakout-bin-width
-  (deferred-tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
+  (deferred-tru
+   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+        "this number will be used as the default bin width (in degrees)."))
   :type :double
   :default 10.0)
 
@@ -356,19 +365,25 @@
   :visibility :authenticated)
 
 (defsetting show-homepage-data
-  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display data on the homepage. "
+        "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-xrays
-  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-pin-message
-  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
@@ -503,9 +518,9 @@
                   (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
-  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
-       " "
-       (deferred-tru "Defaults to false if any non-default database has already finished syncing for this instance."))
+  (deferred-tru
+    (str "Whether an introductory modal should be shown after the next database connection is added. "
+         "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :getter     (fn []
