@@ -21,7 +21,7 @@ describeEE("scenarios > admin > people", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.findByText("Groups").click();
+      cy.findByTextEnsureVisible("Groups").click();
 
       // Edit group name
       cy.icon("ellipsis")
@@ -147,7 +147,7 @@ describeEE("scenarios > admin > people", () => {
   });
 
   it("after removing the last group redirects to the home page", () => {
-    cy.findByText("Groups").click();
+    cy.findByTextEnsureVisible("Groups").click();
 
     removeFirstGroup();
     cy.url().should("match", /\/admin\/people\/groups$/);

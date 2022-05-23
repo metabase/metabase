@@ -7,7 +7,7 @@
             [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Dashboard]]
             [metabase.models.permissions :as perms]
-            [metabase.models.setting-test :refer [test-setting-1 test-setting-2]]
+            [metabase.models.setting-test :as models.setting-test]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -18,9 +18,8 @@
 
 (deftest setting-api-test
   (testing "/api/setting"
-    (mt/with-user-in-groups
-      [group {:name "New Group"}
-       user  [group]]
+    (mt/with-user-in-groups [group {:name "New Group"}
+                             user  [group]]
       (letfn [(get-setting [user status]
                 (testing (format "get setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :get status "setting")))
@@ -33,8 +32,8 @@
                 (testing (format "update multiple settings setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :put status "setting" {:test-setting-1 "ABC", :test-setting-2 "DEF"})))]
         ;; we focus on permissions in these tests, so set default value to make it easier to test
-        (test-setting-1 "ABC")
-        (test-setting-2 "DEF")
+        (models.setting-test/test-setting-1! "ABC")
+        (models.setting-test/test-setting-2! "DEF")
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (premium-features-test/with-premium-features #{}

@@ -96,7 +96,7 @@ export function expandTimeIntervalFilter(filter) {
     return [
       "between",
       field,
-      ["relative-datetime", n - 1, unit],
+      ["relative-datetime", n, unit],
       ["relative-datetime", includeCurrent ? 0 : -1, unit],
     ];
   } else if (n > 1) {

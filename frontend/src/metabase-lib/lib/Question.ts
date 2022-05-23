@@ -297,6 +297,10 @@ class QuestionInner {
     return this._card && this._card.persisted;
   }
 
+  setPersisted(isPersisted) {
+    return this.setCard(assoc(this.card(), "persisted", isPersisted));
+  }
+
   setDataset(dataset) {
     return this.setCard(assoc(this.card(), "dataset", dataset));
   }
@@ -1274,7 +1278,7 @@ class QuestionInner {
     if (this.isStructured()) {
       const questionWithParameters = this.setParameters(parameters);
 
-      if (this.query().isEditable()) {
+      if (!this.query().readOnly()) {
         return questionWithParameters
           .setParameterValues(parameterValues)
           .convertParametersToMbql()

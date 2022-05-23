@@ -28,12 +28,27 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     whitelabel: {
-      name: "Whitelabel",
+      name: t`Appearance`,
       settings: [
         {
           key: "application-name",
           display_name: t`Application Name`,
           type: "string",
+        },
+        {
+          key: "application-font",
+          display_name: t`Font`,
+          type: "select",
+          options: MetabaseSettings.get("available-fonts").map(font => ({
+            name: font,
+            value: font,
+          })),
+          defaultValue: "Lato",
+          onChanged: (oldFont, newFont) => {
+            if (oldFont !== newFont) {
+              window.location.reload();
+            }
+          },
         },
         {
           key: "application-colors",
@@ -73,6 +88,7 @@ if (hasPremiumFeature("whitelabel")) {
   enabledApplicationNameReplacement();
 
   PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
+  PLUGIN_SELECTORS.canWhitelabel = () => true;
 }
 
 // these selectors control whitelabeling UI
