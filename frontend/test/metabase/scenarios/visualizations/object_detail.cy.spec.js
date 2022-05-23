@@ -8,7 +8,7 @@ import {
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > question > object details", () => {
   const FIRST_ORDER_ID = 9676;
@@ -123,6 +123,23 @@ describe("scenarios > question > object details", () => {
     // Popover is blocking the city. If it renders, Cypress will not be able to click on "Searsboro" and the test will fail.
     // Unfortunately, asserting that the popover does not exist will give us a false positive result.
     cy.findByText("Searsboro").click();
+  });
+
+  it.skip("should work with non-numeric IDs (metabse#22768)", () => {
+    cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
+      semantic_type: null,
+    });
+
+    cy.request("PUT", `/api/field/${PRODUCTS.TITLE}`, {
+      semantic_type: "type/PK",
+    });
+
+    openProductsTable({ limit: 5 });
+
+    cy.findByTextEnsureVisible("Rustic Paper Wallet").click();
+
+    cy.location("search").should("eq", "?objectId=Rustic%20Paper%20Wallet");
+    cy.findByTestId("object-detail").contains("Rustic Paper Wallet");
   });
 });
 
