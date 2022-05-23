@@ -20,7 +20,7 @@ const ColorSelector = ({
         <ColorPill color={color} isBordered isSelected onClick={onClick} />
       )}
       popoverContent={
-        <ColorGrid>
+        <ColorGrid colors={colors}>
           {colors.map((option, index) => (
             <ColorPill
               key={index}

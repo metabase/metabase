@@ -1,8 +1,12 @@
 import styled from "@emotion/styled";
 
-export const ColorGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(9, min-content);
+export interface ColorGridProps {
+  colors: string[];
+}
+
+export const ColorGrid = styled.div<ColorGridProps>`
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
-  padding: 0.25rem;
+  padding: 0.75rem;
 `;
