@@ -1,7 +1,9 @@
 import React, {
   ChangeEvent,
   FocusEvent,
+  forwardRef,
   InputHTMLAttributes,
+  Ref,
   useCallback,
   useMemo,
   useState,
@@ -20,13 +22,10 @@ export interface ColorInputProps extends ColorInputAttributes {
   onChange?: (value?: string) => void;
 }
 
-const ColorInput = ({
-  color,
-  onFocus,
-  onBlur,
-  onChange,
-  ...props
-}: ColorInputProps): JSX.Element => {
+const ColorInput = forwardRef(function ColorInput(
+  { color, onFocus, onBlur, onChange, ...props }: ColorInputProps,
+  ref: Ref<HTMLDivElement>,
+) {
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
 
@@ -68,6 +67,7 @@ const ColorInput = ({
   return (
     <Input
       {...props}
+      ref={ref}
       value={isFocused ? inputText : colorText}
       size="small"
       onFocus={handleFocus}
@@ -75,6 +75,6 @@ const ColorInput = ({
       onChange={handleChange}
     />
   );
-};
+});
 
 export default ColorInput;
