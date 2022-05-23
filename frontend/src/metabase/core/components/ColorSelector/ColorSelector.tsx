@@ -1,9 +1,10 @@
 import React from "react";
 import ColorPill from "../ColorPill";
-import { ColorSelectorRoot } from "./ColorSelector.styled";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { ColorGrid } from "./ColorSelector.styled";
 
 export interface ColorSelectorProps {
-  color?: string;
+  color: string;
   colors: string[];
   onChange: (color: string) => void;
 }
@@ -14,17 +15,24 @@ const ColorSelector = ({
   onChange,
 }: ColorSelectorProps): JSX.Element => {
   return (
-    <ColorSelectorRoot>
-      {colors.map((option, index) => (
-        <ColorPill
-          key={index}
-          color={option}
-          isBordered
-          isSelected={color === option}
-          onClick={() => onChange(option)}
-        />
-      ))}
-    </ColorSelectorRoot>
+    <TippyPopoverWithTrigger
+      renderTrigger={({ onClick }) => (
+        <ColorPill color={color} isBordered isSelected onClick={onClick} />
+      )}
+      popoverContent={
+        <ColorGrid>
+          {colors.map((option, index) => (
+            <ColorPill
+              key={index}
+              color={option}
+              isBordered
+              isSelected={color === option}
+              onClick={() => onChange(option)}
+            />
+          ))}
+        </ColorGrid>
+      }
+    />
   );
 };
 
