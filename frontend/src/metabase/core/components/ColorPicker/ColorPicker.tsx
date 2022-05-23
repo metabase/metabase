@@ -19,6 +19,7 @@ export interface ColorPickerProps {
   color: string;
   isBordered?: boolean;
   isSelected?: boolean;
+  isGenerated?: boolean;
   onChange?: (color: string) => void;
 }
 
@@ -26,6 +27,7 @@ const ColorPicker = ({
   color,
   isBordered,
   isSelected,
+  isGenerated,
   onChange,
 }: ColorPickerProps): JSX.Element => {
   const handleTriggerChange = useCallback(
@@ -50,6 +52,7 @@ const ColorPicker = ({
           color={color}
           isBordered={isBordered}
           isSelected={isSelected}
+          isGenerated={isGenerated}
           onClick={onClick}
           onChange={handleTriggerChange}
         />
@@ -66,6 +69,7 @@ interface ColorPickerTriggerProps
   color: string;
   isBordered?: boolean;
   isSelected?: boolean;
+  isGenerated?: boolean;
   onChange?: (color?: string) => void;
 }
 
@@ -74,6 +78,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
     color,
     isBordered,
     isSelected,
+    isGenerated,
     onClick,
     onChange,
     ...props
@@ -86,6 +91,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
         color={color}
         isBordered={isBordered}
         isSelected={isSelected}
+        isGenerated={isGenerated}
         onClick={onClick}
       />
       <ColorInput color={color} onChange={onChange} />
