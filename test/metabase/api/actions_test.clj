@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -29,7 +30,11 @@
                             ["=" "name" "Red Medicine"]]}}
    {:action       "actions/row/delete"
     :request-body (mt/mbql-query categories {:filter [:= $id 1]})
-    :expected     {:rows-deleted [1]}}])
+    :expected     {:rows-deleted [1]}}
+   {:action       "actions/row/update"
+    :request-body (assoc (mt/mbql-query categories {:filter [:= $id 10]})
+                         :update_row {:name "new-category-name"})
+    :expected     {:rows-updated [1]}}])
 
 (defn- row-action? [action]
   (str/starts-with? action "actions/row"))
@@ -105,10 +110,21 @@
             (is (re= #"Value does not match schema:.*"
                      (:message (mt/user-http-request :crowberto :post 400 action (dissoc request-body k)))))))))))
 
+(deftest row-delete-action-gives-400-when-matching-more-than-one
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (let [query-that-returns-more-than-one (mt/mbql-query venues {:filter [:> $id -10]})]
+        (is (< 1 (count (mt/rows (qp/process-query query-that-returns-more-than-one)))))
+        (doseq [{:keys [action]} (mock-requests)]
+          (is (re= #"Sorry, this would affect \d+ rows, but you can only act on 1"
+                   (:message (mt/user-http-request :crowberto :post 400 action query-that-returns-more-than-one)))))))))
+
 (deftest unknown-row-action-gives-404
   (mt/with-temporary-setting-values [experimental-enable-actions true]
     (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
-      (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))
+      (testing "404 for unknown Row action"
+        (is (= "Unknown row action \"fake\"."
+               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake" (mt/mbql-query venues {:filter [:= $id 1]})))))))))
 
 (deftest four-oh-four-test
   (mt/with-temporary-setting-values [experimental-enable-actions true]
@@ -117,10 +133,4 @@
         (testing action
           (testing "404 for unknown Table"
             (is (= "Failed to fetch Table 2,147,483,647: Table does not exist, or belongs to a different Database."
-                   (:message (mt/user-http-request :crowberto :post 404 action
-                                                   (mt/mbql-query venues {:source-table Integer/MAX_VALUE
-                                                                          :filter       [:= $id 1]}))))))))
-      (testing "404 for unknown Row action"
-        (is (= "Unknown row action \"fake\"."
-               (:message (mt/user-http-request :crowberto :post 404 "actions/row/fake"
-                                               (mt/mbql-query venues {:filter [:= $id 1]})))))))))
+                   (:message (mt/user-http-request :crowberto :post 404 action (assoc (mt/mbql-query venues {:filter [:= $id 1]}) :source-table Integer/MAX_VALUE)))))))))))
