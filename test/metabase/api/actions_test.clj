@@ -15,7 +15,7 @@
 
 (defn- mock-requests []
   [{:action       "actions/row/create"
-    :request-body (assoc (mt/mbql-query categories) :create_row {:name "created_row"})
+    :request-body (assoc (mt/mbql-query categories) :create-row {:name "created_row"})
     :expect-fn    (fn [result]
                     (is (= "created_row" (get-in result [:created-row :name]))))}
    {:action       "actions/row/update"

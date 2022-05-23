@@ -61,8 +61,8 @@
                 {:exception-data (ex-data e)
                  :status-code 400}))))
     (case (keyword action)
-      :update (s/validate {:update_row {s/Keyword s/Any} s/Keyword s/Any} query)
-      :create (s/validate {:create_row {s/Keyword s/Any} s/Keyword s/Any} query)
+      :update (s/validate {:update-row {s/Keyword s/Any} s/Keyword s/Any} query)
+      :create (s/validate {:create-row {s/Keyword s/Any} s/Keyword s/Any} query)
       nil) ;; nothing else to check
     (do-check-actions-enabled
      database

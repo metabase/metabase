@@ -43,7 +43,7 @@
                                               :sql delete-hsql})))}))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
-  [_action driver {database-id :database :keys [update_row] :as query}]
+  [_action driver {database-id :database :keys [update-row] :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
@@ -52,20 +52,17 @@
                             (catch Exception e
                               (catch-throw e 404))))]
     (check-one-row-affected connection-spec query raw-hsql)
-    (let [update-values (:update-row query)
-          target-table (first (:from raw-hsql))
+    (let [target-table (first (:from raw-hsql))
           update-hsql (-> raw-hsql
-                          (assoc
-                           :update target-table
-                           :set update-values)
-                          (select-keys [:update :set :where]))]
+                          (select-keys [:where])
+                          (assoc :update target-table :set update-row))]
       {:rows-updated (try (jdbc/execute! connection-spec (hformat/format update-hsql))
                           (catch Exception e
                             (catch-throw e 400 {:query query
                                                 :sql   update-hsql})))})))
 
 (defmethod actions/row-action! [:create :sql-jdbc]
-  [_action driver {database-id :database :keys [create_row] :as query}]
+  [_action driver {database-id :database :keys [create-row] :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
@@ -76,7 +73,7 @@
         create-hsql (-> raw-hsql
                         (dissoc :select :from)
                         (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [create_row]))]
+                        (assoc :values [create-row]))]
 
     {:created-row
      (if (= :driver :postgres)
