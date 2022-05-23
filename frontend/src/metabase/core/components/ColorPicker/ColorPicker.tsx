@@ -1,18 +1,18 @@
 import React, { useCallback } from "react";
-import { ChromePicker, ColorState } from "react-color";
-import { getStyles } from "./ColorPicker.styled";
+import {
+  ColorState,
+  CustomPicker,
+  CustomPickerInjectedProps,
+} from "react-color";
+import { Hue, Saturation } from "react-color/lib/components/common";
+import { HueContainer, SaturationContainer } from "./ColorPicker.styled";
 
 export interface ColorPickerProps {
-  className?: string;
   color?: string;
   onChange?: (color: string) => void;
 }
 
-const ColorPicker = ({
-  className,
-  color,
-  onChange,
-}: ColorPickerProps): JSX.Element => {
+const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
   const handleChange = useCallback(
     (state: ColorState) => {
       onChange?.(state.hex);
@@ -20,15 +20,22 @@ const ColorPicker = ({
     [onChange],
   );
 
-  return (
-    <ChromePicker
-      className={className}
-      color={color}
-      styles={getStyles()}
-      disableAlpha
-      onChange={handleChange}
-    />
-  );
+  return <ColorControls color={color} onChange={handleChange} />;
 };
+
+const ColorControls = CustomPicker(function ColorControls(
+  props: CustomPickerInjectedProps,
+) {
+  return (
+    <div>
+      <SaturationContainer>
+        <Saturation {...props} />
+      </SaturationContainer>
+      <HueContainer>
+        <Hue {...props} />
+      </HueContainer>
+    </div>
+  );
+});
 
 export default ColorPicker;
