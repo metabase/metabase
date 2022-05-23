@@ -15,10 +15,17 @@ import {
 
 export interface ColorPickerProps {
   color: string;
+  isBordered?: boolean;
+  isSelected?: boolean;
   onChange?: (color: string) => void;
 }
 
-const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
+const ColorPicker = ({
+  color,
+  isBordered,
+  isSelected,
+  onChange,
+}: ColorPickerProps): JSX.Element => {
   const handleChange = useCallback(
     (state: ColorState) => {
       onChange?.(state.hex);
@@ -29,7 +36,12 @@ const ColorPicker = ({ color, onChange }: ColorPickerProps): JSX.Element => {
   return (
     <TippyPopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <ColorPill color={color} onClick={onClick} />
+        <ColorPill
+          color={color}
+          isBordered={isBordered}
+          isSelected={isSelected}
+          onClick={onClick}
+        />
       )}
       popoverContent={<ColorControls color={color} onChange={handleChange} />}
     />

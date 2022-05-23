@@ -6,18 +6,27 @@ import { ColorList } from "./ColorSelector.styled";
 export interface ColorSelectorProps {
   color: string;
   colors: string[];
+  isBordered?: boolean;
+  isSelected?: boolean;
   onChange: (color: string) => void;
 }
 
 const ColorSelector = ({
   color,
   colors,
+  isBordered,
+  isSelected,
   onChange,
 }: ColorSelectorProps): JSX.Element => {
   return (
     <TippyPopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <ColorPill color={color} isBordered isSelected onClick={onClick} />
+        <ColorPill
+          color={color}
+          isBordered={isBordered}
+          isSelected={isSelected}
+          onClick={onClick}
+        />
       )}
       popoverContent={
         <ColorList colors={colors}>
