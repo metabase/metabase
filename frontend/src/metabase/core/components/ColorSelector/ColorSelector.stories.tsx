@@ -2,7 +2,7 @@ import React from "react";
 import { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import { color } from "metabase/lib/colors";
-import ColorSelector from "./ColorSelectorContent";
+import ColorSelector from "./ColorSelector";
 
 export default {
   title: "Core/ColorSelector",
