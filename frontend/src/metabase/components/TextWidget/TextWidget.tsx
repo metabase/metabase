@@ -1,41 +1,51 @@
-/* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import React from "react";
 import ReactDOM from "react-dom";
-import PropTypes from "prop-types";
 import { forceRedraw } from "metabase/lib/dom";
 import { t } from "ttag";
 import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
-export default class TextWidget extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      value: props.value,
-      isFocused: false,
-    };
-  }
+type Props = {
+  value: string;
+  setValue: (v: string | null) => void;
+  className?: string;
+  isEditing: boolean;
+  commitImmediately?: boolean;
+  placeholder?: string;
+  focusChanged: (f: boolean) => void;
+  disabled?: boolean;
+};
 
-  static propTypes = {
-    value: PropTypes.any,
-    setValue: PropTypes.func.isRequired,
-    className: PropTypes.string,
-    isEditing: PropTypes.bool,
-    commitImmediately: PropTypes.bool,
-    placeholder: PropTypes.string,
-    focusChanged: PropTypes.func,
-    disabled: PropTypes.bool,
+type State = {
+  value: string | null;
+  isFocused: boolean;
+};
+
+class TextWidget extends React.Component<Props, State> {
+  state: State = {
+    value: null,
+    isFocused: false,
   };
 
   static defaultProps = {
+    isEditing: false,
     commitImmediately: false,
+    disabled: false,
   };
+
+  constructor(props: Props) {
+    super(props);
+  }
 
   static noPopover = true;
 
-  static format = value => value;
+  static format = (value: string) => value;
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    if (this.props.value !== nextProps.value) {
+  UNSAFE_componentWillMount() {
+    this.UNSAFE_componentWillReceiveProps(this.props);
+  }
+
+  UNSAFE_componentWillReceiveProps(nextProps: Props) {
+    if (nextProps.value !== this.state.value) {
       this.setState({ value: nextProps.value }, () => {
         // HACK: Address Safari rendering bug which causes https://github.com/metabase/metabase/issues/5335
         forceRedraw(ReactDOM.findDOMNode(this));
@@ -48,16 +58,16 @@ export default class TextWidget extends Component {
       setValue,
       className,
       isEditing,
-      focusChanged: parentFocusChanged,
+      focusChanged,
       disabled,
     } = this.props;
     const defaultPlaceholder = this.state.isFocused
       ? ""
       : this.props.placeholder || t`Enter a value...`;
 
-    const focusChanged = isFocused => {
-      if (parentFocusChanged) {
-        parentFocusChanged(isFocused);
+    const changeFocus = (isFocused: boolean) => {
+      if (focusChanged) {
+        focusChanged(isFocused);
       }
       this.setState({ isFocused });
     };
@@ -78,18 +88,19 @@ export default class TextWidget extends Component {
           }
         }}
         onKeyUp={e => {
+          const target = e.target as HTMLInputElement;
           if (e.keyCode === KEYCODE_ESCAPE) {
-            e.target.blur();
+            target.blur();
           } else if (e.keyCode === KEYCODE_ENTER) {
             setValue(this.state.value || null);
-            e.target.blur();
+            target.blur();
           }
         }}
         onFocus={() => {
-          focusChanged(true);
+          changeFocus(true);
         }}
         onBlur={() => {
-          focusChanged(false);
+          changeFocus(false);
           this.setState({ value: this.props.value });
         }}
         placeholder={
@@ -100,3 +111,5 @@ export default class TextWidget extends Component {
     );
   }
 }
+
+export default TextWidget;
