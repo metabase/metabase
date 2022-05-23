@@ -5,6 +5,7 @@ import ColorPickerContent from "./ColorPickerContent";
 
 export interface ColorPickerProps {
   color: string;
+  placeholder?: string;
   isBordered?: boolean;
   isSelected?: boolean;
   isGenerated?: boolean;
@@ -13,6 +14,7 @@ export interface ColorPickerProps {
 
 const ColorPicker = ({
   color,
+  placeholder,
   isBordered,
   isSelected,
   isGenerated,
@@ -24,6 +26,7 @@ const ColorPicker = ({
       renderTrigger={({ onClick }) => (
         <ColorPickerTrigger
           color={color}
+          placeholder={placeholder}
           isBordered={isBordered}
           isSelected={isSelected}
           isGenerated={isGenerated}

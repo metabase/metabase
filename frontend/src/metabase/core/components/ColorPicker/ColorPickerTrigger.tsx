@@ -6,6 +6,7 @@ import { TriggerContainer } from "./ColorPicker.styled";
 export interface ColorPickerTriggerProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   color: string;
+  placeholder?: string;
   isBordered?: boolean;
   isSelected?: boolean;
   isGenerated?: boolean;
@@ -15,6 +16,7 @@ export interface ColorPickerTriggerProps
 const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   {
     color,
+    placeholder,
     isBordered,
     isSelected,
     isGenerated,
@@ -38,7 +40,11 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
         isGenerated={isGenerated}
         onClick={onClick}
       />
-      <ColorInput color={color} onChange={handleChange} />
+      <ColorInput
+        color={color}
+        placeholder={placeholder}
+        onChange={handleChange}
+      />
     </TriggerContainer>
   );
 });
