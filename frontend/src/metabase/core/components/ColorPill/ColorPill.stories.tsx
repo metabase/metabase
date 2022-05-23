@@ -1,5 +1,6 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
+import { color } from "metabase/lib/colors";
 import ColorPill from "./ColorPill";
 
 export default {
@@ -13,5 +14,5 @@ const Template: ComponentStory<typeof ColorPill> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  color: "white",
+  color: color("brand"),
 };
