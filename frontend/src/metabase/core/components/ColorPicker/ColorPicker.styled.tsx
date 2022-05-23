@@ -6,6 +6,9 @@ export const TriggerContainer = styled.div`
 `;
 
 export const ContentContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
   width: 16.5rem;
   padding: 1rem;
 `;

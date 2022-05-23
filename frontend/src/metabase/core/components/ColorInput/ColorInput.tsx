@@ -16,6 +16,7 @@ export type ColorInputAttributes = Omit<
 
 export interface ColorInputProps extends ColorInputAttributes {
   color?: string;
+  fullWidth?: boolean;
   onChange?: (value?: string) => void;
 }
 
@@ -24,6 +25,7 @@ const ColorInput = ({
   onFocus,
   onBlur,
   onChange,
+  ...props
 }: ColorInputProps): JSX.Element => {
   const [inputText, setInputText] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -65,6 +67,7 @@ const ColorInput = ({
 
   return (
     <Input
+      {...props}
       value={isFocused ? inputText : colorText}
       size="small"
       onFocus={handleFocus}
