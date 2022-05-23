@@ -73,6 +73,7 @@ const BulkFilterSelect = ({
           showFieldPicker={false}
           onChangeFilter={handleChange}
           onClose={closePopover}
+          commitOnBlur
         />
       )}
     />
