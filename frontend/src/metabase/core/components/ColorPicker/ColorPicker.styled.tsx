@@ -9,5 +9,4 @@ export const SaturationContainer = styled.div`
 export const HueContainer = styled.div`
   position: relative;
   height: 0.5rem;
-  border-radius: 0.25rem;
 `;
