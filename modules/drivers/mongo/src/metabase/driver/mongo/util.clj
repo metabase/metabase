@@ -62,7 +62,7 @@
                            (.sslEnabled ssl?))]
     (if (not (str/blank? ssl-cert))
       (-> client-options
-          (.socketFactory (driver.u/socket-factory-for-cert ssl-cert)))
+          (.socketFactory (driver.u/ssl-socket-factory :trust-cert ssl-cert)))
       client-options)))
 
 ;; The arglists metadata for mg/connect are actually *WRONG* -- the function additionally supports a 3-arg airity

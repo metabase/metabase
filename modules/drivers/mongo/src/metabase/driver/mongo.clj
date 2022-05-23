@@ -280,3 +280,46 @@
 (defmethod driver/db-start-of-week :mongo
   [_]
   :sunday)
+
+(comment
+  (require '[metabase.driver.util :as driver.u]
+           '[clojure.java.io :as io])
+  (import javax.net.ssl.SSLSocketFactory)
+
+  (let [ssl-socket-factory
+        (driver.u/ssl-socket-factory
+         :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+         :password "passw"
+         :own-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+        connection-options
+        (mg/mongo-options {:ssl-enabled true
+                           :ssl-invalid-host-name-allowed false
+                           :socket-factory ssl-socket-factory})]
+    (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
+                                       connection-options)]
+      (mg/get-db-names connection)))
+
+  (let [server-auth-ssl-socket-factory
+        (driver.u/ssl-socket-factory
+         :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
+        server-auth-connection-options
+        (mg/mongo-options {:ssl-enabled true
+                           :ssl-invalid-host-name-allowed false
+                           :socket-factory server-auth-ssl-socket-factory
+                           :server-selection-timeout 200})]
+    (with-open [server-auth-connection
+                (mg/connect (mg/server-address "127.0.0.1")
+                            server-auth-connection-options)]
+      (mg/get-db-names server-auth-connection)))
+
+  (let [unauthenticated-connection-options
+        (mg/mongo-options {:ssl-enabled true
+                           :ssl-invalid-host-name-allowed false
+                           :socket-factory (SSLSocketFactory/getDefault)
+                           :server-selection-timeout 200})]
+    (with-open [unauthenticated-connection
+                (mg/connect (mg/server-address "127.0.0.1")
+                            unauthenticated-connection-options)]
+      (mg/get-db-names unauthenticated-connection)))
+  :.)

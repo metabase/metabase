@@ -14,11 +14,12 @@
             [metabase.util.i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
-           [java.security.cert CertificateFactory X509Certificate]
-           java.security.KeyStore
-           java.util.Base64
+           [java.security KeyFactory KeyStore PrivateKey]
+           [java.security.cert Certificate CertificateFactory X509Certificate]
+           java.security.spec.PKCS8EncodedKeySpec
+           [java.util Base64 Base64$Decoder]
            javax.net.SocketFactory
-           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+           [javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager]))
 
 (def ^:private connection-error-messages
   "Generic error messages that drivers should return in their implementation
@@ -356,6 +357,9 @@
                 (assoc :visible-if v-ifs*))))
          final-props)))
 
+(def ^:private ^Base64$Decoder base64-decoder
+  (Base64/getDecoder))
+
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
   Sort of the opposite of `connection-props-server->client`, except that it operates on DB details key/values populated
@@ -392,7 +396,7 @@
                                             (:treat-before-posting textfile-prop)))))
                          value      (let [^String v (val-kw acc)]
                                       (case (get-treat)
-                                        "base64" (.decode (Base64/getDecoder) v)
+                                        "base64" (.decode base64-decoder v)
                                         v))]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
@@ -459,12 +463,47 @@
   [^X509Certificate cert]
   (.. cert getSubjectX500Principal getName))
 
-(defn generate-keystore-with-cert
-  "Generates a `KeyStore` with custom certificates added"
-  ^KeyStore [cert-string]
+(defn- key-type [key-string]
+  (when-let [m (re-find #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" key-string)]
+    (m 1)))
+
+(defn- parse-rsa-key
+  "Parses an RSA private key from the PEM string `key-string`."
+  ^PrivateKey [key-string]
+  (let [algorithm (or (key-type key-string) "RSA")
+        key-base64 (-> key-string
+                       (str/replace #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" "")
+                       (str/replace #"\n-----END (?:(\p{Alnum}+) )?PRIVATE KEY-----\s*$" "")
+                       (str/replace #"\s" ""))
+        decoded (.decode base64-decoder key-base64)
+        key-factory (KeyFactory/getInstance algorithm)] ; TODO support other algorithms
+    (.generatePrivate key-factory (PKCS8EncodedKeySpec. decoded))))
+
+(defn- parse-certificates
+  "Parses a collection of X509 certificates from the string `cert-string`."
+  [^String cert-string]
   (let [cert-factory (CertificateFactory/getInstance "X.509")
-        cert-stream (ByteArrayInputStream. (.getBytes ^String cert-string "UTF-8"))
-        certs (.generateCertificates cert-factory cert-stream)
+        cert-stream (ByteArrayInputStream. (.getBytes cert-string "UTF-8"))]
+    (.generateCertificates cert-factory cert-stream)))
+
+(defn generate-identity-store
+  "Generates a `KeyStore` for the identity with key parsed from `key-string` protected by `password`
+  and the certificate parsed from `cert-string` ."
+  ^KeyStore [key-string password cert-string]
+  (let [private-key (parse-rsa-key key-string)
+        certificates (parse-certificates cert-string)]
+    (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+      (.load nil nil)
+      (.setKeyEntry (dn-for-cert (first certificates))
+                    private-key
+                    (char-array password)
+                    (into-array Certificate certificates)))))
+
+(defn generate-trust-store
+  "Generates a `KeyStore` with built-in and custom certificates. The custom certificates are parsed from
+  `cert-store`."
+  ^KeyStore [cert-string]
+  (let [certs (parse-certificates cert-string)
         keystore (doto (KeyStore/getInstance (KeyStore/getDefaultType))
                    (.load nil nil))
         ;; this TrustManagerFactory is used for cloning the default certs into the new TrustManagerFactory
@@ -480,16 +519,26 @@
 
     keystore))
 
-(defn socket-factory-for-cert
-  "Generates an `SocketFactory` with the custom certificates added"
-  ^SocketFactory [cert-string]
-  (let [keystore (generate-keystore-with-cert cert-string)
-        ;; this is the final TrustManagerFactory used to initialize the SSLContext
-        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
-        ssl-context (SSLContext/getInstance "TLS")]
-    (.init trust-manager-factory keystore)
-    (.init ssl-context nil (.getTrustManagers trust-manager-factory) nil)
+(defn- key-managers [private-key password own-cert]
+  (let [key-store (generate-identity-store private-key password own-cert)
+        key-manager-factory (KeyManagerFactory/getInstance (KeyManagerFactory/getDefaultAlgorithm))]
+    (.init key-manager-factory key-store (char-array password))
+    (.getKeyManagers key-manager-factory)))
 
+(defn- trust-managers [trust-cert]
+  (let [trust-store (generate-trust-store trust-cert)
+        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))]
+    (.init trust-manager-factory trust-store)
+    (.getTrustManagers trust-manager-factory)))
+
+(defn ssl-socket-factory
+  "Generates an `SocketFactory` with the custom certificates added"
+  ^SocketFactory [& {:keys [private-key password own-cert trust-cert]}]
+  (let [ssl-context (SSLContext/getInstance "TLS")]
+    (.init ssl-context
+           (when (and private-key password own-cert) (key-managers private-key password own-cert))
+           (when trust-cert (trust-managers trust-cert))
+           nil)
     (.getSocketFactory ssl-context)))
 
 (def default-sensitive-fields
