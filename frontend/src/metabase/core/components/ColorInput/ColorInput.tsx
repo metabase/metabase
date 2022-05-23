@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useMemo,
   useState,
+  ChangeEvent,
 } from "react";
 import Color from "color";
 import Input from "metabase/core/components/Input";
@@ -28,8 +29,7 @@ const ColorInput = ({
   const [isFocused, setIsFocused] = useState(false);
 
   const valueText = useMemo(() => {
-    const color = Color(value);
-    return color.hex();
+    return value ? Color(value).hex() : "";
   }, [value]);
 
   const handleFocus = useCallback(
@@ -49,7 +49,29 @@ const ColorInput = ({
     [onBlur],
   );
 
-  return <Input onFocus={handleFocus} onBlur={handleBlur} />;
+  const handleChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const newText = event.target.value;
+      setInputText(newText);
+
+      try {
+        const color = Color(newText);
+        onChange?.(color.hex());
+      } catch (e) {
+        onChange?.(undefined);
+      }
+    },
+    [onChange],
+  );
+
+  return (
+    <Input
+      value={isFocused ? inputText : valueText}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onChange={handleChange}
+    />
+  );
 };
 
 export default ColorInput;
