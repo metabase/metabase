@@ -8,7 +8,7 @@ import { Hue, Saturation } from "react-color/lib/components/common";
 import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import {
-  PickerContainer,
+  ContentContainer,
   HueContainer,
   SaturationContainer,
   TriggerContainer,
@@ -28,7 +28,14 @@ const ColorPicker = ({
   isSelected,
   onChange,
 }: ColorPickerProps): JSX.Element => {
-  const handleChange = useCallback(
+  const handleTriggerChange = useCallback(
+    (color?: string) => {
+      color && onChange?.(color);
+    },
+    [onChange],
+  );
+
+  const handleContentChange = useCallback(
     (state: ColorState) => {
       onChange?.(state.hex);
     },
@@ -43,11 +50,11 @@ const ColorPicker = ({
           isBordered={isBordered}
           isSelected={isSelected}
           onClick={onClick}
-          onChange={onChange}
+          onChange={handleTriggerChange}
         />
       )}
       popoverContent={
-        <ColorPickerContent color={color} onChange={handleChange} />
+        <ColorPickerContent color={color} onChange={handleContentChange} />
       }
     />
   );
@@ -58,7 +65,7 @@ interface ColorPickerTriggerProps
   color: string;
   isBordered?: boolean;
   isSelected?: boolean;
-  onChange?: (color: string) => void;
+  onChange?: (color?: string) => void;
 }
 
 const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
@@ -72,13 +79,6 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   }: ColorPickerTriggerProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const handleChange = useCallback(
-    (color?: string) => {
-      color && onChange?.(color);
-    },
-    [onChange],
-  );
-
   return (
     <TriggerContainer {...props} ref={ref}>
       <ColorPill
@@ -87,7 +87,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
         isSelected={isSelected}
         onClick={onClick}
       />
-      <ColorInput color={color} onChange={handleChange} />
+      <ColorInput color={color} onChange={onChange} />
     </TriggerContainer>
   );
 });
@@ -96,14 +96,14 @@ const ColorPickerContent = CustomPicker(function ColorControls(
   props: CustomPickerInjectedProps,
 ) {
   return (
-    <PickerContainer>
+    <ContentContainer>
       <SaturationContainer>
         <Saturation {...props} />
       </SaturationContainer>
       <HueContainer>
         <Hue {...props} />
       </HueContainer>
-    </PickerContainer>
+    </ContentContainer>
   );
 });
 

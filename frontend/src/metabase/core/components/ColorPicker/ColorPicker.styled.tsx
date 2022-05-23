@@ -5,7 +5,7 @@ export const TriggerContainer = styled.div`
   gap: 1rem;
 `;
 
-export const PickerContainer = styled.div`
+export const ContentContainer = styled.div`
   width: 16.5rem;
   padding: 1rem;
 `;
