@@ -18,20 +18,20 @@ const ColorPickerContent = forwardRef(function ColorPickerContent(
   { color, onChange, ...props }: ColorPickerContentProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const handleInputChange = useCallback(
+  const handleColorChange = useCallback(
     (color?: string) => color && onChange?.(color),
     [onChange],
   );
 
-  const handleControlsChange = useCallback(
+  const handleColorStateChange = useCallback(
     (state: ColorState) => onChange?.(state.hex),
     [onChange],
   );
 
   return (
     <ContentContainer {...props} ref={ref}>
-      <ColorPickerControls color={color} onChange={handleControlsChange} />
-      <ColorInput color={color} fullWidth onChange={handleInputChange} />
+      <ColorPickerControls color={color} onChange={handleColorStateChange} />
+      <ColorInput color={color} fullWidth onChange={handleColorChange} />
     </ContentContainer>
   );
 });
