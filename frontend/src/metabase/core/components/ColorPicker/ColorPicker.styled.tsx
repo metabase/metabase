@@ -18,18 +18,31 @@ export const SaturationContainer = styled.div`
   position: relative;
   height: 10rem;
   margin-bottom: 1rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
 `;
 
 export const HueContainer = styled.div`
   position: relative;
-  height: 0.625rem;
+  height: 0.5rem;
+  border-radius: 0.25rem;
+  overflow: hidden;
 `;
 
-export const SaturationPointer = styled.div`
-  width: 0.875rem;
-  height: 0.875rem;
+export const ControlsPointer = styled.div`
   border: 2px solid ${color("white")};
   border-radius: 50%;
   pointer-events: none;
+`;
+
+export const SaturationPointer = styled(ControlsPointer)`
+  width: 0.875rem;
+  height: 0.875rem;
   transform: translate(-50%, -50%);
+`;
+
+export const HuePointer = styled(ControlsPointer)`
+  width: 0.625rem;
+  height: 0.625rem;
+  transform: translate(-50%, -0.0625rem);
 `;
