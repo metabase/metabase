@@ -1,9 +1,14 @@
-import React from "react";
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import ColorPickerTrigger from "./ColorPickerTrigger";
 import ColorPickerContent from "./ColorPickerContent";
 
-export interface ColorPickerProps {
+export type ColorPickerAttributes = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "onChange"
+>;
+
+export interface ColorPickerProps extends ColorPickerAttributes {
   color: string;
   placeholder?: string;
   isBordered?: boolean;
@@ -12,19 +17,25 @@ export interface ColorPickerProps {
   onChange?: (color: string) => void;
 }
 
-const ColorPicker = ({
-  color,
-  placeholder,
-  isBordered,
-  isSelected,
-  isGenerated,
-  onChange,
-}: ColorPickerProps): JSX.Element => {
+const ColorPicker = forwardRef(function ColorPicker(
+  {
+    color,
+    placeholder,
+    isBordered,
+    isSelected,
+    isGenerated,
+    onChange,
+    ...props
+  }: ColorPickerProps,
+  ref: Ref<HTMLDivElement>,
+) {
   return (
     <TippyPopoverWithTrigger
       disableContentSandbox
       renderTrigger={({ onClick }) => (
         <ColorPickerTrigger
+          {...props}
+          ref={ref}
           color={color}
           placeholder={placeholder}
           isBordered={isBordered}
@@ -37,6 +48,6 @@ const ColorPicker = ({
       popoverContent={<ColorPickerContent color={color} onChange={onChange} />}
     />
   );
-};
+});
 
 export default ColorPicker;
