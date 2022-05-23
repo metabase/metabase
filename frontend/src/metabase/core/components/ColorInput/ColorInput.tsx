@@ -26,12 +26,9 @@ const ColorInput = forwardRef(function ColorInput(
   { color, onFocus, onBlur, onChange, ...props }: ColorInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [inputText, setInputText] = useState("");
+  const colorText = useMemo(() => getColorHex(color) ?? "", [color]);
+  const [inputText, setInputText] = useState(colorText);
   const [isFocused, setIsFocused] = useState(false);
-
-  const colorText = useMemo(() => {
-    return color ? Color(color).hex() : "";
-  }, [color]);
 
   const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
@@ -54,12 +51,7 @@ const ColorInput = forwardRef(function ColorInput(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
       setInputText(newText);
-
-      try {
-        onChange?.(Color(newText).hex());
-      } catch (e) {
-        onChange?.(undefined);
-      }
+      onChange?.(getColorHex(newText));
     },
     [onChange],
   );
@@ -76,5 +68,13 @@ const ColorInput = forwardRef(function ColorInput(
     />
   );
 });
+
+const getColorHex = (color?: string) => {
+  try {
+    return color ? Color(color).hex() : undefined;
+  } catch (e) {
+    return undefined;
+  }
+};
 
 export default ColorInput;
