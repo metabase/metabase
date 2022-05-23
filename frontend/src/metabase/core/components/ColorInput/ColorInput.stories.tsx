@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ComponentStory } from "@storybook/react";
-import ColorInput from "./ColorInput";
 import { useArgs } from "@storybook/client-api";
+import ColorInput from "./ColorInput";
 
 export default {
   title: "Core/ColorInput",
