@@ -1,4 +1,4 @@
-# Triggers Build and Docker by adding "@metabase-bot create docker" comment in a PR
+# Triggers Build and Docker by adding "@metabase-bot create branch image" comment in a PR
 name: Build + Docker Uberjar
 
 on:
