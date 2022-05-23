@@ -1,31 +1,42 @@
-import React, { forwardRef, HTMLAttributes, Ref } from "react";
+import React from "react";
 import ColorPill from "metabase/core/components/ColorPill";
-import { ColorSelectorRoot } from "./ColorSelector.styled";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import ColorSelectorContent from "./ColorSelectorContent";
 
-export interface ColorSelectorProps
-  extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface ColorSelectorProps {
   color: string;
   colors: string[];
-  onChange: (color: string) => void;
+  isBordered?: boolean;
+  isSelected?: boolean;
+  onChange?: (color: string) => void;
 }
 
-const ColorSelector = forwardRef(function ColorSelector(
-  { color, colors, onChange, ...props }: ColorSelectorProps,
-  ref: Ref<HTMLDivElement>,
-) {
+const ColorSelector = ({
+  color,
+  colors,
+  isBordered,
+  isSelected,
+  onChange,
+}: ColorSelectorProps): JSX.Element => {
   return (
-    <ColorSelectorRoot {...props} ref={ref} colors={colors}>
-      {colors.map((option, index) => (
+    <TippyPopoverWithTrigger
+      renderTrigger={({ onClick }) => (
         <ColorPill
-          key={index}
-          color={option}
-          isBordered
-          isSelected={color === option}
-          onClick={() => onChange(option)}
+          color={color}
+          isBordered={isBordered}
+          isSelected={isSelected}
+          onClick={onClick}
         />
-      ))}
-    </ColorSelectorRoot>
+      )}
+      popoverContent={
+        <ColorSelectorContent
+          color={color}
+          colors={colors}
+          onChange={onChange}
+        />
+      }
+    />
   );
-});
+};
 
 export default ColorSelector;
