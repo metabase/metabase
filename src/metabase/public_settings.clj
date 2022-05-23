@@ -118,9 +118,9 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (str (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
-       " "
-       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
+  (deferred-tru
+   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+        "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
@@ -136,9 +136,9 @@
               (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
-       " "
-       (deferred-tru "Users can individually override this default language from their own account settings."))
+  (deferred-tru
+    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
+         "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -292,10 +292,10 @@
   :type       :string
   :default    "Lato"
   :setter (fn [new-value]
-                (when new-value
-                  (when-not (u.fonts/available-font? new-value)
-                    (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-                (setting/set-value-of-type! :string :application-font new-value)))
+              (when new-value
+                (when-not (u.fonts/available-font? new-value)
+                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+              (setting/set-value-of-type! :string :application-font new-value)))
 
 (defn application-color
   "The primary color, a.k.a. brand color"

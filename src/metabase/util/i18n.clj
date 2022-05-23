@@ -110,12 +110,20 @@
   "Schema for user and system localized string instances"
   (s/cond-pre UserLocalizedString SiteLocalizedString))
 
+(defn- valid-str-form?
+ [str-form]
+ (and
+  (= (first str-form) 'str)
+  (every? string? (rest str-form))))
+
 (defn- validate-number-of-args
   "Make sure the right number of args were passed to `trs`/`tru` and related forms during macro expansion."
-  [format-string args]
-  (assert (string? format-string)
-          "The first arg to (deferred-)trs/tru must be a String! `gettext` does not eval Clojure files.")
-  (let [message-format             (MessageFormat. format-string)
+  [format-string-or-str args]
+  (let [format-string              (cond
+                                     (string? format-string-or-str) format-string-or-str
+                                     (valid-str-form? format-string-or-str) (apply str (rest format-string-or-str))
+                                     :else (assert false "The first arg to (deferred-)trs/tru must be a String or a valid `str` form!"))
+        message-format             (MessageFormat. format-string)
         ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
         expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
         ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
@@ -135,9 +143,9 @@
   until it is needed. The user locale comes from the browser, so conversion to the localized string needs to be 'late
   bound' and only occur when the user's locale is in scope. Calling `str` on the results of this invocation will
   lookup the translated version of the string."
-  [format-string & args]
-  (validate-number-of-args format-string args)
-  `(UserLocalizedString. ~format-string ~(vec args)))
+  [format-string-or-str & args]
+  (validate-number-of-args format-string-or-str args)
+  `(UserLocalizedString. ~format-string-or-str ~(vec args)))
 
 (defmacro deferred-trs
   "Similar to `trs` but creates a `SiteLocalizedString` instance so that conversion to the correct locale can be
