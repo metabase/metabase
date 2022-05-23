@@ -12,7 +12,12 @@ import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
 import SetupSection from "../SetupSection";
-import { StepDescription, StepFormGroup } from "./DatabaseStep.styled";
+import {
+  StepActions,
+  StepDescription,
+  StepFormGroup,
+  StepButton,
+} from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 
 export interface DatabaseStepProps {
@@ -149,13 +154,19 @@ const DatabaseForm = ({
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
-          {engine && (
+          {engine ? (
             <>
               <div className="flex mb2 justify-end">
                 <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
                 <FormSubmit className="ml2">{submitTitle}</FormSubmit>
               </div>
             </>
+          ) : (
+            <StepActions>
+              <StepButton onClick={onSkip}>
+                {t`I'll add my data later`}
+              </StepButton>
+            </StepActions>
           )}
         </Form>
       )}
