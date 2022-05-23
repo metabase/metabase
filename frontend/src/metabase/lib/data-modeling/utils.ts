@@ -3,6 +3,7 @@ import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Database from "metabase-lib/lib/metadata/Database";
 import { isStructured } from "metabase/lib/query";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+import MetabaseSettings from "metabase/lib/settings";
 import { TemplateTag } from "metabase-types/types/Query";
 import {
   Card as CardObject,
@@ -65,4 +66,11 @@ export function isAdHocModelQuestion(
     return false;
   }
   return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
+}
+
+export function getModelCacheSchemaName(databaseId: number) {
+  const siteUUID = MetabaseSettings.get("site-uuid") as string;
+  const uuidParts = siteUUID.split("-");
+  const firstLetters = uuidParts.map(part => part.charAt(0)).join("");
+  return `metabase_cache_${firstLetters}_${databaseId}`;
 }

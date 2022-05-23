@@ -1,5 +1,6 @@
 import Question from "metabase-lib/lib/Question";
 import Database from "metabase-lib/lib/metadata/Database";
+import MetabaseSettings from "metabase/lib/settings";
 import {
   TemplateTag,
   TemplateTagType,
@@ -13,6 +14,7 @@ import {
   checkCanBeModel,
   isAdHocModelQuestion,
   isAdHocModelQuestionCard,
+  getModelCacheSchemaName,
 } from "./utils";
 
 type NativeQuestionFactoryOpts = {
@@ -247,6 +249,26 @@ describe("data model utils", () => {
       expect(
         isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
       ).toBe(false);
+    });
+  });
+
+  describe("getModelCacheSchemaName", () => {
+    const DB_ID = 9;
+
+    beforeEach(() => {
+      const defaultGet = MetabaseSettings.get;
+      jest.spyOn(MetabaseSettings, "get").mockImplementation(key => {
+        if (key === "site-uuid") {
+          return "143dd8ce-e116-4c7f-8d6d-32e99eaefbbc";
+        }
+        return defaultGet(key);
+      });
+    });
+
+    it("generates correct schema name", () => {
+      expect(getModelCacheSchemaName(DB_ID)).toBe(
+        `metabase_cache_1e483_${DB_ID}`,
+      );
     });
   });
 });
