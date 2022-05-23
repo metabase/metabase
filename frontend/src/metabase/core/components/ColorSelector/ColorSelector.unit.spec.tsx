@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ColorSelector from "./ColorSelector";
 
@@ -16,7 +16,8 @@ describe("ColorSelector", () => {
     );
 
     userEvent.click(screen.getByLabelText("white"));
-    userEvent.click(await screen.findByLabelText("blue"));
+    const tooltip = await screen.findByRole("tooltip");
+    userEvent.click(within(tooltip).getByLabelText("blue"));
 
     expect(onChange).toHaveBeenCalledWith("blue");
   });
