@@ -66,6 +66,7 @@ const ColorInput = ({
   return (
     <Input
       value={isFocused ? inputText : colorText}
+      size="small"
       onFocus={handleFocus}
       onBlur={handleBlur}
       onChange={handleChange}
