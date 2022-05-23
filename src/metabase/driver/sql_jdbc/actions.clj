@@ -79,8 +79,7 @@
      (if (= :driver :postgres)
        ;; postgres is happy with "returning *", However:
        ;; for mysql: to return all the columns we must add them to the column list and provide default values in the VALUES clause.
-       ;; for h2:
-       ;; so for those two, just use select *.
+       ;; for h2: I don't see an easy way to do it, so for those two, just use select *.
        (let [pg-create-hsql (-> raw-hsql (assoc :returning [:*]))]
          (try (jdbc/execute! connection-spec
                              (hformat/format pg-create-hsql)

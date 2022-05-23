@@ -17,7 +17,10 @@
   [{:action       "actions/row/create"
     :request-body (assoc (mt/mbql-query categories) :create-row {:name "created_row"})
     :expect-fn    (fn [result]
-                    (is (= "created_row" (get-in result [:created-row :name]))))}
+                    ;; check that we return the entire row:
+                    (is (= "created_row" (get-in result [:created-row :name])))
+                    (is (= (set [:name :id])
+                           (set (keys (:created-row result))))))}
    {:action       "actions/row/update"
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {:name "updated_row"})
