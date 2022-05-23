@@ -1,6 +1,11 @@
 import styled from "@emotion/styled";
 
-export const ControlsContainer = styled.div`
+export const TriggerContainer = styled.div`
+  display: flex;
+  gap: 1rem;
+`;
+
+export const PickerContainer = styled.div`
   width: 16.5rem;
   padding: 1rem;
 `;
