@@ -1,10 +1,10 @@
 import styled from "@emotion/styled";
 
-export interface ColorListProps {
+export interface ColorSelectorProps {
   colors: string[];
 }
 
-export const ColorList = styled.div<ColorListProps>`
+export const ColorSelectorRoot = styled.div<ColorSelectorProps>`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
