@@ -61,7 +61,7 @@ const Input = forwardRef(function Input(
       <InputField
         {...props}
         ref={inputRef}
-        size={size}
+        fieldSize={size}
         hasError={error}
         fullWidth={fullWidth}
         hasRightIcon={Boolean(rightIcon)}

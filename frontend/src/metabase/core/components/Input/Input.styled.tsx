@@ -5,7 +5,7 @@ import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import { InputSize } from "./types";
 
 export interface InputProps {
-  size?: InputSize;
+  fieldSize?: InputSize;
   hasError?: boolean;
   fullWidth?: boolean;
   hasLeftIcon?: boolean;
@@ -61,7 +61,7 @@ export const InputField = styled.input<InputProps>`
     `};
 
   ${props =>
-    props.size === "small" &&
+    props.fieldSize === "small" &&
     css`
       font-size: 0.875rem;
       padding: 0.4375rem 0.625rem;
