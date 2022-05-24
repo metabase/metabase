@@ -218,17 +218,16 @@ class Select extends Component {
               disabled={disabled}
               {...buttonProps}
             >
-              {this.props.buttonText ?? null}
-              {!this.props.buttonText
-                ? selectedNames.length > 0
-                  ? selectedNames.map((name, index) => (
-                      <span key={index}>
-                        {name}
-                        {index < selectedNames.length - 1 ? ", " : ""}
-                      </span>
-                    ))
-                  : placeholder
-                : null}
+              {this.props.buttonText
+                ? this.props.buttonText
+                : selectedNames.length > 0
+                ? selectedNames.map((name, index) => (
+                    <span key={index}>
+                      {name}
+                      {index < selectedNames.length - 1 ? ", " : ""}
+                    </span>
+                  ))
+                : placeholder}
             </SelectButton>
           )
         }
