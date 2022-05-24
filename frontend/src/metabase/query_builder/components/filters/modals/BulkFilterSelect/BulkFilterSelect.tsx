@@ -4,7 +4,6 @@ import { xor } from "lodash";
 import StructuredQuery, {
   SegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
-import Select from "metabase/core/components/Select";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
@@ -12,6 +11,7 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 import {
   SelectFilterButton,
   SelectFilterPopover,
+  SegmentSelect,
 } from "./BulkFilterSelect.styled";
 
 export interface BulkFilterSelectProps {
@@ -128,19 +128,15 @@ export const SegmentFilterSelect = ({
   );
 
   return (
-    <div>
-      <Select
-        options={segments.map(segment => ({
-          name: segment.name,
-          value: segment,
-          icon: segment.icon,
-        }))}
-        value={activeSegments}
-        multiple={true}
-        optionNameFn={(o: any) => o?.name}
-        optionValueFn={(o: any) => o?.value ?? o}
-        onChange={(e: any) => toggleSegment(e.target.value)}
-      />
-    </div>
+    <SegmentSelect
+      options={segments.map(segment => ({
+        name: segment.name,
+        value: segment,
+        icon: segment.icon,
+      }))}
+      value={activeSegments}
+      multiple={true}
+      onChange={(e: any) => toggleSegment(e.target.value)}
+    />
   );
 };

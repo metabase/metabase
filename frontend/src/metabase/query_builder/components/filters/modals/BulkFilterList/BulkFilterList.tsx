@@ -149,7 +149,7 @@ const SegmentListItem = ({
         />
       </ListRowContent>
     </ListRow>
-    <ModalDivider />
+    <ModalDivider marginY="0.5rem" />
   </>
 );
 
