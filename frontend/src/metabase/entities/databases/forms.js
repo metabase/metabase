@@ -245,31 +245,45 @@ function getEngineFormFields(engine, details, id) {
   const hasModelCachingField = isEditingDatabase && "_persistModels" in details;
 
   // convert database details-fields to Form fields
-  return engineFields
-    .map(field => {
-      const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
+  const fields = engineFields.map(field => {
+    const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
 
-      return {
-        name: `details.${field.name}`,
-        title: field["display-name"],
-        type: field.type,
-        description: field.description,
-        placeholder: field.placeholder || field.default,
-        options: field.options,
-        validate: value => (field.required && !value ? t`required` : null),
-        normalize: value => normalizeFieldValue(value, field),
-        horizontal: field.type === "boolean",
-        initial: field.default,
-        readOnly: field.readOnly || false,
-        helperText: field["helper-text"],
-        visibleIf: field["visible-if"],
-        treatBeforePosting: field["treat-before-posting"],
-        ...(overrides && overrides(engine, details, id)),
-      };
-    })
-    .concat(cachingField ? [cachingField] : [])
-    .concat(hasModelCachingField ? [getModelCachingField(id)] : [])
-    .filter(field => shouldShowEngineProvidedField(field, details));
+    return {
+      name: `details.${field.name}`,
+      title: field["display-name"],
+      type: field.type,
+      description: field.description,
+      placeholder: field.placeholder || field.default,
+      options: field.options,
+      validate: value => (field.required && !value ? t`required` : null),
+      normalize: value => normalizeFieldValue(value, field),
+      horizontal: field.type === "boolean",
+      initial: field.default,
+      readOnly: field.readOnly || false,
+      helperText: field["helper-text"],
+      visibleIf: field["visible-if"],
+      treatBeforePosting: field["treat-before-posting"],
+      ...(overrides && overrides(engine, details, id)),
+    };
+  });
+
+  if (hasModelCachingField) {
+    const modelCachingField = getModelCachingField(id);
+    const autoRunQueriesFieldIndex = fields.findIndex(
+      field => field.name === "auto_run_queries",
+    );
+    if (autoRunQueriesFieldIndex >= 0) {
+      fields.splice(autoRunQueriesFieldIndex + 1, 0, modelCachingField);
+    } else {
+      fields.push(modelCachingField);
+    }
+  }
+
+  if (cachingField) {
+    fields.push(cachingField);
+  }
+
+  return fields.filter(field => shouldShowEngineProvidedField(field, details));
 }
 
 const ENGINES = MetabaseSettings.get("engines", {});
@@ -398,6 +412,7 @@ forms.setup = {
 const ADVANCED_FIELDS = new Set([
   "auto_run_queries",
   "details.let-user-control-scheduling",
+  "details._persistModels",
   "cache_ttl",
 ]);
 
