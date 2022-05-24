@@ -92,7 +92,6 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
 
 export interface SegmentFilterSelectProps {
   query: StructuredQuery;
-  filters?: Filter[];
   segments: SegmentOption[];
   onAddFilter: (filter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
@@ -100,31 +99,27 @@ export interface SegmentFilterSelectProps {
 
 export const SegmentFilterSelect = ({
   query,
-  filters,
   segments,
   onAddFilter,
   onRemoveFilter,
 }: SegmentFilterSelectProps): JSX.Element => {
-  const activeSegments = useMemo(() => {
-    return segments.filter(segment => {
-      return !!filters?.find(
-        filter => filter[0] === "segment" && filter[1] === segment.filter[1],
-      );
-    });
-  }, [filters, segments]);
+  const activeSegmentOptions = useMemo(() => {
+    const activeSegmentIds = query.segments().map(s => s.id);
+    return segments.filter(segment =>
+      activeSegmentIds.includes(segment.filter[1]),
+    );
+  }, [query, segments]);
 
   const toggleSegment = useCallback(
-    (newActiveSegments: SegmentOption[]) => {
-      const [changedSegment] = xor(newActiveSegments, activeSegments);
-      const segmentIsActive = activeSegments.includes(changedSegment);
-
+    (changedSegment: SegmentOption) => {
+      const segmentIsActive = activeSegmentOptions.includes(changedSegment);
       const segmentFilter = new Filter(changedSegment.filter, null, query);
 
       segmentIsActive
         ? onRemoveFilter(segmentFilter)
         : onAddFilter(segmentFilter);
     },
-    [query, activeSegments, onRemoveFilter, onAddFilter],
+    [query, activeSegmentOptions, onRemoveFilter, onAddFilter],
   );
 
   return (
@@ -134,9 +129,9 @@ export const SegmentFilterSelect = ({
         value: segment,
         icon: segment.icon,
       }))}
-      value={activeSegments}
-      multiple={true}
-      onChange={(e: any) => toggleSegment(e.target.value)}
+      value={activeSegmentOptions}
+      onChange={(e: any) => toggleSegment(e.target.value.changedItem)}
+      multiple
     />
   );
 };

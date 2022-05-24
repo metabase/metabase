@@ -136,6 +136,7 @@ class Select extends Component {
       value = this.itemIsSelected(option)
         ? values.filter(value => value !== optionValue)
         : [...values, optionValue];
+      value.changedItem = optionValue;
     } else {
       value = optionValue;
     }

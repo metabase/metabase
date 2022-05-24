@@ -142,7 +142,6 @@ const SegmentListItem = ({
       <ListRowContent>
         <SegmentFilterSelect
           query={query}
-          filters={filters}
           segments={segments}
           onAddFilter={onAddFilter}
           onRemoveFilter={onRemoveFilter}
