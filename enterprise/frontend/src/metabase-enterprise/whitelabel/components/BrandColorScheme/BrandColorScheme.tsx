@@ -60,12 +60,7 @@ const BrandColorTable = ({
 }: BrandColorTableProps): JSX.Element => {
   return (
     <TableRoot>
-      <TableHeader>
-        <TableHeaderRow>
-          <TableHeaderCell>{t`Color`}</TableHeaderCell>
-          <TableHeaderCell>{t`Where it's used`}</TableHeaderCell>
-        </TableHeaderRow>
-      </TableHeader>
+      <BrandColorHeader />
       <TableBody>
         {options.map(option => (
           <BrandColorRow
@@ -77,6 +72,17 @@ const BrandColorTable = ({
         ))}
       </TableBody>
     </TableRoot>
+  );
+};
+
+const BrandColorHeader = (): JSX.Element => {
+  return (
+    <TableHeader>
+      <TableHeaderRow>
+        <TableHeaderCell>{t`Color`}</TableHeaderCell>
+        <TableHeaderCell>{t`Where it's used`}</TableHeaderCell>
+      </TableHeaderRow>
+    </TableHeader>
   );
 };
 
