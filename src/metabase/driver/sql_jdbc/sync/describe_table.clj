@@ -1,7 +1,6 @@
 (ns metabase.driver.sql-jdbc.sync.describe-table
   "SQL JDBC impl for `describe-table`, `describe-table-fks`, and `describe-nested-field-columns`."
   (:require [cheshire.core :as json]
-            [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.string :as str]
