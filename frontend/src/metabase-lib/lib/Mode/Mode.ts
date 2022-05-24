@@ -15,15 +15,13 @@ export default class Mode {
     this._queryMode = queryMode;
   }
 
-  static forQuestion(question: Question): Mode | null | undefined {
-    // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
+  static forQuestion(question: Question): Mode | null {
     const queryMode = getMode(question);
-
     if (queryMode) {
       return new Mode(question, queryMode);
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   queryMode() {
@@ -35,7 +33,7 @@ export default class Mode {
   }
 
   actionsForClick(
-    clicked: ClickObject | null | undefined,
+    clicked: ClickObject | undefined,
     settings,
     extraData,
   ): ClickAction[] {
