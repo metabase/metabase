@@ -11,19 +11,19 @@ import {
   TableHeaderCell,
   TableHeaderRow,
   TableRoot,
-} from "./BrandColors.styled";
+} from "./BrandColorScheme.styled";
 
-export interface BrandColorsProps {
+export interface BrandColorSchemeProps {
   colors: Record<string, string>;
   originalColors: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
-const BrandColors = ({
+const BrandColorScheme = ({
   colors,
   originalColors,
   onChange,
-}: BrandColorsProps): JSX.Element => {
+}: BrandColorSchemeProps): JSX.Element => {
   const options = useMemo(() => {
     return getBrandColorOptions();
   }, []);
@@ -108,4 +108,4 @@ const BrandColorRow = ({
   );
 };
 
-export default BrandColors;
+export default BrandColorScheme;

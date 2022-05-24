@@ -1,15 +1,15 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
 import { color } from "metabase/lib/colors";
-import BrandColors from "./BrandColors";
+import BrandColorScheme from "./BrandColorScheme";
 
 export default {
-  title: "Whitelabel/BrandColors",
-  component: BrandColors,
+  title: "Whitelabel/BrandColorScheme",
+  component: BrandColorScheme,
 };
 
-const Template: ComponentStory<typeof BrandColors> = args => {
-  return <BrandColors {...args} />;
+const Template: ComponentStory<typeof BrandColorScheme> = args => {
+  return <BrandColorScheme {...args} />;
 };
 
 export const Default = Template.bind({});
