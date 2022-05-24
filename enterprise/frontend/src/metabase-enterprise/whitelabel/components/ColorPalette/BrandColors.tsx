@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import { getBrandColors } from "./utils";
-import { ColorInfo } from "./types";
+import { getBrandColorOptions } from "./utils";
+import { ColorOption } from "./types";
 import {
   TableBody,
   TableBodyCell,
@@ -11,38 +11,43 @@ import {
   TableHeaderRow,
   TableRoot,
 } from "./BrandColorTable.styled";
+import ColorPicker from "metabase/core/components/ColorPicker";
 
 export interface BrandColorsProps {
-  values: Record<string, string>;
-  onChange: (values: Record<string, string>) => void;
+  colors: Record<string, string>;
+  onChange: (colors: Record<string, string>) => void;
 }
 
-const BrandColors = ({ values, onChange }: BrandColorsProps): JSX.Element => {
-  const colors = useMemo(() => {
-    return getBrandColors();
+const BrandColors = ({ colors, onChange }: BrandColorsProps): JSX.Element => {
+  const options = useMemo(() => {
+    return getBrandColorOptions();
   }, []);
 
   const handleChange = useCallback(
-    (color: ColorInfo, value: string) => {
-      onChange({ ...values, [color.name]: value });
+    (color: string, option: ColorOption) => {
+      onChange({ ...colors, [option.name]: color });
     },
-    [values, onChange],
+    [colors, onChange],
   );
 
   return (
-    <BrandColorTable colors={colors} values={values} onChange={handleChange} />
+    <BrandColorTable
+      colors={colors}
+      options={options}
+      onChange={handleChange}
+    />
   );
 };
 
 interface BrandColorTableProps {
-  colors: ColorInfo[];
-  values: Record<string, string>;
-  onChange: (color: ColorInfo, value: string) => void;
+  colors: Record<string, string>;
+  options: ColorOption[];
+  onChange: (value: string, color: ColorOption) => void;
 }
 
 const BrandColorTable = ({
   colors,
-  values,
+  options,
   onChange,
 }: BrandColorTableProps): JSX.Element => {
   return (
@@ -54,11 +59,11 @@ const BrandColorTable = ({
         </TableHeaderRow>
       </TableHeader>
       <TableBody>
-        {colors.map((color, index) => (
+        {options.map(option => (
           <BrandColorRow
-            key={color.name}
-            color={color}
-            value={values[color.name]}
+            key={option.name}
+            color={colors[option.name]}
+            option={option}
             onChange={onChange}
           />
         ))}
@@ -68,16 +73,29 @@ const BrandColorTable = ({
 };
 
 interface BrandColorRowProps {
-  color: ColorInfo;
-  value: string;
-  onChange: (color: ColorInfo, value: string) => void;
+  color: string;
+  option: ColorOption;
+  onChange: (color: string, option: ColorOption) => void;
 }
 
-const BrandColorRow = ({ color, value }: BrandColorRowProps): JSX.Element => {
+const BrandColorRow = ({
+  color,
+  option,
+  onChange,
+}: BrandColorRowProps): JSX.Element => {
+  const handleChange = useCallback(
+    (color: string) => {
+      onChange(color, option);
+    },
+    [option, onChange],
+  );
+
   return (
     <TableBodyRow>
-      <TableBodyCell>{color.name}</TableBodyCell>
-      <TableBodyCell>{color.description}</TableBodyCell>
+      <TableBodyCell>
+        <ColorPicker color={color} onChange={handleChange} />
+      </TableBodyCell>
+      <TableBodyCell>{option.description}</TableBodyCell>
     </TableBodyRow>
   );
 };
