@@ -1,7 +1,7 @@
 (ns metabase.models.card-test
   (:require [cheshire.core :as json]
             [clojure.test :refer :all]
-            [metabase.models :refer [Card Collection Dashboard DashboardCard]]
+            [metabase.models :refer [Action Card Collection Dashboard DashboardCard QueryAction]]
             [metabase.models.card :as card]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
@@ -291,3 +291,20 @@
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
+
+(deftest action-creation-test
+  (testing "actions are created when is_write is set"
+    (testing "during create"
+      (let [{card-id :id} (db/insert! Card (assoc (tt/with-temp-defaults Card) :is_write true))
+            {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+
+        (is (seq qa-rows)
+            "Inserting a card with :is_write true should create a QueryAction")
+        (is (seq (db/select Action :id action_id)))))
+    (testing "during update"
+      (let [{card-id :id} (db/insert! Card (tt/with-temp-defaults Card))
+            _ (db/update! Card card-id {:is_write true})
+            {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+        (is (seq qa-rows)
+            "Updating a card to have :is_write true should create a QueryAction")
+        (is (seq (db/select Action :id action_id)))))))
