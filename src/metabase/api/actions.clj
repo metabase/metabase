@@ -12,9 +12,17 @@
             [metabase.util.i18n :as i18n]
             [schema.core :as s]))
 
-(defn- do-check-actions-enabled [database-id f]
+(defn do-check-actions-enabled
+  "Check whether Actions are enabled and allowed for the [[metabase.models.database]] with `database-id`, or return a
+  400 status code. `f` may be `nil`. If `f` is passed, calls
+
+    (f driver)
+
+  if the check passes."
+  [database-id f]
   {:pre [(integer? database-id)]}
   (let [{db-settings :settings, driver :engine, :as db} (Database database-id)]
+    ;; make sure the Driver supports Actions.
     (when-not (driver/database-supports? driver :actions db)
       (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                                 (u/qualified-name driver)
@@ -26,7 +34,8 @@
         (throw (ex-info (i18n/tru "Actions are not enabled for Database {0}." database-id)
                         {:status-code 400})))
       ;; TODO -- need to check permissions once the perms code is in place.
-      (f driver))))
+      (when f
+        (f driver)))))
 
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."

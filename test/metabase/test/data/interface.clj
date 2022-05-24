@@ -230,24 +230,36 @@
   actual instance, *not* the definition) of the Metabase object to return (e.g., a pass a `Table` to a
   `FieldDefintion`). For a `DatabaseDefinition`, pass the driver keyword."
   {:arglists '([db-or-table-or-field-def context])}
-  (fn [db-or-table-or-field-def context] (class db-or-table-or-field-def)))
+  (fn [db-or-table-or-field-def _context]
+    (class db-or-table-or-field-def)))
 
 (defmethod metabase-instance FieldDefinition
   [this table]
-  (Field :table_id (:id table), :%lower.name (str/lower-case (:field-name this))))
+  (db/select-one Field
+                 :table_id    (u/the-id table)
+                 :%lower.name (str/lower-case (:field-name this))
+                 {:order-by [[:id :asc]]}))
 
 (defmethod metabase-instance TableDefinition
   [this database]
   ;; Look first for an exact table-name match; otherwise allow DB-qualified table names for drivers that need them
   ;; like Oracle
-  (or (Table :db_id (:id database), :%lower.name (str/lower-case (:table-name this)))
-      (Table :db_id (:id database), :%lower.name (db-qualified-table-name (:name database) (:table-name this)))))
+  (letfn [(table-with-name [table-name]
+            (db/select-one Table
+                           :db_id       (:id database)
+                           :%lower.name table-name
+                           {:order-by [[:id :asc]]}))]
+    (or (table-with-name (str/lower-case (:table-name this)))
+        (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
 (defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
   (assert (string? database-name))
   (assert (keyword? driver-kw))
   (mdb/setup-db!)
-  (Database :name database-name, :engine (name driver-kw)))
+  (db/select-one Database
+                 :name    database-name
+                 :engine (name driver-kw)
+                 {:order-by [[:id :asc]]}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

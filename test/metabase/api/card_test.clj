@@ -9,6 +9,7 @@
             [medley.core :as m]
             [metabase.api.card :as api.card]
             [metabase.api.pivots :as api.pivots]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
@@ -2030,3 +2031,125 @@
                                                                      (map #(assoc % :description "") m))))
                             :result_metadata
                             (map :description))))))))))))
+
+;;;; Setting `is_write`
+
+(defn- do-with-actions-enabled [thunk]
+  (mt/with-temporary-setting-values [experimental-enable-actions true]
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
+      (thunk))))
+
+(defmacro ^:private with-actions-enabled {:style/indent 0} [& body]
+  `(do-with-actions-enabled (fn [] ~@body)))
+
+(defn- test-update-is-write-card [{:keys [user expected-status-code before-fn result-fn]
+                                   :or   {user :crowberto}}]
+  (testing "PUT /api/card/:id"
+    (doseq [initial-value [true false]
+            :let          [new-value (not initial-value)]]
+      (testing (format "Change is_write %s => %s" initial-value new-value)
+        (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query :venues)}]
+          (when initial-value
+            ;; get around any `pre-update` restrictions or the like
+            (db/execute! {:update Card, :set {:is_write true}, :where [:= :id card-id]}))
+          (when before-fn
+            (before-fn (Card card-id)))
+          (let [result (mt/user-http-request user :put expected-status-code (str "card/" card-id) {:is_write new-value})]
+            (result-fn result))
+          (let [fail? (>= expected-status-code 400)
+                expected-value (if fail?
+                                 initial-value
+                                 new-value)]
+            (testing "Application DB value"
+              (is (= expected-value
+                     (db/select-one-field :is_write Card :id card-id))))
+            (testing "GET /api/card/:id value"
+              (is (partial= {:is_write expected-value}
+                            (mt/user-http-request :crowberto :get 200 (str "card/" card-id)))))
+            (when fail?
+              (testing "\nNo-op update should be allowed."
+                (is (some? (mt/user-http-request user :put 202 (str "card/" card-id) {:is_write initial-value})))))))))))
+
+(defn- test-create-is-write-card [{:keys [user expected-status-code result-fn]
+                                   :or   {user :crowberto}}]
+  (mt/with-model-cleanup [Card]
+    (testing "POST /api/card"
+      (let [result (mt/user-http-request user :post expected-status-code "card" (merge (mt/with-temp-defaults Card)
+                                                                                       {:is_write      true
+                                                                                        :dataset_query (mt/mbql-query :venues)}))]
+        (result-fn result)
+        (when (map? result)
+          (when-let [card-id (:id result)]
+            (let [fail? (>= expected-status-code 400)]
+              (testing "Application DB value"
+                (is (= (if fail?
+                         false
+                         true)
+                       (db/select-one-field :is_write Card :id card-id)))))))))))
+
+(deftest set-is-write-actions-disabled-globally-test
+  (with-actions-enabled
+    (mt/with-temporary-setting-values [experimental-enable-actions false]
+      (doseq [f [test-update-is-write-card
+                 test-create-is-write-card]]
+        (f {:expected-status-code 400
+            :result-fn            (fn [result]
+                                    (is (= "Cannot mark Saved Question as 'is_write': Actions are not enabled."
+                                           result)))})))))
+
+(deftest set-is-write-actions-disabled-for-database-test
+  (with-actions-enabled
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
+      (testing "Sanity check: make sure database-enable-actions was actually set to `false`"
+        (is (= {:database-enable-actions false}
+               (db/select-one-field :settings Database :id (mt/id)))))
+      (doseq [f [test-update-is-write-card
+                 test-create-is-write-card]]
+        (f {:expected-status-code 400
+            :result-fn            (fn [result]
+                                    (is (re= #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."
+                                             result)))})))))
+
+(driver/register! ::feature-flag-test-driver, :parent :h2)
+
+(defmethod driver/database-supports? [::feature-flag-test-driver :actions]
+  [_driver _feature _database]
+  false)
+
+(deftest set-is-write-driver-does-not-support-actions-test
+  (with-actions-enabled
+    (mt/with-temp-vals-in-db Database (mt/id) {:engine (u/qualified-name ::feature-flag-test-driver)}
+      (doseq [f [test-update-is-write-card
+                 test-create-is-write-card]]
+        (f {:expected-status-code 400
+            :result-fn            (fn [result]
+                                    (is (re= #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."
+                                             result)))})))))
+
+(deftest set-is-write-card-is-dataset-test
+  (with-actions-enabled
+    (test-update-is-write-card
+     {:before-fn            (fn [{card-id :id}]
+                              (db/update! Card card-id :dataset true))
+      :expected-status-code 400
+      :result-fn            (fn [result]
+                              (is (= "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."
+                                     result)))})))
+
+(deftest set-is-write-user-is-not-admin-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      (f {:expected-status-code 403
+          :user                 :rasta
+          :result-fn            (fn [result]
+                                  (is (= "You don't have permissions to do that."
+                                         result)))}))))
+
+(deftest set-is-write-happy-path-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      (f {:expected-status-code 202
+          :result-fn            (fn [result]
+                                  (is (map? result)))}))))
