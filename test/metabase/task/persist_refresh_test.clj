@@ -3,6 +3,7 @@
             [clojurewerkz.quartzite.conversion :as qc]
             [medley.core :as m]
             [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.task.persist-refresh :as pr]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -46,7 +47,22 @@
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0 * * ? *"
-             (schedule-string tggr)))))
+             (schedule-string tggr))))
+    (testing "in report timezone UTC"
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
+          (is (= "UTC"
+                 (.. tggr getTimeZone getID))))))
+    (testing "in report timezone LA"
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+        (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
+          (is (= "America/Los_Angeles"
+                 (.. tggr getTimeZone getID))))))
+    (testing "in system timezone"
+      (mt/with-temporary-setting-values [report-timezone nil]
+        (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
+          (is (= (qp.timezone/system-timezone-id)
+                 (.. tggr getTimeZone getID)))))))
   (testing "Individual refresh trigger"
     (let [tggr (#'pr/individual-trigger {:card_id 5 :id 1})]
       (is (= {"persisted-id" 1 "type" "individual"}
