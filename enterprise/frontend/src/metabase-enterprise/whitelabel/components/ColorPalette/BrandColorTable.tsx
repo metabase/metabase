@@ -1,10 +1,9 @@
 import React from "react";
 import { t } from "ttag";
 import {
-  TableHeaderCell,
   TableHeader,
+  TableHeaderCell,
   TableHeaderRow,
-  TableRoot,
 } from "./BrandColorTable.styled";
 
 export interface BrandColorTableProps {
@@ -14,14 +13,14 @@ export interface BrandColorTableProps {
 
 const BrandColorTable = ({ colors }: BrandColorTableProps): JSX.Element => {
   return (
-    <TableRoot>
+    <div>
       <TableHeader>
         <TableHeaderRow>
           <TableHeaderCell>{t`Color`}</TableHeaderCell>
           <TableHeaderCell>{t`Where it's used`}</TableHeaderCell>
         </TableHeaderRow>
       </TableHeader>
-    </TableRoot>
+    </div>
   );
 };
 

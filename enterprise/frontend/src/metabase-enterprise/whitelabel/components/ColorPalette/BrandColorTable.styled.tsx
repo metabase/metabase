@@ -1,12 +1,10 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const TableRoot = styled.div`
-  border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
-`;
-
 export const TableHeader = styled.div`
+  border: 1px solid ${color("border")};
+  border-bottom: none;
+  border-radius: 0.5rem 0.5rem 0 0;
   background-color: ${color("bg-light")};
 `;
 
