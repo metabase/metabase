@@ -252,13 +252,14 @@
     (or (table-with-name (str/lower-case (:table-name this)))
         (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
 
-(defmethod metabase-instance DatabaseDefinition [{:keys [database-name]} driver-kw]
+(defmethod metabase-instance DatabaseDefinition
+  [{:keys [database-name]} driver]
   (assert (string? database-name))
-  (assert (keyword? driver-kw))
+  (assert (keyword? driver))
   (mdb/setup-db!)
   (db/select-one Database
                  :name    database-name
-                 :engine (name driver-kw)
+                 :engine (u/qualified-name driver)
                  {:order-by [[:id :asc]]}))
 
 
