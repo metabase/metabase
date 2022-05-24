@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorInput from "metabase/core/components/ColorInput";
 import { TriggerContainer } from "./ColorPicker.styled";
@@ -10,7 +10,7 @@ export interface ColorPickerTriggerProps
   isBordered?: boolean;
   isSelected?: boolean;
   isGenerated?: boolean;
-  onChange?: (color: string) => void;
+  onChange?: (color?: string) => void;
 }
 
 const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
@@ -26,11 +26,6 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   }: ColorPickerTriggerProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const handleChange = useCallback(
-    (color?: string) => color && onChange?.(color),
-    [onChange],
-  );
-
   return (
     <TriggerContainer {...props} ref={ref}>
       <ColorPill
@@ -44,7 +39,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
         color={color}
         placeholder={placeholder}
         fullWidth
-        onChange={handleChange}
+        onChange={onChange}
       />
     </TriggerContainer>
   );

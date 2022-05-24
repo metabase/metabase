@@ -14,7 +14,7 @@ export interface ColorPickerProps extends ColorPickerAttributes {
   isBordered?: boolean;
   isSelected?: boolean;
   isGenerated?: boolean;
-  onChange?: (color: string) => void;
+  onChange?: (color?: string) => void;
 }
 
 const ColorPicker = forwardRef(function ColorPicker(
