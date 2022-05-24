@@ -19,18 +19,15 @@ export interface BrandColorsProps {
 }
 
 const BrandColors = ({ colors, onChange }: BrandColorsProps): JSX.Element => {
-  const colorsRef = useRef(colors);
-  colorsRef.current = colors;
-
   const options = useMemo(() => {
     return getBrandColorOptions();
   }, []);
 
   const handleChange = useCallback(
     (color: string, option: ColorOption) => {
-      onChange({ ...colorsRef.current, [option.name]: color });
+      onChange({ ...colors, [option.name]: color });
     },
-    [onChange],
+    [colors, onChange],
   );
 
   return (
