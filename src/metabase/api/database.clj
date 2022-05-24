@@ -337,7 +337,7 @@
       true                         add-expanded-schedules
       true                         (get-database-hydrate-include include)
       include-editable-data-model? check-db-data-model-perms
-      mi/can-write?                (cond->
+      mi/can-write?                (->
                                      secret/expand-db-details-inferred-secret-values
                                      (assoc :can-manage true)))))
 
