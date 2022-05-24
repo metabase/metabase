@@ -10,7 +10,7 @@ import ParameterFieldWidgetValue from "./ParameterFieldWidgetValue/ParameterFiel
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import Button from "metabase/core/components/Button";
 
-import { normalizeValue } from "./normalizeValue";
+import { normalizeValue } from "../utils";
 
 import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
 

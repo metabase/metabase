@@ -14,6 +14,7 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
+import NumberValuesWidget from "metabase/parameters/components/widgets/NumberValuesWidget";
 
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
 import DateSingleWidget from "./widgets/DateSingleWidget";
@@ -227,6 +228,15 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
+  } else if (parameter.type === "number/=" || parameter.type === "number/>=") {
+    return (
+      <NumberValuesWidget
+        value={value}
+        setValue={setValue}
+        onClose={onPopoverClose}
+        multi={parameter.type === "number/="}
+      />
+    );
   } else if (isOnlyMappedToFields(parameter)) {
     return (
       <ParameterFieldWidget
@@ -266,6 +276,8 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
+  } else if (parameter.type === "number/=" || parameter.type === "number/>=") {
+    return NumberValuesWidget;
   } else if (isOnlyMappedToFields(parameter)) {
     return ParameterFieldWidget;
   } else {

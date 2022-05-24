@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { ngettext, msgid } from "ttag";
 
 import Value from "metabase/components/Value";
-import { normalizeValue } from "../normalizeValue";
+import { normalizeValue } from "../../utils";
 
 function renderNumberOfSelections(numberOfSelections) {
   return ngettext(
