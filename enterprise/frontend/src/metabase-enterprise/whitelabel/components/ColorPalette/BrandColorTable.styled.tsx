@@ -1,5 +1,17 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { css } from "@emotion/react";
+
+const cellStyles = css`
+  display: block;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+
+  &:first-of-type {
+    flex: 0;
+    min-width: 12rem;
+  }
+`;
 
 export const TableRoot = styled.table`
   display: block;
@@ -18,19 +30,17 @@ export const TableHeaderRow = styled.tr`
 `;
 
 export const TableHeaderCell = styled.th`
-  display: block;
+  ${cellStyles};
   color: ${color("text-medium")};
-  padding: 0.5rem 1.5rem;
   font-size: 0.5rem;
   line-height: 0.625rem;
   font-weight: bold;
   text-transform: uppercase;
-
-  &:first-of-type {
-    flex: 0;
-    min-width: 12rem;
-  }
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
 `;
+
+export const TableHeaderText = styled.span``;
 
 export const TableBody = styled.tbody`
   display: block;
@@ -41,11 +51,8 @@ export const TableBodyRow = styled.tr`
 `;
 
 export const TableBodyCell = styled.td`
-  display: block;
-  padding: 1rem 1.5rem;
-
-  &:first-of-type {
-    flex: 0;
-    min-width: 12rem;
-  }
+  ${cellStyles};
+  color: ${color("text-medium")};
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 `;
