@@ -67,6 +67,8 @@ jobs:
           - "embedding"
           - "joins"
           - "models"
+          - "organization"
+          - "permissions"
     services:
       maildev:
         image: maildev/maildev:1.1.0
