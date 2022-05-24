@@ -47,6 +47,7 @@ class FieldInner extends Base {
   name: string;
   semantic_type: string | null;
   table?: Table;
+  target?: Field;
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
