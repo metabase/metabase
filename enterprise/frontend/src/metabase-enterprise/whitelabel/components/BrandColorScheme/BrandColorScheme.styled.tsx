@@ -4,12 +4,14 @@ import { color } from "metabase/lib/colors";
 
 const cellStyles = css`
   display: block;
+  box-sizing: border-box;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
 
   &:first-of-type {
-    flex: 0;
-    min-width: 12rem;
+    flex: 0 0 auto;
+    width: 12rem;
+    padding-right: 2.5rem;
   }
 `;
 
@@ -27,6 +29,7 @@ export const TableHeader = styled.thead`
 
 export const TableHeaderRow = styled.tr`
   display: flex;
+  align-items: center;
 `;
 
 export const TableHeaderCell = styled.th`

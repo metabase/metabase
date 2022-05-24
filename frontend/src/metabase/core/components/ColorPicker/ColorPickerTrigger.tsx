@@ -43,6 +43,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
       <ColorInput
         color={color}
         placeholder={placeholder}
+        fullWidth
         onChange={handleChange}
       />
     </TriggerContainer>
