@@ -5,26 +5,49 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
-            [metabase.util.honeysql-extensions :as hx]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.driver :as driver]
-            [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util
-             [date-2 :as u.date]]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
-             [execute :as sql-jdbc.execute]
              [connection :as sql-jdbc.conn]
-             [sync :as sql-jdbc.sync]])
+             [execute :as sql-jdbc.execute]
+             [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util
+             [date-2 :as u.date]
+             [honeysql-extensions :as hx]])
 
   (:import [java.sql PreparedStatement Types]
            [java.time LocalTime OffsetDateTime ZonedDateTime Instant OffsetTime ZoneId]
            [java.util Calendar TimeZone]))
 
+; ;;; +----------------------------------------------------------------------------------------------------------------+
+; ;;; |                                         metabase.driver impls                                                  |
+; ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (driver/register! :ocient, :parent :sql-jdbc)
+
+(defmethod driver/display-name :ocient [_] "Ocient")
+
+(defmethod driver/db-default-timezone :ocient [_ _]
+  ;; Ocient is always in UTC
+  "UTC")
+
+(defn- ->timestamp [honeysql-form]
+  ;; Cast time columns to timestamps
+  (hx/cast-unless-type-in "timestamp" #{"timestamp" "date" "time"} honeysql-form))
+
+(defmethod driver/db-start-of-week :ocient
+  [_]
+  ;; From the Ocient user docs for WEEK()
+  ;;
+  ;; The ISO-8601 week number that the timestamp / day is in. 
+  ;; The week starts on Monday and the first week of a year contains 
+  ;; January 4 of that year. See https://en.wikipedia.org/wiki/ISO_week_date 
+  ;; for more details.
+  :monday)
 
 ; ;;; +----------------------------------------------------------------------------------------------------------------+
 ; ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -44,9 +67,7 @@
     :subname                       (make-subname host port db)}
    (dissoc opts :host :port :db)))
 
-(defmethod driver/display-name :ocient [_] "Ocient")
-
-(defmethod sql-jdbc.conn/connection-details->spec :ocient [_ {ssl? :ssl, :as details-map}]
+(defmethod sql-jdbc.conn/connection-details->spec :ocient [_ {_ :ssl, :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port)
@@ -112,7 +133,7 @@
                               :foreign-keys                    (not config/is-test?)}]
   (defmethod driver/supports? [:ocient feature] [_ _] supported?))
 
-(def zone-id-utc (t/zone-id "UTC"))
+(def zone-id-utc "UTC Zone ID" (t/zone-id "UTC"))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:ocient Types/TIMESTAMP]
   [_ rs _ i]
@@ -156,7 +177,6 @@
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
-
 (defmethod unprepare/unprepare-value [:ocient OffsetTime]
   [_ t]
   ;; Ocient doesn't support TIME WITH TIME ZONE so convert OffsetTimes to LocalTimes in UTC.
@@ -177,25 +197,12 @@
   ;; Instant is already in UTC, convert the object to a ZonedDateTime
   (unprepare/unprepare-value driver (t/zoned-date-time t zone-id-utc)))
 
-(defmethod driver/db-default-timezone :ocient [_ _]
-  ;; Ocient is always in UTC
-  "UTC")
-
-(defn- ->timestamp [honeysql-form]
-  ;; Cast time columns to timestamps
-  (hx/cast-unless-type-in "timestamp" #{"timestamp" "date" "time"} honeysql-form))
-
-(defmethod driver/db-start-of-week :ocient
-  [_]
-  ;; From the Ocient user docs for WEEK()
-  ;;
-  ;; The ISO-8601 week number that the timestamp / day is in. 
-  ;; The week starts on Monday and the first week of a year contains 
-  ;; January 4 of that year. See https://en.wikipedia.org/wiki/ISO_week_date 
-  ;; for more details.
-  :monday)
+; ;;; +----------------------------------------------------------------------------------------------------------------+
+; ;;; |                                         metabase.driver.sql impls                                              |
+; ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Extract a component from a timestamp or date.
+#_{:clj-kondo/ignore [:unused-private-var]}
 (defn- extract    [unit expr] (hsql/call :extract unit (hx/->timestamp expr)))
 
 ;; Returns the date or timestamp entered, truncated to the specified precision.
