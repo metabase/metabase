@@ -38,6 +38,20 @@ sudo update-alternatives --config java
 
 Then select Java 11 in the menu.
 
+### Running on M1 Apple computers
+
+If you are developing on newer Apple M1 computers, please note that the current NodeJS LTS (v16.15.0) has native support for arm architecture. However, make sure you have Rosetta 2 installed before you attempt to build the frontend:
+
+```
+/usr/sbin/softwareupdate --install-rosetta (root permission not required)
+```
+
+or
+
+```
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license (root permission required)
+```
+
 ### If you're running Windows, use WSL
 
 If you are developing on Windows, you should run Ubuntu on Windows Subsystem for Linux (WSL) and follow instructions for Ubuntu/Linux.
