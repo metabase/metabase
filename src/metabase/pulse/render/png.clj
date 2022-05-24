@@ -33,7 +33,7 @@
 (defn- register-fonts! []
   (try
     (doseq [weight ["regular" "700" "900"]]
-      (register-font! (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)))
+      (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
     (catch Throwable e
       (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
                          " "

@@ -43,8 +43,6 @@ export const UPDATE_DATABASE_STARTED =
   "metabase/admin/databases/UPDATE_DATABASE_STARTED";
 export const UPDATE_DATABASE_FAILED =
   "metabase/admin/databases/UPDATE_DATABASE_FAILED";
-export const SET_DATABASE_CREATION_STEP =
-  "metabase/admin/databases/SET_DATABASE_CREATION_STEP";
 export const CREATE_DATABASE = "metabase/admin/databases/CREATE_DATABASE";
 export const CREATE_DATABASE_STARTED =
   "metabase/admin/databases/CREATE_DATABASE_STARTED";
@@ -338,8 +336,6 @@ const editingDatabase = handleActions(
         features: _.without(state.features, "persist-models-enabled"),
       };
     },
-    [SET_DATABASE_CREATION_STEP]: (state, { payload: { database } }) =>
-      database,
   },
   null,
 );
@@ -371,14 +367,6 @@ const deletionError = handleActions(
   null,
 );
 
-const databaseCreationStep = handleActions(
-  {
-    [RESET]: () => DB_EDIT_FORM_CONNECTION_TAB,
-    [SET_DATABASE_CREATION_STEP]: (state, { payload: { step } }) => step,
-  },
-  DB_EDIT_FORM_CONNECTION_TAB,
-);
-
 const sampleDatabase = handleActions(
   {
     [ADDING_SAMPLE_DATABASE]: () => ({ loading: true }),
@@ -394,7 +382,6 @@ export default combineReducers({
   editingDatabase,
   initializeError,
   deletionError,
-  databaseCreationStep,
   deletes,
   sampleDatabase,
 });

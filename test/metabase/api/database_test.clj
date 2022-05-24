@@ -1230,3 +1230,67 @@
                      (mt/user-http-request :crowberto :get 200 d)
                      (:details d)
                      (select-keys d [:password-source :password-value]))))))))
+
+(deftest database-local-settings-come-back-with-database-test
+  (testing "Database-local Settings should come back with"
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings {:max-results-bare-rows 1337}}
+      ;; only returned for admin users at this point in time. See #22683 -- issue to return them for non-admins as well.
+      (doseq [{:keys [endpoint response]} [{:endpoint "GET /api/database/:id"
+                                            :response (fn []
+                                                        (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id))))}
+                                           {:endpoint "GET /api/database"
+                                            :response (fn []
+                                                        (some
+                                                         (fn [database]
+                                                           (when (= (:id database) (mt/id))
+                                                             database))
+                                                         (:data (mt/user-http-request :crowberto :get 200 "database"))))}]]
+        (testing endpoint
+          (let [{:keys [settings], :as response} (response)]
+            (testing (format "\nresponse = %s" (u/pprint-to-str response))
+              (is (map? response))
+              (is (partial= {:max-results-bare-rows 1337}
+                            settings)))))))))
+
+(deftest admins-set-database-local-settings-test
+  (testing "Admins should be allowed to update Database-local Settings (#19409)"
+    (mt/with-temp-vals-in-db Database (mt/id) {:settings nil}
+      (letfn [(settings []
+                (db/select-one-field :settings Database :id (mt/id)))
+              (set-settings! [m]
+                (mt/user-http-request :crowberto :put 200 (format "database/%d" (mt/id))
+                                      {:settings m}))]
+        (testing "Should initially be nil"
+          (is (nil? (settings))))
+        (testing "Set initial value"
+          (testing "response"
+            (is (partial= {:settings {:max-results-bare-rows 1337}}
+                          (set-settings! {:max-results-bare-rows 1337}))))
+          (testing "App DB"
+            (is (= {:max-results-bare-rows 1337}
+                   (settings)))))
+        (testing "Setting a different value should not affect anything not specified (PATCH-style update)"
+          (testing "response"
+            (is (partial= {:settings {:max-results-bare-rows   1337
+                                      :database-enable-actions true}}
+                          (set-settings! {:database-enable-actions true}))))
+          (testing "App DB"
+            (is (= {:max-results-bare-rows   1337
+                    :database-enable-actions true}
+                   (settings)))))
+        (testing "Update existing value"
+          (testing "response"
+            (is (partial= {:settings {:max-results-bare-rows   1337
+                                      :database-enable-actions false}}
+                          (set-settings! {:database-enable-actions false}))))
+          (testing "App DB"
+            (is (= {:max-results-bare-rows   1337
+                    :database-enable-actions false}
+                   (settings)))))
+        (testing "Unset a value"
+          (testing "response"
+            (is (partial= {:settings {:database-enable-actions false}}
+                          (set-settings! {:max-results-bare-rows nil}))))
+          (testing "App DB"
+            (is (= {:database-enable-actions false}
+                   (settings)))))))))

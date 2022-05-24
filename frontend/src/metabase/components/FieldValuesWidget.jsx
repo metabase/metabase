@@ -5,7 +5,10 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import _ from "underscore";
 
-import TokenField from "metabase/components/TokenField";
+import TokenField, {
+  parseNumberValue,
+  parseStringValue,
+} from "metabase/components/TokenField";
 import ListField from "metabase/components/ListField";
 import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
@@ -254,20 +257,6 @@ class FieldValuesWidgetInner extends Component {
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
-      forceTokenField = false,
-      valueRenderer = value =>
-        renderValue(fields, formatOptions, value, {
-          autoLoad: true,
-          compact: false,
-        }),
-      optionRenderer = option =>
-        renderValue(fields, formatOptions, option[0], { autoLoad: false }),
-      layoutRenderer = layoutProps => (
-        <div>
-          {layoutProps.valuesList}
-          {renderOptions(this.state, this.props, layoutProps)}
-        </div>
-      ),
     } = this.props;
     const { loadingState, options: stateOptions } = this.state;
 
@@ -323,7 +312,7 @@ class FieldValuesWidgetInner extends Component {
         }}
       >
         {isFetchingList && <LoadingState />}
-        {hasListData && !forceTokenField && (
+        {hasListData && (
           <ListField
             isDashboardFilter={parameter}
             placeholder={tokenFieldPlaceholder}
@@ -337,7 +326,7 @@ class FieldValuesWidgetInner extends Component {
             }
           />
         )}
-        {(!hasListData || forceTokenField) && !isFetchingList && (
+        {!hasListData && !isFetchingList && (
           <TokenField
             prefix={prefix}
             value={value.filter(v => v != null)}
@@ -354,9 +343,21 @@ class FieldValuesWidgetInner extends Component {
             // end forwarded props
             options={options}
             valueKey={0}
-            valueRenderer={valueRenderer}
-            optionRenderer={optionRenderer}
-            layoutRenderer={layoutRenderer}
+            valueRenderer={value =>
+              renderValue(fields, formatOptions, value, {
+                autoLoad: true,
+                compact: false,
+              })
+            }
+            optionRenderer={option =>
+              renderValue(fields, formatOptions, option[0], { autoLoad: false })
+            }
+            layoutRenderer={layoutProps => (
+              <div>
+                {layoutProps.valuesList}
+                {renderOptions(this.state, this.props, layoutProps)}
+              </div>
+            )}
             filterOption={(option, filterString) => {
               const lowerCaseFilterString = filterString.toLowerCase();
               return option.some(
@@ -368,23 +369,10 @@ class FieldValuesWidgetInner extends Component {
               );
             }}
             onInputChange={this.onInputChange}
-            parseFreeformValue={v => {
-              // trim whitespace
-              v = String(v || "").trim();
-              // empty string is not valid
-              if (!v) {
-                return null;
-              }
-              // if the field is numeric we need to parse the string into an integer
-              if (fields[0].isNumeric()) {
-                const n = Number.parseFloat(v);
-                if (Number.isFinite(n)) {
-                  return n;
-                } else {
-                  return null;
-                }
-              }
-              return v;
+            parseFreeformValue={value => {
+              return fields[0].isNumeric()
+                ? parseNumberValue(value)
+                : parseStringValue(value);
             }}
           />
         )}

@@ -501,7 +501,8 @@
 (s/defn transformed-dataset-definition
   "Create a dataset definition that is a transformation of an some other one, seqentially applying `transform-fns` to
   it. The results of `transform-fns` are cached."
-  [new-name :- su/NonBlankString wrapped-definition & transform-fns :- [(s/pred fn?)]]
+  {:style/indent 2}
+  [new-name :- su/NonBlankString, wrapped-definition & transform-fns :- [(s/pred fn?)]]
   (let [transform-fn (apply comp (reverse transform-fns))
         get-def      (delay
                       (transform-fn

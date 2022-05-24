@@ -10,6 +10,7 @@ export const MODAL_TYPES = {
   CREATE_ALERT: "create-alert",
   SAVE_QUESTION_BEFORE_ALERT: "save-question-before-alert",
   SAVE_QUESTION_BEFORE_EMBED: "save-question-before-embed",
+  FILTERS: "filters",
   HISTORY: "history",
   EMBED: "embed",
   TURN_INTO_DATASET: "turn-into-dataset",
@@ -17,8 +18,6 @@ export const MODAL_TYPES = {
   NEW_EVENT: "new-event",
   EDIT_EVENT: "edit-event",
   MOVE_EVENT: "move-event",
-
-  INSERT_ROW: "insert-row",
 };
 
 export const SIDEBAR_SIZES = {

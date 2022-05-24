@@ -98,7 +98,7 @@
           (is (= built-in
                  (api.geojson/custom-geojson))))
         (testing "Try to change one of the built-in entries..."
-          (api.geojson/custom-geojson (assoc-in built-in [:us_states :name] "USA"))
+          (api.geojson/custom-geojson! (assoc-in built-in [:us_states :name] "USA"))
           (testing "Value should not have actually changed"
             (is (= built-in
                    (api.geojson/custom-geojson)))))))))

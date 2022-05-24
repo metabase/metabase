@@ -44,13 +44,9 @@ describe("time-series filter widget", () => {
     popover().within(() => {
       cy.findByText("All Time").click();
     });
-    cy.get(".List-item")
-      .contains("Previous")
-      .click();
+    cy.findByTextEnsureVisible("Previous").click();
     cy.findByTextEnsureVisible("days").click();
-    cy.get(".List-item")
-      .contains("quarters")
-      .click();
+    cy.findByTextEnsureVisible("quarters").click();
     cy.button("Apply").click();
     cy.wait("@dataset");
 

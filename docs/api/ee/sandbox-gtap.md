@@ -1,4 +1,4 @@
-# Sandbox gtap
+# Sandbox GTAP
 
 `/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
 

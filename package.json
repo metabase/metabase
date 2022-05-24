@@ -100,7 +100,7 @@
     "tether": "^1.2.0",
     "tippy.js": "^6.3.5",
     "ttag": "1.7.15",
-    "underscore": "^1.8.3",
+    "underscore": "~1.13.3",
     "yarn.lock": "^0.0.1-security",
     "z-index": "0.0.1"
   },
@@ -225,7 +225,7 @@
     "mini-css-extract-plugin": "^1.6.0",
     "mockdate": "^2.0.2",
     "mutationobserver-shim": "^0.3.7",
-    "postcss": "^8.3.11",
+    "postcss": "~8.4.13",
     "postcss-color-mod-function": "^3.0.3",
     "postcss-import": "^14.0.2",
     "postcss-loader": "^6.2.0",

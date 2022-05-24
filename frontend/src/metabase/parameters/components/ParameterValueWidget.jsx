@@ -11,7 +11,7 @@ import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
 import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
-import TextWidget from "./widgets/TextWidget";
+import TextWidget from "metabase/components/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -20,7 +20,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
-import { hasFieldValues } from "metabase/parameters/utils/fields";
+import { hasFieldValues, getFieldIds } from "metabase/parameters/utils/fields";
 
 import S from "./ParameterWidget.css";
 
@@ -244,24 +244,6 @@ export default connect(
   mapDispatchToProps,
 )(ParameterValueWidget);
 
-function getFields(metadata, parameter) {
-  if (!metadata) {
-    return [];
-  }
-  return (
-    parameter.fields ??
-    getFieldIds(parameter)
-      .map(id => metadata.field(id))
-      .filter(f => f != null)
-  );
-}
-
-function getFieldIds(parameter) {
-  const { field_ids = [], field_id } = parameter;
-  const fieldIds = field_id ? [field_id] : field_ids;
-  return fieldIds.filter(id => typeof id === "number");
-}
-
 function Widget({
   parameter,
   metadata,
@@ -279,7 +261,7 @@ function Widget({
   target,
 }) {
   const DateWidget = DATE_WIDGETS[parameter.type];
-  const fields = getFields(metadata, parameter);
+  const fields = parameter.fields || [];
 
   if (disabled) {
     return (
@@ -333,12 +315,10 @@ Widget.propTypes = {
 };
 
 function getWidgetDefinition(metadata, parameter) {
+  const fields = parameter.fields || [];
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (
-    getFields(metadata, parameter).length > 0 &&
-    parameter.hasOnlyFieldTargets
-  ) {
+  } else if (fields.length > 0 && parameter.hasOnlyFieldTargets) {
     return ParameterFieldWidget;
   } else {
     return TextWidget;

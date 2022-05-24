@@ -15,7 +15,6 @@
                       (clojure.core.logic/fresh)
                       (clojure.core.logic/matcha)
                       (clojure.core.logic/run)
-                      (metabase.test/with-temporary-setting-values)
                       (clojure.test/is [query= sql= partial=])
                       (toucan.util.test/with-temp*)
                       (metabase.test/with-temp*)
@@ -33,7 +32,7 @@
            :non-arg-vec-return-type-hint {:level :warning}
            :missing-body-in-when         {:level :warning}
            :missing-docstring            {:level :warning}
-           ; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
+           ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
            :namespace-name-mismatch      {:level :off}
            :use                          {:level :warning}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
@@ -124,9 +123,7 @@
                                         java-time                                                       t
                                         metabase-enterprise.audit-app.pages.common                      common
                                         metabase-enterprise.sandbox.api.table                           table
-                                        metabase.actions                                                actions
                                         metabase.analytics.stats                                        stats
-                                        metabase.api.actions                                            api.actions
                                         metabase.api.activity                                           api.activity
                                         metabase.api.alert                                              api.alert
                                         metabase.api.automagic-dashboards                               api.magic
@@ -363,6 +360,7 @@
            metabase.db.liquibase/with-liquibase clojure.core/let
            metabase.models.setting.multi-setting/define-multi-setting clojure.core/def
            metabase.integrations.ldap/with-ldap-connection clojure.core/fn
+           metabase.test/are+ clojure.test/are
            metabase.test/defdataset clojure.core/def
            metabase.test/with-temp-file clojure.core/let
            metabase.test/with-open-channels clojure.core/let
@@ -384,27 +382,35 @@
            honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all
            clojure.core.logic/defne clj-kondo.lint-as/def-catch-all
            monger.operators/defoperator clojure.core/def}
- :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
-                          metabase.test/dataset             hooks.metabase.test.data/dataset
-                          metabase.test.data/$ids           hooks.metabase.test.data/$ids
-                          metabase.test/$ids                hooks.metabase.test.data/$ids
-                          metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
-                          metabase.test/mbql-query          hooks.metabase.test.data/$ids
-                          metabase.test/data-query          hooks.metabase.test.data/$ids
-                          metabase.test/query hooks.metabase.test.data/$ids
-                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids
-                          metabase.test.data/run-mbql-query      hooks.metabase.test.data/$ids
-                          metabase.api.common/defendpoint   hooks.metabase.api.common/defendpoint
-                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint
+ :hooks
+ {:analyze-call
+  {metabase.api.common/defendpoint                            hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async                      hooks.metabase.api.common/defendpoint
+   metabase.models.setting/defsetting                         hooks.metabase.models.setting/defsetting
+   metabase.models.setting.multi-setting/define-multi-setting hooks.metabase.models.setting/defsetting
+   metabase.test/$ids                                         hooks.metabase.test.data/$ids
+   metabase.test/data-query                                   hooks.metabase.test.data/$ids
+   metabase.test/dataset                                      hooks.metabase.test.data/dataset
+   metabase.test/mbql-query                                   hooks.metabase.test.data/$ids
+   metabase.test/query                                        hooks.metabase.test.data/$ids
+   metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
+   metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
+   metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
+   metabase.test.data/dataset                                 hooks.metabase.test.data/dataset
+   metabase.test.data/mbql-query                              hooks.metabase.test.data/$ids
+   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/$ids
+   metabase.test.util/with-temporary-setting-values           hooks.metabase.test.util/with-temporary-setting-values}
 
-                          metabase.test/with-temp hooks.toucan.util.test/with-temp}
-           :macroexpand {metabase.query-processor.streaming/streaming-response
-                         metabase.query-processor.streaming/streaming-response
-                         metabase.api.common/define-routes macros.metabase.api.common/define-routes
+  :macroexpand
+  {metabase.query-processor.streaming/streaming-response macros.metabase.query-processor.streaming/streaming-response
+   metabase.api.common/define-routes                     macros.metabase.api.common/define-routes
 
-                         toucan.models/defmodel toucan.models/defmodel
-                         clojurewerkz.quartzite.jobs/build macros.quartz/build-job
-                         clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
-                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule
-                         clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
- :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}
+   toucan.models/defmodel                          macros.toucan.models/defmodel
+   clojurewerkz.quartzite.jobs/build               macros.quartz/build-job
+   clojurewerkz.quartzite.triggers/build           macros.quartz/build-trigger
+   clojurewerkz.quartzite.schedule.cron/schedule   macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
+
+ :config-in-comment
+ {:linters {:unresolved-symbol {:level :off}}}}

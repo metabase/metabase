@@ -12,20 +12,24 @@ const Template: ComponentStory<typeof SelectButton> = args => {
 };
 
 export const Default = Template.bind({});
-
 Default.args = {
   children: "Select an option",
   hasValue: false,
   fullWidth: false,
 };
 
-export const WithClearBehavior = Template.bind({});
+export const Highlighted = Template.bind({});
+Highlighted.args = {
+  children: "Select an option",
+  hasValue: true,
+  fullWidth: false,
+  highlighted: true,
+};
 
+export const WithClearBehavior = Template.bind({});
 WithClearBehavior.args = {
   children: "Some value is selected",
   hasValue: true,
-  onClear: () => {
-    return;
-  },
   fullWidth: false,
+  onClear: () => null,
 };

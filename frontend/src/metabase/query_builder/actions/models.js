@@ -6,7 +6,6 @@ import { t } from "ttag";
 import { isLocalField, isSameField } from "metabase/lib/query/field_ref";
 
 import { addUndo } from "metabase/redux/undo";
-import { CardApi } from "metabase/services";
 
 import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
 
@@ -89,12 +88,8 @@ export const setFieldMetadata = ({ field_ref, changes }) => (
   dispatch(setResultsMetadata(nextResultsMetadata));
 };
 
-export const PERSIST_DATASET = "metabase/qb/PERSIST_DATASET";
-export const persistDataset = createAction(PERSIST_DATASET, id =>
-  CardApi.persist({ id }),
-);
-
-export const UNPERSIST_DATASET = "metabase/qb/UNPERSIST_DATASET";
-export const unpersistDataset = createAction(UNPERSIST_DATASET, id =>
-  CardApi.unpersist({ id }),
-);
+export const onModelPersistenceChange = isEnabled => (dispatch, getState) => {
+  const question = getQuestion(getState());
+  const nextQuestion = question.setPersisted(isEnabled);
+  dispatch(updateQuestion(nextQuestion, { shouldStartAdHocQuestion: false }));
+};
