@@ -3,8 +3,8 @@ import { t } from "ttag";
 import {
   TableHeader,
   TableHeaderCell,
+  TableHeaderRow,
   TableRoot,
-  TableRow,
 } from "./BrandColorTable.styled";
 
 export interface BrandColorTableProps {
@@ -16,10 +16,10 @@ const BrandColorTable = ({ colors }: BrandColorTableProps): JSX.Element => {
   return (
     <TableRoot>
       <TableHeader>
-        <TableRow>
+        <TableHeaderRow>
           <TableHeaderCell>{t`Color`}</TableHeaderCell>
           <TableHeaderCell>{t`Where it's used`}</TableHeaderCell>
-        </TableRow>
+        </TableHeaderRow>
       </TableHeader>
     </TableRoot>
   );
