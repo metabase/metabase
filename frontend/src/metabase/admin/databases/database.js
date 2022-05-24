@@ -284,20 +284,6 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
-export const persistDatabase = createThunkAction(
-  PERSIST_DATABASE,
-  databaseId => async () => {
-    await MetabaseApi.db_persist({ dbId: databaseId });
-  },
-);
-
-export const unpersistDatabase = createThunkAction(
-  UNPERSIST_DATABASE,
-  databaseId => async () => {
-    await MetabaseApi.db_unpersist({ dbId: databaseId });
-  },
-);
-
 export const closeSyncingModal = createThunkAction(
   CLOSE_SYNCING_MODAL,
   function() {
