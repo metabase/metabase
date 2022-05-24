@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { ComponentStory } from "@storybook/react";
+import { useArgs } from "@storybook/client-api";
 import { color } from "metabase/lib/colors";
 import BrandColorScheme from "./BrandColorScheme";
 
@@ -9,7 +10,14 @@ export default {
 };
 
 const Template: ComponentStory<typeof BrandColorScheme> = args => {
-  return <BrandColorScheme {...args} />;
+  const [{ colors }, updateArgs] = useArgs();
+
+  const handleChange = useCallback(
+    (colors: Record<string, string>) => updateArgs({ colors }),
+    [updateArgs],
+  );
+
+  return <BrandColorScheme {...args} colors={colors} onChange={handleChange} />;
 };
 
 export const Default = Template.bind({});
