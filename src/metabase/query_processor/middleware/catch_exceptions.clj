@@ -112,7 +112,6 @@
      (when (seq more)
        {:via (vec more)}))))
 
-
 (defn- query-info
   "Map of about `query` to add to the exception response."
   [{query-type :type, :as query} {:keys [preprocessed native]}]
@@ -149,7 +148,7 @@
   (fn [query rff context]
     (let [extra-info (delay
                       {:native       (u/ignore-exceptions
-                                       ((resolve 'metabase.query-processor/compile) query))
+                                      ((resolve 'metabase.query-processor/compile) query))
                        :preprocessed (u/ignore-exceptions
                                       ((resolve 'metabase.query-processor/preprocess) query))})]
       (letfn [(raisef* [e context]
