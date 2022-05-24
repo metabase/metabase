@@ -8,36 +8,35 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import Color from "color";
 import Input from "metabase/core/components/Input";
 
-export type NumericInputAttributes = Omit<
+export type ColorInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
-  "value" | "size" | "onChange"
+  "value" | "onChange"
 >;
 
-export interface NumericInputProps extends NumericInputAttributes {
-  value?: number | string;
-  inputRef?: Ref<HTMLInputElement>;
-  error?: boolean;
+export interface ColorInputProps extends ColorInputAttributes {
+  color?: string;
   fullWidth?: boolean;
-  onChange?: (value: number | undefined) => void;
+  onChange?: (value?: string) => void;
 }
 
-const NumericInput = forwardRef(function NumericInput(
-  { value, onFocus, onBlur, onChange, ...props }: NumericInputProps,
+const ColorInput = forwardRef(function ColorInput(
+  { color, onFocus, onBlur, onChange, ...props }: ColorInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const valueText = useMemo(() => value?.toString() ?? "", [value]);
-  const [inputText, setInputText] = useState(valueText);
+  const colorText = useMemo(() => getColorHex(color) ?? "", [color]);
+  const [inputText, setInputText] = useState(colorText);
   const [isFocused, setIsFocused] = useState(false);
 
   const handleFocus = useCallback(
     (event: FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
-      setInputText(valueText);
+      setInputText(colorText);
       onFocus?.(event);
     },
-    [valueText, onFocus],
+    [colorText, onFocus],
   );
 
   const handleBlur = useCallback(
@@ -51,14 +50,8 @@ const NumericInput = forwardRef(function NumericInput(
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
-      const newValue = parseFloat(newText);
       setInputText(newText);
-
-      if (!isNaN(newValue)) {
-        onChange?.(newValue);
-      } else {
-        onChange?.(undefined);
-      }
+      onChange?.(getColorHex(newText));
     },
     [onChange],
   );
@@ -67,7 +60,8 @@ const NumericInput = forwardRef(function NumericInput(
     <Input
       {...props}
       ref={ref}
-      value={isFocused ? inputText : valueText}
+      value={isFocused ? inputText : colorText}
+      size="small"
       onFocus={handleFocus}
       onBlur={handleBlur}
       onChange={handleChange}
@@ -75,4 +69,12 @@ const NumericInput = forwardRef(function NumericInput(
   );
 });
 
-export default NumericInput;
+const getColorHex = (color?: string) => {
+  try {
+    return color ? Color(color).hex() : undefined;
+  } catch (e) {
+    return undefined;
+  }
+};
+
+export default ColorInput;
