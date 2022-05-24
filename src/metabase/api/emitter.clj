@@ -8,7 +8,6 @@
 (api/defendpoint POST "/"
   "Endpoint to create an emitter."
   [:as {emitter :body}]
-  {}
   (cond
     (:dashboard_id emitter)
     (db/insert! DashboardEmitter emitter)
