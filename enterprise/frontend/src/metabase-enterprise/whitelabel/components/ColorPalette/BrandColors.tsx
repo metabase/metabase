@@ -11,7 +11,7 @@ import {
   TableHeaderCell,
   TableHeaderRow,
   TableRoot,
-} from "./BrandColorTable.styled";
+} from "./BrandColors.styled";
 
 export interface BrandColorsProps {
   colors: Record<string, string>;
