@@ -12,6 +12,8 @@ import {
 } from "metabase/lib/query_time";
 import { EXCLUDE_OPERATORS } from "metabase/query_builder/components/filters/pickers/DatePicker/ExcludeDatePicker";
 
+import { UiParameter } from "../types";
+
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
 const RANGE_SEPARATOR = "~"; // URL-safe
@@ -145,4 +147,23 @@ export function formatRelativeWidget(value: string) {
   return DATE_MBQL_FILTER_MAPPING[value]
     ? DATE_MBQL_FILTER_MAPPING[value].name
     : "";
+}
+
+export function formatDateValue(value: string, parameter: UiParameter) {
+  switch (parameter.type) {
+    case "date/range":
+      return formatRangeWidget(value);
+    case "date/single":
+      return formatSingleWidget(value);
+    case "date/all-options":
+      return formatAllOptionsWidget(value);
+    case "date/month-year":
+      return formatMonthYearWidget(value);
+    case "date/quarter-year":
+      return formatQuarterYearWidget(value);
+    case "date/relative":
+      return formatRelativeWidget(value);
+    default:
+      return value;
+  }
 }
