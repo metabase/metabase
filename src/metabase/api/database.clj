@@ -337,7 +337,9 @@
       true                         add-expanded-schedules
       true                         (get-database-hydrate-include include)
       include-editable-data-model? check-db-data-model-perms
-      mi/can-write?                secret/expand-db-details-inferred-secret-values)))
+      mi/can-write?                (cond->
+                                     secret/expand-db-details-inferred-secret-values
+                                     (assoc :can-manage true)))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
