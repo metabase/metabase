@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getBrandColorOptions } from "./utils";
@@ -19,15 +19,18 @@ export interface BrandColorsProps {
 }
 
 const BrandColors = ({ colors, onChange }: BrandColorsProps): JSX.Element => {
+  const colorsRef = useRef(colors);
+  colorsRef.current = colors;
+
   const options = useMemo(() => {
     return getBrandColorOptions();
   }, []);
 
   const handleChange = useCallback(
     (color: string, option: ColorOption) => {
-      onChange({ ...colors, [option.name]: color });
+      onChange({ ...colorsRef.current, [option.name]: color });
     },
-    [colors, onChange],
+    [onChange],
   );
 
   return (
