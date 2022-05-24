@@ -29,7 +29,6 @@
 (api/defendpoint DELETE "/:emitter-id"
   "Endpoint to delete an emitter."
   [emitter-id]
-  {}
   (db/delete! Emitter :id emitter-id)
   api/generic-204-no-content)
 
