@@ -216,7 +216,6 @@ function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          {/* <StyledCollectionBadge collectionId={question.collectionId()} /> */}
           {QuestionDataSource.shouldRender(props) && (
             <StyledQuestionDataSource
               question={question}
