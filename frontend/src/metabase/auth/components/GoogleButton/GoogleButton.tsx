@@ -1,32 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 import { getIn } from "icepick";
-import AuthButton from "../AuthButton";
 import { TextLink } from "../AuthButton/AuthButton.styled";
 
 import { AuthError, AuthErrorContainer } from "./GoogleButton.styled";
 import { GoogleLogin } from "@react-oauth/google";
 import MetabaseSettings from "metabase/lib/settings";
 
-export type AttachCallback = (
-  element: HTMLElement,
-  onLogin: (token: string) => void,
-  onError: (error: string) => void,
-) => void;
-
 export interface GoogleButtonProps {
   isCard?: boolean;
   redirectUrl?: string;
-  onAttach: AttachCallback;
   onLogin: (token: string, redirectUrl?: string) => void;
 }
 
-const GoogleButton = ({
-  isCard,
-  redirectUrl,
-  onAttach,
-  onLogin,
-}: GoogleButtonProps) => {
+const GoogleButton = ({ isCard, redirectUrl, onLogin }: GoogleButtonProps) => {
   const [errors, setErrors] = useState<string[]>([]);
 
   const siteLocale = MetabaseSettings.get("site-locale");
@@ -51,11 +38,14 @@ const GoogleButton = ({
     <div>
       {isCard ? (
         <GoogleLogin
+          useOneTap
           onSuccess={({ credential }) => {
             handleLogin(credential ?? "");
           }}
           onError={() =>
-            handleError(t`Google Sign In has errored. Please try again.`)
+            handleError(
+              t`There was an issue signing in with Google. Please contact an administrator.`,
+            )
           }
           locale={siteLocale}
           width="366"
