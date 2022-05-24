@@ -209,8 +209,9 @@
   "Number of rows to sample for describe-nested-field-columns"
   500)
 
-(def ^:const nested-field-column-max-row-length
-  "Max string length for a row for nested field column before we just give up on parsing it"
+(def ^:dynamic *nested-field-column-max-row-length*
+  "Max string length for a row for nested field column before we just give up on parsing it.
+  Marked as mutable because we mutate it for tests."
   50000)
 
 (defn- flattened-row [field-name row]
@@ -243,7 +244,7 @@
 
 (defn- describe-json-xform [member]
   ((comp (map #(for [[k v] %
-                     :when (< (count v) nested-field-column-max-row-length)]
+                     :when (< (count v) *nested-field-column-max-row-length*)]
                  [k (json/parse-string v)]))
          (map #(into {} %))
          (map row->types)) member))
