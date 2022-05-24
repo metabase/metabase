@@ -267,6 +267,12 @@
            (when (:dataset (merge card-updates card-before-update))
              (throw (ex-info (tru "Saved Question is a Dataset.")
                              {:status-code 400})))
+           ;; make sure Card's query is a native query
+           (let [query-type (some-> (get-in (merge card-updates card-before-update) [:dataset_query :type])
+                                    keyword)]
+             (when-not (= query-type :native)
+               (throw (ex-info (tru "Query must be a native query.")
+                               {:status-code 400}))))
            ;; make sure Actions are enabled Globally
            (when-not (actions/experimental-enable-actions)
              (throw (ex-info (tru "Actions are not enabled.")
@@ -275,9 +281,10 @@
              ;; make sure Actions are allowed for the Card's query's Database
              (api.actions/do-check-actions-enabled database-id nil))
            (catch Throwable e
-             (throw (ex-info (tru "Cannot mark Saved Question as ''is_write'': {0}" (ex-message e))
-                             (ex-data e)
-                             e)))))))))
+             (let [message (tru "Cannot mark Saved Question as ''is_write'': {0}" (ex-message e))]
+               (throw (ex-info message
+                               (assoc (ex-data e) :errors {:is_write message})
+                               e))))))))))
 
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel

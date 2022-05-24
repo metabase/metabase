@@ -2042,21 +2042,22 @@
 (defmacro ^:private with-actions-enabled {:style/indent 0} [& body]
   `(do-with-actions-enabled (fn [] ~@body)))
 
-(defn- test-update-is-write-card [{:keys [user expected-status-code before-fn result-fn]
-                                   :or   {user :crowberto}}]
+(defn- test-update-is-write-card [{:keys [user query status-code before-fn result-fn]
+                                   :or   {user  :crowberto
+                                          query (mt/native-query {:query "UPDATE whatever SET whatever = {{whatever}};"})}}]
   (testing "PUT /api/card/:id"
     (doseq [initial-value [true false]
             :let          [new-value (not initial-value)]]
       (testing (format "Change is_write %s => %s" initial-value new-value)
-        (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query :venues)}]
+        (mt/with-temp Card [{card-id :id} {:dataset_query query}]
           (when initial-value
             ;; get around any `pre-update` restrictions or the like
             (db/execute! {:update Card, :set {:is_write true}, :where [:= :id card-id]}))
           (when before-fn
             (before-fn (Card card-id)))
-          (let [result (mt/user-http-request user :put expected-status-code (str "card/" card-id) {:is_write new-value})]
+          (let [result (mt/user-http-request user :put status-code (str "card/" card-id) {:is_write new-value})]
             (result-fn result))
-          (let [fail? (>= expected-status-code 400)
+          (let [fail?          (>= status-code 400)
                 expected-value (if fail?
                                  initial-value
                                  new-value)]
@@ -2070,17 +2071,18 @@
               (testing "\nNo-op update should be allowed."
                 (is (some? (mt/user-http-request user :put 202 (str "card/" card-id) {:is_write initial-value})))))))))))
 
-(defn- test-create-is-write-card [{:keys [user expected-status-code result-fn]
-                                   :or   {user :crowberto}}]
+(defn- test-create-is-write-card [{:keys [user query status-code result-fn]
+                                   :or   {user  :crowberto
+                                          query (mt/native-query {:query "SELECT 1;"})}}]
   (mt/with-model-cleanup [Card]
     (testing "POST /api/card"
-      (let [result (mt/user-http-request user :post expected-status-code "card" (merge (mt/with-temp-defaults Card)
-                                                                                       {:is_write      true
-                                                                                        :dataset_query (mt/mbql-query :venues)}))]
+      (let [result (mt/user-http-request user :post status-code "card" (merge (mt/with-temp-defaults Card)
+                                                                              {:is_write      true
+                                                                               :dataset_query query}))]
         (result-fn result)
         (when (map? result)
           (when-let [card-id (:id result)]
-            (let [fail? (>= expected-status-code 400)]
+            (let [fail? (>= status-code 400)]
               (testing "Application DB value"
                 (is (= (if fail?
                          false
@@ -2092,10 +2094,10 @@
     (mt/with-temporary-setting-values [experimental-enable-actions false]
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
-        (f {:expected-status-code 400
-            :result-fn            (fn [result]
-                                    (is (= "Cannot mark Saved Question as 'is_write': Actions are not enabled."
-                                           result)))})))))
+        (f {:status-code 400
+            :result-fn   (fn [result]
+                           (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Actions are not enabled."}}
+                                  result)))})))))
 
 (deftest set-is-write-actions-disabled-for-database-test
   (with-actions-enabled
@@ -2105,10 +2107,10 @@
                (db/select-one-field :settings Database :id (mt/id)))))
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
-        (f {:expected-status-code 400
-            :result-fn            (fn [result]
-                                    (is (re= #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."
-                                             result)))})))))
+        (f {:status-code 400
+            :result-fn   (fn [result]
+                           (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
+                                        result)))})))))
 
 (driver/register! ::feature-flag-test-driver, :parent :h2)
 
@@ -2121,30 +2123,40 @@
     (mt/with-temp-vals-in-db Database (mt/id) {:engine (u/qualified-name ::feature-flag-test-driver)}
       (doseq [f [test-update-is-write-card
                  test-create-is-write-card]]
-        (f {:expected-status-code 400
-            :result-fn            (fn [result]
-                                    (is (re= #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."
-                                             result)))})))))
+        (f {:status-code 400
+            :result-fn   (fn [result]
+                           (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Actions are not enabled for Database [\d,]+\."}}
+                                        result)))})))))
 
 (deftest set-is-write-card-is-dataset-test
   (with-actions-enabled
     (test-update-is-write-card
-     {:before-fn            (fn [{card-id :id}]
-                              (db/update! Card card-id :dataset true))
-      :expected-status-code 400
-      :result-fn            (fn [result]
-                              (is (= "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."
-                                     result)))})))
+     {:before-fn   (fn [{card-id :id}]
+                     (db/update! Card card-id :dataset true))
+      :status-code 400
+      :result-fn   (fn [result]
+                     (is (= {:errors {:is_write "Cannot mark Saved Question as 'is_write': Saved Question is a Dataset."}}
+                            result)))})))
 
 (deftest set-is-write-user-is-not-admin-test
   (with-actions-enabled
     (doseq [f [test-update-is-write-card
                test-create-is-write-card]]
-      (f {:expected-status-code 403
+      (f {:status-code 403
           :user                 :rasta
           :result-fn            (fn [result]
                                   (is (= "You don't have permissions to do that."
                                          result)))}))))
+
+(deftest set-is-write-card-query-is-not-native-query-test
+  (with-actions-enabled
+    (doseq [f [test-update-is-write-card
+               test-create-is-write-card]]
+      (f {:status-code 400
+          :query       (mt/mbql-query venues)
+          :result-fn   (fn [result]
+                         (is (schema= {:errors {:is_write #"Cannot mark Saved Question as 'is_write': Query must be a native query."}}
+                                      result)))}))))
 
 (deftest set-is-write-happy-path-test
   (with-actions-enabled
@@ -2152,6 +2164,6 @@
                test-create-is-write-card]]
       ;; TODO -- Setting `is_write` also needs to create the `Action` and `QueryAction`. Unsetting should delete those
       ;; rows. Add tests for these once that code is in place.
-      (f {:expected-status-code 202
+      (f {:status-code 202
           :result-fn            (fn [result]
                                   (is (map? result)))}))))
