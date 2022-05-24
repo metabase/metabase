@@ -12,6 +12,7 @@ import Fields from "metabase/entities/fields";
 import Schemas from "metabase/entities/schemas";
 
 import { getMetadata, getFields } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import { createSelector } from "reselect";
 
 import forms from "./databases/forms";
@@ -33,7 +34,38 @@ const Databases = createEntity({
   nameOne: "database",
   nameMany: "databases",
 
-  // ACTION CREATORS
+  actionDecorators: {
+    update: thunkCreator => nextDatabase => async (dispatch, getState) => {
+      const state = getState();
+      const dbId = nextDatabase.id;
+
+      const database = Databases.selectors.getObject(state, { entityId: dbId });
+      const { _persistModels, ...nextDBDetails } = nextDatabase.details;
+
+      const result = await thunkCreator({
+        ...nextDatabase,
+        details: nextDBDetails,
+      })(dispatch, getState);
+
+      const shouldChangeModelPersistence =
+        typeof _persistModels === "boolean" &&
+        database.isPersisted() !== _persistModels;
+      const isModelPersistenceAvailable =
+        getSetting(state, "persisted-models-enabled") &&
+        database.supportsPersistence();
+
+      if (shouldChangeModelPersistence && isModelPersistenceAvailable) {
+        if (_persistModels) {
+          await MetabaseApi.db_persist({ dbId: nextDatabase.id });
+        } else {
+          await MetabaseApi.db_unpersist({ dbId: nextDatabase.id });
+        }
+      }
+
+      return result;
+    },
+  },
+
   objectActions: {
     fetchDatabaseMetadata: createThunkAction(
       FETCH_DATABASE_METADATA,
@@ -77,6 +109,7 @@ const Databases = createEntity({
 
     getHasSampleDatabase: (state, props) =>
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
+
     getIdfields: createSelector(
       // we wrap getFields to handle a circular dep issue
       [state => getFields(state), (state, props) => props.databaseId],
