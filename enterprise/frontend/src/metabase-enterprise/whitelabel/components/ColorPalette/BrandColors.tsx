@@ -15,10 +15,15 @@ import {
 
 export interface BrandColorsProps {
   colors: Record<string, string>;
+  originalColors: Record<string, string>;
   onChange: (colors: Record<string, string>) => void;
 }
 
-const BrandColors = ({ colors, onChange }: BrandColorsProps): JSX.Element => {
+const BrandColors = ({
+  colors,
+  originalColors,
+  onChange,
+}: BrandColorsProps): JSX.Element => {
   const options = useMemo(() => {
     return getBrandColorOptions();
   }, []);
@@ -33,6 +38,7 @@ const BrandColors = ({ colors, onChange }: BrandColorsProps): JSX.Element => {
   return (
     <BrandColorTable
       colors={colors}
+      originalColors={originalColors}
       options={options}
       onChange={handleChange}
     />
@@ -41,12 +47,14 @@ const BrandColors = ({ colors, onChange }: BrandColorsProps): JSX.Element => {
 
 interface BrandColorTableProps {
   colors: Record<string, string>;
+  originalColors: Record<string, string>;
   options: ColorOption[];
   onChange: (value: string, color: ColorOption) => void;
 }
 
 const BrandColorTable = ({
   colors,
+  originalColors,
   options,
   onChange,
 }: BrandColorTableProps): JSX.Element => {
@@ -62,7 +70,7 @@ const BrandColorTable = ({
         {options.map(option => (
           <BrandColorRow
             key={option.name}
-            color={colors[option.name]}
+            color={colors[option.name] ?? originalColors[option.name]}
             option={option}
             onChange={onChange}
           />
