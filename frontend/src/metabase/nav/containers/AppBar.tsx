@@ -18,7 +18,8 @@ import {
   getIsNavbarOpen,
   closeNavbar,
   toggleNavbar,
-  getCurrentCollectionId,
+  getBreadcrumbCollectionId,
+  getShowBreadcumb,
 } from "metabase/redux/app";
 import {
   getIsNewButtonVisible,
@@ -44,7 +45,8 @@ type Props = {
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
-  currentCollectionId: string;
+  collectionId: string;
+  showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
@@ -54,7 +56,8 @@ function mapStateToProps(state: State) {
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
-    currentCollectionId: getCurrentCollectionId(state),
+    collectionId: getBreadcrumbCollectionId(state),
+    showBreadcrumb: getShowBreadcumb(state),
   };
 }
 
@@ -76,7 +79,8 @@ function AppBar({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
-  currentCollectionId,
+  collectionId,
+  showBreadcrumb,
   toggleNavbar,
   closeNavbar,
 }: Props) {
@@ -127,9 +131,9 @@ function AppBar({
             </Tooltip>
           </SidebarButtonContainer>
         )}
-        {currentCollectionId && (
+        {showBreadcrumb && (
           <PathBreadcrumbsContainer isVisible={!isNavBarOpen}>
-            <PathBreadcrumbs collectionId={currentCollectionId} />
+            <PathBreadcrumbs collectionId={collectionId} />
           </PathBreadcrumbsContainer>
         )}
       </LeftContainer>

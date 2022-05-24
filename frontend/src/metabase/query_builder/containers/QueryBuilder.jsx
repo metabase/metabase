@@ -15,7 +15,11 @@ import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 
-import { closeNavbar, setCollectionId } from "metabase/redux/app";
+import {
+  closeNavbar,
+  setCollectionId,
+  clearBreadcrumbs,
+} from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -201,6 +205,7 @@ const mapStateToProps = (state, props) => {
 const mapDispatchToProps = {
   ...actions,
   setCollectionId,
+  clearBreadcrumbs,
   closeNavbar,
   onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
@@ -234,6 +239,7 @@ function QueryBuilder(props) {
     card,
     isLoadingComplete,
     setCollectionId,
+    clearBreadcrumbs,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -250,11 +256,9 @@ function QueryBuilder(props) {
   const collectionId = question?.collectionId();
 
   useEffect(() => {
-    if (collectionId) {
-      setCollectionId(collectionId);
-    }
-    return () => setCollectionId("");
-  }, [collectionId, setCollectionId]);
+    setCollectionId(collectionId);
+    return () => clearBreadcrumbs();
+  }, [collectionId, setCollectionId, clearBreadcrumbs]);
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),

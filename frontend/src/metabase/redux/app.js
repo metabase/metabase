@@ -73,18 +73,29 @@ const isNavbarOpen = handleActions(
 );
 
 export const SET_COLLECTION_ID = "metabase/app/SET_COLLECTION_ID";
+export const CLEAR_BREADCRUMBS = "metabase/app/CLEAR_BREADCRUMBS";
 export const setCollectionId = createAction(SET_COLLECTION_ID);
-export const getCurrentCollectionId = state => state.app.currentCollectionId;
+export const clearBreadcrumbs = createAction(CLEAR_BREADCRUMBS);
+export const getBreadcrumbCollectionId = state =>
+  state.app.breadcrumbs.collectionId;
+export const getShowBreadcumb = state => state.app.breadcrumbs.show;
+const defaultBreadcumbsState = {
+  collectionId: "",
+  show: false,
+};
 
-const currentCollectionId = handleActions(
+const breadcrumbs = handleActions(
   {
-    [SET_COLLECTION_ID]: { next: (state, { payload }) => payload },
+    [SET_COLLECTION_ID]: {
+      next: (state, { payload }) => ({ show: true, collectionId: payload }),
+    },
+    [CLEAR_BREADCRUMBS]: { next: () => ({ show: false, collectionId: "" }) },
   },
-  "",
+  defaultBreadcumbsState,
 );
 
 export default combineReducers({
   errorPage,
   isNavbarOpen,
-  currentCollectionId,
+  breadcrumbs,
 });
