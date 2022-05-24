@@ -123,6 +123,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
 ## Run Metabase
 
+{:start="9"}
 9. Now we’ll start up the backend server of Metabase with:
 
    ```
