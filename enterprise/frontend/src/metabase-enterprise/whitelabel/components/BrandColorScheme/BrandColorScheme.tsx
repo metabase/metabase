@@ -78,7 +78,8 @@ const BrandColorTable = ({
         {options.map(option => (
           <BrandColorRow
             key={option.name}
-            color={colors[option.name] ?? originalColors[option.name]}
+            color={colors[option.name]}
+            originalColor={originalColors[option.name]}
             option={option}
             onChange={onChange}
           />
@@ -89,13 +90,15 @@ const BrandColorTable = ({
 };
 
 interface BrandColorRowProps {
-  color: string;
+  color?: string;
+  originalColor: string;
   option: ColorOption;
   onChange: (option: ColorOption, color?: string) => void;
 }
 
 const BrandColorRow = memo(function BrandColorRow({
   color,
+  originalColor,
   option,
   onChange,
 }: BrandColorRowProps) {
@@ -109,7 +112,7 @@ const BrandColorRow = memo(function BrandColorRow({
   return (
     <TableBodyRow>
       <TableBodyCell>
-        <ColorPicker color={color} onChange={handleChange} />
+        <ColorPicker color={color ?? originalColor} onChange={handleChange} />
       </TableBodyCell>
       <TableBodyCell>{option.description}</TableBodyCell>
     </TableBodyRow>

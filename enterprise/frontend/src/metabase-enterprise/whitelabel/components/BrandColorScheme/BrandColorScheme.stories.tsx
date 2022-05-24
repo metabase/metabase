@@ -24,9 +24,10 @@ export const Default = Template.bind({});
 Default.args = {
   colors: {
     brand: color("brand"),
-    accent1: color("accent1"),
   },
   originalColors: {
+    brand: color("brand"),
+    accent1: color("accent1"),
     accent7: color("accent7"),
   },
 };

@@ -13,7 +13,7 @@ export interface ColorPickerProps extends ColorPickerAttributes {
   placeholder?: string;
   isBordered?: boolean;
   isSelected?: boolean;
-  isGenerated?: boolean;
+  isDefault?: boolean;
   onChange?: (color?: string) => void;
 }
 
@@ -23,7 +23,7 @@ const ColorPicker = forwardRef(function ColorPicker(
     placeholder,
     isBordered,
     isSelected,
-    isGenerated,
+    isDefault,
     onChange,
     ...props
   }: ColorPickerProps,
@@ -40,7 +40,7 @@ const ColorPicker = forwardRef(function ColorPicker(
           placeholder={placeholder}
           isBordered={isBordered}
           isSelected={isSelected}
-          isGenerated={isGenerated}
+          isDefault={isDefault}
           onClick={onClick}
           onChange={onChange}
         />

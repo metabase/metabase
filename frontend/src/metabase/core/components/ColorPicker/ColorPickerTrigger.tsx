@@ -9,7 +9,7 @@ export interface ColorPickerTriggerProps
   placeholder?: string;
   isBordered?: boolean;
   isSelected?: boolean;
-  isGenerated?: boolean;
+  isDefault?: boolean;
   onChange?: (color?: string) => void;
 }
 
@@ -19,7 +19,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
     placeholder,
     isBordered,
     isSelected,
-    isGenerated,
+    isDefault,
     onClick,
     onChange,
     ...props
@@ -32,7 +32,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
         color={color}
         isBordered={isBordered}
         isSelected={isSelected}
-        isGenerated={isGenerated}
+        isDefault={isDefault}
         onClick={onClick}
       />
       <ColorInput
