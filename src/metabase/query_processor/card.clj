@@ -177,7 +177,7 @@
   options."
   [card-id export-format
    & {:keys [parameters constraints context dashboard-id middleware qp-runner run ignore_cache]
-      :or   {constraints constraints/default-query-constraints
+      :or   {constraints (constraints/default-query-constraints)
              context     :question
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}

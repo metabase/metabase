@@ -147,8 +147,7 @@
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
     [(qp-util/query-hash dataset_query)
-     (qp-util/query-hash (assoc dataset_query :constraints constraints/default-query-constraints))]))
-
+     (qp-util/query-hash (assoc dataset_query :constraints (constraints/default-query-constraints)))]))
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
   [{:keys [card series]}]

@@ -204,8 +204,8 @@
       :as   options}]
   (let [options (merge
                  {:context     :public-dashboard
-                  :constraints constraints/default-query-constraints}
-                 options
+                  :constraints (constraints/default-query-constraints)}
+        options
                  {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
                   :export-format export-format
