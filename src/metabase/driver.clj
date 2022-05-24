@@ -436,7 +436,10 @@
     :percentile-aggregations
 
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
-    :actions})
+    :actions
+
+    ;; Does the driver support custom writeback actions using `is_write` Saved Questions
+    :actions/custom})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -444,7 +447,8 @@
 
     (supports? :postgres :set-timezone) ; -> true
 
-  deprecated — [[database-supports?]] is intended to replace this method. However, it driver authors should continue _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
+  DEPRECATED — [[database-supports?]] is intended to replace this method. However, it driver authors should continue
+  _implementing_ `supports?` for the time being until we get a chance to migrate all our usages."
   {:arglists '([driver feature]), :deprecated "0.41.0"}
   (fn [driver feature]
     (when-not (driver-features feature)
