@@ -13,7 +13,7 @@
                                      CardEmitter
                                      Collection CollectionBookmark CollectionPermissionGraphRevision
                                      Dashboard DashboardBookmark DashboardCard DashboardCardSeries DashboardEmitter
-                                     Database Dependency Dimension Emitter Field FieldValues
+                                     Database Dependency Dimension Emitter EmitterAction Field FieldValues
                                      LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision PersistedInfo Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
@@ -73,6 +73,7 @@
    CardEmitter
    DashboardEmitter
    Emitter
+   EmitterAction
    Activity
    Pulse
    PulseCard
