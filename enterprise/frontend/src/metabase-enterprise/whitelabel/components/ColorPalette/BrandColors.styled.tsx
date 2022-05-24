@@ -42,10 +42,14 @@ export const TableHeaderCell = styled.th`
 
 export const TableBody = styled.tbody`
   display: block;
+  border: 1px solid ${color("border")};
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
 `;
 
 export const TableBodyRow = styled.tr`
   display: flex;
+  align-items: center;
 `;
 
 export const TableBodyCell = styled.td`
