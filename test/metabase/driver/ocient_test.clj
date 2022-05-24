@@ -12,6 +12,7 @@
                             :subprotocol "ocient"
                             :sslmode     "disable"
                             :pooling     "OFF"
+                            :force       true
                             :subname     "//sales-sql0:4050/metabase;loglevel=DEBUG;logfile=jdbc_trace.out"}
                            (sql-jdbc.conn/connection-details->spec :ocient {:host               "sales-sql0"
                                                                             :port               4050
@@ -21,7 +22,7 @@
 (deftest insert-rows-ddl-test
   (mt/test-driver :ocient
                   (testing "Make sure we're generating correct DDL for Ocient to insert all rows at once."
-                    (is (= [[(str "INSERT INTO \"public\".\"my_table\""
+                    (is (= [[(str "INSERT INTO \"metabase\".\"my_table\""
                                   " SELECT ?, 1 UNION ALL"
                                   " SELECT ?, 2 UNION ALL"
                                   " SELECT ?, 3")
