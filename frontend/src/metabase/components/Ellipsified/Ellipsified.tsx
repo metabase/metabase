@@ -12,7 +12,7 @@ interface EllipsifiedProps {
   tooltip?: string;
   children?: React.ReactNode;
   tooltipMaxWidth?: React.CSSProperties["maxWidth"];
-  lines: number;
+  lines?: number;
 }
 
 const Ellipsified = ({
@@ -23,7 +23,7 @@ const Ellipsified = ({
   tooltip,
   children,
   tooltipMaxWidth,
-  lines = 1,
+  lines,
 }: EllipsifiedProps) => {
   const [isTruncated, setIsTruncated] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
