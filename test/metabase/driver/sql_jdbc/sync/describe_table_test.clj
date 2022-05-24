@@ -83,7 +83,7 @@
       (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row))))))
 
 (deftest dont-parse-long-json-xform-test
-  (testing "obnoxiously long json should not even get parsed"
+  (testing "obnoxiously long json should not even get parsed (#22636)"
     ;; Generating an actually obnoxiously long json took too long,
     ;; and actually copy-pasting an obnoxiously long string in there looks absolutely terrible,
     ;; so this rebinding is what you get
