@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
+import ColorPicker from "metabase/core/components/ColorPicker";
 import { getBrandColorOptions } from "./utils";
 import { ColorOption } from "./types";
 import {
@@ -11,7 +12,6 @@ import {
   TableHeaderRow,
   TableRoot,
 } from "./BrandColorTable.styled";
-import ColorPicker from "metabase/core/components/ColorPicker";
 
 export interface BrandColorsProps {
   colors: Record<string, string>;
