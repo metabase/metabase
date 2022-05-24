@@ -56,7 +56,6 @@ describe("scenarios > embedding > full app", () => {
 
       cy.findByTestId("qb-header").should("be.visible");
       cy.findByText(/Edited/).should("be.visible");
-      cy.findByText("Our analytics").should("be.visible");
 
       cy.icon("refresh").should("be.visible");
       cy.icon("notebook").should("be.visible");
