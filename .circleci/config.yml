@@ -1248,7 +1248,6 @@ workflows:
                 [
                   "admin",
                   "collections",
-                  "dashboard",
                   "embedding",
                   "filters",
                   "models",
