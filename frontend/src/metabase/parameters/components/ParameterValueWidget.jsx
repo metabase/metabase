@@ -5,12 +5,12 @@ import { t } from "ttag";
 
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
-import DateSingleWidget from "./widgets/DateSingleWidget";
-import DateRangeWidget from "./widgets/DateRangeWidget";
+import DateSingleWidget from "metabase/components/DateSingleWidget";
+import DateRangeWidget from "metabase/components/DateRangeWidget";
 import DateRelativeWidget from "metabase/components/DateRelativeWidget";
 import DateMonthYearWidget from "metabase/components/DateMonthYearWidget";
 import DateQuarterYearWidget from "metabase/components/DateQuarterYearWidget";
-import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
+import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
 import TextWidget from "metabase/components/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import Tooltip from "metabase/components/Tooltip";

@@ -1,32 +1,29 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import Dimension from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
-type Option = {
-  dimension: Dimension;
-};
-type Section = {
-  name: string;
-  icon: string;
-  items: Option[];
-};
+import {
+  DimensionFK,
+  DimensionOptionsProps,
+  DimensionOptionsSection,
+} from "./types";
+
 export default class DimensionOptions {
+  name?: string;
+  icon?: string;
   count: number = 0;
   dimensions: Dimension[] = [];
-  fks: Array<{
-    field: Field;
-    dimensions: Dimension[];
-  }> = [];
+  fks: DimensionFK[] = [];
 
-  constructor(o) {
-    Object.assign(this, o);
+  constructor(properties?: DimensionOptionsProps) {
+    Object.assign(this, properties || {});
   }
 
-  all(): Dimension {
-    return [].concat(this.dimensions, ...this.fks.map(fk => fk.dimensions));
+  all(): Dimension[] {
+    const dimensions = this.dimensions;
+    const fksDimensions = this.fks.map(fk => fk.dimensions).flat();
+    return [...dimensions, ...fksDimensions];
   }
 
   hasDimension(dimension: Dimension): boolean {
+    // TO BE REMOVED
     if (!dimension) {
       console.error(
         "attempted to call FieldDimension.hasDimension() with null dimension",
@@ -35,20 +32,15 @@ export default class DimensionOptions {
       return false;
     }
 
-    for (const d of this.all()) {
-      if (dimension.isSameBaseDimension(d)) {
-        return true;
-      }
-    }
-
-    return false;
+    return !!this.all().find(dim => dimension.isSameBaseDimension(dim));
   }
 
-  sections({ extraItems = [] } = {}): Section[] {
-    const table = this.dimensions[0] && this.dimensions[0].field().table;
+  sections({ extraItems = [] } = {}): DimensionOptionsSection[] {
+    const [dimension] = this.dimensions;
+    const table = dimension && dimension.field().table;
     const tableName =
       table && !table.isSavedQuestion() ? table.objectName() : null;
-    const mainSection = {
+    const mainSection: DimensionOptionsSection = {
       name: this.name || tableName,
       icon: this.icon || "table2",
       items: [
@@ -58,20 +50,19 @@ export default class DimensionOptions {
         })),
       ],
     };
-    const fkSections = this.fks.map(fk => ({
+
+    const sections: DimensionOptionsSection[] = this.fks.map(fk => ({
       name: fk.name || (fk.field && fk.field.targetObjectName()),
       icon: fk.icon || "connections",
       items: fk.dimensions.map(dimension => ({
         dimension,
       })),
     }));
-    const sections = [];
 
     if (mainSection.items.length > 0) {
-      sections.push(mainSection);
+      sections.unshift(mainSection);
     }
 
-    sections.push(...fkSections);
     return sections;
   }
 }

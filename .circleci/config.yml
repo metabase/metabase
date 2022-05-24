@@ -1002,8 +1002,8 @@ workflows:
       - clojure:
           matrix:
             parameters:
-              edition: ["ee", "oss"]
-              java-version: ["java-11", "java-17"]
+              edition: ["ee"]
+              java-version: ["java-11"]
           name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
@@ -1248,7 +1248,6 @@ workflows:
                 [
                   "admin",
                   "collections",
-                  "dashboard",
                   "embedding",
                   "filters",
                   "models",

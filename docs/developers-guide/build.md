@@ -38,6 +38,20 @@ sudo update-alternatives --config java
 
 Then select Java 11 in the menu.
 
+### Running on M1 Apple computers
+
+If you are developing on newer Apple M1 computers, please note that the current NodeJS LTS (v16.15.0) has native support for arm architecture. However, make sure you have Rosetta 2 installed before you attempt to build the frontend:
+
+```
+/usr/sbin/softwareupdate --install-rosetta (root permission not required)
+```
+
+or
+
+```
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license (root permission required)
+```
+
 ### If you're running Windows, use WSL
 
 If you are developing on Windows, you should run Ubuntu on Windows Subsystem for Linux (WSL) and follow instructions for Ubuntu/Linux.
@@ -58,6 +72,7 @@ Once you've installed all the build tools, you'll need to clone the [Metabase re
 cd ~/workspace
 ```
 
+{:start="3"}
 3. Run the following command to “clone” Metabase into this folder, using the URL of the Metabase repository on GitHub:
 
 ```
@@ -70,6 +85,7 @@ This is the part that you’ll use over and over.
 
 The “official” branch of Metabase is called `master`, and other feature development branches get merged into it when they’re approved. So if you want to try out a feature before then, you’ll need to know the name of that branch so you can switch over to it. Here’s what to do:
 
+{:start="4"}
 4. Open up your terminal app
 
 5. Navigate to where you're storing the Metabase code. If you followed this guide exactly, you'd get there by entering this command: 
@@ -109,6 +125,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
 
 ## Run Metabase
 
+{:start="9"}
 9. Now we’ll start up the backend server of Metabase with:
 
    ```
@@ -123,6 +140,7 @@ The “official” branch of Metabase is called `master`, and other feature deve
    yarn build-hot
    ```
 
+{:start="11"}
 11. In your web browser of choice, navigate to [localhost:3000](http://localhost:3000), where you should see Metabase!
      
    This is the local “server” on your computer, and 3000 is the “port” that Metabase is running on. You can have multiple different apps running on different ports on your own computer. Note that if you share any URLs with others that begin with `localhost`, they won’t be able to access them because your computer by default isn’t open up to the whole world, for security.    
