@@ -259,7 +259,7 @@
   {:style/indent 0}
   [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
              query-params constraints qp-runner]
-      :or   {constraints qp.constraints/default-query-constraints
+      :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
@@ -316,7 +316,7 @@
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
   [unsigned-token export-format query-params & {:keys [constraints qp-runner]
-                                                :or   {constraints qp.constraints/default-query-constraints
+                                                :or   {constraints (qp.constraints/default-query-constraints)
                                                        qp-runner   qp/process-query-and-save-execution!}
                                                 :as   options}]
   (let [card-id (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
@@ -383,7 +383,7 @@
   {:style/indent 1}
   [token dashcard-id card-id export-format query-params
    & {:keys [constraints qp-runner]
-      :or   {constraints qp.constraints/default-query-constraints
+      :or   {constraints (qp.constraints/default-query-constraints)
              qp-runner   qp/process-query-and-save-execution!}}]
   (let [unsigned-token (embed/unsign token)
         dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]

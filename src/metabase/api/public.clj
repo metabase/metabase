@@ -204,7 +204,7 @@
       :as   options}]
   (let [options (merge
                  {:context     :public-dashboard
-                  :constraints qp.constraints/default-query-constraints}
+                  :constraints (qp.constraints/default-query-constraints)}
                  options
                  {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
