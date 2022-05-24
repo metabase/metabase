@@ -8,13 +8,20 @@ export const TableHeader = styled.div`
   background-color: ${color("bg-light")};
 `;
 
-export const TableHeaderRow = styled.div`
+export const TableRow = styled.div`
   display: flex;
 `;
 
-export const TableHeaderCell = styled.div`
-  color: ${color("text-medium")};
+export const TableCell = styled.div`
   padding: 0.5rem 1.5rem;
+
+  &:first-of-type {
+    min-width: 13rem;
+  }
+`;
+
+export const TableHeaderText = styled.span`
+  color: ${color("text-medium")};
   font-size: 0.5rem;
   line-height: 0.625rem;
   text-transform: uppercase;
