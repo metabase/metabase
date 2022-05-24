@@ -15,7 +15,7 @@ interface EllipsifiedProps {
   children?: React.ReactNode;
   tooltipMaxWidth?: React.CSSProperties["maxWidth"];
   lines?: number;
-  placement: Placement;
+  placement?: Placement;
 }
 
 const Ellipsified = ({
