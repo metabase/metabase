@@ -1,10 +1,8 @@
 (ns metabase.models.emitter
-  (:require [clojure.tools.logging :as log]
-            [metabase.models.card :refer [Card]]
+  (:require [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util :as u]
             [toucan.db :as db]
-            [toucan.hydrate :as hydrate]
             [toucan.models :as models]))
 
 (models/defmodel CardEmitter :card_emitter)
