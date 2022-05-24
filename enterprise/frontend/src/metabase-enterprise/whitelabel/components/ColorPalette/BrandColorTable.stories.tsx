@@ -13,5 +13,5 @@ const Template: ComponentStory<typeof BrandColorTable> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  colors: {},
+  values: {},
 };

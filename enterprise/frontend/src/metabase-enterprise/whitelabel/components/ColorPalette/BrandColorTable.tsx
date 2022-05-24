@@ -26,11 +26,11 @@ const COLORS = [
 ];
 
 export interface BrandColorTableProps {
-  colors: Record<string, string>;
-  onChange?: (colors: Record<string, string>) => void;
+  values?: Record<string, string>;
+  onChange?: (values: Record<string, string>) => void;
 }
 
-const BrandColorTable = ({ colors }: BrandColorTableProps): JSX.Element => {
+const BrandColorTable = ({ values }: BrandColorTableProps): JSX.Element => {
   return (
     <TableRoot>
       <TableHeader>

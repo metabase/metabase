@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 import { css } from "@emotion/react";
+import { color } from "metabase/lib/colors";
 
 const cellStyles = css`
   display: block;
@@ -39,8 +39,6 @@ export const TableHeaderCell = styled.th`
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 `;
-
-export const TableHeaderText = styled.span``;
 
 export const TableBody = styled.tbody`
   display: block;
