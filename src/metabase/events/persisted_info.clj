@@ -8,7 +8,7 @@
             [toucan.db :as db]))
 
 (def ^:private ^:const persisted-info-topics
-  "The `Set` of event topics which are subscribed to for use in dependencies tracking."
+  "The `Set` of event topics which are subscribed to add persisted-info to new models."
   #{:card-create
     :card-update})
 
@@ -22,10 +22,13 @@
 
 
 (defn process-event
-  "Handle processing for a single event notification received on the dependencies-channel"
+  "Handle processing for a single event notification received on the persisted-info-channel"
   [{_topic :topic card :item :as event}]
   ;; try/catch here to prevent individual topic processing exceptions from bubbling up.  better to handle them here.
   (try
+    ;; We only want to add a persisted-info for newly created models where dataset is being set to true.
+    ;; If there is already a PersistedInfo, even in "off" or "deletable" state, we skip it as this
+    ;; is only supposed to be that initial edge when the dataset is being changed.
     (when (and (:dataset card)
                (public-settings/persisted-models-enabled)
                (get-in (Database (:database_id card)) [:options :persist-models-enabled])

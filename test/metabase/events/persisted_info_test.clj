@@ -1,5 +1,5 @@
 (ns metabase.events.persisted-info-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is]]
             [metabase.events.persisted-info :as events.persisted-info]
             [metabase.models :refer [Card Database PersistedInfo]]
             [metabase.test :as mt]
