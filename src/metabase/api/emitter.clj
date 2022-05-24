@@ -21,7 +21,6 @@
 (api/defendpoint PUT "/:emitter-id"
   "Endpoint to update an emitter."
   [emitter-id :as {emitter :body}]
-  {}
   (db/update! Emitter emitter-id emitter)
   api/generic-204-no-content)
 
