@@ -999,6 +999,13 @@ class StructuredQueryInner extends AtomicQuery {
     return this._updateQuery(Q.clearFilters, arguments);
   }
 
+  /**
+   * @returns {StructuredQuery} new query with all segment filters removed
+   */
+  clearSegments() {
+    return this._updateQuery(Q.clearSegments, arguments);
+  }
+
   // SORTS
   // TODO: standardize SORT vs ORDER_BY terminology
   sorts(): OrderByWrapper[] {

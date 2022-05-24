@@ -95,6 +95,7 @@ export interface SegmentFilterSelectProps {
   segments: SegmentOption[];
   onAddFilter: (filter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 export const SegmentFilterSelect = ({
@@ -102,6 +103,7 @@ export const SegmentFilterSelect = ({
   segments,
   onAddFilter,
   onRemoveFilter,
+  onClearSegments,
 }: SegmentFilterSelectProps): JSX.Element => {
   const activeSegmentOptions = useMemo(() => {
     const activeSegmentIds = query.segments().map(s => s.id);
@@ -139,6 +141,16 @@ export const SegmentFilterSelect = ({
       value={activeSegmentOptions}
       onChange={(e: any) => toggleSegment(e.target.value.changedItem)}
       multiple
+      buttonProps={{
+        hasValue: activeSegmentOptions.length > 0,
+        highlighted: true,
+        onClear: onClearSegments,
+      }}
+      buttonText={
+        activeSegmentOptions.length > 1
+          ? `${activeSegmentOptions.length} segments`
+          : null
+      }
     />
   );
 };

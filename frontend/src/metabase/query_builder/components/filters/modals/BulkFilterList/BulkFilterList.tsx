@@ -26,6 +26,7 @@ export interface BulkFilterListProps {
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 const BulkFilterList = ({
@@ -35,14 +36,11 @@ const BulkFilterList = ({
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
+  onClearSegments,
 }: BulkFilterListProps): JSX.Element => {
-  const [dimensions, segments, segmentFilters] = useMemo(
-    () => [
-      options.filter(isDimensionOption),
-      options.filter(isSegmentOption),
-      filters.filter(isSegment),
-    ],
-    [options, filters],
+  const [dimensions, segments] = useMemo(
+    () => [options.filter(isDimensionOption), options.filter(isSegmentOption)],
+    [options],
   );
 
   return (
@@ -50,10 +48,10 @@ const BulkFilterList = ({
       {!!segments.length && (
         <SegmentListItem
           query={query}
-          filters={segmentFilters}
           segments={segments}
           onAddFilter={onAddFilter}
           onRemoveFilter={onRemoveFilter}
+          onClearSegments={onClearSegments}
         />
       )}
       {dimensions.map(({ dimension }, index) => (
@@ -123,18 +121,18 @@ const BulkFilterListItem = ({
 
 interface SegmentListItemProps {
   query: StructuredQuery;
-  filters: Filter[];
   segments: SegmentOption[];
   onAddFilter: (filter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 const SegmentListItem = ({
   query,
-  filters,
   segments,
   onAddFilter,
   onRemoveFilter,
+  onClearSegments,
 }: SegmentListItemProps): JSX.Element => (
   <>
     <ListRow>
@@ -145,6 +143,7 @@ const SegmentListItem = ({
           segments={segments}
           onAddFilter={onAddFilter}
           onRemoveFilter={onRemoveFilter}
+          onClearSegments={onClearSegments}
         />
       </ListRowContent>
     </ListRow>

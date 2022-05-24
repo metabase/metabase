@@ -60,6 +60,11 @@ const BulkFilterModal = ({
     setIsChanged(true);
   }, []);
 
+  const handleClearSegments = useCallback(() => {
+    setQuery(query.clearSegments());
+    setIsChanged(true);
+  }, [query]);
+
   const handleApplyQuery = useCallback(() => {
     query.update(undefined, { run: true });
     onClose?.();
@@ -81,6 +86,7 @@ const BulkFilterModal = ({
           onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
+          onClearSegments={handleClearSegments}
         />
       ) : (
         <BulkFilterModalSectionList
@@ -90,6 +96,7 @@ const BulkFilterModal = ({
           onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
+          onClearSegments={handleClearSegments}
         />
       )}
       <ModalDivider />
@@ -112,6 +119,7 @@ interface BulkFilterModalSectionProps {
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 const BulkFilterModalSection = ({
@@ -121,6 +129,7 @@ const BulkFilterModalSection = ({
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
+  onClearSegments,
 }: BulkFilterModalSectionProps): JSX.Element => {
   return (
     <ModalBody>
@@ -131,6 +140,7 @@ const BulkFilterModalSection = ({
         onAddFilter={onAddFilter}
         onChangeFilter={onChangeFilter}
         onRemoveFilter={onRemoveFilter}
+        onClearSegments={onClearSegments}
       />
     </ModalBody>
   );
@@ -143,6 +153,7 @@ interface BulkFilterModalSectionListProps {
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 const BulkFilterModalSectionList = ({
@@ -152,6 +163,7 @@ const BulkFilterModalSectionList = ({
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
+  onClearSegments,
 }: BulkFilterModalSectionListProps): JSX.Element => {
   const [tab, setTab] = useState(0);
 
@@ -178,6 +190,7 @@ const BulkFilterModalSectionList = ({
             onAddFilter={onAddFilter}
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
+            onClearSegments={onClearSegments}
           />
         </ModalTabPanel>
       ))}
