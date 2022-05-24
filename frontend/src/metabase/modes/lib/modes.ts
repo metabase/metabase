@@ -5,11 +5,13 @@ import GeoMode from "../components/modes/GeoMode";
 import PivotMode from "../components/modes/PivotMode";
 import NativeMode from "../components/modes/NativeMode";
 import DefaultMode from "../components/modes/DefaultMode";
+import { QueryMode } from "metabase-types/types/Visualization";
 
+import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
-export function getMode(question) {
+export function getMode(question: Question): QueryMode | null {
   if (!question) {
     return null;
   }
