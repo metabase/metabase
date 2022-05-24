@@ -24,4 +24,8 @@ export const TableHeaderCell = styled.th`
   font-size: 0.5rem;
   line-height: 0.625rem;
   text-transform: uppercase;
+
+  &:first-of-type {
+    min-width: 12rem;
+  }
 `;
