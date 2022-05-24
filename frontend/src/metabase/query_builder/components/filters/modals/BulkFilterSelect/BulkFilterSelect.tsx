@@ -113,7 +113,14 @@ export const SegmentFilterSelect = ({
   const toggleSegment = useCallback(
     (changedSegment: SegmentOption) => {
       const segmentIsActive = activeSegmentOptions.includes(changedSegment);
-      const segmentFilter = new Filter(changedSegment.filter, null, query);
+
+      const segmentFilter = segmentIsActive
+        ? (query
+            .filters()
+            .find(
+              f => f[0] === "segment" && f[1] === changedSegment.filter[1],
+            ) as Filter)
+        : new Filter(changedSegment.filter, null, query);
 
       segmentIsActive
         ? onRemoveFilter(segmentFilter)
