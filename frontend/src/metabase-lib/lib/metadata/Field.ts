@@ -46,6 +46,8 @@ class FieldInner extends Base {
   id: number | FieldRef;
   name: string;
   semantic_type: string | null;
+  fingerprint: any;
+  base_type: string | null;
   table?: Table;
   target?: Field;
 

@@ -18,7 +18,7 @@ import {
   ListRowContent,
   ListRowLabel,
 } from "./BulkFilterList.styled";
-
+import { sortDimensions } from "./utils";
 export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
@@ -38,6 +38,10 @@ const BulkFilterList = ({
   onRemoveFilter,
   onClearSegments,
 }: BulkFilterListProps): JSX.Element => {
+  const sortedDimensions = useMemo(() => dimensions.sort(sortDimensions), [
+    dimensions,
+  ]);
+  
   const [dimensions, segments] = useMemo(
     () => [options.filter(isDimensionOption), options.filter(isSegmentOption)],
     [options],
@@ -54,7 +58,7 @@ const BulkFilterList = ({
           onClearSegments={onClearSegments}
         />
       )}
-      {dimensions.map(({ dimension }, index) => (
+      {sortedDimensions.map(({ dimension }, index) => (
         <BulkFilterListItem
           key={index}
           query={query}
