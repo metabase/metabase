@@ -22,6 +22,8 @@ export type ParameterMapping = {
   target: ParameterTarget;
 };
 
+export type ParameterMappings = ParameterMapping[];
+
 export type ParameterMappingOptions = {
   name: string;
   sectionId: string;

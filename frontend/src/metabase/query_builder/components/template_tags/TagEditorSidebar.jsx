@@ -52,6 +52,7 @@ export default class TagEditorSidebar extends React.Component {
     } = this.props;
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
     const tags = query.templateTagsWithoutSnippets();
+    const parameterMappings = query.parameterMappings();
     const database = query.database();
     const parameters = query.question().parameters();
     const parametersById = _.indexBy(parameters, "id");
@@ -84,6 +85,7 @@ export default class TagEditorSidebar extends React.Component {
           {section === "settings" ? (
             <SettingsPane
               tags={tags}
+              parameterMappings={parameterMappings}
               parametersById={parametersById}
               databaseFields={databaseFields}
               database={database}
@@ -109,6 +111,7 @@ export default class TagEditorSidebar extends React.Component {
 
 const SettingsPane = ({
   tags,
+  parameterMappings,
   parametersById,
   databaseFields,
   database,

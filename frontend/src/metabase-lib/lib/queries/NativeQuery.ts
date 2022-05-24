@@ -22,6 +22,7 @@ import {
   TemplateTag,
 } from "metabase-types/types/Query";
 import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import { ParameterMappings } from "metabase-types/types/Parameter";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";
@@ -287,6 +288,10 @@ export default class NativeQuery extends AtomicQuery {
 
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
+  }
+
+  parameterMappings(): ParameterMappings {
+    return getIn(this.datasetQuery(), ["native", "parameter_mappings"]) || [];
   }
 
   validate() {

@@ -1,11 +1,13 @@
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { getIn, updateIn, assocIn } from "icepick";
 
 import { createAction } from "redux-actions";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { createThunkAction } from "metabase/lib/redux";
 import Utils from "metabase/lib/utils";
+
+import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 
 import {
   getNativeEditorCursorOffset,
@@ -123,19 +125,45 @@ export const setTemplateTag = createThunkAction(
         delete updatedCard.description;
       }
 
+      // construct parameters and the mapping from tags
+      const templateTags = getIn(updatedCard, [
+        "dataset_query",
+        "native",
+        "template-tags",
+      ]);
+      const parameters = [],
+        parameterMappings = [];
+      Object.values(templateTags).forEach(tag => {
+        const { name, type, required } = tag;
+        const id = generateParameterId();
+        const parameter = { id, name, type, required };
+        parameter.default = tag.default;
+        parameters.push(parameter);
+
+        const target = ["template-tag", ["variable", name]];
+        const mapping = { parameter_id: id, target };
+        parameterMappings.push(mapping);
+      });
+
       // we need to preserve the order of the keys to avoid UI jumps
-      return updateIn(
+      const updateTags = tags => {
+        const { name } = templateTag;
+        const newTag =
+          tags[name] && tags[name].type !== templateTag.type
+            ? // when we switch type, null out any default
+              { ...templateTag, default: null }
+            : templateTag;
+        return { ...tags, [name]: newTag };
+      };
+      const updatedTagsCard = updateIn(
         updatedCard,
         ["dataset_query", "native", "template-tags"],
-        tags => {
-          const { name } = templateTag;
-          const newTag =
-            tags[name] && tags[name].type !== templateTag.type
-              ? // when we switch type, null out any default
-                { ...templateTag, default: null }
-              : templateTag;
-          return { ...tags, [name]: newTag };
-        },
+        updateTags,
+      );
+      return assocIn(
+        assocIn(updatedTagsCard, ["dataset_query", "parameters"], parameters),
+        ["dataset_query", "parameter-mappings"],
+        parameterMappings,
       );
     };
   },

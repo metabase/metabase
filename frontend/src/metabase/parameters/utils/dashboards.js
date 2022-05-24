@@ -2,6 +2,7 @@ import _ from "underscore";
 import { setIn } from "icepick";
 
 import Question from "metabase-lib/lib/Question";
+import { generateParameterId } from "metabase/parameters/utils/parameter-id";
 import { getParameterTargetField } from "metabase/parameters/utils/targets";
 import { slugify } from "metabase/lib/formatting";
 
@@ -16,7 +17,7 @@ export function createParameter(option, parameters = []) {
   const parameter = {
     name: "",
     slug: "",
-    id: Math.floor(Math.random() * Math.pow(2, 32)).toString(16),
+    id: generateParameterId(),
     type: option.type,
     sectionId: option.sectionId,
   };

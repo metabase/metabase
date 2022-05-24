@@ -62,6 +62,12 @@ export type TemplateTag = {
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };
 
+export type ParameterMapping = {
+  id: string;
+  name: string;
+  "display-name": string;
+};
+
 export type NativeQuery = {
   query: string;
   "template-tags": TemplateTags;
