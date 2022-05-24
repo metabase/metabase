@@ -27,6 +27,25 @@ export const TableHeaderCell = styled.th`
   text-transform: uppercase;
 
   &:first-of-type {
+    flex: 0;
+    min-width: 12rem;
+  }
+`;
+
+export const TableBody = styled.tbody`
+  display: block;
+`;
+
+export const TableBodyRow = styled.tr`
+  display: flex;
+`;
+
+export const TableBodyCell = styled.td`
+  display: block;
+  padding: 1rem 1.5rem;
+
+  &:first-of-type {
+    flex: 0;
     min-width: 12rem;
   }
 `;
