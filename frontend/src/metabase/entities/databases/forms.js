@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import { getElevatedEngines } from "metabase/lib/engine";
+import { getModelCacheSchemaName } from "metabase/lib/data-modeling/utils";
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import getFieldsForBigQuery from "./big-query-fields";
@@ -236,9 +237,12 @@ function normalizeFieldValue(value, field) {
 }
 
 function getEngineFormFields(engine, details, id) {
+  const isEditingDatabase = !!id;
+
   const engineInfo = getEngineInfo(engine, details, id);
   const engineFields = engineInfo ? engineInfo["details-fields"] : [];
   const cachingField = getDatabaseCachingField();
+  const hasModelCachingField = isEditingDatabase && "_persistModels" in details;
 
   // convert database details-fields to Form fields
   return engineFields
@@ -264,6 +268,7 @@ function getEngineFormFields(engine, details, id) {
       };
     })
     .concat(cachingField ? [cachingField] : [])
+    .concat(hasModelCachingField ? [getModelCachingField(id)] : [])
     .filter(field => shouldShowEngineProvidedField(field, details));
 }
 
@@ -321,6 +326,24 @@ function getDatabaseCachingField() {
     PLUGIN_CACHING.databaseCacheTTLFormField &&
     MetabaseSettings.get("enable-query-caching");
   return hasField ? PLUGIN_CACHING.databaseCacheTTLFormField : null;
+}
+
+function getModelCachingField(databaseId) {
+  const schemaName = getModelCacheSchemaName(databaseId);
+  const docsLink = (
+    <ExternalLink
+      key="model-caching-link"
+      href={MetabaseSettings.docsUrl("users-guide/models")}
+    >{t`Learn more.`}</ExternalLink>
+  );
+  return {
+    name: "details._persistModels",
+    title: t`Cache models`,
+    type: "boolean",
+    description: jt`We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection credential read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`,
+    horizontal: true,
+    visibleIf: { "advanced-options": true },
+  };
 }
 
 const forms = {

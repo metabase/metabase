@@ -97,6 +97,18 @@ class DatabaseEditApp extends Component {
     await this.props.initializeDatabase(this.props.params.databaseId);
   }
 
+  getInitialValues = () => {
+    const { database, isModelPersistenceEnabled } = this.props;
+    if (!database) {
+      return;
+    }
+    const dbObject = { ...database.getPlainObject() };
+    if (isModelPersistenceEnabled && database.supportsPersistence()) {
+      dbObject.details._persistModels = database.isPersisted();
+    }
+    return dbObject;
+  };
+
   render() {
     const {
       database,
@@ -131,7 +143,7 @@ class DatabaseEditApp extends Component {
               >
                 {() => (
                   <Databases.Form
-                    database={database}
+                    database={this.getInitialValues()}
                     form={Databases.forms.details}
                     formName={DATABASE_FORM_NAME}
                     onSubmit={this.props.saveDatabase}
