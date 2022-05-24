@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import DateRangeWidget from "metabase/parameters/components/widgets/DateRangeWidget";
+import DateRangeWidget from "metabase/components/DateRangeWidget";
 
 describe("DateRangeWidget", () => {
   it("should allow selections spanning years", () => {
