@@ -60,7 +60,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
         },
       )}
     >
-      <Ellipsified tooltip={title} lines={2}>
+      <Ellipsified tooltip={title} lines={2} placement="bottom">
         {title}
       </Ellipsified>
     </h3>
