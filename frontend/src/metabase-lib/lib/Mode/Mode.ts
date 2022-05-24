@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import Question from "metabase-lib/lib/Question";
 import { getMode } from "metabase/modes/lib/modes";
 import {
@@ -7,6 +5,7 @@ import {
   ClickObject,
   QueryMode,
 } from "metabase-types/types/Visualization";
+
 export default class Mode {
   _question: Question;
   _queryMode: QueryMode;
