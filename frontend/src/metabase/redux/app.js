@@ -72,7 +72,19 @@ const isNavbarOpen = handleActions(
   checkIsSidebarInitiallyOpen(),
 );
 
+export const SET_COLLECTION_ID = "metabase/app/SET_COLLECTION_ID";
+export const setCollectionId = createAction(SET_COLLECTION_ID);
+export const getCurrentCollectionId = state => state.app.currentCollectionId;
+
+const currentCollectionId = handleActions(
+  {
+    [SET_COLLECTION_ID]: { next: (state, { payload }) => payload },
+  },
+  "",
+);
+
 export default combineReducers({
   errorPage,
   isNavbarOpen,
+  currentCollectionId,
 });

@@ -133,7 +133,6 @@ export const StyledCollectionBadge = styled(CollectionBadge)`
 
 export const StyledQuestionDataSource = styled(QuestionDataSource)`
   margin-bottom: 0.5rem;
-  margin-left: 1.5rem;
   padding-right: 1rem;
 
   ${breakpointMaxSmall} {

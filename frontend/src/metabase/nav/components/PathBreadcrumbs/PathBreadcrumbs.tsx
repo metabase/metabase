@@ -1,10 +1,12 @@
-import React, {useState} from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Collection from "metabase/entities/collections";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
+import { Collection as CollectionType } from "metabase-types/api/collection";
+import { EntitiesState } from "metabase-types/store/entities";
 
 import {
   PathSeparator,
@@ -12,7 +14,12 @@ import {
   ExpandButton,
 } from "./PathBreadcrumbs.styled";
 
-function PathBreadcrumbs({ collection, className }) {
+interface Props {
+  collection: CollectionType;
+  collectionId: string;
+}
+
+const PathBreadcrumbs = ({ collection }: Props) => {
   const [isExpanded, setIsExpanded] = useState(false);
   if (!collection) {
     return null;
@@ -34,7 +41,6 @@ function PathBreadcrumbs({ collection, className }) {
         <Separator onClick={toggle} />
         <ExpandButton
           small
-          iconOnly
           borderless
           iconSize={10}
           icon="ellipsis"
@@ -66,7 +72,7 @@ function PathBreadcrumbs({ collection, className }) {
       />
     </PathContainer>
   );
-}
+};
 
 const propTypes = {
   collection: PropTypes.object,
@@ -75,13 +81,17 @@ const propTypes = {
 PathBreadcrumbs.propTypes = propTypes;
 
 export default Collection.load({
-  id: (state, props) => props.collectionId || "root",
+  id: (_state: EntitiesState, props: Props) => props.collectionId || "root",
   wrapped: true,
   loadingAndErrorWrapper: false,
   properties: ["name", "authority_level"],
 })(PathBreadcrumbs);
 
-const Separator = props => (
+interface SeparatorProps {
+  onClick: () => void;
+}
+
+const Separator = (props: SeparatorProps) => (
   <PathSeparator {...props}>
     <Icon name="chevronright" size={8} />
   </PathSeparator>

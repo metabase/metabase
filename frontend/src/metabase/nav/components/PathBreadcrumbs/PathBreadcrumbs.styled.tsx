@@ -14,7 +14,6 @@ export const PathContainer = styled.div`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: ${space(1)};
 `;
 
 export const PathSeparator = styled.div`

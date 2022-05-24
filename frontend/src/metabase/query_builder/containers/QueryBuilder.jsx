@@ -15,7 +15,7 @@ import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
 
-import { closeNavbar } from "metabase/redux/app";
+import { closeNavbar, setCollectionId } from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -200,6 +200,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   ...actions,
+  setCollectionId,
   closeNavbar,
   onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
@@ -232,6 +233,7 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    setCollectionId,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -246,6 +248,13 @@ function QueryBuilder(props) {
   const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
+
+  useEffect(() => {
+    if (collectionId) {
+      setCollectionId(collectionId);
+    }
+    return () => setCollectionId("");
+  }, [collectionId, setCollectionId]);
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),

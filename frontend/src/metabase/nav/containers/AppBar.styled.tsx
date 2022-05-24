@@ -142,3 +142,24 @@ export const SearchBarContent = styled.div`
     width: 460px;
   }
 `;
+
+interface PathBreadcrumbsContainerProps {
+  isVisible: boolean;
+}
+
+export const PathBreadcrumbsContainer = styled.div<
+  PathBreadcrumbsContainerProps
+>`
+  position: absolute;
+  top: 0px;
+  left: 100px;
+  height: ${APP_BAR_HEIGHT};
+  display: flex;
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
+  opacity: ${props => (props.isVisible ? "1.0" : "0")};
+
+  ${props =>
+    !props.isVisible
+      ? `transition: opacity 0.5s, visibility 0s 0.5s;`
+      : `transition: opacity 0.5s;`}
+`;
