@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
+import { assoc, dissoc } from "icepick";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getBrandColorOptions } from "./utils";
 import { ColorOption } from "./types";
@@ -32,8 +33,12 @@ const BrandColorScheme = ({
   }, []);
 
   const handleChange = useCallback(
-    (color: string, option: ColorOption) => {
-      onChange?.({ ...colorsRef.current, [option.name]: color });
+    (option: ColorOption, color?: string) => {
+      if (color) {
+        onChange?.(assoc(colorsRef.current, option.name, color));
+      } else {
+        onChange?.(dissoc(colorsRef.current, option.name));
+      }
     },
     [onChange],
   );
@@ -52,7 +57,7 @@ interface BrandColorTableProps {
   colors: Record<string, string>;
   originalColors: Record<string, string>;
   options: ColorOption[];
-  onChange: (value: string, color: ColorOption) => void;
+  onChange: (option: ColorOption, color?: string) => void;
 }
 
 const BrandColorTable = ({
@@ -86,7 +91,7 @@ const BrandColorTable = ({
 interface BrandColorRowProps {
   color: string;
   option: ColorOption;
-  onChange: (color: string, option: ColorOption) => void;
+  onChange: (option: ColorOption, color?: string) => void;
 }
 
 const BrandColorRow = memo(function BrandColorRow({
@@ -95,8 +100,8 @@ const BrandColorRow = memo(function BrandColorRow({
   onChange,
 }: BrandColorRowProps) {
   const handleChange = useCallback(
-    (color: string) => {
-      onChange(color, option);
+    (color?: string) => {
+      onChange(option, color);
     },
     [option, onChange],
   );
