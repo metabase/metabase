@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getBrandColorOptions } from "./utils";
@@ -24,15 +24,14 @@ const BrandColorScheme = ({
   originalColors,
   onChange,
 }: BrandColorSchemeProps): JSX.Element => {
-  const options = useMemo(() => {
-    return getBrandColorOptions();
-  }, []);
+  const options = useMemo(() => getBrandColorOptions(), []);
+  const colorsRef = useCurrent(colors);
 
   const handleChange = useCallback(
     (color: string, option: ColorOption) => {
-      onChange?.({ ...colors, [option.name]: color });
+      onChange?.({ ...colorsRef.current, [option.name]: color });
     },
-    [colors, onChange],
+    [colorsRef, onChange],
   );
 
   return (
@@ -106,6 +105,13 @@ const BrandColorRow = ({
       <TableBodyCell>{option.description}</TableBodyCell>
     </TableBodyRow>
   );
+};
+
+const useCurrent = function<T>(value: T) {
+  const ref = useRef(value);
+  ref.current = value;
+
+  return ref;
 };
 
 export default BrandColorScheme;
