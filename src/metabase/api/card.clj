@@ -306,11 +306,12 @@
   thrown. Closing this channel before it finishes will cancel the Card creation."
   [{:keys [dataset_query result_metadata dataset], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
-  ;; `api/maybe-reconcile-collection-position!`
+  ;; [[api/maybe-reconcile-collection-position!]]
   (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position :cache_ttl :is_write]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
+                                    :is_write (boolean (:is_write card-data))
                                     :dataset (boolean (:dataset card-data)))
         result-metadata-chan (result-metadata-async {:query dataset_query
                                                      :metadata result_metadata

@@ -2150,6 +2150,8 @@
   (with-actions-enabled
     (doseq [f [test-update-is-write-card
                test-create-is-write-card]]
+      ;; TODO -- Setting `is_write` also needs to create the `Action` and `QueryAction`. Unsetting should delete those
+      ;; rows. Add tests for these once that code is in place.
       (f {:expected-status-code 202
           :result-fn            (fn [result]
                                   (is (map? result)))}))))
