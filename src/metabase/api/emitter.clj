@@ -1,5 +1,6 @@
 (ns metabase.api.emitter
-  (:require [metabase.actions :as actions]
+  (:require [compojure.core :refer [DELETE POST PUT]]
+            [metabase.actions :as actions]
             [metabase.api.common :as api]
             [metabase.models :refer [CardEmitter DashboardEmitter Emitter]]
             [metabase.util.i18n :refer [tru]]
