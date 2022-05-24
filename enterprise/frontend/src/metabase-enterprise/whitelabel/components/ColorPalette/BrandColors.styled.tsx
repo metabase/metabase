@@ -50,6 +50,10 @@ export const TableBody = styled.tbody`
 export const TableBodyRow = styled.tr`
   display: flex;
   align-items: center;
+
+  &:not(:first-of-type) {
+    border-top: 1px solid ${color("border")};
+  }
 `;
 
 export const TableBodyCell = styled.td`
