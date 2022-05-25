@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
-import { assoc, dissoc } from "icepick";
+import { omit, set } from "lodash";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getChartColorGroups } from "./utils";
 import {
@@ -32,9 +32,9 @@ const ChartColorSettings = ({
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
-        onChange?.(assoc(colorsRef.current, colorName, color));
+        onChange?.(set({ ...colorsRef.current }, colorName, color));
       } else {
-        onChange?.(dissoc(colorsRef.current, colorName));
+        onChange?.(omit({ ...colorsRef.current }, colorName));
       }
     },
     [onChange],
