@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
-import { omit, set } from "lodash";
+import { flatten, omit, set } from "lodash";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getChartColorGroups } from "./utils";
 import {
@@ -8,6 +8,7 @@ import {
   TableBodyCell,
   TableBodyRow,
   TableHeader,
+  TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
 
@@ -40,12 +41,17 @@ const ChartColorSettings = ({
     [onChange],
   );
 
+  const handleReset = useCallback(() => {
+    onChange?.(omit({ ...colorsRef.current }, flatten(colorGroups)));
+  }, [colorGroups, onChange]);
+
   return (
     <ChartColorTable
       colors={colors}
       originalColors={originalColors}
       colorGroups={colorGroups}
       onChange={handleChange}
+      onReset={handleReset}
     />
   );
 };
@@ -55,6 +61,7 @@ interface ChartColorTable {
   originalColors: Record<string, string>;
   colorGroups: string[][];
   onChange: (name: string, color?: string) => void;
+  onReset: () => void;
 }
 
 const ChartColorTable = ({
@@ -62,11 +69,13 @@ const ChartColorTable = ({
   originalColors,
   colorGroups,
   onChange,
+  onReset,
 }: ChartColorTable): JSX.Element => {
   return (
     <div>
       <TableHeader>
         <TableTitle>{t`Chart colors`}</TableTitle>
+        <TableLink onClick={onReset}>{t`Reset to default colors`}</TableLink>
       </TableHeader>
       <TableBody>
         {colorGroups.map((colorGroup, index) => (

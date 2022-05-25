@@ -1,8 +1,10 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 export const TableHeader = styled.div`
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 1rem 1.5rem;
   border: 1px solid ${color("border")};
   border-top-left-radius: 0.5rem;
@@ -12,6 +14,17 @@ export const TableTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1rem;
   font-weight: bold;
+`;
+
+export const TableLink = styled.div`
+  display: inline-block;
+  color: ${color("brand")};
+  font-weight: bold;
+  cursor: pointer;
+
+  &:hover {
+    color: ${darken("brand", 0.12)};
+  }
 `;
 
 export const TableBody = styled.div`
