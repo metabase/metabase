@@ -12,6 +12,7 @@ import Visualization, {
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
@@ -145,10 +146,17 @@ export default class DashCard extends Component {
       loading &&
       _.some(series, s => s.isSlow) &&
       (usuallyFast ? "usually-fast" : "usually-slow");
+
+    const isAccessRestricted = series.some(
+      s =>
+        s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
+        s.error?.status === 403,
+    );
+
     const errors = series.map(s => s.error).filter(e => e);
 
     let errorMessage, errorIcon;
-    if (_.any(errors, e => e && e.status === 403)) {
+    if (isAccessRestricted) {
       errorMessage = ERROR_MESSAGE_PERMISSION;
       errorIcon = "key";
     } else if (errors.length > 0) {
