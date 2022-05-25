@@ -3,8 +3,6 @@ import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 
 const cellStyles = css`
-  display: block;
-  box-sizing: border-box;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
 
@@ -15,7 +13,6 @@ const cellStyles = css`
 `;
 
 export const TableHeader = styled.div`
-  display: block;
   border: 1px solid ${color("border")};
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
@@ -39,7 +36,6 @@ export const TableHeaderCell = styled.div`
 `;
 
 export const TableBody = styled.div`
-  display: block;
   border: 1px solid ${color("border")};
   border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;

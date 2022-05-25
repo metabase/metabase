@@ -1,6 +1,7 @@
 import { t } from "ttag";
+import { ColorOption } from "./types";
 
-export const getBrandColorOptions = () => [
+export const getBrandColorOptions = (): ColorOption[] => [
   {
     name: "brand",
     description: t`The main color used throughout the app for buttons, links, and the default chart color.`,
