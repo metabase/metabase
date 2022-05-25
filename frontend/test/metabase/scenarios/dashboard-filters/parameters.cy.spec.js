@@ -19,7 +19,6 @@ describe("scenarios > dashboard > parameters", () => {
     cy.intercept("POST", "/api/card/**/query").as("cardQuery");
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("GET", "/api/collection/**").as("collection");
-    cy.intercept("GET", "/api/field/**/values").as("fieldValues");
   });
 
   it("should be visible if previously added", () => {
@@ -558,7 +557,6 @@ describe("scenarios > dashboard > parameters", () => {
     it("should not see mapping options", () => {
       cy.icon("pencil").click();
       cy.findByText("Location").click({ force: true });
-      cy.wait("@fieldValues");
 
       cy.icon("key");
     });
@@ -570,7 +568,6 @@ function selectFilter(selection, filterName) {
   popover()
     .contains(filterName)
     .click({ force: true });
-  cy.wait("@fieldValues");
 }
 
 function addQuestion(name) {
@@ -590,7 +587,6 @@ function addCityFilterWithDefault() {
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("City").click();
-    cy.wait("@fieldValues");
   });
 
   // Create a default value and save filter

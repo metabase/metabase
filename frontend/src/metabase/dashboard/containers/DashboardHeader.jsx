@@ -252,7 +252,7 @@ class DashboardHeader extends Component {
         <Tooltip key="revision-history" tooltip={t`Revision history`}>
           <Link
             to={location.pathname + "/history"}
-            data-metabase-event={"Dashboard;Revisions"}
+            data-metabase-event="Dashboard;Revisions"
           >
             {t`Revision history`}
           </Link>
@@ -286,7 +286,7 @@ class DashboardHeader extends Component {
           <Link
             className={extraButtonClassNames}
             to={location.pathname + "/details"}
-            data-metabase-event={"Dashboard;EditDetails"}
+            data-metabase-event="Dashboard;EditDetails"
           >
             {t`Edit dashboard details`}
           </Link>,
@@ -306,7 +306,7 @@ class DashboardHeader extends Component {
         <Link
           className={extraButtonClassNames}
           to={location.pathname + "/history"}
-          data-metabase-event={"Dashboard;EditDetails"}
+          data-metabase-event="Dashboard;EditDetails"
         >
           {t`Revision history`}
         </Link>,
@@ -316,7 +316,7 @@ class DashboardHeader extends Component {
         <Link
           className={extraButtonClassNames}
           to={location.pathname + "/copy"}
-          data-metabase-event={"Dashboard;Copy"}
+          data-metabase-event="Dashboard;Copy"
         >
           {t`Duplicate`}
         </Link>,
@@ -327,7 +327,7 @@ class DashboardHeader extends Component {
           <Link
             className={extraButtonClassNames}
             to={location.pathname + "/move"}
-            data-metabase-event={"Dashboard;Move"}
+            data-metabase-event="Dashboard;Move"
           >
             {t`Move`}
           </Link>,
@@ -339,7 +339,7 @@ class DashboardHeader extends Component {
           <Link
             className={extraButtonClassNames}
             to={location.pathname + "/archive"}
-            data-metabase-event={"Dashboard;Archive"}
+            data-metabase-event="Dashboard;Archive"
           >
             {t`Archive`}
           </Link>,

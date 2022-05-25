@@ -59,7 +59,7 @@ export function initBrush(parent, child, onBrushChange, onBrushEnd) {
     moveToBack(parent.select(".brush").node());
     // remove the escape keydown listener
     window.removeEventListener("keydown", onKeyDown, true);
-    // reset the fitler and redraw
+    // reset the filter and redraw
     child.filterAll();
     parent.redraw();
 

@@ -166,7 +166,7 @@ export function QuestionFilterWidget({
         color={color("filter")}
         active={isShowingFilterSidebar}
         onClick={isShowingFilterSidebar ? onCloseFilter : onAddFilter}
-        data-metabase-event={`View Mode; Open Filter Widget`}
+        data-metabase-event="View Mode; Open Filter Widget"
       >
         {t`Filter`}
       </HeaderButton>

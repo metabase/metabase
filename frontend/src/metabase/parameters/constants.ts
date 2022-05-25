@@ -155,7 +155,7 @@ export const TYPE_SUPPORTS_LINKED_FILTERS = [
   "location",
 ];
 
-export const TYPE_USABLE_AS_LINKED_FILTER = [
+export const FIELD_FILTER_PARAMETER_TYPES = [
   "date",
   "string",
   "number",

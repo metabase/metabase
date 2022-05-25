@@ -1467,7 +1467,7 @@ const TablePicker = ({
           hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
-          width={"100%"}
+          width="100%"
           searchable={hasFiltering && tables.length >= minTablesToShowSearch}
           onChange={item => onChangeTable(item.table)}
           itemIsSelected={item =>
@@ -1565,7 +1565,7 @@ class FieldPicker extends Component {
           hasInitialFocus={hasInitialFocus}
           sections={sections}
           maxHeight={Infinity}
-          width={"100%"}
+          width="100%"
           searchable={hasFiltering}
           onChange={item => onChangeField(item.field)}
           itemIsSelected={item =>

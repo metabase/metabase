@@ -7,7 +7,6 @@
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
             [metabase.driver.presto-common :as presto-common]
             [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
             [metabase.driver.sql.util :as sql.u]
@@ -249,13 +248,13 @@
   [_ message]
   (condp re-matches message
     #"^java.net.ConnectException: Connection refused.*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^clojure.lang.ExceptionInfo: Catalog .* does not exist.*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"^java.net.UnknownHostException.*$"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
     #".*"                               ; default
     message))
