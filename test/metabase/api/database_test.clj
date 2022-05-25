@@ -87,7 +87,7 @@
                    (dissoc :schedules)))))
 
       (testing "Superusers should see DB details"
-        (is (= (db-details)
+        (is (= (assoc (db-details) :can-manage true)
                (-> (mt/user-http-request :crowberto :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules))))))
 
