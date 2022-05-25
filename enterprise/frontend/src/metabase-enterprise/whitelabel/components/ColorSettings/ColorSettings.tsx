@@ -13,16 +13,16 @@ import {
 
 export interface ColorSettingsProps {
   initialColors?: Record<string, string>;
-  originalColors?: Record<string, string>;
+  originalColors: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
 const ColorSettings = ({
-  initialColors = {},
-  originalColors = {},
+  initialColors,
+  originalColors,
   onChange,
 }: ColorSettingsProps): JSX.Element => {
-  const [colors, setColors] = useState(initialColors);
+  const [colors, setColors] = useState(initialColors ?? {});
 
   const handleChange = useCallback(
     (colors: Record<string, string>) => {
