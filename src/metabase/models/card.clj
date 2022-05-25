@@ -215,6 +215,12 @@
       (db/insert! action/QueryAction {:card_id card-id
                                       :action_id action-id}))))
 
+(defn- delete-actions-when-not-writable [{is-write? :is_write card-id :id :as c}]
+  (when (false? is-write?)
+    (db/execute! {:delete-from [:action :a]
+                  :where [:in :id {:select [:action_id]
+                                   :from [:query_action]
+                                   :where [:= :card_id card-id]}]})))
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (u/prog1 card
@@ -272,7 +278,9 @@
     ;; additional checks (Enterprise Edition only)
     (@pre-update-check-sandbox-constraints changes)
     ;; create Action and QueryAction when is_write is set true
-    (create-actions-when-is-writable changes)))
+    (create-actions-when-is-writable changes)
+    ;; delete Action and QueryAction when is_write is set false
+    (delete-actions-when-not-writable changes)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
