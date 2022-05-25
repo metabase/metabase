@@ -1,8 +1,6 @@
 (ns metabase.models.action
-  (:require
-   [toucan.db :as db]
-   [toucan.models :as models]
-   [metabase.util :as u]))
+  (:require [metabase.util :as u]
+            [toucan.models :as models]))
 
 (models/defmodel QueryAction :query_action)
 (models/defmodel Action :action)
@@ -13,4 +11,3 @@
          {:hydration-keys (constantly [:action])
           :types          (constantly {:type :keyword})
           :properties     (constantly {:timestamped? true})}))
-

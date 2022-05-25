@@ -209,7 +209,7 @@
                                  (describe-database query-db-id)))
                           {:status-code 400})))))))
 
-(defn- create-actions-when-is-writable [{is-write? :is_write card-id :id :as card}]
+(defn- create-actions-when-is-writable [{is-write? :is_write card-id :id}]
   (when is-write?
     (let [{action-id :id} (db/insert! action/Action {:type "query"})]
       (db/insert! action/QueryAction {:card_id card-id
@@ -245,7 +245,7 @@
 (defn- pre-update [{archived? :archived, id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint?
-  (u/prog1 (create-actions-when-is-writable changes)
+  (u/prog1 changes
     ;; if the Card is archived, then remove it from any Dashboards
     (when archived?
       (db/delete! 'DashboardCard :card_id id))
@@ -270,7 +270,9 @@
     ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
     (collection/check-collection-namespace Card (:collection_id changes))
     ;; additional checks (Enterprise Edition only)
-    (@pre-update-check-sandbox-constraints changes)))
+    (@pre-update-check-sandbox-constraints changes)
+    ;; create Action and QueryAction when is_write is set true
+    (create-actions-when-is-writable changes)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
