@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import { debounce } from "lodash";
 import BrandColorSection from "../BrandColorSection";
@@ -22,10 +22,7 @@ const ColorSchemeWidget = ({
   onChange,
 }: ColorSchemeWidgetProps): JSX.Element => {
   const [colors, setColors] = useState(initialColors);
-
-  const onChangeDebounced = useMemo(() => {
-    return onChange && debounce(onChange, DEBOUNCE_TIMEOUT);
-  }, [onChange]);
+  const onChangeDebounced = useDebounce(onChange);
 
   const handleChange = useCallback(
     (colors: Record<string, string>) => {
@@ -50,6 +47,19 @@ const ColorSchemeWidget = ({
       </SettingSection>
     </SettingRoot>
   );
+};
+
+const useDebounce = (onChange?: (colors: Record<string, string>) => void) => {
+  const ref = useRef(onChange);
+  ref.current = onChange;
+
+  const callback = useCallback((colors: Record<string, string>) => {
+    return ref.current?.(colors);
+  }, []);
+
+  return useMemo(() => {
+    return debounce(callback, DEBOUNCE_TIMEOUT);
+  }, [callback]);
 };
 
 export default ColorSchemeWidget;
