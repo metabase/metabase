@@ -5,15 +5,10 @@ import { ErrorCard, ScrollAnchor, WarningIcon } from "./FormError.styled";
 
 interface FormErrorProps {
   error?: ReactNode;
-  className?: string;
   anchorMarginTop?: number;
 }
 
-export default function FormError({
-  error,
-  className,
-  anchorMarginTop,
-}: FormErrorProps) {
+export default function FormError({ error, anchorMarginTop }: FormErrorProps) {
   const scrollAnchorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (error) {
@@ -23,7 +18,7 @@ export default function FormError({
 
   if (error) {
     return (
-      <ErrorCard flat className={cx("bg-error", className)}>
+      <ErrorCard flat>
         <ScrollAnchor anchorMarginTop={anchorMarginTop} ref={scrollAnchorRef} />
         <WarningIcon name="warning" />
         <span>{error}</span>

@@ -17,6 +17,7 @@ import {
   StepDescription,
   StepFormGroup,
   StepButton,
+  FormActions,
 } from "./DatabaseStep.styled";
 import { FormProps } from "./types";
 
@@ -147,7 +148,6 @@ const DatabaseForm = ({
             onChange={engine => onChangeField("engine", engine)}
           />
           <FormError
-            className="mt3 mb4"
             anchorMarginTop={24}
             error={getErrorMessageWithBoldFields(error, formFields)}
           />
@@ -155,12 +155,10 @@ const DatabaseForm = ({
             <FormField key={name} name={name} />
           ))}
           {engine ? (
-            <>
-              <div className="flex mb2 justify-end">
-                <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
-                <FormSubmit className="ml2">{submitTitle}</FormSubmit>
-              </div>
-            </>
+            <FormActions>
+              <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
+              <FormSubmit className="ml2">{submitTitle}</FormSubmit>
+            </FormActions>
           ) : (
             <StepActions>
               <StepButton onClick={onSkip}>

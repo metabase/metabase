@@ -175,7 +175,6 @@ class DatabaseEditApp extends Component {
                                 }
                               />
                               <FormError
-                                className="mt3 mb4"
                                 anchorMarginTop={24}
                                 error={getErrorMessageWithBoldFields(
                                   error,

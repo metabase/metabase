@@ -29,3 +29,8 @@ export const StepFormGroup = styled.div`
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
 `;
+
+export const FormActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
