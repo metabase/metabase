@@ -670,8 +670,10 @@
           ;; do secrets require special handling to not clobber them or mess up encryption?
           (do (db/update! Database id :options
                           (assoc (:options database) :persist-models-enabled true))
-              (task.persist-refresh/schedule-persistence-for-database! database
-                                                                      (public-settings/persisted-model-refresh-interval-hours))
+              (task.persist-refresh/schedule-persistence-for-database!
+                database
+                (public-settings/persisted-model-refresh-interval-hours)
+                (public-settings/persisted-model-refresh-anchor-time))
               api/generic-204-no-content)
           (throw (ex-info (ddl.i/error->message error schema)
                           {:error error
