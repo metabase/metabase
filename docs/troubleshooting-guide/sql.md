@@ -36,15 +36,14 @@ What type of [SQL variable][sql-variable-def] are you using?
 
 If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
 
-[debugging-aggregations]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
-[debugging-duplicated-data]: ./sql-logic-duplicated-data.html
-[debugging-missing-data]: ./sql-logic-missing-data.html
-[debugging-sql-logic]: ./sql-logic.html
+[debugging-aggregations]: /learn/debugging-sql/sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
+[debugging-duplicated-data]: /learn/debugging-sql/sql-logic-duplicated-data.html
+[debugging-missing-data]: /learn/debugging-sql/sql-logic-missing-data.html
+[debugging-sql-logic]: /learn/debugging-sql/sql-logic.html
 [debugging-sql-syntax]: /learn/debugging-sql/sql-syntax.html
 [discourse]: https://discourse.metabase.com/
 [sql-editor]: /glossary/native_query_editor.html
-[sql-error-message]: ./sql-error-message.html
 [sql-variable-def]: /glossary/variable.html#example-variable-in-metabase
 [sql-variable-type]: /learn/sql-questions/sql-variables.html#the-different-types-of-variables-available-for-native-sql-queries
-[troubleshooting-database-syncs]: /docs/latest/troubleshooting-guide/sync-fingerprint-scan.html
-[troubleshooting-datetimes]: /docs/latest/troubleshooting-guide/timezones.html
+[troubleshooting-database-syncs]: ./sync-fingerprint-scan.html
+[troubleshooting-datetimes]: ./timezones.html
