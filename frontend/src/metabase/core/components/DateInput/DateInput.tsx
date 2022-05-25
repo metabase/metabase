@@ -19,7 +19,7 @@ const TIME_FORMAT_24 = "HH:mm";
 
 export type DateInputAttributes = Omit<
   InputHTMLAttributes<HTMLDivElement>,
-  "value" | "onChange"
+  "size" | "value" | "onChange"
 >;
 
 export interface DateInputProps extends DateInputAttributes {
