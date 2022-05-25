@@ -2,14 +2,14 @@ import React, { useCallback } from "react";
 import { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
 import { color } from "metabase/lib/colors";
-import BrandColorScheme from "./BrandColorScheme";
+import BrandColorSection from "./BrandColorSection";
 
 export default {
-  title: "Whitelabel/BrandColorScheme",
-  component: BrandColorScheme,
+  title: "Whitelabel/BrandColorSection",
+  component: BrandColorSection,
 };
 
-const Template: ComponentStory<typeof BrandColorScheme> = args => {
+const Template: ComponentStory<typeof BrandColorSection> = args => {
   const [{ colors }, updateArgs] = useArgs();
 
   const handleChange = useCallback(
@@ -17,7 +17,9 @@ const Template: ComponentStory<typeof BrandColorScheme> = args => {
     [updateArgs],
   );
 
-  return <BrandColorScheme {...args} colors={colors} onChange={handleChange} />;
+  return (
+    <BrandColorSection {...args} colors={colors} onChange={handleChange} />
+  );
 };
 
 export const Default = Template.bind({});
