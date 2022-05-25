@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableHeaderCell,
   TableHeaderRow,
-  TableRoot,
 } from "./BrandColorSettings.styled";
 
 export interface BrandColorSettingsProps {
@@ -67,7 +66,7 @@ const BrandColorTable = ({
   onChange,
 }: BrandColorTableProps): JSX.Element => {
   return (
-    <TableRoot>
+    <div>
       <TableHeader>
         <TableHeaderRow>
           <TableHeaderCell>{t`Color`}</TableHeaderCell>
@@ -85,7 +84,7 @@ const BrandColorTable = ({
           />
         ))}
       </TableBody>
-    </TableRoot>
+    </div>
   );
 };
 

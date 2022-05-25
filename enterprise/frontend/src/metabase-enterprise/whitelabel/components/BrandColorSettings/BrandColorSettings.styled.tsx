@@ -14,11 +14,7 @@ const cellStyles = css`
   }
 `;
 
-export const TableRoot = styled.table`
-  display: block;
-`;
-
-export const TableHeader = styled.thead`
+export const TableHeader = styled.div`
   display: block;
   border: 1px solid ${color("border")};
   border-bottom: none;
@@ -26,12 +22,12 @@ export const TableHeader = styled.thead`
   background-color: ${color("bg-light")};
 `;
 
-export const TableHeaderRow = styled.tr`
+export const TableHeaderRow = styled.div`
   display: flex;
   align-items: center;
 `;
 
-export const TableHeaderCell = styled.th`
+export const TableHeaderCell = styled.div`
   ${cellStyles};
   color: ${color("text-medium")};
   font-size: 0.5rem;
@@ -42,14 +38,14 @@ export const TableHeaderCell = styled.th`
   padding-bottom: 0.5rem;
 `;
 
-export const TableBody = styled.tbody`
+export const TableBody = styled.div`
   display: block;
   border: 1px solid ${color("border")};
   border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;
 `;
 
-export const TableBodyRow = styled.tr`
+export const TableBodyRow = styled.div`
   display: flex;
   align-items: center;
 
@@ -58,7 +54,7 @@ export const TableBodyRow = styled.tr`
   }
 `;
 
-export const TableBodyCell = styled.td`
+export const TableBodyCell = styled.div`
   ${cellStyles};
   color: ${color("text-medium")};
   padding-top: 1rem;
