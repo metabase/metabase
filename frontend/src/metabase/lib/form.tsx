@@ -41,7 +41,7 @@ function tokenizeErrorMessage(
   }
 
   const [fieldTitle, ...restFieldTitles] = fieldTitles;
-  const fieldIndex = message.indexOf(fieldTitle);
+  const fieldIndex = message.toLowerCase().indexOf(fieldTitle.toLowerCase());
   if (fieldIndex > 0) {
     const endOfFieldIndex = fieldIndex + fieldTitle.length;
     const [beforeField, field, afterField] = [

@@ -79,5 +79,71 @@ describe("form", () => {
         normalizer: getDefaultNormalizer({ trim: false }),
       });
     });
+
+    it("should return bold field name when form fields match and a field occurs multiple times", () => {
+      const errorMessage = "Your Username and Username might be incorrect.";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.port",
+            title: "Port",
+          },
+          {
+            name: "details.user",
+            title: "Username",
+          },
+        ],
+      );
+
+      render(<span>{errorMessageWithBoldFields}</span>);
+
+      expect(
+        screen.getByText("Your ", {
+          normalizer: getDefaultNormalizer({ trim: false }),
+        }),
+      ).toBeInTheDocument();
+      const fields = screen.getAllByText("Username");
+      expect(fields[0]).toBeInTheDocument();
+      expect(fields).toHaveLength(2);
+
+      expect(
+        screen.getByText(" and ", {
+          normalizer: getDefaultNormalizer({ trim: false }),
+        }),
+      ).toBeInTheDocument();
+      screen.getByText(" might be incorrect.", {
+        normalizer: getDefaultNormalizer({ trim: false }),
+      });
+    });
+
+    it("should return bold field name when form fields match case insensitively", () => {
+      const errorMessage = "Your username is incorrect.";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.port",
+            title: "Port",
+          },
+          {
+            name: "details.user",
+            title: "Username",
+          },
+        ],
+      );
+
+      render(<span>{errorMessageWithBoldFields}</span>);
+
+      expect(
+        screen.getByText("Your ", {
+          normalizer: getDefaultNormalizer({ trim: false }),
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("username")).toBeInTheDocument();
+      screen.getByText(" is incorrect.", {
+        normalizer: getDefaultNormalizer({ trim: false }),
+      });
+    });
   });
 });
