@@ -2,8 +2,10 @@ import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color, darken } from "metabase/lib/colors";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import { InputSize } from "./types";
 
 export interface InputProps {
+  fieldSize?: InputSize;
   hasError?: boolean;
   fullWidth?: boolean;
   hasLeftIcon?: boolean;
@@ -57,6 +59,13 @@ export const InputField = styled.input<InputProps>`
     props.hasRightIcon &&
     css`
       padding-right: 2.25rem;
+    `};
+
+  ${props =>
+    props.fieldSize === "small" &&
+    css`
+      font-size: 0.875rem;
+      padding: 0.4375rem 0.625rem;
     `};
 `;
 

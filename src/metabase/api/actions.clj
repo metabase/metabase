@@ -49,7 +49,7 @@
      (actions/table-action! (keyword action) query))))
 
 (api/defendpoint POST "/row/:action"
-  "Generic API endpoint for doing an action against a specific row."
+  "Generic API endpoint for doing an action against a single, specific row."
   [action :as {{:keys [database] :as query} :body}]
   {database s/Int}
   (let [query (mbql.normalize/normalize query)]
@@ -60,6 +60,10 @@
                 (ex-message e)
                 {:exception-data (ex-data e)
                  :status-code 400}))))
+    (case (keyword action)
+      :update (s/validate {:update-row {s/Keyword s/Any} s/Keyword s/Any} query)
+      :create (s/validate {:create-row {s/Keyword s/Any} s/Keyword s/Any} query)
+      nil) ;; nothing else to check
     (do-check-actions-enabled
      database
      (fn [driver]

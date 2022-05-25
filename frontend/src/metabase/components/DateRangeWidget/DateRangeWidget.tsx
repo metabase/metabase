@@ -1,7 +1,7 @@
 import React from "react";
 
 import moment from "moment";
-import DateAllOptionsWidget from "./DateAllOptionsWidget";
+import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
 
 const SEPARATOR = "~"; // URL-safe
 

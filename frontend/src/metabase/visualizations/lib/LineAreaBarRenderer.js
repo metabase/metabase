@@ -453,7 +453,7 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     if (isBubble) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
       chart
-        .radiusValueAccessor(d => d.value)
+        .radiusValueAccessor(d => d.key[2])
         .r(
           d3.scale
             .sqrt()
