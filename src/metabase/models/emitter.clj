@@ -43,7 +43,6 @@
                                  (select-keys [:action_id])
                                  not-empty)]
     (db/update! EmitterAction (:emitter_id emitter) emitter-action))
-  (tap> emitter)
   (not-empty (select-keys emitter [:emitter_id :dashboard_id :card_id])))
 
 (defn- pre-delete
