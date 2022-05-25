@@ -1,15 +1,15 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
 import { color } from "metabase/lib/colors";
-import ColorSchemeWidget from "./ColorSchemeWidget";
+import ColorSettings from "./ColorSettings";
 
 export default {
-  title: "Whitelabel/ColorSchemeWidget",
-  component: ColorSchemeWidget,
+  title: "Whitelabel/ColorSettings",
+  component: ColorSettings,
 };
 
-const Template: ComponentStory<typeof ColorSchemeWidget> = args => {
-  return <ColorSchemeWidget {...args} />;
+const Template: ComponentStory<typeof ColorSettings> = args => {
+  return <ColorSettings {...args} />;
 };
 
 export const Default = Template.bind({});

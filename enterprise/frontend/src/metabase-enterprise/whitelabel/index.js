@@ -16,7 +16,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ColorSchemeWidget from "./containers/ColorSchemeWidget";
+import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
 import {
@@ -53,7 +53,7 @@ if (hasPremiumFeature("whitelabel")) {
         {
           key: "application-colors",
           display_name: t`Color Palette`,
-          widget: ColorSchemeWidget,
+          widget: ColorSettingsWidget,
         },
         {
           key: "application-logo-url",

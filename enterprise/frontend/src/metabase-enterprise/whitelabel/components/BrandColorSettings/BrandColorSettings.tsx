@@ -12,19 +12,19 @@ import {
   TableHeaderCell,
   TableHeaderRow,
   TableRoot,
-} from "./BrandColorSection.styled";
+} from "./BrandColorSettings.styled";
 
-export interface BrandColorSectionProps {
+export interface BrandColorSettingsProps {
   colors: Record<string, string>;
   originalColors: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
-const BrandColorSection = ({
+const BrandColorSettings = ({
   colors,
   originalColors,
   onChange,
-}: BrandColorSectionProps): JSX.Element => {
+}: BrandColorSettingsProps): JSX.Element => {
   const colorsRef = useRef(colors);
   colorsRef.current = colors;
 
@@ -119,4 +119,4 @@ const BrandColorRow = memo(function BrandColorRow({
   );
 });
 
-export default BrandColorSection;
+export default BrandColorSettings;
