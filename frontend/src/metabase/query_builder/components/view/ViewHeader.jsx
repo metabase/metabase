@@ -275,7 +275,7 @@ function AhHocQuestionLeftSide(props) {
             question={question}
             isObjectDetail={isObjectDetail}
             subHead
-            data-metabase-event={`Question Data Source Click`}
+            data-metabase-event="Question Data Source Click"
           />
         )}
       </ViewHeaderLeftSubHeading>
@@ -497,7 +497,7 @@ function ViewTitleHeaderRightSide(props) {
           isShowingSummarySidebar={isShowingSummarySidebar}
           onEditSummary={onEditSummary}
           onCloseSummary={onCloseSummary}
-          data-metabase-event={`View Mode; Open Summary Widget`}
+          data-metabase-event="View Mode; Open Summary Widget"
         />
       )}
       {QuestionNotebookButton.shouldRender(props) && (
@@ -518,7 +518,7 @@ function ViewTitleHeaderRightSide(props) {
         <NativeQueryButton
           size={16}
           question={question}
-          data-metabase-event={`Notebook Mode; Convert to SQL Click`}
+          data-metabase-event="Notebook Mode; Convert to SQL Click"
         />
       )}
       {hasExploreResultsLink && <ExploreResultsLink question={question} />}

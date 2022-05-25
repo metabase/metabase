@@ -205,7 +205,7 @@ class AddSeriesModal extends Component {
               {t`Done`}
             </button>
             <button
-              data-metabase-event={"Dashboard;Edit Series Modal;cancel"}
+              data-metabase-event="Dashboard;Edit Series Modal;cancel"
               className="Button ml2"
               onClick={this.props.onClose}
             >
