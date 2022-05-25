@@ -11,7 +11,6 @@ const cellStyles = css`
   &:first-of-type {
     flex: 0 0 auto;
     width: 12rem;
-    padding-right: 2.5rem;
   }
 `;
 

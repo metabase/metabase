@@ -2,7 +2,11 @@ import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import { debounce } from "lodash";
 import BrandColorSection from "../BrandColorSection";
-import { SettingSection, SettingTitle } from "./ColorSchemeWidget.styled";
+import {
+  SettingRoot,
+  SettingSection,
+  SettingTitle,
+} from "./ColorSchemeWidget.styled";
 
 const DEBOUNCE_TIMEOUT = 400;
 
@@ -32,7 +36,7 @@ const ColorSchemeWidget = ({
   );
 
   return (
-    <div>
+    <SettingRoot>
       <SettingSection>
         <SettingTitle>{t`User interface colors`}</SettingTitle>
         <BrandColorSection
@@ -44,7 +48,7 @@ const ColorSchemeWidget = ({
       <SettingSection>
         <SettingTitle>{t`Chart colors`}</SettingTitle>
       </SettingSection>
-    </div>
+    </SettingRoot>
   );
 };
 

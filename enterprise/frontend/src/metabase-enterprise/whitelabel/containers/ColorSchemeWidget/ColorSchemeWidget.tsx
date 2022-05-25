@@ -1,4 +1,5 @@
 import { connect } from "react-redux";
+import { originalColors } from "../../lib/whitelabel";
 import ColorSchemeWidget from "../../components/ColorSchemeWidget";
 import { State } from "metabase-types/store";
 
@@ -12,6 +13,7 @@ interface ColorSchemeWidgetProps {
 
 const mapStateToProps = (state: State, props: ColorSchemeWidgetProps) => ({
   initialColors: props.setting.value,
+  originalColors,
 });
 
 export default connect(mapStateToProps)(ColorSchemeWidget);
