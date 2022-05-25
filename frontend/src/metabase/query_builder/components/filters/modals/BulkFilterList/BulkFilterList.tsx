@@ -8,7 +8,6 @@ import StructuredQuery, {
   isSegmentOption,
 } from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
-import { isSegment } from "metabase/lib/query/filter";
 import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterSelect, SegmentFilterSelect } from "../BulkFilterSelect";
@@ -19,6 +18,7 @@ import {
   ListRowLabel,
 } from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
+
 export interface BulkFilterListProps {
   query: StructuredQuery;
   filters: Filter[];
@@ -38,12 +38,11 @@ const BulkFilterList = ({
   onRemoveFilter,
   onClearSegments,
 }: BulkFilterListProps): JSX.Element => {
-  const sortedDimensions = useMemo(() => dimensions.sort(sortDimensions), [
-    dimensions,
-  ]);
-  
   const [dimensions, segments] = useMemo(
-    () => [options.filter(isDimensionOption), options.filter(isSegmentOption)],
+    () => [
+      options.filter(isDimensionOption).sort(sortDimensions),
+      options.filter(isSegmentOption),
+    ],
     [options],
   );
 
@@ -58,7 +57,7 @@ const BulkFilterList = ({
           onClearSegments={onClearSegments}
         />
       )}
-      {sortedDimensions.map(({ dimension }, index) => (
+      {dimensions.map(({ dimension }, index) => (
         <BulkFilterListItem
           key={index}
           query={query}

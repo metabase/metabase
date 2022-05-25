@@ -48,4 +48,4 @@ const getSortValue = (dimensionOption: DimensionOption): number => {
 };
 
 export const sortDimensions = (a: DimensionOption, b: DimensionOption) =>
-  getSortValue(a) > getSortValue(b) ? 1 : -1;
+  getSortValue(a) - getSortValue(b);
