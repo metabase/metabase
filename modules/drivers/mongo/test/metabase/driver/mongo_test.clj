@@ -18,6 +18,7 @@
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
+            [metabase.test.data.mongo :as tdm]
             [monger.collection :as mc]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
@@ -58,12 +59,13 @@
                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
                                                 :expected false}
                                                {:details  {:conn-uri "mongodb://localhost:27017/metabase-test"}
-                                                :expected true}
+                                                :expected (not (tdm/ssl-required?))}
                                                {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
-                                                :expected false}]]
+                                                :expected false}]
+           :let [ssl-details (tdm/conn-details details)]]
      (testing (str "connect with " details)
        (is (= expected
-              (driver.u/can-connect-with-details? :mongo details))
+              (driver.u/can-connect-with-details? :mongo ssl-details))
            (str message))))))
 
 (deftest database-supports?-test
@@ -82,10 +84,11 @@
                                                     :port    27017
                                                     :dbname  "metabase-test"
                                                     :version "2.2134234.lol"}
-                                         :expected false}]]
+                                         :expected false}]
+           :let [ssl-details (tdm/conn-details details)]]
       (testing (str "connect with " details)
         (is (= expected
-               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details details})]
+               (let [db (db/insert! Database {:name "dummy", :engine "mongo", :details ssl-details})]
                  (driver/database-supports? :mongo :expressions db))))))))
 
 

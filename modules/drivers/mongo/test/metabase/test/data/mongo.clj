@@ -1,6 +1,7 @@
 (ns metabase.test.data.mongo
   (:require [cheshire.core :as json]
             [cheshire.generate :as json.generate]
+            [clojure.java.io :as io]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
@@ -14,14 +15,35 @@
 
 (tx/add-test-extensions! :mongo)
 
+(defn ssl-required?
+  "Returns if the mongo server requires an SSL connection."
+  []
+  (some? (System/getenv "SERVER_REQUIRES_SSL")))
+
+(defn- ssl-params
+  "Returns the Metabase connection parameters needed for an SSL connection."
+  []
+  {:ssl true
+   :ssl-use-client-auth true
+   :client-ssl-key (-> "ssl/mongo/metabase.key" io/resource slurp)
+   :client-ssl-key-passw "passw"
+   :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
+   :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)})
+
+(defn conn-details
+  "Extends `details` with the parameters necessary for an SSL connection."
+  [details]
+  (cond->> details
+    (ssl-required?) (merge (ssl-params))))
+
 (defmethod tx/dbdef->connection-details :mongo
   [_ _ dbdef]
-  {:dbname (tx/escaped-database-name dbdef)
-   :host   "localhost"})
+  (conn-details {:dbname (tx/escaped-database-name dbdef)
+                 :host   "localhost"}))
 
 (defn- destroy-db! [driver dbdef]
-  (with-open [mongo-connection (mg/connect (tx/dbdef->connection-details driver :server dbdef))]
-    (mg/drop-db mongo-connection (tx/escaped-database-name dbdef))))
+  (with-mongo-connection [mongo-connection (tx/dbdef->connection-details driver :server dbdef)]
+    (mg/drop-db (.getMongo mongo-connection) (tx/escaped-database-name dbdef))))
 
 (defmethod tx/create-db! :mongo
   [driver {:keys [table-definitions], :as dbdef} & {:keys [skip-drop-db?], :or {skip-drop-db? false}}]
