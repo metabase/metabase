@@ -5,7 +5,7 @@ export const TableHeader = styled.div`
   display: block;
   padding: 1rem 1.5rem;
   border: 1px solid ${color("border")};
-  border-radius: 0.5rem 0.5rem 0 0;
+  border-top-left-radius: 0.5rem;
 `;
 
 export const TableTitle = styled.div`
@@ -17,7 +17,7 @@ export const TableTitle = styled.div`
 export const TableBody = styled.div`
   border: 1px solid ${color("border")};
   border-top: none;
-  border-radius: 0 0 0.5rem 0.5rem;
+  border-bottom-left-radius: 0.5rem;
 `;
 
 export const TableBodyRow = styled.div`
