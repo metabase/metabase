@@ -14,7 +14,7 @@ export const ColorPillRoot = styled.div<ColorPillRootProps>`
   padding: ${props => props.isBordered && "0.1875rem"};
   border-width: ${props => (props.isBordered ? "0.0625rem" : "0")};
   border-color: ${props =>
-    props.isSelected ? color("border") : "transparent"};
+    props.isSelected ? color("text-light") : "transparent"};
   border-style: ${props => (props.isDefault ? "dashed" : "solid")};
   border-radius: 50%;
   cursor: pointer;

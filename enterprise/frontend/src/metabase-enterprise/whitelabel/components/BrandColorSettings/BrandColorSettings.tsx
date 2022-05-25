@@ -111,7 +111,13 @@ const BrandColorRow = memo(function BrandColorRow({
   return (
     <TableBodyRow>
       <TableBodyCell>
-        <ColorPicker color={color ?? originalColor} onChange={handleChange} />
+        <ColorPicker
+          color={color ?? originalColor}
+          isBordered
+          isSelected
+          isDefault={color == null || color !== originalColor}
+          onChange={handleChange}
+        />
       </TableBodyCell>
       <TableBodyCell>{option.description}</TableBodyCell>
     </TableBodyRow>
