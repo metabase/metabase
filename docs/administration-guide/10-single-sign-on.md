@@ -1,11 +1,13 @@
 # Authenticating with Google Sign-In or LDAP
 
 - [Enabling Google Sign-In](#google-sign-in)
-  - [Creating Metabase accounts with Google Sign-in]
+  - [Working in the Google developer console](#working-in-the-google-developer-console)
+  - [Creating Metabase accounts with Google Sign-in](#enabling-account-creation-with-google-sign-in)
 - [Enabling LDAP authentication](#enabling-ldap-authentication)
   - [LDAP user schema](#ldap-user-schema)
   - [LDAP group mapping](#ldap-group-mapping)
   - [LDAP group membership filter](#ldap-group-membership-filter)
+- [Enabling SSO with Keycloak](sso-keycloak.md)
 - [Syncing user attributes at login](#syncing-user-attributes-at-login)
   - [Syncing attributes with Google](#syncing-attributes-with-google)
   - [Syncing attributes with LDAP](#syncing-attributes-with-ldap)
@@ -19,6 +21,8 @@ As time goes on we may add other auth providers. If you have a service you’d l
 
 ## Enabling Google Sign-In
 
+### Working in the Google developer console
+
 To let your team start signing in with Google you’ll first need to create an application through Google’s [developer console](https://console.developers.google.com/projectselector2/apis/library).
 
 Next, you'll have to create authorization credentials for your application by following [the instructions from Google here](https://developers.google.com/identity/sign-in/web/sign-in#create_authorization_credentials). Specify the URI of your Metabase instance in the “Authorized JavaScript origins” section. You should leave the “Authorized Redirect URIs” section blank.
@@ -27,7 +31,7 @@ Once you have your `client_id` (ending in `.apps.googleusercontent.com`), click 
 
 Now existing Metabase users signed into a Google account that matches their Metabase account email can sign in with just a click.
 
-### Enabling account creation with Google Sign-In
+### Creating Metabase accounts with Google Sign-in
 
 If you’ve added your Google client ID to your Metabase settings, you can also let users sign up on their own without creating accounts for them.
 
