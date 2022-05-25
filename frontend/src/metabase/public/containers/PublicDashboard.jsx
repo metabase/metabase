@@ -58,7 +58,7 @@ const mapDispatchToProps = {
 
 // NOTE: this should use DashboardData HoC
 class PublicDashboard extends Component {
-  async UNSAFE_componentWillMount() {
+  _initialize = async () => {
     const {
       initialize,
       fetchDashboard,
@@ -82,14 +82,22 @@ class PublicDashboard extends Component {
       console.error(error);
       setErrorPage(error);
     }
+  };
+
+  async componentDidMount() {
+    this._initialize();
   }
 
   componentWillUnmount() {
     this.props.cancelFetchDashboardCardData();
   }
 
-  UNSAFE_componentWillReceiveProps(nextProps) {
-    if (!_.isEqual(this.props.parameterValues, nextProps.parameterValues)) {
+  async componentDidUpdate(prevProps) {
+    if (this.props.dashboardId !== prevProps.dashboardId) {
+      return this._initialize();
+    }
+
+    if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
       this.props.fetchDashboardCardData({ reload: false, clear: true });
     }
   }

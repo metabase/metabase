@@ -175,6 +175,7 @@ export function QuestionFilterWidget({
         labelBreakpoint="sm"
         color={color("filter")}
         icon="ellipsis"
+        aria-label={t`Show more filters`}
         onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       />
     </ButtonGroup>

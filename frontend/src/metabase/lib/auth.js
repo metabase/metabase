@@ -28,6 +28,7 @@ export const attachGoogleAuth = (element, onLogin, onError) => {
     const auth2 = window.gapi.auth2.init({
       client_id: Settings.get("google-auth-client-id"),
       cookiepolicy: "single_host_origin",
+      plugin_name: "metabase-legacy-google-auth",
     });
 
     auth2.attachClickHandler(

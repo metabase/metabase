@@ -39,6 +39,7 @@ export const ModalTitle = styled(Ellipsified)`
 
 export const ModalTabList = styled(TabList)`
   padding: 0 2rem;
+  flex-shrink: 0;
 `;
 
 export const ModalTabPanel = styled(TabPanel)`
@@ -46,8 +47,13 @@ export const ModalTabPanel = styled(TabPanel)`
   padding: 0 2rem;
 `;
 
-export const ModalDivider = styled.div`
+interface ModalDividerProps {
+  marginY?: string;
+}
+
+export const ModalDivider = styled.div<ModalDividerProps>`
   border-top: 1px solid ${color("border")};
+  margin: ${props => (props.marginY ? props.marginY : "0")} 0;
 `;
 
 export const ModalCloseButton = styled(IconButtonWrapper)`

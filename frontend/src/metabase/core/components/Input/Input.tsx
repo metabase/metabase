@@ -13,9 +13,16 @@ import {
   InputRightButton,
   InputRoot,
 } from "./Input.styled";
+import { InputSize } from "./types";
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+export type InputAttributes = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "size"
+>;
+
+export interface InputProps extends InputAttributes {
   inputRef?: Ref<HTMLInputElement>;
+  size?: InputSize;
   error?: boolean;
   fullWidth?: boolean;
   leftIcon?: string;
@@ -31,6 +38,7 @@ const Input = forwardRef(function Input(
     className,
     style,
     inputRef,
+    size = "medium",
     error,
     fullWidth,
     leftIcon,
@@ -53,6 +61,7 @@ const Input = forwardRef(function Input(
       <InputField
         {...props}
         ref={inputRef}
+        fieldSize={size}
         hasError={error}
         fullWidth={fullWidth}
         hasRightIcon={Boolean(rightIcon)}
