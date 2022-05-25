@@ -15,6 +15,7 @@ import validate from "metabase/lib/validate";
 import { canonicalCollectionId } from "metabase/collections/utils";
 
 import Databases from "metabase/entities/databases";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getWritebackEnabled } from "metabase/writeback/selectors";
 import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
@@ -22,6 +23,7 @@ import "./SaveQuestionModal.css";
 
 function mapStateToProps(state) {
   return {
+    isAdmin: getUserIsAdmin(state),
     isWritebackEnabled: getWritebackEnabled(state),
   };
 }
@@ -37,6 +39,7 @@ class SaveQuestionModal extends Component {
     onClose: PropTypes.func.isRequired,
     multiStep: PropTypes.bool,
     isWritebackEnabled: PropTypes.bool.isRequired,
+    isAdmin: PropTypes.bool.isRequired,
   };
 
   validateName = (name, context) => {
@@ -48,9 +51,10 @@ class SaveQuestionModal extends Component {
   };
 
   hasIsWriteField = () => {
-    const { card, database, isWritebackEnabled } = this.props;
+    const { card, database, isAdmin, isWritebackEnabled } = this.props;
     const isNative = Q_DEPRECATED.isNative(card.dataset_query);
     return (
+      isAdmin &&
       isNative &&
       isWritebackEnabled &&
       isDatabaseWritebackEnabled(database.getPlainObject())

@@ -11,6 +11,7 @@ import CollapseSection from "metabase/components/CollapseSection";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import Questions from "metabase/entities/questions";
 
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { getWritebackEnabled } from "metabase/writeback/selectors";
 import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
@@ -18,12 +19,14 @@ const COLLAPSED_FIELDS = ["cache_ttl"];
 
 function mapStateToProps(state) {
   return {
+    isAdmin: getUserIsAdmin(state),
     isWritebackEnabled: getWritebackEnabled(state),
   };
 }
 
 const propTypes = {
   question: PropTypes.object.isRequired, // metabase-lib Question instance
+  isAdmin: PropTypes.bool.isRequired,
   isWritebackEnabled: PropTypes.bool.isRequired,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
@@ -31,6 +34,7 @@ const propTypes = {
 
 function EditQuestionInfoModal({
   question,
+  isAdmin,
   isWritebackEnabled,
   onClose,
   onSave,
@@ -38,6 +42,7 @@ function EditQuestionInfoModal({
   const modalTitle = question.isDataset() ? t`Edit model` : t`Edit question`;
   const database = question.database().getPlainObject();
   const hasIsWriteField =
+    isAdmin &&
     question.isNative() &&
     !question.isDataset() &&
     isWritebackEnabled &&
