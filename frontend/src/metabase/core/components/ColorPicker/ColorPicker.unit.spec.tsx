@@ -6,7 +6,9 @@ import ColorPicker from "./ColorPicker";
 
 const TestColorPicker = () => {
   const [color, setColor] = useState("white");
-  return <ColorPicker color={color} onChange={setColor} />;
+  const handleChange = (color?: string) => setColor(color ?? "white");
+
+  return <ColorPicker color={color} onChange={handleChange} />;
 };
 
 describe("ColorPicker", () => {
