@@ -194,7 +194,7 @@ class OtherParameterList extends React.Component {
               <span className="text-italic">this</span>
             )} filter.`}</p>
             {usableParameters.map(({ id, name }) => (
-              <div className={"bg-light rounded mb2"} key={name}>
+              <div className="bg-light rounded mb2" key={name}>
                 <div className="flex justify-between align-center p2">
                   <span
                     className="border-dashed-bottom text-bold cursor-pointer"

@@ -440,7 +440,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-testid="add-series-button"
-    data-metabase-event={"Dashboard;Edit Series Modal;open"}
+    data-metabase-event="Dashboard;Edit Series Modal;open"
     className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
@@ -464,7 +464,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
 const ToggleCardPreviewButton = ({ isPreviewing, onPreviewToggle }) => {
   return (
     <a
-      data-metabase-event={"Dashboard;Text;edit"}
+      data-metabase-event="Dashboard;Text;edit"
       className="text-dark-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
       onClick={onPreviewToggle}
       style={HEADER_ACTION_STYLE}
