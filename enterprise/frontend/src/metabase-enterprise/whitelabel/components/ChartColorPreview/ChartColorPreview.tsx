@@ -1,6 +1,11 @@
 import React from "react";
 import { t } from "ttag";
-import { TableHeader, TableRoot, TableTitle } from "./ChartColorPreview.styled";
+import {
+  TableBody,
+  TableHeader,
+  TableRoot,
+  TableTitle,
+} from "./ChartColorPreview.styled";
 
 const ChartColorPreview = (): JSX.Element => {
   return (
@@ -8,6 +13,7 @@ const ChartColorPreview = (): JSX.Element => {
       <TableHeader>
         <TableTitle>{t`Palette preview`}</TableTitle>
       </TableHeader>
+      <TableBody />
     </TableRoot>
   );
 };
