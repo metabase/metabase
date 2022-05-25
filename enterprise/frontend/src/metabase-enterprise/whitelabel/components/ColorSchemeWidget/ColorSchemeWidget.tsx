@@ -4,6 +4,8 @@ import { debounce } from "lodash";
 import BrandColorSection from "../BrandColorSection";
 import { SectionTitle } from "./ColorSchemeWidget.styled";
 
+const DEBOUNCE_TIMEOUT = 400;
+
 export interface ColorSchemeWidgetProps {
   initialColors?: Record<string, string>;
   originalColors?: Record<string, string>;
@@ -18,7 +20,7 @@ const ColorSchemeWidget = ({
   const [colors, setColors] = useState(initialColors);
 
   const onChangeDebounced = useMemo(() => {
-    return onChange && debounce(onChange, 400);
+    return onChange && debounce(onChange, DEBOUNCE_TIMEOUT);
   }, [onChange]);
 
   const handleChange = useCallback(
