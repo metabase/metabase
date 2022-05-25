@@ -43,7 +43,7 @@
                                               :sql delete-hsql})))}))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
-  [_action driver {database-id :database :as query}]
+  [_action driver {database-id :database :keys [update-row] :as query}]
   (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql        (qp.store/with-store
                           (try
@@ -52,18 +52,51 @@
                             (catch Exception e
                               (catch-throw e 404))))]
     (check-one-row-affected connection-spec query raw-hsql)
-    (let [update-values (:update-row query)
-          target-table (first (:from raw-hsql))
+    (let [target-table (first (:from raw-hsql))
           update-hsql (-> raw-hsql
-                          (assoc
-                           :update target-table
-                           :set update-values)
-                          (select-keys [:update :set :where]))]
+                          (select-keys [:where])
+                          (assoc :update target-table :set update-row))]
       {:rows-updated (try (jdbc/execute! connection-spec (hformat/format update-hsql))
                           (catch Exception e
                             (catch-throw e 400 {:query query
                                                 :sql   update-hsql})))})))
 
+(defmethod actions/row-action! [:create :sql-jdbc]
+  [_action driver {database-id :database :keys [create-row] :as query}]
+  (let [connection-spec (sql-jdbc.conn/db->pooled-connection-spec database-id)
+        raw-hsql        (qp.store/with-store
+                          (try
+                            (qp/preprocess query) ; seeds qp store as a side effect so we can generate honeysql
+                            (sql.qp/mbql->honeysql driver query)
+                            (catch Exception e
+                              (catch-throw e 404))))
+        create-hsql (-> raw-hsql
+                        (dissoc :select :from)
+                        (assoc :insert-into (first (:from raw-hsql)))
+                        (assoc :values [create-row]))]
+
+    {:created-row
+     (if (= :driver :postgres)
+       ;; postgres is happy with "returning *", However:
+       ;; for mysql: to return all the columns we must add them to the column list and provide default values in the VALUES clause.
+       ;; for h2: I don't see an easy way to do it, so for those two, just use select *.
+       (let [pg-create-hsql (-> raw-hsql (assoc :returning [:*]))]
+         (try (jdbc/execute! connection-spec
+                             (hformat/format pg-create-hsql)
+                             {:return-keys true})
+              (catch Exception e
+                (catch-throw e 400 {:query query
+                                    :sql   create-hsql}))))
+       (try (let [col->val (jdbc/execute! connection-spec (hformat/format create-hsql) {:return-keys true})]
+              (first
+               (jdbc/query connection-spec (hformat/format (assoc raw-hsql
+                                                                  :select [:*]
+                                                                  :where (into [:and]
+                                                                               (for [[col val] col->val]
+                                                                                 [:= col val])))))))
+            (catch Exception e
+              (catch-throw e 400 {:query query
+                                  :sql   create-hsql}))))}))
 
 #_(defmethod actions/row-action! [:update :metabase.driver/driver]
     [_action driver {database-id :database :as query}]
