@@ -1,20 +1,22 @@
 import React, { useState } from "react";
-import { ColorSetting } from "./types";
+import { t } from "ttag";
 import BrandColorSection from "../BrandColorSection";
-import { originalColors } from "../../lib/whitelabel";
+import { SectionTitle } from "./ColorSchemeWidget.styled";
 
 export interface ColorSchemeWidgetProps {
-  setting: ColorSetting;
-  onChange?: (colors: Record<string, string>) => void;
+  initialColors?: Record<string, string>;
+  originalColors?: Record<string, string>;
 }
 
 const ColorSchemeWidget = ({
-  setting,
+  initialColors = {},
+  originalColors = {},
 }: ColorSchemeWidgetProps): JSX.Element => {
-  const [colors, setColors] = useState(setting.value ?? {});
+  const [colors, setColors] = useState(initialColors);
 
   return (
     <div>
+      <SectionTitle>{t`User interface colors`}</SectionTitle>
       <BrandColorSection
         colors={colors}
         originalColors={originalColors}
