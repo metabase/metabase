@@ -32,11 +32,11 @@ const BrandColorSettings = ({
   }, []);
 
   const handleChange = useCallback(
-    (name: string, color?: string) => {
+    (colorName: string, color?: string) => {
       if (color) {
-        onChange?.(assoc(colorsRef.current, name, color));
+        onChange?.(assoc(colorsRef.current, colorName, color));
       } else {
-        onChange?.(dissoc(colorsRef.current, name));
+        onChange?.(dissoc(colorsRef.current, colorName));
       }
     },
     [onChange],
@@ -56,7 +56,7 @@ interface BrandColorTableProps {
   colors: Record<string, string>;
   originalColors: Record<string, string>;
   options: ColorOption[];
-  onChange: (name: string, color?: string) => void;
+  onChange: (colorName: string, color?: string) => void;
 }
 
 const BrandColorTable = ({
@@ -92,7 +92,7 @@ interface BrandColorRowProps {
   color?: string;
   originalColor: string;
   option: ColorOption;
-  onChange: (name: string, color?: string) => void;
+  onChange: (colorName: string, color?: string) => void;
 }
 
 const BrandColorRow = memo(function BrandColorRow({

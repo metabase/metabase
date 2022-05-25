@@ -1,9 +1,11 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { memo, useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 import { assoc, dissoc } from "icepick";
-import { getChartColorOptions } from "./utils";
+import ColorPicker from "metabase/core/components/ColorPicker";
+import { getChartColorGroups } from "./utils";
 import {
   TableBody,
+  TableBodyCell,
   TableBodyRow,
   TableHeader,
   TableTitle,
@@ -23,16 +25,16 @@ const ChartColorSettings = ({
   const colorsRef = useRef(colors);
   colorsRef.current = colors;
 
-  const options = useMemo(() => {
-    return getChartColorOptions();
+  const colorGroups = useMemo(() => {
+    return getChartColorGroups();
   }, []);
 
   const handleChange = useCallback(
-    (name: string, color?: string) => {
+    (colorName: string, color?: string) => {
       if (color) {
-        onChange?.(assoc(colorsRef.current, name, color));
+        onChange?.(assoc(colorsRef.current, colorName, color));
       } else {
-        onChange?.(dissoc(colorsRef.current, name));
+        onChange?.(dissoc(colorsRef.current, colorName));
       }
     },
     [onChange],
@@ -42,7 +44,7 @@ const ChartColorSettings = ({
     <ChartColorTable
       colors={colors}
       originalColors={originalColors}
-      options={options}
+      colorGroups={colorGroups}
       onChange={handleChange}
     />
   );
@@ -51,14 +53,14 @@ const ChartColorSettings = ({
 interface ChartColorTable {
   colors: Record<string, string>;
   originalColors: Record<string, string>;
-  options: string[][];
+  colorGroups: string[][];
   onChange: (name: string, color?: string) => void;
 }
 
 const ChartColorTable = ({
   colors,
   originalColors,
-  options,
+  colorGroups,
   onChange,
 }: ChartColorTable): JSX.Element => {
   return (
@@ -67,14 +69,14 @@ const ChartColorTable = ({
         <TableTitle>{t`Chart colors`}</TableTitle>
       </TableHeader>
       <TableBody>
-        {options.map((option, index) => (
+        {colorGroups.map((colorGroup, index) => (
           <TableBodyRow key={index}>
-            {option.map(name => (
+            {colorGroup.map(colorName => (
               <ChartColorCell
-                key={name}
-                name={name}
-                color={colors[name]}
-                originalColor={originalColors[name]}
+                key={colorName}
+                color={colors[colorName]}
+                originalColor={originalColors[colorName]}
+                colorName={colorName}
                 onChange={onChange}
               />
             ))}
@@ -86,14 +88,30 @@ const ChartColorTable = ({
 };
 
 interface ChartColorCellProps {
-  name: string;
   color?: string;
   originalColor: string;
-  onChange: (name: string, color?: string) => void;
+  colorName: string;
+  onChange: (colorName: string, color?: string) => void;
 }
 
-const ChartColorCell = (props: ChartColorCellProps): JSX.Element => {
-  return <div />;
-};
+const ChartColorCell = memo(function ChartColorCell({
+  color,
+  originalColor,
+  colorName,
+  onChange,
+}: ChartColorCellProps) {
+  const handleChange = useCallback(
+    (color?: string) => {
+      onChange(colorName, color);
+    },
+    [colorName, onChange],
+  );
+
+  return (
+    <TableBodyCell>
+      <ColorPicker color={color ?? originalColor} onChange={handleChange} />
+    </TableBodyCell>
+  );
+});
 
 export default ChartColorSettings;
