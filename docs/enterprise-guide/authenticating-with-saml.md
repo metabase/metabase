@@ -130,13 +130,17 @@ Your IdP may label it a little differently. Here are some of the names we've fou
 | OneLogin | Issuer URL                           |
 
 
-**SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Your IdP might have you download this certificate as a file, which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase. Again, different providers may have slightly different labels for this:
+**SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! 
+
+Your IdP might have you download this certificate as a file (usually `.cer` or `.pem`), which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase. Again, different providers may have slightly different labels for this:
 
 | Provider | Name                |
 | -------- | ------------------- |
 | Auth0    | Signing Certificate |
 | Okta     | X.509 Certificate   |
 | OneLogin | X.509 Certificate   |
+
+Note that your certificate text may include header and footer comments that look like `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`. These comments should be included when pasting your certificate text into Metabase.
 
 ### Settings for signing SSO requests (optional)
 
