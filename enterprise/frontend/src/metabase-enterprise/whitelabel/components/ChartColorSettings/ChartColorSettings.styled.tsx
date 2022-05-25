@@ -34,6 +34,7 @@ export const TableBodyCell = styled.div`
   padding: 1rem 1.5rem;
 
   &:not(:first-of-type) {
+    border-left: 1px solid ${color("border")};
     background-color: ${color("bg-light")};
   }
 `;
