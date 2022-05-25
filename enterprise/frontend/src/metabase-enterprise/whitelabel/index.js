@@ -16,7 +16,7 @@ import {
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ColorSchemeWidget from "./components/ColorSchemeWidget";
+import ColorSchemeWidget from "./containers/ColorSchemeWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
 import {
