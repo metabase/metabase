@@ -109,7 +109,13 @@ const ChartColorCell = memo(function ChartColorCell({
 
   return (
     <TableBodyCell>
-      <ColorPicker color={color ?? originalColor} onChange={handleChange} />
+      <ColorPicker
+        color={color ?? originalColor}
+        isBordered
+        isSelected
+        isDefault={color == null || color !== originalColor}
+        onChange={handleChange}
+      />
     </TableBodyCell>
   );
 });
