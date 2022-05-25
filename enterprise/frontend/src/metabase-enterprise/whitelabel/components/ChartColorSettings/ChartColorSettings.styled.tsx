@@ -30,6 +30,7 @@ export const TableBodyRow = styled.div`
 `;
 
 export const TableBodyCell = styled.div`
+  flex: 0 0 auto;
   width: 12rem;
   padding: 1rem 1.5rem;
 

@@ -2,9 +2,12 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorSettings from "../ChartColorSettings";
+import ChartColorPreview from "../ChartColorPreview";
 import {
+  BrandColorSection,
+  ChartColorSection,
+  SectionContent,
   SettingRoot,
-  SettingSection,
   SettingTitle,
 } from "./ColorSettings.styled";
 
@@ -31,22 +34,25 @@ const ColorSettings = ({
 
   return (
     <SettingRoot>
-      <SettingSection>
+      <BrandColorSection>
         <SettingTitle>{t`User interface colors`}</SettingTitle>
         <BrandColorSettings
           colors={colors}
           originalColors={originalColors}
           onChange={handleChange}
         />
-      </SettingSection>
-      <SettingSection>
+      </BrandColorSection>
+      <ChartColorSection>
         <SettingTitle>{t`Chart colors`}</SettingTitle>
-        <ChartColorSettings
-          colors={colors}
-          originalColors={originalColors}
-          onChange={handleChange}
-        />
-      </SettingSection>
+        <SectionContent>
+          <ChartColorSettings
+            colors={colors}
+            originalColors={originalColors}
+            onChange={handleChange}
+          />
+          <ChartColorPreview />
+        </SectionContent>
+      </ChartColorSection>
     </SettingRoot>
   );
 };
