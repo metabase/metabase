@@ -1,11 +1,13 @@
 (ns metabase.task.persist-refresh
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.conversion :as qc]
             [clojurewerkz.quartzite.jobs :as jobs]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [clojurewerkz.quartzite.triggers :as triggers]
             [java-time :as t]
             [metabase.db :as mdb]
+            [metabase.driver :as driver]
             [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.card :refer [Card]]
@@ -13,12 +15,14 @@
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.task-history :refer [TaskHistory]]
             [metabase.public-settings :as public-settings]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.task :as task]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p]
             [toucan.db :as db])
-  (:import [org.quartz ObjectAlreadyExistsException Trigger]))
+  (:import java.util.TimeZone
+           [org.quartz ObjectAlreadyExistsException Trigger]))
 
 (defn- job-context->job-type
   [job-context]
@@ -236,14 +240,16 @@
 
 (defn- cron-schedule
   "Return a cron schedule that fires every `hours` hours."
-  [hours]
-  (cron/schedule
-   ;; every 8 hours
-   (cron/cron-schedule (if (= hours 24)
-                         ;; hack: scheduling for midnight UTC but this does raise the issue of anchor time
-                         "0 0 0 * * ? *"
-                         (format "0 0 0/%d * * ? *" hours)))
-   (cron/with-misfire-handling-instruction-do-nothing)))
+  [hours anchor-time]
+  (let [[start-hour start-minute] (map parse-long (str/split anchor-time #":"))]
+    (cron/schedule
+      (cron/cron-schedule (if (= 24 hours)
+                            (format "0 %d %d * * ? *" start-minute start-hour)
+                            (format "0 %d %d/%d * * ? *" start-minute start-hour hours)))
+      (cron/in-time-zone (TimeZone/getTimeZone (or (driver/report-timezone)
+                                                   (qp.timezone/system-timezone-id)
+                                                   "UTC")))
+      (cron/with-misfire-handling-instruction-do-nothing))))
 
 (def ^:private prune-scheduled-trigger
   (triggers/build
@@ -252,7 +258,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)
     (triggers/with-schedule
-      (cron-schedule 1))))
+      (cron-schedule 1 "00:00"))))
 
 (def ^:private prune-once-trigger
   (triggers/build
@@ -261,7 +267,7 @@
     (triggers/for-job (jobs/key prune-job-key))
     (triggers/start-now)))
 
-(defn- database-trigger [database interval-hours]
+(defn- database-trigger [database interval-hours anchor-time]
   (triggers/build
    (triggers/with-description (format "Refresh models for database %d" (u/the-id database)))
    (triggers/with-identity (database-trigger-key database))
@@ -270,7 +276,7 @@
    (triggers/for-job (jobs/key refresh-job-key))
    (triggers/start-now)
    (triggers/with-schedule
-     (cron-schedule interval-hours))))
+     (cron-schedule interval-hours anchor-time))))
 
 (defn- individual-trigger [persisted-info]
   (triggers/build
@@ -285,8 +291,8 @@
 
 (defn schedule-persistence-for-database!
   "Schedule a database for persistence refreshing."
-  [database interval-hours]
-  (let [tggr (database-trigger database interval-hours)]
+  [database interval-hours anchor-time]
+  (let [tggr (database-trigger database interval-hours anchor-time)]
     (log/info
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
@@ -344,10 +350,11 @@
   `:persist-models-enabled` in the options at interval [[public-settings/persisted-model-refresh-interval-hours]]."
   []
   (let [dbs-with-persistence (filter (comp :persist-models-enabled :options) (Database))
-        interval-hours       (public-settings/persisted-model-refresh-interval-hours)]
+        interval-hours       (public-settings/persisted-model-refresh-interval-hours)
+        anchor-time          (public-settings/persisted-model-refresh-anchor-time)]
     (unschedule-all-refresh-triggers! refresh-job-key)
     (doseq [db dbs-with-persistence]
-      (schedule-persistence-for-database! db interval-hours))))
+      (schedule-persistence-for-database! db interval-hours anchor-time))))
 
 (defn enable-persisting!
   "Enable persisting

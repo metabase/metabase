@@ -258,6 +258,7 @@ export default class FilterPopover extends Component<Props, State> {
               onBack={onBack}
               onCommit={this.handleCommit}
               onFilterChange={this.handleFilterChange}
+              disableChangingDimension={!showFieldPicker}
             >
               {!isSidebar ? (
                 <Button
