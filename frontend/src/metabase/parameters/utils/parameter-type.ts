@@ -1,6 +1,5 @@
 import _ from "underscore";
-// todo, rename
-import { TYPE_USABLE_AS_LINKED_FILTER } from "metabase/parameters/constants";
+import { FIELD_FILTER_PARAMETER_TYPES } from "metabase/parameters/constants";
 
 import { FieldFilterUiParameter } from "metabase/parameters/types";
 import { Parameter } from "metabase-types/types/Parameter";
@@ -33,5 +32,5 @@ export function isFieldFilterParameter(
   parameter: Parameter,
 ): parameter is FieldFilterUiParameter {
   const type = getParameterType(parameter);
-  return TYPE_USABLE_AS_LINKED_FILTER.includes(type);
+  return FIELD_FILTER_PARAMETER_TYPES.includes(type);
 }
