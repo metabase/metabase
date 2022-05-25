@@ -12,7 +12,7 @@ import {
 } from "./ColorSettings.styled";
 
 export interface ColorSettingsProps {
-  initialColors?: Record<string, string>;
+  initialColors: Record<string, string> | null;
   originalColors: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }

@@ -1,3 +1,3 @@
 export interface ColorSetting {
-  value?: Record<string, string>;
+  value: Record<string, string> | null;
 }
