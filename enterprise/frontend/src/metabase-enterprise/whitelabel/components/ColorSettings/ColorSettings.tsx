@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 import BrandColorSettings from "../BrandColorSettings";
+import ChartColorSettings from "../ChartColorSettings";
 import {
   SettingRoot,
   SettingSection,
@@ -40,6 +41,11 @@ const ColorSettings = ({
       </SettingSection>
       <SettingSection>
         <SettingTitle>{t`Chart colors`}</SettingTitle>
+        <ChartColorSettings
+          colors={colors}
+          originalColors={originalColors}
+          onChange={handleChange}
+        />
       </SettingSection>
     </SettingRoot>
   );
