@@ -47,7 +47,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
       return t`Off`;
     }
     if (job.state === "creating") {
-      return t`Caching in progress`;
+      return t`Queued`;
     }
     if (job.state === "refreshing") {
       return t`Refreshing`;

@@ -36,7 +36,7 @@ function getStatusMessage(job: ModelCacheRefreshStatus) {
     return t`Failed to update model cache`;
   }
   if (job.state === "creating") {
-    return t`Caching in progress`;
+    return t`Queued`;
   }
   if (job.state === "refreshing") {
     return t`Refreshing model cache`;
