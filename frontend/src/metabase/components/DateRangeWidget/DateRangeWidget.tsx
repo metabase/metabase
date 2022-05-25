@@ -2,7 +2,6 @@ import React from "react";
 
 import moment from "moment";
 import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
-import { formatRangeWidget } from "metabase/parameters/utils/date-formatting";
 
 interface DateRangeWidgetProps {
   setValue: (value: string | null) => void;
@@ -24,7 +23,5 @@ const DateRangeWidget = ({ value, ...props }: DateRangeWidgetProps) => {
     />
   );
 };
-
-DateRangeWidget.format = formatRangeWidget;
 
 export default DateRangeWidget;

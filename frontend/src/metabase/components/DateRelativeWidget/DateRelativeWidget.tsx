@@ -3,7 +3,6 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import { formatRelativeWidget } from "metabase/parameters/utils/date-formatting";
 import { DATE_MBQL_FILTER_MAPPING } from "metabase/parameters/constants";
 
 type Shortcut = {
@@ -164,8 +163,6 @@ class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
   constructor(props: DateRelativeWidgetProps) {
     super(props);
   }
-
-  static format = formatRelativeWidget;
 
   render() {
     const { value, setValue, onClose } = this.props;

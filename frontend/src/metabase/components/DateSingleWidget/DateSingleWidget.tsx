@@ -2,7 +2,6 @@ import React from "react";
 
 import moment from "moment";
 import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
-import { formatSingleWidget } from "metabase/parameters/utils/date-formatting";
 
 interface DateSingleWidgetProps {
   setValue: (value: string | null) => void;
@@ -20,7 +19,5 @@ const DateSingleWidget = ({ value, ...props }: DateSingleWidgetProps) => {
     />
   );
 };
-
-DateSingleWidget.format = formatSingleWidget;
 
 export default DateSingleWidget;

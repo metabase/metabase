@@ -4,7 +4,6 @@ import _ from "underscore";
 import cx from "classnames";
 
 import YearPicker from "metabase/components/YearPicker";
-import { formatMonthYearWidget } from "metabase/parameters/utils/date-formatting";
 
 import { MonthContainer, MonthList } from "./DateMonthYearWidget.styled";
 
@@ -41,8 +40,6 @@ class DateMonthYearWidget extends React.Component<Props, State> {
       };
     }
   }
-
-  static format = formatMonthYearWidget;
 
   componentWillUnmount() {
     const { month, year } = this.state;

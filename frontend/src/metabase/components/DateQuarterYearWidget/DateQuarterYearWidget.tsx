@@ -5,7 +5,6 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import YearPicker from "metabase/components/YearPicker";
-import { formatQuarterYearWidget } from "metabase/parameters/utils/date-formatting";
 
 // translator: this is a "moment" format string (https://momentjs.com/docs/#/displaying/format/) It should include "Q" for the quarter number, and raw text can be escaped by brackets. For eample "[Quarter] Q" will be rendered as "Quarter 1" etc
 const QUARTER_FORMAT_STRING = t`[Q]Q`;
@@ -43,8 +42,6 @@ class DateQuarterYearWidget extends React.Component<Props, State> {
       };
     }
   }
-
-  static format = formatQuarterYearWidget;
 
   componentWillUnmount() {
     const { quarter, year } = this.state;

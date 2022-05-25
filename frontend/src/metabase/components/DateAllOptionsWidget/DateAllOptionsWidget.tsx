@@ -5,10 +5,7 @@ import cx from "classnames";
 
 import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
-import {
-  filterToUrlEncoded,
-  formatAllOptionsWidget,
-} from "metabase/parameters/utils/date-formatting";
+import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
 import { Container, UpdateButton } from "./DateWidget.styled";
 
@@ -63,7 +60,5 @@ const DateAllOptionsWidget = ({
     </Container>
   );
 };
-
-DateAllOptionsWidget.format = formatAllOptionsWidget;
 
 export default DateAllOptionsWidget;
