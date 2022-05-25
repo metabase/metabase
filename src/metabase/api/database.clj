@@ -330,14 +330,17 @@
   {include (s/maybe (s/enum "tables" "tables.fields"))}
   (let [include-editable-data-model? (Boolean/parseBoolean include_editable_data_model)
         exclude-uneditable-details?  (Boolean/parseBoolean exclude_uneditable_details)
-        filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))]
-    (cond-> (api/check-404 (Database id))
+        filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
+        database                     (api/check-404 (Database id))]
+    (cond-> database
       filter-by-data-access?       api/read-check
       exclude-uneditable-details?  api/write-check
       true                         add-expanded-schedules
       true                         (get-database-hydrate-include include)
       include-editable-data-model? check-db-data-model-perms
-      mi/can-write?                secret/expand-db-details-inferred-secret-values)))
+      (mi/can-write? database)     (->
+                                     secret/expand-db-details-inferred-secret-values
+                                     (assoc :can-manage true)))))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
