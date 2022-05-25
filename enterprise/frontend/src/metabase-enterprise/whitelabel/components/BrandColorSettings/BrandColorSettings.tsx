@@ -115,7 +115,7 @@ const BrandColorRow = memo(function BrandColorRow({
           color={color ?? originalColor}
           isBordered
           isSelected
-          isDefault={color == null || color !== originalColor}
+          isDefault={color == null || color === originalColor}
           onChange={handleChange}
         />
       </TableBodyCell>
