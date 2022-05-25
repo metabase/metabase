@@ -32,4 +32,8 @@ export const TableBodyRow = styled.div`
 export const TableBodyCell = styled.div`
   width: 12rem;
   padding: 1rem 1.5rem;
+
+  &:not(:first-of-type) {
+    background-color: ${color("bg-light")};
+  }
 `;
