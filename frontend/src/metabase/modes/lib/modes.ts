@@ -18,7 +18,7 @@ import {
   MODE_TYPE_PIVOT,
 } from "metabase-lib/lib/Mode/constants";
 
-export function getMode(question: Question): QueryMode | null {
+export function getMode(question: Question): QueryMode | any | null {
   const mode = getModeFromLib(question);
   if (!mode) {
     return null;

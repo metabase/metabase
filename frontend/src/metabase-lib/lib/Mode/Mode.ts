@@ -35,8 +35,8 @@ export default class Mode {
 
   actionsForClick(
     clicked: ClickObject | undefined,
-    settings,
-    extraData,
+    settings: ObjectLiteral,
+    extraData: ObjectLiteral,
   ): ClickAction[] {
     return this._queryMode.drills().flatMap(actionCreator =>
       actionCreator({
