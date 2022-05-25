@@ -12,7 +12,7 @@
             [metabase.models :refer [Activity ApplicationPermissionsRevision BookmarkOrdering Card CardBookmark
                                      Collection CollectionBookmark CollectionPermissionGraphRevision
                                      Dashboard DashboardBookmark DashboardCard DashboardCardSeries
-                                     Database Dependency Dimension Field FieldValues
+                                     Database Dependency Dimension Emitter Field FieldValues
                                      LoginHistory Metric MetricImportantField ModerationReview NativeQuerySnippet
                                      Permissions PermissionsGroup PermissionsGroupMembership PermissionsRevision PersistedInfo Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Revision Secret Segment Session Setting Table
@@ -65,6 +65,7 @@
    Card
    CardBookmark
    DashboardBookmark
+   Emitter
    CollectionBookmark
    BookmarkOrdering
    DashboardCard

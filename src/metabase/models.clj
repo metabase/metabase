@@ -11,6 +11,7 @@
             [metabase.models.database :as database]
             [metabase.models.dependency :as dependency]
             [metabase.models.dimension :as dimension]
+            [metabase.models.emitter :as emitter]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
             [metabase.models.login-history :as login-history]
@@ -54,6 +55,7 @@
          database/keep-me
          dependency/keep-me
          dimension/keep-me
+         emitter/keep-me
          field/keep-me
          field-values/keep-me
          a-perm-revision/keep-me
@@ -100,6 +102,10 @@
  [database Database]
  [dependency Dependency]
  [dimension Dimension]
+ [emitter CardEmitter]
+ [emitter DashboardEmitter]
+ [emitter Emitter]
+ [emitter EmitterAction]
  [field Field]
  [field-values FieldValues]
  [login-history LoginHistory]

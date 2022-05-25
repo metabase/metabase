@@ -69,14 +69,4 @@
      (fn [driver]
        (actions/row-action! (keyword action) driver query)))))
 
-(defn- +check-actions-enabled
-  "Ring middleware that checks that the [[metabase.actions/experimental-enable-actions]] feature flag is enabled, and
-  returns a 403 Unauthorized response "
-  [handler]
-  (fn [request respond raise]
-    (if (actions/experimental-enable-actions)
-      (handler request respond raise)
-      (raise (ex-info (i18n/tru "Actions are not enabled.")
-                      {:status-code 400})))))
-
-(api/define-routes +check-actions-enabled)
+(api/define-routes actions/+check-actions-enabled)
