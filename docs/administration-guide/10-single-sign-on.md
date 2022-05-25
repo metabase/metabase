@@ -1,8 +1,19 @@
 # Authenticating with Google Sign-In or LDAP
 
+- [Enabling Google Sign-In](#google-sign-in)
+  - [Creating Metabase accounts with Google Sign-in]
+- [Enabling LDAP authentication](#enabling-ldap-authentication)
+  - [LDAP user schema](#ldap-user-schema)
+  - [LDAP group mapping](#ldap-group-mapping)
+  - [LDAP group membership filter](#ldap-group-membership-filter)
+- [Syncing user attributes at login](#syncing-user-attributes-at-login)
+  - [Syncing attributes with Google](#syncing-attributes-with-google)
+  - [Syncing attributes with LDAP](#syncing-attributes-with-ldap)
+- [Changing a user's login method from email to SSO](#changing-a-users-login-method-from-email-to-sso)
+
 Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) lets your team log in with a click instead of using email and password, and can optionally let them sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
 
-If you'd like to have your users authenticate with SAML or JWT, Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that. Learn more about authenticating with [SAML](../enterprise-guide/authenticating-with-saml.md) or [JWT](../enterprise-guide/authenticating-with-jwt.md).
+If you'd like to have your users authenticate with SAML or JWT, Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that. Learn more about authenticating with [SAML][saml-docs] or [JWT][jwt-docs].
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
@@ -82,15 +93,9 @@ As you can see below, if you have an **Accounting** group in both your LDAP serv
 - Updates to a person's group membership based on LDAP mappings are not instantaneous; the changes will take effect only after people log back in.
 - People are only ever added to or removed from mapped groups; the sync has no effect on groups in your Metabase that don't have an LDAP mapping.
 
-## LDAP advanced features
+### LDAP group membership filter
 
 {% include plans-blockquote.html feature="LDAP advanced features" %}
-
-### LDAP syncing user attributes
-
-If you're running a [paid version of Metabase](https://www.metabase.com/pricing) and using [data sandboxes](../enterprise-guide/data-sandboxes.md), you can use existing LDAP [user attributes](../enterprise-guide/data-sandboxes.html#getting-user-attributes) when granting sandboxed access.
-
-### LDAP group membership filter
 
 Group membership lookup filter. The placeholders {dn} and {uid} will be replaced by the user's Distinguished Name and UID, respectively.
 
@@ -99,3 +104,33 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 - [Using LDAP for authentication and access control](/learn/permissions/ldap-auth-access-control.html)
 - [LDAP troubleshooting guide](../troubleshooting-guide/ldap.md)
 - [Permissions overview](05-setting-permissions.md)
+
+## Syncing user attributes at login
+
+{% include plans-blockquote.html feature="Advanced authentication features" %}
+
+### Syncing attributes with LDAP
+
+LDAP user attributes are managed from your LDAP directory. If you've set up [data-sandboxing-docs][data-sandboxing-docs], these attributes will be [automatically passed to Metabase][getting-user-attributes].
+
+### Syncing attributes with Google
+
+User attributes can't be synced with regular Google Sign-In. You'll need to set up [Google SAML][google-saml-docs] or [JWT][jwt-docs] instead.
+
+## Changing a user's login method from email to SSO
+
+You cannot use the Admin panel to update the authentication method for a user once they have set it up for the first time.
+
+Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
+
+For Metabase accounts created with emails and passwords, you can:
+- Deactivate password authentication for all users from **Admin settings** > **Authentication**. You'll need to ask users to sign in with Google if they haven't already.
+- Manually update the user's login method in the Metabase application database. This option is not recommended unless you are very familiar with making changes to the application database.
+
+Note that you must have at least one user with email and password login. This ensures that you won't get locked out of Metabase if there are any problems with your SSO provider.
+
+[data-sandboxing-docs]: ../enterprise-guide/data-sandboxes.html
+[google-saml-docs]: ../enterprise-guide/authenticating-with-saml.html#google-saml
+[jwt-docs]: ../enterprise-guide/authenticating-with-jwt.html
+[saml-docs]: ../enterprise-guide/authenticating-with-saml.html
+[user-attributes-docs]: ../enterprise-guide/data-sandboxes.html#getting-user-attributes
