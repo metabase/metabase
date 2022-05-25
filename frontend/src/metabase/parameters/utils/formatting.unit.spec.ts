@@ -60,6 +60,13 @@ describe("metabase/parameters/utils/formatting", () => {
         fields: [],
       },
       {
+        type: "number/>=",
+        value: 1.111111111111,
+        expected: 1.111111111111,
+        fields: [],
+        hasOnlyFieldTargets: false,
+      },
+      {
         type: "string/=",
         value: "abc",
         expected: "abc",
@@ -77,21 +84,12 @@ describe("metabase/parameters/utils/formatting", () => {
         expected: "foo",
         fields: [],
       },
-      {
-        type: "location/country",
-        value: "foo",
-        expected: "foo",
-        fields: [],
-      },
     ];
 
     test.each(cases)(
       "should format $type parameter",
-      ({ type, value, expected, fields }) => {
-        const parameter = createMockUiParameter({
-          type,
-          fields,
-        });
+      ({ value, expected, ...parameterProps }) => {
+        const parameter = createMockUiParameter(parameterProps);
         expect(formatParameterValue(value, parameter)).toEqual(expected);
       },
     );
