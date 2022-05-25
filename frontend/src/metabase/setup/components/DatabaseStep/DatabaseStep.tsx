@@ -3,11 +3,9 @@ import { t } from "ttag";
 import _ from "underscore";
 import { updateIn } from "icepick";
 import Button from "metabase/core/components/Button";
-import FormError from "metabase/components/form/FormError";
 import Users from "metabase/entities/users";
 import Databases from "metabase/entities/databases";
 import DriverWarning from "metabase/containers/DriverWarning";
-import { getErrorMessageWithBoldFields } from "metabase/lib/form";
 import { DatabaseInfo, InviteInfo, UserInfo } from "metabase-types/store";
 import ActiveStep from "../ActiveStep";
 import InactiveStep from "../InvactiveStep";
@@ -135,11 +133,11 @@ const DatabaseForm = ({
         Form,
         FormField,
         FormSubmit,
+        FormMessage,
         formFields,
         values,
         onChangeField,
         submitTitle,
-        error,
       }: FormProps) => (
         <Form>
           <FormField name="engine" onChange={handleEngineChange} />
@@ -147,15 +145,12 @@ const DatabaseForm = ({
             engine={values.engine}
             onChange={engine => onChangeField("engine", engine)}
           />
-          <FormError
-            anchorMarginTop={24}
-            error={getErrorMessageWithBoldFields(error, formFields)}
-          />
           {_.reject(formFields, { name: "engine" }).map(({ name }) => (
             <FormField key={name} name={name} />
           ))}
           {engine ? (
             <FormActions>
+              <FormMessage noPadding />
               <Button type="button" onClick={onSkip}>{t`Skip`}</Button>
               <FormSubmit className="ml2">{submitTitle}</FormSubmit>
             </FormActions>

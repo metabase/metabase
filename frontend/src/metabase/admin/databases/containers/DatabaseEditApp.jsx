@@ -2,21 +2,18 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { compose } from "redux";
 
 import { t } from "ttag";
-import { isObject, reject } from "lodash";
+import _ from "underscore";
 import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
 
 import Button from "metabase/core/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import FormError from "metabase/components/form/FormError";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getErrorMessageWithBoldFields } from "metabase/lib/form";
 
 import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
@@ -153,12 +150,12 @@ class DatabaseEditApp extends Component {
                     {({
                       Form,
                       FormField,
+                      FormMessage,
                       FormSubmit,
                       formFields,
                       values,
                       submitTitle,
                       onChangeField,
-                      error,
                     }) => {
                       return (
                         <DatabaseEditContent>
@@ -174,18 +171,12 @@ class DatabaseEditApp extends Component {
                                   onChangeField("engine", engine)
                                 }
                               />
-                              <FormError
-                                anchorMarginTop={24}
-                                error={getErrorMessageWithBoldFields(
-                                  error,
-                                  formFields,
-                                )}
-                              />
-                              {reject(formFields, { name: "engine" }).map(
+                              {_.reject(formFields, { name: "engine" }).map(
                                 ({ name }) => (
                                   <FormField key={name} name={name} />
                                 ),
                               )}
+                              <FormMessage />
                               <div className="Form-actions text-centered">
                                 <FormSubmit className="block mb2">
                                   {submitTitle}
@@ -223,7 +214,7 @@ class DatabaseEditApp extends Component {
 }
 
 const getSubmitError = error => {
-  if (isObject(error?.data?.errors)) {
+  if (_.isObject(error?.data?.errors)) {
     return updateIn(error, ["data", "errors"], errors => ({
       details: errors,
     }));
@@ -232,7 +223,7 @@ const getSubmitError = error => {
   return error;
 };
 
-export default compose(
+export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
   title(({ database }) => database && database.name),
 )(DatabaseEditApp);
