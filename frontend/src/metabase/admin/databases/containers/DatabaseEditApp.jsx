@@ -15,7 +15,6 @@ import FormError from "metabase/components/form/FormError";
 import Sidebar from "metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar";
 import DriverWarning from "metabase/containers/DriverWarning";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { getErrorMessageWithBoldFields } from "metabase/lib/form";
 
 import Databases from "metabase/entities/databases";
 import { getSetting } from "metabase/selectors/settings";
@@ -175,10 +174,8 @@ class DatabaseEditApp extends Component {
                               />
                               <FormError
                                 anchorMarginTop={24}
-                                error={getErrorMessageWithBoldFields(
-                                  error,
-                                  formFields,
-                                )}
+                                error={error}
+                                formFields={formFields}
                               />
                               {_.reject(formFields, { name: "engine" }).map(
                                 ({ name }) => (
