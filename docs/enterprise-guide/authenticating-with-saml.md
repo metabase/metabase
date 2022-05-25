@@ -26,9 +26,9 @@ The form itself is broken up into three parts: information about Metabase that y
 So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently, so here are some documentation links that may help:
 
 - [Okta](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
-- [Auth0](https://auth0.com/docs/protocols/saml/saml-idp-generic)
-  - [Guide to setting up SAML with Auth0](saml-auth0.md)
 - [OneLogin](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
+- [Setting up SAML with Auth0](saml-auth0.md)
+- [Setting up SAML with Google](saml-google.md)
 
 The top portion of the form in Metabase has some of the information you'll need, with buttons to make copying the information easy.
 
