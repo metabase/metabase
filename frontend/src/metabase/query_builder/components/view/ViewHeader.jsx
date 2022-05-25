@@ -6,6 +6,7 @@ import cx from "classnames";
 import * as Urls from "metabase/lib/urls";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
+import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import Button from "metabase/core/components/Button";
 import ButtonBar from "metabase/components/ButtonBar";
@@ -437,7 +438,12 @@ function ViewTitleHeaderRightSide(props) {
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
-  const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
+  const database = question.database()?.getPlainObject?.();
+  const hasNewRowButton =
+    isWritebackEnabled &&
+    isDatabaseWritebackEnabled(database) &&
+    !isNative &&
+    query.isRaw();
 
   return (
     <div

@@ -39,6 +39,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import WritebackForm from "metabase/writeback/containers/WritebackForm";
 import { getWritebackEnabled } from "metabase/writeback/selectors";
+import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import {
   getObjectName,
@@ -151,7 +152,6 @@ export function ObjectDetailFn({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
-  ...rest
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -221,7 +221,12 @@ export function ObjectDetailFn({
     [zoomedRowID, followForeignKey],
   );
 
-  const canEdit = !!(isWritebackEnabled && table);
+  const database = question.database()?.getPlainObject?.();
+  const canEdit = !!(
+    table &&
+    isWritebackEnabled &&
+    isDatabaseWritebackEnabled(database)
+  );
   const deleteRow = React.useMemo(() => {
     if (canEdit) {
       return () =>
