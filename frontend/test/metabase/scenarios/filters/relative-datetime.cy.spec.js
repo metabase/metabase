@@ -78,9 +78,15 @@ describe("scenarios > question > relative-datetime", () => {
       openOrdersTable();
 
       cy.findByTextEnsureVisible("Created At").click();
-      cy.findByText("Filter by this column").click();
+
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByText("Last 30 Days").click();
+
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.icon("chevronleft").should("not.exist");
+        cy.findByText("Last 30 Days").click();
+      });
+
       cy.wait("@dataset");
 
       cy.findByText("Created At Previous 30 Days").click();
@@ -103,10 +109,6 @@ describe("scenarios > question > relative-datetime", () => {
         cy.icon("chevronleft")
           .first()
           .click();
-        cy.findByText("Specific dates...").should("exist");
-        cy.icon("chevronleft").click();
-        cy.findByText("Specific dates...").should("not.exist");
-        cy.findByText("Created At").click();
         cy.findByText("Specific dates...").should("exist");
         cy.findByText("Between").should("not.exist");
       });
