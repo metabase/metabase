@@ -1,15 +1,18 @@
 # Troubleshooting SQL questions
 
-## [I'm getting a SQL error message][sql-error-message]
+## [I'm getting a SQL syntax error][debugging-sql-syntax]
 
 - The error message appears in red text when you run a question that uses the [SQL editor][sql-editor].
 - The error message contains part of your SQL query, such as a column or table name.
 - The error message may also contain a three-digit API error code, such as `400` or `404`.
 
-## My SQL query results are incorrect
+## [My SQL query results are incorrect][debugging-sql-logic]
 
-- [My query uses joins](/learn/sql-questions/sql-join-types.html#common-problems-with-sql-joins).
-- [My dates and times are wrong](/docs/latest/troubleshooting-guide/timezones.html).
+- [My aggregations (counts, sums, etc.) are wrong][debugging-aggregations].
+- [My query results have duplicated rows][debugging-duplicated-data].
+- [My query results have missing rows][debugging-missing-data].
+- [My dates and times are wrong][troubleshooting-datetimes].
+- [My data isn't up to date][troubleshooting-database-syncs].
 
 ## My SQL variables aren't working
 
@@ -33,8 +36,15 @@ What type of [SQL variable][sql-variable-def] are you using?
 
 If you can’t solve your problem using the troubleshooting guides, search or ask the [Metabase community][discourse].
 
+[debugging-aggregations]: ./sql-logic.html#aggregated-results-counts-sums-etc-are-wrong
+[debugging-duplicated-data]: ./sql-logic-duplicated-data.html
+[debugging-missing-data]: ./sql-logic-missing-data.html
+[debugging-sql-logic]: ./sql-logic.html
+[debugging-sql-syntax]: /learn/debugging-sql/sql-syntax.html
 [discourse]: https://discourse.metabase.com/
 [sql-editor]: /glossary/native_query_editor.html
 [sql-error-message]: ./sql-error-message.html
 [sql-variable-def]: /glossary/variable.html#example-variable-in-metabase
 [sql-variable-type]: /learn/sql-questions/sql-variables.html#the-different-types-of-variables-available-for-native-sql-queries
+[troubleshooting-database-syncs]: /docs/latest/troubleshooting-guide/sync-fingerprint-scan.html
+[troubleshooting-datetimes]: /docs/latest/troubleshooting-guide/timezones.html
