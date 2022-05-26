@@ -1,5 +1,4 @@
 import d3 from "d3";
-import Color from "color";
 
 export const getColorScale = (
   extent: [number, number],
@@ -22,8 +21,4 @@ export const getColorScale = (
       )
       .range(colors);
   }
-};
-
-export const roundColor = (color: string) => {
-  return Color(color).string(0);
 };
