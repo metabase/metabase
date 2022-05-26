@@ -12,7 +12,7 @@ export default {
 const Template: ComponentStory<typeof ColorPicker> = args => {
   const [{ color }, updateArgs] = useArgs();
 
-  const handleChange = (color: string) => {
+  const handleChange = (color?: string) => {
     updateArgs({ color });
   };
 

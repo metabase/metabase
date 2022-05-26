@@ -1,11 +1,6 @@
 import React from "react";
 import xhrMock from "xhr-mock";
-import {
-  fireEvent,
-  renderWithProviders,
-  screen,
-  waitFor,
-} from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
   ORDERS,
@@ -360,12 +355,6 @@ describe("ViewHeader", () => {
 
         afterEach(() => {
           xhrMock.teardown();
-        });
-
-        it("displays collection where a question is saved to", async () => {
-          setup({ question });
-          await waitFor(() => screen.queryByText("Our analytics"));
-          expect(screen.queryByText("Our analytics")).toBeInTheDocument();
         });
 
         it("opens details sidebar on question name click", () => {

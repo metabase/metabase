@@ -199,7 +199,7 @@ const MONGO_EXAMPLES = {
 
 const TagExample = ({ datasetQuery, setDatasetQuery }) => (
   <div>
-    <h5>Example:</h5>
+    <h5>{t`Example:`}</h5>
     <p>
       <Code>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
