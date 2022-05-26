@@ -1,6 +1,7 @@
-import React, { memo, useCallback, useMemo, useRef } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { flatten, omit, set } from "lodash";
+import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getChartColorGroups } from "./utils";
 import {
@@ -23,12 +24,8 @@ const ChartColorSettings = ({
   originalColors,
   onChange,
 }: ChartColorSettingsProps): JSX.Element => {
-  const colorsRef = useRef(colors);
-  colorsRef.current = colors;
-
-  const colorGroups = useMemo(() => {
-    return getChartColorGroups();
-  }, []);
+  const colorsRef = useCurrentRef(colors);
+  const colorGroups = useMemo(getChartColorGroups, []);
 
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
@@ -38,12 +35,12 @@ const ChartColorSettings = ({
         onChange?.(omit({ ...colorsRef.current }, colorName));
       }
     },
-    [onChange],
+    [colorsRef, onChange],
   );
 
   const handleReset = useCallback(() => {
     onChange?.(omit({ ...colorsRef.current }, flatten(colorGroups)));
-  }, [colorGroups, onChange]);
+  }, [colorsRef, colorGroups, onChange]);
 
   return (
     <ChartColorTable
