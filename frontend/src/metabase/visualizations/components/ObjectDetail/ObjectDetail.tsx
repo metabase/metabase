@@ -118,6 +118,8 @@ export interface ObjectDetailProps {
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   isWritebackEnabled: boolean;
+  showActions?: boolean;
+  showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   deleteRowFromObjectDetail: (opts: DeleteRowPayload) => void;
@@ -143,6 +145,8 @@ export function ObjectDetailFn({
   canZoomPreviousRow,
   canZoomNextRow,
   isWritebackEnabled,
+  showActions = true,
+  showRelations = true,
   onVisualizationClick,
   visualizationIsClickable,
   fetchTableFks,
@@ -261,11 +265,8 @@ export function ObjectDetailFn({
 
   const displayId = getDisplayId({ cols: data.cols, zoomedRow });
   const hasPk = !!data.cols.find(isPK);
-  const hasRelationships = !!(
-    tableForeignKeys &&
-    !!tableForeignKeys.length &&
-    hasPk
-  );
+  const hasRelationships =
+    showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
   return (
     <ObjectDetailModal wide={hasRelationships}>
@@ -283,6 +284,7 @@ export function ObjectDetailFn({
             canZoomNextRow={canZoomNextRow}
             isEditing={isEditing}
             canEdit={canEdit}
+            showActions={showActions}
             deleteRow={deleteRow}
             viewPreviousObjectDetail={viewPreviousObjectDetail}
             viewNextObjectDetail={viewNextObjectDetail}
@@ -316,9 +318,22 @@ export function ObjectDetailFn({
 }
 
 function ObjectDetailWrapper({
+  question,
+  isDataApp,
   closeObjectDetail,
   ...props
-}: ObjectDetailProps) {
+}: ObjectDetailProps & { isDataApp?: boolean }) {
+  if (isDataApp || question.display() === "object") {
+    return (
+      <ObjectDetailFn
+        {...props}
+        question={question}
+        showActions={false}
+        showRelations={false}
+        closeObjectDetail={closeObjectDetail}
+      />
+    );
+  }
   return (
     <RootModal
       isOpen
@@ -326,7 +341,11 @@ function ObjectDetailWrapper({
       onClose={closeObjectDetail}
       className={""} // need an empty className to override the Modal default width
     >
-      <ObjectDetailFn {...props} closeObjectDetail={closeObjectDetail} />
+      <ObjectDetailFn
+        {...props}
+        question={question}
+        closeObjectDetail={closeObjectDetail}
+      />
     </RootModal>
   );
 }
@@ -339,6 +358,7 @@ export interface ObjectDetailHeaderProps {
   canZoomNextRow: boolean;
   isEditing: boolean;
   canEdit: boolean;
+  showActions?: boolean;
   deleteRow?: () => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
@@ -354,6 +374,7 @@ export function ObjectDetailHeader({
   canZoomNextRow,
   isEditing,
   canEdit,
+  showActions = true,
   deleteRow,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
@@ -368,50 +389,52 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
-      <div className="flex align-center">
-        {canEdit && (
-          <ActionHeader
-            isEditing={isEditing}
-            deleteRow={deleteRow}
-            onToggleEditingModeClick={onToggleEditingModeClick}
-          />
-        )}
-        <div className="flex p2">
-          {!!canZoom && (
-            <>
-              <Button
-                data-testid="view-previous-object-detail"
-                onlyIcon
-                borderless
-                className="mr1"
-                disabled={!canZoomPreviousRow}
-                onClick={viewPreviousObjectDetail}
-                icon="chevronup"
-                iconSize={20}
-              />
-              <Button
-                data-testid="view-next-object-detail"
-                onlyIcon
-                borderless
-                disabled={!canZoomNextRow}
-                onClick={viewNextObjectDetail}
-                icon="chevrondown"
-                iconSize={20}
-              />
-            </>
-          )}
-          <CloseButton>
-            <Button
-              data-testId="object-detail-close-button"
-              onlyIcon
-              borderless
-              onClick={closeObjectDetail}
-              icon="close"
-              iconSize={20}
+      {showActions && (
+        <div className="flex align-center">
+          {canEdit && (
+            <ActionHeader
+              isEditing={isEditing}
+              deleteRow={deleteRow}
+              onToggleEditingModeClick={onToggleEditingModeClick}
             />
-          </CloseButton>
+          )}
+          <div className="flex p2">
+            {!!canZoom && (
+              <>
+                <Button
+                  data-testid="view-previous-object-detail"
+                  onlyIcon
+                  borderless
+                  className="mr1"
+                  disabled={!canZoomPreviousRow}
+                  onClick={viewPreviousObjectDetail}
+                  icon="chevronup"
+                  iconSize={20}
+                />
+                <Button
+                  data-testid="view-next-object-detail"
+                  onlyIcon
+                  borderless
+                  disabled={!canZoomNextRow}
+                  onClick={viewNextObjectDetail}
+                  icon="chevrondown"
+                  iconSize={20}
+                />
+              </>
+            )}
+            <CloseButton>
+              <Button
+                data-testId="object-detail-close-button"
+                onlyIcon
+                borderless
+                onClick={closeObjectDetail}
+                icon="close"
+                iconSize={20}
+              />
+            </CloseButton>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

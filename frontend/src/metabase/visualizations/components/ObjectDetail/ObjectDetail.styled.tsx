@@ -8,9 +8,8 @@ interface ObjectDetailModalProps {
 }
 
 export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
-  border: 1px solid ${color("border")};
-  border-radius: 0.5rem;
   overflow-y: scroll;
+  height: 100%;
 `;
 
 export const ObjectDetailBodyWrapper = styled.div`
@@ -80,6 +79,9 @@ export const RootModal = styled(Modal)`
     }
     max-height: 95vh;
     width: 95vw;
+
+    border: 1px solid ${color("border")};
+    border-radius: 0.5rem;
   }
 
   ${ObjectDetailBodyWrapper} {
