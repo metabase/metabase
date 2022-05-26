@@ -25,12 +25,18 @@ function CustomFormSubmit({
   children,
   shouldPersistError,
   fields,
+  error,
   ...props
 }: CustomFormSubmitProps & FormLegacyContext) {
   const title = children || submitTitle || t`Submit`;
   const canSubmit = !(
     submitting ||
-    (shouldPersistError ? areAllFieldsUntouched(fields) : invalid) ||
+    isFormInvalid({
+      shouldPersistError,
+      invalid,
+      fields,
+      error,
+    }) ||
     (pristine && disablePristineSubmit)
   );
 
@@ -70,7 +76,28 @@ CustomFormSubmitLegacyContext.contextTypes = _.pick(
   "disablePristineSubmit",
   "shouldPersistError",
   "fields",
+  "error",
 );
+
+interface IsFormInvalidProps {
+  fields: NestedFormField;
+  invalid: boolean;
+  shouldPersistError?: boolean;
+  error?: string;
+}
+
+function isFormInvalid({
+  shouldPersistError,
+  fields,
+  invalid,
+  error,
+}: IsFormInvalidProps): boolean {
+  if (shouldPersistError && error) {
+    return areAllFieldsUntouched(fields);
+  }
+
+  return invalid;
+}
 
 function areAllFieldsUntouched(fields: NestedFormField): boolean {
   const allFields = traverseAllFields(fields);
