@@ -11650,7 +11650,10 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: List of parameter associated to to a card
                   constraints:
-                    nullable: false
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+
   - changeSet:
       id: v44.00-024
       author: qnkhuat

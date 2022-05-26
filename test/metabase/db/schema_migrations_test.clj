@@ -555,7 +555,7 @@
                         :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                         :where     [:= :pg.name perms-group/all-users-group-name]}))))))
 
-(deftest grant-subscription-permission-tests
+(deftest grant-subscription-permission-test
   (testing "Migration v43.00-047: Grant the 'All Users' Group permissions to create/edit subscriptions and alerts"
     (impl/test-migrations ["v43.00-047" "v43.00-048"] [migrate!]
         (migrate!)
@@ -565,7 +565,7 @@
                                           :left-join [[PermissionsGroup :pg] [:= :p.group_id :pg.id]]
                                           :where     [:= :p.object "/general/subscription/"]}))))))))
 
-(deftest rename-general-permissions-to-application-tests
+(deftest rename-general-permissions-to-application-test
   (testing "Migration v43.00-057: Rename general permissions to application permissions"
     (impl/test-migrations ["v43.00-057" "v43.00-058"] [migrate!]
       (letfn [(get-perms [object] (set (map :name (db/query {:select    [:pg.name]
@@ -575,3 +575,26 @@
         (is (= #{"All Users"} (get-perms "/general/subscription/")))
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
+
+
+(deftest add-parameter-to-cards-test
+  (testing "Migration v43.00-057: Rename general permissions to application permissions"
+    (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
+      (let [user-id
+            (db/simple-insert! User {:first_name  "Howard"
+                                            :last_name   "Hughes"
+                                            :email       "howard@aircraft.com"
+                                            :password    "superstrong"
+                                            :date_joined :%now})
+            database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            card-id (db/simple-insert! Card {:name                   "My Saved Question"
+                                             :created_at             :%now
+                                             :updated_at             :%now
+                                             :creator_id             user-id
+                                             :display                "table"
+                                             :dataset_query          "{}"
+                                             :visualization_settings "{}"
+                                             :database_id            database-id
+                                             :collection_id          nil})]
+       (migrate!)
+       (is (= [] (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
