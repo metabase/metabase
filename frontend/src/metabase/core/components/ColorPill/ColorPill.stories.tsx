@@ -16,3 +16,9 @@ export const Default = Template.bind({});
 Default.args = {
   color: color("brand"),
 };
+
+export const Auto = Template.bind({});
+Default.args = {
+  color: color("brand"),
+  isAuto: true,
+};
