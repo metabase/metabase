@@ -1,1 +1,3 @@
-export { default } from "./DimensionOptions";
+import DimensionOptions from "./DimensionOptions";
+
+export default DimensionOptions;
