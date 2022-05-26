@@ -494,8 +494,9 @@
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
   (merge
-   (when-let [field-id (:id source-metadata-col)]
-     (dissoc (qp.store/field field-id) :database_type))
+    {} ;; ensure the type is not FieldInstance
+    (when-let [field-id (:id source-metadata-col)]
+      (dissoc (qp.store/field field-id) :database_type))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
