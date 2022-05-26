@@ -1,8 +1,10 @@
 (ns metabase.models.emitter
-  (:require [metabase.models.card :refer [Card]]
+  (:require [medley.core :as m]
+            [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util :as u]
             [toucan.db :as db]
+            [toucan.hydrate :as hydrate] ;;nocommit
             [toucan.models :as models]))
 
 (models/defmodel CardEmitter :card_emitter)
@@ -68,6 +70,38 @@
           :pre-update pre-update
           :pre-insert pre-insert}))
 
+(models/defmodel QueryAction :query_action)
+(models/defmodel Action :action)
+
+(u/strict-extend (class Action)
+  models/IModel
+  (merge models/IModelDefaults
+         {:types          (constantly {:type :keyword})
+          :properties     (constantly {:timestamped? true})}))
+
+(u/strict-extend
+  (class QueryAction)
+  models/IModel
+  (merge models/IModelDefaults
+         ;; This is ok as long as we're 1:1
+         {:primary-key (constantly :action_id)}))
+
+(defn action
+  {:batched-hydrate :action}
+  [emitters]
+  (let [actions (->> {:select [:emitter_action.emitter_id
+                               :query_action.card_id
+                               :action.type]
+                      :from [[Action :action]]
+                      ;; Will need to change if we stop being 1:1
+                      :join [[EmitterAction :emitter_action] [:= :emitter_action.action_id :action.id]
+                             [QueryAction :query_action] [:= :query_action.action_id :action.id]]
+                      :where [:in :emitter_action.emitter_id (map :id emitters)]}
+                     (db/query)
+                     (db/do-post-select Action)
+                     (m/index-by :id))]
+    (map #(assoc % :action (get actions (:action_id %))) emitters)))
+
 (defn emitters
   "Hydrate emitters onto a list of dashboards or cards."
   {:batched-hydrate :emitters}
@@ -91,6 +125,6 @@
                         (db/query)
                         (db/do-post-select Emitter)
                         (group-by join-column))]
-      (map #(assoc % :emitters (get emitters (:id %)))
+      (map #(m/assoc-some % :emitters (get emitters (:id %)))
            items))
     items))

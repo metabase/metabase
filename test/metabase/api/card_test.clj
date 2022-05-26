@@ -12,8 +12,21 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.http-client :as client]
-            [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
-                                     PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
+            [metabase.models :refer [Card
+                                     CardBookmark
+                                     CardEmitter
+                                     Collection
+                                     Dashboard
+                                     Database
+                                     ModerationReview
+                                     Pulse
+                                     PulseCard
+                                     PulseChannel
+                                     PulseChannelRecipient
+                                     Table
+                                     Timeline
+                                     TimelineEvent
+                                     ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -691,6 +704,25 @@
                           mt/boolean-ids-and-timestamps
                           :moderation_reviews
                           (map clean)))))))))))
+
+(deftest fetch-card-emitter-test
+  (testing "GET /api/card/:id"
+    (testing "Fetch card with an emitter"
+      (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
+                      Card [write-card {:is_write true :name "Test Write Card"}]
+                      metabase.models.emitter/Action [action {:type "row"}]
+                      metabase.models.emitter/QueryAction [qa {:card_id (:id write-card)
+                                                               :action_id (:id action)}]
+                      CardEmitter [emitter {:action_id (:id action)
+                                            #_(db/select-field :action_id metabase.models.emitter/QueryAction :card_id (u/the-id write-card))
+                                            :card_id (u/the-id read-card)}]]
+        (testing "admin sees emitters"
+          (is (partial=
+                {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
+                (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
+        (testing "non-admin does not see emitters"
+          (is (nil?
+                (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |
