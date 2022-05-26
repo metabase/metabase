@@ -7,7 +7,7 @@ import _ from "underscore";
 import { color } from "metabase/lib/colors";
 import { getNormalColors } from "metabase/lib/colors/charts";
 
-import ColorPicker from "metabase/components/ColorPicker";
+import ColorSelector from "metabase/core/components/ColorSelector";
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 import NumericInput from "metabase/components/NumericInput";
@@ -34,12 +34,12 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
             <React.Fragment key={segment.index}>
               <tr>
                 <td>
-                  <ColorPicker
-                    value={segment.color}
-                    onChange={color => onChangeProperty(index, "color", color)}
-                    triggerSize={28}
-                    padding={2}
+                  <ColorSelector
+                    color={segment.color}
                     colors={getColorPalette()}
+                    isBordered
+                    isSelected
+                    onChange={color => onChangeProperty(index, "color", color)}
                   />
                 </td>
                 <td>
