@@ -11,7 +11,6 @@ import { State } from "metabase-types/store";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
-import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -49,6 +48,7 @@ import {
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
+  RootModal,
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
   ObjectIdLabel,
@@ -268,59 +268,69 @@ export function ObjectDetailFn({
   );
 
   return (
-    <Modal
+    <ObjectDetailModal wide={hasRelationships}>
+      {hasNotFoundError ? (
+        <ErrorWrapper>
+          <NotFound />
+        </ErrorWrapper>
+      ) : (
+        <div className="ObjectDetail" data-testid="object-detail">
+          <ObjectDetailHeader
+            canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
+            objectName={objectName}
+            objectId={displayId}
+            canZoomPreviousRow={canZoomPreviousRow}
+            canZoomNextRow={canZoomNextRow}
+            isEditing={isEditing}
+            canEdit={canEdit}
+            deleteRow={deleteRow}
+            viewPreviousObjectDetail={viewPreviousObjectDetail}
+            viewNextObjectDetail={viewNextObjectDetail}
+            closeObjectDetail={closeObjectDetail}
+            onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
+          />
+          <ObjectDetailBodyWrapper>
+            {isEditing && table ? (
+              <EditingFormContainer>
+                <WritebackForm table={table} row={zoomedRow} isModal />
+              </EditingFormContainer>
+            ) : (
+              <ObjectDetailBody
+                data={data}
+                objectName={objectName}
+                zoomedRow={zoomedRow ?? []}
+                settings={settings}
+                hasRelationships={hasRelationships}
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+                tableForeignKeys={tableForeignKeys}
+                tableForeignKeyReferences={tableForeignKeyReferences}
+                followForeignKey={onFollowForeignKey}
+              />
+            )}
+          </ObjectDetailBodyWrapper>
+        </div>
+      )}
+    </ObjectDetailModal>
+  );
+}
+
+function ObjectDetailWrapper({
+  closeObjectDetail,
+  ...props
+}: ObjectDetailProps) {
+  return (
+    <RootModal
       isOpen
       full={false}
       onClose={closeObjectDetail}
       className={""} // need an empty className to override the Modal default width
     >
-      <ObjectDetailModal wide={hasRelationships}>
-        {hasNotFoundError ? (
-          <ErrorWrapper>
-            <NotFound />
-          </ErrorWrapper>
-        ) : (
-          <div className="ObjectDetail" data-testid="object-detail">
-            <ObjectDetailHeader
-              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
-              objectName={objectName}
-              objectId={displayId}
-              canZoomPreviousRow={canZoomPreviousRow}
-              canZoomNextRow={canZoomNextRow}
-              isEditing={isEditing}
-              canEdit={canEdit}
-              deleteRow={deleteRow}
-              viewPreviousObjectDetail={viewPreviousObjectDetail}
-              viewNextObjectDetail={viewNextObjectDetail}
-              closeObjectDetail={closeObjectDetail}
-              onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
-            />
-            <ObjectDetailBodyWrapper>
-              {isEditing && table ? (
-                <EditingFormContainer>
-                  <WritebackForm table={table} row={zoomedRow} isModal />
-                </EditingFormContainer>
-              ) : (
-                <ObjectDetailBody
-                  data={data}
-                  objectName={objectName}
-                  zoomedRow={zoomedRow ?? []}
-                  settings={settings}
-                  hasRelationships={hasRelationships}
-                  onVisualizationClick={onVisualizationClick}
-                  visualizationIsClickable={visualizationIsClickable}
-                  tableForeignKeys={tableForeignKeys}
-                  tableForeignKeyReferences={tableForeignKeyReferences}
-                  followForeignKey={onFollowForeignKey}
-                />
-              )}
-            </ObjectDetailBodyWrapper>
-          </div>
-        )}
-      </ObjectDetailModal>
-    </Modal>
+      <ObjectDetailFn {...props} closeObjectDetail={closeObjectDetail} />
+    </RootModal>
   );
 }
+
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
@@ -470,7 +480,7 @@ export const ObjectDetailProperties = {
 };
 
 const ObjectDetail = Object.assign(
-  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailFn),
+  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailWrapper),
   ObjectDetailProperties,
 );
 
