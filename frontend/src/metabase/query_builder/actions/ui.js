@@ -38,7 +38,7 @@ export const setQueryBuilderMode = (
 
 export const onEditSummary = createAction("metabase/qb/EDIT_SUMMARY");
 export const onCloseSummary = createAction("metabase/qb/CLOSE_SUMMARY");
-export const onAddFilter = createAction("metabase/qb/ADD_FITLER");
+export const onAddFilter = createAction("metabase/qb/ADD_FILTER");
 export const onCloseFilter = createAction("metabase/qb/CLOSE_FILTER");
 export const onOpenChartSettings = createAction(
   "metabase/qb/OPEN_CHART_SETTINGS",

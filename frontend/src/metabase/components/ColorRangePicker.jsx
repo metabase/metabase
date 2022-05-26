@@ -34,7 +34,7 @@ const ColorRangePicker = ({
         {ranges.map((range, index) => (
           <div
             key={index}
-            className={"mb1 pl1"}
+            className="mb1 pl1"
             style={{ flex: `1 1 ${Math.round(100 / columns)}%` }}
           >
             <ColorRangePreview

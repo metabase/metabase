@@ -64,7 +64,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
         className="hover-child cursor-pointer pl1 text-brand-hover"
         style={{ marginTop: 5, width: ICON_WIDTH }}
       >
-        <Tooltip tooltip={description} maxWidth={"22em"}>
+        <Tooltip tooltip={description} maxWidth="22em">
           <Icon name="info_outline" />
         </Tooltip>
       </div>

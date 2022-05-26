@@ -511,9 +511,10 @@
 
 (defmulti humanize-connection-error-message
   "Return a humanized (user-facing) version of an connection error message.
-  Generic error messages are provided in [[metabase.driver.common/connection-error-messages]]; return one of these
-  whenever possible.
-  Error messages can be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
+  Generic error messages provided in [[metabase.driver.util/connection-error-messages]]; should be returned
+  as keywords whenever possible. This provides for both unified error messages and categories which let us point
+  users to the erroneous input fields.
+  Error messages can also be strings, or localized strings, as returned by [[metabase.util.i18n/trs]] and
   `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver

@@ -282,7 +282,7 @@ const DatePicker: React.FC<Props> = props => {
     <div className={cx(className)}>
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
-          className={"p2"}
+          className="p2"
           primaryColor={primaryColor}
           onFilterChange={filter => {
             setShowShortcuts(false);

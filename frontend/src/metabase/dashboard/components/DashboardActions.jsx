@@ -57,7 +57,7 @@ export const getDashboardActions = (
             <DashboardHeaderButton
               disabled={!canManageSubscriptions}
               onClick={onSharingClick}
-              data-metabase-event={"Dashboard;Subscriptions"}
+              data-metabase-event="Dashboard;Subscriptions"
             >
               <Icon size={18} name="subscription" />
             </DashboardHeaderButton>
