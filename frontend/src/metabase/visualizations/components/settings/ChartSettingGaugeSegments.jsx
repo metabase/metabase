@@ -4,7 +4,8 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color, normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getNormalColors } from "metabase/lib/colors/charts";
 
 import ColorPicker from "metabase/components/ColorPicker";
 import Button from "metabase/core/components/Button";
@@ -104,7 +105,7 @@ function getColorPalette() {
     color("error"),
     color("warning"),
     color("success"),
-    ...Object.values(normal).slice(0, 9),
+    ...getNormalColors(),
     color("bg-medium"),
   ];
 }
