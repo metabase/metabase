@@ -1223,7 +1223,7 @@ workflows:
             - be-deps
           filters:
             branches:
-              ignore: e2e-skip-cci-on-master
+              ignore: master
           <<: *Matrix
 
       - build-uberjar-frontend:
@@ -1244,7 +1244,7 @@ workflows:
             - checkout
           filters:
             branches:
-              ignore: e2e-skip-cci-on-master
+              ignore: master
 
       - fe-tests-cypress:
           matrix:
@@ -1292,4 +1292,4 @@ workflows:
             - checkout
           filters:
             branches:
-              ignore: e2e-skip-cci-on-master
+              ignore: master
