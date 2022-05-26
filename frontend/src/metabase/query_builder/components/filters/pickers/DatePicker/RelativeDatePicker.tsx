@@ -241,7 +241,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
       {showOptions ? (
         <TippyPopover
           visible={optionsVisible}
-          placement={"bottom-start"}
+          placement="bottom-start"
           content={optionsContent}
           onClose={() => setOptionsVisible(false)}
         >
@@ -291,7 +291,7 @@ const RelativeDatePicker: React.FC<Props> = props => {
             intervals={Math.abs(startingFrom[0])}
             formatter={formatter}
             periods={ALL_PERIODS}
-            testId={"starting-from-unit"}
+            testId="starting-from-unit"
           />
           <MoreButton
             icon="close"

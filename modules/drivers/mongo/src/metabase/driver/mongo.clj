@@ -59,25 +59,25 @@
   [_ message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^host and port should be specified in host:port format$"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
     #"^Password can not be null when the authentication mechanism is unspecified$"
-    (driver.common/connection-error-messages :password-required)
+    :password-required
 
     #"^org.apache.sshd.common.SshException: No more authentication methods available$"
-    (driver.common/connection-error-messages :ssh-tunnel-auth-fail)
+    :ssh-tunnel-auth-fail
 
     #"^java.net.ConnectException: Connection refused$"
-    (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
+    :ssh-tunnel-connection-fail
 
     #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
-    (driver.common/connection-error-messages :certificate-not-trusted)
+    :certificate-not-trusted
 
     #".*MongoSocketReadException: Prematurely reached end of stream.*"
-    (driver.common/connection-error-messages :requires-ssl)
+    :requires-ssl
 
     #".*"                               ; default
     message))

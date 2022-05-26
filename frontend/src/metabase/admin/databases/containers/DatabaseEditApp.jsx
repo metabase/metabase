@@ -5,6 +5,7 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
+import { updateIn } from "icepick";
 
 import title from "metabase/hoc/Title";
 
@@ -126,6 +127,14 @@ class DatabaseEditApp extends Component {
       [addingNewDatabase ? t`Add Database` : database.name],
     ];
 
+    const handleSubmit = async database => {
+      try {
+        await this.props.saveDatabase(database);
+      } catch (error) {
+        throw getSubmitError(error);
+      }
+    };
+
     return (
       <DatabaseEditRoot>
         <Breadcrumbs className="py4" crumbs={crumbs} />
@@ -142,7 +151,7 @@ class DatabaseEditApp extends Component {
                     database={database}
                     form={Databases.forms.details}
                     formName={DATABASE_FORM_NAME}
-                    onSubmit={this.props.saveDatabase}
+                    onSubmit={handleSubmit}
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
                     submitButtonComponent={Button}
                   >
@@ -213,6 +222,16 @@ class DatabaseEditApp extends Component {
     );
   }
 }
+
+const getSubmitError = error => {
+  if (_.isObject(error?.data?.errors)) {
+    return updateIn(error, ["data", "errors"], errors => ({
+      details: errors,
+    }));
+  }
+
+  return error;
+};
 
 export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),

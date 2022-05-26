@@ -27,12 +27,12 @@ const NativeQueryEditorRightClickPopover = ({
   <Popover isOpen={isOpen} target={target}>
     <Container>
       <Anchor onClick={runQuery}>
-        <Icon name={"play"} size={16} />
+        <Icon name="play" size={16} />
         <h4>{t`Run selection`}</h4>
       </Anchor>
       {canSaveSnippets && (
         <Anchor onClick={openSnippetModalWithSelectedText}>
-          <Icon name={"snippet"} size={16} />
+          <Icon name="snippet" size={16} />
           <h4>{t`Save as snippet`}</h4>
         </Anchor>
       )}

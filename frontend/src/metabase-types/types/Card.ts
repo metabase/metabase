@@ -1,6 +1,6 @@
 import { DatabaseId } from "./Database";
 import { StructuredQuery, NativeQuery } from "./Query";
-import { Parameter, ParameterInstance } from "./Parameter";
+import { Parameter, ParameterQueryObject } from "./Parameter";
 
 export type CardId = number;
 
@@ -33,14 +33,14 @@ export type StructuredDatasetQuery = {
   type: "query";
   database?: DatabaseId;
   query: StructuredQuery;
-  parameters?: Array<ParameterInstance>;
+  parameters?: Array<ParameterQueryObject>;
 };
 
 export type NativeDatasetQuery = {
   type: "native";
   database?: DatabaseId;
   native: NativeQuery;
-  parameters?: Array<ParameterInstance>;
+  parameters?: Array<ParameterQueryObject>;
 };
 
 /**

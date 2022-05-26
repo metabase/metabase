@@ -41,6 +41,7 @@ class Select extends Component {
 
     // SelectButton props
     buttonProps: PropTypes.object,
+    buttonText: PropTypes.string, // will override selected options text
 
     // AccordianList props
     searchProp: PropTypes.string,
@@ -136,6 +137,7 @@ class Select extends Component {
       value = this.itemIsSelected(option)
         ? values.filter(value => value !== optionValue)
         : [...values, optionValue];
+      value.changedItem = optionValue;
     } else {
       value = optionValue;
     }
@@ -216,7 +218,9 @@ class Select extends Component {
               disabled={disabled}
               {...buttonProps}
             >
-              {selectedNames.length > 0
+              {this.props.buttonText
+                ? this.props.buttonText
+                : selectedNames.length > 0
                 ? selectedNames.map((name, index) => (
                     <span key={index}>
                       {name}

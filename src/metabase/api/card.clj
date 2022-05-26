@@ -7,6 +7,8 @@
             [clojure.walk :as walk]
             [compojure.core :refer [DELETE GET POST PUT]]
             [medley.core :as m]
+            [metabase.actions :as actions]
+            [metabase.api.actions :as api.actions]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
@@ -245,6 +247,45 @@
                       (when (instance? Throwable required-perms)
                         required-perms))))))
 
+(defn- check-allowed-to-set-is-write
+  "Check whether we're allowed to set `is_write` for the Card in question."
+  ([card]
+   (check-allowed-to-set-is-write nil card))
+
+  ([card-before-update card-updates]
+   ;; make sure the value has actually changed
+   (when (and (contains? card-updates :is_write)
+              (some? (:is_write card-updates)))
+     (let [before (boolean (get card-before-update :is_write))
+           after  (:is_write card-updates)]
+       (log/tracef "is_write value will change from %s => %s" (pr-str before) (pr-str after))
+       (when-not (= before after)
+         ;; make sure current User is a superuser
+         (api/check-superuser)
+         (try
+           ;; make sure Card is not a Dataset
+           (when (:dataset (merge card-updates card-before-update))
+             (throw (ex-info (tru "Saved Question is a Dataset.")
+                             {:status-code 400})))
+           ;; make sure Card's query is a native query
+           (let [query-type (some-> (get-in (merge card-updates card-before-update) [:dataset_query :type])
+                                    keyword)]
+             (when-not (= query-type :native)
+               (throw (ex-info (tru "Query must be a native query.")
+                               {:status-code 400}))))
+           ;; make sure Actions are enabled Globally
+           (when-not (actions/experimental-enable-actions)
+             (throw (ex-info (tru "Actions are not enabled.")
+                             {:status-code 400})))
+           (when-let [database-id (:database (some :dataset_query [card-updates card-before-update]))]
+             ;; make sure Actions are allowed for the Card's query's Database
+             (api.actions/do-check-actions-enabled database-id nil))
+           (catch Throwable e
+             (let [message (tru "Cannot mark Saved Question as ''is_write'': {0}" (ex-message e))]
+               (throw (ex-info message
+                               (assoc (ex-data e) :errors {:is_write message})
+                               e))))))))))
+
 (defn- save-new-card-async!
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
@@ -272,11 +313,12 @@
   thrown. Closing this channel before it finishes will cancel the Card creation."
   [{:keys [dataset_query result_metadata dataset], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
-  ;; `api/maybe-reconcile-collection-position!`
+  ;; [[api/maybe-reconcile-collection-position!]]
   (let [data-keys            [:dataset_query :description :display :name
-                              :visualization_settings :collection_id :collection_position :cache_ttl]
+                              :visualization_settings :collection_id :collection_position :cache_ttl :is_write]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
+                                    :is_write (boolean (:is_write card-data))
                                     :dataset (boolean (:dataset card-data)))
         result-metadata-chan (result-metadata-async {:query dataset_query
                                                      :metadata result_metadata
@@ -298,7 +340,7 @@
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
-                result_metadata visualization_settings cache_ttl], :as body} :body}]
+                result_metadata visualization_settings cache_ttl is_write], :as body} :body}]
   {name                   su/NonBlankString
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
@@ -306,11 +348,14 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)}
+   cache_ttl              (s/maybe su/IntGreaterThanZero)
+   is_write               (s/maybe s/Bool)}
   ;; check that we have permissions to run the query that we're trying to save
   (check-data-permissions-for-query dataset_query)
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
+  ;; if `is_write` was passed, check that it's allowed to be set.
+  (check-allowed-to-set-is-write body)
   ;; Return a channel that can be used to fetch the results asynchronously
   (create-card-async! body))
 
@@ -500,9 +545,9 @@
         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
         ;; modified if they're passed in as non-nil
         (u/select-keys-when card-updates
-          :present #{:collection_id :collection_position :description :cache_ttl :dataset}
+          :present #{:collection_id :collection_position :description :cache_ttl :dataset :is_write}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                     :embedding_params :result_metadata})))
+                     :embedding_params :result_metadata :is_write})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
       (delete-alerts-if-needed! card-before-update card)
@@ -540,9 +585,11 @@
   (let [card-before-update (hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks
-    (collection/check-allowed-to-change-collection card-before-update card-updates)
-    (check-allowed-to-modify-query                 card-before-update card-updates)
-    (check-allowed-to-change-embedding             card-before-update card-updates)
+    (doseq [f [collection/check-allowed-to-change-collection
+               check-allowed-to-modify-query
+               check-allowed-to-change-embedding
+               check-allowed-to-set-is-write]]
+      (f card-before-update card-updates))
     ;; make sure we have the correct `result_metadata`
     (let [result-metadata-chan (result-metadata-async {:original-query    (:dataset_query card-before-update)
                                                        :query             dataset_query

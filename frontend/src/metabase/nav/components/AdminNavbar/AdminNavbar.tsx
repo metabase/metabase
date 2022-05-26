@@ -31,7 +31,7 @@ export const AdminNavbar = ({
 }: AdminNavbarProps) => {
   return (
     <AdminNavbarRoot className="Nav">
-      <AdminLogoLink to="/admin" data-metabase-event={"Navbar;Logo"}>
+      <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
         <AdminLogoContainer>
           <LogoIcon className="text-brand my2" dark />
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
