@@ -295,36 +295,32 @@
 (deftest action-creation-test
   (testing "actions are created when is_write is set"
     (testing "during create"
-      (let [{card-id :id} (db/insert! Card (assoc (tt/with-temp-defaults Card) :is_write true))
-            {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (seq qa-rows)
-            "Inserting a card with :is_write true should create QueryAction")
-        (is (seq (db/select Action :id action_id)))))
+      (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (seq qa-rows)
+              "Inserting a card with :is_write true should create QueryAction")
+          (is (seq (db/select Action :id action_id))))))
     (testing "during update"
-      (let [{card-id :id} (db/insert! Card (tt/with-temp-defaults Card))
-            _ (db/update! Card card-id {:is_write true})
-            {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (seq qa-rows)
-            "Updating a card to have :is_write true should create QueryAction")
-        (is (seq (db/select Action :id action_id))))))
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (db/update! Card card-id {:is_write true})
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (seq qa-rows) "Updating a card to have :is_write true should create QueryAction")
+          (is (seq (db/select Action :id action_id)))))))
   (testing "actions are not created when is_write is not set"
     (testing "during create:"
-      (let [{card-id :id} (db/insert! Card (tt/with-temp-defaults Card))
-            {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (empty? qa-rows)
-            "Inserting a card with :is_write false should not create QueryAction")
-        (is (empty? (db/select Action :id action_id)))))
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (empty? qa-rows) "Inserting a card with :is_write false should not create QueryAction")
+          (is (empty? (db/select Action :id action_id))))))
     (testing "during update"
-      (let [{card-id :id} (db/insert! Card (tt/with-temp-defaults Card))
-            _ (db/update! Card card-id {:is_write false})
-            {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-        (is (empty? qa-rows)
-            "Updating a card to have :is_write false should delete QueryAction")
-        (is (empty? (db/select Action :id action_id))))))
+      (mt/with-temp Card [{card-id :id} (tt/with-temp-defaults Card)]
+        (db/update! Card card-id {:is_write false})
+        (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+          (is (empty? qa-rows) "Updating a card to have :is_write false should delete QueryAction")
+          (is (empty? (db/select Action :id action_id)))))))
   (testing "actions are deleted when is_write is set to false during update"
-    (let [{card-id :id} (db/insert! Card (assoc (tt/with-temp-defaults Card) :is_write true))
-          _ (db/update! Card card-id {:is_write false})
-          {:keys [action_id card_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
-      (is (empty? qa-rows)
-          "Updating a card to have :is_write false should create a QueryAction")
-      (is (empty? (db/select Action :id action_id))))))
+    (mt/with-temp Card [{card-id :id} (assoc (tt/with-temp-defaults Card) :is_write true)]
+      (db/update! Card card-id {:is_write false})
+      (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
+        (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
+        (is (empty? (db/select Action :id action_id)))))))

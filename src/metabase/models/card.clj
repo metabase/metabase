@@ -209,13 +209,13 @@
                                  (describe-database query-db-id)))
                           {:status-code 400})))))))
 
-(defn- create-actions-when-is-writable [{is-write? :is_write card-id :id}]
+(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
     (let [{action-id :id} (db/insert! action/Action {:type "query"})]
       (db/insert! action/QueryAction {:card_id card-id
                                       :action_id action-id}))))
 
-(defn- delete-actions-when-not-writable [{is-write? :is_write card-id :id}]
+(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
   (when (false? is-write?)
     (db/execute! {:delete-from [:action :a]
                   :where [:in :id {:select [:action_id]
@@ -237,7 +237,7 @@
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
-    (create-actions-when-is-writable card)))
+    (create-actions-when-is-writable! card)))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -279,9 +279,9 @@
     ;; additional checks (Enterprise Edition only)
     (@pre-update-check-sandbox-constraints changes)
     ;; create Action and QueryAction when is_write is set true
-    (create-actions-when-is-writable changes)
+    (create-actions-when-is-writable! changes)
     ;; delete Action and QueryAction when is_write is set false
-    (delete-actions-when-not-writable changes)))
+    (delete-actions-when-not-writable! changes)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
