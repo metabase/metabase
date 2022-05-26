@@ -25,8 +25,8 @@
   ;; This fetches the `metabase.cmd.load-from-h2/entities` and compares it all existing entities
   (let [migrated-model-names (set (map :name copy/entities))
         ;; Models that should *not* be migrated in `load-from-h2`.
-        models-to-exclude    #{"Action" "TaskHistory" "Query" "QueryCache" "QueryExecution" "CardFavorite" "DashboardFavorite"
-                               "QueryAction"}
+        models-to-exclude    #{"TaskHistory" "Query" "QueryCache" "QueryExecution" "CardFavorite" "DashboardFavorite"
+                               "Action" "QueryAction"}
         all-model-names      (set (for [ns       u/metabase-namespace-symbols
                                         :when    (or (re-find #"^metabase\.models\." (name ns))
                                                      (= (name ns) "metabase.db.data-migrations"))
