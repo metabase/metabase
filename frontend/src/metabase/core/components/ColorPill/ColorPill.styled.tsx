@@ -2,9 +2,9 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
 export interface ColorPillRootProps {
-  isBordered?: boolean;
-  isSelected?: boolean;
-  isDefault?: boolean;
+  isBordered: boolean;
+  isSelected: boolean;
+  isDefault: boolean;
 }
 
 export const ColorPillRoot = styled.div<ColorPillRootProps>`
@@ -21,7 +21,7 @@ export const ColorPillRoot = styled.div<ColorPillRootProps>`
 `;
 
 export interface ColorPillContentProps {
-  isBordered?: boolean;
+  isBordered: boolean;
 }
 
 export const ColorPillContent = styled.div<ColorPillContentProps>`
