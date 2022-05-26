@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { getIn, updateIn, assocIn } from "icepick";
+import { getIn, updateIn, merge } from "icepick";
 
 import { createAction } from "redux-actions";
 
@@ -155,15 +155,17 @@ export const setTemplateTag = createThunkAction(
             : templateTag;
         return { ...tags, [name]: newTag };
       };
-      const updatedTagsCard = updateIn(
-        updatedCard,
-        ["dataset_query", "native", "template-tags"],
-        updateTags,
-      );
-      return assocIn(
-        assocIn(updatedTagsCard, ["dataset_query", "parameters"], parameters),
-        ["dataset_query", "parameter-mappings"],
-        parameterMappings,
+
+      return merge(
+        {
+          parameters,
+          "parameter-mappings": parameterMappings,
+        },
+        updateIn(
+          updatedCard,
+          ["dataset_query", "native", "template-tags"],
+          updateTags,
+        ),
       );
     };
   },
