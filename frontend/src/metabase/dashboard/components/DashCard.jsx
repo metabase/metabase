@@ -226,6 +226,7 @@ export default class DashCard extends Component {
           headerIcon={headerIcon}
           errorIcon={errorIcon}
           isSlow={isSlow}
+          isDataApp={this.props.isDataApp}
           expectedDuration={expectedDuration}
           rawSeries={series}
           showTitle
