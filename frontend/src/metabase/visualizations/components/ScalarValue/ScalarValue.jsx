@@ -7,7 +7,7 @@ import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import {
   ScalarRoot,
   ScalarValueWrapper,

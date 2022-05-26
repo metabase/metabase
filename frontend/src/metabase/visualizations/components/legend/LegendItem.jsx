@@ -7,7 +7,7 @@ import {
   LegendItemRoot,
   LegendItemTitle,
 } from "./LegendItem.styled";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 const propTypes = {
   label: PropTypes.string,
