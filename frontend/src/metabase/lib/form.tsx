@@ -42,7 +42,7 @@ function tokenizeErrorMessage(
 
   const [fieldTitle, ...restFieldTitles] = fieldTitles;
   const fieldIndex = message.toLowerCase().indexOf(fieldTitle.toLowerCase());
-  if (fieldIndex > 0) {
+  if (isFieldFounded(fieldIndex, message, fieldTitle)) {
     const endOfFieldIndex = fieldIndex + fieldTitle.length;
     const [beforeField, field, afterField] = [
       message.slice(0, fieldIndex),
@@ -60,4 +60,20 @@ function tokenizeErrorMessage(
   } else {
     return tokenizeErrorMessage(message, restFieldTitles);
   }
+}
+
+function isFieldFounded(
+  fieldIndex: number,
+  message: string,
+  fieldTitle: string,
+): boolean {
+  if (fieldIndex < 0) {
+    return false;
+  }
+
+  const isWholeWord =
+    [undefined, " "].includes(message[fieldIndex - 1]) &&
+    [undefined, " "].includes(message[fieldIndex + fieldTitle.length]);
+
+  return isWholeWord;
 }

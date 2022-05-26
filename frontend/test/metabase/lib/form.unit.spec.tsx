@@ -145,5 +145,102 @@ describe("form", () => {
         normalizer: getDefaultNormalizer({ trim: false }),
       });
     });
+
+    it("should only map the whole word", () => {
+      const errorMessage = "The Username is not supported.";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.port",
+            title: "Port",
+          },
+          {
+            name: "details.user",
+            title: "Username",
+          },
+        ],
+      );
+
+      render(<span>{errorMessageWithBoldFields}</span>);
+
+      screen.getByText("The ", {
+        normalizer: getDefaultNormalizer({ trim: false }),
+      });
+      expect(screen.getByText("Username")).toBeInTheDocument();
+      screen.getByText(" is not supported.", {
+        normalizer: getDefaultNormalizer({ trim: false }),
+      });
+    });
+
+    it("should match the start of the message", () => {
+      const errorMessage = "Username is not supported.";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.user",
+            title: "Username",
+          },
+        ],
+      );
+
+      render(<span>{errorMessageWithBoldFields}</span>);
+
+      expect(screen.getByText("Username")).toBeInTheDocument();
+      screen.getByText(" is not supported.", {
+        normalizer: getDefaultNormalizer({ trim: false }),
+      });
+    });
+
+    it("should match the end of the message", () => {
+      const errorMessage = "Error at Username";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.user",
+            title: "Username",
+          },
+        ],
+      );
+
+      render(<span>{errorMessageWithBoldFields}</span>);
+
+      screen.getByText("Error at ", {
+        normalizer: getDefaultNormalizer({ trim: false }),
+      });
+      expect(screen.getByText("Username")).toBeInTheDocument();
+    });
+
+    it("should not match partial match at the start of an error", () => {
+      const errorMessage = "Hostile activity detected";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.host",
+            title: "Host",
+          },
+        ],
+      );
+
+      expect(errorMessageWithBoldFields).toEqual(errorMessage);
+    });
+
+    it("should not match partial match at the start of an error", () => {
+      const errorMessage = "Please contact support";
+      const errorMessageWithBoldFields = getErrorMessageWithBoldFields(
+        errorMessage,
+        [
+          {
+            name: "details.port",
+            title: "Port",
+          },
+        ],
+      );
+
+      expect(errorMessageWithBoldFields).toEqual(errorMessage);
+    });
   });
 });
