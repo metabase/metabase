@@ -1,12 +1,14 @@
-import React, { useState } from "react";
-import PropTypes from "prop-types";
-import cx from "classnames";
+import React from "react";
+import { useToggle } from "metabase/hooks/use-toggle";
 
 import Icon from "metabase/components/Icon";
 import Collection from "metabase/entities/collections";
 import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import { Collection as CollectionType } from "metabase-types/api/collection";
-import { EntitiesState } from "metabase-types/store/entities";
+import {
+  Collection as CollectionType,
+  CollectionId,
+} from "metabase-types/api/collection";
+import { State } from "metabase-types/store";
 
 import {
   PathSeparator,
@@ -16,15 +18,15 @@ import {
 
 interface Props {
   collection: CollectionType;
-  collectionId: string;
+  collectionId: CollectionId;
 }
 
 const PathBreadcrumbs = ({ collection }: Props) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, { toggle }] = useToggle(false);
+
   if (!collection) {
     return null;
   }
-  const toggle = () => setIsExpanded(!isExpanded);
 
   const ancestors = collection.effective_ancestors || [];
   const parts =
@@ -36,7 +38,7 @@ const PathBreadcrumbs = ({ collection }: Props) => {
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          inactiveColor={"text-medium"}
+          inactiveColor="text-medium"
         />
         <Separator onClick={toggle} />
         <ExpandButton
@@ -44,11 +46,9 @@ const PathBreadcrumbs = ({ collection }: Props) => {
           borderless
           iconSize={10}
           icon="ellipsis"
-          className={cx("text-dark")}
+          onlyIcon
           onClick={toggle}
-        >
-          <span />
-        </ExpandButton>
+        />
         <Separator onClick={toggle} />
       </>
     );
@@ -57,7 +57,7 @@ const PathBreadcrumbs = ({ collection }: Props) => {
       <>
         <CollectionBadge
           collectionId={collection.id}
-          inactiveColor={"text-medium"}
+          inactiveColor="text-medium"
         />
         <Separator onClick={toggle} />
       </>
@@ -68,20 +68,14 @@ const PathBreadcrumbs = ({ collection }: Props) => {
       {content}
       <CollectionBadge
         collectionId={collection.id}
-        inactiveColor={"text-medium"}
+        inactiveColor="text-medium"
       />
     </PathContainer>
   );
 };
 
-const propTypes = {
-  collection: PropTypes.object,
-};
-
-PathBreadcrumbs.propTypes = propTypes;
-
 export default Collection.load({
-  id: (_state: EntitiesState, props: Props) => props.collectionId || "root",
+  id: (_state: State, props: Props) => props.collectionId || "root",
   wrapped: true,
   loadingAndErrorWrapper: false,
   properties: ["name", "authority_level"],

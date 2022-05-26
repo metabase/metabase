@@ -14,16 +14,12 @@ import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
 import { State } from "metabase-types/store";
 
-import {
-  getIsNavbarOpen,
-  closeNavbar,
-  toggleNavbar,
-  getBreadcrumbCollectionId,
-  getShowBreadcumb,
-} from "metabase/redux/app";
+import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import {
   getIsNewButtonVisible,
   getIsSearchVisible,
+  getBreadcrumbCollectionId,
+  getShowBreadcumb,
 } from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";

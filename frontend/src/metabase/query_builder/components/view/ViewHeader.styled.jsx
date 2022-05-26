@@ -2,7 +2,6 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
 import LastEditInfoLabel from "metabase/components/LastEditInfoLabel";
 
 import { color, alpha } from "metabase/lib/colors";
@@ -120,14 +119,6 @@ export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
     margin-left: 0;
     margin-top: 2px;
     margin-bottom: 4px;
-  }
-`;
-
-export const StyledCollectionBadge = styled(CollectionBadge)`
-  margin-bottom: 0.5rem;
-
-  ${breakpointMaxSmall} {
-    padding-right: 1rem;
   }
 `;
 

@@ -76,9 +76,6 @@ export const SET_COLLECTION_ID = "metabase/app/SET_COLLECTION_ID";
 export const CLEAR_BREADCRUMBS = "metabase/app/CLEAR_BREADCRUMBS";
 export const setCollectionId = createAction(SET_COLLECTION_ID);
 export const clearBreadcrumbs = createAction(CLEAR_BREADCRUMBS);
-export const getBreadcrumbCollectionId = state =>
-  state.app.breadcrumbs.collectionId;
-export const getShowBreadcumb = state => state.app.breadcrumbs.show;
 const defaultBreadcumbsState = {
   collectionId: "",
   show: false,
@@ -87,9 +84,11 @@ const defaultBreadcumbsState = {
 const breadcrumbs = handleActions(
   {
     [SET_COLLECTION_ID]: {
-      next: (state, { payload }) => ({ show: true, collectionId: payload }),
+      next: (_state, { payload }) => ({ show: true, collectionId: payload }),
     },
-    [CLEAR_BREADCRUMBS]: { next: () => ({ show: false, collectionId: "" }) },
+    [CLEAR_BREADCRUMBS]: {
+      next: () => ({ show: false, collectionId: undefined }),
+    },
   },
   defaultBreadcumbsState,
 );

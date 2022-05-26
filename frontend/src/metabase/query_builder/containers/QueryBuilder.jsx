@@ -254,11 +254,14 @@ function QueryBuilder(props) {
   const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
+  const isSaved = question?.isSaved();
 
   useEffect(() => {
-    setCollectionId(collectionId);
-    return () => clearBreadcrumbs();
-  }, [collectionId, setCollectionId, clearBreadcrumbs]);
+    if (isSaved) {
+      setCollectionId(collectionId);
+      return () => clearBreadcrumbs();
+    }
+  }, [collectionId, isSaved, setCollectionId, clearBreadcrumbs]);
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),

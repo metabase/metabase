@@ -26,7 +26,14 @@ export const PathSeparator = styled.div`
 
 export const ExpandButton = styled(Button)`
   border: none;
-  padding: 0;
-  padding-left: 4px;
+  padding: 0 5px;
   margin: 0;
+  background-color: ${color("bg-light")};
+  border-radius: 2px;
+  color: ${color("text-medium")};
+
+  &:hover {
+    color: ${color("text-white")};
+    background-color: ${color("brand")};
+  }
 `;

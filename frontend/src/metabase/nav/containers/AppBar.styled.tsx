@@ -156,7 +156,7 @@ export const PathBreadcrumbsContainer = styled.div<
   height: ${APP_BAR_HEIGHT};
   display: flex;
   visibility: ${props => (props.isVisible ? "visible" : "hidden")};
-  opacity: ${props => (props.isVisible ? "1.0" : "0")};
+  opacity: ${props => (props.isVisible ? 1 : 0)};
 
   ${props =>
     !props.isVisible
