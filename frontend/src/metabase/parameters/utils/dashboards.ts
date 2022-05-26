@@ -10,11 +10,8 @@ import {
   ParameterWithTarget,
 } from "metabase/parameters/types";
 import {
-  ParameterId,
   Parameter,
   ParameterMappingOptions,
-  ParameterDimensionTarget,
-  ParameterVariableTarget,
   ParameterTarget,
 } from "metabase-types/types/Parameter";
 import {
@@ -22,14 +19,9 @@ import {
   DashboardParameterMapping,
   DashboardOrderedCard,
 } from "metabase-types/api";
-import { SavedCard, CardId } from "metabase-types/types/Card";
+import { SavedCard } from "metabase-types/types/Card";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Field from "metabase-lib/lib/metadata/Field";
-
-type Mapping = DashboardParameterMapping & {
-  dashcard_id: number;
-  card: SavedCard;
-};
 
 type ExtendedMapping = {
   parameter_id: string;
