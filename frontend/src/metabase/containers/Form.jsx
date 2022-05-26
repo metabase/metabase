@@ -199,13 +199,17 @@ class Form extends React.Component {
     // HACK: clears failed state for global error
     if (!this._state.submitting && this._state.failed) {
       this._state.failed = false;
-      props.stopSubmit();
+      // clear errors
+      const formDef = this._getFormDefinition();
+      if (!formDef.shouldPersistError) {
+        props.stopSubmit();
+      }
     }
     const formObject = this._getFormObject();
     return formObject.validate(values, props);
   };
 
-  _onSubmit = async values => {
+  _onSubmit = async (values, _dispatch, { untouch }) => {
     const formObject = this._getFormObject();
     // HACK: clears failed state for global error
     this._state.submitting = true;
@@ -243,6 +247,8 @@ class Form extends React.Component {
         };
       }
     } finally {
+      const fieldNames = this._getFieldNames();
+      untouch(...fieldNames);
       setTimeout(() => (this._state.submitting = false));
     }
   };
@@ -266,9 +272,13 @@ class Form extends React.Component {
     const formObject = this._getFormObject();
     const initialValues = this._getInitialValues();
     const fieldNames = this._getFieldNames();
+    const formDef = this._getFormDefinition();
     return (
       <ReduxFormComponent
         {...this.props}
+        // `shouldPersistError` changes how submit button's disabled state is determined.
+        // See CustomFormSubmit.tsx for implementation.
+        touchOnChange={formDef.shouldPersistError}
         overwriteOnInitialValuesChange={overwriteOnInitialValuesChange}
         formObject={formObject}
         // redux-form props:

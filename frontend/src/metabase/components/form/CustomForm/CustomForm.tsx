@@ -66,7 +66,7 @@ class CustomFormWithLegacyContext extends React.Component<CustomFormProps> {
       style,
       onChangeField,
     } = this.props;
-    const { disablePristineSubmit } = form;
+    const { disablePristineSubmit, shouldPersistError } = form;
     const formFields = form.fields(values);
     const formFieldsByName = _.indexBy(formFields, "name");
 
@@ -86,6 +86,7 @@ class CustomFormWithLegacyContext extends React.Component<CustomFormProps> {
       error,
       onChangeField,
       disablePristineSubmit,
+      shouldPersistError,
     };
   }
 

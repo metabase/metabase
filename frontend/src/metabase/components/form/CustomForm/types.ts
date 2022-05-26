@@ -4,8 +4,8 @@ import {
   DefaultFieldValue,
   FieldValues,
   FormFieldDefinition,
-  FormField,
   FormObject,
+  NestedFormField,
 } from "metabase-types/forms";
 
 export interface BaseFormProps {
@@ -13,7 +13,7 @@ export interface BaseFormProps {
   formName: string;
   formObject: FormObject;
 
-  fields: FormField[];
+  fields: NestedFormField;
   values: FieldValues;
   errors: Record<FieldName, string>;
 
@@ -72,6 +72,7 @@ export interface FormLegacyContext
   formFields: FormFieldDefinition[];
   formFieldsByName: Record<FieldName, FormFieldDefinition>;
   disablePristineSubmit?: boolean;
+  shouldPersistError?: boolean;
 }
 
 export const LegacyContextTypes = {
@@ -90,4 +91,5 @@ export const LegacyContextTypes = {
   error: PropTypes.string,
   onChangeField: PropTypes.func,
   disablePristineSubmit: PropTypes.bool,
+  shouldPersistError: PropTypes.bool,
 };

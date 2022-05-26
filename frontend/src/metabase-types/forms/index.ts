@@ -68,6 +68,10 @@ export type FormField<Value = DefaultFieldValue> = {
   onUpdate: () => void;
 };
 
+export type NestedFormField = {
+  [key: string]: FormField | NestedFormField;
+};
+
 export type FormObject = {
   fields: (values: FieldValues) => FormFieldDefinition[];
   fieldNames: (values: FieldValues) => FieldName[];
@@ -76,4 +80,5 @@ export type FormObject = {
   normalize: (obj: unknown) => void;
   validate: (obj: unknown) => void;
   disablePristineSubmit?: boolean;
+  shouldPersistError?: boolean;
 };

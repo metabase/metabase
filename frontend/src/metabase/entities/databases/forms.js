@@ -325,6 +325,7 @@ function getDatabaseCachingField() {
 
 const forms = {
   details: {
+    shouldPersistError: true,
     fields: ({ id, engine, details = {} } = {}) =>
       [
         {

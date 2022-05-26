@@ -5,6 +5,7 @@ import _ from "underscore";
 import ActionButton from "metabase/components/ActionButton";
 
 import { FormLegacyContext, LegacyContextTypes } from "./types";
+import { FormField, NestedFormField } from "metabase-types/forms";
 
 export interface CustomFormSubmitProps {
   children: React.ReactNode;
@@ -22,12 +23,14 @@ function CustomFormSubmit({
   renderSubmit,
   disablePristineSubmit,
   children,
+  shouldPersistError,
+  fields,
   ...props
 }: CustomFormSubmitProps & FormLegacyContext) {
   const title = children || submitTitle || t`Submit`;
   const canSubmit = !(
     submitting ||
-    invalid ||
+    (shouldPersistError ? areAllFieldsUntouched(fields) : invalid) ||
     (pristine && disablePristineSubmit)
   );
 
@@ -65,6 +68,28 @@ CustomFormSubmitLegacyContext.contextTypes = _.pick(
   "submitTitle",
   "renderSubmit",
   "disablePristineSubmit",
+  "shouldPersistError",
+  "fields",
 );
+
+function areAllFieldsUntouched(fields: NestedFormField): boolean {
+  const allFields = traverseAllFields(fields);
+  return allFields.every(field => !field.touched);
+}
+
+function traverseAllFields(fields: NestedFormField): FormField[] {
+  return Object.keys(fields).flatMap((fieldOrNestedField: string) => {
+    const field = fields[fieldOrNestedField];
+    if (isReduxFormField(field)) {
+      return [field as FormField];
+    }
+
+    return traverseAllFields(field as NestedFormField);
+  });
+}
+
+function isReduxFormField(field: FormField | NestedFormField) {
+  return Boolean(field.onChange);
+}
 
 export default CustomFormSubmitLegacyContext;
