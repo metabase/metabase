@@ -394,8 +394,6 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           <ColorSelector
             color={rule.color}
             colors={COLORS}
-            isBordered
-            isSelected
             onChange={color => onChange({ ...rule, color })}
           />
           <h3 className="mt3 mb1">{t`Highlight the whole row`}</h3>

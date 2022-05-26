@@ -11,22 +11,12 @@ export type ColorPickerAttributes = Omit<
 export interface ColorPickerProps extends ColorPickerAttributes {
   color: string;
   placeholder?: string;
-  isBordered?: boolean;
-  isSelected?: boolean;
-  isDefault?: boolean;
+  isAuto?: boolean;
   onChange?: (color?: string) => void;
 }
 
 const ColorPicker = forwardRef(function ColorPicker(
-  {
-    color,
-    placeholder,
-    isBordered,
-    isSelected,
-    isDefault,
-    onChange,
-    ...props
-  }: ColorPickerProps,
+  { color, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
@@ -38,9 +28,7 @@ const ColorPicker = forwardRef(function ColorPicker(
           ref={ref}
           color={color}
           placeholder={placeholder}
-          isBordered={isBordered}
-          isSelected={isSelected}
-          isDefault={isDefault}
+          isAuto={isAuto}
           onClick={onClick}
           onChange={onChange}
         />

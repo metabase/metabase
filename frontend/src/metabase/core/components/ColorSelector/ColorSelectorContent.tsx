@@ -19,7 +19,6 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
         <ColorPill
           key={index}
           color={option}
-          isBordered
           isSelected={color === option}
           onClick={() => onChange?.(option)}
         />

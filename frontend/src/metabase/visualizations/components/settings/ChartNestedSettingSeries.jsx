@@ -43,8 +43,6 @@ export default class ChartNestedSettingSeries extends React.Component {
                   <ColorSelector
                     color={settings.color}
                     colors={getNormalColors()}
-                    isBordered
-                    isSelected
                     onChange={value =>
                       onChangeObjectSettings(single, { color: value })
                     }

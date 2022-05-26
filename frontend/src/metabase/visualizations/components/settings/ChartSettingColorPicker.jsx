@@ -12,8 +12,6 @@ export default function ChartSettingColorPicker(props) {
       <ColorSelector
         color={value}
         colors={getNormalColors()}
-        isBordered
-        isSelected
         onChange={onChange}
       />
       {props.title && <h4 className="ml1">{props.title}</h4>}

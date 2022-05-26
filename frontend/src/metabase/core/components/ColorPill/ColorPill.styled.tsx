@@ -3,13 +3,15 @@ import { color } from "metabase/lib/colors";
 
 export interface ColorPillRootProps {
   isAuto: boolean;
+  isSelected: boolean;
 }
 
 export const ColorPillRoot = styled.div<ColorPillRootProps>`
   display: inline-block;
   padding: 0.1875rem;
   border-width: 0.0625rem;
-  border-color: ${color("text-light")};
+  border-color: ${props =>
+    props.isSelected ? color("text-light") : "transparent"};
   border-style: ${props => (props.isAuto ? "dashed" : "solid")};
   border-radius: 50%;
   cursor: pointer;

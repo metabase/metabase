@@ -38,8 +38,6 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                     className="mr1"
                     color={segment.color}
                     colors={getColorPalette()}
-                    isBordered
-                    isSelected
                     onChange={color => onChangeProperty(index, "color", color)}
                   />
                 </td>

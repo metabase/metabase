@@ -7,9 +7,7 @@ export interface ColorPickerTriggerProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   color: string;
   placeholder?: string;
-  isBordered?: boolean;
-  isSelected?: boolean;
-  isDefault?: boolean;
+  isAuto?: boolean;
   onChange?: (color?: string) => void;
 }
 
@@ -17,9 +15,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   {
     color,
     placeholder,
-    isBordered,
-    isSelected,
-    isDefault,
+    isAuto,
     onClick,
     onChange,
     ...props
@@ -28,13 +24,7 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
 ) {
   return (
     <TriggerContainer {...props} ref={ref}>
-      <ColorPill
-        color={color}
-        isBordered={isBordered}
-        isSelected={isSelected}
-        isDefault={isDefault}
-        onClick={onClick}
-      />
+      <ColorPill color={color} isAuto={isAuto} onClick={onClick} />
       <ColorInput
         color={color}
         placeholder={placeholder}
