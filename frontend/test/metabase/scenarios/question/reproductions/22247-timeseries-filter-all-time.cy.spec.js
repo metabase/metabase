@@ -2,8 +2,6 @@ import { restore, popover, openProductsTable } from "__support__/e2e/cypress";
 
 describe("time-series filter widget", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dataset").as("dataset");
-
     restore();
     cy.signInAsAdmin();
     openProductsTable();
