@@ -95,7 +95,9 @@ const BulkFilterListItem = ({
 
   return (
     <ListRow>
-      <ListRowLabel>{dimension.displayName()}</ListRowLabel>
+      <ListRowLabel data-testid="dimension-filter-label">
+        {dimension.displayName()}
+      </ListRowLabel>
       <ListRowContent>
         {options.map((filter, index) => (
           <BulkFilterSelect
