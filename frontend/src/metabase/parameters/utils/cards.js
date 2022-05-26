@@ -61,7 +61,7 @@ export function getTemplateTagsForParameters(card) {
 }
 
 export function getParametersFromCard(card) {
-  if (card && card.parameters) {
+  if (card && card.parameters && card.parameters.length > 0) {
     return card.parameters;
   }
 
