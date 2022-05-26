@@ -207,7 +207,7 @@ function testOfficialBadgePresence(expectBadge = true) {
     .findByText(COLLECTION_NAME)
     .click();
   cy.findByText("Official Question").click();
-  assertHasCollectionBadge(expectBadge);
+  assertHasCollectionBadgeInNavbar(expectBadge);
 
   // Search
   testOfficialBadgeInSearch({
@@ -354,3 +354,16 @@ function assertHasCollectionBadge(expectBadge = true) {
       cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
     });
 }
+
+const assertHasCollectionBadgeInNavbar = (expectBadge = true) => {
+  closeNavigationSidebar();
+  cy.get("header")
+    .findByText(COLLECTION_NAME)
+    .parent()
+    .within(() => {
+      cy.icon("badge").should(expectBadge ? "exist" : "not.exist");
+      if (expectBadge) {
+        cy.icon("badge").should("be.visible");
+      }
+    });
+};
