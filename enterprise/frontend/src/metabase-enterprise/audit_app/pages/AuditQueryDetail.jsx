@@ -1,5 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import AuditContent from "../components/AuditContent";
@@ -23,7 +24,7 @@ const AuditQueryDetail = ({ params: { queryHash } }) => (
       }
       const datasetQuery = result.data.rows[0][0];
       if (!datasetQuery) {
-        return <div>Query Not Recorded, sorry</div>;
+        return <div>{t`Query Not Recorded, sorry`}</div>;
       }
 
       return (

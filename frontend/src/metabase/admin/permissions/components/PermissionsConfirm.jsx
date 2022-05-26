@@ -75,11 +75,11 @@ const PermissionsConfirm = ({ diff }) => (
                 ? t` will no longer be able to `
                 : t` will now be able to `}
               {database.native === "read" ? (
-                <span className="text-gold">read</span>
+                <span className="text-gold">{t`read`}</span>
               ) : database.native === "write" ? (
-                <span className="text-success">write</span>
+                <span className="text-success">{t`write`}</span>
               ) : (
-                <span>read or write</span>
+                <span>{t`read or write`}</span>
               )}
               {t` native queries for `}
               <DatabaseName database={database} />
