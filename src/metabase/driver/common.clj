@@ -17,50 +17,6 @@
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
-(def connection-error-messages
-  "Generic error messages that drivers should return in their implementation
-  of [[metabase.driver/humanize-connection-error-message]]."
-  {:cannot-connect-check-host-and-port
-   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
-        " "
-        (deferred-tru "Make sure your host and port settings are correct"))
-
-   :ssh-tunnel-auth-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the username, password."))
-
-   :ssh-tunnel-connection-fail
-   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-        " "
-        (deferred-tru "Check the hostname and port."))
-
-   :database-name-incorrect
-   (deferred-tru "Looks like the database name is incorrect.")
-
-   :invalid-hostname
-   (str (deferred-tru "It looks like your host is invalid.")
-        " "
-        (deferred-tru "Please double-check it and try again."))
-
-   :password-incorrect
-   (deferred-tru "Looks like your password is incorrect.")
-
-   :password-required
-   (deferred-tru "Looks like you forgot to enter your password.")
-
-   :username-incorrect
-   (deferred-tru "Looks like your username is incorrect.")
-
-   :username-or-password-incorrect
-   (deferred-tru "Looks like the username or password is incorrect.")
-
-   :certificate-not-trusted
-   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")
-
-   :requires-ssl
-   (deferred-tru "Server appears to require SSL - please enable SSL above")})
-
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
 (def default-host-details

@@ -291,7 +291,7 @@
 
    (sequential? value)
    (params/map->MultipleValues {:values (for [v value]
-                                     (parse-value-for-type param-type v))})
+                                         (parse-value-for-type param-type v))})
 
    ;; Field Filters with "special" base types
    (and (= param-type :dimension)

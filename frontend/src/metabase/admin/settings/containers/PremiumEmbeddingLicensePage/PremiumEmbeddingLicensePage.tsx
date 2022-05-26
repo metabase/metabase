@@ -96,7 +96,7 @@ export const PremiumEmbeddingLicensePage = ({
   return (
     <AdminLayout>
       <PremiumEmbeddingLicensePageContent>
-        <PremiumEmbeddingHeading>Premium embedding</PremiumEmbeddingHeading>
+        <PremiumEmbeddingHeading>{t`Premium embedding`}</PremiumEmbeddingHeading>
         <PremiumEmbeddingDescription>
           {getDescription(tokenStatus, !!token)}
         </PremiumEmbeddingDescription>

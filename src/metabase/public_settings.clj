@@ -211,12 +211,18 @@
   (deferred-tru "Allow persisting models into the source database.")
   :type       :boolean
   :default    false
-  :visibility :admin)
+  :visibility :authenticated)
 
 (defsetting persisted-model-refresh-interval-hours
   (deferred-tru "Hour interval to refresh persisted models.")
   :type       :integer
   :default    6
+  :visibility :admin)
+
+(defsetting persisted-model-refresh-anchor-time
+  (deferred-tru "Anchor time to begin refreshing persisted models.")
+  :type       :string
+  :default    "00:00"
   :visibility :admin)
 
 (def ^:private ^:const global-max-caching-kb
