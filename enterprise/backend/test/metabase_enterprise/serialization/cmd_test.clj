@@ -69,6 +69,7 @@
           :dataset_query          "{}"
           :creator_id             (u/the-id user)
           :visualization_settings "{}"
+          :parameters             "[]"
           :created_at             :%now
           :updated_at             :%now)
         ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed

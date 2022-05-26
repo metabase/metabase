@@ -291,3 +291,43 @@
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
+
+
+;;; ------------------------------------------ Parameters tests ------------------------------------------
+
+(deftest validate-parameters-test
+  (testing "Should validate Card :parameters when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameters must be a sequence of maps with String :id keys"
+           (mt/with-temp Card [_ {:parameters {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameters [{:id "valid-id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameters []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameters must be a sequence of maps with String :id keys"
+             (db/update! Card id :parameters [{:id 100}])))
+
+        (is (some? (db/update! Card id :parameters [{:id "new-valid-id"}])))))))
+
+(deftest normalize-parameters-test
+  (testing ":parameters should get normalized when coming out of the DB"
+    (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
+                               [:field-id 1000]              [:field 1000 nil]}]
+      (testing (format "target = %s" (pr-str target))
+        (mt/with-temp Card [{card-id :id} {:parameters [{:name   "Category Name"
+                                                         :slug   "category_name"
+                                                         :id     "_CATEGORY_NAME_"
+                                                         :type   "category"
+                                                         :target target}]}]
+          (is (= [{:name   "Category Name"
+                   :slug   "category_name"
+                   :id     "_CATEGORY_NAME_"
+                   :type   :category
+                   :target expected}]
+                 (db/select-one-field :parameters Card :id card-id))))))))

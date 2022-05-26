@@ -112,7 +112,8 @@
     (is (= {:errors {:name "value must be a non-blank string."}}
            (mt/user-http-request :rasta :post 400 "dashboard" {})))
 
-    (is (= {:errors {:parameters "value must be an array. Each value must be a map."}}
+    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                      "Each :parameters must be a sequence of maps with String :id keys")}}
            (mt/user-http-request :crowberto :post 400 "dashboard" {:name       "Test"
                                                                    :parameters "abc"})))))
 

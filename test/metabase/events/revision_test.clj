@@ -31,6 +31,7 @@
    :id                     (u/the-id card)
    :made_public_by_id      nil
    :name                   (:name card)
+   :parameters             []
    :public_uuid            nil
    :cache_ttl              nil
    :query_type             :query
