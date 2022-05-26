@@ -35,6 +35,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
               <tr>
                 <td>
                   <ColorSelector
+                    className="mr1"
                     color={segment.color}
                     colors={getColorPalette()}
                     isBordered
@@ -102,10 +103,10 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 
 function getColorPalette() {
   return [
+    ...getNormalColors(),
     color("error"),
     color("warning"),
     color("success"),
-    ...getNormalColors(),
     color("bg-medium"),
   ];
 }
@@ -118,7 +119,7 @@ function newSegment(segments) {
     : -1;
   const nextColor =
     lastColorIndex >= 0
-      ? palette[lastColorIndex + (1 % palette.length)]
+      ? palette[(lastColorIndex + 1) % palette.length]
       : palette[0];
 
   return {
