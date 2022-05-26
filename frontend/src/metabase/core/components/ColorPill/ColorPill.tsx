@@ -11,9 +11,9 @@ export interface ColorPillProps extends HTMLAttributes<HTMLDivElement> {
 const ColorPill = forwardRef(function ColorPill(
   {
     color,
-    isBordered,
-    isSelected,
-    isDefault,
+    isBordered = false,
+    isSelected = false,
+    isDefault = false,
     "aria-label": ariaLabel = color,
     ...props
   }: ColorPillProps,
