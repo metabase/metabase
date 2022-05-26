@@ -151,7 +151,6 @@
 (defn- add-implicit-card-parameters
   "Add template tag parameter information to `card`'s `:parameters`."
   [card]
-  (def card card)
   (update card :parameters concat (template-tag-parameters card)))
 
 (s/defn ^:private apply-slug->value :- (s/maybe [{:slug   su/NonBlankString
