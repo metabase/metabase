@@ -1,5 +1,9 @@
 import React from "react";
-import { renderWithProviders, screen } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitForElementToBeRemoved,
+} from "__support__/ui";
 import userEvent from "@testing-library/user-event";
 import mock from "xhr-mock";
 
@@ -37,10 +41,29 @@ function mockCachingEnabled(enabled = true) {
   });
 }
 
-const renderSaveQuestionModal = (question, originalQuestion) => {
+const renderSaveQuestionModal = async (question, originalQuestion) => {
   const onCreateMock = jest.fn(() => Promise.resolve());
   const onSaveMock = jest.fn(() => Promise.resolve());
   const onCloseMock = jest.fn();
+
+  const db = question.database().getPlainObject();
+  const collectionId =
+    question?.collectionId?.() || originalQuestion?.collectionId?.();
+  const collectionIdPath = collectionId || "root";
+
+  mock.get(`/api/database/${db.id}`, {
+    body: JSON.stringify(db),
+  });
+  mock.get(`/api/collection/${collectionIdPath}`, {
+    body: JSON.stringify({}),
+  });
+
+  const settingsState = {
+    values: {
+      "experimental-actions-enabled": false,
+    },
+  };
+
   renderWithProviders(
     <SaveQuestionModal
       card={question.card()}
@@ -50,7 +73,18 @@ const renderSaveQuestionModal = (question, originalQuestion) => {
       onSave={onSaveMock}
       onClose={onCloseMock}
     />,
+    {
+      reducers: {
+        settings: () => settingsState,
+        storeInitialState: {
+          settings: settingsState,
+        },
+      },
+    },
   );
+
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading/i));
+
   return { onSaveMock, onCreateMock, onCloseMock };
 };
 
@@ -155,15 +189,15 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("new question", () => {
-    it("should suggest a name for structured queries", () => {
-      renderSaveQuestionModal(getQuestion());
+    it("should suggest a name for structured queries", async () => {
+      await renderSaveQuestionModal(getQuestion());
       expect(screen.getByLabelText("Name")).toHaveValue(
         EXPECTED_SUGGESTED_NAME,
       );
     });
 
-    it("should not suggest a name for native queries", () => {
-      renderSaveQuestionModal(
+    it("should not suggest a name for native queries", async () => {
+      await renderSaveQuestionModal(
         new Question(
           {
             dataset_query: {
@@ -182,14 +216,14 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByLabelText("Name")).toHaveValue("");
     });
 
-    it("should display empty description input", () => {
-      renderSaveQuestionModal(getQuestion());
+    it("should display empty description input", async () => {
+      await renderSaveQuestionModal(getQuestion());
       expect(screen.getByLabelText("Description")).toHaveValue("");
     });
 
-    it("should call onCreate correctly with default form values", () => {
+    it("should call onCreate correctly with default form values", async () => {
       const question = getQuestion();
-      const { onCreateMock } = renderSaveQuestionModal(question);
+      const { onCreateMock } = await renderSaveQuestionModal(question);
 
       userEvent.click(screen.getByText("Save"));
 
@@ -202,9 +236,9 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("should call onCreate correctly with edited form", () => {
+    it("should call onCreate correctly with edited form", async () => {
       const question = getQuestion();
-      const { onCreateMock } = renderSaveQuestionModal(question);
+      const { onCreateMock } = await renderSaveQuestionModal(question);
 
       fillForm({ name: "My favorite orders", description: "So many of them" });
       userEvent.click(screen.getByText("Save"));
@@ -218,9 +252,9 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("should trim name and description", () => {
+    it("should trim name and description", async () => {
       const question = getQuestion();
-      const { onCreateMock } = renderSaveQuestionModal(question);
+      const { onCreateMock } = await renderSaveQuestionModal(question);
 
       fillForm({
         name: "    My favorite orders ",
@@ -237,11 +271,11 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it('should correctly handle saving a question in the "root" collection', () => {
+    it('should correctly handle saving a question in the "root" collection', async () => {
       const question = getQuestion({
         collection_id: "root",
       });
-      const { onCreateMock } = renderSaveQuestionModal(question);
+      const { onCreateMock } = await renderSaveQuestionModal(question);
 
       fillForm({ name: "foo", description: "bar" });
       userEvent.click(screen.getByText("Save"));
@@ -255,17 +289,17 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("shouldn't call onSave when form is submitted", () => {
+    it("shouldn't call onSave when form is submitted", async () => {
       const question = getQuestion();
-      const { onSaveMock } = renderSaveQuestionModal(question);
+      const { onSaveMock } = await renderSaveQuestionModal(question);
 
       userEvent.click(screen.getByText("Save"));
 
       expect(onSaveMock).not.toHaveBeenCalled();
     });
 
-    it("shouldn't show a control to overwrite a saved question", () => {
-      renderSaveQuestionModal(getQuestion());
+    it("shouldn't show a control to overwrite a saved question", async () => {
+      await renderSaveQuestionModal(getQuestion());
       expect(
         screen.queryByText("Save as new question"),
       ).not.toBeInTheDocument();
@@ -276,9 +310,9 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("saving as a new question", () => {
-    it("should offer to replace the original question by default", () => {
+    it("should offer to replace the original question by default", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
-      renderSaveQuestionModal(
+      await renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
       );
@@ -289,7 +323,7 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByText("Save as new question")).not.toBeChecked();
     });
 
-    it("should switch to the new question form", () => {
+    it("should switch to the new question form", async () => {
       const CARD = {
         name: "Q1",
         description: "Example description",
@@ -297,7 +331,7 @@ describe("SaveQuestionModal", () => {
       };
       const originalQuestion = getQuestion({ isSaved: true, ...CARD });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      renderSaveQuestionModal(dirtyQuestion, originalQuestion);
+      await renderSaveQuestionModal(dirtyQuestion, originalQuestion);
 
       userEvent.click(screen.getByText("Save as new question"));
 
@@ -310,10 +344,10 @@ describe("SaveQuestionModal", () => {
       expect(screen.queryByText("Our analytics")).toBeInTheDocument();
     });
 
-    it("should allow to save a question with default form values", () => {
+    it("should allow to save a question with default form values", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onCreateMock } = renderSaveQuestionModal(
+      const { onCreateMock } = await renderSaveQuestionModal(
         dirtyQuestion,
         originalQuestion,
       );
@@ -328,10 +362,10 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("show allow to save a question with an edited form", () => {
+    it("show allow to save a question with an edited form", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onCreateMock } = renderSaveQuestionModal(
+      const { onCreateMock } = await renderSaveQuestionModal(
         dirtyQuestion,
         originalQuestion,
       );
@@ -348,9 +382,9 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("shouldn't allow to save a question if form is invalid", () => {
+    it("shouldn't allow to save a question if form is invalid", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
-      renderSaveQuestionModal(
+      await renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
       );
@@ -364,23 +398,23 @@ describe("SaveQuestionModal", () => {
   });
 
   describe("overwriting a saved question", () => {
-    it("should display original question's name on save mode control", () => {
+    it("should display original question's name on save mode control", async () => {
       const originalQuestion = getQuestion({
         isSaved: true,
         name: "Beautiful Orders",
       });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      renderSaveQuestionModal(dirtyQuestion, originalQuestion);
+      await renderSaveQuestionModal(dirtyQuestion, originalQuestion);
 
       expect(
         screen.queryByText('Replace original question, "Beautiful Orders"'),
       ).toBeInTheDocument();
     });
 
-    it("should call onSave correctly when form is submitted", () => {
+    it("should call onSave correctly when form is submitted", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onSaveMock } = renderSaveQuestionModal(
+      const { onSaveMock } = await renderSaveQuestionModal(
         dirtyQuestion,
         originalQuestion,
       );
@@ -394,10 +428,10 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("should allow switching to 'save as new' and back", () => {
+    it("should allow switching to 'save as new' and back", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onSaveMock } = renderSaveQuestionModal(
+      const { onSaveMock } = await renderSaveQuestionModal(
         dirtyQuestion,
         originalQuestion,
       );
@@ -413,12 +447,12 @@ describe("SaveQuestionModal", () => {
       });
     });
 
-    it("should preserve original question's collection id", () => {
+    it("should preserve original question's collection id", async () => {
       const originalQuestion = getQuestion({
         isSaved: true,
         collection_id: 5,
       });
-      const { onSaveMock } = renderSaveQuestionModal(
+      const { onSaveMock } = await renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
       );
@@ -432,8 +466,8 @@ describe("SaveQuestionModal", () => {
       );
     });
 
-    it("shouldn't allow to save a question if form is invalid", () => {
-      renderSaveQuestionModal(getQuestion());
+    it("shouldn't allow to save a question if form is invalid", async () => {
+      await renderSaveQuestionModal(getQuestion());
 
       userEvent.clear(screen.getByLabelText("Name"));
       userEvent.clear(screen.getByLabelText("Description"));
@@ -441,10 +475,10 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
     });
 
-    it("shouldn't call onCreate when form is submitted", () => {
+    it("shouldn't call onCreate when form is submitted", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      const { onCreateMock } = renderSaveQuestionModal(
+      const { onCreateMock } = await renderSaveQuestionModal(
         dirtyQuestion,
         originalQuestion,
       );
@@ -454,9 +488,9 @@ describe("SaveQuestionModal", () => {
       expect(onCreateMock).not.toHaveBeenCalled();
     });
 
-    it("should keep 'save as new' form values while switching saving modes", () => {
+    it("should keep 'save as new' form values while switching saving modes", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
-      renderSaveQuestionModal(
+      await renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
       );
@@ -475,9 +509,9 @@ describe("SaveQuestionModal", () => {
       );
     });
 
-    it("should allow to replace the question if new question form is invalid (metabase#13817", () => {
+    it("should allow to replace the question if new question form is invalid (metabase#13817", async () => {
       const originalQuestion = getQuestion({ isSaved: true });
-      renderSaveQuestionModal(
+      await renderSaveQuestionModal(
         getDirtyQuestion(originalQuestion),
         originalQuestion,
       );
@@ -489,14 +523,14 @@ describe("SaveQuestionModal", () => {
       expect(screen.getByRole("button", { name: "Save" })).toBeEnabled();
     });
 
-    it("should not allow overwriting when user does not have curate permission on collection (metabase#20717)", () => {
+    it("should not allow overwriting when user does not have curate permission on collection (metabase#20717)", async () => {
       const originalQuestion = getQuestion({
         isSaved: true,
         name: "Beautiful Orders",
         can_write: false,
       });
       const dirtyQuestion = getDirtyQuestion(originalQuestion);
-      renderSaveQuestionModal(dirtyQuestion, originalQuestion);
+      await renderSaveQuestionModal(dirtyQuestion, originalQuestion);
 
       expect(
         screen.queryByText("Save as new question"),
@@ -507,14 +541,14 @@ describe("SaveQuestionModal", () => {
     });
   });
 
-  it("should call onClose when Cancel button is clicked", () => {
-    const { onCloseMock } = renderSaveQuestionModal(getQuestion());
+  it("should call onClose when Cancel button is clicked", async () => {
+    const { onCloseMock } = await renderSaveQuestionModal(getQuestion());
     userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 
-  it("should call onClose when close icon is clicked", () => {
-    const { onCloseMock } = renderSaveQuestionModal(getQuestion());
+  it("should call onClose when close icon is clicked", async () => {
+    const { onCloseMock } = await renderSaveQuestionModal(getQuestion());
     userEvent.click(screen.getByLabelText("close icon"));
     expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
@@ -534,8 +568,8 @@ describe("SaveQuestionModal", () => {
       .question();
 
     describe("OSS", () => {
-      it("is not shown", () => {
-        renderSaveQuestionModal(question);
+      it("is not shown", async () => {
+        await renderSaveQuestionModal(question);
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -548,8 +582,8 @@ describe("SaveQuestionModal", () => {
         setupEnterpriseTest();
       });
 
-      it("is not shown", () => {
-        renderSaveQuestionModal(question);
+      it("is not shown", async () => {
+        await renderSaveQuestionModal(question);
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
