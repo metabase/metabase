@@ -57,7 +57,7 @@ class SaveQuestionModal extends Component {
       isAdmin &&
       isNative &&
       isWritebackEnabled &&
-      isDatabaseWritebackEnabled(database.getPlainObject())
+      isDatabaseWritebackEnabled(database.getPlainObject?.())
     );
   };
 

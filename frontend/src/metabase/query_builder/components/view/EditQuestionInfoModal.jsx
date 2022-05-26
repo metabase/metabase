@@ -40,7 +40,7 @@ function EditQuestionInfoModal({
   onSave,
 }) {
   const modalTitle = question.isDataset() ? t`Edit model` : t`Edit question`;
-  const database = question.database().getPlainObject();
+  const database = question.database()?.getPlainObject?.();
   const hasIsWriteField =
     isAdmin &&
     question.isNative() &&
