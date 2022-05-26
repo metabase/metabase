@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import { getChartColors } from "metabase/lib/colors/charts";
+import { getNormalColors } from "metabase/lib/colors/charts";
 import ColorSelector from "metabase/core/components/ColorSelector";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import Icon from "metabase/components/Icon";
@@ -42,7 +42,7 @@ export default class ChartNestedSettingSeries extends React.Component {
                 <div className="flex align-center">
                   <ColorSelector
                     color={settings.color}
-                    colors={getChartColors()}
+                    colors={getNormalColors()}
                     isBordered
                     isSelected
                     onChange={value =>
