@@ -215,12 +215,13 @@
       (db/insert! action/QueryAction {:card_id card-id
                                       :action_id action-id}))))
 
-(defn- delete-actions-when-not-writable [{is-write? :is_write card-id :id :as c}]
+(defn- delete-actions-when-not-writable [{is-write? :is_write card-id :id}]
   (when (false? is-write?)
     (db/execute! {:delete-from [:action :a]
                   :where [:in :id {:select [:action_id]
                                    :from [:query_action]
                                    :where [:= :card_id card-id]}]})))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (u/prog1 card
