@@ -466,6 +466,7 @@ export const ObjectDetailProperties = {
     // @ts-ignore
     ...columnSettings({ hidden: true }),
   },
+  isSensible: (data: DatasetData) => data.rows.length === 1,
 };
 
 const ObjectDetail = Object.assign(
