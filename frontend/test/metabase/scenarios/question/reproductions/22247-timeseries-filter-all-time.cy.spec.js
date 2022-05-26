@@ -1,29 +1,36 @@
-import { restore, popover, openProductsTable } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  openProductsTable,
+  summarize,
+  sidebar,
+} from "__support__/e2e/cypress";
 
 describe("time-series filter widget", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+
     openProductsTable();
   });
 
   it("should properly display All Time as the initial filtering (metabase#22247)", () => {
-    cy.findAllByText("Summarize")
-      .first()
-      .click();
-    cy.findAllByText("Created At")
-      .last()
+    summarize();
+
+    sidebar()
+      .contains("Created At")
       .click();
     cy.wait("@dataset");
-    cy.findByText("Done").click();
 
     cy.findByText("All Time").click();
-    popover().within(() => {
-      cy.findByText("Previous").should("not.exist");
-      cy.findByText("Next").should("not.exist");
 
-      cy.findByTextEnsureVisible("All Time");
-      cy.findByTextEnsureVisible("Apply");
+    popover().within(() => {
+      // Implicit assertion: there is only one select button
+      cy.findByTestId("select-button-content")
+        .invoke("text")
+        .should("eq", "All Time");
+
+      cy.button("Apply").should("not.be.disabled");
     });
   });
 
