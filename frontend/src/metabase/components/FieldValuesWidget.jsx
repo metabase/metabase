@@ -20,7 +20,6 @@ import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
 import { stripId } from "metabase/lib/formatting";
 import { fetchDashboardParameterValues } from "metabase/dashboard/actions";
-import { getDashboardParameterValuesCache } from "metabase/dashboard/selectors";
 
 import Fields from "metabase/entities/fields";
 
@@ -44,7 +43,6 @@ const mapDispatchToProps = {
 function mapStateToProps(state, { fields = [] }) {
   // try and use the selected fields, but fall back to the ones passed
   return {
-    dashboardParameterValuesCache: getDashboardParameterValuesCache(state),
     fields: fields.map(
       field =>
         Fields.selectors.getObject(state, { entityId: field.id }) || field,
@@ -97,8 +95,7 @@ class FieldValuesWidgetInner extends Component {
         parameter,
         parameters,
       };
-      await this.props.fetchDashboardParameterValues(args);
-      options = this.props.dashboardParameterValuesCache.get(args);
+      options = await this.props.fetchDashboardParameterValues(args);
     } finally {
       this.setState({
         loadingState: "LOADED",
@@ -142,8 +139,7 @@ class FieldValuesWidgetInner extends Component {
         parameters,
         query: value,
       };
-      await this.props.fetchDashboardParameterValues(args);
-      results = this.props.dashboardParameterValuesCache.get(args);
+      results = await this.props.fetchDashboardParameterValues(args);
     } else {
       results = dedupeValues(
         await Promise.all(
