@@ -20,7 +20,7 @@ export interface ColorRangeContentProps
   initialValue: string[];
   colors: string[];
   ranges?: string[][];
-  onChange?: (value: string[]) => void;
+  onChange?: (newValue: string[]) => void;
   onClose?: () => void;
 }
 

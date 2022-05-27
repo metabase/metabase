@@ -12,7 +12,7 @@ export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   value: string[];
   colors: string[];
   ranges?: string[][];
-  onChange?: (value: string[]) => void;
+  onChange?: (newValue: string[]) => void;
 }
 
 const ColorRangeSelector = forwardRef(function ColorRangeSelector(

@@ -6,7 +6,7 @@ export interface ColorSelectorPopoverProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   value?: string;
   colors: string[];
-  onChange?: (value: string) => void;
+  onChange?: (newValue: string) => void;
   onClose?: () => void;
 }
 
@@ -15,8 +15,8 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
   ref: Ref<HTMLDivElement>,
 ) {
   const handleSelect = useCallback(
-    (value: string) => {
-      onChange?.(value);
+    (newValue: string) => {
+      onChange?.(newValue);
       onClose?.();
     },
     [onChange, onClose],

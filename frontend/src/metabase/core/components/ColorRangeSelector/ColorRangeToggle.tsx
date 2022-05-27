@@ -7,7 +7,7 @@ import {
 
 export interface ColorRangeToggleProps {
   value: string[];
-  onChange?: (value: string[]) => void;
+  onChange?: (newValue: string[]) => void;
 }
 
 const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {

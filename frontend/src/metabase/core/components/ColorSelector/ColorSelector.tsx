@@ -11,7 +11,7 @@ export type ColorSelectorAttributes = Omit<
 export interface ColorSelectorProps extends ColorSelectorAttributes {
   value: string;
   colors: string[];
-  onChange?: (color: string) => void;
+  onChange?: (newValue: string) => void;
 }
 
 const ColorSelector = forwardRef(function ColorSelector(

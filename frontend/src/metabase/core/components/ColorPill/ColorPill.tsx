@@ -16,7 +16,7 @@ export interface ColorPillProps extends ColorPillAttributes {
   color: string;
   isAuto?: boolean;
   isSelected?: boolean;
-  onSelect?: (color: string) => void;
+  onSelect?: (newColor: string) => void;
 }
 
 const ColorPill = forwardRef(function ColorPill(
