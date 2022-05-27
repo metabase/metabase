@@ -124,7 +124,7 @@ class FieldValuesWidgetInner extends Component {
     if (query == null) {
       const { fields, fetchFieldValues } = this.props;
       await Promise.all(fields.map(field => fetchFieldValues(field.id)));
-      return dedupeValues(fields.map(field => field.values));
+      return dedupeValues(this.props.fields.map(field => field.values));
     } else {
       const { fields } = this.props;
       const cancelDeferred = defer();
