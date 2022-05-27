@@ -22,7 +22,7 @@ For more information, check out our guide for [authenticating with SAML](authent
 5. Configure the SSO client from the form that appears after saving:
    - **Client Signature Required**: DISABLE
    - **Valid Redirect URIs**: URL where you are hosting your Metabase instance followed by
-     a slash (/) and an asterisk (_). For example, `http://localhost:3000/_`.
+     a slash (/) and an asterisk (*). For example, `http://localhost:3000/*`.
    - **Base URL**: Fill this in with the value under “URL the IdP should redirect back to” from your Metabase **Admin settings** > **Authentication** > **SAML**.
    - Click **Save**.
 6. Map user data to your SSO client from **Mappers** > **Add Builtin**.
