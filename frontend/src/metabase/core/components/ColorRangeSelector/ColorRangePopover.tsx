@@ -19,6 +19,7 @@ export interface ColorRangeContentProps
   initialValue: string[];
   colors: string[];
   ranges?: string[][];
+  quantile?: boolean;
   onChange?: (newValue: string[]) => void;
   onClose?: () => void;
 }
@@ -28,6 +29,7 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
     initialValue,
     colors,
     ranges = [],
+    quantile,
     onChange,
     onClose,
     ...props
@@ -68,11 +70,20 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
           />
         ))}
       </PopoverColorList>
-      <ColorRangeToggle value={value} onChange={handleChange} />
+      <ColorRangeToggle
+        value={value}
+        quantile={quantile}
+        onChange={handleChange}
+      />
       {ranges.length > 0 && <PopoverDivider />}
       <PopoverColorRangeList>
         {ranges?.map((range, index) => (
-          <ColorRangeToggle key={index} value={range} onChange={handleChange} />
+          <ColorRangeToggle
+            key={index}
+            value={range}
+            quantile={quantile}
+            onChange={handleChange}
+          />
         ))}
       </PopoverColorRangeList>
     </PopoverRoot>

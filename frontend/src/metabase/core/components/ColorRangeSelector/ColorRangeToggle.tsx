@@ -7,10 +7,15 @@ import {
 
 export interface ColorRangeToggleProps {
   value: string[];
+  quantile?: boolean;
   onChange?: (newValue: string[]) => void;
 }
 
-const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {
+const ColorRangeToggle = ({
+  value,
+  quantile,
+  onChange,
+}: ColorRangeToggleProps) => {
   const [isInverted, setIsInverted] = useState(false);
 
   const displayValue = useMemo(() => {
@@ -23,7 +28,11 @@ const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {
 
   return (
     <ToggleRoot>
-      <ToggleColorRange colors={displayValue} onSelect={onChange} />
+      <ToggleColorRange
+        colors={displayValue}
+        quantile={quantile}
+        onSelect={onChange}
+      />
       <ToggleButton icon="compare" small onClick={handleButtonClick} />
     </ToggleRoot>
   );
