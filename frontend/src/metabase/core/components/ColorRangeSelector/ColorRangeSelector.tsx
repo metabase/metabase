@@ -5,7 +5,7 @@ import ColorRangePopover from "./ColorRangePopover";
 
 export type ColorRangeSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
-  "onChange"
+  "onChange" | "onSelect"
 >;
 
 export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
