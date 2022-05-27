@@ -51,8 +51,13 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   return (
     <PopoverRoot {...props} ref={ref}>
       <PopoverColorList>
-        {colors.map((option, index) => (
-          <ColorPill key={index} color={option} onSelect={handleSelect} />
+        {colors.map((color, index) => (
+          <ColorPill
+            key={index}
+            color={color}
+            isSelected={value.includes(color)}
+            onSelect={handleSelect}
+          />
         ))}
       </PopoverColorList>
       <ColorRangeToggle value={value} onChange={handleChange} />
