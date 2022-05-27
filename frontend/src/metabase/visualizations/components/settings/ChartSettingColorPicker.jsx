@@ -10,7 +10,7 @@ export default function ChartSettingColorPicker(props) {
   return (
     <div className="flex align-center mb1">
       <ColorSelector
-        color={value}
+        value={value}
         colors={getNormalColors()}
         onChange={onChange}
       />
