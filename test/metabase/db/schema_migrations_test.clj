@@ -578,7 +578,7 @@
 
 
 (deftest add-parameter-to-cards-test
-  (testing "Migration v43.00-057: Rename general permissions to application permissions"
+  (testing "Migration v44.00-022: Add parameters to report_card"
     (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
       (let [user-id
             (db/simple-insert! User {:first_name  "Howard"
