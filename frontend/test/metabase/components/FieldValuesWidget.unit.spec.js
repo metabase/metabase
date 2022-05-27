@@ -31,9 +31,9 @@ describe("FieldValuesWidget", () => {
         expect(fetchFieldValues).not.toHaveBeenCalled();
       });
 
-      it("should have 'Enter some text' as the placeholder text", () => {
+      it("should have 'Enter some text' as the placeholder text", async () => {
         renderFieldValuesWidget({ ...props });
-        screen.getByPlaceholderText("Enter some text");
+        await screen.findByPlaceholderText("Enter some text");
       });
     });
     describe("has_field_values = list", () => {
@@ -55,11 +55,11 @@ describe("FieldValuesWidget", () => {
         ).toBeNull();
       });
 
-      it("should have 'Enter some text' as the placeholder text for fields with more than 10 values", () => {
+      it("should have 'Enter some text' as the placeholder text for fields with more than 10 values", async () => {
         renderFieldValuesWidget({
           fields: [mock(PRODUCTS.TITLE, { has_field_values: "list" })],
         });
-        screen.getByPlaceholderText("Enter some text");
+        await screen.findByPlaceholderText("Enter some text");
       });
     });
 
@@ -74,25 +74,25 @@ describe("FieldValuesWidget", () => {
         expect(fetchFieldValues).not.toHaveBeenCalled();
       });
 
-      it("should have 'Search by Category' as the placeholder text", () => {
+      it("should have 'Search by Category' as the placeholder text", async () => {
         renderFieldValuesWidget({ ...props });
-        screen.getByPlaceholderText("Search by Category");
+        await screen.findByPlaceholderText("Search by Category");
       });
     });
   });
 
   describe("id field", () => {
     describe("has_field_values = none", () => {
-      it("should have 'Enter an ID' as the placeholder text", () => {
+      it("should have 'Enter an ID' as the placeholder text", async () => {
         renderFieldValuesWidget({
           fields: [mock(ORDERS.PRODUCT_ID, { has_field_values: "none" })],
         });
-        screen.getByPlaceholderText("Enter an ID");
+        await screen.findByPlaceholderText("Enter an ID");
       });
     });
 
     describe("has_field_values = list", () => {
-      it("should have 'Search the list' as the placeholder text", () => {
+      it("should have 'Search the list' as the placeholder text", async () => {
         renderFieldValuesWidget({
           fields: [
             mock(ORDERS.PRODUCT_ID, {
@@ -101,12 +101,12 @@ describe("FieldValuesWidget", () => {
             }),
           ],
         });
-        screen.getByPlaceholderText("Search the list");
+        await screen.findByPlaceholderText("Search the list");
       });
     });
 
     describe("has_field_values = search", () => {
-      it("should have 'Search by Category or enter an ID' as the placeholder text", () => {
+      it("should have 'Search by Category or enter an ID' as the placeholder text", async () => {
         renderFieldValuesWidget({
           fields: [
             mock(ORDERS.PRODUCT_ID, {
@@ -115,7 +115,7 @@ describe("FieldValuesWidget", () => {
             }),
           ],
         });
-        screen.getByPlaceholderText("Search by Category or enter an ID");
+        await screen.findByPlaceholderText("Search by Category or enter an ID");
       });
 
       it("should not duplicate 'ID' in placeholder when ID itself is searchable", async () => {
@@ -126,7 +126,7 @@ describe("FieldValuesWidget", () => {
           }),
         ];
         renderFieldValuesWidget({ fields });
-        screen.getByPlaceholderText("Search by Product");
+        await screen.findByPlaceholderText("Search by Product");
       });
     });
   });
@@ -138,31 +138,31 @@ describe("FieldValuesWidget", () => {
         mock(PEOPLE.STATE, { has_field_values: "list" }),
       ];
       renderFieldValuesWidget({ fields });
-      screen.getByPlaceholderText("Search the list");
+      await screen.findByPlaceholderText("Search the list");
 
-      screen.getByText("AZ");
-      screen.getByText("Facebook");
+      await screen.findByText("AZ");
+      await screen.findByText("Facebook");
     });
 
-    it("search if any field is a search", () => {
+    it("search if any field is a search", async () => {
       const fields = [
         mock(PEOPLE.SOURCE, { has_field_values: "search" }),
         mock(PEOPLE.STATE, { has_field_values: "list" }),
       ];
       renderFieldValuesWidget({ fields });
-      screen.getByPlaceholderText("Search");
+      await screen.findByPlaceholderText("Search");
 
       expect(screen.queryByText("AZ")).toBeNull();
       expect(screen.queryByText("Facebook")).toBeNull();
     });
 
-    it("don't list any values if any is set to 'plain input box'", () => {
+    it("don't list any values if any is set to 'plain input box'", async () => {
       const fields = [
         mock(PEOPLE.SOURCE, { has_field_values: "none" }),
         mock(PEOPLE.STATE, { has_field_values: "list" }),
       ];
       renderFieldValuesWidget({ fields });
-      screen.getByPlaceholderText("Enter some text");
+      await screen.findByPlaceholderText("Enter some text");
 
       expect(screen.queryByText("AZ")).toBeNull();
       expect(screen.queryByText("Facebook")).toBeNull();
