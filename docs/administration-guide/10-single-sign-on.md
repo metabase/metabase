@@ -7,15 +7,14 @@
   - [LDAP user schema](#ldap-user-schema)
   - [LDAP group mapping](#ldap-group-mapping)
   - [LDAP group membership filter](#ldap-group-membership-filter)
-- [Enabling SSO with Keycloak](sso-keycloak.md)
 - [Syncing user attributes at login](#syncing-user-attributes-at-login)
   - [Syncing attributes with Google](#syncing-attributes-with-google)
   - [Syncing attributes with LDAP](#syncing-attributes-with-ldap)
-- [Changing a user's login method from email to SSO](#changing-a-users-login-method-from-email-to-sso)
+- [Changing an account's login method from email to SSO](#changing-an-accounts-login-method-from-email-to-sso)
 
 Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) lets your team log in with a click instead of using email and password, and can optionally let them sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
 
-If you'd like to have your users authenticate with SAML or JWT, Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that. Learn more about authenticating with [SAML][saml-docs] or [JWT][jwt-docs].
+If you'd like to have people authenticate with SAML or JWT, Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that. Learn more about authenticating with [SAML][saml-docs] or [JWT][jwt-docs].
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
@@ -115,26 +114,24 @@ Group membership lookup filter. The placeholders {dn} and {uid} will be replaced
 
 ### Syncing attributes with LDAP
 
-LDAP user attributes are managed from your LDAP directory. If you've set up [data-sandboxing-docs][data-sandboxing-docs], these attributes will be [automatically passed to Metabase][getting-user-attributes].
+You can manage [user attributes][user-attributes-def] such as names, emails, and roles from your LDAP directory. When you set up [data sandboxing][data-sandboxing-docs], your LDAP directory will be able to [pass these attributes][getting-user-attributes] to Metabase.
 
 ### Syncing attributes with Google
 
 User attributes can't be synced with regular Google Sign-In. You'll need to set up [Google SAML][google-saml-docs] or [JWT][jwt-docs] instead.
 
-## Changing a user's login method from email to SSO
+## Changing an account's login method from email to SSO
 
-You cannot use the Admin panel to update the authentication method for a user once they have set it up for the first time.
+Once a person creates an account, you cannot change the authentication method for that account. However, you can:
 
-Metabase accounts created with Google Sign-In do not have passwords and must use Google to sign in to Metabase.
+- Deactivate password authentication for all users from **Admin settings** > **Authentication**. You'll need to ask people to sign in with Google (if they haven't already).
+- Manually update the account's login method in the Metabase application database. This option is not recommended unless you're  familiar with making changes to the application database.
 
-For Metabase accounts created with emails and passwords, you can:
-- Deactivate password authentication for all users from **Admin settings** > **Authentication**. You'll need to ask users to sign in with Google if they haven't already.
-- Manually update the user's login method in the Metabase application database. This option is not recommended unless you are very familiar with making changes to the application database.
-
-Note that you must have at least one user with email and password login. This ensures that you won't get locked out of Metabase if there are any problems with your SSO provider.
+Note that you must have at least one account with email and password login. This account safeguards you from getting locked out of your Metabase if there are any problems with your SSO provider.
 
 [data-sandboxing-docs]: ../enterprise-guide/data-sandboxes.html
 [google-saml-docs]: ../enterprise-guide/authenticating-with-saml.html#google-saml
 [jwt-docs]: ../enterprise-guide/authenticating-with-jwt.html
 [saml-docs]: ../enterprise-guide/authenticating-with-saml.html
 [user-attributes-docs]: ../enterprise-guide/data-sandboxes.html#getting-user-attributes
+[user-attributes-def]: /glossary/attribute#user-attributes-in-metabase

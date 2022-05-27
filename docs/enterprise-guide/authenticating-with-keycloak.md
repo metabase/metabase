@@ -50,10 +50,10 @@ Let's say we want email, name, and surname to be passed between the client (Meta
   - SAML Attribute Name: the name that Metabase expects to receive.
   - SAML Attribute NameFormat: select “Basic” from the dropdown menu.
 
-Note: You can find the attribute values from **Admin settings** > **Authentication** > **<your SSO provider>** > **<Attributes>**.
+You can find the attribute values from **Admin settings** > **Authentication** > **<your SSO provider>** > **<Attributes>**.
 
 
 ## Check if SSO is working correctly
-Go to your Metabase login page. If SSO is working correctly, you should see a single button to sign-in with your IdP. Once you are authenticated, you should be automatically redirected to the Metabase home page.
+Go to your Metabase login page. If SSO is working correctly, you should see a single button to sign in with your IdP. Once you're authenticated, you should be automatically redirected to the Metabase home page.
 
 If you're having trouble, go to [Troubleshooting logins](../troubleshooting-guide/cant-log-in.md).

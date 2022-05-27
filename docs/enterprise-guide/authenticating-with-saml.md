@@ -25,8 +25,8 @@ The form itself is broken up into three parts: information about Metabase that y
 
 So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently, so here are some documentation links that may help:
 
-- [Okta](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
-- [OneLogin](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
+- [Okta documentation](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
+- [OneLogin documentation](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
 - [Setting up SAML with Auth0](saml-auth0.md)
 - [Setting up SAML with Google](saml-google.md)
 
@@ -130,7 +130,7 @@ Your IdP may label it a little differently. Here are some of the names we've fou
 | OneLogin | Issuer URL                           |
 
 
-**SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! 
+**SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. The certificate will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
 
 Your IdP might have you download this certificate as a file (usually `.cer` or `.pem`), which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase. Again, different providers may have slightly different labels for this:
 

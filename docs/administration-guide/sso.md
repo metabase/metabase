@@ -4,15 +4,32 @@ We recommend that you set up [Single Sign-on][sso-def] for your Metabase install
 
 ## SSO for Metabase Open Source Edition
 
-- [Google Sign-in](https://www.metabase.com/docs/latest/administration-guide/10-single-sign-on.html)
-- [LDAP](https://www.metabase.com/docs/latest/administration-guide/10-single-sign-on.html#enabling-ldap-authentication)
+- [Google Sign-in][google-sign-in]
+- [LDAP][ldap]
 
 ## SSO for Metabase paid versions
 
 With paid versions, you have more options to help manage lots of people and groups.
 
-- [JWT](https://www.metabase.com/docs/latest/enterprise-guide/authenticating-with-jwt.html)
-- [LDAP (advanced features)](https://www.metabase.com/docs/latest/administration-guide/10-single-sign-on.html#ldap-advanced-features)
-- [SAML](https://www.metabase.com/docs/latest/enterprise-guide/authenticating-with-saml.html)
+- [JWT][jwt]
+- [Keycloak][keycloak]
+- LDAP advanced features
+  - [Group membership filter][ldap-group-membership-filter]
+  - [Syncing user attributes][ldap-group-membership-filter]
+- [SAML][saml]
+  - [Okta documentation](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
+  - [OneLogin documentation](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
+  - [Setting up SAML with Auth0][saml-auth0]
+  - [Setting up SAML with Google][saml-google]
 
+
+[google-sign-in]: ./10-single-sign-on.md#enabling-google-sign-in
+[jwt]: ../enterprise-guide/jwt.html
+[keycloak]: ../enterprise-guide/sso-keycloak.html
+[ldap]: ./10-single-sign-on.md#enabling-ldap-authentication
+[ldap-group-membership-filter]: ./10-single-sign-on.html#ldap-group-membership-filter
+[ldap-user-attributes]: ./10-single-sign-on.html#syncing-attributes-with-ldap
+[saml]: ../enterprise-guide/saml.html
+[saml-auth0]: ../enterprise-guide/saml-auth0.html
+[saml-google]: ../enterprise-guide/saml-google.html
 [sso-def]: /glossary/sso.html
