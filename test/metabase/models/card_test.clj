@@ -300,7 +300,7 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with String :id keys"
+           #":parameters must be a sequence of maps with String :id key"
            (mt/with-temp Card [_ {:parameters {:a :b}}])))
 
      (mt/with-temp Card [card {:parameters [{:id "valid-id"}]}]
@@ -310,7 +310,7 @@
       (mt/with-temp Card [{:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with String :id keys"
+             #":parameters must be a sequence of maps with String :id key"
              (db/update! Card id :parameters [{:id 100}])))
 
         (is (some? (db/update! Card id :parameters [{:id "new-valid-id"}])))))))

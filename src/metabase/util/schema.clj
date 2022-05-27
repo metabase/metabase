@@ -331,7 +331,7 @@
   "Schema for a valid Parameter."
   (with-api-error-message {:id       NonBlankString
                            s/Keyword s/Any}
-    (deferred-tru "parameter must be a map with String :id keys")))
+    (deferred-tru "parameter must be a map with String :id key")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
