@@ -116,7 +116,7 @@ const ChartColorCell = memo(function ChartColorCell({
   return (
     <TableBodyCell>
       <ColorPicker
-        color={color ?? originalColor}
+        value={color ?? originalColor}
         isAuto={color == null || color === originalColor}
         onChange={handleChange}
       />
