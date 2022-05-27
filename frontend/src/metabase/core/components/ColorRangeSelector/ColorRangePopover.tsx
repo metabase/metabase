@@ -3,6 +3,7 @@ import React, {
   HTMLAttributes,
   Ref,
   useCallback,
+  useMemo,
   useState,
 } from "react";
 import { color } from "metabase/lib/colors";
@@ -36,17 +37,26 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   ref: Ref<HTMLDivElement>,
 ) {
   const [value, setValue] = useState(initialValue);
+  const isInverted = hasInvertedColors(value);
+
   const handleChange = useCallback(
-    (value: string[]) => {
-      onChange?.(value);
+    (newValue: string[]) => {
+      onChange?.(newValue);
       onClose?.();
     },
     [onChange, onClose],
   );
 
-  const handleSelect = useCallback((value: string) => {
-    setValue([color("white"), value]);
-  }, []);
+  const handleSelect = useCallback(
+    (newColor: string) => {
+      if (isInverted) {
+        setValue([newColor, color("white")]);
+      } else {
+        setValue([color("white"), newColor]);
+      }
+    },
+    [isInverted],
+  );
 
   return (
     <PopoverRoot {...props} ref={ref}>
@@ -70,5 +80,13 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
     </PopoverRoot>
   );
 });
+
+const hasInvertedColors = (colors: string[]) => {
+  if (colors.length === 2) {
+    return colors[0] !== color("white");
+  } else {
+    return false;
+  }
+};
 
 export default ColorSelectorContent;
