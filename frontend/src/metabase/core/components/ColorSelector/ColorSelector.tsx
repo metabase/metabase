@@ -5,7 +5,7 @@ import ColorSelectorPopover from "./ColorSelectorPopover";
 
 export type ColorSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
-  "onChange"
+  "onChange" | "onSelect"
 >;
 
 export interface ColorSelectorProps extends ColorSelectorAttributes {

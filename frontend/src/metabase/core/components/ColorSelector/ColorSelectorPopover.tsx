@@ -14,7 +14,7 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
   { value, colors, onChange, onClose, ...props }: ColorSelectorPopoverProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const handleClick = useCallback(
+  const handleSelect = useCallback(
     (value: string) => {
       onChange?.(value);
       onClose?.();
@@ -29,7 +29,7 @@ const ColorSelectorPopover = forwardRef(function ColorSelector(
           key={index}
           color={option}
           isSelected={value === option}
-          onClick={() => handleClick(option)}
+          onSelect={handleSelect}
         />
       ))}
     </PopoverRoot>
