@@ -36,12 +36,12 @@
 
 (defn fetch-and-update-login-attributes!
   "Update the login attributes for the user at `email`. This call is a no-op if the login attributes are the same"
-  [email new-user-attributes]
-  (when-let [{:keys [id login_attributes] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
-    (if (= login_attributes new-user-attributes)
+  [{:keys [email] :as new-user-attributes}]
+  (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
+    (if (= (select-keys user (keys new-user-attributes)) new-user-attributes)
       user
       (do
-        (db/update! User id :login_attributes new-user-attributes)
+        (apply db/update! (concat [User id] (apply concat new-user-attributes)))
         (User id)))))
 
 (defn check-sso-redirect

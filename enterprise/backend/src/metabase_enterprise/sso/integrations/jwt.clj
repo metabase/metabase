@@ -19,12 +19,13 @@
   [first-name last-name email user-attributes]
   (when-not (sso-settings/jwt-configured?)
     (throw (IllegalArgumentException. (str (tru "Can't create new JWT user when JWT is not configured")))))
-  (or (sso-utils/fetch-and-update-login-attributes! email user-attributes)
-      (sso-utils/create-new-sso-user! {:first_name       first-name
-                                       :last_name        last-name
-                                       :email            email
-                                       :sso_source       "jwt"
-                                       :login_attributes user-attributes})))
+  (let [user {:first_name       first-name
+              :last_name        last-name
+              :email            email
+              :sso_source       "jwt"
+              :login_attributes user-attributes}]
+    (or (sso-utils/fetch-and-update-login-attributes! user)
+        (sso-utils/create-new-sso-user! user))))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email     (comp keyword sso-settings/jwt-attribute-email))
 (def ^:private ^{:arglists '([])} jwt-attribute-firstname (comp keyword sso-settings/jwt-attribute-firstname))

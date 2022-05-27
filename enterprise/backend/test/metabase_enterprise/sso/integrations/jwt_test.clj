@@ -30,7 +30,7 @@
 (def ^:private default-jwt-secret   (crypto-random/hex 32))
 
 (deftest sso-prereqs-test
-  (testing "SSO requests fail if SAML hasn't been enabled"
+  (testing "SSO requests fail if JWT hasn't been enabled"
     (mt/with-temporary-setting-values [jwt-enabled false]
       (saml-test/with-valid-premium-features-token
         (is (= "SSO has not been enabled and/or configured"
@@ -41,16 +41,18 @@
           (is (= "SSO requires a valid token"
                  (saml-test/client :get 403 "/auth/sso")))))))
 
-  (testing "SSO requests fail if SAML is enabled but hasn't been configured"
+  (testing "SSO requests fail if JWT is enabled but hasn't been configured"
     (saml-test/with-valid-premium-features-token
-      (mt/with-temporary-setting-values [jwt-enabled true]
+      (mt/with-temporary-setting-values [jwt-enabled true
+                                         jwt-identity-provider-uri nil]
         (is (= "JWT SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso"))))))
 
-  (testing "The IdP provider certificate must also be included for SSO to be configured"
+  (testing "The JWT Shared Secret must also be included for SSO to be configured"
     (saml-test/with-valid-premium-features-token
       (mt/with-temporary-setting-values [jwt-enabled               true
-                                         jwt-identity-provider-uri default-idp-uri]
+                                         jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         nil]
         (is (= "JWT SSO has not been enabled and/or configured"
                (saml-test/client :get 400 "/auth/sso")))))))
 

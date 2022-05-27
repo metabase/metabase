@@ -74,16 +74,16 @@
                               (sso-settings/saml-attribute-email))
                          " "
                          (tru "Please make sure your SAML IdP is properly configured."))
-             {:status-code 400, :user-attributes (keys user-attributes)})))
-  (when-let [user (or (sso-utils/fetch-and-update-login-attributes! email user-attributes)
-                      (sso-utils/create-new-sso-user! {:first_name       first-name
-                                                       :last_name        last-name
-                                                       :email            email
-                                                       :sso_source       "saml"
-                                                       :login_attributes user-attributes}))]
-    (sync-groups! user group-names)
-    (api.session/create-session! :sso user device-info)))
-
+                    {:status-code 400, :user-attributes (keys user-attributes)})))
+  (let [new-user {:first_name       first-name
+                  :last_name        last-name
+                  :email            email
+                  :sso_source       "saml"
+                  :login_attributes user-attributes}]
+    (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
+                        (sso-utils/create-new-sso-user! new-user))]
+      (sync-groups! user group-names)
+      (api.session/create-session! :sso user device-info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
