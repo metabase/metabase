@@ -184,7 +184,7 @@
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
   (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)))
+    (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
