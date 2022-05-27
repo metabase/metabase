@@ -12,7 +12,7 @@ import {
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
   fetchDashboardParameterValues,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 
@@ -201,7 +201,7 @@ describe("dashboard actions", () => {
             "dashboardId: 1, parameterId: a, query: foo, filteringParameterValues: []",
           results: [[1], [2], [3]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
@@ -223,7 +223,7 @@ describe("dashboard actions", () => {
             "dashboardId: 1, parameterId: a, query: null, filteringParameterValues: []",
           results: [[4], [5], [6]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
@@ -247,7 +247,7 @@ describe("dashboard actions", () => {
             'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]',
           results: [[1], [2], [3]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
@@ -270,7 +270,7 @@ describe("dashboard actions", () => {
             'dashboardId: 1, parameterId: a, query: null, filteringParameterValues: [["b","bbb"]]',
           results: [[4], [5], [6]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
@@ -293,7 +293,7 @@ describe("dashboard actions", () => {
 
       expect(action).toEqual({
         payload: undefined,
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
   });
