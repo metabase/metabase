@@ -5,11 +5,14 @@
 import React from "react";
 import cx from "classnames";
 
-import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-
-import { ScalarRoot, ScalarValueWrapper } from "./ScalarValue.styled";
+import Ellipsified from "metabase/core/components/Ellipsified";
+import {
+  ScalarRoot,
+  ScalarValueWrapper,
+  ScalarTitleRoot,
+} from "./ScalarValue.styled";
 
 export const ScalarWrapper = ({ children }) => (
   <ScalarRoot>{children}</ScalarRoot>
@@ -40,7 +43,7 @@ const ScalarValue = ({
 const ICON_WIDTH = 24;
 
 export const ScalarTitle = ({ title, description, onClick }) => (
-  <div className="flex align-center full justify-center px2">
+  <ScalarTitleRoot>
     {/*
       This is a hacky spacer so that the h3 is centered correctly.
       It needs match the width of the tooltip icon on the other side.
@@ -51,13 +54,15 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     <h3
       onClick={onClick}
       className={cx(
-        "Scalar-title overflow-hidden fullscreen-normal-text fullscreen-night-text text-brand-hover",
+        "Scalar-title overflow-hidden text-centered fullscreen-normal-text fullscreen-night-text text-brand-hover",
         {
           "cursor-pointer": !!onClick,
         },
       )}
     >
-      <Ellipsified tooltip={title}>{title}</Ellipsified>
+      <Ellipsified tooltip={title} lines={2} placement="bottom">
+        {title}
+      </Ellipsified>
     </h3>
     {description && description.length > 0 && (
       <div
@@ -69,7 +74,7 @@ export const ScalarTitle = ({ title, description, onClick }) => (
         </Tooltip>
       </div>
     )}
-  </div>
+  </ScalarTitleRoot>
 );
 
 export default ScalarValue;

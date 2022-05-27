@@ -1221,6 +1221,9 @@ workflows:
           name: build-uberjar-drivers-<< matrix.edition >>
           requires:
             - be-deps
+          filters:
+            branches:
+              ignore: master
           <<: *Matrix
 
       - build-uberjar-frontend:
@@ -1239,6 +1242,9 @@ workflows:
       - fe-deps:
           requires:
             - checkout
+          filters:
+            branches:
+              ignore: master
 
       - fe-tests-cypress:
           matrix:
@@ -1284,3 +1290,6 @@ workflows:
       - snowplow-deps:
           requires:
             - checkout
+          filters:
+            branches:
+              ignore: master
