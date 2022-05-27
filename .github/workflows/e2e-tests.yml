@@ -127,7 +127,7 @@ jobs:
       if: matrix.edition == 'oss'
       run: |
         yarn run test-cypress-run \
-        --env grepTags=@OSS,grepOmitFiltered=true \
+        --env grepTags=@OSS,grepFilterSpecs=true \
         --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
       env:
         TERM: xterm
