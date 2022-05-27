@@ -21,25 +21,29 @@ describe("scenarios > admin > troubleshooting > help", () => {
   });
 });
 
-describeOSS("scenarios > admin > troubleshooting > help", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
+describeOSS(
+  "scenarios > admin > troubleshooting > help",
+  { tags: "@OSS" },
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
 
-  it("should link `Get Help` to help", () => {
-    cy.visit("/admin/troubleshooting/help");
+    it("should link `Get Help` to help", () => {
+      cy.visit("/admin/troubleshooting/help");
 
-    cy.findByText("Metabase Admin");
-    cy.findByText("Get Help")
-      .parents("a")
-      .should("have.prop", "href")
-      .and(
-        "match",
-        /^https:\/\/www\.metabase\.com\/help\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v(?:(?!diag=).)+$/,
-      );
-  });
-});
+      cy.findByText("Metabase Admin");
+      cy.findByText("Get Help")
+        .parents("a")
+        .should("have.prop", "href")
+        .and(
+          "match",
+          /^https:\/\/www\.metabase\.com\/help\?utm_source=in-product&utm_medium=troubleshooting&utm_campaign=help&instance_version=v(?:(?!diag=).)+$/,
+        );
+    });
+  },
+);
 
 describeEE("scenarios > admin > troubleshooting > help (EE)", () => {
   beforeEach(() => {

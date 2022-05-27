@@ -148,7 +148,7 @@ describeEE("collections types", () => {
   });
 });
 
-describeOSS("collection types", () => {
+describeOSS("collection types", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

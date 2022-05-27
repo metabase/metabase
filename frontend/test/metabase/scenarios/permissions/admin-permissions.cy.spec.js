@@ -22,7 +22,7 @@ const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
-describeOSS("scenarios > admin > permissions", () => {
+describeOSS("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

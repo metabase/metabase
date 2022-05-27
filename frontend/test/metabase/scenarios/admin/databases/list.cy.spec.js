@@ -6,7 +6,7 @@ describe("scenarios > admin > databases > list", () => {
     cy.signInAsAdmin();
   });
 
-  describeOSS("OSS", () => {
+  describeOSS("OSS", { tags: "@OSS" }, () => {
     it("should not display error messages upon a failed `GET` (metabase#20471)", () => {
       const errorMessage = "Lorem ipsum dolor sit amet, consectetur adip";
 
