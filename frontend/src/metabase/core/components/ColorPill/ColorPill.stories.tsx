@@ -18,7 +18,7 @@ Default.args = {
 };
 
 export const Auto = Template.bind({});
-Default.args = {
+Auto.args = {
   color: color("brand"),
   isAuto: true,
 };

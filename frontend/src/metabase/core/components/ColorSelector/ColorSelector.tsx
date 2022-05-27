@@ -9,23 +9,23 @@ export type ColorSelectorAttributes = Omit<
 >;
 
 export interface ColorSelectorProps extends ColorSelectorAttributes {
-  color: string;
+  value: string;
   colors: string[];
   onChange?: (color: string) => void;
 }
 
 const ColorSelector = forwardRef(function ColorSelector(
-  { color, colors, onChange, ...props }: ColorSelectorProps,
+  { value, colors, onChange, ...props }: ColorSelectorProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
     <TippyPopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <ColorPill {...props} ref={ref} color={color} onClick={onClick} />
+        <ColorPill {...props} ref={ref} color={value} onClick={onClick} />
       )}
       popoverContent={
         <ColorSelectorContent
-          color={color}
+          value={value}
           colors={colors}
           onChange={onChange}
         />

@@ -9,14 +9,14 @@ export type ColorPickerAttributes = Omit<
 >;
 
 export interface ColorPickerProps extends ColorPickerAttributes {
-  color: string;
+  value: string;
   placeholder?: string;
   isAuto?: boolean;
   onChange?: (color?: string) => void;
 }
 
 const ColorPicker = forwardRef(function ColorPicker(
-  { color, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
+  { value, placeholder, isAuto, onChange, ...props }: ColorPickerProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
@@ -26,14 +26,14 @@ const ColorPicker = forwardRef(function ColorPicker(
         <ColorPickerTrigger
           {...props}
           ref={ref}
-          color={color}
+          value={value}
           placeholder={placeholder}
           isAuto={isAuto}
           onClick={onClick}
           onChange={onChange}
         />
       )}
-      popoverContent={<ColorPickerContent color={color} onChange={onChange} />}
+      popoverContent={<ColorPickerContent value={value} onChange={onChange} />}
     />
   );
 });

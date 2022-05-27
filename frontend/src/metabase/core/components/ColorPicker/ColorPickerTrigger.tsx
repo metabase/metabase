@@ -5,15 +5,15 @@ import { TriggerContainer } from "./ColorPicker.styled";
 
 export interface ColorPickerTriggerProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
-  color: string;
+  value: string;
   placeholder?: string;
   isAuto?: boolean;
-  onChange?: (color?: string) => void;
+  onChange?: (value?: string) => void;
 }
 
 const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
   {
-    color,
+    value,
     placeholder,
     isAuto,
     onClick,
@@ -24,9 +24,9 @@ const ColorPickerTrigger = forwardRef(function ColorPickerTrigger(
 ) {
   return (
     <TriggerContainer {...props} ref={ref}>
-      <ColorPill color={color} isAuto={isAuto} onClick={onClick} />
+      <ColorPill color={value} isAuto={isAuto} onClick={onClick} />
       <ColorInput
-        color={color}
+        value={value}
         placeholder={placeholder}
         fullWidth
         onChange={onChange}

@@ -4,13 +4,13 @@ import { ColorSelectorRoot } from "./ColorSelector.styled";
 
 export interface ColorSelectorContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
-  color?: string;
+  value?: string;
   colors: string[];
-  onChange?: (color: string) => void;
+  onChange?: (value: string) => void;
 }
 
 const ColorSelectorContent = forwardRef(function ColorSelector(
-  { color, colors, onChange, ...props }: ColorSelectorContentProps,
+  { value, colors, onChange, ...props }: ColorSelectorContentProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
@@ -19,7 +19,7 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
         <ColorPill
           key={index}
           color={option}
-          isSelected={color === option}
+          isSelected={value === option}
           onClick={() => onChange?.(option)}
         />
       ))}

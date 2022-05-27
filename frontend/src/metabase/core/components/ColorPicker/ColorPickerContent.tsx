@@ -10,12 +10,12 @@ export type ColorPickerContentAttributes = Omit<
 >;
 
 export interface ColorPickerContentProps extends ColorPickerContentAttributes {
-  color?: string;
-  onChange?: (color?: string) => void;
+  value?: string;
+  onChange?: (value?: string) => void;
 }
 
 const ColorPickerContent = forwardRef(function ColorPickerContent(
-  { color, onChange, ...props }: ColorPickerContentProps,
+  { value, onChange, ...props }: ColorPickerContentProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const handleChange = useCallback(
@@ -25,8 +25,8 @@ const ColorPickerContent = forwardRef(function ColorPickerContent(
 
   return (
     <ContentContainer {...props} ref={ref}>
-      <ColorPickerControls color={color} onChange={handleChange} />
-      <ColorInput color={color} fullWidth onChange={onChange} />
+      <ColorPickerControls color={value} onChange={handleChange} />
+      <ColorInput value={value} fullWidth onChange={onChange} />
     </ContentContainer>
   );
 });
