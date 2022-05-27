@@ -41,7 +41,6 @@ const mapDispatchToProps = {
 };
 
 function mapStateToProps(state, { fields = [] }) {
-  // try and use the selected fields, but fall back to the ones passed
   return {
     fields: fields.map(
       field =>
@@ -75,13 +74,73 @@ class FieldValuesWidgetInner extends Component {
       if (usesChainFilterEndpoints(this.props.dashboard)) {
         this.fetchDashboardParamValues();
       } else {
-        const { fields, fetchFieldValues } = this.props;
-        fields.forEach(field => fetchFieldValues(field.id));
+        this.fetchFieldValues();
       }
     }
   }
 
-  fetchDashboardParamValues = async () => {
+  async fetchFieldValues(query) {
+    this.setState({
+      loadingState: "LOADING",
+      options: [],
+    });
+
+    let options = [];
+    try {
+      if (query == null) {
+        const { fields, fetchFieldValues } = this.props;
+        await Promise.all(fields.map(field => fetchFieldValues(field.id)));
+        options = dedupeValues(fields.map(field => field.values));
+      } else {
+        const { fields } = this.props;
+        const cancelDeferred = defer();
+        const cancelled = cancelDeferred.promise;
+        this._cancel = () => {
+          this._cancel = null;
+          cancelDeferred.resolve();
+        };
+
+        options = dedupeValues(
+          await Promise.all(
+            fields.map(field =>
+              MetabaseApi.field_search(
+                {
+                  value: query,
+                  fieldId: field.id,
+                  searchFieldId: searchField(
+                    field,
+                    this.props.disablePKRemappingForSearch,
+                  ).id,
+                  limit: this.props.maxResults,
+                },
+                { cancelled },
+              ),
+            ),
+          ),
+        );
+
+        this._cancel = null;
+        options = options.map(result => [].concat(result));
+
+        if (showRemapping(fields)) {
+          const [field] = fields;
+          if (
+            field.remappedField() ===
+            searchField(field, this.props.disablePKRemappingForSearch)
+          ) {
+            this.props.addRemappings(field.id, options);
+          }
+        }
+      }
+    } finally {
+      this.setState({
+        loadingState: "LOADED",
+        options,
+      });
+    }
+  }
+
+  fetchDashboardParamValues = async query => {
     this.setState({
       loadingState: "LOADING",
       options: [],
@@ -94,6 +153,7 @@ class FieldValuesWidgetInner extends Component {
         dashboardId: dashboard?.id,
         parameter,
         parameters,
+        query,
       };
       options = await this.props.fetchDashboardParameterValues(args);
     } finally {
@@ -123,58 +183,21 @@ class FieldValuesWidgetInner extends Component {
     return value;
   };
 
-  search = async (value, cancelled) => {
+  search = _.debounce(async value => {
     if (!value) {
       return;
     }
 
-    const { fields } = this.props;
-
-    let results;
     if (usesChainFilterEndpoints(this.props.dashboard)) {
-      const { dashboard, parameter, parameters } = this.props;
-      const args = {
-        dashboardId: dashboard?.id,
-        parameter,
-        parameters,
-        query: value,
-      };
-      results = await this.props.fetchDashboardParameterValues(args);
+      await this.fetchDashboardParamValues(value);
     } else {
-      results = dedupeValues(
-        await Promise.all(
-          fields.map(field =>
-            MetabaseApi.field_search(
-              {
-                value,
-                fieldId: field.id,
-                searchFieldId: searchField(
-                  field,
-                  this.props.disablePKRemappingForSearch,
-                ).id,
-                limit: this.props.maxResults,
-              },
-              { cancelled },
-            ),
-          ),
-        ),
-      );
-
-      results = results.map(result => [].concat(result));
+      await this.fetchFieldValues(value);
     }
 
-    if (showRemapping(fields)) {
-      const [field] = fields;
-      if (
-        field.remappedField() ===
-        searchField(field, this.props.disablePKRemappingForSearch)
-      ) {
-        this.props.addRemappings(field.id, results);
-      }
-    }
-
-    return results;
-  };
+    this.setState({
+      lastValue: value,
+    });
+  }, 500);
 
   _search = value => {
     const { lastValue, options } = this.state;
@@ -190,51 +213,15 @@ class FieldValuesWidgetInner extends Component {
       return;
     }
 
-    this.setState({
-      loadingState: "LOADING",
-    });
-
     if (this._cancel) {
       this._cancel();
     }
 
-    this._searchDebounced(value);
-  };
-
-  _searchDebounced = _.debounce(async value => {
     this.setState({
       loadingState: "LOADING",
     });
-
-    const cancelDeferred = defer();
-    this._cancel = () => {
-      this._cancel = null;
-      cancelDeferred.resolve();
-    };
-
-    let results;
-    try {
-      results = await this.search(value, cancelDeferred.promise);
-    } catch (e) {
-      console.warn(e);
-    }
-
-    this._cancel = null;
-
-    if (results) {
-      this.setState({
-        loadingState: "LOADED",
-        options: results,
-        lastValue: value,
-      });
-    } else {
-      this.setState({
-        loadingState: "INIT",
-        options: [],
-        lastValue: value,
-      });
-    }
-  }, 500);
+    this.search(value);
+  };
 
   render() {
     const {
