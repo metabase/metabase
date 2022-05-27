@@ -14,6 +14,7 @@ const renderFieldValuesWidget = props =>
       value={[]}
       onChange={() => {}}
       fetchFieldValues={() => {}}
+      addRemappings={() => {}}
       {...props}
     />,
   );

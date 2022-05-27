@@ -113,6 +113,7 @@ class FieldValuesWidgetInner extends Component {
         options = await this.fetchFieldValues(query);
       }
     } finally {
+      this.updateRemappings(options);
       this.setState({
         loadingState: "LOADED",
         options,
@@ -144,16 +145,6 @@ class FieldValuesWidgetInner extends Component {
         cancelled,
       );
 
-      if (showRemapping(fields)) {
-        const [field] = fields;
-        if (
-          field.remappedField() ===
-          searchField(field, this.props.disablePKRemappingForSearch)
-        ) {
-          this.props.addRemappings(field.id, options);
-        }
-      }
-
       this._cancel = null;
       return options;
     }
@@ -169,6 +160,19 @@ class FieldValuesWidgetInner extends Component {
     };
     return this.props.fetchDashboardParameterValues(args);
   };
+
+  updateRemappings(options) {
+    const { fields } = this.props;
+    if (showRemapping(fields)) {
+      const [field] = fields;
+      if (
+        field.remappedField() ===
+        searchField(field, this.props.disablePKRemappingForSearch)
+      ) {
+        this.props.addRemappings(field.id, options);
+      }
+    }
+  }
 
   componentWillUnmount() {
     if (this._cancel) {
@@ -308,9 +312,11 @@ class FieldValuesWidgetInner extends Component {
                 compact: false,
               })
             }
-            optionRenderer={option =>
-              renderValue(fields, formatOptions, option[0], { autoLoad: false })
-            }
+            optionRenderer={option => {
+              return renderValue(fields, formatOptions, option[0], {
+                autoLoad: false,
+              });
+            }}
             layoutRenderer={layoutProps => (
               <div>
                 {layoutProps.valuesList}
