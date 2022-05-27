@@ -4,7 +4,6 @@ import {
   popover,
   describeEE,
   setupMetabaseCloud,
-  describeOSS,
   isOSS,
   isEE,
 } from "__support__/e2e/cypress";
@@ -302,8 +301,9 @@ describe("scenarios > admin > settings", () => {
   });
 });
 
-describeOSS("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
+describe("scenarios > admin > settings (OSS)", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
     restore();
     cy.signInAsAdmin();
   });

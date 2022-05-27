@@ -1,4 +1,4 @@
-import { restore, describeOSS } from "__support__/e2e/cypress";
+import { restore, isOSS } from "__support__/e2e/cypress";
 
 const embeddingPage = "/admin/settings/embedding_in_other_applications";
 const licensePage = "/admin/settings/premium-embedding-license";
@@ -13,11 +13,13 @@ const invalidTokenMessage =
 const discountedWarning =
   "Our Premium Embedding product has been discontinued, but if you already have a license you can activate it here. You’ll continue to receive support for the duration of your license.";
 
-describeOSS(
+describe(
   "scenarios > embedding > premium embedding token",
   { tags: "@OSS" },
   () => {
     beforeEach(() => {
+      cy.onlyOn(isOSS);
+
       restore();
       cy.signInAsAdmin();
     });

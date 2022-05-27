@@ -2,7 +2,7 @@ import {
   restore,
   modal,
   describeEE,
-  describeOSS,
+  isOSS,
   openNewCollectionItemFlowFor,
   appBar,
   navigationSidebar,
@@ -148,8 +148,10 @@ describeEE("collections types", () => {
   });
 });
 
-describeOSS("collection types", { tags: "@OSS" }, () => {
+describe("collection types", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
