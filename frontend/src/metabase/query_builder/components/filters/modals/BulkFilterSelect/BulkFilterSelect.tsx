@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import { xor } from "lodash";
 
 import StructuredQuery, {
   SegmentOption,
@@ -8,6 +7,8 @@ import StructuredQuery, {
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+import { InlineFilterSelect, INLINE_FIELD_TYPES } from "../InlineFilterSelect";
+
 import {
   SelectFilterButton,
   SelectFilterPopover,
@@ -56,6 +57,20 @@ export const BulkFilterSelect = ({
     }
   }, [filter, onRemoveFilter]);
 
+  const fieldType = useMemo(() => dimension.field().base_type ?? "", [
+    dimension,
+  ]);
+
+  if (INLINE_FIELD_TYPES.includes(fieldType)) {
+    return (
+      <InlineFilterSelect
+        fieldType={fieldType}
+        filter={filter ?? newFilter}
+        handleChange={handleChange}
+      />
+    );
+  }
+
   return (
     <TippyPopoverWithTrigger
       sizeToFit
@@ -88,7 +103,11 @@ export const BulkFilterSelect = ({
 
 const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   const filter = new Filter([], null, dimension.query() ?? query);
-  return filter.setDimension(dimension.mbql(), { useDefaultOperator: true });
+
+  const isBoolean = dimension.field().base_type === "type/Boolean";
+  return filter.setDimension(dimension.mbql(), {
+    useDefaultOperator: !isBoolean,
+  });
 };
 
 export interface SegmentFilterSelectProps {

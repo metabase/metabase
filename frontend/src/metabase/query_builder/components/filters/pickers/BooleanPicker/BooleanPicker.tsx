@@ -5,8 +5,14 @@ import { t } from "ttag";
 import { useToggle } from "metabase/hooks/use-toggle";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { RadioOption } from "metabase/core/components/Radio/Radio";
+import CheckBox from "metabase/core/components/CheckBox";
 
-import { Container, Toggle, FilterRadio } from "./BooleanPicker.styled";
+import {
+  RadioContainer,
+  CheckboxContainer,
+  Toggle,
+  FilterRadio,
+} from "./BooleanPicker.styled";
 
 const OPTIONS: RadioOption<boolean>[] = [
   { name: t`true`, value: true },
@@ -21,29 +27,50 @@ const EXPANDED_OPTIONS: RadioOption<string | boolean | any>[] = [
 ];
 
 interface BooleanPickerProps {
-  className?: string;
   filter: Filter;
   onFilterChange: (filter: Filter) => void;
+  className?: string;
+  asCheckBox?: boolean;
 }
 
 function BooleanPicker({
   className,
   filter,
   onFilterChange,
+  asCheckBox = false,
 }: BooleanPickerProps) {
   const value = getValue(filter);
   const [isExpanded, { toggle }] = useToggle(!_.isBoolean(value));
 
-  const updateFilter = (value: Key) => {
-    if (_.isBoolean(value)) {
+  const updateFilter = (value: Key | boolean) => {
+    if (getValue(filter) === value) {
+      onFilterChange(filter.setArguments([]));
+    } else if (_.isBoolean(value)) {
       onFilterChange(filter.setOperator("=").setArguments([value]));
     } else if (typeof value === "string") {
       onFilterChange(filter.setOperator(value));
     }
   };
 
+  if (asCheckBox) {
+    return (
+      <CheckboxContainer className={className}>
+        {OPTIONS.map(({ name, value: optionValue }) => (
+          <CheckBox
+            key={name}
+            label={name}
+            indeterminate={["is-null", "not-null"].includes(value)}
+            checked={optionValue === getValue(filter)}
+            onChange={() => updateFilter(optionValue)}
+            checkedColor="accent2"
+          />
+        ))}
+      </CheckboxContainer>
+    );
+  }
+
   return (
-    <Container className={className}>
+    <RadioContainer className={className}>
       <FilterRadio
         vertical
         colorScheme="accent7"
@@ -52,7 +79,7 @@ function BooleanPicker({
         onChange={updateFilter}
       />
       {!isExpanded && <Toggle onClick={toggle} />}
-    </Container>
+    </RadioContainer>
   );
 }
 
