@@ -3,7 +3,6 @@ import React, {
   HTMLAttributes,
   Ref,
   useCallback,
-  useMemo,
   useState,
 } from "react";
 import { color } from "metabase/lib/colors";
