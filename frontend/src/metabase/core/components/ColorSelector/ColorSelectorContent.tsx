@@ -14,7 +14,7 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <ColorSelectorRoot {...props} ref={ref} colors={colors}>
+    <ColorSelectorRoot {...props} ref={ref}>
       {colors.map((option, index) => (
         <ColorPill
           key={index}
