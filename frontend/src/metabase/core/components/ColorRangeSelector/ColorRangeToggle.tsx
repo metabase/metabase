@@ -17,17 +17,13 @@ const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {
     return isInverted ? Array.from(value).reverse() : value;
   }, [value, isInverted]);
 
-  const handleRangeClick = useCallback(() => {
-    onChange?.(displayValue);
-  }, [displayValue, onChange]);
-
   const handleButtonClick = useCallback(() => {
     setIsInverted(isInverted => !isInverted);
   }, []);
 
   return (
     <ToggleRoot>
-      <ToggleColorRange colors={displayValue} onClick={handleRangeClick} />
+      <ToggleColorRange colors={displayValue} onSelect={onChange} />
       <ToggleButton icon="compare" onClick={handleButtonClick} />
     </ToggleRoot>
   );
