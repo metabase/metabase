@@ -24,14 +24,15 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
       renderTrigger={({ onClick }) => (
         <ColorRange {...props} ref={ref} colors={value} onClick={onClick} />
       )}
-      popoverContent={
+      popoverContent={({ closePopover }) => (
         <ColorRangePopover
           value={value}
           colors={colors}
           ranges={ranges}
           onChange={onChange}
+          onClose={closePopover}
         />
-      }
+      )}
     />
   );
 });
