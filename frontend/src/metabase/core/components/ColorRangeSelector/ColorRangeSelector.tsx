@@ -1,4 +1,4 @@
-import React, { HTMLAttributes } from "react";
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorRange from "metabase/core/components/ColorRange";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 
@@ -13,19 +13,18 @@ export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   onChange?: (value: string[]) => void;
 }
 
-const ColorRangeSelector = ({
-  value,
-  colors,
-  onChange,
-}: ColorRangeSelectorProps) => {
+const ColorRangeSelector = forwardRef(function ColorRangeSelector(
+  { value, colors, onChange, ...props }: ColorRangeSelectorProps,
+  ref: Ref<HTMLDivElement>,
+) {
   return (
     <TippyPopoverWithTrigger
       renderTrigger={({ onClick }) => (
-        <ColorRange colors={value} onClick={onClick} />
+        <ColorRange {...props} ref={ref} colors={value} onClick={onClick} />
       )}
       popoverContent={<div />}
     />
   );
-};
+});
 
 export default ColorRangeSelector;
