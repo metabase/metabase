@@ -1254,7 +1254,6 @@ workflows:
                 [
                   "admin",
                   "collections",
-                  "embedding",
                   "filters",
                   "models",
                   "native",
