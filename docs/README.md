@@ -73,10 +73,9 @@
 - [Editing your account settings](./users-guide/account-settings.md)
 - [Managing people and groups](./administration-guide/04-managing-users.md)
 - [Single Sign-on (SSO)](./administration-guide/sso.md)
-  - [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.md)
-  - [SAML](./enterprise-guide/authenticating-with-saml.md)
-  - [JWT](./enterprise-guide/authenticating-with-jwt.md)
-  - [Keycloak](./enterprise-guide/authenticating-with-keycloak.md)
+  - [Google Sign-In or LDAP](./administration-guide/10-single-sign-on.html)
+  - [SAML](./enterprise-guide/authenticating-with-saml.html)
+  - [JWT](./enterprise-guide/authenticating-with-jwt.html)
 - [Password complexity](./operations-guide/changing-password-complexity.md)
 - [Session expiration](./operations-guide/changing-session-expiration.md)
 

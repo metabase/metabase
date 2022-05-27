@@ -2,12 +2,21 @@
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-The open source edition of Metabase includes the option to set up single sign-on (SSO) with [Google Sign-in or LDAP](../administration-guide/10-single-sign-on.md), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to set up [single sign-on (SSO)](/glossary/sso) with [Google Sign-in or LDAP](../administration-guide/10-single-sign-on.html), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 - let your users access Metabase without re-authenticating.
 
-There are slightly different steps to take depending on whether your SSO solution uses SAML or JWT. We'll cover SAML first.
+There are slightly different steps to take depending on whether your SSO solution uses [SAML](#saml-setup-overview) or [JWT](../enterprise-guide/authenticating-with-jwt.html).
+
+## SAML setup overview
+
+Setting up SAML will require you to configure settings in two places:
+
+1. Your [Metabase admin settings](#turning-on-saml-based-sso).
+2. The [identity provider (IdP) console](#setting-up-saml-with-your-idp).
+
+Once you've configured SAML in both places, you can [check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly).
 
 > **Tip:** Before beginning your SAML set-up, make sure you know the password for your Metabase admin account. If anything becomes misconfigured during the set-up process, an "Admin backup login" option on the sign-in screen is available.
 
@@ -25,10 +34,11 @@ The form itself is broken up into three parts: information about Metabase that y
 
 So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently, so here are some documentation links that may help:
 
+- [Setting up SAML with Auth0](saml-auth0.html)
+- [Setting up SAML with Google](saml-google.html)
+- [Setting up SAML with Keycloak](saml-keycloak.html)
 - [Okta documentation](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
 - [OneLogin documentation](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
-- [Setting up SAML with Auth0](saml-auth0.md)
-- [Setting up SAML with Google](saml-google.md)
 
 The top portion of the form in Metabase has some of the information you'll need, with buttons to make copying the information easy.
 
@@ -101,6 +111,7 @@ That should be all the info you'll need to get from Metabase while setting up SA
 Your SAML provider may ask for an "ACS URL". This the URL that your SAML provider will redirect your users to after they authenticate. The ACS URL for Metabase is the base URL of where you are hosting Metabase plus "/auth/sso". For example, if you are hosting your Metabase at "https://metabase.mycompany.com" then the ACS URL would be "https://metabase.mycompany.com/auth/sso".
 
 #### Settings for signing SSO requests (optional)
+
 These are additional settings you can fill in to sign SSO requests to
 ensure they don’t get tampered with.
 
@@ -123,12 +134,11 @@ secure, so we recommend that you set it.
 
 Your IdP may label it a little differently. Here are some of the names we've found:
 
-| Provider | Name                                 |
-| -------- | ------------------------------------ |
-| Auth0    | Identity Provider Login URL          |
-| Okta     | Identity Provider Issuer             |
-| OneLogin | Issuer URL                           |
-
+| Provider | Name                        |
+| -------- | --------------------------- |
+| Auth0    | Identity Provider Login URL |
+| Okta     | Identity Provider Issuer    |
+| OneLogin | Issuer URL                  |
 
 **SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. The certificate will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important!
 
@@ -162,7 +172,7 @@ First, you will need to create a SAML user attribute that you will use to indica
 
 #### Okta: example of mapping a single group to Metabase
 
-As an example of mapping a single Metabase group per Okta user,  let's say that you created a User Profile attribute named `metabaseGroups`. Once you've created your `metabaseGroups` attribute, you will need to update it for each user you would like to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
+As an example of mapping a single Metabase group per Okta user, let's say that you created a User Profile attribute named `metabaseGroups`. Once you've created your `metabaseGroups` attribute, you will need to update it for each user you would like to be automatically added to a Metabase group. For ease of use, we recommend using the same name for the groups you would use in Metabase.
 
 After that, you will need to add an additional SAML attribute to the ones we added above. The screenshot below is for Okta, but may vary depending on your SAML provider.
 
@@ -184,12 +194,13 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ### Troubleshooting Tips
 
-Here are a few things to double check if you're experiencing issues setting up your SAML connection:
+[Check if your SSO setup is working correctly](../administration-guide/10-single-sign-on.html#checking-if-sso-is-working-correctly). If you're experiencing issues setting up your SAML connection:
 
 - Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
 - Read all field labels and tooltips carefully. Since SAML providers each use different labeling for their fields, it's important to make sure the correct information is being placed into the correct fields.
 - Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
-- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`
+- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
+- If you're still stuck, try [Troubleshooting logins](../troubleshooting-guide/cant-log-in.html).
 
 ### Disabling password log-in
 
@@ -209,4 +220,4 @@ You can find example code that uses SAML authentication in the [SSO examples rep
 
 ## Next: JWT-based SSO
 
-If SAML isn’t your bag, find out how to enable [JWT-based SSO](authenticating-with-jwt.md).
+If SAML isn’t your bag, find out how to enable [JWT-based SSO](authenticating-with-jwt.html).
