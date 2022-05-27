@@ -238,7 +238,6 @@ class FieldValuesWidgetInner extends Component {
       parameter,
       prefix,
       disableSearch,
-      dashboard,
       disablePKRemappingForSearch,
       formatOptions,
       placeholder,
@@ -248,7 +247,6 @@ class FieldValuesWidgetInner extends Component {
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
       disableSearch,
-      dashboard,
       placeholder,
       disablePKRemappingForSearch,
       loadingState,
@@ -261,8 +259,6 @@ class FieldValuesWidgetInner extends Component {
     const hasListData = hasList({
       fields,
       disableSearch,
-      dashboard,
-      loadingState,
       options,
     });
 
@@ -467,14 +463,8 @@ function getSearchableTokenFieldPlaceholder(
   return placeholder;
 }
 
-function hasList({ fields, disableSearch, dashboard, loadingState, options }) {
-  const nonEmptyArray = a => a && a.length > 0;
-  return (
-    shouldList(fields, disableSearch) &&
-    (usesChainFilterEndpoints(dashboard)
-      ? loadingState === "LOADED" && nonEmptyArray(options)
-      : fields.every(field => nonEmptyArray(field.values)))
-  );
+function hasList({ fields, disableSearch, options }) {
+  return shouldList(fields, disableSearch) && !_.isEmpty(options);
 }
 
 function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
@@ -495,7 +485,6 @@ function isSearchable(fields, disableSearch, disablePKRemappingForSearch) {
 function getTokenFieldPlaceholder({
   fields,
   disableSearch,
-  dashboard,
   placeholder,
   disablePKRemappingForSearch,
   loadingState,
@@ -511,9 +500,6 @@ function getTokenFieldPlaceholder({
     hasList({
       fields,
       disableSearch,
-      disablePKRemappingForSearch,
-      dashboard,
-      loadingState,
       options,
     })
   ) {
@@ -538,7 +524,6 @@ function renderOptions(
     alwaysShowOptions,
     fields,
     disableSearch,
-    dashboard,
     disablePKRemappingForSearch,
   } = props;
   const { loadingState, options } = state;
@@ -550,8 +535,6 @@ function renderOptions(
       hasList({
         fields,
         disableSearch,
-        dashboard,
-        loadingState,
         options,
       })
     ) {
