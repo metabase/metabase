@@ -1,4 +1,4 @@
-import React, { forwardRef, HTMLAttributes, memo, Ref } from "react";
+import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import { range } from "lodash";
 import { getColorScale } from "metabase/lib/colors/scale";
 import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";
@@ -9,10 +9,10 @@ export interface ColorRangeProps extends HTMLAttributes<HTMLDivElement> {
   quantile?: boolean;
 }
 
-const ColorRange = (
+const ColorRange = forwardRef(function ColorRange(
   { colors, sections = 5, quantile = false, ...props }: ColorRangeProps,
   ref: Ref<HTMLDivElement>,
-): JSX.Element => {
+) {
   const scale = getColorScale([0, sections - 1], colors, quantile);
 
   return (
@@ -25,6 +25,6 @@ const ColorRange = (
       ))}
     </ColorRangeRoot>
   );
-};
+});
 
-export default memo(forwardRef(ColorRange));
+export default ColorRange;
