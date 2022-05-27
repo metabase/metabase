@@ -1256,7 +1256,6 @@ workflows:
                   "collections",
                   "embedding",
                   "filters",
-                  "models",
                   "native",
                   "native-filters",
                   "onboarding",
