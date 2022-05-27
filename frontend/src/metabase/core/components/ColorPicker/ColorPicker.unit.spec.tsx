@@ -5,10 +5,10 @@ import userEvent from "@testing-library/user-event";
 import ColorPicker from "./ColorPicker";
 
 const TestColorPicker = () => {
-  const [color, setColor] = useState("white");
-  const handleChange = (color?: string) => setColor(color ?? "white");
+  const [value, setValue] = useState("white");
+  const handleChange = (value?: string) => setValue(value ?? "white");
 
-  return <ColorPicker color={color} onChange={handleChange} />;
+  return <ColorPicker value={value} onChange={handleChange} />;
 };
 
 describe("ColorPicker", () => {
