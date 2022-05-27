@@ -5,7 +5,6 @@ import React, {
   useCallback,
   useState,
 } from "react";
-import { color } from "metabase/lib/colors";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
@@ -49,9 +48,9 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   const handleSelect = useCallback(
     (newColor: string) => {
       if (isInverted) {
-        setValue([newColor, color("white")]);
+        setValue([newColor, "white"]);
       } else {
-        setValue([color("white"), newColor]);
+        setValue(["white", newColor]);
       }
     },
     [isInverted],
@@ -82,7 +81,7 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
 
 const hasInvertedColors = (colors: string[]) => {
   if (colors.length === 2) {
-    return colors[0] !== color("white");
+    return colors[0] !== "white";
   } else {
     return false;
   }

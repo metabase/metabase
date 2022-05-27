@@ -14,7 +14,5 @@ export const getDesaturatedColors = () => [
 
 export const getStatusColorRanges = () => [
   [color("error"), color("white"), color("success")],
-  [color("success"), color("white"), color("error")],
   [color("error"), color("warning"), color("success")],
-  [color("success"), color("warning"), color("error")],
 ];
