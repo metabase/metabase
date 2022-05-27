@@ -5,8 +5,8 @@ module.exports = {
     builder: "webpack5",
   },
   stories: [
-    "../frontend/**/*.stories.mdx",
-    "../frontend/**/*.stories.@(js|jsx|ts|tsx)",
+    "../(frontend|enterprise)/**/*.stories.mdx",
+    "../(frontend|enterprise)/**/*.stories.@(js|jsx|ts|tsx)",
   ],
   addons: ["@storybook/addon-essentials", "@storybook/addon-links"],
   webpackFinal: storybookConfig => ({

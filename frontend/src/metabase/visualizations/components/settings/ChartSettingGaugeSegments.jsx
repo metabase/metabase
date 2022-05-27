@@ -23,9 +23,9 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
       <table>
         <thead>
           <tr>
-            <th>Color</th>
-            <th>Min</th>
-            <th>Max</th>
+            <th>{t`Color`}</th>
+            <th>{t`Min`}</th>
+            <th>{t`Max`}</th>
           </tr>
         </thead>
         <tbody>

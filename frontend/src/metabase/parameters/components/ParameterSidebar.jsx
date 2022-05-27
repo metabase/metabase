@@ -191,7 +191,7 @@ class OtherParameterList extends React.Component {
         ) : (
           <div>
             <p className="text-medium">{jt`If you toggle on one of these dashboard filters, selecting a value for that filter will limit the available choices for ${(
-              <span className="text-italic">this</span>
+              <span className="text-italic">{t`this`}</span>
             )} filter.`}</p>
             {usableParameters.map(({ id, name }) => (
               <div className="bg-light rounded mb2" key={name}>

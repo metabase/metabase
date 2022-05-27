@@ -5,7 +5,7 @@ export interface ColorPillProps extends HTMLAttributes<HTMLDivElement> {
   color: string;
   isBordered?: boolean;
   isSelected?: boolean;
-  isGenerated?: boolean;
+  isDefault?: boolean;
 }
 
 const ColorPill = forwardRef(function ColorPill(
@@ -13,7 +13,7 @@ const ColorPill = forwardRef(function ColorPill(
     color,
     isBordered,
     isSelected,
-    isGenerated,
+    isDefault,
     "aria-label": ariaLabel = color,
     ...props
   }: ColorPillProps,
@@ -25,7 +25,7 @@ const ColorPill = forwardRef(function ColorPill(
       ref={ref}
       isBordered={isBordered}
       isSelected={isSelected}
-      isGenerated={isGenerated}
+      isDefault={isDefault}
       aria-label={ariaLabel}
     >
       <ColorPillContent

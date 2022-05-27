@@ -1,31 +1,4 @@
-import {
-  restore,
-  openOrdersTable,
-  describeEE,
-  summarize,
-} from "__support__/e2e/cypress";
-
-// Define colors that we use for whitelabeling
-// If rbg values exist, it's because we explicit test those
-const colors = {
-  primary: { hex: "8B572A", rgb: [139, 87, 42] },
-  nav: { hex: "284E07", rgb: [40, 78, 7] },
-  accent1: { hex: "417505" },
-  accent2: { hex: "7ED321" },
-  additional1: { hex: "B8E986" },
-  additional2: { hex: "50E3C2" },
-  additional3: { hex: "4A90E2" },
-  additional4: { hex: "082CBE" },
-  additional5: { hex: "F8E71C", rgb: [248, 231, 28] },
-};
-
-function changeThemeColor(location, colorhex) {
-  cy.get("td")
-    .eq(location)
-    .click();
-  cy.get(`div[title='#${colorhex}']`).click();
-  cy.findByText("Done").click();
-}
+import { describeEE, restore } from "__support__/e2e/cypress";
 
 function checkFavicon() {
   cy.request("/api/setting/application-favicon-url")
@@ -45,47 +18,6 @@ describeEE("formatting > whitelabel", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
-
-  describe("admin", () => {
-    it("should be able to set colors using color-picker dialog", () => {
-      cy.visit("/admin/settings/whitelabel");
-
-      cy.log("Select color with squares");
-      changeThemeColor(1, colors.primary.hex);
-
-      cy.log("Select color by entering rgb value");
-      cy.get("td")
-        .eq(5)
-        .click();
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(1)
-        .clear()
-        .type(colors.nav.rgb[0]);
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(2)
-        .clear()
-        .type(colors.nav.rgb[1]);
-      cy.get(".sketch-picker")
-        .find("input")
-        .eq(3)
-        .clear()
-        .type(colors.nav.rgb[2]);
-      cy.findByText("Done").click();
-
-      cy.log("Select color by typing hex code");
-      cy.get("td")
-        .eq(29)
-        .click();
-      cy.get(".sketch-picker")
-        .find("input")
-        .first()
-        .clear()
-        .type(colors.additional4.hex);
-      cy.findByText("Done").click();
-    });
   });
 
   describe("company name", () => {
@@ -133,36 +65,6 @@ describeEE("formatting > whitelabel", () => {
 
       cy.visit("/admin/settings/general");
       cy.contains(`The name used for this instance of ${COMPANY_NAME}.`);
-    });
-  });
-
-  describe("company color theme", () => {
-    beforeEach(() => {
-      cy.request("PUT", "/api/setting/application-colors", {
-        value: {
-          accent1: `#${colors.accent1.hex}`,
-          accent2: `#${colors.accent2.hex}`,
-          accent3: `#${colors.additional1.hex}`,
-          accent4: `#${colors.additional2.hex}`,
-          accent5: `#${colors.additional3.hex}`,
-          accent6: `#${colors.additional4.hex}`,
-          accent7: `#${colors.additional5.hex}`,
-          brand: `#${colors.primary.hex}`,
-          nav: `#${colors.nav.hex}`,
-        },
-      });
-    });
-
-    it.skip("should show color changes reflected in q visualizations (metabase-enterprise #470)", () => {
-      // *** Test should pass when issue #470 is resolved
-      cy.signInAsNormalUser();
-      openOrdersTable();
-      summarize();
-      cy.findByText("Price").click();
-      cy.findByText("Done").click();
-
-      cy.get(`div[fill='#${colors.primary.hex};']`);
-      cy.get(`rect[fill='#509EE3']`).should("not.exist");
     });
   });
 

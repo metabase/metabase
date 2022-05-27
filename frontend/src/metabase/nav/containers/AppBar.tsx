@@ -10,6 +10,7 @@ import LogoIcon from "metabase/components/LogoIcon";
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
+import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
 import { State } from "metabase-types/store";
 
@@ -17,6 +18,8 @@ import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
 import {
   getIsNewButtonVisible,
   getIsSearchVisible,
+  getBreadcrumbCollectionId,
+  getShowBreadcumb,
 } from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
@@ -30,6 +33,7 @@ import {
   MiddleContainer,
   RightContainer,
   SidebarButtonContainer,
+  PathBreadcrumbsContainer,
 } from "./AppBar.styled";
 
 type Props = {
@@ -37,6 +41,8 @@ type Props = {
   isNavBarVisible: boolean;
   isSearchVisible: boolean;
   isNewButtonVisible: boolean;
+  collectionId: string;
+  showBreadcrumb: boolean;
   toggleNavbar: () => void;
   closeNavbar: () => void;
 };
@@ -46,6 +52,8 @@ function mapStateToProps(state: State) {
     isNavBarOpen: getIsNavbarOpen(state),
     isSearchVisible: getIsSearchVisible(state),
     isNewButtonVisible: getIsNewButtonVisible(state),
+    collectionId: getBreadcrumbCollectionId(state),
+    showBreadcrumb: getShowBreadcumb(state),
   };
 }
 
@@ -67,6 +75,8 @@ function AppBar({
   isNavBarVisible,
   isSearchVisible,
   isNewButtonVisible,
+  collectionId,
+  showBreadcrumb,
   toggleNavbar,
   closeNavbar,
 }: Props) {
@@ -116,6 +126,11 @@ function AppBar({
               />
             </Tooltip>
           </SidebarButtonContainer>
+        )}
+        {showBreadcrumb && (
+          <PathBreadcrumbsContainer isVisible={!isNavBarOpen}>
+            <PathBreadcrumbs collectionId={collectionId} />
+          </PathBreadcrumbsContainer>
         )}
       </LeftContainer>
       {!isSearchActive && (
