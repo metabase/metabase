@@ -24,7 +24,7 @@ const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {
   return (
     <ToggleRoot>
       <ToggleColorRange colors={displayValue} onSelect={onChange} />
-      <ToggleButton icon="compare" onClick={handleButtonClick} />
+      <ToggleButton icon="compare" small onClick={handleButtonClick} />
     </ToggleRoot>
   );
 };
