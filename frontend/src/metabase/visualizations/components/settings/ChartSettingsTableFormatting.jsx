@@ -9,11 +9,10 @@ import Icon from "metabase/components/Icon";
 import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
+import ColorRange from "metabase/core/components/ColorRange";
 import ColorSelector from "metabase/core/components/ColorSelector";
 
-import ColorRangePicker, {
-  ColorRangePreview,
-} from "metabase/components/ColorRangePicker";
+import ColorRangePicker from "metabase/components/ColorRangePicker";
 import NumericInput from "metabase/components/NumericInput";
 import {
   SortableContainer,
@@ -278,11 +277,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
 
 const RuleBackground = ({ rule, className, style }) =>
   rule.type === "range" ? (
-    <ColorRangePreview
-      colors={rule.colors}
-      className={className}
-      style={style}
-    />
+    <ColorRange colors={rule.colors} className={className} style={style} />
   ) : rule.type === "single" ? (
     <SinglePreview color={rule.color} className={className} style={style} />
   ) : null;
