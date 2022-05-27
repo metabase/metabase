@@ -1,16 +1,23 @@
-import React, { forwardRef, HTMLAttributes, Ref, useCallback } from "react";
+import React, {
+  forwardRef,
+  HTMLAttributes,
+  Ref,
+  useCallback,
+  useState,
+} from "react";
+import { color } from "metabase/lib/colors";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
-  PopoverRoot,
   PopoverColorList,
-  PopoverDivider,
   PopoverColorRangeList,
+  PopoverDivider,
+  PopoverRoot,
 } from "./ColorRangePopover.styled";
 
 export interface ColorRangeContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
-  value: string[];
+  initialValue: string[];
   colors: string[];
   ranges?: string[][];
   onChange?: (value: string[]) => void;
@@ -19,7 +26,7 @@ export interface ColorRangeContentProps
 
 const ColorSelectorContent = forwardRef(function ColorSelector(
   {
-    value,
+    initialValue,
     colors,
     ranges = [],
     onChange,
@@ -28,6 +35,7 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   }: ColorRangeContentProps,
   ref: Ref<HTMLDivElement>,
 ) {
+  const [value, setValue] = useState(initialValue);
   const handleChange = useCallback(
     (value: string[]) => {
       onChange?.(value);
@@ -36,14 +44,19 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
     [onChange, onClose],
   );
 
+  const handleSelect = useCallback((value: string) => {
+    setValue([color("white"), value]);
+  }, []);
+
   return (
     <PopoverRoot {...props} ref={ref}>
       <PopoverColorList>
         {colors.map((option, index) => (
-          <ColorPill key={index} color={option} />
+          <ColorPill key={index} color={option} onSelect={handleSelect} />
         ))}
       </PopoverColorList>
-      <PopoverDivider />
+      <ColorRangeToggle value={value} onChange={handleChange} />
+      {ranges.length > 0 && <PopoverDivider />}
       <PopoverColorRangeList>
         {ranges?.map((range, index) => (
           <ColorRangeToggle key={index} value={range} onChange={handleChange} />

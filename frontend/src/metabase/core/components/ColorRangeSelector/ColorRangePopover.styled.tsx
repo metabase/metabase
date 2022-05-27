@@ -10,6 +10,7 @@ export const PopoverColorList = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+  margin-bottom: 0.75rem;
 `;
 
 export const PopoverColorRangeList = styled.div`

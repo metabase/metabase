@@ -26,7 +26,7 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
       )}
       popoverContent={({ closePopover }) => (
         <ColorRangePopover
-          value={value}
+          initialValue={value}
           colors={colors}
           ranges={ranges}
           onChange={onChange}
