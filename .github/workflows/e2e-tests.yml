@@ -43,7 +43,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
