@@ -1,6 +1,6 @@
 import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
-import { PopoverRoot, PopoverList } from "./ColorRangeSelector.styled";
+import { PopoverRoot, PopoverList } from "./ColorRangePopover.styled";
 
 export interface ColorRangeContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
