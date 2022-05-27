@@ -392,7 +392,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
           <ColorSelector
-            color={rule.color}
+            value={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
           />

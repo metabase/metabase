@@ -41,7 +41,7 @@ export default class ChartNestedSettingSeries extends React.Component {
               >
                 <div className="flex align-center">
                   <ColorSelector
-                    color={settings.color}
+                    value={settings.color}
                     colors={getNormalColors()}
                     onChange={value =>
                       onChangeObjectSettings(single, { color: value })
