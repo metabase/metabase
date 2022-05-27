@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-export const ColorSelectorRoot = styled.div`
+export const PopoverRoot = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;

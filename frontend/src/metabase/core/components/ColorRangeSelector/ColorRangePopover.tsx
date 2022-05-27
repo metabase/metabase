@@ -1,6 +1,6 @@
 import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
-import { ColorContent, ColorList } from "./ColorRangeSelector.styled";
+import { PopoverRoot, PopoverList } from "./ColorRangeSelector.styled";
 
 export interface ColorRangeContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -14,13 +14,13 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   ref: Ref<HTMLDivElement>,
 ) {
   return (
-    <ColorContent {...props} ref={ref}>
-      <ColorList>
+    <PopoverRoot {...props} ref={ref}>
+      <PopoverList>
         {colors.map((option, index) => (
           <ColorPill key={index} color={option} />
         ))}
-      </ColorList>
-    </ColorContent>
+      </PopoverList>
+    </PopoverRoot>
   );
 });
 

@@ -1,7 +1,7 @@
 import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import ColorSelectorContent from "./ColorSelectorContent";
+import ColorSelectorPopover from "./ColorSelectorPopover";
 
 export type ColorSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -24,7 +24,7 @@ const ColorSelector = forwardRef(function ColorSelector(
         <ColorPill {...props} ref={ref} color={value} onClick={onClick} />
       )}
       popoverContent={
-        <ColorSelectorContent
+        <ColorSelectorPopover
           value={value}
           colors={colors}
           onChange={onChange}

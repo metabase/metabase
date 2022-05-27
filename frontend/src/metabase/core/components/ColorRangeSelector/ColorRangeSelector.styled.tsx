@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
 
-export const ColorContent = styled.div`
+export const PopoverRoot = styled.div`
   padding: 0.75rem;
   max-width: 21.5rem;
 `;
 
-export const ColorList = styled.div`
+export const PopoverList = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
