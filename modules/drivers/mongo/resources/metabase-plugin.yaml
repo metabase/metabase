@@ -41,7 +41,7 @@ driver:
     - name: client-ssl-cert
       display-name: Client SSL certificate chain (PEM)
       placeholder: Paste the contents of the client's SSL certificate chain here
-      type: string
+      type: textFile
       visible-if:
         ssl-use-client-auth: true
     - name: client-ssl-key

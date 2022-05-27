@@ -18,15 +18,15 @@
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
   []
-  (some? (System/getenv "SERVER_REQUIRES_SSL")))
+  (contains? #{"true" "1"} (System/getenv "MB_TEST_DATABASE_REQUIRES_SSL")))
 
 (defn- ssl-params
   "Returns the Metabase connection parameters needed for an SSL connection."
   []
   {:ssl true
    :ssl-use-client-auth true
-   :client-ssl-key (-> "ssl/mongo/metabase.key" io/resource slurp)
-   :client-ssl-key-passw "passw"
+   :client-ssl-key-value (-> "ssl/mongo/metabase.key" io/resource slurp)
+   :client-ssl-key-passw-value "passw"
    :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
    :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)})
 

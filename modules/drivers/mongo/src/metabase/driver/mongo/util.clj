@@ -5,13 +5,16 @@
             [metabase.config :as config]
             [metabase.driver.util :as driver.u]
             [metabase.models.database :refer [Database]]
+            [metabase.models.secret :as secret]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.ssh :as ssh]
             [monger.core :as mg]
             [monger.credentials :as mcred]
             [toucan.db :as db])
-  (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
+  (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]
+           java.nio.charset.StandardCharsets
+           [java.util Base64 Base64$Decoder]))
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
@@ -54,7 +57,8 @@
   serves as a starting point for the changes made below."
   ^MongoClientOptions [{:keys [ssl additional-options ssl-cert
                                ssl-use-client-auth client-ssl-cert client-ssl-key client-ssl-key-passw]
-                        :or   {ssl false, ssl-use-client-auth false}}]
+                        :or   {ssl false, ssl-use-client-auth false}
+                        :as   details}]
   (let [client-options (-> (client-options-for-url-params additional-options)
                            client-options->builder
                            (.description config/mb-app-id-string)
@@ -101,9 +105,31 @@
   [user pass host dbname authdb]
   (format "mongodb+srv://%s:%s@%s/%s?authSource=%s" user pass host dbname authdb))
 
+(def ^:private ^Base64$Decoder base64-decoder
+  (Base64/getDecoder))
+
+(defn- decode-uploaded [uploaded-data]
+  (-> base64-decoder
+      (.decode (str/replace uploaded-data #"^data:[^;]+;base64," ""))
+      (String. StandardCharsets/UTF_8)))
+
+(defn- get-secret [details secret-property]
+  (let [value-key (keyword (str secret-property "-value"))
+        options-key (keyword (str secret-property "-options"))
+        path-key (keyword (str secret-property "-path"))
+        id-key (keyword (str secret-property "-id"))
+        id (id-key details)
+        value (if id
+                (String. ^bytes (:value (secret/Secret id)) StandardCharsets/UTF_8)
+                (value-key details))]
+    (case (options-key details)
+      "uploaded" (decode-uploaded value)
+      "local" (slurp (if id value (path-key details)))
+      value)))
+
 (defn- normalize-details [details]
   (let [{:keys [dbname host port user pass authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv conn-uri
-                ssl ssl-cert ssl-use-client-auth client-ssl-cert client-ssl-key client-ssl-key-passw]
+                ssl ssl-cert ssl-use-client-auth client-ssl-cert]
          :or   {port 27017, ssl false, ssl-use-client-auth false, use-srv false, ssl-cert "", authdb "admin"}} details
         ;; ignore empty :user and :pass strings
         user (not-empty user)
@@ -121,8 +147,8 @@
      :ssl-cert             ssl-cert
      :ssl-use-client-auth  ssl-use-client-auth
      :client-ssl-cert      client-ssl-cert
-     :client-ssl-key       client-ssl-key
-     :client-ssl-key-passw client-ssl-key-passw}))
+     :client-ssl-key       (get-secret details "client-ssl-key")
+     :client-ssl-key-passw (get-secret details "client-ssl-key-passw")}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:
