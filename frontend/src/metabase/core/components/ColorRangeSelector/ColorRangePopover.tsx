@@ -1,7 +1,12 @@
 import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
-import { PopoverRoot, PopoverList } from "./ColorRangePopover.styled";
-import ColorRangeToggle from "metabase/core/components/ColorRangeSelector/ColorRangeToggle";
+import ColorRangeToggle from "./ColorRangeToggle";
+import {
+  PopoverRoot,
+  PopoverColorList,
+  PopoverDivider,
+  PopoverColorRangeList,
+} from "./ColorRangePopover.styled";
 
 export interface ColorRangeContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
@@ -17,14 +22,17 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
 ) {
   return (
     <PopoverRoot {...props} ref={ref}>
-      <PopoverList>
+      <PopoverColorList>
         {colors.map((option, index) => (
           <ColorPill key={index} color={option} />
         ))}
-      </PopoverList>
-      {ranges?.map((range, index) => (
-        <ColorRangeToggle key={index} value={range} onChange={onChange} />
-      ))}
+      </PopoverColorList>
+      <PopoverDivider />
+      <PopoverColorRangeList>
+        {ranges?.map((range, index) => (
+          <ColorRangeToggle key={index} value={range} onChange={onChange} />
+        ))}
+      </PopoverColorRangeList>
     </PopoverRoot>
   );
 });

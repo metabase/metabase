@@ -14,7 +14,7 @@ const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {
   const [isInverted, setIsInverted] = useState(false);
 
   const displayValue = useMemo(() => {
-    return isInverted ? value.reverse() : value;
+    return isInverted ? Array.from(value).reverse() : value;
   }, [value, isInverted]);
 
   const handleRangeClick = useCallback(() => {
