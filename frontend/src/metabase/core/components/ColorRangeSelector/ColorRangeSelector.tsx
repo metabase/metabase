@@ -11,11 +11,12 @@ export type ColorRangeSelectorAttributes = Omit<
 export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   value: string[];
   colors: string[];
+  ranges?: string[][];
   onChange?: (value: string[]) => void;
 }
 
 const ColorRangeSelector = forwardRef(function ColorRangeSelector(
-  { value, colors, onChange, ...props }: ColorRangeSelectorProps,
+  { value, colors, ranges, onChange, ...props }: ColorRangeSelectorProps,
   ref: Ref<HTMLDivElement>,
 ) {
   return (
@@ -24,7 +25,12 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
         <ColorRange {...props} ref={ref} colors={value} onClick={onClick} />
       )}
       popoverContent={
-        <ColorRangePopover value={value} colors={colors} onChange={onChange} />
+        <ColorRangePopover
+          value={value}
+          colors={colors}
+          ranges={ranges}
+          onChange={onChange}
+        />
       }
     />
   );

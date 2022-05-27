@@ -23,4 +23,8 @@ export const Default = Template.bind({});
 Default.args = {
   value: [color("white"), color("brand")],
   colors: [color("brand"), color("summarize"), color("filter")],
+  ranges: [
+    [color("error"), color("white"), color("success")],
+    [color("error"), color("warning"), color("success")],
+  ],
 };

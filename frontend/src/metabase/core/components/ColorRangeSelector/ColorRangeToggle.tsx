@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from "react";
-import Button from "metabase/core/components/Button";
-import ColorRange from "metabase/core/components/ColorRange";
-import { ToggleRoot } from "./ColorRangeToggle.styled";
+import {
+  ToggleButton,
+  ToggleColorRange,
+  ToggleRoot,
+} from "./ColorRangeToggle.styled";
 
 export interface ColorRangeToggleProps {
   value: string[];
@@ -25,8 +27,8 @@ const ColorRangeToggle = ({ value, onChange }: ColorRangeToggleProps) => {
 
   return (
     <ToggleRoot>
-      <ColorRange colors={displayValue} onClick={handleRangeClick} />
-      <Button icon="compare" onClick={handleButtonClick} />
+      <ToggleColorRange colors={displayValue} onClick={handleRangeClick} />
+      <ToggleButton icon="compare" onClick={handleButtonClick} />
     </ToggleRoot>
   );
 };
