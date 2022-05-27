@@ -243,7 +243,7 @@ class FieldValuesWidgetInner extends Component {
       formatOptions,
       placeholder,
     } = this.props;
-    const { loadingState, options: stateOptions } = this.state;
+    const { loadingState, options = [] } = this.state;
 
     const tokenFieldPlaceholder = getTokenFieldPlaceholder({
       fields,
@@ -252,30 +252,8 @@ class FieldValuesWidgetInner extends Component {
       placeholder,
       disablePKRemappingForSearch,
       loadingState,
-      options: stateOptions,
+      options,
     });
-
-    let options = [];
-    if (
-      hasList({
-        fields,
-        disableSearch,
-        dashboard,
-        loadingState,
-        options: stateOptions,
-      }) &&
-      !usesChainFilterEndpoints(this.props.dashboard)
-    ) {
-      options = dedupeValues(fields.map(field => field.values));
-    } else if (
-      loadingState === "LOADED" &&
-      (isSearchable(fields, disableSearch, disablePKRemappingForSearch) ||
-        usesChainFilterEndpoints(this.props.dashboard))
-    ) {
-      options = this.state.options;
-    } else {
-      options = [];
-    }
 
     const isLoading = loadingState === "LOADING";
     const isFetchingList =
@@ -285,7 +263,7 @@ class FieldValuesWidgetInner extends Component {
       disableSearch,
       dashboard,
       loadingState,
-      options: stateOptions,
+      options,
     });
 
     return (
