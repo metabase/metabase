@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import ColorRange from "./ColorRange";
 
 export default {
-  title: "Core/ColorPill",
+  title: "Core/ColorRange",
   component: ColorRange,
 };
 
@@ -17,7 +17,12 @@ Default.args = {
   colors: [color("white"), color("brand")],
 };
 
+export const Inverted = Template.bind({});
+Inverted.args = {
+  colors: [color("brand"), color("white")],
+};
+
 export const ThreeColors = Template.bind({});
 ThreeColors.args = {
-  colors: [color("error"), "white", color("success")],
+  colors: [color("error"), color("white"), color("success")],
 };
