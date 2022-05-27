@@ -582,10 +582,10 @@
     (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]
       (let [user-id
             (db/simple-insert! User {:first_name  "Howard"
-                                            :last_name   "Hughes"
-                                            :email       "howard@aircraft.com"
-                                            :password    "superstrong"
-                                            :date_joined :%now})
+                                     :last_name   "Hughes"
+                                     :email       "howard@aircraft.com"
+                                     :password    "superstrong"
+                                     :date_joined :%now})
             database-id (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
             card-id (db/simple-insert! Card {:name                   "My Saved Question"
                                              :created_at             :%now

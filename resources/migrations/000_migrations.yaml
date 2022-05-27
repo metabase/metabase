@@ -11653,7 +11653,6 @@ databaseChangeLog:
                     nullable: true
                     deferrable: false
                     initiallyDeferred: false
-
   - changeSet:
       id: v44.00-024
       author: qnkhuat

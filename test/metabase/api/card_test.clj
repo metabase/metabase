@@ -305,7 +305,7 @@
           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
 
    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                     "Each parameter must be a map with String :id keys")}}
+                                     "Each parameter must be a map with String :id key")}}
           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                              :parameters             "abc"})))))
 
@@ -771,7 +771,7 @@
 (deftest update-card-parameters-test
   (testing "PUT /api/card/:id"
     (mt/with-temp Card [card]
-      (testing "successfully update with valid parameter"
+      (testing "successfully update with valid parameters"
         (is (partial= {:parameters [{:id   "random-id"
                                      :type "number"}]}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
