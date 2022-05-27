@@ -23,13 +23,14 @@ const ColorSelector = forwardRef(function ColorSelector(
       renderTrigger={({ onClick }) => (
         <ColorPill {...props} ref={ref} color={value} onClick={onClick} />
       )}
-      popoverContent={
+      popoverContent={({ closePopover }) => (
         <ColorSelectorPopover
           value={value}
           colors={colors}
           onChange={onChange}
+          onClose={closePopover}
         />
-      }
+      )}
     />
   );
 });
