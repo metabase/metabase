@@ -9,7 +9,7 @@ import Icon from "metabase/components/Icon";
 import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
-import ColorPicker from "metabase/components/ColorPicker";
+import ColorSelector from "metabase/core/components/ColorSelector";
 
 import ColorRangePicker, {
   ColorRangePreview,
@@ -53,10 +53,11 @@ export const ALL_OPERATOR_NAMES = {
   ...STRING_OPERATOR_NAMES,
 };
 
-import { color, desaturated } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getDesaturatedColors } from "metabase/lib/colors/charts";
 
 // TODO
-const COLORS = Object.values(desaturated);
+const COLORS = getDesaturatedColors();
 const COLOR_RANGES = [].concat(
   ...COLORS.map(color => [
     ["white", color],
@@ -390,8 +391,8 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
-          <ColorPicker
-            value={rule.color}
+          <ColorSelector
+            color={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
           />

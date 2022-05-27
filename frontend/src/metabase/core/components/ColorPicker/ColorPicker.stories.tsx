@@ -10,17 +10,17 @@ export default {
 };
 
 const Template: ComponentStory<typeof ColorPicker> = args => {
-  const [{ color }, updateArgs] = useArgs();
+  const [{ value }, updateArgs] = useArgs();
 
-  const handleChange = (color?: string) => {
-    updateArgs({ color });
+  const handleChange = (value?: string) => {
+    updateArgs({ value });
   };
 
-  return <ColorPicker {...args} color={color} onChange={handleChange} />;
+  return <ColorPicker {...args} value={value} onChange={handleChange} />;
 };
 
 export const Default = Template.bind({});
 Default.args = {
-  color: color("brand"),
+  value: color("brand"),
   placeholder: color("brand"),
 };

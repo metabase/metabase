@@ -64,7 +64,6 @@ export const harmony: string[] = [];
 // DEPRECATED: we should remove these and use `colors` directly
 // compute satured/desaturated variants using "color" lib if absolutely required
 export const normal: Record<string, string> = {};
-export const saturated: Record<string, string> = {};
 export const desaturated: Record<string, string> = {};
 // make sure to do the initial "sync"
 syncColors();
@@ -109,11 +108,11 @@ function syncHarmony() {
 // syncs deprecated color families for legacy code
 function syncDeprecatedColorFamilies() {
   // normal + saturated + desaturated
-  normal.blue = saturated.blue = desaturated.blue = colors["brand"];
-  normal.green = saturated.green = desaturated.green = colors["accent1"];
-  normal.purple = saturated.purple = desaturated.purple = colors["accent2"];
-  normal.red = saturated.red = desaturated.red = colors["accent3"];
-  normal.yellow = saturated.yellow = desaturated.yellow = colors["accent4"];
+  normal.blue = desaturated.blue = colors["brand"];
+  normal.green = desaturated.green = colors["accent1"];
+  normal.purple = desaturated.purple = colors["accent2"];
+  normal.red = desaturated.red = colors["accent3"];
+  normal.yellow = desaturated.yellow = colors["accent4"];
   normal.orange = colors["accent5"];
   normal.teal = colors["accent6"];
   normal.indigo = colors["accent7"];
