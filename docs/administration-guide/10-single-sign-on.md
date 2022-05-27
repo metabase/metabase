@@ -141,6 +141,6 @@ If you're having trouble, go to [Troubleshooting logins](../troubleshooting-guid
 [jwt-docs]: ../enterprise-guide/authenticating-with-jwt.html
 [saml-docs]: ../enterprise-guide/authenticating-with-saml.html
 [sso-def]: /glossary/sso
-[sso-docs]: ./10-single-sign-on.html
+[sso-docs]: ../administration-guide/sso.html
 [user-attributes-docs]: ../enterprise-guide/data-sandboxes.html#getting-user-attributes
 [user-attributes-def]: /glossary/attribute#user-attributes-in-metabase

@@ -16,9 +16,7 @@ Paid plans include more ways to authenticate people and manage groups.
   - [Setting up SAML with Auth0](saml.html)
   - [Setting up SAML with Google](saml-google.html)
   - [Setting up SAML with Keycloak](saml-keycloak.html)
-  - [Okta documentation](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
-  - [OneLogin documentation](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
-- [Authenticating with JWT](authenticating-with-jwt.html)
+  - [Documentation for other common IdPs](../enterprise-guide/authenticating-with-saml.html#documentation-for-other-common-idps)
 
 ## Permissions
 

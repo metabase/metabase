@@ -32,11 +32,16 @@ The form itself is broken up into three parts: information about Metabase that y
 
 ### Setting up SAML with your IdP
 
-So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently, so here are some documentation links that may help:
+So, first you'll need to make sure things are configured correctly with your IdP. Each provider handles SAML setup differently.
+
+#### SAML setup guides
 
 - [Setting up SAML with Auth0](saml-auth0.html)
 - [Setting up SAML with Google](saml-google.html)
 - [Setting up SAML with Keycloak](saml-keycloak.html)
+
+#### Documentation for other common IdPs
+
 - [Okta documentation](https://developer.okta.com/docs/guides/saml-application-setup/overview/)
 - [OneLogin documentation](https://onelogin.service-now.com/support?id=kb_article&sys_id=83f71bc3db1e9f0024c780c74b961970)
 
