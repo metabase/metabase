@@ -13,33 +13,23 @@ For more information, check out our guide for [authenticating with SAML](authent
 1. Go to the Keycloak admin console and sign in as an administrator.
 2. Create a test user from **Manage** > **Users**. You'll need to populate the fields with an email, first name, and last name.
 3. Once you've created at least one user, navigation tabs will appear at the top of the **Users** page. Go to **Credentials** to set password for your test user.
-
-- Turn off the **Temporary** toggle.
-- Click **Set Password** to save your changes.
-
+   - Turn off the **Temporary** toggle.
+   - Click **Set Password** to save your changes.
 4. Create a new SSO client from **Manage** > **Clients** > **Create**.
-
-- **Client ID**: Enter “metabase” in lowercase.
-- **Client Protocol**: Select “saml” from the dropdown.
-- Click **Save**.
-
+   - **Client ID**: Enter “metabase” in lowercase.
+   - **Client Protocol**: Select “saml” from the dropdown.
+   - Click **Save**.
 5. Configure the SSO client from the form that appears after saving:
-
-- **Client Signature Required**: DISABLE
-- **Valid Redirect URIs**: URL where you are hosting your Metabase instance followed by
-  a slash (/) and an asterisk (_). For example, `http://localhost:3000/_`.
-- **Base URL**: Fill this in with the value under “URL the IdP should redirect back to” from your Metabase **Admin settings** > **Authentication** > **SAML**.
-- Click **Save**.
-
+   - **Client Signature Required**: DISABLE
+   - **Valid Redirect URIs**: URL where you are hosting your Metabase instance followed by
+     a slash (/) and an asterisk (_). For example, `http://localhost:3000/_`.
+   - **Base URL**: Fill this in with the value under “URL the IdP should redirect back to” from your Metabase **Admin settings** > **Authentication** > **SAML**.
+   - Click **Save**.
 6. Map user data to your SSO client from **Mappers** > **Add Builtin**.
-
-- [Mapping attributes from users in Keycloak to Metabase](#mapping-attributes-from-users-in-keycloak-to-metabase)
-
+   - [Mapping attributes from users in Keycloak to Metabase](#mapping-attributes-from-users-in-keycloak-to-metabase)
 7. Configure the service provider (Metabase) from **Configure** > **Realm Settings**.
-
-- From **Endpoints**, select “SAML 2.0 Identity Provider Metadata”.
-- An XML file will open in a new tab.
-
+   - From **Endpoints**, select “SAML 2.0 Identity Provider Metadata”.
+   - An XML file will open in a new tab.
 8. From the XML file, note the following:
    1. The URL that appears right after the following string:
    ```
