@@ -210,13 +210,16 @@
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
-  (let [defaults {:parameters []}
+  (let [defaults {:parameters         []
+                  :parameter_mappings []}
         card     (merge defaults card)]
    (u/prog1 card
      ;; make sure this Card doesn't have circular source query references
      (check-for-circular-source-query-references card)
      (check-field-filter-fields-are-from-correct-database card)
+     ;; TODO: add a check to see if all id in :parameter_mappings are in :parameters
      (params/assert-valid-parameters card)
+     (params/assert-valid-parameter-mappings card)
      (collection/check-collection-namespace Card (:collection_id card)))))
 
 (defn- post-insert [card]
@@ -266,6 +269,7 @@
     ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
     (collection/check-collection-namespace Card (:collection_id changes))
     (params/assert-valid-parameters changes)
+    (params/assert-valid-parameter-mappings changes)
     ;; additional checks (Enterprise Edition only)
     (@pre-update-check-sandbox-constraints changes)))
 
@@ -295,7 +299,8 @@
                                        :query_type             :keyword
                                        :result_metadata        ::result-metadata
                                        :visualization_settings :visualization-settings
-                                       :parameters             :parameters-list})
+                                       :parameters             :parameters-list
+                                       :parameter_mappings     :parameters-list})
           :properties     (constantly {:timestamped? true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries

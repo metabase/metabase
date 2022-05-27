@@ -270,15 +270,16 @@
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata dataset parameters], :as card-data}]
+  [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                              :parameters :collection_id :collection_position :cache_ttl]
+                              :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
                                     :dataset (boolean (:dataset card-data))
-                                    :parameters (or parameters []))
+                                    :parameters (or parameters [])
+                                    :parameter_mappings (or parameter_mappings []))
         result-metadata-chan (result-metadata-async {:query dataset_query
                                                      :metadata result_metadata
                                                      :dataset? dataset})
@@ -299,9 +300,10 @@
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
-                parameters result_metadata visualization_settings cache_ttl], :as body} :body}]
+                parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
    parameters             (s/maybe [su/Parameter])
+   parameter_mappings     (s/maybe [su/ParameterMapping])
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
@@ -504,7 +506,7 @@
         (u/select-keys-when card-updates
           :present #{:collection_id :collection_position :description :cache_ttl :dataset}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                     :parameters :embedding_params :result_metadata})))
+                     :parameters :parameter_mappings :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
       (delete-alerts-if-needed! card-before-update card)
