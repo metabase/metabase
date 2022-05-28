@@ -16,7 +16,7 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     timeout-minutes: 25
     strategy:
       matrix:
@@ -42,8 +42,8 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: buildjet-4vcpu-ubuntu-2004
-    timeout-minutes: 30
+    runs-on: ubuntu-20.04
+    timeout-minutes: 35
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
