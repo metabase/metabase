@@ -61,7 +61,11 @@ export function getTemplateTagsForParameters(card) {
 }
 
 export function getParametersFromCard(card) {
-  if (card && card.parameters) {
+  if (!card) {
+    return [];
+  }
+
+  if (!_.isEmpty(card.parameters)) {
     return card.parameters;
   }
 
@@ -72,7 +76,7 @@ export function getParametersFromCard(card) {
 export function getValueAndFieldIdPopulatedParametersFromCard(
   card,
   metadata,
-  parameterValues,
+  parameterValues = {},
   parameters = getParametersFromCard(card),
 ) {
   if (!card) {
