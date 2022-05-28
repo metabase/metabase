@@ -177,21 +177,14 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
-
 ;; Describe the nested fields present in a table (currently and maybe forever just JSON),
 ;; including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)]
-    (if (> (count fields) max-nested-field-columns)
-      #{}
-      fields)))
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
