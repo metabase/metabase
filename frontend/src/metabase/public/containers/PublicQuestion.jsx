@@ -15,7 +15,10 @@ import {
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
 import { applyParameters } from "metabase/meta/Card";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import {
+  getValueAndFieldIdPopulatedParametersFromCard,
+  getParametersFromCard,
+} from "metabase/parameters/utils/cards";
 
 import {
   PublicApi,
@@ -89,7 +92,7 @@ class PublicQuestion extends Component {
         card,
         metadata,
         {},
-        card.parameters || [],
+        card.parameters || undefined,
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
@@ -133,7 +136,7 @@ class PublicQuestion extends Component {
       return;
     }
 
-    const parameters = card.parameters || [];
+    const parameters = card.parameters || getParametersFromCard(card);
 
     try {
       this.setState({ result: null });
@@ -191,7 +194,7 @@ class PublicQuestion extends Component {
         card,
         metadata,
         {},
-        card.parameters || [],
+        card.parameters || undefined,
       );
 
     return (
