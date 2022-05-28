@@ -67,6 +67,7 @@ jobs:
           - "embedding"
           - "joins"
           - "models"
+          - "sharing"
         include:
           - edition: oss
             java-version: 11
