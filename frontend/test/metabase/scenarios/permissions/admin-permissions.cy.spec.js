@@ -3,7 +3,7 @@ import {
   popover,
   modal,
   describeEE,
-  describeOSS,
+  isOSS,
   assertPermissionTable,
   modifyPermission,
   selectSidebarItem,
@@ -22,8 +22,10 @@ const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
-describeOSS("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
