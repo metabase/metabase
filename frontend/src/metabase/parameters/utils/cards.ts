@@ -86,12 +86,12 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   card: Card,
   metadata: Metadata,
   parameterValues: { [key: string]: any },
+  parameters = getParametersFromCard(card),
 ) {
   if (!card) {
     return [];
   }
 
-  const parameters = getParametersFromCard(card);
   const valuePopulatedParameters: (Parameter[] | ParameterWithTarget[]) & {
     value?: any;
   } = getValuePopulatedParameters(parameters, parameterValues);
