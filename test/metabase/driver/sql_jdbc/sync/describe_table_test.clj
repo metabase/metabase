@@ -89,15 +89,15 @@
     ;; so this rebinding is what you get
     (let [obnoxiously-long-json "{\"bob\": \"dobbs\"}"
           json-map              {:somekey obnoxiously-long-json}]
-      (with-redefs [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
+      (with-redefs [describe-table/*nested-field-column-max-row-length* 3]
         (is (= {}
                (transduce
-                 #'sql-jdbc.describe-table/describe-json-xform
-                 #'sql-jdbc.describe-table/describe-json-rf [json-map]))))
+                 #'describe-table/describe-json-xform
+                 #'describe-table/describe-json-rf [json-map]))))
       (is (= {[:somekey "bob"] java.lang.String}
              (transduce
-               #'sql-jdbc.describe-table/describe-json-xform
-               #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+               #'describe-table/describe-json-xform
+               #'describe-table/describe-json-rf [json-map]))))))
 
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
