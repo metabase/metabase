@@ -138,6 +138,16 @@ executors:
        - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
        - image: circleci/mongo:latest
 
+  mongo-latest-ssl:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
+         environment:
+           MB_TEST_DATABASE_REQUIRES_SSL: true
+       - image: circleci/mongo:latest
+         command: --tlsMode requireTLS --tlsCertificateKeyFile /home/circleci/metabase/metabase/test_resources/ssl/mongo/metamongo.pem --tlsCAFile /home/circleci/metabase/metabase/test_resources/ssl/mongo/metaca.crt
+
+
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -1059,7 +1069,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              version: ["mongo-4-0", "mongo-latest"]
+              version: ["mongo-4-0", "mongo-latest", "mongo-latest-ssl"]
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
