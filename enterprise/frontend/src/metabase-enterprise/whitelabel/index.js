@@ -78,10 +78,6 @@ if (hasPremiumFeature("whitelabel")) {
   }));
 
   PLUGIN_APP_INIT_FUCTIONS.push(({ root }) => {
-    MetabaseSettings.on("application-colors", updateColors);
-    MetabaseSettings.on("application-colors", () => {
-      root.forceUpdate();
-    });
     updateColors();
   });
 
