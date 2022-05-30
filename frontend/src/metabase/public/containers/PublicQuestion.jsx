@@ -16,8 +16,8 @@ import {
 } from "metabase/parameters/utils/parameter-values";
 import { applyParameters } from "metabase/meta/Card";
 import {
-  getParametersFromCard,
   getValueAndFieldIdPopulatedParametersFromCard,
+  getParametersFromCard,
 } from "metabase/parameters/utils/cards";
 
 import {
@@ -91,6 +91,8 @@ class PublicQuestion extends Component {
       const parameters = getValueAndFieldIdPopulatedParametersFromCard(
         card,
         metadata,
+        {},
+        card.parameters || undefined,
       );
       const parameterValuesById = getParameterValuesByIdFromQueryParams(
         parameters,
@@ -134,7 +136,7 @@ class PublicQuestion extends Component {
       return;
     }
 
-    const parameters = getParametersFromCard(card);
+    const parameters = card.parameters || getParametersFromCard(card);
 
     try {
       this.setState({ result: null });
@@ -187,7 +189,13 @@ class PublicQuestion extends Component {
     );
 
     const parameters =
-      card && getValueAndFieldIdPopulatedParametersFromCard(card, metadata);
+      card &&
+      getValueAndFieldIdPopulatedParametersFromCard(
+        card,
+        metadata,
+        {},
+        card.parameters || undefined,
+      );
 
     return (
       <EmbedFrame
