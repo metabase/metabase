@@ -127,8 +127,8 @@
   (try
     (f)
     (finally
-      (u/ignore-exceptions (db/update-where! User {} :login_attributes nil)
-                           (db/delete! User :first_name "Unknown")))))
+      (u/ignore-exceptions (do (db/update-where! User {} :login_attributes nil)
+                               (db/update-where! User {:email "rasta@metabase.com"} :first_name "Rasta" :last_name "Toucan"))))))
 
 (defmacro ^:private with-saml-default-setup [& body]
   `(with-valid-premium-features-token
