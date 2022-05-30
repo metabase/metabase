@@ -590,12 +590,14 @@
    (let [dashboard (hydrate dashboard :resolved-params)]
      (when-not (get (:resolved-params dashboard) param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))})))
+                       {:resolved-params (keys (:resolved-params dashboard))
+                        :status-code     404})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
        (when (empty? field-ids)
          (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param (get (:resolved-params dashboard) param-key)})))
+                         {:param       (get (:resolved-params dashboard) param-key)
+                          :status-code 404})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
        (try
