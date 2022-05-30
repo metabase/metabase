@@ -81,14 +81,10 @@ export const aliases: Record<string, (family: ColorFamily) => string> = {
 };
 
 export const harmony: string[] = [];
-// DEPRECATED: we should remove these and use `colors` directly
-// compute satured/desaturated variants using "color" lib if absolutely required
-export const normal: Record<string, string> = {};
 // make sure to do the initial "sync"
 syncColors();
 export function syncColors() {
   syncHarmony();
-  syncDeprecatedColorFamilies();
 }
 
 function syncHarmony() {
@@ -121,24 +117,6 @@ function syncHarmony() {
       harmony.push(initialColorHarmonies[colorIndex][roundIndex]);
     }
   }
-}
-
-// syncs deprecated color families for legacy code
-function syncDeprecatedColorFamilies() {
-  // normal + saturated + desaturated
-  normal.blue = colors["brand"];
-  normal.green = colors["accent1"];
-  normal.purple = colors["accent2"];
-  normal.red = colors["accent3"];
-  normal.yellow = colors["accent4"];
-  normal.orange = colors["accent5"];
-  normal.teal = colors["accent6"];
-  normal.indigo = colors["accent7"];
-  normal.gray = colors["text-dark"];
-  normal.grey1 = colors["text-light"];
-  normal.grey2 = colors["text-medium"];
-  normal.grey3 = colors["text-dark"];
-  normal.text = colors["text-dark"];
 }
 
 export const getRandomColor = (family: ColorFamily): ColorString => {

@@ -74,7 +74,7 @@ for (let i = 0; i < MAX_SERIES; i++) {
   addCSSRule(`.LineAreaBarChart.mute-${i} svg:not(.stacked) .row`, MUTE_STYLE);
 }
 
-import { normal } from "metabase/lib/colors";
+import { getForegroundColors } from "metabase/lib/colors/groups";
 
 export default class LineAreaBarChart extends Component {
   static noHeader = true;
@@ -297,7 +297,7 @@ export default class LineAreaBarChart extends Component {
       : series.map(single => single.card.name);
     const colors = seriesSettings
       ? seriesSettings.map(s => s.color)
-      : Object.values(normal);
+      : Object.values(getForegroundColors());
 
     return {
       title,
