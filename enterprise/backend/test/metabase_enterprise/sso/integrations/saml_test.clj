@@ -127,7 +127,8 @@
   (try
     (f)
     (finally
-      (u/ignore-exceptions (db/update-where! User {} :login_attributes nil)))))
+      (u/ignore-exceptions (db/update-where! User {} :login_attributes nil)
+                           (db/delete! User :first_name "Unknown")))))
 
 (defmacro ^:private with-saml-default-setup [& body]
   `(with-valid-premium-features-token
@@ -255,7 +256,7 @@
         (select-keys attribute-keys))))
 
 (deftest validate-request-id-test
-  (testing "Sample response shoudl fail because _1 isn't a request ID that we issued."
+  (testing "Sample response should fail because _1 isn't a request ID that we issued."
     (with-saml-default-setup
       (do-with-some-validators-disabled
         (fn []

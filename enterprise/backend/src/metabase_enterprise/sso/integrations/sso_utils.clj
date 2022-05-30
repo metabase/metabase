@@ -36,13 +36,15 @@
 
 (defn fetch-and-update-login-attributes!
   "Update the login attributes for the user at `email`. This call is a no-op if the login attributes are the same"
-  [{:keys [email] :as new-user-attributes}]
+  [{:keys [email] :as user-attributes}]
   (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
-    (if (= (select-keys user (keys new-user-attributes)) new-user-attributes)
-      user
-      (do
-        (apply db/update! (concat [User id] (apply concat new-user-attributes)))
-        (User id)))))
+    (let [attribute-keys (keys user-attributes)
+          user-attributes (into {} (filter second user-attributes))] ;; remove attributes with `nil` values
+      (if (= (select-keys user attribute-keys) user-attributes)
+        user
+        (do
+          (apply db/update! (concat [User id] (apply concat user-attributes)))
+          (User id))))))
 
 (defn check-sso-redirect
   "Check if open redirect is being exploited in SSO, blurts out a 400 if so"

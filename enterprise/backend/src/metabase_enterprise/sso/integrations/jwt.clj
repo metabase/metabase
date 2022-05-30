@@ -25,7 +25,9 @@
               :sso_source       "jwt"
               :login_attributes user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user)
-        (sso-utils/create-new-sso-user! user))))
+        (sso-utils/create-new-sso-user! (merge user
+                                               (when-not first-name {first-name (trs "Unknown")})
+                                               (when-not last-name {last-name (trs "Unknown")}))))))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email     (comp keyword sso-settings/jwt-attribute-email))
 (def ^:private ^{:arglists '([])} jwt-attribute-firstname (comp keyword sso-settings/jwt-attribute-firstname))
@@ -81,8 +83,8 @@
                                            e))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
-          first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
-          last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
+          first-name   (get jwt-data (jwt-attribute-firstname))
+          last-name    (get jwt-data (jwt-attribute-lastname))
           user         (fetch-or-create-user! first-name last-name email login-attrs)
           session      (api.session/create-session! :sso user (request.u/device-info request))]
       (sync-groups! user jwt-data)
