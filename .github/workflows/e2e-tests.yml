@@ -67,6 +67,7 @@ jobs:
           - "embedding"
           - "joins"
           - "models"
+          - "question"
           - "sharing"
         include:
           - edition: oss
