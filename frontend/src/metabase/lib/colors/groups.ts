@@ -1,15 +1,15 @@
-import { range } from "lodash";
+import { times } from "lodash";
 import { color } from "metabase/lib/colors";
 
-export const getNormalColors = () => [
-  color("brand"),
-  ...range(1, 8).map(i => color(`accent${i}`)),
-  color("text-dark"),
+export const getForegroundColors = () => [
+  ...times(8, i => color(`accent${i}`)),
+  ...times(8, i => color(`accent${i}-light`)),
+  ...times(8, i => color(`accent${i}-dark`)),
 ];
 
-export const getDesaturatedColors = () => [
-  color("brand"),
-  ...range(1, 5).map(i => color(`accent${i}`)),
+export const getBackgroundColors = () => [
+  ...times(8, i => color(`accent${i}`)),
+  ...times(8, i => color(`accent${i}-light`)),
 ];
 
 export const getStatusColorRanges = () => [
