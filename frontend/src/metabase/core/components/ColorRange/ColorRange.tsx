@@ -18,7 +18,7 @@ export type ColorRangeAttributes = Omit<
 export interface ColorRangeProps extends ColorRangeAttributes {
   colors: string[];
   sections?: number;
-  quantile?: boolean;
+  isQuantile?: boolean;
   onSelect?: (newColors: string[]) => void;
 }
 
@@ -26,7 +26,7 @@ const ColorRange = forwardRef(function ColorRange(
   {
     colors,
     sections = 5,
-    quantile = false,
+    isQuantile = false,
     onClick,
     onSelect,
     ...props
@@ -34,8 +34,8 @@ const ColorRange = forwardRef(function ColorRange(
   ref: Ref<HTMLDivElement>,
 ) {
   const scale = useMemo(() => {
-    return getColorScale([0, sections - 1], colors, quantile);
-  }, [colors, sections, quantile]);
+    return getColorScale([0, sections - 1], colors, isQuantile);
+  }, [colors, sections, isQuantile]);
 
   const handleClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {

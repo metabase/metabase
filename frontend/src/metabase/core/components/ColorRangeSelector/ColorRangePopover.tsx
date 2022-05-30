@@ -3,9 +3,10 @@ import React, {
   HTMLAttributes,
   Ref,
   useCallback,
+  useMemo,
   useState,
 } from "react";
-import { isEqual } from "lodash";
+import { isEqual, toPairs } from "lodash";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
@@ -21,7 +22,7 @@ export interface ColorRangeContentProps
   colors: string[];
   colorRanges?: string[][];
   colorMapping?: Record<string, string[]>;
-  quantile?: boolean;
+  isQuantile?: boolean;
   onChange?: (newValue: string[]) => void;
   onClose?: () => void;
 }
@@ -31,16 +32,29 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
     initialValue,
     colors,
     colorRanges = [],
-    colorMapping = getDefaultColorMapping(colors),
-    quantile,
+    colorMapping: customColorMapping,
+    isQuantile,
     onChange,
     onClose,
     ...props
   }: ColorRangeContentProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [value, setValue] = useState(initialValue);
-  const { color, isInverted } = getColorSelection(value, colors, colorMapping);
+  const colorMapping = useMemo(() => {
+    return customColorMapping ?? getDefaultColorMapping(colors);
+  }, [colors, customColorMapping]);
+
+  const [color, setColor] = useState(() =>
+    getDefaultColor(initialValue, colors, colorMapping),
+  );
+
+  const [isInverted, setIsInverted] = useState(() =>
+    getDefaultInverted(initialValue, colors, colorMapping),
+  );
+
+  const colorRange = useMemo(() => {
+    return getColorRange(color, colorMapping, isInverted);
+  }, [color, colorMapping, isInverted]);
 
   const handleChange = useCallback(
     (newValue: string[]) => {
@@ -48,17 +62,6 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
       onClose?.();
     },
     [onChange, onClose],
-  );
-
-  const handleSelect = useCallback(
-    (newColor: string) => {
-      if (isInverted) {
-        setValue([...colorMapping[newColor]].reverse());
-      } else {
-        setValue(colorMapping[newColor]);
-      }
-    },
-    [isInverted, colorMapping],
   );
 
   return (
@@ -69,14 +72,16 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
             key={index}
             color={value}
             isSelected={value === color}
-            onSelect={handleSelect}
+            onSelect={setColor}
           />
         ))}
       </PopoverColorList>
       <ColorRangeToggle
-        value={value}
-        quantile={quantile}
-        onChange={handleChange}
+        value={colorRange}
+        isInverted={isInverted}
+        isQuantile={isQuantile}
+        onSelect={handleChange}
+        onToggle={setIsInverted}
       />
       {colorRanges.length > 0 && <PopoverDivider />}
       <PopoverColorRangeList>
@@ -84,8 +89,8 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
           <ColorRangeToggle
             key={index}
             value={range}
-            quantile={quantile}
-            onChange={handleChange}
+            isQuantile={isQuantile}
+            onSelect={handleChange}
           />
         ))}
       </PopoverColorRangeList>
@@ -93,23 +98,46 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   );
 });
 
-const getColorSelection = (
+const getColorRange = (
+  color: string,
+  colorMapping: Record<string, string[]>,
+  isInverted: boolean,
+) => {
+  if (isInverted) {
+    return [...colorMapping[color]].reverse();
+  } else {
+    return colorMapping[color];
+  }
+};
+
+const getDefaultColor = (
   value: string[],
   colors: string[],
   colorMapping: Record<string, string[]>,
 ) => {
-  return Object.entries(colorMapping).reduce(
-    (selection, [color, range]) => {
-      if (isEqual(value, range)) {
-        return { color, isInverted: false };
-      } else if (isEqual(value, [...range].reverse())) {
-        return { color, isInverted: true };
-      } else {
-        return selection;
-      }
-    },
-    { color: colors[0], isInverted: false },
-  );
+  return Object.entries(colorMapping).reduce((selection, [color, range]) => {
+    if (isEqual(value, range)) {
+      return color;
+    } else if (isEqual(value, [...range].reverse())) {
+      return color;
+    } else {
+      return selection;
+    }
+  }, colors[0]);
+};
+
+const getDefaultInverted = (
+  value: string[],
+  colors: string[],
+  colorMapping: Record<string, string[]>,
+) => {
+  return Object.entries(colorMapping).reduce((selection, [color, range]) => {
+    if (isEqual(value, [...range].reverse())) {
+      return true;
+    } else {
+      return selection;
+    }
+  }, false);
 };
 
 const getDefaultColorMapping = (colors: string[]) => {

@@ -3,9 +3,9 @@ import d3 from "d3";
 export const getColorScale = (
   extent: [number, number],
   colors: string[],
-  quantile: boolean = false,
+  isQuantile: boolean = false,
 ) => {
-  if (quantile) {
+  if (isQuantile) {
     return d3.scale
       .quantile<string>()
       .domain(extent)

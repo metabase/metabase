@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback } from "react";
 import {
   ToggleButton,
   ToggleColorRange,
@@ -7,31 +7,29 @@ import {
 
 export interface ColorRangeToggleProps {
   value: string[];
-  quantile?: boolean;
-  onChange?: (newValue: string[]) => void;
+  isInverted?: boolean;
+  isQuantile?: boolean;
+  onSelect?: (newValue: string[]) => void;
+  onToggle?: (isInverted: boolean) => void;
 }
 
 const ColorRangeToggle = ({
   value,
-  quantile,
-  onChange,
+  isInverted,
+  isQuantile,
+  onSelect,
+  onToggle,
 }: ColorRangeToggleProps) => {
-  const [isInverted, setIsInverted] = useState(false);
-
-  const displayValue = useMemo(() => {
-    return isInverted ? Array.from(value).reverse() : value;
-  }, [value, isInverted]);
-
   const handleButtonClick = useCallback(() => {
-    setIsInverted(isInverted => !isInverted);
-  }, []);
+    onToggle?.(!isInverted);
+  }, [isInverted, onToggle]);
 
   return (
     <ToggleRoot>
       <ToggleColorRange
-        colors={displayValue}
-        quantile={quantile}
-        onSelect={onChange}
+        colors={value}
+        isQuantile={isQuantile}
+        onSelect={onSelect}
       />
       <ToggleButton icon="compare" small onClick={handleButtonClick} />
     </ToggleRoot>
