@@ -88,6 +88,9 @@ describe("Object Detail", () => {
         question={
           {
             displayName: () => "Product",
+            database: () => ({
+              getPlainObject: () => ({}),
+            }),
           } as any
         }
         table={

@@ -15,12 +15,15 @@ const QUESTION = {
   archived: false,
 };
 
-function mockCachingSettings({ enabled = true } = {}) {
+function mockSettings({ actionsEnabled = false, cachingEnabled = true } = {}) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
     if (key === "enable-query-caching") {
-      return enabled;
+      return cachingEnabled;
+    }
+    if (key === "experimental-actions-enabled") {
+      return actionsEnabled;
     }
     if (key === "query-caching-min-ttl") {
       return 10000;
@@ -41,10 +44,18 @@ function mockCachingSettings({ enabled = true } = {}) {
   });
 }
 
-function setup({ cachingEnabled = true } = {}) {
-  mockCachingSettings({
-    enabled: cachingEnabled,
+function setup({ actionsEnabled = false, cachingEnabled = true } = {}) {
+  mockSettings({
+    actionsEnabled,
+    cachingEnabled,
   });
+
+  const settingsState = {
+    values: {
+      "enable-query-caching": cachingEnabled,
+      "experimental-actions-enabled": actionsEnabled,
+    },
+  };
 
   const onSave = jest.fn();
   const onClose = jest.fn();
@@ -54,6 +65,7 @@ function setup({ cachingEnabled = true } = {}) {
     database: () => ({
       cache_ttl: null,
     }),
+    isNative: () => false,
     isDataset: () => true,
   };
 
@@ -63,6 +75,12 @@ function setup({ cachingEnabled = true } = {}) {
       onSave={onSave}
       onClose={onClose}
     />,
+    {
+      reducers: { settings: () => settingsState },
+      storeInitialState: {
+        settings: settingsState,
+      },
+    },
   );
 
   return {
