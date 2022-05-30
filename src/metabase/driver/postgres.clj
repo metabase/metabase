@@ -71,19 +71,19 @@
   [_ message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"^No suitable driver found for.*$"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
     #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^FATAL: role \".*\" does not exist$"
-    (driver.common/connection-error-messages :username-incorrect)
+    :username-incorrect
 
     #"^FATAL: password authentication failed for user.*$"
-    (driver.common/connection-error-messages :password-incorrect)
+    :password-incorrect
 
     #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
@@ -190,21 +190,14 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
-
 ;; Describe the nested fields present in a table (currently and maybe forever just JSON),
 ;; including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
-    (if (> (count fields) max-nested-field-columns)
-      #{}
-      fields)))
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |

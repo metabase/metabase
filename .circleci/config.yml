@@ -1002,8 +1002,8 @@ workflows:
       - clojure:
           matrix:
             parameters:
-              edition: ["ee", "oss"]
-              java-version: ["java-11", "java-17"]
+              edition: ["ee"]
+              java-version: ["java-11"]
           name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
@@ -1221,6 +1221,9 @@ workflows:
           name: build-uberjar-drivers-<< matrix.edition >>
           requires:
             - be-deps
+          filters:
+            branches:
+              ignore: master
           <<: *Matrix
 
       - build-uberjar-frontend:
@@ -1239,6 +1242,9 @@ workflows:
       - fe-deps:
           requires:
             - checkout
+          filters:
+            branches:
+              ignore: master
 
       - fe-tests-cypress:
           matrix:
@@ -1248,10 +1254,7 @@ workflows:
                 [
                   "admin",
                   "collections",
-                  "dashboard",
-                  "embedding",
                   "filters",
-                  "models",
                   "native",
                   "native-filters",
                   "onboarding",
@@ -1285,3 +1288,6 @@ workflows:
       - snowplow-deps:
           requires:
             - checkout
+          filters:
+            branches:
+              ignore: master

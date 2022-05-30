@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import TabList from "metabase/core/components/TabList";
 import TabPanel from "metabase/core/components/TabPanel";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 
 export const ModalRoot = styled.div`
@@ -39,6 +39,7 @@ export const ModalTitle = styled(Ellipsified)`
 
 export const ModalTabList = styled(TabList)`
   padding: 0 2rem;
+  flex-shrink: 0;
 `;
 
 export const ModalTabPanel = styled(TabPanel)`
@@ -46,8 +47,13 @@ export const ModalTabPanel = styled(TabPanel)`
   padding: 0 2rem;
 `;
 
-export const ModalDivider = styled.div`
+interface ModalDividerProps {
+  marginY?: string;
+}
+
+export const ModalDivider = styled.div<ModalDividerProps>`
   border-top: 1px solid ${color("border")};
+  margin: ${props => (props.marginY ? props.marginY : "0")} 0;
 `;
 
 export const ModalCloseButton = styled(IconButtonWrapper)`

@@ -45,7 +45,7 @@
         (catch Throwable e
           (log/error "Problem sending follow-up email:" e))
         (finally
-          (follow-up-email-sent true))))))
+          (follow-up-email-sent! true))))))
 
 (defn- instance-creation-timestamp
   "The date this Metabase instance was created. We use the `:date_joined` of the first `User` to determine this."
@@ -124,7 +124,7 @@
         (catch Throwable e
           (log/error e (trs "Problem sending abandonment email")))
         (finally
-          (abandonment-email-sent true))))))
+          (abandonment-email-sent! true))))))
 
 
 (jobs/defjob

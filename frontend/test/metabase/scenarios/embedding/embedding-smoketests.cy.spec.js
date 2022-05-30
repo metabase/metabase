@@ -26,7 +26,7 @@ describe("scenarios > embedding > smoke tests", () => {
       resetEmbedding();
     });
 
-    it("should display the embedding page correctly", () => {
+    it("should display the embedding page correctly", { tags: "@OSS" }, () => {
       cy.visit("/admin/settings/setup");
       cy.findByText("Embedding in other Applications").click();
 
@@ -99,7 +99,7 @@ describe("scenarios > embedding > smoke tests", () => {
     });
   });
 
-  context("embedding enabled", () => {
+  context("embedding enabled", { tags: "@OSS" }, () => {
     ["question", "dashboard"].forEach(object => {
       it(`should be able to publish/embed and then unpublish a ${object} without filters`, () => {
         const embeddableObject = object === "question" ? "card" : "dashboard";
@@ -112,6 +112,14 @@ describe("scenarios > embedding > smoke tests", () => {
         );
 
         visitAndEnableSharing(object);
+
+        if (isEE) {
+          cy.findByText("Font");
+        }
+
+        if (isOSS) {
+          cy.findByText("Font").should("not.exist");
+        }
 
         cy.findByText("Parameters");
         cy.findByText(

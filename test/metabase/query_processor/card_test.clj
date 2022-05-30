@@ -24,7 +24,7 @@
 
 (deftest query-cache-ttl-hierarchy-test
   (mt/discard-setting-changes [enable-query-caching]
-    (public-settings/enable-query-caching true)
+    (public-settings/enable-query-caching! true)
     (testing "query-magic-ttl converts to seconds correctly"
       (mt/with-temporary-setting-values [query-caching-ttl-ratio 2]
         ;; fake average execution time (in millis)

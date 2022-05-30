@@ -402,15 +402,7 @@ export const BackButton = ({ databaseId, tableId }) => (
 );
 
 export class FieldHeader extends React.Component {
-  onNameChange = e => {
-    this.updateNameDebounced(e.target.value);
-  };
-  onDescriptionChange = e => {
-    this.updateDescriptionDebounced(e.target.value);
-  };
-
-  // Separate update methods because of throttling the input
-  updateNameDebounced = _.debounce(async name => {
+  onNameChange = async e => {
     const { field, updateFieldProperties, updateFieldDimension } = this.props;
 
     // Update the dimension name if it exists
@@ -421,19 +413,19 @@ export class FieldHeader extends React.Component {
         {
           type: field.dimensions.type,
           human_readable_field_id: field.dimensions.human_readable_field_id,
-          name,
+          name: e.target.value,
         },
       );
     }
 
     // todo: how to treat empty / too long strings? see how this is done in Column
-    updateFieldProperties({ display_name: name });
-  }, 300);
+    updateFieldProperties({ display_name: e.target.value });
+  };
 
-  updateDescriptionDebounced = _.debounce(description => {
+  onDescriptionChange = e => {
     const { updateFieldProperties } = this.props;
-    updateFieldProperties({ description });
-  }, 300);
+    updateFieldProperties({ description: e.target.value });
+  };
 
   render() {
     return (
@@ -442,14 +434,14 @@ export class FieldHeader extends React.Component {
           name="display_name"
           className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
-          onChange={this.onNameChange}
+          onBlurChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
           name="description"
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
-          onChange={this.onDescriptionChange}
+          onBlurChange={this.onDescriptionChange}
           placeholder={t`No description for this field yet`}
         />
       </div>
