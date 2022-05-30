@@ -11637,6 +11637,10 @@ databaseChangeLog:
             columnName: creator_id
             columnDataType: int
 
+  # v44.00-002 through -011 add entity_id columns to several internal entities.
+  # These are fixed-width string fields populated with a random 21-character
+  # NanoID value, and used by the serialization system to de-duplicate entities
+  # in a portable way. See the serialization design doc in the design repo.
   - changeSet:
       id: v44.00-002
       author: braden
