@@ -145,6 +145,7 @@ function TableCell({
       <CellContent
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}
+        data-testid="cell-data"
       >
         {cellData}
       </CellContent>

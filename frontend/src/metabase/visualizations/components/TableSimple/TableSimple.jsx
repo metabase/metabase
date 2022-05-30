@@ -146,7 +146,7 @@ function TableSimple({
       const iconName = sortDirection === "desc" ? "chevrondown" : "chevronup";
       const onClick = () => setSort(colIndex);
       return (
-        <th key={colIndex}>
+        <th key={colIndex} data-testid="column-header">
           <TableHeaderCellContent
             isSorted={colIndex === sortColumn}
             onClick={onClick}

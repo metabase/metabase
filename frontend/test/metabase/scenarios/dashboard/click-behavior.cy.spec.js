@@ -55,7 +55,8 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     // Drill-through
-    cy.get(".cellData .link")
+    cy.findAllByTestId("cell-data")
+      .get(".link")
       .contains("0")
       .realClick();
 
@@ -128,7 +129,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    cy.get(".cellData")
+    cy.findAllByTestId("cell-data")
       .contains("5")
       .first()
       .click();
