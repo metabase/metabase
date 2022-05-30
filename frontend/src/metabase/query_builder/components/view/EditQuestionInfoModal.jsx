@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
+import { connect } from "react-redux";
 
 import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
@@ -10,16 +11,42 @@ import CollapseSection from "metabase/components/CollapseSection";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import Questions from "metabase/entities/questions";
 
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { getWritebackEnabled } from "metabase/writeback/selectors";
+import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
+
 const COLLAPSED_FIELDS = ["cache_ttl"];
+
+function mapStateToProps(state) {
+  return {
+    isAdmin: getUserIsAdmin(state),
+    isWritebackEnabled: getWritebackEnabled(state),
+  };
+}
 
 const propTypes = {
   question: PropTypes.object.isRequired, // metabase-lib Question instance
+  isAdmin: PropTypes.bool.isRequired,
+  isWritebackEnabled: PropTypes.bool.isRequired,
   onSave: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 
-function EditQuestionInfoModal({ question, onClose, onSave }) {
+function EditQuestionInfoModal({
+  question,
+  isAdmin,
+  isWritebackEnabled,
+  onClose,
+  onSave,
+}) {
   const modalTitle = question.isDataset() ? t`Edit model` : t`Edit question`;
+  const database = question.database()?.getPlainObject?.();
+  const hasIsWriteField =
+    isAdmin &&
+    question.isNative() &&
+    !question.isDataset() &&
+    isWritebackEnabled &&
+    isDatabaseWritebackEnabled(database);
 
   const onSubmit = useCallback(
     async card => {
@@ -54,9 +81,19 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
 
           return (
             <Form>
-              {visibleFields.map(field => (
-                <FormField key={field.name} name={field.name} />
-              ))}
+              {visibleFields.map(field => {
+                const extraProps = {};
+                if (field.name === "is_write" && !hasIsWriteField) {
+                  extraProps.type = "hidden";
+                }
+                return (
+                  <FormField
+                    key={field.name}
+                    name={field.name}
+                    {...extraProps}
+                  />
+                );
+              })}
               {collapsedFields.length > 0 && (
                 <CollapseSection
                   header={t`More options`}
@@ -83,4 +120,4 @@ function EditQuestionInfoModal({ question, onClose, onSave }) {
 
 EditQuestionInfoModal.propTypes = propTypes;
 
-export default EditQuestionInfoModal;
+export default connect(mapStateToProps)(EditQuestionInfoModal);

@@ -11,7 +11,6 @@ import { State } from "metabase-types/store";
 import { DatasetData } from "metabase-types/types/Dataset";
 import { ObjectId, OnVisualizationClickType } from "./types";
 
-import Modal from "metabase/components/Modal";
 import Button from "metabase/core/components/Button";
 import { NotFound } from "metabase/containers/ErrorPages";
 import { useOnMount } from "metabase/hooks/use-on-mount";
@@ -39,6 +38,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import WritebackForm from "metabase/writeback/containers/WritebackForm";
 import { getWritebackEnabled } from "metabase/writeback/selectors";
+import { isDatabaseWritebackEnabled } from "metabase/writeback/utils";
 
 import {
   getObjectName,
@@ -49,6 +49,7 @@ import {
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
+  RootModal,
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
   ObjectIdLabel,
@@ -118,6 +119,8 @@ export interface ObjectDetailProps {
   canZoomPreviousRow: boolean;
   canZoomNextRow: boolean;
   isWritebackEnabled: boolean;
+  showActions?: boolean;
+  showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
   deleteRowFromObjectDetail: (opts: DeleteRowPayload) => void;
@@ -143,6 +146,8 @@ export function ObjectDetailFn({
   canZoomPreviousRow,
   canZoomNextRow,
   isWritebackEnabled,
+  showActions = true,
+  showRelations = true,
   onVisualizationClick,
   visualizationIsClickable,
   fetchTableFks,
@@ -151,7 +156,6 @@ export function ObjectDetailFn({
   viewPreviousObjectDetail,
   viewNextObjectDetail,
   closeObjectDetail,
-  ...rest
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -221,7 +225,12 @@ export function ObjectDetailFn({
     [zoomedRowID, followForeignKey],
   );
 
-  const canEdit = !!(isWritebackEnabled && table);
+  const database = question.database()?.getPlainObject?.();
+  const canEdit = !!(
+    table &&
+    isWritebackEnabled &&
+    isDatabaseWritebackEnabled(database)
+  );
   const deleteRow = React.useMemo(() => {
     if (canEdit) {
       return () =>
@@ -261,66 +270,91 @@ export function ObjectDetailFn({
 
   const displayId = getDisplayId({ cols: data.cols, zoomedRow });
   const hasPk = !!data.cols.find(isPK);
-  const hasRelationships = !!(
-    tableForeignKeys &&
-    !!tableForeignKeys.length &&
-    hasPk
-  );
+  const hasRelationships =
+    showRelations && !!(tableForeignKeys && !!tableForeignKeys.length && hasPk);
 
   return (
-    <Modal
+    <ObjectDetailModal wide={hasRelationships}>
+      {hasNotFoundError ? (
+        <ErrorWrapper>
+          <NotFound />
+        </ErrorWrapper>
+      ) : (
+        <div className="ObjectDetail" data-testid="object-detail">
+          <ObjectDetailHeader
+            canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
+            objectName={objectName}
+            objectId={displayId}
+            canZoomPreviousRow={canZoomPreviousRow}
+            canZoomNextRow={canZoomNextRow}
+            isEditing={isEditing}
+            canEdit={canEdit}
+            showActions={showActions}
+            deleteRow={deleteRow}
+            viewPreviousObjectDetail={viewPreviousObjectDetail}
+            viewNextObjectDetail={viewNextObjectDetail}
+            closeObjectDetail={closeObjectDetail}
+            onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
+          />
+          <ObjectDetailBodyWrapper>
+            {isEditing && table ? (
+              <EditingFormContainer>
+                <WritebackForm table={table} row={zoomedRow} isModal />
+              </EditingFormContainer>
+            ) : (
+              <ObjectDetailBody
+                data={data}
+                objectName={objectName}
+                zoomedRow={zoomedRow ?? []}
+                settings={settings}
+                hasRelationships={hasRelationships}
+                onVisualizationClick={onVisualizationClick}
+                visualizationIsClickable={visualizationIsClickable}
+                tableForeignKeys={tableForeignKeys}
+                tableForeignKeyReferences={tableForeignKeyReferences}
+                followForeignKey={onFollowForeignKey}
+              />
+            )}
+          </ObjectDetailBodyWrapper>
+        </div>
+      )}
+    </ObjectDetailModal>
+  );
+}
+
+function ObjectDetailWrapper({
+  question,
+  isDataApp,
+  closeObjectDetail,
+  ...props
+}: ObjectDetailProps & { isDataApp?: boolean }) {
+  if (isDataApp || question.display() === "object") {
+    return (
+      <ObjectDetailFn
+        {...props}
+        question={question}
+        showActions={false}
+        showRelations={false}
+        closeObjectDetail={closeObjectDetail}
+      />
+    );
+  }
+  return (
+    <RootModal
       isOpen
       full={false}
       onClose={closeObjectDetail}
       className={""} // need an empty className to override the Modal default width
     >
-      <ObjectDetailModal wide={hasRelationships}>
-        {hasNotFoundError ? (
-          <ErrorWrapper>
-            <NotFound />
-          </ErrorWrapper>
-        ) : (
-          <div className="ObjectDetail" data-testid="object-detail">
-            <ObjectDetailHeader
-              canZoom={canZoom && (canZoomNextRow || canZoomPreviousRow)}
-              objectName={objectName}
-              objectId={displayId}
-              canZoomPreviousRow={canZoomPreviousRow}
-              canZoomNextRow={canZoomNextRow}
-              isEditing={isEditing}
-              canEdit={canEdit}
-              deleteRow={deleteRow}
-              viewPreviousObjectDetail={viewPreviousObjectDetail}
-              viewNextObjectDetail={viewNextObjectDetail}
-              closeObjectDetail={closeObjectDetail}
-              onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
-            />
-            <ObjectDetailBodyWrapper>
-              {isEditing && table ? (
-                <EditingFormContainer>
-                  <WritebackForm table={table} row={zoomedRow} isModal />
-                </EditingFormContainer>
-              ) : (
-                <ObjectDetailBody
-                  data={data}
-                  objectName={objectName}
-                  zoomedRow={zoomedRow ?? []}
-                  settings={settings}
-                  hasRelationships={hasRelationships}
-                  onVisualizationClick={onVisualizationClick}
-                  visualizationIsClickable={visualizationIsClickable}
-                  tableForeignKeys={tableForeignKeys}
-                  tableForeignKeyReferences={tableForeignKeyReferences}
-                  followForeignKey={onFollowForeignKey}
-                />
-              )}
-            </ObjectDetailBodyWrapper>
-          </div>
-        )}
-      </ObjectDetailModal>
-    </Modal>
+      <ObjectDetailFn
+        {...props}
+        question={question}
+        closeObjectDetail={closeObjectDetail}
+      />
+    </RootModal>
   );
 }
+
 export interface ObjectDetailHeaderProps {
   canZoom: boolean;
   objectName: string;
@@ -329,6 +363,7 @@ export interface ObjectDetailHeaderProps {
   canZoomNextRow: boolean;
   isEditing: boolean;
   canEdit: boolean;
+  showActions?: boolean;
   deleteRow?: () => void;
   viewPreviousObjectDetail: () => void;
   viewNextObjectDetail: () => void;
@@ -344,6 +379,7 @@ export function ObjectDetailHeader({
   canZoomNextRow,
   isEditing,
   canEdit,
+  showActions = true,
   deleteRow,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
@@ -358,50 +394,52 @@ export function ObjectDetailHeader({
           {objectId !== null && <ObjectIdLabel> {objectId}</ObjectIdLabel>}
         </h2>
       </div>
-      <div className="flex align-center">
-        {canEdit && (
-          <ActionHeader
-            isEditing={isEditing}
-            deleteRow={deleteRow}
-            onToggleEditingModeClick={onToggleEditingModeClick}
-          />
-        )}
-        <div className="flex p2">
-          {!!canZoom && (
-            <>
-              <Button
-                data-testid="view-previous-object-detail"
-                onlyIcon
-                borderless
-                className="mr1"
-                disabled={!canZoomPreviousRow}
-                onClick={viewPreviousObjectDetail}
-                icon="chevronup"
-                iconSize={20}
-              />
-              <Button
-                data-testid="view-next-object-detail"
-                onlyIcon
-                borderless
-                disabled={!canZoomNextRow}
-                onClick={viewNextObjectDetail}
-                icon="chevrondown"
-                iconSize={20}
-              />
-            </>
-          )}
-          <CloseButton>
-            <Button
-              data-testId="object-detail-close-button"
-              onlyIcon
-              borderless
-              onClick={closeObjectDetail}
-              icon="close"
-              iconSize={20}
+      {showActions && (
+        <div className="flex align-center">
+          {canEdit && (
+            <ActionHeader
+              isEditing={isEditing}
+              deleteRow={deleteRow}
+              onToggleEditingModeClick={onToggleEditingModeClick}
             />
-          </CloseButton>
+          )}
+          <div className="flex p2">
+            {!!canZoom && (
+              <>
+                <Button
+                  data-testid="view-previous-object-detail"
+                  onlyIcon
+                  borderless
+                  className="mr1"
+                  disabled={!canZoomPreviousRow}
+                  onClick={viewPreviousObjectDetail}
+                  icon="chevronup"
+                  iconSize={20}
+                />
+                <Button
+                  data-testid="view-next-object-detail"
+                  onlyIcon
+                  borderless
+                  disabled={!canZoomNextRow}
+                  onClick={viewNextObjectDetail}
+                  icon="chevrondown"
+                  iconSize={20}
+                />
+              </>
+            )}
+            <CloseButton>
+              <Button
+                data-testId="object-detail-close-button"
+                onlyIcon
+                borderless
+                onClick={closeObjectDetail}
+                icon="close"
+                iconSize={20}
+              />
+            </CloseButton>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -466,10 +504,11 @@ export const ObjectDetailProperties = {
     // @ts-ignore
     ...columnSettings({ hidden: true }),
   },
+  isSensible: (data: DatasetData) => data.rows.length === 1,
 };
 
 const ObjectDetail = Object.assign(
-  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailFn),
+  connect(mapStateToProps, mapDispatchToProps)(ObjectDetailWrapper),
   ObjectDetailProperties,
 );
 
