@@ -49,7 +49,7 @@ const ColorSelectorContent = forwardRef(function ColorRangeSelector(
   );
 
   const [value, setValue] = useState(() =>
-    getColorRange(color, colorMapping, isInverted(initialValue, colorMapping)),
+    getColorRange(color, colorMapping, getInverted(initialValue, colorMapping)),
   );
 
   const handleSelect = useCallback(
@@ -132,7 +132,7 @@ const getDefaultColorMapping = (colors: string[]) => {
   return Object.fromEntries(colors.map(color => [color, ["white", color]]));
 };
 
-const isInverted = (
+const getInverted = (
   value: string[],
   colorMapping: Record<string, string[]>,
 ) => {
