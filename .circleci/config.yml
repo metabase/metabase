@@ -136,7 +136,7 @@ executors:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-       - image: circleci/mongo:latest
+       - image: paoliniluis/qa-databases:mongo-sample-5.0
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
