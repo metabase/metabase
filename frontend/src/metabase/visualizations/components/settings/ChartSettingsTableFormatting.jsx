@@ -6,7 +6,7 @@ import { t, jt } from "ttag";
 import {
   getDesaturatedColors,
   getStatusColorRanges,
-} from "metabase/lib/colors/charts";
+} from "metabase/lib/colors/groups";
 
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";

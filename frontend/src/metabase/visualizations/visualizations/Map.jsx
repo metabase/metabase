@@ -31,7 +31,7 @@ import _ from "underscore";
 
 const PIN_MAP_TYPES = new Set(["pin", "heat", "grid"]);
 
-import { getDesaturatedColors } from "metabase/lib/colors/charts";
+import { getDesaturatedColors } from "metabase/lib/colors/groups";
 import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 
 export default class Map extends Component {
