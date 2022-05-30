@@ -25,12 +25,23 @@ Default.args = {
   colors: [color("brand"), color("summarize"), color("filter")],
 };
 
-export const WithRanges = Template.bind({});
-Default.args = {
+export const WithColorRanges = Template.bind({});
+WithColorRanges.args = {
   value: [color("white"), color("brand")],
   colors: [color("brand"), color("summarize"), color("filter")],
   colorRanges: [
     [color("error"), color("white"), color("success")],
     [color("error"), color("warning"), color("success")],
   ],
+};
+
+export const WithColorMapping = Template.bind({});
+WithColorMapping.args = {
+  value: [color("white"), color("brand")],
+  colors: [color("brand"), color("summarize"), color("filter")],
+  colorMapping: {
+    [color("brand")]: [color("brand"), color("white"), color("brand")],
+    [color("summarize")]: [color("summarize"), color("white"), color("error")],
+    [color("filter")]: [color("filter"), color("white"), color("filter")],
+  },
 };
