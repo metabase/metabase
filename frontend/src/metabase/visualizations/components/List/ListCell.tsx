@@ -77,7 +77,7 @@ function getCellData({
   });
 }
 
-function TableCell({
+function ListCell({
   value,
   data,
   series,
@@ -169,4 +169,4 @@ function TableCell({
   );
 }
 
-export default TableCell;
+export default ListCell;
