@@ -52,20 +52,20 @@ export type ColorString = string;
 
 export default colors;
 export const aliases: Record<string, (family: ColorFamily) => string> = {
-  dashboard: family => getColor("brand", family),
-  nav: family => getColor("bg-white", family),
-  content: family => getColor("bg-light", family),
-  summarize: family => getColor("accent1", family),
-  database: family => getColor("accent2", family),
-  pulse: family => getColor("accent4", family),
-  filter: family => getColor("accent7", family),
+  dashboard: family => color("brand", family),
+  nav: family => color("bg-white", family),
+  content: family => color("bg-light", family),
+  summarize: family => color("accent1", family),
+  database: family => color("accent2", family),
+  pulse: family => color("accent4", family),
+  filter: family => color("accent7", family),
 
-  "brand-light": family => lighten(getColor("brand", family), 0.532),
-  focus: family => lighten(getColor("brand", family), 0.7),
+  "brand-light": family => lighten(color("brand", family), 0.532),
+  focus: family => lighten(color("brand", family), 0.7),
 
-  accent0: family => getColor("brand", family),
-  "accent1-light": family => lighten(getColor("accent0", family), 0.3),
-  "accent1-dark": family => darken(getColor("accent0", family), 0.3),
+  accent0: family => color("brand", family),
+  "accent0-light": family => lighten(color("accent0", family), 0.3),
+  "accent0-dark": family => darken(color("accent0", family), 0.3),
 };
 
 export const harmony: string[] = [];
@@ -167,11 +167,7 @@ export function roundColor(color: ColorString): ColorString {
   );
 }
 
-export function color(color: ColorString | ColorName): ColorString {
-  return getColor(color, colors);
-}
-
-export function getColor(color: string, family: ColorFamily) {
+export function color(color: ColorString | ColorName, family = colors) {
   if (color in family) {
     return family[color as ColorName];
   }
