@@ -23,6 +23,7 @@
                                      PulseCard
                                      PulseChannel
                                      PulseChannelRecipient
+                                     QueryAction
                                      Table
                                      Timeline
                                      TimelineEvent
@@ -710,11 +711,7 @@
     (testing "Fetch card with an emitter"
       (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
                       Card [write-card {:is_write true :name "Test Write Card"}]
-                      metabase.models.emitter/Action [action {:type "row"}]
-                      metabase.models.emitter/QueryAction [qa {:card_id (:id write-card)
-                                                               :action_id (:id action)}]
-                      CardEmitter [emitter {:action_id (:id action)
-                                            #_(db/select-field :action_id metabase.models.emitter/QueryAction :card_id (u/the-id write-card))
+                      CardEmitter [emitter {:action_id (db/select-field :action_id QueryAction :card_id (u/the-id write-card))
                                             :card_id (u/the-id read-card)}]]
         (testing "admin sees emitters"
           (is (partial=

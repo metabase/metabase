@@ -18,6 +18,7 @@
                                      Field
                                      FieldValues
                                      Pulse
+                                     QueryAction
                                      Revision
                                      Table
                                      User]]
@@ -334,11 +335,7 @@
     (testing "Fetch dashboard with an emitter"
       (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
                       Card [write-card {:is_write true :name "Test Write Card"}]
-                      metabase.models.emitter/Action [action {:type "row"}]
-                      metabase.models.emitter/QueryAction [qa {:card_id (:id write-card)
-                                                               :action_id (:id action)}]
-                      DashboardEmitter [emitter {:action_id (:id action)
-                                                 #_(db/select-field :action_id metabase.models.emitter/QueryAction :card_id (u/the-id write-card))
+                      DashboardEmitter [emitter {:action_id (db/select-field :action_id QueryAction :card_id (u/the-id write-card))
                                                  :dashboard_id (u/the-id dashboard)}]]
         (testing "admin sees emitters"
           (is (partial=
