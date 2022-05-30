@@ -12,6 +12,7 @@ export interface ColorRangeSelectorProps extends ColorRangeSelectorAttributes {
   value: string[];
   colors: string[];
   colorRanges?: string[][];
+  colorMapping?: Record<string, string[]>;
   isQuantile?: boolean;
   onChange?: (newValue: string[]) => void;
 }
@@ -21,6 +22,7 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
     value,
     colors,
     colorRanges,
+    colorMapping,
     isQuantile,
     onChange,
     ...props
@@ -43,6 +45,7 @@ const ColorRangeSelector = forwardRef(function ColorRangeSelector(
           initialValue={value}
           colors={colors}
           colorRanges={colorRanges}
+          colorMapping={colorMapping}
           isQuantile={isQuantile}
           onChange={onChange}
           onClose={closePopover}

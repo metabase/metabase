@@ -27,7 +27,7 @@ export interface ColorRangeContentProps
   onClose?: () => void;
 }
 
-const ColorSelectorContent = forwardRef(function ColorSelector(
+const ColorSelectorContent = forwardRef(function ColorRangeSelector(
   {
     initialValue,
     colors,
