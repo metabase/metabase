@@ -5,6 +5,7 @@
             [clojure.tools.logging :as log]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.util :as mbql.u]
+            [metabase.models.action :as action]
             [metabase.models.collection :as collection]
             [metabase.models.dependency :as dependency]
             [metabase.models.field-values :as field-values]
@@ -208,6 +209,17 @@
                                  (describe-database query-db-id)))
                           {:status-code 400})))))))
 
+(defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
+  (when is-write?
+    (let [{action-id :id} (db/insert! action/Action {:type "query"})]
+      (db/insert! action/QueryAction {:card_id card-id
+                                      :action_id action-id}))))
+
+(defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
+  (when (not is-write?)
+    (when-let [action-ids (seq (db/select-field :action_id action/QueryAction :card_id card-id))]
+      (db/delete! action/Action :id [:in action-ids]))))
+
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
   (u/prog1 card
@@ -222,7 +234,8 @@
   (u/prog1 card
     (when-let [field-ids (seq (params/card->template-tag-field-ids card))]
       (log/info "Card references Fields in params:" field-ids)
-      (field-values/update-field-values-for-on-demand-dbs! field-ids))))
+      (field-values/update-field-values-for-on-demand-dbs! field-ids))
+    (create-actions-when-is-writable! card)))
 
 (defonce
   ^{:doc "Atom containing a function used to check additional sandboxing constraints for Metabase Enterprise Edition.
@@ -262,7 +275,11 @@
     ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection namespace)
     (collection/check-collection-namespace Card (:collection_id changes))
     ;; additional checks (Enterprise Edition only)
-    (@pre-update-check-sandbox-constraints changes)))
+    (@pre-update-check-sandbox-constraints changes)
+    ;; create Action and QueryAction when is_write is set true
+    (create-actions-when-is-writable! changes)
+    ;; delete Action and QueryAction when is_write is set false
+    (delete-actions-when-not-writable! changes)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
