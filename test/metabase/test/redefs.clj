@@ -4,6 +4,7 @@
   (:require [metabase.plugins.classloader :as classloader]
             [metabase.test-runner.parallel :as test-runner.parallel]
             [toucan.db :as db]
+            [toucan.models :as models]
             [toucan.util.test :as tt]))
 
 ;; replace [[toucan.util.test/do-with-temp]] so it initializes the DB before doing the other stuff it usually does
@@ -26,11 +27,12 @@
                       (catch Throwable e
                         (throw (ex-info (str "with-temp error: " (ex-message e))
                                         {:model (name model), :attributes attributes}
-                                        e))))]
+                                        e))))
+        primary-key (models/primary-key model)]
     (try
       (f temp-object)
       (finally
-        (db/delete! model :id (:id temp-object))))))
+        (db/delete! model primary-key (primary-key temp-object))))))
 
 (alter-var-root #'tt/do-with-temp (constantly do-with-temp))
 
