@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 export const ListRoot = styled.div`
   margin-top: 1rem;

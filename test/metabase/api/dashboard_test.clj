@@ -225,7 +225,6 @@
                      :collection_id true
                      :collection_authority_level nil
                      :can_write     false
-                     :param_values  nil
                      :param_fields  nil
                      :last-edit-info {:timestamp true :id true :first_name "Test" :last_name "User" :email "test@example.com"}
                      :ordered_cards [{:sizeX                  2
@@ -267,7 +266,6 @@
                            :collection_id true
                            :collection_authority_level nil
                            :can_write     false
-                           :param_values  nil
                            :param_fields  {field-id {:id               field-id
                                                      :table_id         table-id
                                                      :display_name     display-name

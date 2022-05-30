@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import styles from "./Table.css";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import MiniBar from "./MiniBar";
 
