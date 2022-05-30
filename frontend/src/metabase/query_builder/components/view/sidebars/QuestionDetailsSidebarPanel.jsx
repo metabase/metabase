@@ -5,15 +5,19 @@ import QuestionActionButtons from "metabase/query_builder/components/QuestionAct
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
+import {
+  // PLUGIN_MODERATION,
+  PLUGIN_MODEL_PERSISTENCE,
+} from "metabase/plugins";
 
 import {
   Container,
-  BorderedSectionContainer,
+  // BorderedSectionContainer,
   SidebarPaddedContent,
-  ModerationSectionContainer,
+  // ModerationSectionContainer,
 } from "./QuestionDetailsSidebarPanel.styled";
-import DatasetManagementSection from "./DatasetManagementSection";
+
+// import DatasetManagementSection from "./DatasetManagementSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
@@ -38,8 +42,8 @@ function QuestionDetailsSidebarPanel({
       }
     : undefined;
 
-  const hasSecondarySection =
-    (isDataset && canWrite) || (!isDataset && PLUGIN_MODERATION.isEnabled());
+  // const hasSecondarySection =
+  //   (isDataset && canWrite) || (!isDataset && PLUGIN_MODERATION.isEnabled());
 
   return (
     <Container>
@@ -61,7 +65,7 @@ function QuestionDetailsSidebarPanel({
             model={question}
           />
         )}
-        {hasSecondarySection && (
+        {/* {hasSecondarySection && (
           <BorderedSectionContainer>
             {isDataset && canWrite && (
               <DatasetManagementSection dataset={question} />
@@ -74,7 +78,7 @@ function QuestionDetailsSidebarPanel({
               </ModerationSectionContainer>
             )}
           </BorderedSectionContainer>
-        )}
+        )} */}
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />
     </Container>

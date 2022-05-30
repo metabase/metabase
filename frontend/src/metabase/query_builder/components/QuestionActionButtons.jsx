@@ -1,37 +1,26 @@
-import React from //  useState
-"react";
+import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-// import { color } from "metabase/lib/colors";
-
-import // checkDatabaseSupportsModels,
-// checkCanBeModel,
-// checkDatabaseCanPersistDatasets,
-"metabase/lib/data-modeling/utils";
-
+import { checkDatabaseCanPersistDatasets } from "metabase/lib/data-modeling/utils";
 import { onModelPersistenceChange } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getNestedQueriesEnabled } from "metabase/selectors/settings";
 
-// import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
-
+import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
-import {
-  // BookmarkButton,
-  Container,
-} from "./QuestionActionButtons.styled";
+import { Container } from "./QuestionActionButtons.styled";
 
 export const EDIT_TESTID = "edit-details-button";
-export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
-export const MOVE_TESTID = "move-button";
-export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
+// export const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
+// export const MOVE_TESTID = "move-button";
+// export const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
 export const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
-export const CLONE_TESTID = "clone-button";
-export const ARCHIVE_TESTID = "archive-button";
+// export const CLONE_TESTID = "clone-button";
+// export const ARCHIVE_TESTID = "archive-button";
 
 const ICON_SIZE = 18;
 
@@ -56,44 +45,22 @@ const mapDispatchToProps = {
 };
 
 function QuestionActionButtons({
-  // question,
+  question,
   canWrite,
   // areNestedQueriesEnabled,
   onOpenModal,
   // isBookmarked,
   // toggleBookmark,
-  // onModelPersistenceChange,
+  onModelPersistenceChange,
 }) {
-  // const [animation, setAnimation] = useState(null);
-
-  // const handleClickBookmark = () => {
-  //   toggleBookmark();
-  //   setAnimation(isBookmarked ? "shrink" : "expand");
-  // };
-
-  // const isSaved = question.isSaved();
-  // const isDataset = question.isDataset();
-
-  // const duplicateTooltip = isDataset
-  //   ? t`Duplicate this model`
-  //   : t`Duplicate this question`;
-
-  // const canTurnIntoModel =
-  //   canWrite &&
-  //   !isDataset &&
-  //   areNestedQueriesEnabled &&
-  //   checkDatabaseSupportsModels(question.query().database());
-
-  // const canPersistDataset =
-  //   PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-  //   canWrite &&
-  //   isSaved &&
-  //   isDataset &&
-  //   checkDatabaseCanPersistDatasets(question.query().database());
-
-  // const bookmarkButtonColor = isBookmarked ? color("brand") : "";
-  // const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
-
+  const isSaved = question.isSaved();
+  const isDataset = question.isDataset();
+  const canPersistDataset =
+    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
+    canWrite &&
+    isSaved &&
+    isDataset &&
+    checkDatabaseCanPersistDatasets(question.query().database());
   return (
     <Container data-testid="question-action-buttons">
       {canWrite && (
@@ -142,7 +109,7 @@ function QuestionActionButtons({
             data-testid={TURN_INTO_DATASET_TESTID}
           />
         </Tooltip>
-      )}
+      )}*/}
       {canPersistDataset && (
         <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
           model={question}
@@ -150,7 +117,7 @@ function QuestionActionButtons({
           onChange={onModelPersistenceChange}
           data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
         />
-      )} */}
+      )}
       {/* {canWrite && (
         <Tooltip tooltip={duplicateTooltip}>
           <Button

@@ -25,6 +25,13 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 const ICON_SIZE = 18;
 
+const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
+const MOVE_TESTID = "move-button";
+const TURN_INTO_DATASET_TESTID = "turn-into-dataset";
+const TOGGLE_MODEL_PERSISTENCE_TESTID = "toggle-persistence";
+const CLONE_TESTID = "clone-button";
+const ARCHIVE_TESTID = "archive-button";
+
 interface Props {
   isBookmarked: boolean;
   handleBookmark: () => void;
@@ -83,6 +90,7 @@ const QuestionActions = ({
                 iconSize={ICON_SIZE}
                 borderless
                 onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
+                data-testid={ADD_TO_DASH_TESTID}
               >
                 Add to dashboard
               </Button>
@@ -93,6 +101,7 @@ const QuestionActions = ({
                 iconSize={ICON_SIZE}
                 borderless
                 onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
+                data-testid={MOVE_TESTID}
               >
                 Move
               </Button>
@@ -108,6 +117,7 @@ const QuestionActions = ({
                     : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
                   onOpenModal(modal);
                 }}
+                data-testid={TURN_INTO_DATASET_TESTID}
               >
                 Turn into a model
               </Button>
@@ -118,6 +128,7 @@ const QuestionActions = ({
                 iconSize={ICON_SIZE}
                 borderless
                 onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
+                data-testid={CLONE_TESTID}
               >
                 Duplicate
               </Button>
@@ -128,6 +139,7 @@ const QuestionActions = ({
                 iconSize={ICON_SIZE}
                 borderless
                 onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
+                data-testid={ARCHIVE_TESTID}
               >
                 Archive
               </Button>
