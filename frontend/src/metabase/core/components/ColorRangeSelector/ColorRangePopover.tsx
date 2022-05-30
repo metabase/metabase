@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useState,
 } from "react";
+import { isEqual } from "lodash";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
@@ -18,7 +19,8 @@ export interface ColorRangeContentProps
   extends Omit<HTMLAttributes<HTMLDivElement>, "onChange"> {
   initialValue: string[];
   colors: string[];
-  ranges?: string[][];
+  colorRanges?: string[][];
+  colorMapping?: Record<string, string[]>;
   quantile?: boolean;
   onChange?: (newValue: string[]) => void;
   onClose?: () => void;
@@ -28,7 +30,8 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   {
     initialValue,
     colors,
-    ranges = [],
+    colorRanges = [],
+    colorMapping = getDefaultColorMapping(colors),
     quantile,
     onChange,
     onClose,
@@ -37,7 +40,7 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   ref: Ref<HTMLDivElement>,
 ) {
   const [value, setValue] = useState(initialValue);
-  const isInverted = hasInvertedColors(value);
+  const { color, isInverted } = getColorSelection(value, colors, colorMapping);
 
   const handleChange = useCallback(
     (newValue: string[]) => {
@@ -50,22 +53,22 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   const handleSelect = useCallback(
     (newColor: string) => {
       if (isInverted) {
-        setValue([newColor, "white"]);
+        setValue([...colorMapping[newColor]].reverse());
       } else {
-        setValue(["white", newColor]);
+        setValue(colorMapping[newColor]);
       }
     },
-    [isInverted],
+    [isInverted, colorMapping],
   );
 
   return (
     <PopoverRoot {...props} ref={ref}>
       <PopoverColorList>
-        {colors.map((color, index) => (
+        {colors.map((value, index) => (
           <ColorPill
             key={index}
-            color={color}
-            isSelected={value.includes(color)}
+            color={value}
+            isSelected={value === color}
             onSelect={handleSelect}
           />
         ))}
@@ -75,9 +78,9 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
         quantile={quantile}
         onChange={handleChange}
       />
-      {ranges.length > 0 && <PopoverDivider />}
+      {colorRanges.length > 0 && <PopoverDivider />}
       <PopoverColorRangeList>
-        {ranges?.map((range, index) => (
+        {colorRanges?.map((range, index) => (
           <ColorRangeToggle
             key={index}
             value={range}
@@ -90,12 +93,27 @@ const ColorSelectorContent = forwardRef(function ColorSelector(
   );
 });
 
-const hasInvertedColors = (colors: string[]) => {
-  if (colors.length === 2) {
-    return colors[0] !== "white";
-  } else {
-    return false;
-  }
+const getColorSelection = (
+  value: string[],
+  colors: string[],
+  colorMapping: Record<string, string[]>,
+) => {
+  return Object.entries(colorMapping).reduce(
+    (selection, [color, range]) => {
+      if (isEqual(value, range)) {
+        return { color, isInverted: false };
+      } else if (isEqual(value, [...range].reverse())) {
+        return { color, isInverted: true };
+      } else {
+        return selection;
+      }
+    },
+    { color: colors[0], isInverted: false },
+  );
+};
+
+const getDefaultColorMapping = (colors: string[]) => {
+  return Object.fromEntries(colors.map(color => [color, ["white", color]]));
 };
 
 export default ColorSelectorContent;

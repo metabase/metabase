@@ -402,7 +402,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
               onChange({ ...rule, colors });
             }}
             colors={COLORS}
-            ranges={COLOR_RANGES}
+            colorRanges={COLOR_RANGES}
           />
           <h3 className="mt3 mb1">{t`Start the range at`}</h3>
           <Radio
