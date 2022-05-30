@@ -1,9 +1,4 @@
-export const getChartColorGroups = (): string[][] => [
-  ["accent1", "accent2", "accent2"],
-  ["accent2", "accent2", "accent2"],
-  ["accent3", "accent3", "accent3"],
-  ["accent4", "accent4", "accent4"],
-  ["accent5", "accent5", "accent5"],
-  ["accent6", "accent6", "accent6"],
-  ["accent7", "accent6", "accent6"],
-];
+import { times } from "lodash";
+
+export const getChartColorGroups = (): string[][] =>
+  times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);

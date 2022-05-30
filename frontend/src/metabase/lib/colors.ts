@@ -1,6 +1,7 @@
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
+import { times } from "lodash";
 import { deterministicAssign } from "./deterministic";
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
@@ -9,6 +10,9 @@ import { deterministicAssign } from "./deterministic";
 const colors: Record<string, string> = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
+  filter: "#7172AD",
+  summarize: "#88BF4D",
+  accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
   accent3: "#EF8C8C",
@@ -55,17 +59,25 @@ export const aliases: Record<string, (family: ColorFamily) => string> = {
   dashboard: family => color("brand", family),
   nav: family => color("bg-white", family),
   content: family => color("bg-light", family),
-  summarize: family => color("accent1", family),
   database: family => color("accent2", family),
   pulse: family => color("accent4", family),
-  filter: family => color("accent7", family),
 
   "brand-light": family => lighten(color("brand", family), 0.532),
   focus: family => lighten(color("brand", family), 0.7),
 
-  accent0: family => color("brand", family),
-  "accent0-light": family => lighten(color("accent0", family), 0.3),
-  "accent0-dark": family => darken(color("accent0", family), 0.3),
+  ...Object.fromEntries(
+    times(8, i => [
+      `accent${i}-light`,
+      family => lighten(color(`accent${i}`, family), 0.3),
+    ]),
+  ),
+
+  ...Object.fromEntries(
+    times(8, i => [
+      `accent${i}-dark`,
+      family => darken(color(`accent${i}`, family), 0.3),
+    ]),
+  ),
 };
 
 export const harmony: string[] = [];

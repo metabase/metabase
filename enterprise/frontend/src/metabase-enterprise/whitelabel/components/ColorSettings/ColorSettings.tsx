@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import BrandColorSettings from "../BrandColorSettings";
 import ChartColorSettings from "../ChartColorSettings";
@@ -24,6 +24,10 @@ const ColorSettings = ({
 }: ColorSettingsProps): JSX.Element => {
   const [colors, setColors] = useState(initialColors ?? {});
 
+  const colorFamily = useMemo(() => {
+    return { ...originalColors, ...colors };
+  }, [colors, originalColors]);
+
   const handleChange = useCallback(
     (colors: Record<string, string>) => {
       setColors(colors);
@@ -38,7 +42,7 @@ const ColorSettings = ({
         <SettingTitle>{t`User interface colors`}</SettingTitle>
         <BrandColorSettings
           colors={colors}
-          originalColors={originalColors}
+          colorFamily={colorFamily}
           onChange={handleChange}
         />
       </BrandColorSection>
@@ -47,7 +51,7 @@ const ColorSettings = ({
         <SectionContent>
           <ChartColorSettings
             colors={colors}
-            originalColors={originalColors}
+            colorFamily={colorFamily}
             onChange={handleChange}
           />
           <ChartColorPreview />
