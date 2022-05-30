@@ -51,15 +51,23 @@ export type ColorName = string;
 export type ColorString = string;
 
 export default colors;
-export const aliases: Record<string, string> = {
-  summarize: "accent1",
-  filter: "accent7",
-  database: "accent2",
-  dashboard: "brand",
-  pulse: "accent4",
-  nav: "bg-white",
-  content: "bg-light",
+export const aliases: Record<string, (family: ColorFamily) => string> = {
+  dashboard: family => getColor("brand", family),
+  nav: family => getColor("bg-white", family),
+  content: family => getColor("bg-light", family),
+  summarize: family => getColor("accent1", family),
+  database: family => getColor("accent2", family),
+  pulse: family => getColor("accent4", family),
+  filter: family => getColor("accent7", family),
+
+  "brand-light": family => lighten(getColor("brand", family), 0.532),
+  focus: family => lighten(getColor("brand", family), 0.7),
+
+  accent0: family => getColor("brand", family),
+  "accent1-light": family => lighten(getColor("accent0", family), 0.3),
+  "accent1-dark": family => darken(getColor("accent0", family), 0.3),
 };
+
 export const harmony: string[] = [];
 // DEPRECATED: we should remove these and use `colors` directly
 // compute satured/desaturated variants using "color" lib if absolutely required
@@ -71,7 +79,6 @@ export function syncColors() {
   syncHarmony();
   syncDeprecatedColorFamilies();
 }
-export const HARMONY_GROUP_SIZE = 8; // match initialColors length below
 
 function syncHarmony() {
   const harmonizer = new Harmonizer();
@@ -161,17 +168,21 @@ export function roundColor(color: ColorString): ColorString {
 }
 
 export function color(color: ColorString | ColorName): ColorString {
-  if (color in colors) {
-    return colors[color as ColorName];
+  return getColor(color, colors);
+}
+
+export function getColor(color: string, family: ColorFamily) {
+  if (color in family) {
+    return family[color as ColorName];
   }
 
   if (color in aliases) {
-    return colors[aliases[color]];
+    return aliases[color](family);
   }
 
-  // TODO: validate this is a ColorString
   return color;
 }
+
 export function alpha(c: ColorString | ColorName, a: number): ColorString {
   return Color(color(c))
     .alpha(a)
@@ -195,21 +206,11 @@ export function lighten(
 }
 
 export type ColorMapping = (color: string) => string;
-const COLOR_MAPPINGS: Record<ColorName, Record<ColorName, ColorMapping>> = {
-  brand: {
-    brand: color => color,
-    "brand-light": color => lighten(color, 0.532),
-    focus: color => lighten(color, 0.7),
-  },
-};
+
 export const getColorMappings = (
   colorName: ColorName,
 ): Record<ColorName, ColorMapping> => {
-  if (colorName in COLOR_MAPPINGS) {
-    return COLOR_MAPPINGS[colorName];
-  } else {
-    return { [colorName]: color => color };
-  }
+  return { [colorName]: color => color };
 };
 
 const PREFERRED_COLORS: Record<string, string[]> = {
