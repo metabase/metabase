@@ -131,7 +131,7 @@ const getDefaultInverted = (
   colors: string[],
   colorMapping: Record<string, string[]>,
 ) => {
-  return Object.entries(colorMapping).reduce((selection, [color, range]) => {
+  return Object.values(colorMapping).reduce((selection, range) => {
     if (isEqual(value, [...range].reverse())) {
       return true;
     } else {
