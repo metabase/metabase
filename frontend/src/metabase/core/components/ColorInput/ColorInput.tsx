@@ -17,16 +17,16 @@ export type ColorInputAttributes = Omit<
 >;
 
 export interface ColorInputProps extends ColorInputAttributes {
-  color?: string;
+  value?: string;
   fullWidth?: boolean;
   onChange?: (value?: string) => void;
 }
 
 const ColorInput = forwardRef(function ColorInput(
-  { color, onFocus, onBlur, onChange, ...props }: ColorInputProps,
+  { value, onFocus, onBlur, onChange, ...props }: ColorInputProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const colorText = useMemo(() => getColorHex(color) ?? "", [color]);
+  const colorText = useMemo(() => getColorHex(value) ?? "", [value]);
   const [inputText, setInputText] = useState(colorText);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -69,9 +69,9 @@ const ColorInput = forwardRef(function ColorInput(
   );
 });
 
-const getColorHex = (color?: string) => {
+const getColorHex = (value?: string) => {
   try {
-    return color ? Color(color).hex() : undefined;
+    return value ? Color(value).hex() : undefined;
   } catch (e) {
     return undefined;
   }

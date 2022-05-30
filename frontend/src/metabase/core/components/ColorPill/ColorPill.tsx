@@ -3,17 +3,15 @@ import { ColorPillContent, ColorPillRoot } from "./ColorPill.styled";
 
 export interface ColorPillProps extends HTMLAttributes<HTMLDivElement> {
   color: string;
-  isBordered?: boolean;
+  isAuto?: boolean;
   isSelected?: boolean;
-  isDefault?: boolean;
 }
 
 const ColorPill = forwardRef(function ColorPill(
   {
     color,
-    isBordered,
-    isSelected,
-    isDefault,
+    isAuto = false,
+    isSelected = true,
     "aria-label": ariaLabel = color,
     ...props
   }: ColorPillProps,
@@ -23,15 +21,11 @@ const ColorPill = forwardRef(function ColorPill(
     <ColorPillRoot
       {...props}
       ref={ref}
-      isBordered={isBordered}
+      isAuto={isAuto}
       isSelected={isSelected}
-      isDefault={isDefault}
       aria-label={ariaLabel}
     >
-      <ColorPillContent
-        isBordered={isBordered}
-        style={{ backgroundColor: color }}
-      />
+      <ColorPillContent style={{ backgroundColor: color }} />
     </ColorPillRoot>
   );
 });
