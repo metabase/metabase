@@ -44,6 +44,6 @@ Toggle.propTypes = {
   onClick: PropTypes.func.isRequired,
 };
 
-export function Toggle({ onClick }) {
+export function Toggle({ onClick }: { onClick: () => void }) {
   return <ToggleButton onClick={onClick}>{t`More options`}</ToggleButton>;
 }

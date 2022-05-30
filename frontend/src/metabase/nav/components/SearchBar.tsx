@@ -21,7 +21,7 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { SearchResults } from "./SearchResults";
+import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
   SearchInputContainer,
