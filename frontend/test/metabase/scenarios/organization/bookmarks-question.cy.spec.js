@@ -16,7 +16,6 @@ describe("scenarios > question > bookmarks", () => {
 
   it("should add then remove bookmark from question page", () => {
     visitQuestion(1);
-    cy.findByTestId("saved-question-header-button").click();
     toggleBookmark();
 
     openNavigationSidebar();
@@ -36,7 +35,7 @@ describe("scenarios > question > bookmarks", () => {
 });
 
 function toggleBookmark() {
-  sidebar().within(() => {
+  cy.findByTestId("question-action-buttons-container").within(() => {
     cy.icon("bookmark").click();
   });
   cy.wait("@toggleBookmark");

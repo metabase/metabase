@@ -9,6 +9,7 @@ import {
 import {
   openDetailsSidebar,
   startQuestionFromModel,
+  openModelActions
 } from "./helpers/e2e-models-helpers";
 
 import {
@@ -26,7 +27,7 @@ describe("scenarios > models metadata", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
-  it("should edit GUI model metadata", () => {
+  it.only("should edit GUI model metadata", () => {
     // Convert saved question "Orders" into a model
     cy.request("PUT", "/api/card/1", {
       name: "GUI Model",
@@ -35,9 +36,11 @@ describe("scenarios > models metadata", () => {
 
     cy.visit("/model/1");
 
-    openDetailsSidebar();
+    //openDetailsSidebar();
 
-    sidebar().within(() => {
+    openModelActions();
+
+    popover().within(() => {
       cy.findByTestId("tooltip-component-wrapper").realHover();
       cy.findByText("89%");
     });

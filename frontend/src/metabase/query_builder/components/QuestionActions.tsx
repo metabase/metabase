@@ -37,6 +37,8 @@ interface Props {
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: any;
+  setQueryBuilderMode: (mode: string, opt: {datasetEditorTab: string}) => void;
+  turnDatasetIntoQuestion: () => void;
 }
 
 const QuestionActions = ({
@@ -44,12 +46,17 @@ const QuestionActions = ({
   handleBookmark,
   onOpenModal,
   question,
+  setQueryBuilderMode,
+  turnDatasetIntoQuestion
 }: Props) => {
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
+  const isDataset = question.isDataset();
+  const canWrite = question.canWrite();
+
   return (
-    <QuestionActionsContainer>
+    <QuestionActionsContainer data-testid="question-action-buttons-container">
       <Tooltip tooltip={bookmarkTooltip}>
         <Button
           onlyIcon
@@ -74,7 +81,6 @@ const QuestionActions = ({
         popoverContent={
           <PopoverContainer>
             <div>
-              {/* <Button icon="verified" iconSize={ICON_SIZE} borderless>Verify this question</Button> */}
               <PLUGIN_MODERATION.QuestionModerationButton
                 question={question}
                 VerifyButton={Button}
@@ -84,7 +90,37 @@ const QuestionActions = ({
                 }}
               />
             </div>
-            <div>
+            {isDataset && <div>
+              <Button
+                icon="notebook"
+                iconSize={ICON_SIZE}
+                borderless
+                onClick={() => {
+                  setQueryBuilderMode("dataset", {
+                    datasetEditorTab: "query",
+                  });
+                }}
+                data-testid={ADD_TO_DASH_TESTID}
+              >
+                Edit query definition
+              </Button>
+            </div>}
+            {isDataset && <div>
+              <Button
+                icon="label"
+                iconSize={ICON_SIZE}
+                borderless
+                onClick={() => {
+                  setQueryBuilderMode("dataset", {
+                    datasetEditorTab: "metadata",
+                  });
+                }}
+                data-testid={ADD_TO_DASH_TESTID}
+              >
+                Edit metadata
+              </Button>
+            </div>}
+            {!isDataset && <div>
               <Button
                 icon="dashboard"
                 iconSize={ICON_SIZE}
@@ -94,7 +130,7 @@ const QuestionActions = ({
               >
                 Add to dashboard
               </Button>
-            </div>
+            </div>}
             <div>
               <Button
                 icon="move"
@@ -107,6 +143,17 @@ const QuestionActions = ({
               </Button>
             </div>
             <div>
+              <Button
+                icon="segment"
+                iconSize={ICON_SIZE}
+                borderless
+                onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
+                data-testid={CLONE_TESTID}
+              >
+                Duplicate
+              </Button>
+            </div>
+            {!isDataset && <div>
               <Button
                 icon="model"
                 iconSize={ICON_SIZE}
@@ -121,18 +168,18 @@ const QuestionActions = ({
               >
                 Turn into a model
               </Button>
-            </div>
-            <div>
+            </div>}
+            {isDataset && <div>
               <Button
-                icon="segment"
+                icon="model_framed"
                 iconSize={ICON_SIZE}
                 borderless
-                onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
-                data-testid={CLONE_TESTID}
+                onClick={turnDatasetIntoQuestion}
+                data-testid=""
               >
-                Duplicate
+                Turn back to saved question
               </Button>
-            </div>
+            </div>}
             <div>
               <Button
                 icon="archive"

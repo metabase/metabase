@@ -110,3 +110,9 @@ export function startQuestionFromModel(modelName) {
   cy.findByText("Models").click();
   cy.findByText(modelName).click();
 }
+
+export const openModelActions = () => {
+  cy.findAllByTestId('question-action-buttons-container').within(() => {
+    cy.icon('ellipsis').click()
+  })
+}

@@ -90,43 +90,4 @@ describe("QuestionDetailsSidebarPanel", () => {
       });
     });
   });
-
-  describe("models", () => {
-    it("displays model management section", () => {
-      setup({ question: getDataset() });
-      expect(screen.queryByText("Model management")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Turn back into a saved question"),
-      ).toBeInTheDocument();
-    });
-
-    it("does not display model management section with read-only-access", () => {
-      setup({ question: getDataset({ can_write: false }) });
-      expect(screen.queryByText("Model management")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Turn back into a saved question"),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("saved questions", () => {
-    it("does not display model management section", () => {
-      setup({ question: getQuestion() });
-      expect(screen.queryByText("Model management")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Turn back into a saved question"),
-      ).not.toBeInTheDocument();
-    });
-
-    describe("content moderation", () => {
-      beforeEach(() => {
-        setupEnterpriseTest();
-      });
-
-      it("offers to verify a question", () => {
-        setup({ question: getQuestion() });
-        expect(screen.queryByText("Verify this question")).toBeInTheDocument();
-      });
-    });
-  });
 });
