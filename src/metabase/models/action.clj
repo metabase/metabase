@@ -21,6 +21,7 @@
          {:primary-key (constantly :action_id)}))
 
 (defn action
+  "Hydrates Action from Emitter"
   {:batched-hydrate :action}
   [emitters]
   (let [actions (->> {:select [:emitter_action.emitter_id
