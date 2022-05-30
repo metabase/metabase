@@ -21,15 +21,15 @@ describe.skip("issue 22519", () => {
 
     restore();
     cy.signInAsAdmin();
-  });
 
-  it("model query should not fail when data model is using casting (metabase#22519)", () => {
     cy.visit(ratingDataModelUrl);
 
     cy.findByText("Don't cast").click();
     cy.findByText("UNIX seconds → Datetime").click();
     cy.wait("@updateField");
+  });
 
+  it("model query should not fail when data model is using casting (metabase#22519)", () => {
     cy.createQuestion(questionDetails, { visitQuestion: true });
 
     cy.findByText("xavier");
