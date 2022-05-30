@@ -10,8 +10,6 @@ import { deterministicAssign } from "./deterministic";
 const colors: Record<string, string> = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
-  filter: "#7172AD",
-  summarize: "#88BF4D",
   accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
@@ -59,8 +57,10 @@ export const aliases: Record<string, (family: ColorFamily) => string> = {
   dashboard: family => color("brand", family),
   nav: family => color("bg-white", family),
   content: family => color("bg-light", family),
+  summarize: family => color("accent1", family),
   database: family => color("accent2", family),
   pulse: family => color("accent4", family),
+  filter: family => color("accent7", family),
 
   "brand-light": family => lighten(color("brand", family), 0.532),
   focus: family => lighten(color("brand", family), 0.7),
