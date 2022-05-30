@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { isEqual, toPairs } from "lodash";
+import { isEqual } from "lodash";
 import ColorPill from "metabase/core/components/ColorPill";
 import ColorRangeToggle from "./ColorRangeToggle";
 import {
