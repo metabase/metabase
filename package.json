@@ -128,7 +128,7 @@
     "@testing-library/dom": "^7.29.0",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^11.0.2",
-    "@testing-library/react-hooks": "^7.0.2",
+    "@testing-library/react-hooks": "^8.0.0",
     "@testing-library/user-event": "^12.6.0",
     "@types/babel__core": "^7.1.16",
     "@types/babel__preset-env": "^7.9.2",
