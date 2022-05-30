@@ -20,7 +20,7 @@ import {
 } from "metabase-types/types/Visualization";
 
 import MiniBar from "../MiniBar";
-import { CellRoot, CellContent } from "../TableSimple/TableCell.styled";
+import { CellRoot, CellContent } from "./ListCell.styled";
 
 export interface ListCellProps
   extends Pick<

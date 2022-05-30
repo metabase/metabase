@@ -9,9 +9,6 @@ import { getIn } from "icepick";
 import _ from "lodash";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import Ellipsified from "metabase/components/Ellipsified";
-
-import { isColumnRightAligned } from "metabase/visualizations/lib/table";
 
 import { VisualizationProps } from "metabase-types/types/Visualization";
 
@@ -22,8 +19,8 @@ import {
   ContentContainer,
   Table,
   TableContainer,
-  TableHeaderCellContent,
-} from "../TableSimple/TableSimple.styled";
+  ListRow,
+} from "./List.styled";
 
 function getBoundingClientRectSafe(ref: React.RefObject<HTMLBaseElement>) {
   return ref.current?.getBoundingClientRect?.() ?? ({} as DOMRect);
@@ -95,12 +92,7 @@ function List({
   const renderColumnHeader = useCallback(
     (col, colIndex) => (
       <th key={colIndex} data-testid="column-header">
-        <TableHeaderCellContent
-          isRightAligned={isColumnRightAligned(col)}
-          isSorted={false}
-        >
-          <Ellipsified>{getColumnTitle(colIndex)}</Ellipsified>
-        </TableHeaderCellContent>
+        {getColumnTitle(colIndex)}
       </th>
     ),
     [getColumnTitle],
@@ -110,7 +102,7 @@ function List({
     (rowIndex, index) => {
       const ref = index === 0 ? firstRowRef : null;
       return (
-        <tr key={rowIndex} ref={ref} data-testid="table-row">
+        <ListRow key={rowIndex} ref={ref} data-testid="table-row">
           {data.rows[rowIndex].map((value, columnIndex) => (
             <ListCell
               key={`${rowIndex}-${columnIndex}`}
@@ -125,7 +117,7 @@ function List({
               onVisualizationClick={onVisualizationClick}
             />
           ))}
-        </tr>
+        </ListRow>
       );
     },
     [
@@ -143,7 +135,7 @@ function List({
       <ContentContainer>
         <TableContainer className="scroll-show scroll-show--hover">
           <Table className="fullscreen-normal-text fullscreen-night-text">
-            <thead ref={headerRef}>
+            <thead ref={headerRef} className="hide">
               <tr>{cols.map(renderColumnHeader)}</tr>
             </thead>
             <tbody>{paginatedRowIndexes.map(renderRow)}</tbody>
