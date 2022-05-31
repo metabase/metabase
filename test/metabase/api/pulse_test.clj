@@ -46,7 +46,8 @@
   (merge
    (select-keys
     pulse
-    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :archived :skip_if_empty :dashboard_id :parameters])
+    [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
+     :skip_if_empty :dashboard_id :parameters])
    {:creator  (user-details (db/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -149,6 +150,7 @@
    :updated_at          true
    :archived            false
    :dashboard_id        nil
+   :entity_id           nil
    :parameters          []})
 
 (def ^:private daily-email-channel

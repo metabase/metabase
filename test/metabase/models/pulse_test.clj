@@ -66,6 +66,7 @@
               {:creator_id (mt/user->id :rasta)
                :creator    (user-details :rasta)
                :name       "Lodi Dodi"
+               :entity_id  nil
                :cards      [{:name               "Test Card"
                              :description        nil
                              :collection_id      nil
@@ -143,6 +144,7 @@
               pulse-defaults
               {:creator_id (mt/user->id :rasta)
                :name       "Booyah!"
+               :entity_id  nil
                :channels   [(merge pulse-channel-defaults
                                    {:schedule_type :daily
                                     :schedule_hour 18
@@ -211,6 +213,7 @@
     (is (= (merge pulse-defaults
                   {:creator_id (mt/user->id :rasta)
                    :name       "We like to party"
+                   :entity_id  nil
                    :cards      [{:name               "Bar Card"
                                  :description        nil
                                  :collection_id      nil

@@ -26,6 +26,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
+   :entity_id               nil
    :definition              nil})
 
 (defn- user-details [user]

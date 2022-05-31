@@ -14,6 +14,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :archived                false
+   :entity_id               nil
    :definition              nil})
 
 (defn- user-details
