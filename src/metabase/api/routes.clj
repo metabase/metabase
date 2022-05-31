@@ -1,7 +1,6 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
-            [metabase.api.actions :as api.actions]
             [metabase.api.activity :as api.activity]
             [metabase.api.alert :as api.alert]
             [metabase.api.automagic-dashboards :as api.magic]
@@ -62,7 +61,6 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
-  (context "/actions"              [] (+auth api.actions/routes))
   (context "/activity"             [] (+auth api.activity/routes))
   (context "/alert"                [] (+auth api.alert/routes))
   (context "/automagic-dashboards" [] (+auth api.magic/routes))

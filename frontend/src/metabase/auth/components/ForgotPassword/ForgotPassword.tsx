@@ -84,7 +84,7 @@ const ForgotPasswordForm = ({
         onSubmit={handleSubmit}
       />
       <FormFooter>
-        <FormLink to={"/auth/login"}>{t`Back to sign in`}</FormLink>
+        <FormLink to="/auth/login">{t`Back to sign in`}</FormLink>
       </FormFooter>
     </div>
   );
@@ -101,7 +101,7 @@ const ForgotPasswordSuccess = (): JSX.Element => {
       </InfoMessage>
       <InfoLink
         className="Button Button--primary"
-        to={"/auth/login"}
+        to="/auth/login"
       >{t`Back to sign in`}</InfoLink>
     </InfoBody>
   );
@@ -113,7 +113,7 @@ const ForgotPasswordDisabled = (): JSX.Element => {
       <InfoMessage>
         {t`Please contact an administrator to have them reset your password.`}
       </InfoMessage>
-      <InfoLink to={"/auth/login"}>{t`Back to sign in`}</InfoLink>
+      <InfoLink to="/auth/login">{t`Back to sign in`}</InfoLink>
     </InfoBody>
   );
 };

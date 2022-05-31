@@ -146,7 +146,7 @@
 
 (defn- process-queries-append-results
   "Reduce the results of a sequence of `queries` using `rf` and initial value `init`."
-  [queries rf init info context]
+  [init queries rf info context]
   (reduce
    (fn [acc query]
      (process-query-append-results query rf acc info (assoc context
@@ -157,15 +157,40 @@
 (defn- append-queries-context
   "Update Query Processor `context` so it appends the rows fetched when running `more-queries`."
   [info context more-queries]
-  (cond-> context
-    (seq more-queries)
-    (update :rff (fn [rff]
-                   (fn [metadata]
-                     (let [rf (rff metadata)]
-                       (fn
-                         ([]        (rf))
-                         ([acc]     (rf (process-queries-append-results more-queries rf acc info context)))
-                         ([acc row] (rf acc row)))))))))
+  (let [vrf (volatile! nil)]
+    (cond-> context
+      (seq more-queries)
+      (->  (update :rff (fn [rff]
+                          (fn [metadata]
+                            (u/prog1 (rff metadata)
+                              ;; this captures the reducing function before composed with limit and other middleware
+                              (vreset! vrf <>)))))
+           (update :executef
+                   (fn [orig]
+                     ;; execute holds open a connection from [[execute-reducible-query]] so we need to manage
+                     ;; connections in the reducing part reducef. The default runf is what orchestrates this together
+                     ;; and we just pass the original executef to the reducing part so we can control our multiple
+                     ;; connections.
+                     (fn multiple-executef [driver query _context respond]
+                       (respond [orig driver] query))))
+           (assoc :reducef
+                  ;; signature usually has metadata in place of driver but we are hijacking
+                  (fn multiple-reducing [rff context [orig-executef driver] query]
+                    (let [respond     (fn [metadata reducible-rows]
+                                        (let [rf (rff metadata)]
+                                          (assert (fn? rf))
+                                          (try
+                                            (transduce identity (completing rf) reducible-rows)
+                                            (catch Throwable e
+                                              (qp.context/raisef (ex-info (tru "Error reducing result rows")
+                                                                          {:type qp.error-type/qp}
+                                                                          e)
+                                                                 context)))))
+                          acc         (-> (orig-executef driver query context respond)
+                                          (process-queries-append-results
+                                           more-queries @vrf info context))]
+                      ;; completion arity can't be threaded because the value is derefed too early
+                      (qp.context/reducedf (@vrf acc) context))))))))
 
 (defn process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"

@@ -98,7 +98,7 @@ describe("issue 20438", () => {
     cy.button("Add filter").click();
     cy.wait("@getEmbed");
 
-    cy.get(".cellData")
+    cy.findAllByTestId("cell-data")
       // One of product titles for Doohickey
       .should("contain", "Small Marble Shoes")
       // One of product titles for Gizmo

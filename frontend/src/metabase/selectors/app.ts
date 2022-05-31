@@ -106,3 +106,8 @@ export const getErrorMessage = (state: State) => {
   const errorPage = getErrorPage(state);
   return errorPage?.data?.message || errorPage?.data;
 };
+
+export const getBreadcrumbCollectionId = (state: State) =>
+  state.app.breadcrumbs.collectionId;
+
+export const getShowBreadcumb = (state: State) => state.app.breadcrumbs.show;

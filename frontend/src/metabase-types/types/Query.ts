@@ -47,7 +47,13 @@ export type DatetimeUnit =
 
 export type TemplateTagId = string;
 export type TemplateTagName = string;
-export type TemplateTagType = "card" | "text" | "number" | "date" | "dimension";
+export type TemplateTagType =
+  | "card"
+  | "text"
+  | "number"
+  | "date"
+  | "dimension"
+  | "snippet";
 
 export type TemplateTag = {
   id: TemplateTagId;

@@ -3,6 +3,7 @@
             [clojurewerkz.quartzite.conversion :as qc]
             [medley.core :as m]
             [metabase.models :refer [Card Database PersistedInfo TaskHistory]]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.task.persist-refresh :as pr]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -22,25 +23,46 @@
 (deftest cron-schedule-test
   (testing "creates schedule per hour when less than 24 hours"
     (is (= "0 0 0/8 * * ? *"
-           (schedule-string (#'pr/cron-schedule 8)))))
+           (schedule-string (#'pr/cron-schedule 8 "00:00"))))
+    (testing "when anchored"
+      (is (= "0 30 1/8 * * ? *"
+             (schedule-string (#'pr/cron-schedule 8 "01:30"))))))
   (testing "creates schedule string per day when 24 hours"
     (is (= "0 0 0 * * ? *"
-           (schedule-string (#'pr/cron-schedule 24))))))
+           (schedule-string (#'pr/cron-schedule 24 "00:00"))))
+    (testing "when anchored"
+      (is (= "0 30 1 * * ? *"
+             (schedule-string (#'pr/cron-schedule 24 "01:30")))))))
 
 (deftest trigger-job-info-test
   (testing "Database refresh trigger"
-    (let [tggr (#'pr/database-trigger {:id 1} 5)]
+    (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0/5 * * ? *"
              (schedule-string tggr)))
       (is (= "metabase.task.PersistenceRefresh.database.trigger.1"
              (.. tggr getKey getName))))
-    (let [tggr (#'pr/database-trigger {:id 1} 24)]
+    (let [tggr (#'pr/database-trigger {:id 1} 24 "00:00")]
       (is (= {"db-id" 1 "type" "database"}
              (qc/from-job-data (.getJobDataMap tggr))))
       (is (= "0 0 0 * * ? *"
-             (schedule-string tggr)))))
+             (schedule-string tggr))))
+    (testing "in report timezone UTC"
+      (mt/with-temporary-setting-values [report-timezone "UTC"]
+        (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
+          (is (= "UTC"
+                 (.. tggr getTimeZone getID))))))
+    (testing "in report timezone LA"
+      (mt/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+        (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
+          (is (= "America/Los_Angeles"
+                 (.. tggr getTimeZone getID))))))
+    (testing "in system timezone"
+      (mt/with-temporary-setting-values [report-timezone nil]
+        (let [tggr (#'pr/database-trigger {:id 1} 5 "00:00")]
+          (is (= (qp.timezone/system-timezone-id)
+                 (.. tggr getTimeZone getID)))))))
   (testing "Individual refresh trigger"
     (let [tggr (#'pr/individual-trigger {:card_id 5 :id 1})]
       (is (= {"persisted-id" 1 "type" "individual"}
@@ -60,7 +82,8 @@
     (mt/with-temp* [Database [db-1 {:options {:persist-models-enabled true}}]
                     Database [db-2 {:options {:persist-models-enabled true}}]]
       (#'pr/job-init!)
-      (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 4]
+      (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 4
+                                         persisted-model-refresh-anchor-time "00:00"]
         (pr/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/4 * * ? *"
@@ -69,13 +92,24 @@
                                  :schedule "0 0 0/4 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2))))
-      (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 8]
+      (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 8
+                                         persisted-model-refresh-anchor-time "00:00"]
         (pr/reschedule-refresh!)
         (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
                 (u/the-id db-2) {:data {"db-id" (u/the-id db-2) "type" "database"}
                                  :schedule "0 0 0/8 * * ? *"
+                                 :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
+               (job-info db-1 db-2))))
+      (mt/with-temporary-setting-values [persisted-model-refresh-interval-hours 8
+                                         persisted-model-refresh-anchor-time "01:30"]
+        (pr/reschedule-refresh!)
+        (is (= {(u/the-id db-1) {:data {"db-id" (u/the-id db-1) "type" "database"}
+                                 :schedule "0 30 1/8 * * ? *"
+                                 :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-1))}
+                (u/the-id db-2) {:data {"db-id" (u/the-id db-2) "type" "database"}
+                                 :schedule "0 30 1/8 * * ? *"
                                  :key (format "metabase.task.PersistenceRefresh.database.trigger.%d" (u/the-id db-2))}}
                (job-info db-1 db-2)))))))
 

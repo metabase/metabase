@@ -1,5 +1,5 @@
 import {
-  describeOSS,
+  isOSS,
   describeEE,
   restore,
   setupMetabaseCloud,
@@ -21,8 +21,10 @@ describe("scenarios > admin > troubleshooting > help", () => {
   });
 });
 
-describeOSS("scenarios > admin > troubleshooting > help", () => {
+describe("scenarios > admin > troubleshooting > help", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });

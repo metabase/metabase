@@ -390,7 +390,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     visitDashboard(1);
-    cy.get(".TableInteractive-headerCellData")
+    cy.findAllByTestId("column-header")
       .contains("ID")
       .click()
       .click();

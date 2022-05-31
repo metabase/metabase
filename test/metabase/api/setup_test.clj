@@ -289,28 +289,26 @@
 (deftest create-superuser-only-once-test
   (testing "POST /api/setup"
     (testing "Check that we cannot create a new superuser via setup-token when a user exists"
-      (let [token (setup/create-token!)
-            body  {:token token
-                   :prefs {:site_locale "es_MX"
-                           :site_name   (mt/random-name)}
-                   :user  {:first_name (mt/random-name)
-                           :last_name  (mt/random-name)
-                           :email      (mt/random-email)
-                           :password   "p@ssword1"}}]
-        (with-redefs [setup/has-user-setup (let [value (atom false)]
-                                             (fn
-                                               ([] @value)
-                                               ([t-or-f] (reset! value t-or-f))))]
-          (mt/discard-setting-changes
-              [site-name site-locale anon-tracking-enabled admin-email]
-            (client/client :post 200 "setup" body))
-
+      (let [token          (setup/create-token!)
+            body           {:token token
+                            :prefs {:site_locale "es_MX"
+                                    :site_name   (mt/random-name)}
+                            :user  {:first_name (mt/random-name)
+                                    :last_name  (mt/random-name)
+                                    :email      (mt/random-email)
+                                    :password   "p@ssword1"}}
+            has-user-setup (atom false)]
+        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
+          (is (not (setup/has-user-setup)))
+          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+            (is (schema= {:id client/UUIDString}
+                         (client/client :post 200 "setup" body))))
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
-          (setup/has-user-setup true)
-
-          (mt/discard-setting-changes
-              [site-name site-locale anon-tracking-enabled admin-email]
-            (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))
+          (reset! has-user-setup true)
+          (is (setup/has-user-setup))
+          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+            (is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
@@ -373,7 +371,9 @@
              (client/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
 
     (testing "should validate that database connection works"
-      (is (= {:errors {:dbname "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
+      (is (= {:errors {:host "check your host settings"
+                       :port "check your port settings"}
+              :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
              (client/client :post 400 "setup/validate" {:token   (setup/setup-token)
                                                         :details {:engine  "h2"
                                                                   :details {:db "file:///tmp/fake.db"}}}))))

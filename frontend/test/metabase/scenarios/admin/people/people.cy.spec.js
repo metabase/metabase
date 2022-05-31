@@ -251,15 +251,17 @@ describe("scenarios > admin > people", () => {
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
-
         waitForUserRequests();
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 2
-        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByTestId("next-page-btn").should("be.disabled");
 
         cy.findByTestId("previous-page-btn").click();
+        cy.wait("@users");
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 1
         cy.findByText(`1 - ${PAGE_SIZE}`);
@@ -279,13 +281,17 @@ describe("scenarios > admin > people", () => {
         cy.findByTestId("previous-page-btn").should("be.disabled");
 
         cy.findByTestId("next-page-btn").click();
+        waitForUserRequests();
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 2
-        cy.findByText(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
+        cy.findByTextEnsureVisible(`${PAGE_SIZE + 1} - ${NEW_TOTAL_USERS}`);
         assertTableRowsCount(NEW_TOTAL_USERS % PAGE_SIZE);
         cy.findByTestId("next-page-btn").should("be.disabled");
 
         cy.findByTestId("previous-page-btn").click();
+        cy.wait("@users");
+        cy.findByText("Loading...").should("not.exist");
 
         // Page 1
         cy.findByText(`1 - ${PAGE_SIZE}`);

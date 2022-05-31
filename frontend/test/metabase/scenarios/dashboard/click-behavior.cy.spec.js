@@ -16,7 +16,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     cy.signInAsAdmin();
   });
 
-  it.skip("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
+  it("should show filters defined on a question with filter pass-thru (metabase#15993)", () => {
     cy.createQuestion({
       name: "15993",
       query: {
@@ -48,15 +48,6 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
               });
 
               visitDashboard(dashboardId);
-
-              cy.intercept(
-                "POST",
-                `/api/dashboard/${dashboardId}/dashcard/*/card/${question1Id}/query`,
-              ).as("cardQuery");
-
-              cy.intercept("POST", `/api/card/${nativeId}/query`).as(
-                "nativeQuery",
-              );
             });
           });
         },
@@ -64,12 +55,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
     });
 
     // Drill-through
-    cy.wait("@nativeQuery");
-    cy.get(".cellData .link")
+    cy.findAllByTestId("cell-data")
+      .get(".link")
       .contains("0")
       .realClick();
 
-    cy.wait("@cardQuery");
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
     cy.findByText("Quantity is equal to 0");
 
@@ -139,7 +129,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       );
     });
 
-    cy.get(".cellData")
+    cy.findAllByTestId("cell-data")
       .contains("5")
       .first()
       .click();

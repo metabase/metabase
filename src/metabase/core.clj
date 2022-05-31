@@ -136,7 +136,7 @@
   []
   (let [start-time (t/zoned-date-time)]
     (init!*)
-    (public-settings/startup-time-millis
+    (public-settings/startup-time-millis!
      (.toMillis (t/duration start-time (t/zoned-date-time))))))
 
 ;;; -------------------------------------------------- Normal Start --------------------------------------------------

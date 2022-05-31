@@ -25,7 +25,9 @@ Get `Table` with ID.
 
 ### PARAMS:
 
-*  **`id`**
+*  **`id`** 
+
+*  **`include_editable_data_model`**
 
 ## `GET /api/table/:id/fks`
 
@@ -43,6 +45,9 @@ Get metadata about a `Table` useful for running queries.
   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
+  Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
+  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+
   These options are provided for use in the Admin Edit Metadata page.
 
 ### PARAMS:
@@ -52,6 +57,8 @@ Get metadata about a `Table` useful for running queries.
 *  **`include_sensitive_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 *  **`include_hidden_fields`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
+
+*  **`include_editable_data_model`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/table/:id/related`
 

@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 25
     strategy:
       matrix:
-        edition: [ee]
+        edition: [oss, ee]
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
@@ -43,7 +43,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -66,6 +66,12 @@ jobs:
           - "downloads"
           - "embedding"
           - "joins"
+          - "models"
+          - "question"
+          - "sharing"
+        include:
+          - edition: oss
+            java-version: 11
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -119,7 +125,17 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run OSS-specific Cypress tests
+      if: matrix.edition == 'oss'
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags=@OSS,grepFilterSpecs=true \
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+      env:
+        TERM: xterm
+
+    - name: Run EE Cypress tests on ${{ matrix.folder }}
+      if: matrix.edition == 'ee'
       run: yarn run test-cypress-run --folder ${{ matrix.folder }}
       env:
         TERM: xterm

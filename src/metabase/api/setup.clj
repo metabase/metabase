@@ -96,14 +96,14 @@
 
 (defn- setup-set-settings! [_request {:keys [email site-name site-locale allow-tracking?]}]
   ;; set a couple preferences
-  (public-settings/site-name site-name)
-  (public-settings/admin-email email)
+  (public-settings/site-name! site-name)
+  (public-settings/admin-email! email)
   (when site-locale
-    (public-settings/site-locale site-locale))
+    (public-settings/site-locale! site-locale))
   ;; default to `true` if allow_tracking isn't specified. The setting will set itself correctly whether a boolean or
   ;; boolean string is specified
-  (public-settings/anon-tracking-enabled (or (nil? allow-tracking?)
-                                             allow-tracking?)))
+  (public-settings/anon-tracking-enabled! (or (nil? allow-tracking?)
+                                              allow-tracking?)))
 
 (api/defendpoint POST "/"
   "Special endpoint for creating the first user during setup. This endpoint both creates the user AND logs them in and
@@ -172,16 +172,14 @@
   [:as {{{:keys [engine details]} :details, token :token} :body}]
   {token  SetupToken
    engine DBEngineString}
-  (let [engine           (keyword engine)
-        invalid-response (fn [field m] {:status 400, :body (if (#{:dbname :port :host} field)
-                                                             {:errors {field m}}
-                                                             {:message m})})
-        error-or-nil     (api.database/test-database-connection engine details :invalid-response-handler invalid-response)]
+  (let [engine       (keyword engine)
+        error-or-nil (api.database/test-database-connection engine details)]
     (when error-or-nil
       (snowplow/track-event! ::snowplow/database-connection-failed
                              nil
                              {:database engine, :source :setup})
-      error-or-nil)))
+      {:status 400
+       :body   error-or-nil})))
 
 
 ;;; Admin Checklist

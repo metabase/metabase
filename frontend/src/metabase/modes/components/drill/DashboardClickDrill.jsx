@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { getIn } from "icepick";
 import _ from "underscore";
+import querystring from "querystring";
 
 import Question from "metabase-lib/lib/Question";
 import {
@@ -71,14 +72,19 @@ export default ({ question, clicked }) => {
           },
         };
       } else {
+        const targetDashboard = extraData.dashboards[targetId];
         const queryParams = getParameterValuesBySlug(parameterMapping, {
           data,
           extraData,
           clickBehavior,
         });
 
-        const urlSearchParams = new URLSearchParams(queryParams);
-        const url = `/dashboard/${targetId}?${urlSearchParams.toString()}`;
+        const path =
+          clickBehavior.use_public_link && targetDashboard.public_uuid
+            ? `/public/dashboard/${targetDashboard.public_uuid}`
+            : `/dashboard/${targetId}`;
+        const url = `${path}?${querystring.stringify(queryParams)}`;
+
         behavior = { url: () => url };
       }
     } else if (linkType === "question" && extraData && extraData.questions) {
@@ -103,11 +109,16 @@ export default ({ question, clicked }) => {
         }))
         .value();
 
-      const url = targetQuestion.isStructured()
-        ? targetQuestion.getUrlWithParameters(parameters, queryParams)
-        : `${targetQuestion.getUrl()}?${new URLSearchParams(
-            queryParams,
-          ).toString()}`;
+      let url = null;
+      if (clickBehavior.use_public_link && targetQuestion.publicUUID()) {
+        url = `/public/question/${targetQuestion.publicUUID()}?${querystring.stringify(
+          queryParams,
+        )}`;
+      } else {
+        url = targetQuestion.isStructured()
+          ? targetQuestion.getUrlWithParameters(parameters, queryParams)
+          : `${targetQuestion.getUrl()}?${querystring.stringify(queryParams)}`;
+      }
 
       behavior = { url: () => url };
     }
