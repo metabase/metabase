@@ -33,15 +33,30 @@ export const getColorsForValues = (
   keys: string[],
   existingMapping: Record<string, string> | null | undefined,
 ) => {
-  const colors = getSeriesColors(keys.length);
-  const mapping = { ...existingMapping };
+  const allColors = getSeriesColors(keys.length);
+  const newMapping = { ...existingMapping };
+  const unusedColors = new Set(allColors);
 
-  keys.forEach((key, index) => {
-    const existingColor = existingMapping?.[key];
-    const preferredColor = getPreferredColor(key);
-    const paletteColor = colors[index % colors.length];
-    mapping[key] = existingColor ?? preferredColor ?? paletteColor;
+  keys.forEach(key => {
+    const color = getPreferredColor(key);
+
+    if (color && unusedColors.has(color)) {
+      newMapping[key] = color;
+      unusedColors.delete(color);
+    }
   });
 
-  return mapping;
+  const regularColors = unusedColors.size
+    ? Array.from(unusedColors)
+    : allColors;
+
+  keys.forEach((key, index) => {
+    const color = regularColors[index % regularColors.length];
+
+    if (!newMapping[key]) {
+      newMapping[key] = color;
+    }
+  });
+
+  return newMapping;
 };
