@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
 
+import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 
 import { HorizontalAlignmentValue } from "./types";
@@ -48,6 +49,10 @@ const ACTIONS_VIZ_DEFINITION = {
       widget: "toggle",
       default: true,
     },
+    "actions.linked_table": {
+      section: t`Default actions`,
+      title: t`Linked table`,
+    },
     "actions.align_horizontal": {
       section: t`Display`,
       title: t`Horizontal Alignment`,
@@ -64,7 +69,15 @@ const ACTIONS_VIZ_DEFINITION = {
   },
 };
 
-function ActionsViz({ settings }: VisualizationProps) {
+interface ActionsVizProps extends VisualizationProps {
+  metadata: Metadata;
+}
+
+function ActionsViz({ metadata, settings }: ActionsVizProps) {
+  const connectedTableId = settings["actions.linked_table"];
+  const connectedTable = metadata.table(connectedTableId);
+  const hasConnectedTable = !!connectedTable;
+
   const hasCreateButton = settings["actions.create_enabled"];
   const hasUpdateButton = settings["actions.update_enabled"];
   const hasDeleteButton = settings["actions.delete_enabled"];
@@ -75,9 +88,18 @@ function ActionsViz({ settings }: VisualizationProps) {
 
   return (
     <Root horizontalAlignment={horizontalAlignment}>
-      {hasCreateButton && <Button>{t`New`}</Button>}
-      {hasUpdateButton && <Button>{t`Edit`}</Button>}
-      {hasDeleteButton && <Button danger>{t`Delete`}</Button>}
+      {hasCreateButton && (
+        <Button
+          disabled={!hasConnectedTable}
+          onClick={showModal}
+        >{t`New`}</Button>
+      )}
+      {hasUpdateButton && (
+        <Button disabled={!hasConnectedTable}>{t`Edit`}</Button>
+      )}
+      {hasDeleteButton && (
+        <Button disabled={!hasConnectedTable} danger>{t`Delete`}</Button>
+      )}
     </Root>
   );
 }
