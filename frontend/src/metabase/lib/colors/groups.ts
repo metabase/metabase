@@ -67,6 +67,7 @@ export const getPreferredColor = (key: string) => {
       return color("brand");
     case "sum":
       return color("accent1");
+    case "avg":
     case "average":
       return color("accent2");
   }
