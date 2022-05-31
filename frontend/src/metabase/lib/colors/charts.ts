@@ -1,17 +1,84 @@
+import { getAccentColors, getHarmonyColors, getPreferredColor } from "./groups";
+import { ACCENT_COUNT } from "./palette";
+
+export const getColorsForValues = (
+  keys: string[],
+  existingMapping: Record<string, string> | null | undefined,
+) => {
+  if (keys.length <= ACCENT_COUNT) {
+    return getHashBasedMapping(
+      keys,
+      getAccentColors(),
+      existingMapping ?? {},
+      getPreferredColor,
+    );
+  } else {
+    return getOrderBasedMapping(
+      keys,
+      getHarmonyColors(),
+      existingMapping ?? {},
+      getPreferredColor,
+    );
+  }
+};
+
+const getOrderBasedMapping = (
+  keys: string[],
+  values: string[],
+  existingMapping: Record<string, string> = {},
+  getPreferredValue: (key: string) => string | undefined,
+) => {
+  const newMapping: Record<string, string> = {};
+  const unusedValues = new Set(values);
+
+  const setValue = (key: string, value: string) => {
+    newMapping[key] = value;
+    unusedValues.delete(value);
+  };
+
+  Object.entries(existingMapping).forEach(([key, value]) => {
+    setValue(key, value);
+  });
+
+  keys.forEach(key => {
+    const value = getPreferredValue(key);
+
+    if (value && unusedValues.has(value)) {
+      newMapping[key] = value;
+      unusedValues.delete(value);
+    }
+  });
+
+  keys.forEach((key, index) => {
+    if (!unusedValues.size) {
+      values.forEach(value => unusedValues.add(value));
+    }
+
+    const [value] = unusedValues;
+
+    if (!newMapping[key]) {
+      newMapping[key] = value;
+      unusedValues.delete(value);
+    }
+  });
+
+  return newMapping;
+};
+
 const getHashBasedMapping = (
   keys: string[],
   values: string[],
-  existingMapping: Record<string, string> | null | undefined,
+  existingMapping: Record<string, string> = {},
   getPreferredValue: (key: string) => string | undefined,
 ) => {
-  const mapping: Record<string, string> = {};
+  const newMapping: Record<string, string> = {};
   const keyHashes = Object.fromEntries(keys.map(k => [k, getHashCode(k)]));
   const unsetKeys = new Set([...keys].sort());
   const allValues = new Set(values);
   const usedValues = new Set();
 
   const setValue = (key: string, value: string) => {
-    mapping[key] = value;
+    newMapping[key] = value;
     unsetKeys.delete(key);
 
     if (allValues.has(value)) {
@@ -19,11 +86,9 @@ const getHashBasedMapping = (
     }
   };
 
-  if (existingMapping) {
-    Object.entries(existingMapping).forEach(([key, value]) => {
-      setValue(key, value);
-    });
-  }
+  Object.entries(existingMapping).forEach(([key, value]) => {
+    setValue(key, value);
+  });
 
   unsetKeys.forEach(key => {
     const value = getPreferredValue(key);
@@ -48,7 +113,7 @@ const getHashBasedMapping = (
     });
   }
 
-  return mapping;
+  return newMapping;
 };
 
 const getHashCode = (s: string) => {

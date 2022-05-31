@@ -2,7 +2,7 @@
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
 import { alpha } from "metabase/lib/colors";
-import { getColorScale, getSafeColor } from "metabase/lib/colors/charts";
+import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
