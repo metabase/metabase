@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   filter,
+  setupBooleanQuery,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -267,6 +268,63 @@ describe("scenarios > filters > bulk filtering", () => {
             cy.findByText(SEGMENT_2_NAME).should("not.exist");
           });
       });
+    });
+  });
+
+  describe("boolean filters", () => {
+    beforeEach(() => {
+      setupBooleanQuery();
+      openFilterModal();
+    });
+
+    it("should apply a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+    });
+
+    it("should change a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("false").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 1 row").should("be.visible");
+    });
+
+    it("should remove a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 4 rows").should("be.visible");
     });
   });
 });
