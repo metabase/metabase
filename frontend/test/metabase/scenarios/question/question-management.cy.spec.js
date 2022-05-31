@@ -1,12 +1,15 @@
-import { restore, visitQuestion, saveDashboard, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  saveDashboard,
+  popover,
+} from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
 
 import { USERS } from "__support__/e2e/cypress_data";
 
-import {
-  openQuestionActions
-} from './helpers/e2e-question-helpers';
+import { openQuestionActions } from "./helpers/e2e-question-helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -106,7 +109,7 @@ describe("managing question from the question's details sidebar", () => {
         });
 
         onlyOn(permission === "view", () => {
-          describe.only(`${user} user`, () => {
+          describe(`${user} user`, () => {
             beforeEach(() => {
               cy.signIn(user);
               visitQuestion(1);
@@ -145,20 +148,19 @@ describe("managing question from the question's details sidebar", () => {
               cy.get(".QueryBuilder-section").findByText(personalCollection);
             });
 
-            it.only("should not offer a user the ability to update or clone the question", () => {
+            it("should not offer a user the ability to update or clone the question", () => {
               cy.findByTestId("edit-details-button").should("not.exist");
               cy.findByRole("button", { name: "Add a description" }).should(
                 "not.exist",
               );
-              
+
               openQuestionActions();
 
               popover().within(() => {
                 cy.findByTestId("move-button").should("not.exist");
                 cy.findByTestId("clone-button").should("not.exist");
                 cy.findByTestId("archive-button").should("not.exist");
-              })
-              
+              });
 
               cy.findByText("Revert").should("not.exist");
             });
