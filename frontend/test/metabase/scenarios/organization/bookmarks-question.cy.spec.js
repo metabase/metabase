@@ -2,7 +2,6 @@ import {
   restore,
   navigationSidebar,
   openNavigationSidebar,
-  sidebar,
   visitQuestion,
 } from "__support__/e2e/cypress";
 import { getSidebarSectionTitle as getSectionTitle } from "__support__/e2e/helpers/e2e-collection-helpers";

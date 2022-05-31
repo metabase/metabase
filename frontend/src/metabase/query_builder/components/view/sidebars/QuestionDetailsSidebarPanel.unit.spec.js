@@ -1,6 +1,5 @@
 import React from "react";
 import { renderWithProviders, screen } from "__support__/ui";
-import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   SAMPLE_DATABASE,
   ORDERS,
