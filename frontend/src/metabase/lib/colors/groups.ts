@@ -32,6 +32,10 @@ export const getStatusColorRanges = () => {
   ];
 };
 
+export const getSeriesColors = (count: number) => {
+  return count <= ACCENT_COUNT ? getAccentColors() : getHarmonyColors();
+};
+
 export const getPreferredColor = (key: string) => {
   switch (key.toLowerCase()) {
     case "success":

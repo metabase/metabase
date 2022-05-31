@@ -1,6 +1,6 @@
 import d3 from "d3";
 import Color from "color";
-import { getAccentColors, getPreferredColor } from "./groups";
+import { getPreferredColor, getSeriesColors } from "./groups";
 
 export const getColorScale = (
   extent: [number, number],
@@ -33,7 +33,7 @@ export const getColorsForValues = (
   keys: string[],
   existingMapping: Record<string, string> | null | undefined,
 ) => {
-  const newColors = getAccentColors();
+  const newColors = getSeriesColors(keys.length);
   const newMapping: Record<string, string> = {};
   const unusedColors = new Set(newColors);
 
