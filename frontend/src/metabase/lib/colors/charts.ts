@@ -33,23 +33,40 @@ export const getColorsForValues = (
   keys: string[],
   existingMapping: Record<string, string> | null | undefined,
 ) => {
-  const allColors = getAccentColors();
-  const unusedColors = new Set(allColors);
-  const resultMapping: Record<string, string> = {};
+  const newColors = getAccentColors();
+  const newMapping: Record<string, string> = {};
+  const unusedColors = new Set(newColors);
 
   keys.forEach(key => {
-    const existingColor = existingMapping?.[key];
-    const preferredColor = getPreferredColor(key);
-    const [unusedColor] = unusedColors;
-    const resultColor = existingColor ?? preferredColor ?? unusedColor;
+    const color = existingMapping?.[key];
 
-    resultMapping[key] = resultColor;
-    unusedColors.delete(resultColor);
-
-    if (!unusedColors.size) {
-      allColors.forEach(unusedColors.add);
+    if (color && unusedColors.has(color)) {
+      newMapping[key] = color;
+      unusedColors.delete(color);
     }
   });
 
-  return resultMapping;
+  keys.forEach(key => {
+    const color = getPreferredColor(key);
+
+    if (color && !newMapping[key] && unusedColors.has(color)) {
+      newMapping[key] = color;
+      unusedColors.delete(color);
+    }
+  });
+
+  keys.forEach(key => {
+    if (!unusedColors.size) {
+      newColors.forEach(unusedColors.add);
+    }
+
+    const [color] = unusedColors;
+
+    if (!newMapping[key]) {
+      newMapping[key] = color;
+      unusedColors.delete(color);
+    }
+  });
+
+  return newMapping;
 };
