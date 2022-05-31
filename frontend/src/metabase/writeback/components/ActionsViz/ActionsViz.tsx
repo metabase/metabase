@@ -75,7 +75,7 @@ const ACTIONS_VIZ_DEFINITION = {
 };
 
 interface ActionsVizProps extends VisualizationProps {
-  metadata: Metadata;
+  metadata?: Metadata;
 }
 
 function ActionsViz({ metadata, settings }: ActionsVizProps) {
@@ -84,7 +84,7 @@ function ActionsViz({ metadata, settings }: ActionsVizProps) {
   );
 
   const connectedTableId = settings["actions.linked_table"];
-  const connectedTable = metadata.table(connectedTableId);
+  const connectedTable = metadata?.table(connectedTableId);
   const hasConnectedTable = !!connectedTable;
 
   const hasCreateButton = settings["actions.create_enabled"];
