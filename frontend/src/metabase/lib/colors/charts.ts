@@ -44,8 +44,7 @@ const getOrderBasedMapping = (
     const value = getPreferredValue(key);
 
     if (value && unusedValues.has(value)) {
-      newMapping[key] = value;
-      unusedValues.delete(value);
+      setValue(key, value);
     }
   });
 
@@ -57,8 +56,7 @@ const getOrderBasedMapping = (
     const [value] = unusedValues;
 
     if (!newMapping[key]) {
-      newMapping[key] = value;
-      unusedValues.delete(value);
+      setValue(key, value);
     }
   });
 
