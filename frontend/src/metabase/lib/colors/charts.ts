@@ -1,62 +1,62 @@
-import d3 from "d3";
-import Color from "color";
-import { getPreferredColor, getSeriesColors } from "./groups";
-
-export const getColorScale = (
-  extent: [number, number],
-  colors: string[],
-  isQuantile: boolean = false,
-) => {
-  if (isQuantile) {
-    return d3.scale
-      .quantile<string>()
-      .domain(extent)
-      .range(colors);
-  } else {
-    const [start, end] = extent;
-    return d3.scale
-      .linear<string>()
-      .domain(
-        colors.length === 3
-          ? [start, start + (end - start) / 2, end]
-          : [start, end],
-      )
-      .range(colors);
-  }
-};
-
-export const getSafeColor = (color: string) => {
-  return Color(color).string(0);
-};
-
-export const getColorsForValues = (
+const getHashBasedMapping = (
   keys: string[],
+  values: string[],
   existingMapping: Record<string, string> | null | undefined,
+  getPreferredValue: (key: string) => string | undefined,
 ) => {
-  const allColors = getSeriesColors(keys.length);
-  const newMapping = { ...existingMapping };
-  const unusedColors = new Set(allColors);
+  const mapping: Record<string, string> = {};
+  const keyHashes = Object.fromEntries(keys.map(k => [k, getHashCode(k)]));
+  const unsetKeys = new Set([...keys].sort());
+  const allValues = new Set(values);
+  const usedValues = new Set();
 
-  keys.forEach(key => {
-    const color = getPreferredColor(key);
+  const setValue = (key: string, value: string) => {
+    mapping[key] = value;
+    unsetKeys.delete(key);
 
-    if (color && unusedColors.has(color)) {
-      newMapping[key] = color;
-      unusedColors.delete(color);
+    if (allValues.has(value)) {
+      usedValues.add(value);
+    }
+  };
+
+  if (existingMapping) {
+    Object.entries(existingMapping).forEach(([key, value]) => {
+      setValue(key, value);
+    });
+  }
+
+  unsetKeys.forEach(key => {
+    const value = getPreferredValue(key);
+
+    if (value && !usedValues.has(value)) {
+      setValue(key, value);
     }
   });
 
-  const regularColors = unusedColors.size
-    ? Array.from(unusedColors)
-    : allColors;
-
-  keys.forEach((key, index) => {
-    const color = regularColors[index % regularColors.length];
-
-    if (!newMapping[key]) {
-      newMapping[key] = color;
+  for (let attempt = 0; unsetKeys.size > 0; attempt++) {
+    if (usedValues.size >= allValues.size) {
+      usedValues.clear();
     }
-  });
 
-  return newMapping;
+    unsetKeys.forEach(key => {
+      const hash = keyHashes[key] + attempt;
+      const value = values[hash % values.length];
+
+      if (!usedValues.has(value)) {
+        setValue(key, value);
+      }
+    });
+  }
+
+  return mapping;
+};
+
+const getHashCode = (s: string) => {
+  let h = 0;
+
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+
+  return Math.abs(h);
 };
