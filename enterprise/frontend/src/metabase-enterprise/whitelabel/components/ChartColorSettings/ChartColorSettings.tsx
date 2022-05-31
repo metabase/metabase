@@ -16,13 +16,13 @@ import {
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
-  colorFamily: Record<string, string>;
+  colorPalette: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
 const ChartColorSettings = ({
   colors,
-  colorFamily,
+  colorPalette,
   onChange,
 }: ChartColorSettingsProps): JSX.Element => {
   const colorsRef = useCurrentRef(colors);
@@ -46,7 +46,7 @@ const ChartColorSettings = ({
   return (
     <ChartColorTable
       colors={colors}
-      colorFamily={colorFamily}
+      colorPalette={colorPalette}
       colorGroups={colorGroups}
       onChange={handleChange}
       onReset={handleReset}
@@ -56,7 +56,7 @@ const ChartColorSettings = ({
 
 interface ChartColorTable {
   colors: Record<string, string>;
-  colorFamily: Record<string, string>;
+  colorPalette: Record<string, string>;
   colorGroups: string[][];
   onChange: (name: string, color?: string) => void;
   onReset: () => void;
@@ -64,7 +64,7 @@ interface ChartColorTable {
 
 const ChartColorTable = ({
   colors,
-  colorFamily,
+  colorPalette,
   colorGroups,
   onChange,
   onReset,
@@ -82,7 +82,7 @@ const ChartColorTable = ({
               <ChartColorCell
                 key={colorName}
                 color={colors[colorName]}
-                originalColor={color(colorName, colorFamily)}
+                originalColor={color(colorName, colorPalette)}
                 colorName={colorName}
                 onChange={onChange}
               />

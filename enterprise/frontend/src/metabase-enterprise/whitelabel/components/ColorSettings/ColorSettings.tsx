@@ -24,7 +24,7 @@ const ColorSettings = ({
 }: ColorSettingsProps): JSX.Element => {
   const [colors, setColors] = useState(initialColors ?? {});
 
-  const colorFamily = useMemo(() => {
+  const colorPalette = useMemo(() => {
     return { ...originalColors, ...colors };
   }, [colors, originalColors]);
 
@@ -42,7 +42,7 @@ const ColorSettings = ({
         <SettingTitle>{t`User interface colors`}</SettingTitle>
         <BrandColorSettings
           colors={colors}
-          colorFamily={colorFamily}
+          colorPalette={colorPalette}
           onChange={handleChange}
         />
       </BrandColorSection>
@@ -51,7 +51,7 @@ const ColorSettings = ({
         <SectionContent>
           <ChartColorSettings
             colors={colors}
-            colorFamily={colorFamily}
+            colorPalette={colorPalette}
             onChange={handleChange}
           />
           <ChartColorPreview />

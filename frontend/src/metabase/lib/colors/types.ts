@@ -1,1 +1,1 @@
-export type ColorFamily = Record<string, string>;
+export type ColorPalette = Record<string, string>;

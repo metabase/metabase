@@ -1,10 +1,10 @@
 import Color from "color";
-import { ColorFamily } from "./types";
+import { ColorPalette } from "./types";
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
-export const colors: ColorFamily = {
+export const colors: ColorPalette = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
   accent0: "#509EE3",
@@ -45,44 +45,44 @@ export const colors: ColorFamily = {
 };
 /* eslint-enable no-color-literals */
 
-export const aliases: Record<string, (family: ColorFamily) => string> = {
-  dashboard: family => color("brand", family),
-  nav: family => color("bg-white", family),
-  content: family => color("bg-light", family),
-  summarize: family => color("accent1", family),
-  database: family => color("accent2", family),
-  pulse: family => color("accent4", family),
-  filter: family => color("accent7", family),
+export const aliases: Record<string, (palette: ColorPalette) => string> = {
+  dashboard: palette => color("brand", palette),
+  nav: palette => color("bg-white", palette),
+  content: palette => color("bg-light", palette),
+  summarize: palette => color("accent1", palette),
+  database: palette => color("accent2", palette),
+  pulse: palette => color("accent4", palette),
+  filter: palette => color("accent7", palette),
 
-  "brand-light": family => lighten(color("brand", family), 0.532),
-  focus: family => lighten(color("brand", family), 0.7),
+  "brand-light": palette => lighten(color("brand", palette), 0.532),
+  focus: palette => lighten(color("brand", palette), 0.7),
 
-  "accent0-light": family => lighten(color(`accent0`, family), 0.3),
-  "accent1-light": family => lighten(color(`accent1`, family), 0.3),
-  "accent2-light": family => lighten(color(`accent2`, family), 0.3),
-  "accent3-light": family => lighten(color(`accent3`, family), 0.3),
-  "accent4-light": family => lighten(color(`accent4`, family), 0.3),
-  "accent5-light": family => lighten(color(`accent5`, family), 0.3),
-  "accent6-light": family => lighten(color(`accent6`, family), 0.3),
-  "accent7-light": family => lighten(color(`accent7`, family), 0.3),
+  "accent0-light": palette => lighten(color(`accent0`, palette), 0.3),
+  "accent1-light": palette => lighten(color(`accent1`, palette), 0.3),
+  "accent2-light": palette => lighten(color(`accent2`, palette), 0.3),
+  "accent3-light": palette => lighten(color(`accent3`, palette), 0.3),
+  "accent4-light": palette => lighten(color(`accent4`, palette), 0.3),
+  "accent5-light": palette => lighten(color(`accent5`, palette), 0.3),
+  "accent6-light": palette => lighten(color(`accent6`, palette), 0.3),
+  "accent7-light": palette => lighten(color(`accent7`, palette), 0.3),
 
-  "accent0-dark": family => darken(color(`accent0`, family), 0.3),
-  "accent1-dark": family => darken(color(`accent1`, family), 0.3),
-  "accent2-dark": family => darken(color(`accent2`, family), 0.3),
-  "accent3-dark": family => darken(color(`accent3`, family), 0.3),
-  "accent4-dark": family => darken(color(`accent4`, family), 0.3),
-  "accent5-dark": family => darken(color(`accent5`, family), 0.3),
-  "accent6-dark": family => darken(color(`accent6`, family), 0.3),
-  "accent7-dark": family => darken(color(`accent7`, family), 0.3),
+  "accent0-dark": palette => darken(color(`accent0`, palette), 0.3),
+  "accent1-dark": palette => darken(color(`accent1`, palette), 0.3),
+  "accent2-dark": palette => darken(color(`accent2`, palette), 0.3),
+  "accent3-dark": palette => darken(color(`accent3`, palette), 0.3),
+  "accent4-dark": palette => darken(color(`accent4`, palette), 0.3),
+  "accent5-dark": palette => darken(color(`accent5`, palette), 0.3),
+  "accent6-dark": palette => darken(color(`accent6`, palette), 0.3),
+  "accent7-dark": palette => darken(color(`accent7`, palette), 0.3),
 };
 
-export function color(color: string, family = colors) {
-  if (color in family) {
-    return family[color];
+export function color(color: string, palette = colors) {
+  if (color in palette) {
+    return palette[color];
   }
 
   if (color in aliases) {
-    return aliases[color](family);
+    return aliases[color](palette);
   }
 
   return color;

@@ -17,13 +17,13 @@ import {
 
 export interface BrandColorSettingsProps {
   colors: Record<string, string>;
-  colorFamily: Record<string, string>;
+  colorPalette: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
 const BrandColorSettings = ({
   colors,
-  colorFamily,
+  colorPalette,
   onChange,
 }: BrandColorSettingsProps): JSX.Element => {
   const colorsRef = useCurrentRef(colors);
@@ -43,7 +43,7 @@ const BrandColorSettings = ({
   return (
     <BrandColorTable
       colors={colors}
-      colorFamily={colorFamily}
+      colorPalette={colorPalette}
       options={options}
       onChange={handleChange}
     />
@@ -52,14 +52,14 @@ const BrandColorSettings = ({
 
 interface BrandColorTableProps {
   colors: Record<string, string>;
-  colorFamily: Record<string, string>;
+  colorPalette: Record<string, string>;
   options: ColorOption[];
   onChange: (colorName: string, color?: string) => void;
 }
 
 const BrandColorTable = ({
   colors,
-  colorFamily,
+  colorPalette,
   options,
   onChange,
 }: BrandColorTableProps): JSX.Element => {
@@ -76,7 +76,7 @@ const BrandColorTable = ({
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
-            originalColor={color(option.name, colorFamily)}
+            originalColor={color(option.name, colorPalette)}
             option={option}
             onChange={onChange}
           />
