@@ -15,7 +15,8 @@
 (defn resolve-fields
   "Resolve all field referenced in the `query`, and store them in the QP Store."
   [query]
-  (let [ids (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))]
+  (let [ids (into (set (mbql.u/match (:query query) [:field (id :guard integer?) _] id))
+                  (keep :id (get-in query [:query :source-metadata])))]
     (try
       (u/prog1 query
         (resolve-fields-with-ids! ids))
