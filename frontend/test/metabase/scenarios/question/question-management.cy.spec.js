@@ -1,8 +1,12 @@
-import { restore, visitQuestion, saveDashboard } from "__support__/e2e/cypress";
+import { restore, visitQuestion, saveDashboard, popover } from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
 
 import { USERS } from "__support__/e2e/cypress_data";
+
+import {
+  openQuestionActions
+} from './helpers/e2e-question-helpers';
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -61,6 +65,8 @@ describe("managing question from the question's details sidebar", () => {
 
             it("should be able to move the question (metabase#11719-2)", () => {
               // cy.skipOn(user === "nodata");
+              //cy.findByTestId("saved-question-header-button")
+              openQuestionActions();
               cy.findByTestId("move-button").click();
               cy.findByText("My personal collection").click();
               clickButton("Move");
@@ -72,6 +78,7 @@ describe("managing question from the question's details sidebar", () => {
               cy.intercept("GET", "/api/collection/root/items**").as(
                 "getItems",
               );
+              openQuestionActions();
               cy.findByTestId("archive-button").click();
               clickButton("Archive");
               assertOnRequest("updateQuestion");
@@ -82,6 +89,7 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should be able to add question to dashboard", () => {
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal")
@@ -98,7 +106,7 @@ describe("managing question from the question's details sidebar", () => {
         });
 
         onlyOn(permission === "view", () => {
-          describe(`${user} user`, () => {
+          describe.only(`${user} user`, () => {
             beforeEach(() => {
               cy.signIn(user);
               visitQuestion(1);
@@ -107,6 +115,7 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal").within(() => {
@@ -122,6 +131,7 @@ describe("managing question from the question's details sidebar", () => {
             it("should offer personal collection as a save destination for a new dashboard", () => {
               const { first_name, last_name } = USERS[user];
               const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal").within(() => {
@@ -135,15 +145,20 @@ describe("managing question from the question's details sidebar", () => {
               cy.get(".QueryBuilder-section").findByText(personalCollection);
             });
 
-            it("should not offer a user the ability to update or clone the question", () => {
+            it.only("should not offer a user the ability to update or clone the question", () => {
               cy.findByTestId("edit-details-button").should("not.exist");
               cy.findByRole("button", { name: "Add a description" }).should(
                 "not.exist",
               );
+              
+              openQuestionActions();
 
-              cy.findByTestId("move-button").should("not.exist");
-              cy.findByTestId("clone-button").should("not.exist");
-              cy.findByTestId("archive-button").should("not.exist");
+              popover().within(() => {
+                cy.findByTestId("move-button").should("not.exist");
+                cy.findByTestId("clone-button").should("not.exist");
+                cy.findByTestId("archive-button").should("not.exist");
+              })
+              
 
               cy.findByText("Revert").should("not.exist");
             });

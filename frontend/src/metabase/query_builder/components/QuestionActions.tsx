@@ -133,7 +133,7 @@ const QuestionActions = ({
                 Add to dashboard
               </Button>
             </div>}
-            <div>
+            {canWrite && <div>
               <Button
                 icon="move"
                 iconSize={ICON_SIZE}
@@ -143,8 +143,8 @@ const QuestionActions = ({
               >
                 Move
               </Button>
-            </div>
-            <div>
+            </div>}
+            {canWrite && <div>
               <Button
                 icon="segment"
                 iconSize={ICON_SIZE}
@@ -154,8 +154,8 @@ const QuestionActions = ({
               >
                 Duplicate
               </Button>
-            </div>
-            {!isDataset && <div>
+            </div>}
+            {!isDataset && canWrite && <div>
               <Button
                 icon="model"
                 iconSize={ICON_SIZE}
@@ -171,7 +171,7 @@ const QuestionActions = ({
                 Turn into a model
               </Button>
             </div>}
-            {isDataset && <div>
+            {isDataset && canWrite && <div>
               <Button
                 icon="model_framed"
                 iconSize={ICON_SIZE}
@@ -182,7 +182,7 @@ const QuestionActions = ({
                 Turn back to saved question
               </Button>
             </div>}
-            <div>
+            {canWrite && <div>
               <Button
                 icon="archive"
                 iconSize={ICON_SIZE}
@@ -192,7 +192,7 @@ const QuestionActions = ({
               >
                 Archive
               </Button>
-            </div>
+            </div>}
           </PopoverContainer>
         }
       />

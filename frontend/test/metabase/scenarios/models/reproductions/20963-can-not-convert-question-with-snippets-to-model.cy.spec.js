@@ -1,7 +1,6 @@
-import { restore, modal, openNativeEditor } from "__support__/e2e/cypress";
+import { restore, modal, openNativeEditor, popover } from "__support__/e2e/cypress";
 import {
-  openDetailsSidebar,
-  getDetailsSidebarActions,
+  openModelActions,
 } from "../helpers/e2e-models-helpers";
 
 const snippetName = `string 'test'`;
@@ -45,8 +44,9 @@ describe("issue 20963", () => {
     cy.findByText("Not now").click();
 
     // Convert into to a model
-    openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    // openDetailsSidebar();
+    openModelActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
 
