@@ -1,9 +1,6 @@
 import d3 from "d3";
-import {
-  getAccentColors,
-  getHarmonyColors,
-  getPreferredColor,
-} from "metabase/lib/colors/groups";
+import Color from "color";
+import { getAccentColors, getHarmonyColors, getPreferredColor } from "./groups";
 
 export const getColorScale = (
   extent: [number, number],
@@ -26,6 +23,10 @@ export const getColorScale = (
       )
       .range(colors);
   }
+};
+
+export const getSafeColor = (color: string) => {
+  return Color(color).string(0);
 };
 
 export const getColorForValue = (key: string) => {

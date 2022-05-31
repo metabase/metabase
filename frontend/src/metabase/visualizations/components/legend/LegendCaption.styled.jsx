@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 
 export const LegendCaptionRoot = styled.div`
@@ -9,13 +9,13 @@ export const LegendCaptionRoot = styled.div`
 `;
 
 export const LegendLabel = styled.div`
-  color: ${colors["text-dark"]};
+  color: ${color("text-dark")};
   font-weight: bold;
   cursor: ${({ onClick }) => (onClick ? "pointer" : "")};
   overflow: hidden;
 
   &:hover {
-    color: ${({ onClick }) => (onClick ? colors["brand"] : "")};
+    color: ${({ onClick }) => (onClick ? color("brand") : "")};
   }
 `;
 
@@ -24,7 +24,7 @@ export const LegendLabelIcon = styled(Icon)`
 `;
 
 export const LegendDescriptionIcon = styled(Icon)`
-  color: ${colors["text-medium"]};
+  color: ${color("text-medium")};
   margin-left: 0.5rem;
 `;
 

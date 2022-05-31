@@ -1,5 +1,5 @@
 import { times, unzip } from "lodash";
-import { color } from "metabase/lib/colors";
+import { color } from "./palette";
 
 export const getAccentColors = () => {
   return times(8, i => color(`accent${i}`));
