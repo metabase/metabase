@@ -124,10 +124,10 @@ describe("Visualization", () => {
           },
         ]);
         expect(getBarColors(container)).toEqual([
-          color("accent1"), // "a"
-          color("accent1"), // "a"
-          color("accent2"), // "b"
-          color("accent2"), // "b"
+          color("accent0"), // "a"
+          color("accent0"), // "a"
+          color("accent1"), // "b"
+          color("accent1"), // "b"
         ]);
       });
     });
