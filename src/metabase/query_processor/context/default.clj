@@ -62,10 +62,10 @@
                                                 context)))]
       (context/reducedf reduced-rows context))))
 
-(defn- default-runf [query rf context]
+(defn- default-runf [query rff context]
   (try
     (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
-                                                      (context/reducef rf context metadata reducible-rows)))
+                                                      (context/reducef rff context metadata reducible-rows)))
     (catch Throwable e
       (context/raisef e context))))
 
