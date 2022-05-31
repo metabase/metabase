@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import { getForegroundColors } from "metabase/lib/colors/groups";
+import { getForegroundColors } from "metabase/lib/colors";
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import ExplicitSize from "../../components/ExplicitSize";
 import LegendItem from "./LegendItem";

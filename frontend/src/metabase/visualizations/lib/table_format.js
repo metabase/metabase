@@ -1,8 +1,7 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha } from "metabase/lib/colors";
-import { getColorScale, getSafeColor } from "metabase/lib/colors/charts";
+import { alpha, getColorScale, getSafeColor } from "metabase/lib/colors";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;

@@ -6,8 +6,7 @@ import CopyToClipboard from "react-copy-to-clipboard";
 
 import Subhead from "metabase/components/type/Subhead";
 
-import colors from "metabase/lib/colors";
-import { getHarmonyColors } from "metabase/lib/colors/groups";
+import { getAccentColors, getHarmonyColors } from "metabase/lib/colors";
 
 import withToast from "metabase/hoc/Toast";
 import {
@@ -58,7 +57,7 @@ const ColorsPage = () => (
     <ColorsSection>
       <Subhead className="mb2">{t`App colors`}</Subhead>
       <ColorsList>
-        {Object.entries(colors).map(([name, color]) => (
+        {Object.entries(getAccentColors()).map(([name, color]) => (
           <ColorSwatch key={name} color={color} name={name} />
         ))}
       </ColorsList>

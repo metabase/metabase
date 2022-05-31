@@ -12,7 +12,7 @@ const DashboardWithData = DashboardData(Dashboard);
 
 import { AuditMode } from "../lib/mode";
 
-import { getHarmonyColors } from "metabase/lib/colors/groups";
+import { getHarmonyColors } from "metabase/lib/colors";
 
 const AuditDashboard = ({ cards, ...props }) => (
   <DashboardWithData
