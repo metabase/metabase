@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import { getNormalColors } from "metabase/lib/colors/charts";
+import { getForegroundColors } from "metabase/lib/colors/groups";
 import ColorSelector from "metabase/core/components/ColorSelector";
 
 export default function ChartSettingColorPicker(props) {
@@ -11,7 +11,7 @@ export default function ChartSettingColorPicker(props) {
     <div className="flex align-center mb1">
       <ColorSelector
         value={value}
-        colors={getNormalColors()}
+        colors={getForegroundColors()}
         onChange={onChange}
       />
       {props.title && <h4 className="ml1">{props.title}</h4>}

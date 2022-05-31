@@ -1,17 +1,17 @@
 import React, { forwardRef, HTMLAttributes, Ref } from "react";
 import ColorPill from "metabase/core/components/ColorPill";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import ColorSelectorContent from "./ColorSelectorContent";
+import ColorSelectorPopover from "./ColorSelectorPopover";
 
 export type ColorSelectorAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
-  "onChange"
+  "onChange" | "onSelect"
 >;
 
 export interface ColorSelectorProps extends ColorSelectorAttributes {
   value: string;
   colors: string[];
-  onChange?: (color: string) => void;
+  onChange?: (newValue: string) => void;
 }
 
 const ColorSelector = forwardRef(function ColorSelector(
@@ -23,13 +23,14 @@ const ColorSelector = forwardRef(function ColorSelector(
       renderTrigger={({ onClick }) => (
         <ColorPill {...props} ref={ref} color={value} onClick={onClick} />
       )}
-      popoverContent={
-        <ColorSelectorContent
+      popoverContent={({ closePopover }) => (
+        <ColorSelectorPopover
           value={value}
           colors={colors}
           onChange={onChange}
+          onClose={closePopover}
         />
-      }
+      )}
     />
   );
 });
