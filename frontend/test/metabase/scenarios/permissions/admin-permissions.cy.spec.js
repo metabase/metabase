@@ -3,13 +3,14 @@ import {
   popover,
   modal,
   describeEE,
-  describeOSS,
+  isOSS,
   assertPermissionTable,
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
   isPermissionDisabled,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
@@ -21,8 +22,10 @@ const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
-describeOSS("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
@@ -615,5 +618,20 @@ describeEE("scenarios > admin > permissions", () => {
     cy.findByText("There was a problem with your question");
     cy.findByText("Settings").should("not.exist");
     cy.findByText("Visualization").should("not.exist");
+  });
+
+  it("shows permission error for cards that use blocked data sources", () => {
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+        },
+      },
+    });
+
+    cy.signIn("nodata");
+    visitDashboard(1);
+
+    cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });

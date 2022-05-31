@@ -1,4 +1,9 @@
-import { popover, restore, visitQuestionAdhoc } from "__support__/e2e/cypress";
+import {
+  popover,
+  restore,
+  visitQuestionAdhoc,
+  filter,
+} from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
@@ -41,6 +46,10 @@ const aggregatedQuestionDetails = {
   },
 };
 
+const openFilterModal = () => {
+  cy.findByLabelText("Show more filters").click();
+};
+
 describe("scenarios > filters > bulk filtering", () => {
   beforeEach(() => {
     restore();
@@ -49,7 +58,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should add a filter for a raw query", () => {
     visitQuestionAdhoc(rawQuestionDetails);
-    cy.findByLabelText("Show more filters").click();
+    openFilterModal();
 
     modal().within(() => {
       cy.findByLabelText("Quantity").click();
@@ -72,7 +81,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should add a filter for an aggregated query", () => {
     visitQuestionAdhoc(aggregatedQuestionDetails);
-    cy.findByLabelText("Show more filters").click();
+    openFilterModal();
 
     modal().within(() => {
       cy.findByLabelText("Count").click();
@@ -102,7 +111,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should add a filter for linked tables", () => {
     visitQuestionAdhoc(rawQuestionDetails);
-    cy.findByLabelText("Show more filters").click();
+    openFilterModal();
 
     modal().within(() => {
       cy.findByText("Product").click();
@@ -125,7 +134,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should update an existing filter", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
-    cy.findByLabelText("Show more filters").click();
+    openFilterModal();
 
     modal().within(() => {
       cy.findByText("is less than 30").click();
@@ -153,7 +162,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
   it("should remove an existing filter", () => {
     visitQuestionAdhoc(filteredQuestionDetails);
-    cy.findByLabelText("Show more filters").click();
+    openFilterModal();
 
     modal().within(() => {
       cy.findByText("is less than 30")
@@ -167,6 +176,98 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.findByText("Quantity is greater than 20").should("be.visible");
     cy.findByText("Quantity is less than 30").should("not.exist");
     cy.findByText("Showing 138 rows").should("be.visible");
+  });
+
+  describe("segment filters", () => {
+    const SEGMENT_1_NAME = "Orders < 100";
+    const SEGMENT_2_NAME = "Discounted Orders";
+
+    beforeEach(() => {
+      cy.request("POST", "/api/segment", {
+        name: SEGMENT_1_NAME,
+        description: "All orders with a total under $100.",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      cy.request("POST", "/api/segment", {
+        name: SEGMENT_2_NAME,
+        description: "All orders with a discount",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          filter: [">", ["field", ORDERS.DISCOUNT, null], 0],
+        },
+      });
+    });
+
+    it("should apply and remove segment filter", () => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("Segments")
+          .parent()
+          .within(() => cy.get("button").click());
+      });
+
+      popover().within(() => {
+        cy.findByText(SEGMENT_1_NAME);
+        cy.findByText(SEGMENT_2_NAME).click();
+      });
+
+      modal().within(() => {
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByTestId("qb-filters-panel").findByText(SEGMENT_2_NAME);
+      cy.findByText("Showing 1,915 rows");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("Segments")
+          .parent()
+          .within(() => cy.get("button").click());
+      });
+
+      popover().within(() => {
+        cy.findByText(SEGMENT_2_NAME).click();
+      });
+
+      modal().within(() => {
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByTestId("qb-filters-panel").should("not.exist");
+      cy.findByText("Showing first 2,000 rows");
+    });
+
+    it("should load already applied segments", () => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      filter();
+      cy.findByText(SEGMENT_1_NAME).click();
+
+      cy.findByTestId("qb-filters-panel").findByText(SEGMENT_1_NAME);
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("Segments")
+          .parent()
+          .within(() => {
+            cy.findByText(SEGMENT_1_NAME);
+            cy.findByText(SEGMENT_2_NAME).should("not.exist");
+          });
+      });
+    });
   });
 });
 

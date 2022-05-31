@@ -93,8 +93,8 @@ function FormField({
     ...props,
   };
 
-  const shouldHideError = !visited || active;
-  const error = shouldHideError ? undefined : errorProp;
+  const shouldShowError = visited && !active;
+  const error = !shouldShowError ? undefined : errorProp;
 
   return (
     <FormFieldView

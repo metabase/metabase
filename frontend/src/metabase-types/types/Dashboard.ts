@@ -1,4 +1,5 @@
-import { Card, CardId, VisualizationSettings } from "./Card";
+import { Card, CardId } from "./Card";
+import { VisualizationSettings } from "metabase-types/api/card";
 import { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;

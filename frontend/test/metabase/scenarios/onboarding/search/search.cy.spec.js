@@ -37,6 +37,21 @@ describe("scenarios > auth > search", () => {
       cy.findByPlaceholderText("Search…").type("product{enter}");
       cy.findByText("Didn't find anything");
     });
+
+    it("allows select a search result from keyboard", () => {
+      cy.intercept("GET", "/api/search*").as("search");
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      cy.findByPlaceholderText("Search…").type("ord");
+      cy.wait("@search");
+
+      cy.get("body").trigger("keydown", { key: "ArrowDown" });
+      cy.get("body").trigger("keydown", { key: "ArrowDown" });
+      cy.get("body").trigger("keydown", { key: "Enter" });
+
+      cy.url().should("match", /\/question\/1-orders$/);
+    });
   });
 });
 

@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";

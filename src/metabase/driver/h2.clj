@@ -108,13 +108,13 @@
   [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^Database .* not found .*$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^Wrong user name or password .*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
     #".*"                               ; default
     message))

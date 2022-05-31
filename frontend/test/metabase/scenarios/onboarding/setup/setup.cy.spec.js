@@ -121,14 +121,14 @@ describe("scenarios > setup", () => {
       cy.findByText("Show more options").click();
       cy.findByText("H2").click();
       cy.findByLabelText("Display name").type("Metabase H2");
-      cy.findByText("Next")
+      cy.findByText("Connect database")
         .closest("button")
         .should("be.disabled");
 
       const dbFilename = "frontend/test/__runner__/empty.db";
       const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
       cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-      cy.findByText("Next")
+      cy.findByText("Connect database")
         .closest("button")
         .should("not.be.disabled")
         .click();
