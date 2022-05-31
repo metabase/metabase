@@ -9,7 +9,7 @@ import {
 import {
   openDetailsSidebar,
   startQuestionFromModel,
-  openModelActions
+  openModelActions,
 } from "./helpers/e2e-models-helpers";
 
 import {
@@ -41,7 +41,9 @@ describe("scenarios > models metadata", () => {
     openModelActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
+      cy.findByTestId("tooltip-component-wrapper")
+        .parent()
+        .realHover();
       cy.findByText("89%");
     });
 
@@ -85,7 +87,9 @@ describe("scenarios > models metadata", () => {
     openModelActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
+      cy.findByTestId("tooltip-component-wrapper")
+        .parent()
+        .realHover();
       cy.findByText("37%");
     });
 
@@ -141,7 +145,7 @@ describe("scenarios > models metadata", () => {
     // Revision 1
     cy.findByText("Subtotal ($)");
     cy.findByText("Tax ($)").should("not.exist");
-    
+
     //openDetailsSidebar();
     openModelActions();
     cy.findByText("Edit metadata").click();

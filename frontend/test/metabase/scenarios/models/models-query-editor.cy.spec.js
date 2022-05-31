@@ -1,9 +1,13 @@
-import { restore, runNativeQuery, summarize, popover } from "__support__/e2e/cypress";
+import {
+  restore,
+  runNativeQuery,
+  summarize,
+  popover,
+} from "__support__/e2e/cypress";
 
 import {
   selectFromDropdown,
-  openDetailsSidebar,
-  openModelActions
+  openModelActions,
 } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models query editor", () => {
@@ -28,7 +32,6 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("contain", "109.22");
 
-      //openDetailsSidebar();
       openModelActions();
 
       popover().within(() => {
@@ -93,9 +96,8 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("contain", "109.22");
 
-      //openDetailsSidebar();
       openModelActions();
-      
+
       popover().within(() => {
         cy.findByText("Edit query definition").click();
       });
@@ -134,10 +136,8 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      //openDetailsSidebar();
-
       openModelActions();
-      
+
       popover().within(() => {
         cy.findByText("Edit metadata").click();
       });

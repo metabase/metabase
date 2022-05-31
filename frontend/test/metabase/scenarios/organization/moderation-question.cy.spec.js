@@ -1,4 +1,9 @@
-import { describeEE, restore, visitQuestion, popover } from "__support__/e2e/cypress";
+import {
+  describeEE,
+  restore,
+  visitQuestion,
+  popover,
+} from "__support__/e2e/cypress";
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
@@ -10,15 +15,14 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to verify a saved question", () => {
-
-      cy.findByTestId('question-action-buttons-container').within(() => {
-        cy.icon('ellipsis').click();
-      })
+      cy.findByTestId("question-action-buttons-container").within(() => {
+        cy.icon("ellipsis").click();
+      });
 
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
         cy.findAllByText("Remove Verification");
-      })      
+      });
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count").icon("verified");
@@ -29,10 +33,10 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to unverify a verified saved question", () => {
-      cy.findByTestId('question-action-buttons-container').within(() => {
-        cy.icon('ellipsis').click();
-      })
-      
+      cy.findByTestId("question-action-buttons-container").within(() => {
+        cy.icon("ellipsis").click();
+      });
+
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
         cy.findByTestId("moderation-remove-verification-action").click();
@@ -40,9 +44,9 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.findByText("Verify this question").should("be.visible");
 
-      cy.findByTestId('saved-question-header-button').within(() => {
+      cy.findByTestId("saved-question-header-button").within(() => {
         cy.icon("verified").should("not.exist");
-      });      
+      });
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count")
@@ -57,23 +61,23 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see evidence of verification/unverification in the question's timeline", () => {
-      cy.findByTestId('question-action-buttons-container').within(() => {
-        cy.icon('ellipsis').click();
-      })
-      
+      cy.findByTestId("question-action-buttons-container").within(() => {
+        cy.icon("ellipsis").click();
+      });
+
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
       });
-      
+
       cy.findByTestId("saved-question-header-button").click();
       cy.findByText("History").click();
 
       cy.findAllByText("You verified this").should("be.visible");
 
-      cy.findByTestId('question-action-buttons-container').within(() => {
-        cy.icon('ellipsis').click();
-      })
-      
+      cy.findByTestId("question-action-buttons-container").within(() => {
+        cy.icon("ellipsis").click();
+      });
+
       popover().within(() => {
         cy.findByTestId("moderation-remove-verification-action").click();
       });
@@ -82,7 +86,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
   });
 
-  describe.only("as a non-admin user", () => {
+  describe("as a non-admin user", () => {
     beforeEach(() => {
       restore();
       cy.signInAsAdmin();

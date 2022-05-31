@@ -39,7 +39,10 @@ interface Props {
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: any;
-  setQueryBuilderMode: (mode: string, opt: {datasetEditorTab: string}) => void;
+  setQueryBuilderMode: (
+    mode: string,
+    opt: { datasetEditorTab: string },
+  ) => void;
   turnDatasetIntoQuestion: () => void;
 }
 
@@ -49,7 +52,7 @@ const QuestionActions = ({
   onOpenModal,
   question,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion
+  turnDatasetIntoQuestion,
 }: Props) => {
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
@@ -92,107 +95,127 @@ const QuestionActions = ({
                 }}
               />
             </div>
-            {isDataset && <div>
-              <Button
-                icon="notebook"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => {
-                  setQueryBuilderMode("dataset", {
-                    datasetEditorTab: "query",
-                  });
-                }}
-                data-testid={ADD_TO_DASH_TESTID}
-              >
-                Edit query definition <DatasetMetadataStrengthIndicator dataset={question} textOnly/>
-              </Button>
-            </div>}
-            {isDataset && <div>
-              <Button
-                icon="label"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => {
-                  setQueryBuilderMode("dataset", {
-                    datasetEditorTab: "metadata",
-                  });
-                }}
-                data-testid={ADD_TO_DASH_TESTID}
-              >
-                Edit metadata
-              </Button>
-            </div>}
-            {!isDataset && <div>
-              <Button
-                icon="dashboard"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
-                data-testid={ADD_TO_DASH_TESTID}
-              >
-                Add to dashboard
-              </Button>
-            </div>}
-            {canWrite && <div>
-              <Button
-                icon="move"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
-                data-testid={MOVE_TESTID}
-              >
-                Move
-              </Button>
-            </div>}
-            {canWrite && <div>
-              <Button
-                icon="segment"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
-                data-testid={CLONE_TESTID}
-              >
-                Duplicate
-              </Button>
-            </div>}
-            {!isDataset && canWrite && <div>
-              <Button
-                icon="model"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => {
-                  const modal = checkCanBeModel(question)
-                    ? MODAL_TYPES.TURN_INTO_DATASET
-                    : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
-                  onOpenModal(modal);
-                }}
-                data-testid={TURN_INTO_DATASET_TESTID}
-              >
-                Turn into a model
-              </Button>
-            </div>}
-            {isDataset && canWrite && <div>
-              <Button
-                icon="model_framed"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={turnDatasetIntoQuestion}
-                data-testid=""
-              >
-                Turn back to saved question
-              </Button>
-            </div>}
-            {canWrite && <div>
-              <Button
-                icon="archive"
-                iconSize={ICON_SIZE}
-                borderless
-                onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
-                data-testid={ARCHIVE_TESTID}
-              >
-                Archive
-              </Button>
-            </div>}
+            {isDataset && (
+              <div>
+                <Button
+                  icon="notebook"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => {
+                    setQueryBuilderMode("dataset", {
+                      datasetEditorTab: "query",
+                    });
+                  }}
+                  data-testid={ADD_TO_DASH_TESTID}
+                >
+                  Edit query definition{" "}
+                  <DatasetMetadataStrengthIndicator
+                    dataset={question}
+                    textOnly
+                  />
+                </Button>
+              </div>
+            )}
+            {isDataset && (
+              <div>
+                <Button
+                  icon="label"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => {
+                    setQueryBuilderMode("dataset", {
+                      datasetEditorTab: "metadata",
+                    });
+                  }}
+                  data-testid={ADD_TO_DASH_TESTID}
+                >
+                  Edit metadata
+                </Button>
+              </div>
+            )}
+            {!isDataset && (
+              <div>
+                <Button
+                  icon="dashboard"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
+                  data-testid={ADD_TO_DASH_TESTID}
+                >
+                  Add to dashboard
+                </Button>
+              </div>
+            )}
+            {canWrite && (
+              <div>
+                <Button
+                  icon="move"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
+                  data-testid={MOVE_TESTID}
+                >
+                  Move
+                </Button>
+              </div>
+            )}
+            {canWrite && (
+              <div>
+                <Button
+                  icon="segment"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
+                  data-testid={CLONE_TESTID}
+                >
+                  Duplicate
+                </Button>
+              </div>
+            )}
+            {!isDataset && canWrite && (
+              <div>
+                <Button
+                  icon="model"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => {
+                    const modal = checkCanBeModel(question)
+                      ? MODAL_TYPES.TURN_INTO_DATASET
+                      : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+                    onOpenModal(modal);
+                  }}
+                  data-testid={TURN_INTO_DATASET_TESTID}
+                >
+                  Turn into a model
+                </Button>
+              </div>
+            )}
+            {isDataset && canWrite && (
+              <div>
+                <Button
+                  icon="model_framed"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={turnDatasetIntoQuestion}
+                  data-testid=""
+                >
+                  Turn back to saved question
+                </Button>
+              </div>
+            )}
+            {canWrite && (
+              <div>
+                <Button
+                  icon="archive"
+                  iconSize={ICON_SIZE}
+                  borderless
+                  onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
+                  data-testid={ARCHIVE_TESTID}
+                >
+                  Archive
+                </Button>
+              </div>
+            )}
           </PopoverContainer>
         }
       />

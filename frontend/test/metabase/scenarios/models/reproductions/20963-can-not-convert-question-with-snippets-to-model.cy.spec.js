@@ -1,7 +1,10 @@
-import { restore, modal, openNativeEditor, popover } from "__support__/e2e/cypress";
 import {
-  openModelActions,
-} from "../helpers/e2e-models-helpers";
+  restore,
+  modal,
+  openNativeEditor,
+  popover,
+} from "__support__/e2e/cypress";
+import { openModelActions } from "../helpers/e2e-models-helpers";
 
 const snippetName = `string 'test'`;
 const questionName = "Converting questions with snippets to models";
