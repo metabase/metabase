@@ -20,6 +20,7 @@ import { SET_UI_CONTROLS } from "./ui";
 import {
   getTemplateTagsForParameters,
   getTemplateTagParameters,
+  getTemplateTagParameter,
 } from "metabase/parameters/utils/cards";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
@@ -151,7 +152,13 @@ export const setTemplateTag = createThunkAction(
           const newParameters = getTemplateTagParameters(tags);
           return assoc(updatedTagsCard, "parameters", newParameters);
         } else {
-          // TODO: update an existing parameter
+          // update an existing parameter
+          const index = parameters.findIndex(p => p.id === templateTag.id);
+          if (index < 0) {
+            console.warn(`Can't find parameter with id=${templateTag.id}!`);
+          } else {
+            parameters[index] = getTemplateTagParameter(templateTag);
+          }
         }
       }
 

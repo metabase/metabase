@@ -30,7 +30,24 @@ function getTemplateTagType(tag: TemplateTag) {
   }
 }
 
+export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
+  const target: ParameterTarget =
+    tag.type === "dimension"
+      ? ["dimension", ["template-tag", tag.name]]
+      : ["variable", ["template-tag", tag.name]];
+
+  return {
+    id: tag.id,
+    type: tag["widget-type"] || getTemplateTagType(tag),
+    target,
+    name: tag["display-name"],
+    slug: tag.name,
+    default: tag.default,
+  };
+}
+
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
+
 export function getTemplateTagParameters(
   tags: TemplateTag[],
 ): ParameterWithTarget[] {
@@ -39,21 +56,7 @@ export function getTemplateTagParameters(
       tag =>
         tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
-    .map(tag => {
-      const target: ParameterTarget =
-        tag.type === "dimension"
-          ? ["dimension", ["template-tag", tag.name]]
-          : ["variable", ["template-tag", tag.name]];
-
-      return {
-        id: tag.id,
-        type: tag["widget-type"] || getTemplateTagType(tag),
-        target,
-        name: tag["display-name"],
-        slug: tag.name,
-        default: tag.default,
-      };
-    });
+    .map(getTemplateTagParameter);
 }
 
 export function getTemplateTagsForParameters(card: Card) {
