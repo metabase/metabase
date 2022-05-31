@@ -29,7 +29,7 @@ This quick launch setup is intended for testing purposes only, and is not intend
 - a load balancer (to make this deployment future proof and also provide features like HTTPS or Web Application Firewall security features)
 If you want to see a high-level architectural diagram of what you will achieve once you follow this guide, [click here](images/Metabase-AWS-H2.png).
 
-If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/hosted/).
+If you would like a reliable, scalable and fully managed Metabase, please consider [Metabase Cloud](https://www.metabase.com/start/).
 
 ## Quick Launch
 

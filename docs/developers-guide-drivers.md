@@ -70,7 +70,7 @@ If you don't see a driver for your database, then try looking in the comments of
 
 If you are having problems installing or using a community driver, your best bet is to contact the author of the driver.
 
-[Metabase Cloud](https://www.metabase.com/start/hosted/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), and the partner drivers listed above.
+[Metabase Cloud](https://www.metabase.com/start/) doesn't support community drivers, meaning that (for now) you can only use Metabase Cloud with the [officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), and the partner drivers listed above.
 
 ## Write your own driver
 

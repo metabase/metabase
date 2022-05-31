@@ -45,7 +45,7 @@ const MultiTimePicker = ({ filter, onFilterChange }) => (
         onFilterChange([filter[0], filter[1], ...sortTimes(time, filter[3])])
       }
     />
-    <span className="h3">and</span>
+    <span className="h3">{t`and`}</span>
     <TimeInput
       value={getTime(filter[3])}
       onChange={time =>

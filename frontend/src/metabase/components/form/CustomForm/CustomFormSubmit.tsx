@@ -6,7 +6,7 @@ import ActionButton from "metabase/components/ActionButton";
 
 import { FormLegacyContext, LegacyContextTypes } from "./types";
 
-interface CustomFormSubmitProps {
+export interface CustomFormSubmitProps {
   children: React.ReactNode;
 
   // ActionButton props

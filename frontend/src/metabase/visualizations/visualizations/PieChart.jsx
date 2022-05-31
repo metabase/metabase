@@ -467,7 +467,7 @@ export default class PieChart extends Component {
               viewBox="0 0 100 100"
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
-              <g ref={this.chartGroup} transform={`translate(50,50)`}>
+              <g ref={this.chartGroup} transform="translate(50,50)">
                 {pie(slices).map((slice, index) => (
                   <path
                     data-testid="slice"

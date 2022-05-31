@@ -3,6 +3,7 @@ import _ from "underscore";
 import { State } from "metabase-types/store";
 import Groups from "metabase/entities/groups";
 import { diffDataPermissions } from "metabase/admin/permissions/utils/graph";
+import { isVirtualCardId } from "metabase/lib/saved-questions/saved-questions";
 import { Group } from "metabase-types/api";
 
 const getDatabasesWithTables = createSelector(
@@ -17,7 +18,7 @@ const getDatabasesWithTables = createSelector(
 
     return databasesList.map(database => {
       const databaseTables = tablesList.filter(
-        table => table.db_id === database.id,
+        table => table.db_id === database.id && !isVirtualCardId(table.id),
       );
 
       return {
