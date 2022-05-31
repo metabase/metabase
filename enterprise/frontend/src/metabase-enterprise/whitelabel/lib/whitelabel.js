@@ -2,7 +2,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import Color from "color";
 
-import { getColors, setColor } from "metabase/lib/colors";
+import { getColors, setColor } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
 import memoize from "lodash.memoize";
