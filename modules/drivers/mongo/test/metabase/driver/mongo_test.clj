@@ -45,9 +45,13 @@
                                                 :expected false}
                                                {:details  {:host   "localhost"
                                                            :port   27017
+                                                           :user   "metabase"
+                                                           :pass   "metasample123"
                                                            :dbname "metabase-test"}
                                                 :expected true}
                                                {:details  {:host   "localhost"
+                                                           :user   "metabase"
+                                                           :pass   "metasample123"
                                                            :dbname "metabase-test"}
                                                 :expected true
                                                 :message  "should use default port 27017 if not specified"}
@@ -58,7 +62,7 @@
                                                            :port   3000
                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
                                                 :expected false}
-                                               {:details  {:conn-uri "mongodb://localhost:27017/metabase-test"}
+                                               {:details  {:conn-uri "mongodb://metabase:metasample123@localhost:27017/metabase-test?authSource=admin"}
                                                 :expected (not (tdm/ssl-required?))}
                                                {:details  {:conn-uri "mongodb://localhost:3000/bad-db-name?connectTimeoutMS=50"}
                                                 :expected false}]
@@ -73,6 +77,8 @@
     :mongo
     (doseq [{:keys [details expected]} [{:details  {:host    "localhost"
                                                     :port    3000
+                                                    :user   "metabase"
+                                                    :pass   "metasample123"
                                                     :dbname  "bad-db-name"
                                                     :version "5.0.0"}
                                          :expected true}

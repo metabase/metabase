@@ -18,7 +18,7 @@
 (defn ssl-required?
   "Returns if the mongo server requires an SSL connection."
   []
-  (contains? #{"true" "1"} (System/getenv "MB_TEST_DATABASE_REQUIRES_SSL")))
+  (contains? #{"true" "1"} (System/getenv "MB_TEST_MONGO_REQUIRES_SSL")))
 
 (defn- ssl-params
   "Returns the Metabase connection parameters needed for an SSL connection."
@@ -26,7 +26,7 @@
   {:ssl true
    :ssl-use-client-auth true
    :client-ssl-key-value (-> "ssl/mongo/metabase.key" io/resource slurp)
-   :client-ssl-key-passw-value "passw"
+   :client-ssl-key-password-value "passw"
    :client-ssl-cert (-> "ssl/mongo/metabase.crt" io/resource slurp)
    :ssl-cert (-> "ssl/mongo/metaca.crt" io/resource slurp)})
 
@@ -39,6 +39,8 @@
 (defmethod tx/dbdef->connection-details :mongo
   [_ _ dbdef]
   (conn-details {:dbname (tx/escaped-database-name dbdef)
+                 :user   "metabase"
+                 :pass   "metasample123"
                  :host   "localhost"}))
 
 (defn- destroy-db! [driver dbdef]

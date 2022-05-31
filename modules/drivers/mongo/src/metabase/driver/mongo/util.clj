@@ -56,7 +56,7 @@
   `readPreference=nearest`, can be specified as well; when passed, these are parsed into a `MongoClientOptions` that
   serves as a starting point for the changes made below."
   ^MongoClientOptions [{:keys [ssl additional-options ssl-cert
-                               ssl-use-client-auth client-ssl-cert client-ssl-key client-ssl-key-passw]
+                               ssl-use-client-auth client-ssl-cert client-ssl-key client-ssl-key-password]
                         :or   {ssl false, ssl-use-client-auth false}
                         :as   details}]
   (let [client-options (-> (client-options-for-url-params additional-options)
@@ -67,12 +67,12 @@
                            (.sslEnabled ssl))
         server-cert? (not (str/blank? ssl-cert))
         client-cert? (and ssl-use-client-auth
-                          (not-any? str/blank? [client-ssl-cert client-ssl-key client-ssl-key-passw]))]
+                          (not-any? str/blank? [client-ssl-cert client-ssl-key client-ssl-key-password]))]
     (if (or server-cert? client-cert?)
       (let [ssl-params (cond-> {}
                          server-cert? (assoc :trust-cert ssl-cert)
                          client-cert? (assoc :private-key client-ssl-key
-                                             :password client-ssl-key-passw
+                                             :password client-ssl-key-password
                                              :own-cert client-ssl-cert))]
         (.socketFactory client-options (driver.u/ssl-socket-factory ssl-params)))
       client-options)))
@@ -134,21 +134,21 @@
         ;; ignore empty :user and :pass strings
         user (not-empty user)
         pass (not-empty pass)]
-    {:host                 host
-     :port                 port
-     :user                 user
-     :authdb               authdb
-     :pass                 pass
-     :dbname               dbname
-     :ssl                  ssl
-     :additional-options   additional-options
-     :conn-uri             conn-uri
-     :srv?                 use-srv
-     :ssl-cert             ssl-cert
-     :ssl-use-client-auth  ssl-use-client-auth
-     :client-ssl-cert      client-ssl-cert
-     :client-ssl-key       (get-secret details "client-ssl-key")
-     :client-ssl-key-passw (get-secret details "client-ssl-key-passw")}))
+    {:host                    host
+     :port                    port
+     :user                    user
+     :authdb                  authdb
+     :pass                    pass
+     :dbname                  dbname
+     :ssl                     ssl
+     :additional-options      additional-options
+     :conn-uri                conn-uri
+     :srv?                    use-srv
+     :ssl-cert                ssl-cert
+     :ssl-use-client-auth     ssl-use-client-auth
+     :client-ssl-cert         client-ssl-cert
+     :client-ssl-key          (get-secret details "client-ssl-key")
+     :client-ssl-key-password (get-secret details "client-ssl-key-password")}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:

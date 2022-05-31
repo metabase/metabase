@@ -50,7 +50,7 @@ driver:
       secret-kind: pem-cert
       visible-if:
         ssl-use-client-auth: true
-    - name: client-ssl-key-passw
+    - name: client-ssl-key-password
       display-name: Client SSL private key password
       type: secret
       secret-kind: password

@@ -283,6 +283,7 @@
 
 (comment
   (require '[metabase.driver.util :as driver.u]
+           '[monger.credentials :as mcred]
            '[clojure.java.io :as io])
   (import javax.net.ssl.SSLSocketFactory)
 
@@ -295,9 +296,12 @@
         connection-options
         (mg/mongo-options {:ssl-enabled true
                            :ssl-invalid-host-name-allowed false
-                           :socket-factory ssl-socket-factory})]
+                           :socket-factory ssl-socket-factory})
+        credentials
+        (mcred/create "metabase" "admin" "metasample123")]
     (with-open [connection (mg/connect (mg/server-address "127.0.0.1")
-                                       connection-options)]
+                                       connection-options
+                                       credentials)]
       (mg/get-db-names connection)))
 
   (let [server-auth-ssl-socket-factory
@@ -307,19 +311,25 @@
         (mg/mongo-options {:ssl-enabled true
                            :ssl-invalid-host-name-allowed false
                            :socket-factory server-auth-ssl-socket-factory
-                           :server-selection-timeout 200})]
+                           :server-selection-timeout 200})
+        credentials
+        (mcred/create "metabase" "admin" "metasample123")]
     (with-open [server-auth-connection
                 (mg/connect (mg/server-address "127.0.0.1")
-                            server-auth-connection-options)]
+                            server-auth-connection-options
+                            credentials)]
       (mg/get-db-names server-auth-connection)))
 
   (let [unauthenticated-connection-options
         (mg/mongo-options {:ssl-enabled true
                            :ssl-invalid-host-name-allowed false
                            :socket-factory (SSLSocketFactory/getDefault)
-                           :server-selection-timeout 200})]
+                           :server-selection-timeout 200})
+        credentials
+        (mcred/create "metabase" "admin" "metasample123")]
     (with-open [unauthenticated-connection
                 (mg/connect (mg/server-address "127.0.0.1")
-                            unauthenticated-connection-options)]
+                            unauthenticated-connection-options
+                            credentials)]
       (mg/get-db-names unauthenticated-connection)))
   :.)
