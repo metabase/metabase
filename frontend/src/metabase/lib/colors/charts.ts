@@ -1,7 +1,6 @@
 import d3 from "d3";
 import Color from "color";
-import { ACCENT_COUNT } from "./palette";
-import { getAccentColors, getHarmonyColors, getPreferredColor } from "./groups";
+import { getAccentColors, getPreferredColor } from "./groups";
 
 export const getColorScale = (
   extent: [number, number],
@@ -32,18 +31,25 @@ export const getSafeColor = (color: string) => {
 
 export const getColorsForValues = (
   keys: string[],
-  existingColors: Record<string, string> | null | undefined = {},
+  existingMapping: Record<string, string> | null | undefined,
 ) => {
-  const colors =
-    keys.length <= ACCENT_COUNT ? getAccentColors() : getHarmonyColors();
+  const allColors = getAccentColors();
+  const unusedColors = new Set(allColors);
+  const resultMapping: Record<string, string> = {};
 
-  const entries = keys.map((key, index) => {
-    const existingColor = existingColors?.[key];
+  keys.forEach(key => {
+    const existingColor = existingMapping?.[key];
     const preferredColor = getPreferredColor(key);
-    const paletteColor = colors[index % colors.length];
+    const [unusedColor] = unusedColors;
+    const resultColor = existingColor ?? preferredColor ?? unusedColor;
 
-    return [key, existingColor ?? preferredColor ?? paletteColor];
+    resultMapping[key] = resultColor;
+    unusedColors.delete(resultColor);
+
+    if (!unusedColors.size) {
+      allColors.forEach(unusedColors.add);
+    }
   });
 
-  return Object.fromEntries(entries);
+  return resultMapping;
 };
