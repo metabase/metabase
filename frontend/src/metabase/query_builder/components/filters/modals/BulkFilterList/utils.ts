@@ -31,7 +31,7 @@ const fieldSortPriorities: PriorityMap = {
   "type/PK": 90,
   "type/Latitude": 210,
   "type/Longitude": 211,
-  "type/LongText": 220,
+  "type/LongText": 220, // not a "real" metabase type, but having it as part of this list makes it easier to sort
   "type/FK": 230,
   "type/JSON": 240,
   "": undefined,
@@ -44,11 +44,8 @@ const getSortValue = (dimensionOption: DimensionOption): number => {
     field?.fingerprint?.type?.["type/Text"]?.["average-length"] >=
     LONG_TEXT_MIN;
 
-  if (isLongText) {
-    field.semantic_type = "type/LongText";
-  }
-
   return (
+    (isLongText ? fieldSortPriorities["type/LongText"] : undefined) ??
     fieldSortPriorities[field.semantic_type ?? ""] ??
     fieldSortPriorities[field.base_type ?? ""] ??
     900

@@ -65,11 +65,21 @@ describe("sortDimensionOptions", () => {
 
   it("should sort short text before long text", () => {
     const sorted = [
-      mockDimensionOption("type/LongText", "type/Text", 400),
-      mockDimensionOption("type/ShortText", "type/Text", 10),
-      mockDimensionOption("type/LongText", "type/Text", 200),
+      mockDimensionOption("", "type/Text", 400),
+      mockDimensionOption("", "type/Text", 10),
+      mockDimensionOption("", "type/Text", 200),
     ].sort(sortDimensions);
 
-    expect(sorted[0].dimension.field().semantic_type).toBe("type/ShortText");
+    expect(sorted[0].dimension.field().base_type).toBe("type/Text");
+    expect(
+      sorted[0].dimension.field().fingerprint.type["type/Text"][
+        "average-length"
+      ],
+    ).toBe(10);
+    expect(
+      sorted[1].dimension.field().fingerprint.type["type/Text"][
+        "average-length"
+      ],
+    ).toBe(400);
   });
 });
