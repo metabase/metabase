@@ -9,7 +9,6 @@ import { formatValue } from "metabase/lib/formatting";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,
-  isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 
@@ -20,6 +19,7 @@ import {
 } from "metabase-types/types/Visualization";
 
 import MiniBar from "../MiniBar";
+import { CellType } from "./types";
 import { CellRoot, CellContent } from "./ListCell.styled";
 
 export interface ListCellProps
@@ -145,19 +145,29 @@ function ListCell({
     };
   }, [clicked, extraData, onVisualizationClick]);
 
-  const classNames = useMemo(
-    () =>
-      cx("fullscreen-normal-text fullscreen-night-text", {
-        link: isClickable,
-      }),
-    [isClickable],
-  );
+  const type: CellType = useMemo(() => {
+    const isListItemImage =
+      columnIndex === 0 && columnSettings.view_as === "image";
+    if (isListItemImage) {
+      return "image";
+    }
+
+    const firstColumn = cols[0];
+    const firstColumnSettings = settings.column(firstColumn);
+    const hasItemImage = firstColumnSettings.view_as === "image";
+    const isItemTitle =
+      (columnIndex === 0 && columnSettings.view_as !== "image") ||
+      (columnIndex === 1 && hasItemImage);
+
+    return isItemTitle ? "title" : "info";
+  }, [cols, columnIndex, columnSettings, settings]);
+
+  const classNames = cx("fullscreen-normal-text fullscreen-night-text", {
+    link: isClickable,
+  });
 
   return (
-    <CellRoot
-      className={classNames}
-      isRightAligned={isColumnRightAligned(column)}
-    >
+    <CellRoot className={classNames} type={type}>
       <CellContent
         isClickable={isClickable}
         onClick={isClickable ? onClick : undefined}
