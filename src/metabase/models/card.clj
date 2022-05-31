@@ -211,7 +211,7 @@
 
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
-    (let [{action-id :id} (db/insert! action/Action {:type "query"})]
+    (let [{action-id :id} (db/insert! action/Action {:type "row"})]
       (db/insert! action/QueryAction {:card_id card-id
                                       :action_id action-id}))))
 

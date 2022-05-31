@@ -1,5 +1,6 @@
 (ns metabase.models.emitter
-  (:require [metabase.models.card :refer [Card]]
+  (:require [medley.core :as m]
+            [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -91,6 +92,6 @@
                         (db/query)
                         (db/do-post-select Emitter)
                         (group-by join-column))]
-      (map #(assoc % :emitters (get emitters (:id %)))
+      (map #(m/assoc-some % :emitters (get emitters (:id %)))
            items))
     items))

@@ -9,9 +9,19 @@
             [metabase.api.dashboard :as api.dashboard]
             [metabase.api.pivots :as api.pivots]
             [metabase.http-client :as client]
-            [metabase.models
-             :refer
-             [Card Collection Dashboard DashboardCard DashboardCardSeries Field FieldValues Pulse Revision Table User]]
+            [metabase.models :refer [Card
+                                     Collection
+                                     Dashboard
+                                     DashboardCard
+                                     DashboardCardSeries
+                                     DashboardEmitter
+                                     Field
+                                     FieldValues
+                                     Pulse
+                                     QueryAction
+                                     Revision
+                                     Table
+                                     User]]
             [metabase.models.dashboard-card :as dashboard-card]
             [metabase.models.dashboard-test :as dashboard-test]
             [metabase.models.params.chain-filter-test :as chain-filter-test]
@@ -319,6 +329,21 @@
                                                                  :position         0}]]
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (format "dashboard/%d" dashboard-id)))))))))
+
+(deftest fetch-dashboard-emitter-test
+  (testing "GET /api/dashboard/:id"
+    (testing "Fetch dashboard with an emitter"
+      (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
+                      Card [write-card {:is_write true :name "Test Write Card"}]
+                      DashboardEmitter [emitter {:action_id (db/select-field :action_id QueryAction :card_id (u/the-id write-card))
+                                                 :dashboard_id (u/the-id dashboard)}]]
+        (testing "admin sees emitters"
+          (is (partial=
+                {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
+                (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
+        (testing "non-admin does not see emitters"
+          (is (nil?
+                (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |

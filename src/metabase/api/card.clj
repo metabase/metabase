@@ -164,6 +164,7 @@
                           :average_query_time
                           :last_query_start
                           :collection [:moderation_reviews :moderator_details])
+                 (cond-> api/*is-superuser?* (hydrate [:emitters [:action :card]]))
                  api/read-check
                  (last-edit/with-last-edit-info :card))]
     (u/prog1 (cond-> card (:dataset card) (hydrate :persisted))
