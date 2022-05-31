@@ -51,6 +51,7 @@
   (eval . (put-clojure-indent 'mt/test-driver 1))
   (eval . (put-clojure-indent 'prop/for-all 1))
   (eval . (put-clojure-indent 'qp.streaming/streaming-response 1))
+  (eval . (put-clojure-indent 'u/prog1 1))
   (eval . (put-clojure-indent 'u/select-keys-when 1))
   (eval . (put-clojure-indent 'u/strict-extend 1))
   ;; these ones have to be done with `define-clojure-indent' for now because of upstream bug
