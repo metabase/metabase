@@ -344,7 +344,7 @@ export default class AggregationPopover extends Component {
             </a>
           </div>
           <FieldList
-            className={"text-green"}
+            className="text-green"
             width={this.props.width}
             maxHeight={this.props.maxHeight - (this.state.headerHeight || 0)}
             query={query}

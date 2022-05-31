@@ -97,7 +97,7 @@
                            :target (some (fn [{mapping-card-id :card_id, :keys [target]}]
                                             (when (= mapping-card-id card-id)
                                               target))
-                                          mappings)}]))
+                                         mappings)}]))
          (filter (fn [[_ {:keys [target]}]]
                    target)))
    dashboard-param-id->param))

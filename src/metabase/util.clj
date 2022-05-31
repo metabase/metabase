@@ -625,7 +625,7 @@
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
 
-(defn update-when
+(defn update-if-exists
   "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
   cruft."
   [m k f & args]
@@ -633,7 +633,7 @@
     (apply update m k f args)
     m))
 
-(defn update-in-when
+(defn update-in-if-exists
   "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
   cruft."
   [m ks f & args]

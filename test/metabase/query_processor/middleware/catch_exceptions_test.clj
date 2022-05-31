@@ -61,7 +61,18 @@
   (testing "No Exception -- should return response as-is"
     (is (= {:data {}, :row_count 0, :status :completed}
            (catch-exceptions
-            (fn []))))))
+            (fn [])))))
+
+  (testing "compile and preprocess should not be called if no exception occurs"
+    (let [compile-call-count (atom 0)
+          preprocess-call-count (atom 0)]
+     (with-redefs [qp/compile    (fn [_] (swap! compile-call-count inc))
+                   qp/preprocess (fn [_] (swap! preprocess-call-count inc))]
+      (is (= {:data {}, :row_count 0, :status :completed}
+             (catch-exceptions
+              (fn []))))
+      (is (= 0 @compile-call-count))
+      (is (= 0 @preprocess-call-count))))))
 
 (deftest sync-exception-test
   (testing "if the QP throws an Exception (synchronously), should format the response appropriately"

@@ -82,6 +82,23 @@
       (is (= {} (#'sql-jdbc.describe-table/row->types arr-row)))
       (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row))))))
 
+(deftest dont-parse-long-json-xform-test
+  (testing "obnoxiously long json should not even get parsed (#22636)"
+    ;; Generating an actually obnoxiously long json took too long,
+    ;; and actually copy-pasting an obnoxiously long string in there looks absolutely terrible,
+    ;; so this rebinding is what you get
+    (let [obnoxiously-long-json "{\"bob\": \"dobbs\"}"
+          json-map              {:somekey obnoxiously-long-json}]
+      (with-redefs [sql-jdbc.describe-table/*nested-field-column-max-row-length* 3]
+        (is (= {}
+               (transduce
+                 #'sql-jdbc.describe-table/describe-json-xform
+                 #'sql-jdbc.describe-table/describe-json-rf [json-map]))))
+      (is (= {[:somekey "bob"] java.lang.String}
+             (transduce
+               #'sql-jdbc.describe-table/describe-json-xform
+               #'sql-jdbc.describe-table/describe-json-rf [json-map]))))))
+
 (deftest describe-nested-field-columns-test
   (testing "flattened-row"
     (let [row       {:bob {:dobbs 123 :cobbs "boop"}}

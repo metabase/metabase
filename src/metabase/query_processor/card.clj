@@ -94,7 +94,7 @@
     (into
      {}
      (comp
-      (map (fn [[param-name {widget-type :widget-type, tag-type :type}] ]
+      (map (fn [[param-name {widget-type :widget-type, tag-type :type}]]
              ;; Field Filter parameters have a `:type` of `:dimension` and the widget type that should be used is
              ;; specified by `:widget-type`. Non-Field-filter parameters just have `:type`. So prefer
              ;; `:widget-type` if available but fall back to `:type` if not.
