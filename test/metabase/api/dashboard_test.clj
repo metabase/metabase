@@ -1443,11 +1443,11 @@
 
 (deftest chain-filter-not-found-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
-   (testing "GET /api/dashboard/:id/params/:param-key returns 404 if param not found"
-     (mt/user-http-request :rasta :get 404 (format "dashboard/%d/params/non-existing-param" dashboard-id)))
+   (testing "GET /api/dashboard/:id/params/:param-key returns 400 if param not found"
+     (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param" dashboard-id)))
 
-   (testing "GET /api/dashboard/:id/params/:param-key/search/:query returns 404 if param not ofund"
-     (mt/user-http-request :rasta :get 404 (format "dashboard/%d/params/non-existing-param/search/bar" dashboard-id)))))
+   (testing "GET /api/dashboard/:id/params/:param-key/search/:query returns 400 if param not ofund"
+     (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/search/bar" dashboard-id)))))
 
 (deftest chain-filter-invalid-parameters-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
