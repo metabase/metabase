@@ -22,7 +22,7 @@ With paid versions, you have more options to help manage lots of people and grou
   - [Documentation for other common IdPs][saml-other-idps]
 
 [google-sign-in]: ./10-single-sign-on.html#enabling-google-sign-in
-[jwt]: ../enterprise-guide/jwt.html
+[jwt]: ../enterprise-guide/authenticating-with-jwt
 [ldap]: ./10-single-sign-on.html#enabling-ldap-authentication
 [ldap-group-membership-filter]: ./10-single-sign-on.html#ldap-group-membership-filter
 [ldap-user-attributes]: ./10-single-sign-on.html#syncing-user-attributes-with-ldap
