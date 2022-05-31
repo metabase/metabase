@@ -233,6 +233,9 @@
 (defn- new-user-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user.xml"))
 
+(defn- new-user-no-names-saml-test-response []
+  (saml-response-from-file "test_resources/saml-test-response-new-user-no-names.xml"))
+
 (defn- new-user-with-single-group-saml-test-response []
   (saml-response-from-file "test_resources/saml-test-response-new-user-with-single-group.xml"))
 
@@ -407,6 +410,44 @@
               (testing "attributes"
                 (is (= (some-saml-attributes "newuser")
                        (saml-login-attributes "newuser@metabase.com")))))
+            (finally
+              (db/delete! User :%lower.email "newuser@metabase.com"))))))))
+
+(deftest login-update-account-test
+  (testing "A new 'Unknown' name account will be created for a SAML user with no configured first or last name"
+    (do-with-some-validators-disabled
+      (fn []
+        (with-saml-default-setup
+          (try
+            (is (not (db/exists? User :%lower.email "newuser@metabase.com")))
+            ;; login with a user with no givenname or surname attributes
+            (let [req-options (saml-post-request-options (new-user-no-names-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   "Unknown"
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    "Unknown"
+                       :date_joined  true
+                       :common_name  "Unknown Unknown"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))
+            ;; login with the same user, but now givenname and surname attributes exist
+            (let [req-options (saml-post-request-options (new-user-saml-test-response)
+                                                         (saml/str->base64 default-redirect-uri))]
+              (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   "New"
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    "User"
+                       :date_joined  true
+                       :common_name  "New User"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))
             (finally
               (db/delete! User :%lower.email "newuser@metabase.com"))))))))
 

@@ -175,6 +175,51 @@
                       "for"  "the new user"}
                      (db/select-one-field :login_attributes User :email "newuser@metabase.com"))))))))))
 
+(deftest update-account-test
+  (testing "A new account with 'Unknown' name will be created for a new JWT user without a first or last name."
+    (with-jwt-default-setup
+      (with-users-with-email-deleted "newuser@metabase.com"
+        (letfn [(new-user-exists? []
+                  (boolean (seq (db/select User :%lower.email "newuser@metabase.com"))))]
+          (is (= false
+                 (new-user-exists?)))
+          (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                         {:request-options {:redirect-strategy :none}}
+                                                         :return_to default-redirect-uri
+                                                         :jwt (jwt/sign {:email      "newuser@metabase.com"}
+                                                                        default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "new user with no first or last name"
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   "Unknown"
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    "Unknown"
+                       :date_joined  true
+                       :common_name  "Unknown Unknown"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login)))))))
+          (let [response (saml-test/client-full-response :get 302 "/auth/sso"
+                                                           {:request-options {:redirect-strategy :none}}
+                                                           :return_to default-redirect-uri
+                                                           :jwt (jwt/sign {:email      "newuser@metabase.com"
+                                                                           :first_name "New"
+                                                                           :last_name  "User"}
+                                                                          default-jwt-secret))]
+            (is (saml-test/successful-login? response))
+            (testing "update user first and last name"
+              (is (= [{:email        "newuser@metabase.com"
+                       :first_name   "New"
+                       :is_qbnewb    true
+                       :is_superuser false
+                       :id           true
+                       :last_name    "User"
+                       :date_joined  true
+                       :common_name  "New User"}]
+                     (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
+                          (map #(dissoc % :last_login))))))))))))
+
 (deftest group-mappings-test
   (testing "make sure our setting for mapping group names -> IDs works"
     (mt/with-temporary-setting-values [jwt-group-mappings {"group_1" [1 2 3]
