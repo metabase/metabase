@@ -108,7 +108,7 @@ describeEE("formatting > whitelabel", () => {
         "https://cdn.ecosia.org/assets/images/ico/favicon.ico",
       );
       cy.get("ul")
-        .eq(2)
+        .eq(1)
         .click("right");
       cy.findByText("Saved");
       checkFavicon();
