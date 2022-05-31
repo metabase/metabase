@@ -13,8 +13,8 @@ import {
   QueryError,
   QueryErrorIcon,
   QueryErrorMessage,
+  QueryLink,
 } from "./VisualizationError.styled";
-import Link from "metabase/core/components/Link";
 
 const EmailAdmin = () => {
   const adminEmail = MetabaseSettings.adminEmail();
@@ -150,10 +150,10 @@ class VisualizationError extends Component {
             </svg>
           </QueryErrorIcon>
           <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          <Link
+          <QueryLink
             target="_blank"
             href="https://www.metabase.com/learn/debugging-sql/sql-syntax.html"
-          >{t`Learn how to debug SQL errors`}</Link>
+          >{t`Learn how to debug SQL errors`}</QueryLink>
         </QueryError>
       );
     } else {

@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import Link from "metabase/core/components/Link";
 
 export const QueryError = styled.div`
   display: flex;
@@ -22,4 +23,12 @@ export const QueryErrorMessage = styled.div`
   color: ${color("error")};
   max-width: 31.25rem;
   min-height: 0;
+`;
+
+export const QueryLink = styled(Link)`
+  display: block;
+  margin-top: ${space(1)};
+  &:hover {
+    text-decoration: underline;
+  }
 `;
