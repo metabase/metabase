@@ -26,6 +26,7 @@ import {
   saveQuestionBasedOnModel,
   assertIsQuestion,
   openDetailsSidebar,
+  openModelActions,
   getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
@@ -43,6 +44,7 @@ describe("scenarios > models", () => {
     visitQuestion(1);
 
     turnIntoModel();
+    openModelActions();
     assertIsModel();
 
     filter();
@@ -92,6 +94,7 @@ describe("scenarios > models", () => {
     );
 
     turnIntoModel();
+    openModelActions();
     assertIsModel();
 
     filter();
@@ -150,6 +153,7 @@ describe("scenarios > models", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
+    openModelActions();
     assertIsQuestion();
   });
 
@@ -159,14 +163,20 @@ describe("scenarios > models", () => {
     cy.visit("/model/1");
 
     openDetailsSidebar();
-    cy.findByText("Turn back into a saved question").click();
+    openModelActions();
+    popover().within(() => {
+      cy.findByText("Turn back to saved question").click();
+    });
+
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
+    openModelActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
+    openModelActions();
     assertIsModel();
   });
 
@@ -180,7 +190,8 @@ describe("scenarios > models", () => {
     // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
     cy.wait("@dataset");
-    openDetailsSidebar();
+    //openDetailsSidebar();
+    openModelActions();
     assertIsModel();
     cy.url().should("include", "/model");
   });
@@ -463,7 +474,7 @@ describe("scenarios > models", () => {
     });
   });
 
-  it("shouldn't allow to turn native questions with variables into models", () => {
+  it.only("shouldn't allow to turn native questions with variables into models", () => {
     cy.createNativeQuestion(
       {
         native: {
@@ -485,7 +496,8 @@ describe("scenarios > models", () => {
     );
 
     openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    openModelActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
     modal().within(() => {
@@ -493,6 +505,7 @@ describe("scenarios > models", () => {
       cy.button("Turn this into a model").should("not.exist");
       cy.icon("close").click();
     });
+    openModelActions();
     assertIsQuestion();
 
     cy.findByText(/Open editor/i).click();
@@ -509,6 +522,7 @@ describe("scenarios > models", () => {
       .click();
 
     turnIntoModel();
+    openModelActions();
     assertIsModel();
   });
 

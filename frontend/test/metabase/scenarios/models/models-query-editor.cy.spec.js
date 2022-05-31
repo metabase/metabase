@@ -1,8 +1,9 @@
-import { restore, runNativeQuery, summarize } from "__support__/e2e/cypress";
+import { restore, runNativeQuery, summarize, popover } from "__support__/e2e/cypress";
 
 import {
   selectFromDropdown,
   openDetailsSidebar,
+  openModelActions
 } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models query editor", () => {
@@ -27,8 +28,13 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("contain", "109.22");
 
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
+      //openDetailsSidebar();
+      openModelActions();
+
+      popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
+
       cy.button("Save changes").should("be.disabled");
 
       cy.findByText("Row limit").click();
@@ -87,8 +93,12 @@ describe("scenarios > models query editor", () => {
         .should("contain", "37.65")
         .and("contain", "109.22");
 
-      openDetailsSidebar();
-      cy.findByText("Edit query definition").click();
+      //openDetailsSidebar();
+      openModelActions();
+      
+      popover().within(() => {
+        cy.findByText("Edit query definition").click();
+      });
 
       cy.url().should("include", "/query");
       cy.button("Save changes").should("be.disabled");
@@ -124,9 +134,13 @@ describe("scenarios > models query editor", () => {
         { visitQuestion: true },
       );
 
-      openDetailsSidebar();
+      //openDetailsSidebar();
 
-      cy.findByText("Customize metadata").click();
+      openModelActions();
+      
+      popover().within(() => {
+        cy.findByText("Edit metadata").click();
+      });
 
       cy.wait("@cardQuery");
       cy.findByText(/Syntax error in SQL/).should("be.visible");
