@@ -2,6 +2,11 @@ import React from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
+import Modal from "metabase/components/Modal";
+
+import { useToggle } from "metabase/hooks/use-toggle";
+
+import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { VisualizationProps } from "metabase-types/types/Visualization";
@@ -74,6 +79,10 @@ interface ActionsVizProps extends VisualizationProps {
 }
 
 function ActionsViz({ metadata, settings }: ActionsVizProps) {
+  const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] = useToggle(
+    false,
+  );
+
   const connectedTableId = settings["actions.linked_table"];
   const connectedTable = metadata.table(connectedTableId);
   const hasConnectedTable = !!connectedTable;
@@ -87,20 +96,27 @@ function ActionsViz({ metadata, settings }: ActionsVizProps) {
   ] as HorizontalAlignmentValue;
 
   return (
-    <Root horizontalAlignment={horizontalAlignment}>
-      {hasCreateButton && (
-        <Button
-          disabled={!hasConnectedTable}
-          onClick={showModal}
-        >{t`New`}</Button>
+    <>
+      <Root horizontalAlignment={horizontalAlignment}>
+        {hasCreateButton && (
+          <Button
+            disabled={!hasConnectedTable}
+            onClick={showModal}
+          >{t`New`}</Button>
+        )}
+        {hasUpdateButton && (
+          <Button disabled={!hasConnectedTable}>{t`Edit`}</Button>
+        )}
+        {hasDeleteButton && (
+          <Button disabled={!hasConnectedTable} danger>{t`Delete`}</Button>
+        )}
+      </Root>
+      {connectedTable && (
+        <Modal isOpen={isModalOpen} onClose={hideModal}>
+          <WritebackModalForm table={connectedTable} onClose={hideModal} />
+        </Modal>
       )}
-      {hasUpdateButton && (
-        <Button disabled={!hasConnectedTable}>{t`Edit`}</Button>
-      )}
-      {hasDeleteButton && (
-        <Button disabled={!hasConnectedTable} danger>{t`Delete`}</Button>
-      )}
-    </Root>
+    </>
   );
 }
 
