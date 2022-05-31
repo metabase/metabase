@@ -3,7 +3,10 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
-import { getBackgroundColors, getStatusColorRanges } from "metabase/lib/colors";
+import {
+  getBackgroundColors,
+  getStatusColorRanges,
+} from "metabase/lib/colors/groups";
 
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";

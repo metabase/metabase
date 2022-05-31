@@ -4,7 +4,8 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { color, getForegroundColors } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getForegroundColors } from "metabase/lib/colors/groups";
 
 import ColorSelector from "metabase/core/components/ColorSelector";
 import Button from "metabase/core/components/Button";

@@ -1,3 +1,1 @@
-export * from "./charts";
-export * from "./groups";
-export * from "./palette";
+export { color, alpha, lighten, darken } from "./palette";

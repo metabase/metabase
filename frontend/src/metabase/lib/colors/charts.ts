@@ -29,10 +29,6 @@ export const getSafeColor = (color: string) => {
   return Color(color).string(0);
 };
 
-export const getColorForValue = (key: string) => {
-  return getColorsForValues([key])[key];
-};
-
 export const getColorsForValues = (
   keys: string[],
   existingColors: Record<string, string> | null | undefined = {},

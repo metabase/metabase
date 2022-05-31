@@ -6,7 +6,7 @@ import CopyToClipboard from "react-copy-to-clipboard";
 
 import Subhead from "metabase/components/type/Subhead";
 
-import { getAccentColors, getHarmonyColors } from "metabase/lib/colors";
+import { getAccentColors, getHarmonyColors } from "metabase/lib/colors/groups";
 
 import withToast from "metabase/hoc/Toast";
 import {

@@ -5,7 +5,7 @@ import { getIn } from "icepick";
 
 import ChartNestedSettingSeries from "metabase/visualizations/components/settings/ChartNestedSettingSeries";
 import { nestedSettings } from "./nested";
-import { getColorsForValues } from "metabase/lib/colors";
+import { getColorsForValues } from "metabase/lib/colors/charts";
 
 export function keyForSingleSeries(single) {
   // _seriesKey is sometimes set by transformSeries
