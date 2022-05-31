@@ -34,17 +34,8 @@ export const getColorsForValues = (
   existingMapping: Record<string, string> | null | undefined,
 ) => {
   const newColors = getSeriesColors(keys.length);
-  const newMapping: Record<string, string> = {};
+  const newMapping = { ...existingMapping };
   const unusedColors = new Set(newColors);
-
-  keys.forEach(key => {
-    const color = existingMapping?.[key];
-
-    if (color && unusedColors.has(color)) {
-      newMapping[key] = color;
-      unusedColors.delete(color);
-    }
-  });
 
   keys.forEach(key => {
     const color = getPreferredColor(key);
