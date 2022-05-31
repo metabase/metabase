@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
 import { color } from "metabase/lib/colors";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export interface LayoutProps {
   showScene?: boolean;
@@ -26,15 +27,20 @@ export const LayoutBody = styled.div`
   justify-content: center;
   align-items: center;
   position: relative;
-  padding: 0 1rem 2rem;
+  padding: 1.5rem 1rem 3rem;
   min-height: 100vh;
 `;
 
 export const LayoutCard = styled.div`
-  width: 30.875rem;
+  width: 100%;
   margin-top: 1.5rem;
-  padding: 2.5rem 3.5rem;
+  padding: 2.5rem 1.5rem;
   background-color: ${color("white")};
   box-shadow: 0 1px 15px ${color("shadow")};
   border-radius: 6px;
+
+  ${breakpointMinSmall} {
+    width: 30.875rem;
+    padding: 2.5rem 3.5rem;
+  }
 `;
