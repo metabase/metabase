@@ -27,7 +27,7 @@ describe("scenarios > models metadata", () => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
   });
 
-  it.only("should edit GUI model metadata", () => {
+  it("should edit GUI model metadata", () => {
     // Convert saved question "Orders" into a model
     cy.request("PUT", "/api/card/1", {
       name: "GUI Model",
@@ -41,7 +41,7 @@ describe("scenarios > models metadata", () => {
     openModelActions();
 
     popover().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").realHover();
+      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
       cy.findByText("89%");
     });
 
@@ -52,7 +52,7 @@ describe("scenarios > models metadata", () => {
       "Adding metadata makes it easier for your team to explore this data.",
     );
 
-    cy.findByText("Customize metadata").click();
+    cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
@@ -82,10 +82,10 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
+    openModelActions();
 
-    sidebar().within(() => {
-      cy.findByTestId("tooltip-component-wrapper").realHover();
+    popover().within(() => {
+      cy.findByTestId("tooltip-component-wrapper").parent().realHover();
       cy.findByText("37%");
     });
 
@@ -96,7 +96,7 @@ describe("scenarios > models metadata", () => {
       "Adding metadata makes it easier for your team to explore this data.",
     );
 
-    cy.findByText("Customize metadata").click();
+    cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);
     cy.url().should("include", "/metadata");
@@ -141,8 +141,10 @@ describe("scenarios > models metadata", () => {
     // Revision 1
     cy.findByText("Subtotal ($)");
     cy.findByText("Tax ($)").should("not.exist");
-    openDetailsSidebar();
-    cy.findByText("Customize metadata").click();
+    
+    //openDetailsSidebar();
+    openModelActions();
+    cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);
     cy.findByTextEnsureVisible("TAX");

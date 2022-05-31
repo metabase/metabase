@@ -14,6 +14,8 @@ import {
   checkDatabaseCanPersistDatasets,
 } from "metabase/lib/data-modeling/utils";
 
+import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator";
+
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import {
@@ -102,7 +104,7 @@ const QuestionActions = ({
                 }}
                 data-testid={ADD_TO_DASH_TESTID}
               >
-                Edit query definition
+                Edit query definition <DatasetMetadataStrengthIndicator dataset={question} textOnly/>
               </Button>
             </div>}
             {isDataset && <div>
