@@ -93,7 +93,7 @@ describe("scenarios > admin > datamodel > metrics", () => {
       cy.findByText("Learn how to create metrics");
     });
 
-    it.skip("custom expression aggregation should work in metrics (metabase#22700)", () => {
+    it("custom expression aggregation should work in metrics (metabase#22700)", () => {
       cy.intercept("POST", "/api/dataset").as("dataset");
 
       const customExpression = "Count / Distinct([Product ID])";
