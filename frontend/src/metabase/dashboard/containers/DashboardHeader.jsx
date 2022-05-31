@@ -166,6 +166,8 @@ class DashboardHeader extends Component {
       dashboard,
       parametersWidget,
       isBookmarked,
+      isAdmin,
+      isDataApp,
       isEditing,
       isFullscreen,
       isEditable,
@@ -215,20 +217,22 @@ class DashboardHeader extends Component {
         </Tooltip>,
       );
 
-      buttons.push(
-        <Tooltip key="add-actions-row" tooltip={t`Add actions`}>
-          <a
-            data-metabase-event="Dashboard;Add Actions Row"
-            key="add-actions"
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.onAddActionsBox()}
-          >
-            <DashboardHeaderButton>
-              <Icon name="bolt" size={18} />
-            </DashboardHeaderButton>
-          </a>
-        </Tooltip>,
-      );
+      if (isAdmin && isDataApp) {
+        buttons.push(
+          <Tooltip key="add-actions-row" tooltip={t`Add actions`}>
+            <a
+              data-metabase-event="Dashboard;Add Actions Row"
+              key="add-actions"
+              className="text-brand-hover cursor-pointer"
+              onClick={() => this.onAddActionsBox()}
+            >
+              <DashboardHeaderButton>
+                <Icon name="bolt" size={18} />
+              </DashboardHeaderButton>
+            </a>
+          </Tooltip>,
+        );
+      }
 
       const {
         isAddParameterPopoverOpen,
