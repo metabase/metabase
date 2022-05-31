@@ -7,7 +7,7 @@ import React, {
   useMemo,
 } from "react";
 import { range } from "lodash";
-import { getColorScale } from "metabase/lib/colors/scale";
+import { getColorScale } from "metabase/lib/colors/charts";
 import { ColorRangeItem, ColorRangeRoot } from "./ColorRange.styled";
 
 export type ColorRangeAttributes = Omit<
