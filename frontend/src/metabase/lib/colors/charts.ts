@@ -57,7 +57,7 @@ export const getColorsForValues = (
 
   keys.forEach(key => {
     if (!unusedColors.size) {
-      newColors.forEach(unusedColors.add);
+      newColors.forEach(color => unusedColors.add(color));
     }
 
     const [color] = unusedColors;
