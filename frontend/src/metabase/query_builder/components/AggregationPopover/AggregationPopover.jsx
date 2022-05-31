@@ -3,20 +3,21 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import AccordionList from "metabase/core/components/AccordionList";
 
-import FieldList from "./FieldList";
-import QueryDefinitionTooltip from "./QueryDefinitionTooltip";
-import ExpressionPopover from "./ExpressionPopover";
+import FieldList from "../FieldList";
+import QueryDefinitionTooltip from "../QueryDefinitionTooltip";
+import ExpressionPopover from "../ExpressionPopover";
 
 import * as AGGREGATION from "metabase/lib/query/aggregation";
 
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";
 
-import _ from "underscore";
+import { ExpressionPopoverRoot } from "./AggregationPopover.styled";
 
 const COMMON_SECTION_NAME = t`Common Metrics`;
 const BASIC_SECTION_NAME = t`Basic Metrics`;
@@ -301,31 +302,33 @@ export default class AggregationPopover extends Component {
 
     if (editingAggregation) {
       return (
-        <ExpressionPopover
-          title={CUSTOM_SECTION_NAME}
-          query={query}
-          expression={aggregation}
-          startRule="aggregation"
-          onChange={parsedExpression =>
-            this.setState({
-              aggregation: AGGREGATION.setContent(
-                this.state.aggregation,
-                parsedExpression,
-              ),
-              error: null,
-            })
-          }
-          onBack={this.onClearAggregation}
-          onDone={() => this.commitAggregation(this.state.aggregation)}
-          name={AGGREGATION.getName(this.state.aggregation)}
-          onChangeName={name =>
-            this.setState({
-              aggregation: name
-                ? AGGREGATION.setName(aggregation, name)
-                : aggregation,
-            })
-          }
-        />
+        <ExpressionPopoverRoot>
+          <ExpressionPopover
+            title={CUSTOM_SECTION_NAME}
+            query={query}
+            expression={aggregation}
+            startRule="aggregation"
+            onChange={parsedExpression =>
+              this.setState({
+                aggregation: AGGREGATION.setContent(
+                  this.state.aggregation,
+                  parsedExpression,
+                ),
+                error: null,
+              })
+            }
+            onBack={this.onClearAggregation}
+            onDone={() => this.commitAggregation(this.state.aggregation)}
+            name={AGGREGATION.getName(this.state.aggregation)}
+            onChangeName={name =>
+              this.setState({
+                aggregation: name
+                  ? AGGREGATION.setName(aggregation, name)
+                  : aggregation,
+              })
+            }
+          />
+        </ExpressionPopoverRoot>
       );
     } else if (choosingField) {
       const [agg, fieldId] = aggregation;
