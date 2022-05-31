@@ -1,6 +1,7 @@
 import d3 from "d3";
 import Color from "color";
 import { Harmonizer } from "color-harmony";
+import { times } from "lodash";
 import { deterministicAssign } from "./deterministic";
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
@@ -9,6 +10,7 @@ import { deterministicAssign } from "./deterministic";
 const colors: Record<string, string> = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
+  accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
   accent3: "#EF8C8C",
@@ -51,26 +53,39 @@ export type ColorName = string;
 export type ColorString = string;
 
 export default colors;
-export const aliases: Record<string, string> = {
-  summarize: "accent1",
-  filter: "accent7",
-  database: "accent2",
-  dashboard: "brand",
-  pulse: "accent4",
-  nav: "bg-white",
-  content: "bg-light",
+export const aliases: Record<string, (family: ColorFamily) => string> = {
+  dashboard: family => color("brand", family),
+  nav: family => color("bg-white", family),
+  content: family => color("bg-light", family),
+  summarize: family => color("accent1", family),
+  database: family => color("accent2", family),
+  pulse: family => color("accent4", family),
+  filter: family => color("accent7", family),
+
+  "brand-light": family => lighten(color("brand", family), 0.532),
+  focus: family => lighten(color("brand", family), 0.7),
+
+  ...Object.fromEntries(
+    times(8, i => [
+      `accent${i}-light`,
+      family => lighten(color(`accent${i}`, family), 0.3),
+    ]),
+  ),
+
+  ...Object.fromEntries(
+    times(8, i => [
+      `accent${i}-dark`,
+      family => darken(color(`accent${i}`, family), 0.3),
+    ]),
+  ),
 };
+
 export const harmony: string[] = [];
-// DEPRECATED: we should remove these and use `colors` directly
-// compute satured/desaturated variants using "color" lib if absolutely required
-export const normal: Record<string, string> = {};
 // make sure to do the initial "sync"
 syncColors();
 export function syncColors() {
   syncHarmony();
-  syncDeprecatedColorFamilies();
 }
-export const HARMONY_GROUP_SIZE = 8; // match initialColors length below
 
 function syncHarmony() {
   const harmonizer = new Harmonizer();
@@ -102,24 +117,6 @@ function syncHarmony() {
       harmony.push(initialColorHarmonies[colorIndex][roundIndex]);
     }
   }
-}
-
-// syncs deprecated color families for legacy code
-function syncDeprecatedColorFamilies() {
-  // normal + saturated + desaturated
-  normal.blue = colors["brand"];
-  normal.green = colors["accent1"];
-  normal.purple = colors["accent2"];
-  normal.red = colors["accent3"];
-  normal.yellow = colors["accent4"];
-  normal.orange = colors["accent5"];
-  normal.teal = colors["accent6"];
-  normal.indigo = colors["accent7"];
-  normal.gray = colors["text-dark"];
-  normal.grey1 = colors["text-light"];
-  normal.grey2 = colors["text-medium"];
-  normal.grey3 = colors["text-dark"];
-  normal.text = colors["text-dark"];
 }
 
 export const getRandomColor = (family: ColorFamily): ColorString => {
@@ -159,18 +156,18 @@ export function roundColor(color: ColorString): ColorString {
   );
 }
 
-export function color(color: ColorString | ColorName): ColorString {
-  if (color in colors) {
-    return colors[color as ColorName];
+export function color(color: ColorString | ColorName, family = colors) {
+  if (color in family) {
+    return family[color as ColorName];
   }
 
   if (color in aliases) {
-    return colors[aliases[color]];
+    return aliases[color](family);
   }
 
-  // TODO: validate this is a ColorString
   return color;
 }
+
 export function alpha(c: ColorString | ColorName, a: number): ColorString {
   return Color(color(c))
     .alpha(a)
@@ -194,21 +191,11 @@ export function lighten(
 }
 
 export type ColorMapping = (color: string) => string;
-const COLOR_MAPPINGS: Record<ColorName, Record<ColorName, ColorMapping>> = {
-  brand: {
-    brand: color => color,
-    "brand-light": color => lighten(color, 0.532),
-    focus: color => lighten(color, 0.7),
-  },
-};
+
 export const getColorMappings = (
   colorName: ColorName,
 ): Record<ColorName, ColorMapping> => {
-  if (colorName in COLOR_MAPPINGS) {
-    return COLOR_MAPPINGS[colorName];
-  } else {
-    return { [colorName]: color => color };
-  }
+  return { [colorName]: color => color };
 };
 
 const PREFERRED_COLORS: Record<string, string[]> = {

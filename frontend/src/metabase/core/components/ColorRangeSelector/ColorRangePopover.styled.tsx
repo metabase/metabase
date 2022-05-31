@@ -3,7 +3,7 @@ import { color } from "metabase/lib/colors";
 
 export const PopoverRoot = styled.div`
   padding: 0.75rem;
-  width: 21.5rem;
+  width: 19.25rem;
 `;
 
 export const PopoverColorList = styled.div`
