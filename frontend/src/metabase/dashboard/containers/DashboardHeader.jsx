@@ -63,6 +63,7 @@ class DashboardHeader extends Component {
 
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
+    addActionsDashCardToDashboard: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -91,6 +92,12 @@ class DashboardHeader extends Component {
 
   onAddTextBox() {
     this.props.addTextDashCardToDashboard({ dashId: this.props.dashboard.id });
+  }
+
+  onAddActionsBox() {
+    this.props.addActionsDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
   }
 
   onDoneEditing() {
@@ -203,6 +210,21 @@ class DashboardHeader extends Component {
           >
             <DashboardHeaderButton>
               <Icon name="string" size={18} />
+            </DashboardHeaderButton>
+          </a>
+        </Tooltip>,
+      );
+
+      buttons.push(
+        <Tooltip key="add-actions-row" tooltip={t`Add actions`}>
+          <a
+            data-metabase-event="Dashboard;Add Actions Row"
+            key="add-actions"
+            className="text-brand-hover cursor-pointer"
+            onClick={() => this.onAddActionsBox()}
+          >
+            <DashboardHeaderButton>
+              <Icon name="bolt" size={18} />
             </DashboardHeaderButton>
           </a>
         </Tooltip>,
