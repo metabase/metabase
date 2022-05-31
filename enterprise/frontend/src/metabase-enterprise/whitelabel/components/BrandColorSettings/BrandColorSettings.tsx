@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import { omit, set } from "lodash";
+import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getBrandColorOptions } from "./utils";
@@ -16,13 +17,13 @@ import {
 
 export interface BrandColorSettingsProps {
   colors: Record<string, string>;
-  originalColors: Record<string, string>;
+  colorFamily: Record<string, string>;
   onChange?: (colors: Record<string, string>) => void;
 }
 
 const BrandColorSettings = ({
   colors,
-  originalColors,
+  colorFamily,
   onChange,
 }: BrandColorSettingsProps): JSX.Element => {
   const colorsRef = useCurrentRef(colors);
@@ -42,7 +43,7 @@ const BrandColorSettings = ({
   return (
     <BrandColorTable
       colors={colors}
-      originalColors={originalColors}
+      colorFamily={colorFamily}
       options={options}
       onChange={handleChange}
     />
@@ -51,14 +52,14 @@ const BrandColorSettings = ({
 
 interface BrandColorTableProps {
   colors: Record<string, string>;
-  originalColors: Record<string, string>;
+  colorFamily: Record<string, string>;
   options: ColorOption[];
   onChange: (colorName: string, color?: string) => void;
 }
 
 const BrandColorTable = ({
   colors,
-  originalColors,
+  colorFamily,
   options,
   onChange,
 }: BrandColorTableProps): JSX.Element => {
@@ -75,7 +76,7 @@ const BrandColorTable = ({
           <BrandColorRow
             key={option.name}
             color={colors[option.name]}
-            originalColor={originalColors[option.name]}
+            originalColor={color(option.name, colorFamily)}
             option={option}
             onChange={onChange}
           />
@@ -110,7 +111,7 @@ const BrandColorRow = memo(function BrandColorRow({
       <TableBodyCell>
         <ColorPicker
           value={color ?? originalColor}
-          isAuto={color == null || color === originalColor}
+          isAuto={color == null}
           onChange={handleChange}
         />
       </TableBodyCell>

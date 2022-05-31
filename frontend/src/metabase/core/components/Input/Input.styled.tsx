@@ -65,6 +65,7 @@ export const InputField = styled.input<InputProps>`
     props.fieldSize === "small" &&
     css`
       font-size: 0.875rem;
+      line-height: 1rem;
       padding: 0.4375rem 0.625rem;
     `};
 `;

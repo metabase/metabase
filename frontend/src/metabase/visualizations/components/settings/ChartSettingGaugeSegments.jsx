@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { getNormalColors } from "metabase/lib/colors/charts";
+import { getForegroundColors } from "metabase/lib/colors/groups";
 
 import ColorSelector from "metabase/core/components/ColorSelector";
 import Button from "metabase/core/components/Button";
@@ -36,7 +36,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
                 <td>
                   <ColorSelector
                     className="mr1"
-                    color={segment.color}
+                    value={segment.color}
                     colors={getColorPalette()}
                     onChange={color => onChangeProperty(index, "color", color)}
                   />
@@ -101,7 +101,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 
 function getColorPalette() {
   return [
-    ...getNormalColors(),
+    ...getForegroundColors(),
     color("error"),
     color("warning"),
     color("success"),
