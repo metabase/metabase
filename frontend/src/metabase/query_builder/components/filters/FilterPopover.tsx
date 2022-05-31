@@ -38,6 +38,7 @@ type Props = {
   onChangeFilter: (filter: Filter) => void;
 
   onClose?: () => void;
+  commitOnBlur?: boolean;
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
@@ -60,6 +61,7 @@ export default class FilterPopover extends Component<Props, State> {
     style: {},
     showFieldPicker: true,
     showCustom: true,
+    commitOnBlur: false,
   };
 
   constructor(props: Props) {
@@ -82,6 +84,10 @@ export default class FilterPopover extends Component<Props, State> {
         filter: filter.setQuery(nextProps.query),
       });
     }
+  }
+
+  componentWillUnmount() {
+    this.props.commitOnBlur && this.handleCommit();
   }
 
   setFilter(filter: Filter, hideShortcuts = true) {
@@ -258,6 +264,7 @@ export default class FilterPopover extends Component<Props, State> {
               onBack={onBack}
               onCommit={this.handleCommit}
               onFilterChange={this.handleFilterChange}
+              disableChangingDimension={!showFieldPicker}
             >
               {!isSidebar ? (
                 <Button
