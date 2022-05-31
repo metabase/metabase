@@ -27,7 +27,7 @@ export const LayoutBody = styled.div`
   justify-content: center;
   align-items: center;
   position: relative;
-  padding: 0 1rem 2rem;
+  padding: 1.5rem 1rem 3rem;
   min-height: 100vh;
 `;
 
