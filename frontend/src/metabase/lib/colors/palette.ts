@@ -4,7 +4,7 @@ import { ColorFamily } from "./types";
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
-export const colors: Record<string, string> = {
+export const colors: ColorFamily = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
   accent0: "#509EE3",
