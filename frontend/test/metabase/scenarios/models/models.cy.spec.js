@@ -27,6 +27,7 @@ import {
   assertIsQuestion,
   openDetailsSidebar,
   openModelActions,
+  closeModelActions,
   getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
@@ -474,7 +475,7 @@ describe("scenarios > models", () => {
     });
   });
 
-  it.only("shouldn't allow to turn native questions with variables into models", () => {
+  it("shouldn't allow to turn native questions with variables into models", () => {
     cy.createNativeQuestion(
       {
         native: {
@@ -507,6 +508,7 @@ describe("scenarios > models", () => {
     });
     openModelActions();
     assertIsQuestion();
+    closeModelActions();
 
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(

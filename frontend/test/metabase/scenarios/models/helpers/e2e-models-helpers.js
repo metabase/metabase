@@ -112,7 +112,11 @@ export function startQuestionFromModel(modelName) {
 }
 
 export const openModelActions = () => {
-  cy.findAllByTestId('question-action-buttons-container').within(() => {
-    cy.icon('ellipsis').click()
-  })
-}
+  cy.findAllByTestId("question-action-buttons-container").within(() => {
+    cy.icon("ellipsis").click();
+  });
+};
+
+export const closeModelActions = () => {
+  cy.findAllByTestId("qb-header").click();
+};
