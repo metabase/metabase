@@ -1,16 +1,16 @@
 import { times, unzip } from "lodash";
-import { color } from "./palette";
+import { ACCENT_COUNT, color } from "./palette";
 
 export const getAccentColors = () => {
-  return times(8, i => color(`accent${i}`));
+  return times(ACCENT_COUNT, i => color(`accent${i}`));
 };
 
 export const getTintColors = () => {
-  return times(8, i => color(`accent${i}-light`));
+  return times(ACCENT_COUNT, i => color(`accent${i}-light`));
 };
 
 export const getShadeColors = () => {
-  return times(8, i => color(`accent${i}-dark`));
+  return times(ACCENT_COUNT, i => color(`accent${i}-dark`));
 };
 
 export const getForegroundColors = () => {

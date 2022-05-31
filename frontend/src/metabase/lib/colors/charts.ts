@@ -1,5 +1,6 @@
 import d3 from "d3";
 import Color from "color";
+import { ACCENT_COUNT } from "./palette";
 import { getAccentColors, getHarmonyColors, getPreferredColor } from "./groups";
 
 export const getColorScale = (
@@ -33,7 +34,8 @@ export const getColorsForValues = (
   keys: string[],
   existingColors: Record<string, string> | null | undefined = {},
 ) => {
-  const colors = keys.length <= 8 ? getAccentColors() : getHarmonyColors();
+  const colors =
+    keys.length <= ACCENT_COUNT ? getAccentColors() : getHarmonyColors();
 
   const entries = keys.map((key, index) => {
     const existingColor = existingColors?.[key];
