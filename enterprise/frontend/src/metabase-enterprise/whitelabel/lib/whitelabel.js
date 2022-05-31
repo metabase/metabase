@@ -2,14 +2,14 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import Color from "color";
 
-import colors, { getColorMappings } from "metabase/lib/colors";
+import { getColors, setColor } from "metabase/lib/colors";
 import { addCSSRule } from "metabase/lib/dom";
 
 import memoize from "lodash.memoize";
 
-export const originalColors = { ...colors };
+export const originalColors = { ...getColors() };
 
-const BRAND_NORMAL_COLOR = Color(colors.brand).hsl();
+const BRAND_NORMAL_COLOR = Color(originalColors.brand).hsl();
 const COLOR_REGEX = /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
 
 const CSS_COLOR_UPDATORS_BY_COLOR_NAME = {};
@@ -99,7 +99,6 @@ function initColorCSS(colorName) {
     initCSSBrandHueUpdator();
   }
 
-  const colorMappings = getColorMappings(colorName);
   // look for CSS rules which have colors matching the brand colors or very light or desaturated
   for (const {
     style,
@@ -107,16 +106,13 @@ function initColorCSS(colorName) {
     cssValue,
     cssPriority,
   } of getColorStyleProperties()) {
-    for (const [newColorName, colorMapping] of Object.entries(colorMappings)) {
-      const originalColor = originalColors[newColorName];
-      // try replacing with a random color to see if we actually need to
-      if (cssValue !== replaceColors(cssValue, originalColor, RANDOM_COLOR)) {
-        CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
-          const newColor = colorMapping(themeColor);
-          const newCssValue = replaceColors(cssValue, originalColor, newColor);
-          style.setProperty(cssProperty, newCssValue, cssPriority);
-        });
-      }
+    const originalColor = originalColors[colorName];
+    // try replacing with a random color to see if we actually need to
+    if (cssValue !== replaceColors(cssValue, originalColor, RANDOM_COLOR)) {
+      CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
+        const newCssValue = replaceColors(cssValue, originalColor, themeColor);
+        style.setProperty(cssProperty, newCssValue, cssPriority);
+      });
     }
   }
 }
@@ -139,13 +135,9 @@ function initColorJS(colorName) {
     return;
   }
 
-  const colorMappings = getColorMappings(colorName);
-
   JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName] = [];
   JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
-    for (const [newColorName, colorMapping] of Object.entries(colorMappings)) {
-      colors[newColorName] = colorMapping(themeColor);
-    }
+    setColor(colorName, themeColor);
   });
 }
 
