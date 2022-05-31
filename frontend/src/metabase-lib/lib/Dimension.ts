@@ -794,7 +794,7 @@ export class FieldDimension extends Dimension {
       }
 
       if (field.name_field != null) {
-        field.field_name = meta.field(field.name_field);
+        field.field_name = this._metadata.field(field.name_field);
       } else if (field.table && field.isPK()) {
         field.field_name = _.find(field.table.fields, f => f.isEntityName());
       }
