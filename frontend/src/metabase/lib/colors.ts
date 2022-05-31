@@ -1,8 +1,7 @@
 import d3 from "d3";
 import Color from "color";
-import { Harmonizer } from "color-harmony";
 import { times } from "lodash";
-import { deterministicAssign } from "./deterministic";
+import { getAccentColors, getHarmonyColors } from "metabase/lib/colors/groups";
 
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
@@ -79,45 +78,6 @@ export const aliases: Record<string, (family: ColorFamily) => string> = {
     ]),
   ),
 };
-
-export const harmony: string[] = [];
-// make sure to do the initial "sync"
-syncColors();
-export function syncColors() {
-  syncHarmony();
-}
-
-function syncHarmony() {
-  const harmonizer = new Harmonizer();
-  const initialColors = [
-    colors["brand"],
-    colors["accent1"],
-    colors["accent2"],
-    colors["accent3"],
-    colors["accent4"],
-    colors["accent5"],
-    colors["accent6"],
-    colors["accent7"],
-  ];
-  harmony.splice(0, harmony.length);
-  // round 0 includes brand and all accents
-  harmony.push(...initialColors);
-  // rounds 1-4 generated harmony
-  // only harmonize brand and accents 1 through 4
-  const initialColorHarmonies = initialColors
-    .slice(0, 5)
-    .map(color => harmonizer.harmonize(color, "fiveToneD"));
-
-  for (let roundIndex = 1; roundIndex < 5; roundIndex++) {
-    for (
-      let colorIndex = 0;
-      colorIndex < initialColorHarmonies.length;
-      colorIndex++
-    ) {
-      harmony.push(initialColorHarmonies[colorIndex][roundIndex]);
-    }
-  }
-}
 
 export const getRandomColor = (family: ColorFamily): ColorString => {
   const colors: ColorString[] = Object.values(family);
@@ -242,29 +202,27 @@ for (const color in PREFERRED_COLORS) {
   }
 }
 
-type Key = string;
-
-function getPreferredColor(key: Key) {
+function getPreferredColor(key: string) {
   return color(PREFERRED_COLORS_MAP[key.toLowerCase()]);
 }
 
-// returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping
 export function getColorsForValues(
   keys: string[],
-  existingAssignments: Record<Key, ColorString> | null | undefined = {},
+  existingColors: Record<string, string> | null | undefined = {},
 ) {
-  const all = Object.values(harmony);
-  const primaryTier = all.slice(0, 8);
-  const secondaryTier = all.slice(8);
-  return deterministicAssign(
-    keys,
-    primaryTier,
-    existingAssignments as any,
-    getPreferredColor,
-    [secondaryTier],
-  ) as any;
+  const colors = keys.length <= 8 ? getAccentColors() : getHarmonyColors();
+
+  const entries = keys.map((key, index) => {
+    const existingColor = existingColors?.[key];
+    const preferredColor = getPreferredColor(key);
+    const paletteColor = colors[index % colors.length];
+
+    return [key, existingColor ?? preferredColor ?? paletteColor];
+  });
+
+  return Object.fromEntries(entries);
 }
 // conviennce for a single color (only use for visualizations with a single color)
-export function getColorForValue(key: Key) {
+export function getColorForValue(key: string) {
   return getColorsForValues([key])[key];
 }

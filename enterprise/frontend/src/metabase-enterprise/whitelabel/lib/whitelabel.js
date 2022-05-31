@@ -2,7 +2,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import Color from "color";
 
-import colors, { getColorMappings, syncColors } from "metabase/lib/colors";
+import colors, { getColorMappings } from "metabase/lib/colors";
 import { addCSSRule } from "metabase/lib/dom";
 
 import memoize from "lodash.memoize";
@@ -154,7 +154,6 @@ function updateColorJS(colorName, themeColor) {
   for (const colorUpdator of JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName]) {
     colorUpdator(themeColor);
   }
-  syncColors();
 }
 
 function updateColorCSS(colorName, themeColor) {

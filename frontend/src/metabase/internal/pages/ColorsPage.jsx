@@ -6,7 +6,8 @@ import CopyToClipboard from "react-copy-to-clipboard";
 
 import Subhead from "metabase/components/type/Subhead";
 
-import colors, { harmony } from "metabase/lib/colors";
+import colors from "metabase/lib/colors";
+import { getHarmonyColors } from "metabase/lib/colors/groups";
 
 import withToast from "metabase/hoc/Toast";
 import {
@@ -65,7 +66,7 @@ const ColorsPage = () => (
     <div>
       <Subhead className="mb2">Chart colors</Subhead>
       <ColorsList>
-        {harmony.map((color, index) => (
+        {getHarmonyColors().map((color, index) => (
           <ColorSwatch key={index} color={color} name={`Series ${index + 1}`} />
         ))}
       </ColorsList>
