@@ -203,7 +203,7 @@ export function ObjectDetailFn({
   );
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: { [key: string]: () => void } = {
+    const capturedKeys: ObjectLiteral<() => void> = {
       ArrowUp: viewPreviousObjectDetail,
       ArrowDown: viewNextObjectDetail,
       Escape: closeObjectDetail,

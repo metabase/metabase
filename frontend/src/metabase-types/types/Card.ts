@@ -4,9 +4,7 @@ import { Parameter, ParameterInstance } from "./Parameter";
 
 export type CardId = number;
 
-export type VisualizationSettings = {
-  [key: string]: any;
-};
+export type VisualizationSettings = ObjectLiteral;
 
 export type UnsavedCard = {
   dataset_query: DatasetQuery;
