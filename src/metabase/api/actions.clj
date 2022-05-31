@@ -1,6 +1,7 @@
 (ns metabase.api.actions
   "`/api/actions/` endpoints."
-  (:require [compojure.core :as compojure :refer [POST]]
+  (:require [cheshire.core :as json]
+            [compojure.core :as compojure :refer [POST]]
             [metabase.actions :as actions]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
@@ -48,6 +49,7 @@
   (if-not api/*is-superuser?*
     {:status 403}
     (let [cards+actions (db/query {:select    [:card.*
+                                               [:db.settings :db_settings]
                                                [:a.id :a_id]
                                                [:a.type :a_type]
                                                [:a.created_at :a_created_at]
@@ -59,14 +61,17 @@
                                    :where     [:and
                                                [:= :card.is_write true]
                                                [:= :card.archived false]
-                                               (when database [:= :db.id database])]
+                                               (when database
+                                                 [:= :card.database_id database])]
                                    :order-by  [[:updated_at :desc]]})]
-      (mapv (fn [{:keys [a_id a_type a_created_at a_updated_at] :as card+action}]
-              {:id a_id
-               :type a_type
-               :created-at a_created_at
-               :updated-at a_updated_at
-               :card (dissoc card+action :a_id :a_type :a_created_at :a_updated_at)})
+      (keep (fn [{:keys [a_id a_type a_created_at a_updated_at db_settings] :as card+action}]
+              ;; n.b. must check db settings in memory, since db.settings can be encrypted
+              (when (-> db_settings (json/decode true) :database-enable-actions boolean)
+                {:id a_id
+                 :type a_type
+                 :created-at a_created_at
+                 :updated-at a_updated_at
+                 :card (dissoc card+action :a_id :a_type :a_created_at :a_updated_at :db_settings)}))
             cards+actions))))
 
 (api/defendpoint POST "/table/:action"
