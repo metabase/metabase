@@ -11,7 +11,7 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
-  fetchDashboardParameterValues,
+  fetchDashboardParameterValuesWithCache,
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
@@ -154,7 +154,7 @@ describe("dashboard actions", () => {
     });
   });
 
-  describe("fetchDashboardParameterValues", () => {
+  describe("fetchDashboardParameterValuesWithCache", () => {
     const dashboardId = 1;
     const parameter = { id: "a" };
     const parameterWithFilteringParameters = {
@@ -183,7 +183,7 @@ describe("dashboard actions", () => {
     });
 
     it("should fetch parameter values using the given query string", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter,
         parameters,
@@ -206,7 +206,7 @@ describe("dashboard actions", () => {
     });
 
     it("should fetch parameter values without a query string", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter,
         parameters,
@@ -228,7 +228,7 @@ describe("dashboard actions", () => {
     });
 
     it("should fetch parameter values using a query string and filtering parameters", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter: parameterWithFilteringParameters,
         parameters,
@@ -252,7 +252,7 @@ describe("dashboard actions", () => {
     });
 
     it("should fetch parameter values without a query string but with filtering parameters", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter: parameterWithFilteringParameters,
         parameters,
@@ -281,7 +281,7 @@ describe("dashboard actions", () => {
         [cacheKey]: [[1], [2], [3]],
       };
 
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter: parameterWithFilteringParameters,
         parameters,

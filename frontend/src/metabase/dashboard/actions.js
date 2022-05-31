@@ -1099,7 +1099,7 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   );
 };
 
-const fetchDashboardParameterValuesWithCache = createThunkAction(
+export const fetchDashboardParameterValuesWithCache = createThunkAction(
   FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   ({ dashboardId, parameter, parameters, query }) => async (
     dispatch,
