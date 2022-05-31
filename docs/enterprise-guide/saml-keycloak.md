@@ -58,8 +58,7 @@ Let's say we want email, name, and surname to be passed between the client (Meta
 1. Select “X500 email”, “X500 givenName” and “X500 surname” from the checkboxes that are on the right side of the console.
 2. Click **Add Selected**.
 3. Click **Edit** beside each attribute and make the following changes:
-
-- **SAML Attribute Name**: the name that Metabase expects to receive.
-- **SAML Attribute NameFormat**: select “Basic” from the dropdown menu.
+    - **SAML Attribute Name**: the name that Metabase expects to receive.
+    - **SAML Attribute NameFormat**: select “Basic” from the dropdown menu.
 
 You can find the attribute values from your Metabase **Admin settings** > **Authentication** > **SAML** > **Attributes**.
