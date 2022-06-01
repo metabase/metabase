@@ -1,4 +1,4 @@
-import { TableId } from "./Table";
+import { TableId } from "metabase-types/api/table";
 
 export type SegmentId = number;
 
