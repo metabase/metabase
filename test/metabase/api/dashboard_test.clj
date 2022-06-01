@@ -125,6 +125,7 @@
    :description             nil
    :embedding_params        nil
    :enable_embedding        false
+   :entity_id               nil
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
@@ -225,6 +226,7 @@
                                       :collection_authority_level        nil
                                       :updated_at             true
                                       :created_at             true
+                                      :entity_id              nil
                                       :parameter_mappings     []
                                       :visualization_settings {}
                                       :card                   (merge api.card-test/card-defaults-no-hydrate
@@ -270,6 +272,7 @@
                                             :row                    0
                                             :updated_at             true
                                             :created_at             true
+                                            :entity_id              nil
                                             :collection_authority_level nil
                                             :parameter_mappings     [{:card_id      1
                                                                       :parameter_id "foo"
@@ -704,6 +707,7 @@
                 :series                 []
                 :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
                 :visualization_settings {}
+                :entity_id              nil
                 :created_at             true
                 :updated_at             true}
                (-> (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)

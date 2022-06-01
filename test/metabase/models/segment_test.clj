@@ -43,7 +43,8 @@
              :caveats                 nil
              :points_of_interest      nil
              :archived                false
-             :definition              nil}]
+             :definition              nil
+             :entity_id               nil}]
            (for [segment (u/prog1 (segment/retrieve-segments table-id-1)
                            (assert (= 1 (count <>))))]
              (-> (dissoc (into {} segment) :id :table_id :created_at :updated_at)
@@ -62,6 +63,7 @@
             :show_in_getting_started false
             :caveats                 nil
             :points_of_interest      nil
+            :entity_id               nil
             :definition              {:filter [:> [:field 4 nil] "2014-10-19"]}
             :archived                false}
            (into {} (-> (#'segment/serialize-segment Segment (:id segment) segment)

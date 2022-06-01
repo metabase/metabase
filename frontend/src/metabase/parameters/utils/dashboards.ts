@@ -4,8 +4,51 @@ import { setIn } from "icepick";
 import Question from "metabase-lib/lib/Question";
 import { getParameterTargetField } from "metabase/parameters/utils/targets";
 import { slugify } from "metabase/lib/formatting";
+import {
+  UiParameter,
+  FieldFilterUiParameter,
+  ParameterWithTarget,
+} from "metabase/parameters/types";
+import {
+  Parameter,
+  ParameterMappingOptions,
+  ParameterTarget,
+} from "metabase-types/types/Parameter";
+import {
+  Dashboard,
+  DashboardParameterMapping,
+  DashboardOrderedCard,
+} from "metabase-types/api";
+import { SavedCard } from "metabase-types/types/Card";
+import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Field from "metabase-lib/lib/metadata/Field";
 
-export function createParameter(option, parameters = []) {
+type ExtendedMapping = {
+  parameter_id: string;
+  dashcard_id: number;
+  card_id: number;
+  field_id: string | number | undefined;
+  field: Field | null | undefined;
+  target: ParameterTarget;
+};
+
+type ExtendedFieldFilterUiParameter = FieldFilterUiParameter & {
+  field_id: number | string | null;
+  field_ids: (number | string)[];
+};
+
+type NestedMappingsMap = {
+  [parameterId: string]: {
+    [dashcardId: number]: {
+      [cardId: number]: ExtendedMapping;
+    };
+  };
+};
+
+export function createParameter(
+  option: ParameterMappingOptions,
+  parameters: Parameter[] = [],
+): Parameter {
   let name = option.combinedName || option.name;
   let nameIndex = 0;
   // get a unique name
@@ -23,7 +66,10 @@ export function createParameter(option, parameters = []) {
   return setParameterName(parameter, name);
 }
 
-export function setParameterName(parameter, name) {
+export function setParameterName(
+  parameter: Parameter,
+  name?: string,
+): Parameter {
   if (!name) {
     name = "unnamed";
   }
@@ -35,14 +81,17 @@ export function setParameterName(parameter, name) {
   };
 }
 
-export function setParameterDefaultValue(parameter, value) {
+export function setParameterDefaultValue(
+  parameter: Parameter,
+  value: any,
+): Parameter {
   return {
     ...parameter,
     default: value,
   };
 }
 
-export function hasMapping(parameter, dashboard) {
+export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
   return dashboard.ordered_cards.some(ordered_card => {
     return ordered_card?.parameter_mappings?.some(parameter_mapping => {
       return parameter_mapping.parameter_id === parameter.id;
@@ -50,8 +99,11 @@ export function hasMapping(parameter, dashboard) {
   });
 }
 
-export function isDashboardParameterWithoutMapping(parameter, dashboard) {
-  if (!dashboard) {
+export function isDashboardParameterWithoutMapping(
+  parameter: Parameter,
+  dashboard: Dashboard,
+) {
+  if (!dashboard || !dashboard.parameters) {
     return false;
   }
 
@@ -63,7 +115,11 @@ export function isDashboardParameterWithoutMapping(parameter, dashboard) {
   return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
-export function getMappingTargetField(card, mapping, metadata) {
+export function getMappingTargetField(
+  card: SavedCard,
+  mapping: DashboardParameterMapping,
+  metadata: Metadata,
+) {
   if (!card?.dataset_query) {
     return null;
   }
@@ -73,24 +129,27 @@ export function getMappingTargetField(card, mapping, metadata) {
   return field;
 }
 
-function getMapping(dashcard, metadata) {
+function getMapping(
+  dashcard: DashboardOrderedCard,
+  metadata: Metadata,
+): ExtendedMapping[] {
   const cards = [dashcard.card, ...(dashcard.series || [])];
   return (dashcard.parameter_mappings || []).map(mapping => {
     const card = _.findWhere(cards, { id: mapping.card_id });
-    const field = getMappingTargetField(card, mapping, metadata);
+    const field = card ? getMappingTargetField(card, mapping, metadata) : null;
 
     return {
       ...mapping,
       parameter_id: mapping.parameter_id,
       dashcard_id: dashcard.id,
       card_id: mapping.card_id,
-      field_id: field?.id ?? field?.name,
+      field_id: field?.getId() ?? field?.name,
       field,
     };
   });
 }
 
-function getMappings(dashboard, metadata) {
+function getMappings(dashboard: Dashboard, metadata: Metadata) {
   const mappings = dashboard.ordered_cards.flatMap(dashcard =>
     getMapping(dashcard, metadata),
   );
@@ -98,7 +157,10 @@ function getMappings(dashboard, metadata) {
   return mappings;
 }
 
-export function getMappingsByParameter(metadata, dashboard) {
+export function getMappingsByParameter(
+  metadata: Metadata,
+  dashboard: Dashboard,
+): NestedMappingsMap {
   if (!dashboard) {
     return {};
   }
@@ -118,39 +180,41 @@ export function getMappingsByParameter(metadata, dashboard) {
 }
 
 export function getDashboardParametersWithFieldMetadata(
-  metadata,
-  dashboard,
-  mappingsByParameter,
-) {
+  metadata: Metadata,
+  dashboard: Dashboard,
+  mappingsByParameter: NestedMappingsMap,
+): ExtendedFieldFilterUiParameter[] {
   return ((dashboard && dashboard.parameters) || []).map(parameter => {
-    const mappings = _.flatten(
+    const mappings: ExtendedMapping[] = _.flatten(
       _.map(mappingsByParameter[parameter.id] || {}, _.values),
     );
 
     // we change out widgets if a parameter is connected to non-field targets
     const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
 
-    const fields = _.uniq(
+    const fields: Field[] = _.uniq(
       mappings
         .map(mapping => mapping.field)
-        .filter(field => field != null)
+        .filter((field): field is Field => field != null)
         .map(field => field.target ?? field),
       field => field.id,
     );
 
     // get the unique list of field IDs these mappings reference
-    const fieldIds = _.chain(mappings)
-      .map(m => m.field_id)
-      .uniq()
-      .filter(fieldId => fieldId != null)
-      .value();
+    const fieldIds: (string | number)[] = _.uniq(
+      mappings
+        .map(m => m.field_id)
+        .filter((fieldId): fieldId is string | number => fieldId != null),
+    );
 
-    const fieldIdsWithFKResolved = _.chain(fieldIds)
-      .map(id => metadata.field(id))
-      .filter(f => f)
-      .map(f => (f.target || f).id)
-      .uniq()
-      .value();
+    const fieldIdsWithFKResolved = _.uniq(
+      fieldIds
+        .map(fieldId => {
+          const maybeField: Field | undefined = metadata.field(fieldId);
+          return maybeField?.target?.getId() ?? maybeField?.getId();
+        })
+        .filter((maybeFieldId): maybeFieldId is number => maybeFieldId != null),
+    );
 
     return {
       ...parameter,
@@ -165,12 +229,15 @@ export function getDashboardParametersWithFieldMetadata(
   });
 }
 
-export function getParametersMappedToDashcard(dashboard, dashcard) {
-  const { parameters = [] } = dashboard;
+export function getParametersMappedToDashcard(
+  dashboard: Dashboard,
+  dashcard: DashboardOrderedCard,
+): ParameterWithTarget[] {
+  const { parameters } = dashboard;
   const { parameter_mappings } = dashcard;
-  return parameters
+  return (parameters || [])
     .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings, {
+      const mapping = _.findWhere(parameter_mappings || [], {
         parameter_id: parameter.id,
       });
 
@@ -181,7 +248,7 @@ export function getParametersMappedToDashcard(dashboard, dashcard) {
         };
       }
     })
-    .filter(Boolean);
+    .filter((parameter): parameter is ParameterWithTarget => parameter != null);
 }
 
 export function hasMatchingParameters({
@@ -190,6 +257,12 @@ export function hasMatchingParameters({
   cardId,
   parameters,
   metadata,
+}: {
+  dashboard: Dashboard;
+  dashcardId: number;
+  cardId: number;
+  parameters: Parameter[];
+  metadata: Metadata;
 }) {
   const dashcard = _.findWhere(dashboard.ordered_cards, {
     id: dashcardId,
@@ -209,7 +282,10 @@ export function hasMatchingParameters({
   });
 }
 
-export function getFilteringParameterValuesMap(parameter, parameters) {
+export function getFilteringParameterValuesMap(
+  parameter: UiParameter,
+  parameters: UiParameter[],
+) {
   const { filteringParameters = [] } = parameter || {};
   const filteringParameterValues = Object.fromEntries(
     parameters
@@ -225,6 +301,11 @@ export function getParameterValuesSearchKey({
   parameterId,
   query = null,
   filteringParameterValues = {},
+}: {
+  dashboardId: number;
+  parameterId: string;
+  query: string | null;
+  filteringParameterValues: { [parameterId: string]: unknown };
 }) {
   const BY_PARAMETER_ID = "0";
   // sorting the filteringParameterValues map by its parameter id key to ensure entry order doesn't affect the outputted cache key

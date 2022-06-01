@@ -17,6 +17,7 @@
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db])
   (:import [java.time ZonedDateTime ZoneId]))
@@ -193,6 +194,7 @@
           (testing "Make sure each Collection comes back with the expected keys"
             (is (= {:description       nil
                     :archived          false
+                    :entity_id         nil
                     :slug              "rasta_toucan_s_personal_collection"
                     :color             "#31698A"
                     :name              "Rasta Toucan's Personal Collection"
@@ -222,6 +224,7 @@
       (with-french-user-and-personal-collection user collection
         (is (= {:description       nil
                 :archived          false
+                :entity_id         nil
                 :slug              "collection_personnelle_de_taco_bell"
                 :color             "#ABCDEF"
                 :name              "Collection personnelle de Taco Bell"
@@ -385,7 +388,7 @@
           items))
 
 (defn- default-item [{:keys [model] :as item-map}]
-  (merge {:id true, :collection_position nil}
+  (merge {:id true, :collection_position nil, :entity_id false}
          (when (= model "collection")
            {:authority_level nil})
          (when (= model "card")
@@ -398,6 +401,7 @@
           :can_write       (str/ends-with? collection-name "Personal Collection")
           :model           "collection"
           :authority_level nil
+          :entity_id       false
           :name            collection-name}
          extra-keypairs))
 
@@ -418,6 +422,7 @@
                   :collection_position nil
                   :display             "table"
                   :description         nil
+                  :entity_id           nil
                   :moderated_status    "verified"
                   :model               "card"}])
                (mt/obj->json->obj
@@ -459,10 +464,10 @@
       (mt/with-temp Collection [collection {:name "Debt Collection"}]
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
-          (is (= (map default-item [{:name "Acme Products", :model "pulse"}
-                                    {:name "Birthday Card", :description nil, :model "card", :display "table"}
-                                    {:name "Dine & Dashboard", :description nil, :model "dashboard"}
-                                    {:name "Electro-Magnetic Pulse", :model "pulse"}])
+          (is (= (map default-item [{:name "Acme Products", :model "pulse", :entity_id false}
+                                    {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id false}
+                                    {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false}
+                                    {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id false}])
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items"))))))))
 
@@ -473,11 +478,11 @@
             (is (= ()
                    (mt/boolean-ids-and-timestamps
                      (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=no_models"))))))
-            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+            (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
-                    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id false})
+                    (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
 
@@ -487,7 +492,7 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
           (db/update-where! Dashboard {:collection_id (u/the-id collection)} :archived true)
-          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})]
+          (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id false})]
                  (mt/boolean-ids-and-timestamps
                   (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?archived=true")))))))))
     (mt/with-temp* [Collection [{collection-id :id} {:name "Collection with Items"}]
@@ -697,21 +702,24 @@
       (mt/with-temp* [Collection         [{collection-id :id} {:namespace "snippets", :name "My Snippet Collection"}]
                       NativeQuerySnippet [{snippet-id :id}    {:collection_id collection-id, :name "My Snippet"}]
                       NativeQuerySnippet [{archived-id :id}   {:collection_id collection-id, :name "Archived Snippet", :archived true}]]
-        (is (= [{:id    snippet-id
-                 :name  "My Snippet"
-                 :model "snippet"}]
+        (is (= [{:id        snippet-id
+                 :name      "My Snippet"
+                 :entity_id nil
+                 :model     "snippet"}]
                (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" collection-id)))))
 
         (testing "\nShould be able to fetch archived Snippets"
-          (is (= [{:id    archived-id
-                   :name  "Archived Snippet"
-                   :model "snippet"}]
+          (is (= [{:id        archived-id
+                   :name      "Archived Snippet"
+                   :entity_id nil
+                   :model     "snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?archived=true" collection-id))))))
 
         (testing "\nShould be able to pass ?model=snippet, even though it makes no difference in this case"
-          (is (= [{:id    snippet-id
-                   :name  "My Snippet"
-                   :model "snippet"}]
+          (is (= [{:id        snippet-id
+                   :name      "My Snippet"
+                   :entity_id nil
+                   :model     "snippet"}]
                  (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items?model=snippet" collection-id))))))))))
 
 
@@ -732,6 +740,7 @@
                            :can_write                                true}]
     :effective_location  "/"
     :parent_id           nil
+    :entity_id           nil
     :id                  (u/the-id (collection/user->personal-collection (mt/user->id :lucky)))
     :location            "/"}))
 
@@ -979,6 +988,7 @@
                :description     nil
                :model           "collection"
                :authority_level nil
+               :entity_id       nil
                :can_write       true}]
              (->> (:data (mt/user-http-request :rasta :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
@@ -990,6 +1000,7 @@
                    :description     nil
                    :model           "collection"
                    :authority_level nil
+                   :entity_id       nil
                    :can_write       true}]
                  (->> (:data (mt/user-http-request user :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Taco Bell"))))))))
@@ -1000,6 +1011,7 @@
                :description     nil
                :model           "collection"
                :authority_level nil
+               :entity_id       nil
                :can_write       true}]
              (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                   (filter #(str/includes? (:name %) "Personal Collection")))))
@@ -1013,6 +1025,7 @@
                    :description     nil
                    :model           "collection"
                    :authority_level nil
+                   :entity_id       nil
                    :can_write       true}]
                  (->> (:data (mt/user-http-request :crowberto :get 200 "collection/root/items"))
                       (filter #(str/includes? (:name %) "Personal Collection")))))))
@@ -1024,6 +1037,7 @@
                    :collection_position nil
                    :display             "table"
                    :moderated_status    nil
+                   :entity_id           nil
                    :model               "card"}]
                  (for [item (:data (mt/user-http-request :crowberto :get 200 "collection/root/items?archived=true"))]
                    (dissoc item :id)))))))))
@@ -1106,10 +1120,10 @@
 (deftest root-collection-snippets-test
   (testing "GET /api/collection/root/items?namespace=snippets"
     (testing "\nNative query snippets should come back when fetching the items in the root Collection of the `:snippets` namespace"
-      (mt/with-temp* [NativeQuerySnippet [{snippet-id :id}   {:name "My Snippet"}]
-                      NativeQuerySnippet [{snippet-id-2 :id} {:name "My Snippet 2"}]
-                      NativeQuerySnippet [{archived-id :id}  {:name "Archived Snippet", :archived true}]
-                      Dashboard          [{dashboard-id :id} {:name "My Dashboard"}]]
+      (mt/with-temp* [NativeQuerySnippet [{snippet-id :id}   {:name "My Snippet", :entity_id nil}]
+                      NativeQuerySnippet [{snippet-id-2 :id} {:name "My Snippet 2", :entity_id nil}]
+                      NativeQuerySnippet [{archived-id :id}  {:name "Archived Snippet", :archived true, :entity_id nil}]
+                      Dashboard          [{dashboard-id :id} {:name "My Dashboard", :entity_id nil}]]
         (letfn [(only-test-items [results]
                   (if (sequential? results)
                     (filter #(#{["snippet" snippet-id]
@@ -1123,12 +1137,14 @@
                     (if (sequential? items)
                       (map :name items)
                       items)))]
-          (is (= [{:id    snippet-id
-                   :name  "My Snippet"
-                   :model "snippet"}
-                  {:id    snippet-id-2
-                   :name  "My Snippet 2"
-                   :model "snippet"}]
+          (is (= [{:id        snippet-id
+                   :name      "My Snippet"
+                   :entity_id nil
+                   :model     "snippet"}
+                  {:id        snippet-id-2
+                   :name      "My Snippet 2"
+                   :entity_id nil
+                   :model     "snippet"}]
                  (only-test-items (:data (mt/user-http-request :rasta :get 200 "collection/root/items?namespace=snippets")))))
 
           (testing "\nSnippets should not come back for the default namespace"
@@ -1235,7 +1251,8 @@
                         :personal_owner_id (s/eq nil)
                         :authority_level (s/eq "official")
                         :id s/Int
-                        :location (s/eq "/")
+                        :location  (s/eq "/")
+                        :entity_id (s/maybe su/NanoIdString)
                         :namespace (s/eq nil)}
                        (mt/user-http-request :crowberto :post 200 "collection"
                                              {:name "foo", :color "#f38630", :authority_level "official"})))

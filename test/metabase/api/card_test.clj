@@ -51,6 +51,7 @@
    :description         nil
    :display             "scalar"
    :enable_embedding    false
+   :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
    :moderation_reviews  ()
