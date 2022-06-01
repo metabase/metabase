@@ -35,15 +35,17 @@
       (messages/send-user-joined-admin-notification-email! <>, :google-auth? true))))
 
 (defn fetch-and-update-login-attributes!
-  "Update the login attributes for the user at `email`. This call is a no-op if the login attributes are the same"
-  [{:keys [email] :as user-attributes}]
+  "Update `:first_name`, `:last_name`, and `:login_attributes` for the user at `email`.
+  This call is a no-op if the mentioned key values are equal."
+  [{:keys [email] :as user-from-sso}]
   (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
-    (let [attribute-keys (keys user-attributes)
-          user-attributes (into {} (filter second user-attributes))] ;; remove attributes with `nil` values
-      (if (= (select-keys user attribute-keys) user-attributes)
+    (let [user-keys (keys user-from-sso)
+          ;; remove keys with `nil` values
+          user-data (into {} (filter second user-from-sso))]
+      (if (= (select-keys user user-keys) user-data)
         user
         (do
-          (apply db/update! (concat [User id] (apply concat user-attributes)))
+          (db/update! User id user-data)
           (User id))))))
 
 (defn check-sso-redirect
