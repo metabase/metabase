@@ -53,5 +53,5 @@ docker run -d -it --rm -p 27017:27017 --name metamongo metabase/qa-databases:mon
 
 for f in metabase.crt metabase.key metaca.crt
 do
-    [[ -f $f ]] || docker cp metamongo:/etc/mongo/$f .
+    docker cp metamongo:/etc/mongo/$f .
 done

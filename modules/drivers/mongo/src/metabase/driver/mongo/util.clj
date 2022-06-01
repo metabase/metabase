@@ -123,8 +123,8 @@
      :ssl-cert                ssl-cert
      :ssl-use-client-auth     ssl-use-client-auth
      :client-ssl-cert         client-ssl-cert
-     :client-ssl-key          (secret/get-secret details "client-ssl-key")
-     :client-ssl-key-password (secret/get-secret details "client-ssl-key-password")}))
+     :client-ssl-key          (secret/get-secret-string details "client-ssl-key")
+     :client-ssl-key-password (secret/get-secret-string details "client-ssl-key-password")}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:

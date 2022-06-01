@@ -10,3 +10,7 @@ configurations (plain, ssl and tls).
 
 When the docker container starts, the client key and the client and CA
 certificates needed for the backend tests are copied into the this directory.
+
+Although the source of truth is the docker image, the client certificates are
+checked in because there are tests like the SSL connection factory tests which
+need valid certificates and keys.

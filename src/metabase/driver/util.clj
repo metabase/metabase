@@ -365,8 +365,8 @@
 (defn decode-uploaded
   "Decode `uploaded-data` as an uploaded field.
   Optionally strip the Base64 MIME prefix."
-  [uploaded-data]
-  (u/decode-base64 (str/replace uploaded-data #"^data:[^;]+;base64," "")))
+  ^bytes [uploaded-data]
+  (u/decode-base64-to-bytes (str/replace uploaded-data #"^data:[^;]+;base64," "")))
 
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.

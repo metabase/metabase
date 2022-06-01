@@ -161,8 +161,8 @@
       (assoc :value value
              :source source))))
 
-(defn get-secret
-  "Get the value of a secret property from the database details."
+(defn get-secret-string
+  "Get the value of a secret property from the database details as a string."
   [details secret-property]
   (let [value-key (keyword (str secret-property "-value"))
         options-key (keyword (str secret-property "-options"))
@@ -173,7 +173,7 @@
                 (String. ^bytes (:value (Secret id)) "UTF-8")
                 (value-key details))]
     (case (options-key details)
-      "uploaded" (driver.u/decode-uploaded value)
+      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
       "local" (slurp (if id value (path-key details)))
       value)))
 
