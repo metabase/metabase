@@ -17,7 +17,6 @@
            [java.security KeyFactory KeyStore PrivateKey]
            [java.security.cert Certificate CertificateFactory X509Certificate]
            java.security.spec.PKCS8EncodedKeySpec
-           [java.util Base64 Base64$Decoder]
            javax.net.SocketFactory
            [javax.net.ssl KeyManagerFactory SSLContext TrustManagerFactory X509TrustManager]))
 
@@ -357,9 +356,6 @@
                 (assoc :visible-if v-ifs*))))
          final-props)))
 
-(def ^:private ^Base64$Decoder base64-decoder
-  (Base64/getDecoder))
-
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
   Sort of the opposite of `connection-props-server->client`, except that it operates on DB details key/values populated
@@ -396,7 +392,7 @@
                                             (:treat-before-posting textfile-prop)))))
                          value      (let [^String v (val-kw acc)]
                                       (case (get-treat)
-                                        "base64" (.decode base64-decoder v)
+                                        "base64" (u/decode-base64-to-bytes v)
                                         v))]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged
@@ -475,7 +471,7 @@
                        (str/replace #"^-----BEGIN (?:(\p{Alnum}+) )?PRIVATE KEY-----\n" "")
                        (str/replace #"\n-----END (?:(\p{Alnum}+) )?PRIVATE KEY-----\s*$" "")
                        (str/replace #"\s" ""))
-        decoded (.decode base64-decoder key-base64)
+        decoded (u/decode-base64-to-bytes key-base64)
         key-factory (KeyFactory/getInstance algorithm)] ; TODO support other algorithms
     (.generatePrivate key-factory (PKCS8EncodedKeySpec. decoded))))
 

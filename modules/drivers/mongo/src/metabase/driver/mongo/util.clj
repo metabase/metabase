@@ -13,8 +13,7 @@
             [monger.credentials :as mcred]
             [toucan.db :as db])
   (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]
-           java.nio.charset.StandardCharsets
-           [java.util Base64 Base64$Decoder]))
+           java.nio.charset.StandardCharsets))
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
@@ -105,13 +104,8 @@
   [user pass host dbname authdb]
   (format "mongodb+srv://%s:%s@%s/%s?authSource=%s" user pass host dbname authdb))
 
-(def ^:private ^Base64$Decoder base64-decoder
-  (Base64/getDecoder))
-
 (defn- decode-uploaded [uploaded-data]
-  (-> base64-decoder
-      (.decode (str/replace uploaded-data #"^data:[^;]+;base64," ""))
-      (String. StandardCharsets/UTF_8)))
+  (u/decode-base64 (str/replace uploaded-data #"^data:[^;]+;base64," "")))
 
 (defn- get-secret [details secret-property]
   (let [value-key (keyword (str secret-property "-value"))
