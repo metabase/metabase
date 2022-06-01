@@ -290,7 +290,8 @@
                                        :query_type             :keyword
                                        :result_metadata        ::result-metadata
                                        :visualization_settings :visualization-settings})
-          :properties     (constantly {:timestamped? true})
+          :properties     (constantly {:timestamped? true
+                                       :entity_id    true})
           ;; Make sure we normalize the query before calling `pre-update` or `pre-insert` because some of the
           ;; functions those fns call assume normalized queries
           :pre-update     (comp populate-query-fields pre-update populate-result-metadata maybe-normalize-query)

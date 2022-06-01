@@ -350,7 +350,7 @@
       (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
       (let [new-dim (dimension-for-field field-id)]
         (is (= {:id                      true
-                :entity_id               false
+                :entity_id               true
                 :created_at              true
                 :updated_at              true
                 :type                    :internal
@@ -362,7 +362,7 @@
           (create-dimension-via-API! field-id {:name "different dimension name", :type "internal"})
           (let [updated-dim (dimension-for-field field-id)]
             (is (= {:id                      true
-                    :entity_id               false
+                    :entity_id               true
                     :created_at              true
                     :updated_at              true
                     :type                    :internal
@@ -390,7 +390,7 @@
         {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
       (testing "after creation"
         (is (= {:id                      true
-                :entity_id               false
+                :entity_id               true
                 :created_at              true
                 :updated_at              true
                 :type                    :external
@@ -421,7 +421,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before deletion"
           (is (= {:id                      true
-                  :entity_id               false
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -451,7 +451,7 @@
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (testing "before update"
           (is (= {:id                      true
-                  :entity_id               false
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :external
@@ -474,7 +474,7 @@
         (create-dimension-via-API! field-id-1
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (let [expected {:id                      true
-                        :entity_id               false
+                        :entity_id               true
                         :created_at              true
                         :updated_at              true
                         :type                    :external
@@ -609,7 +609,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
-                  :entity_id               false
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -627,7 +627,7 @@
                                            :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
-                        :entity_id               false
+                        :entity_id               true
                         :created_at              true
                         :updated_at              true
                         :type                    :internal

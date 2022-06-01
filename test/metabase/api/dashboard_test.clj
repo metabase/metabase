@@ -65,6 +65,7 @@
                  (dissoc :id)
                  (assoc :created_at (boolean created_at)
                         :updated_at (boolean updated_at))
+                 (update :entity_id boolean)
                  (update :collection_id boolean))]
     (cond-> dash
       (contains? dash :last-edit-info)
@@ -125,7 +126,7 @@
    :description             nil
    :embedding_params        nil
    :enable_embedding        false
-   :entity_id               nil
+   :entity_id               true
    :made_public_by_id       nil
    :parameters              []
    :points_of_interest      nil
@@ -198,8 +199,9 @@
     (testing "fetch a dashboard WITH a dashboard card on it"
       (mt/with-temp* [Dashboard     [{dashboard-id :id
                                       :as dashboard}    {:name "Test Dashboard"}]
-                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard [_                  {:dashboard_id dashboard-id, :card_id card-id}]
+                      Card          [{card-id  :id
+                                      :as card}         {:name "Dashboard Test Card"}]
+                      DashboardCard [dashcard           {:dashboard_id dashboard-id, :card_id card-id}]
                       User          [{user-id :id}      {:first_name "Test" :last_name "User"
                                                          :email "test@example.com"}]
                       Revision      [_                  {:user_id user-id
@@ -226,7 +228,7 @@
                                       :collection_authority_level        nil
                                       :updated_at             true
                                       :created_at             true
-                                      :entity_id              nil
+                                      :entity_id              (:entity_id dashcard)
                                       :parameter_mappings     []
                                       :visualization_settings {}
                                       :card                   (merge api.card-test/card-defaults-no-hydrate
@@ -234,6 +236,7 @@
                                                                       :creator_id             (mt/user->id :rasta)
                                                                       :collection_id          true
                                                                       :display                "table"
+                                                                      :entity_id              (:entity_id card)
                                                                       :visualization_settings {}
                                                                       :result_metadata        nil})
                                       :series                 []}]})
@@ -244,8 +247,10 @@
                       Field         [{field-id :id display-name :display_name} {:table_id table-id}]
 
                       Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
-                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
-                      DashboardCard [{dc-id :id}        {:dashboard_id       dashboard-id
+                      Card          [{card-id :id
+                                      :as card}         {:name "Dashboard Test Card"}]
+                      DashboardCard [{dc-id :id
+                                      :as dashcard}     {:dashboard_id       dashboard-id
                                                          :card_id            card-id
                                                          :parameter_mappings [{:card_id      1
                                                                                :parameter_id "foo"
@@ -272,7 +277,7 @@
                                             :row                    0
                                             :updated_at             true
                                             :created_at             true
-                                            :entity_id              nil
+                                            :entity_id              (:entity_id dashcard)
                                             :collection_authority_level nil
                                             :parameter_mappings     [{:card_id      1
                                                                       :parameter_id "foo"
@@ -282,6 +287,7 @@
                                                                            {:name                   "Dashboard Test Card"
                                                                             :creator_id             (mt/user->id :rasta)
                                                                             :collection_id          true
+                                                                            :entity_id              (:entity_id card)
                                                                             :display                "table"
                                                                             :query_type             nil
                                                                             :visualization_settings {}
@@ -327,7 +333,7 @@
 
 (deftest update-dashboard-test
   (testing "PUT /api/dashboard/:id"
-    (mt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+    (mt/with-temp Dashboard [{dashboard-id :id dashboard-eid :entity_id} {:name "Test Dashboard"}]
       (with-dashboards-in-writeable-collection [dashboard-id]
         (testing "GET before update"
           (is (= (merge dashboard-defaults {:name          "Test Dashboard"
@@ -362,7 +368,7 @@
 (deftest update-dashboard-guide-columns-test
   (testing "PUT /api/dashboard/:id"
     (testing "allow `:caveats` and `:points_of_interest` to be empty strings, and `:show_in_getting_started` should be a boolean"
-      (mt/with-temp Dashboard [{dashboard-id :id} {:name "Test Dashboard"}]
+      (mt/with-temp Dashboard [{dashboard-id :id dashboard-eid :entity_id} {:name "Test Dashboard"}]
         (with-dashboards-in-writeable-collection [dashboard-id]
           (is (= (merge dashboard-defaults {:name                    "Test Dashboard"
                                             :creator_id              (mt/user->id :rasta)
@@ -626,35 +632,41 @@
 (deftest copy-dashboard-test
   (testing "POST /api/dashboard/:id/copy"
     (testing "A plain copy with nothing special"
-      (mt/with-temp Dashboard [{dashboard-id :id} {:name        "Test Dashboard"
-                                                   :description "A description"
-                                                   :creator_id  (mt/user->id :rasta)}]
-        (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dashboard-id))]
+      (mt/with-temp Dashboard [dashboard {:name        "Test Dashboard"
+                                          :description "A description"
+                                          :creator_id  (mt/user->id :rasta)}]
+        (let [response (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" (:id dashboard)))]
           (try
             (is (= (merge
-                    dashboard-defaults
-                    {:name          "Test Dashboard"
-                     :description   "A description"
-                     :creator_id    (mt/user->id :rasta)
-                     :collection_id false})
+                     dashboard-defaults
+                     {:name          "Test Dashboard"
+                      :description   "A description"
+                      :creator_id    (mt/user->id :rasta)
+                      :collection_id false})
                    (dashboard-response response)))
+            (is (some? (:entity_id response)))
+            (is (not=  (:entity_id dashboard) (:entity_id response))
+                "The copy should have a new entity ID generated")
             (finally
               (db/delete! Dashboard :id (u/the-id response)))))))
 
     (testing "Ensure name / description / user set when copying"
-      (mt/with-temp Dashboard [{dashboard-id :id}  {:name        "Test Dashboard"
-                                                    :description "An old description"}]
-        (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" dashboard-id)
+      (mt/with-temp Dashboard [dashboard  {:name        "Test Dashboard"
+                                           :description "An old description"}]
+        (let [response (mt/user-http-request :crowberto :post 200 (format "dashboard/%d/copy" (:id dashboard))
                                              {:name        "Test Dashboard - Duplicate"
                                               :description "A new description"})]
           (try
             (is (= (merge
-                    dashboard-defaults
-                    {:name          "Test Dashboard - Duplicate"
-                     :description   "A new description"
-                     :creator_id    (mt/user->id :crowberto)
-                     :collection_id false})
+                     dashboard-defaults
+                     {:name          "Test Dashboard - Duplicate"
+                      :description   "A new description"
+                      :creator_id    (mt/user->id :crowberto)
+                      :collection_id false})
                    (dashboard-response response)))
+            (is (some? (:entity_id response)))
+            (is (not= (:entity_id dashboard) (:entity_id response))
+                "The copy should have a new entity ID generated")
             (finally
               (db/delete! Dashboard :id (u/the-id response)))))))))
 
@@ -707,7 +719,6 @@
                 :series                 []
                 :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
                 :visualization_settings {}
-                :entity_id              nil
                 :created_at             true
                 :updated_at             true}
                (-> (mt/user-http-request :rasta :post 200 (format "dashboard/%d/cards" dashboard-id)
@@ -716,7 +727,7 @@
                                           :col                    4
                                           :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
                                           :visualization_settings {}})
-                   (dissoc :id :dashboard_id :card_id)
+                   (dissoc :id :dashboard_id :card_id :entity_id)
                    (update :created_at boolean)
                    (update :updated_at boolean))))
         (is (= [{:sizeX                  2

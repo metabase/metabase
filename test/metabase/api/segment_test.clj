@@ -25,6 +25,7 @@
   (-> (into {} segment)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
+      (update :entity_id some?)
       (update :created_at some?)
       (update :updated_at some?)))
 
@@ -80,7 +81,7 @@
             :points_of_interest      nil
             :creator_id              (mt/user->id :crowberto)
             :creator                 (user-details (mt/fetch-user :crowberto))
-            :entity_id               nil
+            :entity_id               true
             :created_at              true
             :updated_at              true
             :archived                false
@@ -136,7 +137,7 @@
               :points_of_interest      nil
               :creator_id              (mt/user->id :rasta)
               :creator                 (user-details (mt/fetch-user :rasta))
-              :entity_id               nil
+              :entity_id               true
               :created_at              true
               :updated_at              true
               :archived                false
@@ -218,7 +219,7 @@
                 :creator                 (user-details (mt/fetch-user :rasta))
                 :created_at              true
                 :updated_at              true
-                :entity_id               nil
+                :entity_id               true
                 :archived                true
                 :definition              nil}
                (-> (mt/user-http-request :crowberto :get 200 (format "segment/%d" id))
@@ -254,7 +255,7 @@
               :creator                 (user-details (mt/fetch-user :crowberto))
               :created_at              true
               :updated_at              true
-              :entity_id               nil
+              :entity_id               true
               :archived                false
               :definition              {:filter ["=" ["field" 2 nil] "cans"]}}
              (-> (mt/user-http-request :rasta :get 200 (format "segment/%d" id))

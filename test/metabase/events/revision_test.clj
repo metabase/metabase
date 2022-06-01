@@ -27,7 +27,7 @@
    :description            nil
    :display                :table
    :enable_embedding       false
-   :entity_id              nil
+   :entity_id              (:entity_id card)
    :embedding_params       nil
    :id                     (u/the-id card)
    :made_public_by_id      nil
@@ -189,7 +189,7 @@
                 :user_id      (mt/user->id :rasta)
                 :object       {:name                    "Toucans in the rainforest"
                                :description             "Lookin' for a blueberry"
-                               :entity_id               nil
+                               :entity_id               (:entity_id metric)
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
                                :caveats                 nil
@@ -219,7 +219,7 @@
                 :user_id      (mt/user->id :crowberto)
                 :object       {:name                    "Toucans in the rainforest"
                                :description             "Lookin' for a blueberry"
-                               :entity_id               nil
+                               :entity_id               (:entity_id metric)
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
                                :caveats                 nil
@@ -250,7 +250,7 @@
                                :how_is_this_calculated  nil
                                :show_in_getting_started false
                                :caveats                 nil
-                               :entity_id               nil
+                               :entity_id               (:entity_id metric)
                                :points_of_interest      nil
                                :archived                true
                                :creator_id              (mt/user->id :rasta)
@@ -279,7 +279,7 @@
                                :show_in_getting_started false
                                :caveats                 nil
                                :points_of_interest      nil
-                               :entity_id               nil
+                               :entity_id               (:entity_id segment)
                                :archived                false
                                :creator_id              (mt/user->id :rasta)
                                :definition              {:a "b"}}
@@ -306,7 +306,7 @@
                              :show_in_getting_started false
                              :caveats                 nil
                              :points_of_interest      nil
-                             :entity_id               nil
+                             :entity_id               (:entity_id segment)
                              :archived                false
                              :creator_id              (mt/user->id :rasta)
                              :definition              {:a "b"}}
@@ -335,7 +335,7 @@
                              :show_in_getting_started false
                              :caveats                 nil
                              :points_of_interest      nil
-                             :entity_id               nil
+                             :entity_id               (:entity_id segment)
                              :archived                true
                              :creator_id              (mt/user->id :rasta)
                              :definition              {:a "b"}}
