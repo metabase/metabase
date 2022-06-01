@@ -74,6 +74,12 @@
    :certificate-not-trusted
    {:message (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")}
 
+   :unsupported-ssl-key-type
+   {:message (deferred-tru "Unsupported client SSL key type - are you using an RSA key?")}
+
+   :invalid-key-format
+   {:message (deferred-tru "Invalid client SSL key - did you select the correct file?")}
+
    :requires-ssl
    {:message (deferred-tru "Server appears to require SSL - please enable SSL below")
     :errors  {:ssl (deferred-tru "please enable SSL")}}})

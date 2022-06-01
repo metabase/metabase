@@ -79,6 +79,12 @@
     #".*MongoSocketReadException: Prematurely reached end of stream.*"
     :requires-ssl
 
+    #".* KeyFactory not available"
+    :unsupported-ssl-key-type
+
+    #"java.security.InvalidKeyException: invalid key format"
+    :invalid-key-format
+
     #".*"                               ; default
     message))
 
