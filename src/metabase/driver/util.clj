@@ -356,6 +356,12 @@
                 (assoc :visible-if v-ifs*))))
          final-props)))
 
+(defn decode-uploaded
+  "Decode `uploaded-data` as an uploaded field.
+  Optionally strip the Base64 MIME prefix."
+  [uploaded-data]
+  (u/decode-base64 (str/replace uploaded-data #"^data:[^;]+;base64," "")))
+
 (defn db-details-client->server
   "Currently, this transforms client side values for the various back into :type :secret for storage on the server.
   Sort of the opposite of `connection-props-server->client`, except that it operates on DB details key/values populated
@@ -392,7 +398,7 @@
                                             (:treat-before-posting textfile-prop)))))
                          value      (let [^String v (val-kw acc)]
                                       (case (get-treat)
-                                        "base64" (u/decode-base64-to-bytes v)
+                                        "base64" (decode-uploaded v)
                                         v))]
                      (cond-> (assoc acc val-kw value)
                        ;; keywords here are associated to nil, rather than being dissoced, because they will be merged

@@ -12,8 +12,7 @@
             [monger.core :as mg]
             [monger.credentials :as mcred]
             [toucan.db :as db])
-  (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]
-           java.nio.charset.StandardCharsets))
+  (:import [com.mongodb MongoClient MongoClientOptions MongoClientOptions$Builder MongoClientURI]))
 
 (def ^:dynamic ^com.mongodb.DB *mongo-connection*
   "Connection to a Mongo database. Bound by top-level `with-mongo-connection` so it may be reused within its body."
@@ -104,23 +103,6 @@
   [user pass host dbname authdb]
   (format "mongodb+srv://%s:%s@%s/%s?authSource=%s" user pass host dbname authdb))
 
-(defn- decode-uploaded [uploaded-data]
-  (u/decode-base64 (str/replace uploaded-data #"^data:[^;]+;base64," "")))
-
-(defn- get-secret [details secret-property]
-  (let [value-key (keyword (str secret-property "-value"))
-        options-key (keyword (str secret-property "-options"))
-        path-key (keyword (str secret-property "-path"))
-        id-key (keyword (str secret-property "-id"))
-        id (id-key details)
-        value (if id
-                (String. ^bytes (:value (secret/Secret id)) StandardCharsets/UTF_8)
-                (value-key details))]
-    (case (options-key details)
-      "uploaded" (decode-uploaded value)
-      "local" (slurp (if id value (path-key details)))
-      value)))
-
 (defn- normalize-details [details]
   (let [{:keys [dbname host port user pass authdb tunnel-host tunnel-user tunnel-pass additional-options use-srv conn-uri
                 ssl ssl-cert ssl-use-client-auth client-ssl-cert]
@@ -141,8 +123,8 @@
      :ssl-cert                ssl-cert
      :ssl-use-client-auth     ssl-use-client-auth
      :client-ssl-cert         client-ssl-cert
-     :client-ssl-key          (get-secret details "client-ssl-key")
-     :client-ssl-key-password (get-secret details "client-ssl-key-password")}))
+     :client-ssl-key          (secret/get-secret details "client-ssl-key")
+     :client-ssl-key-password (secret/get-secret details "client-ssl-key-password")}))
 
 (defn- fqdn?
   "A very simple way to check if a hostname is fully-qualified:
