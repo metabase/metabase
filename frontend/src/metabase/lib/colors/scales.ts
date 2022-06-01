@@ -26,7 +26,8 @@ export const getColorScale = (
 
 const RGBA_REGEX = /rgba\((\d+\.\d+),\s*(\d+\.\d+),\s*(\d+\.\d+),\s*(\d+\.\d+)\)/;
 
-export const getSafeColor = (color: string) =>
-  color.replace(RGBA_REGEX, (_, r, g, b, a) => {
+export const getSafeColor = (color: string) => {
+  return color.replace(RGBA_REGEX, (_, r, g, b, a) => {
     return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
   });
+};
