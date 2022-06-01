@@ -1,13 +1,12 @@
 import { ISO8601Time } from ".";
 
 import { Field } from "./Field";
-import { Segment } from "./Segment";
 import { Metric } from "./Metric";
 import { DatabaseId } from "./Database";
-import { ForeignKey } from "../api/foreignKey";
 
-export type TableId = number;
-export type SchemaName = string;
+import { ForeignKey } from "metabase-types/api/foreignKey";
+import { Segment } from "metabase-types/api/segment";
+import { SchemaName, TableId } from "metabase-types/api/table";
 
 type TableVisibilityType = string; // FIXME
 
