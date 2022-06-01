@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import { getHarmonyColors } from "metabase/lib/colors/groups";
-import ChartColorSketch from "../ChartColorSketch";
+import ChartColorSample from "../ChartColorSample";
 import {
   TableBody,
   TableHeader,
@@ -16,7 +16,7 @@ const ChartColorPreview = (): JSX.Element => {
         <TableTitle>{t`Palette preview`}</TableTitle>
       </TableHeader>
       <TableBody>
-        <ChartColorSketch colors={getHarmonyColors()} />
+        <ChartColorSample colors={getHarmonyColors()} />
       </TableBody>
     </TableRoot>
   );
