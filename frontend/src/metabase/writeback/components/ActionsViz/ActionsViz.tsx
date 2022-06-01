@@ -5,10 +5,15 @@ import { connect } from "react-redux";
 import Button from "metabase/core/components/Button";
 import Modal from "metabase/components/Modal";
 
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { useToggle } from "metabase/hooks/use-toggle";
 
+// TODO ActionsViz should ideally be independent from dashboard
 import { getCardData } from "metabase/dashboard/selectors";
 import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
+
+// TODO This should better be extracted to metabase/lib/somewhere
+import { getObjectName } from "metabase/visualizations/components/ObjectDetail/utils";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
@@ -16,9 +21,13 @@ import Question from "metabase-lib/lib/Question";
 import { State } from "metabase-types/store";
 import { SavedCard } from "metabase-types/types/Card";
 import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
-import { Dataset } from "metabase-types/types/Dataset";
+import { Dataset, DatasetData } from "metabase-types/types/Dataset";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 
+import {
+  DeleteRowFromDataAppPayload,
+  deleteRowFromDataApp,
+} from "../../actions";
 import { HorizontalAlignmentValue } from "./types";
 import { Root } from "./ActionsViz.styled";
 
@@ -95,7 +104,13 @@ interface ActionWizStateProps {
   dashCardData?: DashCardData;
 }
 
-type ActionsVizProps = ActionVizOwnProps & ActionWizStateProps;
+interface ActionWizDispatchProps {
+  deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
+}
+
+type ActionsVizProps = ActionVizOwnProps &
+  ActionWizStateProps &
+  ActionWizDispatchProps;
 
 function mapStateToProps(state: State) {
   return {
@@ -103,12 +118,16 @@ function mapStateToProps(state: State) {
   };
 }
 
+const mapDispatchToProps = {
+  deleteRow: deleteRowFromDataApp,
+};
+
 function getObjectDetailViewData(
   dashCardData: DashCardData,
   dashCard: DashCard<SavedCard>,
-): unknown[] | undefined {
+): DatasetData | undefined {
   const cardQueryResult = dashCardData[dashCard.id][dashCard.card_id];
-  return cardQueryResult?.data.rows[0];
+  return cardQueryResult?.data;
 }
 
 function ActionsViz({
@@ -116,10 +135,15 @@ function ActionsViz({
   dashCardData,
   metadata,
   settings,
+  deleteRow,
 }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] = useToggle(
     false,
   );
+  const {
+    modalContent: confirmationModalContent,
+    show: requestConfirmation,
+  } = useConfirmation();
 
   const connectedDashCardId = settings["actions.linked_card"];
   const connectedDashCard = dashboard.ordered_cards.find(
@@ -132,13 +156,14 @@ function ActionsViz({
 
   const isObjectDetailView = question?.display() === "object";
   const table = question?.table();
-  const row =
+  const connectedCardData =
     connectedDashCard && isObjectDetailView && dashCardData
       ? getObjectDetailViewData(
           dashCardData,
           connectedDashCard as DashCard<SavedCard>,
         )
       : undefined;
+  const row = connectedCardData?.rows[0];
 
   const hasCreateButton =
     settings["actions.create_enabled"] && !isObjectDetailView;
@@ -151,6 +176,46 @@ function ActionsViz({
     "actions.align_horizontal"
   ] as HorizontalAlignmentValue;
 
+  function onDeleteClick() {
+    if (
+      !question ||
+      !table ||
+      !connectedCardData ||
+      !connectedDashCard ||
+      !row
+    ) {
+      return;
+    }
+
+    const pkColumnIndex = connectedCardData.cols.findIndex(
+      col => col.semantic_type === "type/PK",
+    );
+    const pkValue = row[pkColumnIndex];
+
+    if (typeof pkValue !== "string" && typeof pkValue !== "number") {
+      return;
+    }
+
+    const objectName = getObjectName({
+      table,
+      question,
+      cols: connectedCardData.cols,
+      zoomedRow: row,
+    });
+
+    requestConfirmation({
+      title: t`Delete ${objectName}?`,
+      message: t`This can't be undone.`,
+      onConfirm: async () => {
+        deleteRow({
+          id: pkValue,
+          table,
+          dashCard: connectedDashCard,
+        });
+      },
+    });
+  }
+
   return (
     <>
       <Root horizontalAlignment={horizontalAlignment}>
@@ -161,7 +226,11 @@ function ActionsViz({
           <Button disabled={!question} onClick={showModal}>{t`Edit`}</Button>
         )}
         {hasDeleteButton && (
-          <Button disabled={!question} danger>{t`Delete`}</Button>
+          <Button
+            disabled={!question}
+            onClick={onDeleteClick}
+            danger
+          >{t`Delete`}</Button>
         )}
       </Root>
       {!!table && (
@@ -169,15 +238,19 @@ function ActionsViz({
           <WritebackModalForm table={table} row={row} onClose={hideModal} />
         </Modal>
       )}
+      {confirmationModalContent}
     </>
   );
 }
 
 const ConnectedActionsViz = connect<
   ActionWizStateProps,
-  unknown,
+  ActionWizDispatchProps,
   ActionVizOwnProps,
   State
->(mapStateToProps)(ActionsViz);
+>(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ActionsViz);
 
 export default Object.assign(ConnectedActionsViz, ACTIONS_VIZ_DEFINITION);
