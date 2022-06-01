@@ -9,14 +9,14 @@ export const getColorsForValues = (
     return getHashBasedMapping(
       keys,
       getAccentColors(),
-      existingMapping ?? {},
+      existingMapping,
       getPreferredColor,
     );
   } else {
     return getOrderBasedMapping(
       keys,
       getHarmonyColors(),
-      existingMapping ?? {},
+      existingMapping,
       getPreferredColor,
     );
   }
@@ -25,16 +25,17 @@ export const getColorsForValues = (
 const getOrderBasedMapping = (
   keys: string[],
   values: string[],
-  existingMapping: Record<string, string> = {},
+  existingMapping: Record<string, string> | null | undefined,
   getPreferredValue: (key: string) => string | undefined,
 ) => {
-  const newMapping = { ...existingMapping };
+  const newMapping: Record<string, string> = {};
   const unusedValues = new Set(values);
 
   keys.forEach(key => {
-    const value = newMapping[key];
+    const value = existingMapping?.[key];
 
     if (value) {
+      newMapping[key] = value;
       unusedValues.delete(value);
     }
   });
@@ -50,7 +51,7 @@ const getOrderBasedMapping = (
     }
   });
 
-  keys.forEach((key, index) => {
+  keys.forEach(key => {
     if (!unusedValues.size) {
       values.forEach(value => unusedValues.add(value));
     }
@@ -68,7 +69,7 @@ const getOrderBasedMapping = (
 const getHashBasedMapping = (
   keys: string[],
   values: string[],
-  existingMapping: Record<string, string> = {},
+  existingMapping: Record<string, string> | null | undefined,
   getPreferredValue: (key: string) => string | undefined,
 ) => {
   const newMapping: Record<string, string> = {};
@@ -77,9 +78,10 @@ const getHashBasedMapping = (
   const unusedValues = new Set(values);
 
   keys.forEach(key => {
-    const value = newMapping[key];
+    const value = existingMapping?.[key];
 
     if (value) {
+      newMapping[key] = value;
       unsetKeys.delete(key);
       unusedValues.delete(value);
     }
