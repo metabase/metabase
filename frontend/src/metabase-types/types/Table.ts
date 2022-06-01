@@ -1,6 +1,6 @@
 import { Field } from "./Field";
-import { DatabaseId } from "./Database";
 
+import { DatabaseId } from "metabase-types/api/database";
 import { ForeignKey } from "metabase-types/api/foreignKey";
 import { Metric } from "metabase-types/api/metric";
 import { Segment } from "metabase-types/api/segment";
