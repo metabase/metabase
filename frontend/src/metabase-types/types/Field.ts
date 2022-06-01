@@ -1,6 +1,7 @@
-import { ISO8601Time } from ".";
-import { Table, TableId } from "./Table";
 import { Value } from "./Dataset";
+
+import { ISO8601Time } from "metabase-types/api/time";
+import { Table, TableId } from "metabase-types/api/table";
 
 export type FieldId = number;
 

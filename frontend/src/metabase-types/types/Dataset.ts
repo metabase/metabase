@@ -1,7 +1,8 @@
-import { ISO8601Time } from ".";
 import { FieldId } from "./Field";
 import { DatasetQuery } from "./Card";
 import { DatetimeUnit, FieldLiteral, Field } from "./Query";
+
+import { ISO8601Time } from "metabase-types/api/time";
 
 export type ColumnName = string;
 

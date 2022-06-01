@@ -1,5 +1,5 @@
-import { ISO8601Time } from ".";
-import { Table } from "./Table";
+import { ISO8601Time } from "metabase-types/api/time";
+import { Table } from "metabase-types/api/table";
 
 export type DatabaseId = number;
 
