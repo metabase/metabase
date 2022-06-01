@@ -103,7 +103,8 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)
     (testing "Bin single column"
       (testing "20 bins"
-        (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+        (is (= [[10.0 1] [12.0 0] [14.0 0] [16.0 0] [18.0 0]  [20.0 0]  [22.0 0] [24.0 0]
+                [26.0 0] [28.0 0] [30.0 0] [32.0 4] [34.0 57] [36.0 29] [38.0 0] [40.0 9]]
                (mt/formatted-rows [1.0 int]
                  (mt/run-mbql-query venues
                    {:aggregation [[:count]]
@@ -226,7 +227,8 @@
                                   {:source-query {:source-table $$venues}}))]
         (let [query (nested-venues-query card)]
           (mt/with-native-query-testing-context query
-            (is (= [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
+            (is (= [[10.0 1] [12.0 0] [14.0 0] [16.0 0] [18.0 0]  [20.0 0]  [22.0 0] [24.0 0]
+                    [26.0 0] [28.0 0] [30.0 0] [32.0 4] [34.0 57] [36.0 29] [38.0 0] [40.0 9]]
                    (mt/formatted-rows [1.0 int]
                      (qp/process-query query))))))))
 
