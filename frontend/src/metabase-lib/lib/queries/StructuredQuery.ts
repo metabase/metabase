@@ -1162,6 +1162,10 @@ class StructuredQueryInner extends AtomicQuery {
       }
     }
 
+    if (this.isRaw() && this.sourceQuery()) {
+      query = query.clearFields();
+    }
+
     return query;
   }
 
