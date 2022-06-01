@@ -789,6 +789,12 @@ export function formatValueRaw(value, options = {}) {
   ) {
     return formatDateTimeWithUnit(value, "minute", options);
   } else if (typeof value === "string") {
+    if (options.view_as === "image") {
+      return formatImage(value, options);
+    }
+    if (column?.semantic_type) {
+      return value;
+    }
     return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, column);
