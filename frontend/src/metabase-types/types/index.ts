@@ -15,11 +15,11 @@ export type LocationDescriptor = {
   hash: string;
   pathname: string;
   search?: string;
-  query?: ObjectLiteral<string>;
+  query?: Record<string, any>;
 };
 
 /* Map of query string names to string values */
-export type QueryParams = ObjectLiteral<string>;
+export type QueryParams = Record<string, any>;
 
 /* Metabase API error object returned by the backend */
 export type ApiError = {

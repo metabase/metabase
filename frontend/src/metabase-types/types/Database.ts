@@ -16,7 +16,7 @@ export type DatabaseFeature =
   | "case-sensitivity-string-filter-options"
   | "binning";
 
-export type DatabaseDetails = ObjectLiteral;
+export type DatabaseDetails = Record<string, any>;
 
 export type DatabaseEngine = string;
 

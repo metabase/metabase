@@ -35,12 +35,12 @@ export type ClickObject = {
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
-  settings?: ObjectLiteral;
+  settings?: Record<string, any>;
   origin?: {
     row: Row;
     cols: Column[];
   };
-  extraData?: ObjectLiteral;
+  extraData?: Record<string, any>;
 };
 
 export type ClickAction = {
@@ -60,7 +60,7 @@ export type ClickActionProps = {
   question: Question;
   clicked?: ClickObject;
   settings?: VisualizationSettings;
-  extraData?: ObjectLiteral;
+  extraData?: Record<string, any>;
 };
 
 export type OnChangeCardAndRun = ({
