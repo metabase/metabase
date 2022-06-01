@@ -7,6 +7,7 @@ import {
   BrandColorSection,
   ChartColorSection,
   SectionContent,
+  SettingDescription,
   SettingRoot,
   SettingTitle,
 } from "./ColorSettings.styled";
@@ -47,7 +48,10 @@ const ColorSettings = ({
         />
       </BrandColorSection>
       <ChartColorSection>
-        <SettingTitle>{t`Chart colors`}</SettingTitle>
+        <SettingTitle hasDescription>{t`Chart colors`}</SettingTitle>
+        <SettingDescription>
+          {t`You can choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
+        </SettingDescription>
         <SectionContent>
           <ChartColorSettings
             colors={colors}

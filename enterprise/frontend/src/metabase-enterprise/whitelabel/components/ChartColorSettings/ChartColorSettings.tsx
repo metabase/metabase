@@ -78,12 +78,13 @@ const ChartColorTable = ({
       <TableBody>
         {colorGroups.map((colorGroup, index) => (
           <TableBodyRow key={index}>
-            {colorGroup.map(colorName => (
+            {colorGroup.map((colorName, index) => (
               <ChartColorCell
                 key={colorName}
                 color={colors[colorName]}
                 originalColor={color(colorName, colorPalette)}
                 colorName={colorName}
+                isAccent={index === 0}
                 onChange={onChange}
               />
             ))}
@@ -98,6 +99,7 @@ interface ChartColorCellProps {
   color?: string;
   originalColor: string;
   colorName: string;
+  isAccent: boolean;
   onChange: (colorName: string, color?: string) => void;
 }
 
@@ -105,6 +107,7 @@ const ChartColorCell = memo(function ChartColorCell({
   color,
   originalColor,
   colorName,
+  isAccent,
   onChange,
 }: ChartColorCellProps) {
   const handleChange = useCallback(
@@ -118,7 +121,8 @@ const ChartColorCell = memo(function ChartColorCell({
     <TableBodyCell>
       <ColorPicker
         value={color ?? originalColor}
-        isAuto={color == null}
+        placeholder={isAccent ? originalColor : t`Auto`}
+        isAuto={color == null && !isAccent}
         onChange={handleChange}
       />
     </TableBodyCell>

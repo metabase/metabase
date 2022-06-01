@@ -5,9 +5,18 @@ export const SettingRoot = styled.div`
   flex: 1 1 auto;
 `;
 
-export const SettingTitle = styled.div`
+export interface SettingTitleProps {
+  hasDescription?: boolean;
+}
+
+export const SettingTitle = styled.div<SettingTitleProps>`
   color: ${color("text-medium")};
   font-weight: bold;
+  margin-bottom: ${props => (props.hasDescription ? "0.5rem" : "1rem")};
+`;
+
+export const SettingDescription = styled.div`
+  color: ${color("text-medium")};
   margin-bottom: 1rem;
 `;
 
