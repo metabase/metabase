@@ -4,5 +4,5 @@ export interface AccentColorOptions {
   main?: boolean;
   light?: boolean;
   dark?: boolean;
-  palette?: ColorPalette;
+  harmony?: boolean;
 }
