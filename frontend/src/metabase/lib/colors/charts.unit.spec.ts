@@ -2,7 +2,7 @@ import { times } from "lodash";
 import { color } from "./palette";
 import { getColorsForValues } from "./charts";
 
-describe("getColorsForValues", () => {
+describe("charts", () => {
   it("should use accent colors for <= 8 series", () => {
     const keys = ["count", "profit", "sum_2"];
     const existingMapping = { count: color("accent1") };
