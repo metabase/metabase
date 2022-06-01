@@ -19,10 +19,10 @@ export type NumericInputAttributes = Omit<
 
 export interface SliderProps extends NumericInputAttributes {
   value: number[];
-  min: number;
-  max: number;
-  step?: number;
   onChange: (value: number[]) => void;
+  min?: number;
+  max?: number;
+  step?: number;
 }
 
 const Slider = ({
@@ -32,14 +32,19 @@ const Slider = ({
   max = 100,
   step = 1,
 }: SliderProps) => {
+  const [rangeMin, rangeMax] = useMemo(
+    () => [Math.min(...value, min, max), Math.max(...value, min, max)],
+    [value, min, max],
+  );
+
   const [beforeRange, rangeWidth] = useMemo(() => {
-    const totalRange = max - min;
+    const totalRange = rangeMax - rangeMin;
 
     return [
-      ((Math.min(...value) - min) / totalRange) * 100,
+      ((Math.min(...value) - rangeMin) / totalRange) * 100,
       (Math.abs(value[1] - value[0]) / totalRange) * 100,
     ];
-  }, [value, min, max]);
+  }, [value, rangeMin, rangeMax]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>, valueIndex: number) => {
@@ -67,8 +72,9 @@ const Slider = ({
         value={value[0]}
         onChange={e => handleChange(e, 0)}
         onMouseUp={sortValues}
-        min={min}
-        max={max}
+        min={rangeMin}
+        max={rangeMax}
+        step={step}
       />
       <SliderInput
         type="range"
@@ -76,8 +82,9 @@ const Slider = ({
         value={value[1]}
         onChange={e => handleChange(e, 1)}
         onMouseUp={sortValues}
-        min={min}
-        max={max}
+        min={rangeMin}
+        max={rangeMax}
+        step={step}
       />
     </SliderContainer>
   );
