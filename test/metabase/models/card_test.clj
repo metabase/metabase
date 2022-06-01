@@ -314,7 +314,6 @@
              (db/update! Card id :parameters [{:id 100}])))
         (is (some? (db/update! Card id :parameters [{:id "new-valid-id"}])))))))
 
-
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"
     (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]

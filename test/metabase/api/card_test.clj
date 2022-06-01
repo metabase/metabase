@@ -812,7 +812,7 @@
                                              :target ["dimension" ["template-tags" "category"]]}]}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
                                             {:parameters nil}))))
-      (testing "a non empty list will remove parameter_mappings"
+      (testing "an empty list will remove parameter_mappings"
         (is (partial= {:parameter_mappings []}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
                                             {:parameter_mappings []})))))))
