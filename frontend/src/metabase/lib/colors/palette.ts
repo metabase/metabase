@@ -6,7 +6,7 @@ export const ACCENT_COUNT = 8;
 // NOTE: DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW
 // NOTE: KEEP SYNCRONIZED WITH COLORS.CSS
 /* eslint-disable no-color-literals */
-const colors: ColorPalette = {
+export const colors: ColorPalette = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
   accent0: "#509EE3",
@@ -106,12 +106,4 @@ export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c))
     .darken(f)
     .string();
-};
-
-export const getColors = () => {
-  return colors;
-};
-
-export const setColor = (key: string, value: string) => {
-  colors[key] = value;
 };

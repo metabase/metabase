@@ -1,4 +1,4 @@
-import { getAccentColors, getHarmonyColors, getPreferredColor } from "./groups";
+import { getAccentColors, getPreferredColor } from "./groups";
 import { ACCENT_COUNT } from "./palette";
 
 export const getColorsForValues = (
@@ -8,14 +8,14 @@ export const getColorsForValues = (
   if (keys.length <= ACCENT_COUNT) {
     return getHashBasedMapping(
       keys,
-      getAccentColors(),
+      getAccentColors({ light: false, dark: false }),
       existingMapping,
       getPreferredColor,
     );
   } else {
     return getOrderBasedMapping(
       keys,
-      getHarmonyColors({ light: keys.length > ACCENT_COUNT * 2 }),
+      getAccentColors({ light: keys.length > ACCENT_COUNT * 2, harmony: true }),
       existingMapping,
       getPreferredColor,
     );

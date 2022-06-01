@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import { getHarmonyColors } from "metabase/lib/colors/groups";
+import { getAccentColors } from "metabase/lib/colors/groups";
 import ChartColorSample from "../ChartColorSample";
 import {
   TableBody,
@@ -16,7 +16,7 @@ const ChartColorPreview = (): JSX.Element => {
         <TableTitle>{t`Palette preview`}</TableTitle>
       </TableHeader>
       <TableBody>
-        <ChartColorSample colors={getHarmonyColors()} />
+        <ChartColorSample colors={getAccentColors()} />
       </TableBody>
     </TableRoot>
   );

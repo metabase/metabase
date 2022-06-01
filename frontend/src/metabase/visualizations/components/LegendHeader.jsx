@@ -2,13 +2,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import { getDistinctColors } from "metabase/lib/colors/groups";
+import { getAccentColors } from "metabase/lib/colors/groups";
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import ExplicitSize from "../../components/ExplicitSize";
 import LegendItem from "./LegendItem";
 import styles from "./Legend.css";
 
-const DEFAULT_COLORS = getDistinctColors();
+const DEFAULT_COLORS = getAccentColors();
 const MIN_WIDTH_PER_SERIES = 100;
 
 class LegendHeader extends Component {
