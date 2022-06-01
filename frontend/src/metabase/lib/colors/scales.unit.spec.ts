@@ -1,4 +1,4 @@
-import { getColorScale, getSafeColor } from "./scales";
+import { getColorScale } from "./scales";
 import { color } from "./palette";
 
 describe("scales", () => {
