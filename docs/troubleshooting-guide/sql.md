@@ -25,7 +25,7 @@ What type of [SQL variable][sql-variable-def] are you using?
 - [Filter widget doesn't display a dropdown menu of values](./filters.html#are-you-seeing-a-different-kind-of-input-widget-than-you-expected).
 - [SQL query contains a subquery (nested query) or CTE](../users-guide/13-sql-parameters.html#field-filters-dont-work-with-table-aliases).
 - [400 error from BigQuery](../users-guide/13-sql-parameters.html#some-databases-require-the-schema-in-the-from-clause).
-- [Missing `FROM` clause SQL syntax error](../users-guide/writing-sql.html#how-metabase-executes-sql-variables).
+- [SQL syntax error: missing `FROM` clause](../users-guide/writing-sql.html#how-metabase-executes-sql-variables).
 
 ### Text, number, or date variables
 
