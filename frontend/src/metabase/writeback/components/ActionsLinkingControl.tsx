@@ -6,11 +6,13 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Tooltip from "metabase/components/Tooltip";
 import { SelectList } from "metabase/components/select-list";
 
+import * as Q_DEPRECATED from "metabase/lib/query";
+
 import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
 import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
-type StructuredQueryCard = Card<StructuredDatasetQuery>;
+type StructuredQueryDashCard = DashCard<StructuredDatasetQuery>;
 
 interface Props {
   card: DashCard;
@@ -27,15 +29,13 @@ function ActionsLinkingControl({
 }: Props) {
   const connectedTableId = card.visualization_settings["actions.linked_table"];
 
-  const tables = dashboard.ordered_cards
-    .map(dashCard => dashCard.card)
-    .filter(
-      card =>
-        !!card.dataset_query.database && card.dataset_query.type === "query",
-    )
-    .map(
-      card => (card as StructuredQueryCard).dataset_query.query["source-table"],
-    )
+  const suitableDashCards = dashboard.ordered_cards.filter(dashCard =>
+    Q_DEPRECATED.isStructured(dashCard.card.dataset_query),
+  );
+
+  const suitableTables = suitableDashCards
+    .map(dashCard => (dashCard as StructuredQueryDashCard).card)
+    .map(card => card.dataset_query.query["source-query"])
     .map(tableId => metadata.table(tableId))
     .filter(Boolean);
 
@@ -48,7 +48,7 @@ function ActionsLinkingControl({
       }
     >
       <SelectList>
-        {tables.map(table => (
+        {suitableTables.map(table => (
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           <SelectList.Item
