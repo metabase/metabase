@@ -15,19 +15,19 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 import WithVizSettingsData from "metabase/visualizations/hoc/WithVizSettingsData";
 
 import Icon, { iconPropTypes } from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { SelectList } from "metabase/components/select-list";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import { getClickBehaviorDescription } from "metabase/lib/click-behavior";
+
+import ActionsLinkingControl from "metabase/writeback/components/ActionsLinkingControl";
 
 import cx from "classnames";
 import _ from "underscore";
@@ -401,7 +401,7 @@ const DashCardActionButtons = ({
 
   if (card.display === "actions") {
     buttons.push(
-      <ConnectActionsButton
+      <ActionsLinkingControl
         key="connect-actions"
         card={card}
         dashboard={dashboard}
@@ -418,55 +418,6 @@ const DashCardActionButtons = ({
         <RemoveButton className="ml1" onRemove={onRemove} />
       </Tooltip>
     </span>
-  );
-};
-
-const ConnectActionsButton = ({
-  card,
-  dashboard,
-  metadata,
-  onUpdateVisualizationSettings,
-}) => {
-  const connectedTableId = card.visualization_settings["actions.linked_table"];
-
-  const tables = dashboard.ordered_cards
-    .map(dashCard => dashCard.card)
-    .filter(
-      card =>
-        !!card.dataset_query.database && card.dataset_query.type === "query",
-    )
-    .map(card => card.dataset_query.query["source-table"])
-    .map(tableId => metadata.table(tableId))
-    .filter(Boolean);
-
-  return (
-    <PopoverWithTrigger
-      triggerElement={
-        <Tooltip tooltip={t`Connect table`}>
-          <Icon
-            name="bolt"
-            size={HEADER_ICON_SIZE}
-            style={HEADER_ACTION_STYLE}
-          />
-        </Tooltip>
-      }
-    >
-      <SelectList>
-        {tables.map(table => (
-          <SelectList.Item
-            key={table.id}
-            name={table.displayName()}
-            icon="table"
-            isSelected={table.id === connectedTableId}
-            onSelect={() =>
-              onUpdateVisualizationSettings({
-                "actions.linked_table": table.id,
-              })
-            }
-          />
-        ))}
-      </SelectList>
-    </PopoverWithTrigger>
   );
 };
 
