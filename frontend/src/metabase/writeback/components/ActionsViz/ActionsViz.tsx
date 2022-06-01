@@ -26,7 +26,9 @@ import { VisualizationProps } from "metabase-types/types/Visualization";
 
 import {
   DeleteRowFromDataAppPayload,
+  InsertRowFromDataAppPayload,
   deleteRowFromDataApp,
+  createRowFromDataApp,
 } from "../../actions";
 import { HorizontalAlignmentValue } from "./types";
 import { Root } from "./ActionsViz.styled";
@@ -106,6 +108,7 @@ interface ActionWizStateProps {
 
 interface ActionWizDispatchProps {
   deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
+  insertRow: (payload: InsertRowFromDataAppPayload) => void;
 }
 
 type ActionsVizProps = ActionVizOwnProps &
@@ -120,6 +123,7 @@ function mapStateToProps(state: State) {
 
 const mapDispatchToProps = {
   deleteRow: deleteRowFromDataApp,
+  insertRow: createRowFromDataApp,
 };
 
 function getObjectDetailViewData(
@@ -136,6 +140,7 @@ function ActionsViz({
   metadata,
   settings,
   deleteRow,
+  insertRow,
 }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] = useToggle(
     false,
@@ -175,6 +180,20 @@ function ActionsViz({
   const horizontalAlignment = settings[
     "actions.align_horizontal"
   ] as HorizontalAlignmentValue;
+
+  function handleInsert(values: Record<string, unknown>) {
+    if (table && connectedDashCard) {
+      insertRow({
+        table,
+        values,
+        dashCard: connectedDashCard,
+      });
+    }
+  }
+
+  function handleUpdate(values: Record<string, unknown>) {
+    // pass
+  }
 
   function onDeleteClick() {
     if (
@@ -235,7 +254,12 @@ function ActionsViz({
       </Root>
       {!!table && (
         <Modal isOpen={isModalOpen} onClose={hideModal}>
-          <WritebackModalForm table={table} row={row} onClose={hideModal} />
+          <WritebackModalForm
+            table={table}
+            row={row}
+            onSubmit={row ? handleUpdate : handleInsert}
+            onClose={hideModal}
+          />
         </Modal>
       )}
       {confirmationModalContent}

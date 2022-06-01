@@ -16,25 +16,46 @@ export type InsertRowPayload = {
   values: { [key: string]: number | string };
 };
 
+export const createRow = (payload: InsertRowPayload) => {
+  const { table, values } = payload;
+  return ActionsApi.create({
+    type: "query",
+    database: table.db_id,
+    query: {
+      "source-table": table.id,
+    },
+    create_row: values,
+  });
+};
+
 export const INSERT_ROW_FROM_TABLE_VIEW =
   "metabase/qb/INSERT_ROW_FROM_TABLE_VIEW";
 export const createRowFromTableView = (payload: InsertRowPayload) => {
   return async (dispatch: any) => {
-    const { table, values } = payload;
-
-    const result = await ActionsApi.create({
-      type: "query",
-      database: table.db_id,
-      query: {
-        "source-table": table.id,
-      },
-      create_row: values,
-    });
-
+    const result = await createRow(payload);
     dispatch.action(INSERT_ROW_FROM_TABLE_VIEW, payload);
     if (result?.["created-row"]?.id) {
       dispatch(setUIControls({ modal: null, modalContext: null }));
       dispatch(runQuestionQuery());
+    }
+  };
+};
+
+export type InsertRowFromDataAppPayload = InsertRowPayload & {
+  dashCard: DashCard;
+};
+
+export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
+  return async (dispatch: any) => {
+    const result = await createRow(payload);
+    if (result?.["created-row"]?.id) {
+      const { dashCard } = payload;
+      dispatch(
+        fetchCardData(dashCard.card, dashCard, {
+          reload: true,
+          ignoreCache: true,
+        }),
+      );
     }
   };
 };

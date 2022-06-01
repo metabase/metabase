@@ -14,7 +14,7 @@ import CategoryFieldPicker from "./CategoryFieldPicker";
 export interface WritebackFormProps {
   table: Table;
   row?: unknown[];
-  onSubmit?: (values: { [key: string]: Value }) => void;
+  onSubmit?: (values: Record<string, unknown>) => void;
 
   // Form props
   isModal?: boolean;
