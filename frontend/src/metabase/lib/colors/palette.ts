@@ -93,19 +93,19 @@ export function color(color: string, palette = colors) {
 export const alpha = (c: string, a: number) => {
   return Color(color(c))
     .alpha(a)
-    .string();
+    .string(0);
 };
 
 export const lighten = (c: string, f: number = 0.5) => {
   return Color(color(c))
     .lighten(f)
-    .string();
+    .string(0);
 };
 
 export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c))
     .darken(f)
-    .string();
+    .string(0);
 };
 
 export const getColors = () => {
