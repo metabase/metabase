@@ -27,8 +27,10 @@ import { VisualizationProps } from "metabase-types/types/Visualization";
 import {
   DeleteRowFromDataAppPayload,
   InsertRowFromDataAppPayload,
+  UpdateRowFromDataAppPayload,
   deleteRowFromDataApp,
   createRowFromDataApp,
+  updateRowFromDataApp,
 } from "../../actions";
 import { HorizontalAlignmentValue } from "./types";
 import { Root } from "./ActionsViz.styled";
@@ -109,6 +111,7 @@ interface ActionWizStateProps {
 interface ActionWizDispatchProps {
   deleteRow: (payload: DeleteRowFromDataAppPayload) => void;
   insertRow: (payload: InsertRowFromDataAppPayload) => void;
+  updateRow: (payload: UpdateRowFromDataAppPayload) => void;
 }
 
 type ActionsVizProps = ActionVizOwnProps &
@@ -124,6 +127,7 @@ function mapStateToProps(state: State) {
 const mapDispatchToProps = {
   deleteRow: deleteRowFromDataApp,
   insertRow: createRowFromDataApp,
+  updateRow: updateRowFromDataApp,
 };
 
 function getObjectDetailViewData(
@@ -141,6 +145,7 @@ function ActionsViz({
   settings,
   deleteRow,
   insertRow,
+  updateRow,
 }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] = useToggle(
     false,
@@ -192,7 +197,16 @@ function ActionsViz({
   }
 
   function handleUpdate(values: Record<string, unknown>) {
-    // pass
+    if (table && connectedDashCard && connectedCardData && row) {
+      const pkColumnIndex = connectedCardData.cols.findIndex(
+        col => col.semantic_type === "type/PK",
+      );
+      const pkValue = row[pkColumnIndex];
+      if (typeof pkValue !== "string" && typeof pkValue !== "number") {
+        return;
+      }
+      updateRow({ id: pkValue, table, values, dashCard: connectedDashCard });
+    }
   }
 
   function onDeleteClick() {
