@@ -1,4 +1,4 @@
-import { TableId, SchemaName } from "metabase-types/types/Table";
+import { TableId, SchemaName } from "metabase-types/api/table";
 
 export type DatabaseCandidates = SchemaCandidates[];
 
