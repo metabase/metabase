@@ -1,6 +1,8 @@
 import { Database } from "metabase-types/api";
 
-export const createMockDatabase = (opts?: Partial<Database>): Database => ({
+export const createMockDatabase = (
+  opts?: Partial<Database>,
+): Partial<Database> => ({
   id: 1,
   name: "Database",
   engine: "H2",
