@@ -131,7 +131,7 @@
             (throw e)))))
     (catch Throwable e
       (let [message (format "Failed to create %s '%s' test database: %s" driver database-name (ex-message e))]
-        (log/error e message)
+        (log/fatal e message)
         (if config/is-test?
           (System/exit -1)
           (do

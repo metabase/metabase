@@ -11,13 +11,9 @@
 
 List the entries of [[PersistedInfo]] in order to show a status page.
 
-You must be a superuser to do this.
-
 ## `GET /api/persist/:persisted-info-id`
 
 Fetch a particular [[PersistedInfo]] by id.
-
-You must be a superuser to do this.
 
 ### PARAMS:
 
@@ -26,8 +22,6 @@ You must be a superuser to do this.
 ## `GET /api/persist/card/:card-id`
 
 Fetch a particular [[PersistedInfo]] by card-id.
-
-You must be a superuser to do this.
 
 ### PARAMS:
 
@@ -38,19 +32,13 @@ You must be a superuser to do this.
 Disable global setting to allow databases to persist models. This will remove all tasks to refresh tables, remove
   that option from databases which might have it enabled, and delete all cached tables.
 
-You must be a superuser to do this.
-
 ## `POST /api/persist/enable`
 
 Enable global setting to allow databases to persist models.
 
-You must be a superuser to do this.
-
 ## `POST /api/persist/set-interval`
 
 Set the interval (in hours) to refresh persisted models. Shape should be JSON like {hours: 4}.
-
-You must be a superuser to do this.
 
 ### PARAMS:
 

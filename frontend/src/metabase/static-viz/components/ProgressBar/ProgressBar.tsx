@@ -87,7 +87,7 @@ const ProgressBar = ({
           rx={layout.borderRadius}
         />
       </ClipPath>
-      <Group clipPath={`url(#rounded-bar)`} top={layout.margin.top} left={xMin}>
+      <Group clipPath="url(#rounded-bar)" top={layout.margin.top} left={xMin}>
         <rect
           width={barWidth}
           height={layout.barHeight}
@@ -123,7 +123,7 @@ const ProgressBar = ({
       <Group left={pointerX} top={pointerY}>
         <Text
           fontSize={layout.fontSize}
-          textAnchor={"middle"}
+          textAnchor="middle"
           dy="-0.4em"
           dx={valueTextShift}
         >

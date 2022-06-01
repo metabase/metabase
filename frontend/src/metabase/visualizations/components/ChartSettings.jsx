@@ -307,7 +307,7 @@ class ChartSettings extends Component {
           <div className="Grid flex-full">
             <div
               className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
-              data-testid={"chartsettings-sidebar"}
+              data-testid="chartsettings-sidebar"
             >
               {widgetList}
             </div>

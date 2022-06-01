@@ -1,17 +1,18 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
+import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery, {
   FilterSection,
 } from "metabase-lib/lib/queries/StructuredQuery";
-import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Question from "metabase-lib/lib/Question";
 import Button from "metabase/core/components/Button";
 import Tab from "metabase/core/components/Tab";
 import TabContent from "metabase/core/components/TabContent";
 import Icon from "metabase/components/Icon";
 import BulkFilterList from "../BulkFilterList";
 import {
-  ModalCloseButton,
   ModalBody,
+  ModalCloseButton,
   ModalDivider,
   ModalFooter,
   ModalHeader,
@@ -22,15 +23,15 @@ import {
 } from "./BulkFilterModal.styled";
 
 export interface BulkFilterModalProps {
-  query: StructuredQuery;
+  question: Question;
   onClose?: () => void;
 }
 
 const BulkFilterModal = ({
-  query: initialQuery,
+  question,
   onClose,
 }: BulkFilterModalProps): JSX.Element | null => {
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState(getQuery(question));
   const [isChanged, setIsChanged] = useState(false);
 
   const filters = useMemo(() => {
@@ -38,7 +39,7 @@ const BulkFilterModal = ({
   }, [query]);
 
   const sections = useMemo(() => {
-    return query.topLevelFilterFieldOptionSections();
+    return query.topLevelFilterFieldOptionSections(null, 2, true);
   }, [query]);
 
   const handleAddFilter = useCallback((filter: Filter) => {
@@ -59,6 +60,11 @@ const BulkFilterModal = ({
     setIsChanged(true);
   }, []);
 
+  const handleClearSegments = useCallback(() => {
+    setQuery(query.clearSegments());
+    setIsChanged(true);
+  }, [query]);
+
   const handleApplyQuery = useCallback(() => {
     query.update(undefined, { run: true });
     onClose?.();
@@ -67,7 +73,7 @@ const BulkFilterModal = ({
   return (
     <ModalRoot>
       <ModalHeader>
-        <ModalTitle>{getTitle(query)}</ModalTitle>
+        <ModalTitle>{getTitle(question, query)}</ModalTitle>
         <ModalCloseButton onClick={onClose}>
           <Icon name="close" />
         </ModalCloseButton>
@@ -80,6 +86,7 @@ const BulkFilterModal = ({
           onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
+          onClearSegments={handleClearSegments}
         />
       ) : (
         <BulkFilterModalSectionList
@@ -89,6 +96,7 @@ const BulkFilterModal = ({
           onAddFilter={handleAddFilter}
           onChangeFilter={handleChangeFilter}
           onRemoveFilter={handleRemoveFilter}
+          onClearSegments={handleClearSegments}
         />
       )}
       <ModalDivider />
@@ -111,6 +119,7 @@ interface BulkFilterModalSectionProps {
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 const BulkFilterModalSection = ({
@@ -120,6 +129,7 @@ const BulkFilterModalSection = ({
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
+  onClearSegments,
 }: BulkFilterModalSectionProps): JSX.Element => {
   return (
     <ModalBody>
@@ -130,6 +140,7 @@ const BulkFilterModalSection = ({
         onAddFilter={onAddFilter}
         onChangeFilter={onChangeFilter}
         onRemoveFilter={onRemoveFilter}
+        onClearSegments={onClearSegments}
       />
     </ModalBody>
   );
@@ -142,6 +153,7 @@ interface BulkFilterModalSectionListProps {
   onAddFilter: (filter: Filter) => void;
   onChangeFilter: (filter: Filter, newFilter: Filter) => void;
   onRemoveFilter: (filter: Filter) => void;
+  onClearSegments: () => void;
 }
 
 const BulkFilterModalSectionList = ({
@@ -151,6 +163,7 @@ const BulkFilterModalSectionList = ({
   onAddFilter,
   onChangeFilter,
   onRemoveFilter,
+  onClearSegments,
 }: BulkFilterModalSectionListProps): JSX.Element => {
   const [tab, setTab] = useState(0);
 
@@ -177,6 +190,7 @@ const BulkFilterModalSectionList = ({
             onAddFilter={onAddFilter}
             onChangeFilter={onChangeFilter}
             onRemoveFilter={onRemoveFilter}
+            onClearSegments={onClearSegments}
           />
         </ModalTabPanel>
       ))}
@@ -184,8 +198,17 @@ const BulkFilterModalSectionList = ({
   );
 };
 
-const getTitle = (query: StructuredQuery) => {
-  const question = query.question();
+const getQuery = (question: Question) => {
+  const query = question.query();
+
+  if (query instanceof StructuredQuery) {
+    return query;
+  } else {
+    throw new Error("Native queries are not supported");
+  }
+};
+
+const getTitle = (question: Question, query: StructuredQuery) => {
   const table = query.table();
 
   if (question.isSaved()) {

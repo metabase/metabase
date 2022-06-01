@@ -61,11 +61,8 @@ import {
   Parameter as ParameterObject,
   ParameterValues,
 } from "metabase-types/types/Parameter";
-import {
-  Card as CardObject,
-  DatasetQuery,
-  VisualizationSettings,
-} from "metabase-types/types/Card";
+import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
+import { VisualizationSettings } from "metabase-types/api/card";
 import { Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
 import { DatabaseId } from "metabase-types/types/Database";
@@ -295,6 +292,10 @@ class QuestionInner {
 
   isPersisted() {
     return this._card && this._card.persisted;
+  }
+
+  setPersisted(isPersisted) {
+    return this.setCard(assoc(this.card(), "persisted", isPersisted));
   }
 
   setDataset(dataset) {

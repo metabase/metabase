@@ -484,7 +484,8 @@ function openDashCardVisualizationOptions() {
 function updateColumnTitle(originalText, updatedText) {
   cy.findByDisplayValue(originalText)
     .clear()
-    .type(updatedText);
+    .type(updatedText)
+    .blur();
 }
 
 function saveDashCardVisualizationOptions() {

@@ -134,7 +134,8 @@
 (u/strict-extend (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameters :parameters-list, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert

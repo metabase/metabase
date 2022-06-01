@@ -473,7 +473,7 @@ class Visualization extends React.PureComponent {
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
               <img data-testid="no-results-image" src={NoResults} />
             </Tooltip>
-            {!small && <span className="h4 text-bold">No results!</span>}
+            {!small && <span className="h4 text-bold">{t`No results!`}</span>}
           </div>
         ) : error ? (
           <div

@@ -232,6 +232,11 @@
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
+(defn- add-entity-id [obj & _]
+  (assoc obj :entity_id (u/generate-nano-id)))
+
+(models/add-property! :entity_id
+  :insert add-entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |

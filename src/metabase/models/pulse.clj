@@ -124,7 +124,8 @@
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse])
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :pre-insert     pre-insert
     :pre-update     pre-update
     :types          (constantly {:parameters :json})})

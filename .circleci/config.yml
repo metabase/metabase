@@ -22,11 +22,6 @@ executors:
       - image: metabase/qa-databases:mongo-sample-4.0
       - image: metabase/qa-databases:mysql-sample-8
 
-  java-8:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: metabase/ci:java-8-clj-1.11.0.1100.04-2022-build
-
   # Java 11 tests also test Metabase with the at-rest encryption enabled. See
   # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
   # what this means.
@@ -1007,8 +1002,8 @@ workflows:
       - clojure:
           matrix:
             parameters:
-              edition: ["ee", "oss"]
-              java-version: ["java-8", "java-11", "java-17"]
+              edition: ["ee"]
+              java-version: ["java-11"]
           name: be-tests-<< matrix.java-version >>-<< matrix.edition >>
           requires:
             - be-deps
@@ -1035,7 +1030,7 @@ workflows:
               driver: ["bigquery-cloud-sdk", "googleanalytics", "sqlite"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: << matrix.driver >>
 
       - test-driver:
@@ -1044,14 +1039,14 @@ workflows:
               driver: ["sqlserver", "druid"]
           name: be-tests-<< matrix.driver >>-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: << matrix.driver >>
           driver: << matrix.driver >>
 
       - test-driver:
           name: be-google-related-drivers-classpath-test
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: googleanalytics,bigquery-cloud-sdk
           test-args: >-
             :only "[metabase.query-processor-test.expressions-test metabase.driver.google-test
@@ -1064,7 +1059,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: << matrix.version >>
           driver: mongo
 
@@ -1075,7 +1070,7 @@ workflows:
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e:
             name: << matrix.version >>
           driver: mysql
@@ -1084,7 +1079,7 @@ workflows:
           name: be-tests-mysql-latest-ee
           description: "(MySQL latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e:
             name: mysql-latest
           driver: mysql
@@ -1104,7 +1099,7 @@ workflows:
       - test-driver:
           name: be-tests-oracle-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           before-steps:
             - fetch-jdbc-driver:
                 source: ORACLE_JDBC_JAR
@@ -1125,7 +1120,7 @@ workflows:
           name: be-tests-postgres-ee
           description: "(9.6)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: postgres-9-6
           driver: postgres
 
@@ -1133,7 +1128,7 @@ workflows:
           name: be-tests-postgres-latest-ee
           description: "(Latest)"
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: postgres-latest
           driver: postgres
           extra-env: >-
@@ -1144,7 +1139,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: presto-186
           before-steps:
             - wait-for-port:
@@ -1154,7 +1149,7 @@ workflows:
       - test-driver:
           name: be-tests-presto-jdbc-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: presto-jdbc-env # specific env for running Presto JDBC tests (newer Presto version, SSL, etc.)
           before-steps:
             - wait-for-port:
@@ -1190,21 +1185,21 @@ workflows:
       - test-driver:
           name: be-tests-redshift-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: redshift
           timeout: 15m
 
       - test-driver:
           name: be-tests-snowflake-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           driver: snowflake
           timeout: 115m
 
       - test-driver:
           name: be-tests-sparksql-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: sparksql
           before-steps:
             - wait-for-port:
@@ -1214,7 +1209,7 @@ workflows:
       - test-driver:
           name: be-tests-vertica-ee
           requires:
-            - be-tests-java-8-ee
+            - be-tests-java-11-ee
           e: vertica
           before-steps:
             - fetch-jdbc-driver:
@@ -1226,6 +1221,9 @@ workflows:
           name: build-uberjar-drivers-<< matrix.edition >>
           requires:
             - be-deps
+          filters:
+            branches:
+              ignore: master
           <<: *Matrix
 
       - build-uberjar-frontend:
@@ -1244,6 +1242,9 @@ workflows:
       - fe-deps:
           requires:
             - checkout
+          filters:
+            branches:
+              ignore: master
 
       - fe-tests-cypress:
           matrix:
@@ -1253,10 +1254,7 @@ workflows:
                 [
                   "admin",
                   "collections",
-                  "dashboard",
-                  "embedding",
                   "filters",
-                  "models",
                   "native",
                   "native-filters",
                   "onboarding",
@@ -1290,3 +1288,6 @@ workflows:
       - snowplow-deps:
           requires:
             - checkout
+          filters:
+            branches:
+              ignore: master

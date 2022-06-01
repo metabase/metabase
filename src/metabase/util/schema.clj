@@ -336,3 +336,8 @@
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
     (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+
+(def NanoIdString
+  "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
+  (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))

@@ -164,7 +164,7 @@ export default function DatePickerShortcuts({
     <div className={className}>
       {onBack ? (
         <SidebarHeader
-          className={"text-default py1 mb1"}
+          className="text-default py1 mb1"
           title={title}
           onBack={onBack}
         />

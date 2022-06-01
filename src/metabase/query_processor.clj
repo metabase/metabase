@@ -201,7 +201,9 @@
 ;; query -> results      = around + pre-process + compile + execute + post-process = default-middleware
 
 (def default-middleware
-  "The default set of middleware applied to queries ran via [[process-query]]."
+  "The default set of middleware applied to queries ran via [[process-query]].
+  NOTE: if you add any new middleware groups, you may need to modify [[dev.debug-qp/default-debug-middleware]] as well,
+  so that [[dev.debug-qp/process-query-debug]] still works as expected."
   (letfn [(combined-pre-process [qp]
             (fn combined-pre-process* [query rff context]
               (qp (preprocess* query) rff context)))

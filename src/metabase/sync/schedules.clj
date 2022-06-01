@@ -33,9 +33,10 @@
 (defn randomly-once-an-hour
   "Schedule map for once an hour at a random minute of the hour."
   []
-  ;; prevent zeros which would appear as non-random
-  {:schedule_minute (inc (rand-int 59))
-   :schedule_type   "hourly"})
+  ;; prevent zeros and 50s which would appear as non-random choices
+  (let [choices (into [] (remove #{0 50}) (range 60))]
+    {:schedule_minute (rand-nth choices)
+     :schedule_type   "hourly"}))
 
 (defn randomly-once-a-day
   "Schedule map for once a day at a random hour of the day."
