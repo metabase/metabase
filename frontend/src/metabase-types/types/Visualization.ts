@@ -1,7 +1,8 @@
 import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
 import { Card } from "metabase-types/types/Card";
+
 import { VisualizationSettings } from "metabase-types/api/card";
-import { ReduxAction } from "metabase-types/types/redux";
+import { ReduxAction } from "metabase-types/api/redux";
 
 // import Question from "metabase-lib/lib/Question";
 type Question = any;
