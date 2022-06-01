@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { t } from "ttag";
 import { getAccentColors } from "metabase/lib/colors/groups";
 import ChartColorSample from "../ChartColorSample";
@@ -9,14 +9,25 @@ import {
   TableTitle,
 } from "./ChartColorPreview.styled";
 
-const ChartColorPreview = (): JSX.Element => {
+export interface ChartColorPreviewProps {
+  colorPalette: Record<string, string>;
+}
+
+const ChartColorPreview = ({
+  colorPalette,
+}: ChartColorPreviewProps): JSX.Element => {
+  const colors = useMemo(
+    () => getAccentColors({ palette: colorPalette, harmony: true }),
+    [colorPalette],
+  );
+
   return (
     <TableRoot>
       <TableHeader>
         <TableTitle>{t`Palette preview`}</TableTitle>
       </TableHeader>
       <TableBody>
-        <ChartColorSample colors={getAccentColors()} />
+        <ChartColorSample colors={colors} />
       </TableBody>
     </TableRoot>
   );
