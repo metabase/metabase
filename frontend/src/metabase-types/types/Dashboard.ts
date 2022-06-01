@@ -1,4 +1,4 @@
-import { Card, CardId, VisualizationSettings } from "./Card";
+import { Card, CardId, VisualizationSettings, DatasetQuery } from "./Card";
 import { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;
@@ -33,14 +33,14 @@ export type DashboardWithCards = {
 
 export type DashCardId = number;
 
-export type DashCard = {
+export type DashCard<Query = DatasetQuery> = {
   id: DashCardId;
 
   card_id: CardId;
   dashboard_id: DashboardId;
 
-  card: Card;
-  series: Array<Card>;
+  card: Card<Query>;
+  series: Array<Card<Query>>;
 
   // incomplete
   parameter_mappings: Array<ParameterMapping>;
