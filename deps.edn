@@ -450,7 +450,13 @@
   :liquibase
   {:extra-deps  {ch.qos.logback/logback-classic {:mvn/version "1.2.10"}}
    :extra-paths ["dev/src"]
-   :main-opts   ["-m" "dev.liquibase"]}}}
+   :main-opts   ["-m" "dev.liquibase"]}
+
+  :sample
+  {:extra-deps  {faker/faker {:mvn/version "0.2.2"}
+                 jdistlib/jdistlib {:mvn/version "0.5.1"}}
+   :extra-paths ["sample_dataset"]
+   :main-opts   ["-m" "metabase.sample-dataset.generate"]}}}
 
   ;; TODO -- consider creating an alias that includes the `./bin` build-drivers & release code as well so we can work
   ;; on them all from a single REPL process.

@@ -2,16 +2,17 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [environ.core :as env]
             [metabase.models.database :refer [Database]]
             [metabase.sync :as sync]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
 (def ^:private ^String sample-database-name     "Sample Database")
-(def ^:private ^String sample-database-filename "sample-database.db.mv.db")
 
 (defn- db-details []
-  (let [resource (io/resource sample-database-filename)]
+  (let [sample-database-filename (env/env :sample-database-filename "sample-database.db.mv.db")
+        resource (io/resource sample-database-filename)]
     (when-not resource
       (throw (Exception. (trs "Sample database DB file ''{0}'' cannot be found."
                               sample-database-filename))))
