@@ -1,6 +1,6 @@
-import { DatabaseId } from "metabase-types/types/Database";
-import { SchemaName, TableId } from "metabase-types/types/Table";
-import { GroupId } from "./group";
+import { DatabaseId } from "metabase-types/api/database";
+import { GroupId } from "metabase-types/api/group";
+import { SchemaName, TableId } from "metabase-types/api/table";
 
 export type PermissionsGraph = {
   groups: GroupsPermissions;

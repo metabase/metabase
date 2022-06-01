@@ -21,7 +21,7 @@ import {
   TemplateTags,
   TemplateTag,
 } from "metabase-types/types/Query";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import { DatabaseEngine, DatabaseId } from "metabase-types/api/database";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 import Dimension, { TemplateTagDimension, FieldDimension } from "../Dimension";
 import Variable, { TemplateTagVariable } from "../Variable";

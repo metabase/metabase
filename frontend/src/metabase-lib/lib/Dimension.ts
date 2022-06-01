@@ -24,7 +24,7 @@ import {
   ValidationError,
   VALIDATION_ERROR_TYPES,
 } from "metabase-lib/lib/ValidationError";
-import { IconName } from "metabase-types/types";
+import { IconName } from "metabase-types/api/ui";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { DATETIME_UNITS, formatBucketing } from "metabase/lib/query_time";
 import Aggregation from "metabase-lib/lib/queries/structured/Aggregation";

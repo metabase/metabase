@@ -8,7 +8,7 @@ import Dimension, { AggregationDimension } from "../../Dimension";
 import { Aggregation as AggregationObject } from "metabase-types/types/Query";
 import StructuredQuery from "../StructuredQuery";
 import { AggregationOperator } from "metabase-types/types/Metadata";
-import { MetricId } from "metabase-types/types/Metric";
+import { MetricId } from "metabase-types/api/metric";
 import { FieldId } from "metabase-types/types/Field";
 const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 export default class Aggregation extends MBQLClause {

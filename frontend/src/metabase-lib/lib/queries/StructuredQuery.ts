@@ -36,7 +36,7 @@ import Dimension, {
 import { isSegment } from "metabase/lib/query/filter";
 import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 import Segment from "../metadata/Segment";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
+import { DatabaseEngine, DatabaseId } from "metabase-types/api/database";
 import Database from "../metadata/Database";
 import Question from "../Question";
 import { TableId } from "metabase-types/types/Table";

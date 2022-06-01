@@ -2,8 +2,8 @@
 // @ts-nocheck
 import Query from "metabase-lib/lib/queries/Query";
 import Table from "metabase-lib/lib/metadata/Table";
-import { DatabaseEngine, DatabaseId } from "metabase-types/types/Database";
 import Database from "metabase-lib/lib/metadata/Database";
+import { DatabaseEngine, DatabaseId } from "metabase-types/api/database";
 /**
  * A query type for queries that are attached to a specific database table
  * and form a single MBQL / native query clause
