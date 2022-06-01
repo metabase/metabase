@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { isReducedMotionPreferred } from "metabase/lib/dom";
 import { isSyncAborted, isSyncInProgress } from "metabase/lib/syncing";
 import Tooltip from "metabase/components/Tooltip";
-import { Database, InitialSyncStatus } from "metabase-types/api";
+import { Database, DatabaseInitialSyncStatus } from "metabase-types/api";
 import {
   StatusRoot,
   StatusIconContainer,
@@ -39,7 +39,7 @@ const DatabaseStatusSmall = ({
   );
 };
 
-const getStatus = (databases: Database[]): InitialSyncStatus => {
+const getStatus = (databases: Database[]): DatabaseInitialSyncStatus => {
   if (databases.some(isSyncInProgress)) {
     return "incomplete";
   } else if (databases.some(isSyncAborted)) {
@@ -49,7 +49,7 @@ const getStatus = (databases: Database[]): InitialSyncStatus => {
   }
 };
 
-const getStatusLabel = (status: InitialSyncStatus): string => {
+const getStatusLabel = (status: DatabaseInitialSyncStatus): string => {
   switch (status) {
     case "incomplete":
       return t`Syncing database…`;
@@ -60,7 +60,7 @@ const getStatusLabel = (status: InitialSyncStatus): string => {
   }
 };
 
-const getIconName = (status: InitialSyncStatus): string => {
+const getIconName = (status: DatabaseInitialSyncStatus): string => {
   switch (status) {
     case "incomplete":
       return "database";
@@ -71,7 +71,7 @@ const getIconName = (status: InitialSyncStatus): string => {
   }
 };
 
-const isSpinnerVisible = (status: InitialSyncStatus): boolean => {
+const isSpinnerVisible = (status: DatabaseInitialSyncStatus): boolean => {
   switch (status) {
     case "incomplete":
       return !isReducedMotionPreferred();
