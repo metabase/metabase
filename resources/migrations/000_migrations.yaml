@@ -11802,7 +11802,7 @@ databaseChangeLog:
               - column:
                   name: parameters
                   type: ${text.type}
-                  remarks: List of parameter associated to to a card
+                  remarks: List of parameter associated to a card
                   constraints:
                     nullable: true
                     deferrable: false
@@ -11817,6 +11817,34 @@ databaseChangeLog:
             columnName: parameters
             defaultNullValue: '[]'
             tableName: report_card
+
+  - changeSet:
+      id: v44.00-025
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-026
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            columnName: parameter_mappings
+            defaultNullValue: '[]'
+            tableName: report_card
+
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

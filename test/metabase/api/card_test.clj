@@ -56,6 +56,7 @@
    :embedding_params    nil
    :made_public_by_id   nil
    :parameters          []
+   :parameter_mappings  []
    :moderation_reviews  ()
    :public_uuid         nil
    :query_type          nil
@@ -319,8 +320,10 @@
           (mt/with-model-cleanup [Card]
             (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
-                              :collection_id (u/the-id collection)
-                              :parameters    [{:id "abc123", :name "test", :type "date"}])]
+                              :collection_id      (u/the-id collection)
+                              :parameters         [{:id "abc123", :name "test", :type "date"}]
+                              :parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                                    :target [:dimension [:template-tags "category"]]}])]
               (is (= (merge
                       card-defaults
                       {:name                   (:name card)
@@ -328,6 +331,8 @@
                        :collection             true
                        :creator_id             (mt/user->id :rasta)
                        :parameters             [{:id "abc123", :name "test", :type "date"}]
+                       :parameter_mappings     [{:parameter_id "abc123", :card_id "10",
+                                                 :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
                        :query_type             "query"
                        :visualization_settings {:global {:title nil}}
@@ -792,6 +797,28 @@
         (is (partial= {:parameters []}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
                                             {:parameters []})))))))
+
+(deftest update-card-parameter-mappings-test
+  (testing "PUT /api/card/:id"
+    (mt/with-temp Card [card]
+      (testing "successfully update with valid parameter_mappings"
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                             :target ["dimension" ["template-tags" "category"]]}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                                                   :target ["dimension" ["template-tags" "category"]]}]})))))
+
+    (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                                    :target ["dimension" ["template-tags" "category"]]}]}]
+      (testing "nil parameters will no-op"
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                             :target ["dimension" ["template-tags" "category"]]}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters nil}))))
+      (testing "an empty list will remove parameter_mappings"
+        (is (partial= {:parameter_mappings []}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameter_mappings []})))))))
 
 (deftest update-embedding-params-test
   (testing "PUT /api/card/:id"

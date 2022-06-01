@@ -312,7 +312,6 @@
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with String :id key"
              (db/update! Card id :parameters [{:id 100}])))
-
         (is (some? (db/update! Card id :parameters [{:id "new-valid-id"}])))))))
 
 (deftest normalize-parameters-test
@@ -331,3 +330,33 @@
                    :type   :category
                    :target expected}]
                  (db/select-one-field :parameters Card :id card-id))))))))
+
+(deftest validate-parameter-mappings-test
+  (testing "Should validate Card :parameter_mappings when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameter_mappings must be a sequence of maps with String :parameter_id key"
+           (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameter_mappings []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameter_mappings must be a sequence of maps with String :parameter_id key"
+             (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
+
+        (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"}])))))))
+
+(deftest normalize-parameter-mappings-test
+  (testing ":parameter_mappings should get normalized when coming out of the DB"
+    (mt/with-temp Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                             :card_id      1
+                                                             :target       [:dimension [:field-id 1]]}]}]
+      (is (= [{:parameter_id "22486e00",
+               :card_id      1,
+               :target       [:dimension [:field 1 nil]]}]
+             (db/select-one-field :parameter_mappings Card :id card-id))))))

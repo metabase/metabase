@@ -598,3 +598,28 @@
                                              :collection_id          nil})]
        (migrate!)
        (is (= [] (:parameters (first (db/simple-select Card {:where [:= :id card-id]})))))))))
+
+(deftest add-parameter-mappings-to-cards-test
+  (testing "Migration v44.00-024: Add parameter_mappings to cards"
+    (impl/test-migrations ["v44.00-024" "v44.00-026"] [migrate!]
+      (let [user-id
+            (db/simple-insert! User {:first_name  "Howard"
+                                     :last_name   "Hughes"
+                                     :email       "howard@aircraft.com"
+                                     :password    "superstrong"
+                                     :date_joined :%now})
+            database-id
+            (db/simple-insert! Database {:name "DB", :engine "h2", :created_at :%now, :updated_at :%now})
+            card-id
+            (db/simple-insert! Card {:name                   "My Saved Question"
+                                     :created_at             :%now
+                                     :updated_at             :%now
+                                     :creator_id             user-id
+                                     :display                "table"
+                                     :dataset_query          "{}"
+                                     :visualization_settings "{}"
+                                     :database_id            database-id
+                                     :collection_id          nil})]
+        (migrate!)
+        (is (= []
+               (:parameter_mappings (first (db/simple-select Card {:where [:= :id card-id]})))))))))
