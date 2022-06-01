@@ -22,4 +22,8 @@ export interface Collection {
   // Assigned on FE
   originalName?: string;
   path?: CollectionId[];
+
+  // TO CHECK
+  // Is it still in use?
+  color: string;
 }
