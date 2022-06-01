@@ -40,11 +40,11 @@ describe("charts", () => {
       count: color("accent1"),
       sum: color("accent0"),
       profit: color("success"),
-      S0: color("accent0-light"),
-      S1: color("accent0-dark"),
-      S2: color("accent1-light"),
-      S3: color("accent1-dark"),
-      S4: color("accent2"),
+      S0: color("accent0-dark"),
+      S1: color("accent1-dark"),
+      S2: color("accent2"),
+      S3: color("accent2-dark"),
+      S4: color("accent3"),
     });
   });
 
