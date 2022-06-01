@@ -4,12 +4,12 @@ import {
   visualize,
   visitDashboard,
   popover,
+  openQuestionActions,
 } from "__support__/e2e/cypress";
 
 import {
   openDetailsSidebar,
   startQuestionFromModel,
-  openModelActions,
 } from "./helpers/e2e-models-helpers";
 
 import {
@@ -38,7 +38,7 @@ describe("scenarios > models metadata", () => {
 
     //openDetailsSidebar();
 
-    openModelActions();
+    openQuestionActions();
 
     popover().within(() => {
       cy.findByTestId("tooltip-component-wrapper")
@@ -84,7 +84,7 @@ describe("scenarios > models metadata", () => {
       { visitQuestion: true },
     );
 
-    openModelActions();
+    openQuestionActions();
 
     popover().within(() => {
       cy.findByTestId("tooltip-component-wrapper")
@@ -147,7 +147,7 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Tax ($)").should("not.exist");
 
     //openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     cy.findByText("Edit metadata").click();
 
     cy.wait(["@cardQuery", "@cardQuery"]);

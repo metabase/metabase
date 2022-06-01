@@ -1,4 +1,10 @@
-import { restore, modal, filter, visitQuestion } from "__support__/e2e/cypress";
+import {
+  restore,
+  modal,
+  filter,
+  visitQuestion,
+  openQuestionActions,
+} from "__support__/e2e/cypress";
 
 import {
   assertIsModel,
@@ -8,7 +14,6 @@ import {
   saveQuestionBasedOnModel,
   assertIsQuestion,
   openDetailsSidebar,
-  openModelActions,
 } from "./helpers/e2e-models-helpers";
 
 describe("scenarios > models > revision history", () => {
@@ -29,14 +34,14 @@ describe("scenarios > models > revision history", () => {
   it("should allow reverting to a saved question state", () => {
     cy.visit("/model/3");
     openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
 
     cy.findByText("History").click();
     cy.button("Revert").click();
     cy.wait("@revertToRevision");
 
-    openModelActions();
+    openQuestionActions();
     assertIsQuestion();
     cy.get(".LineAreaBarChart");
 
@@ -57,7 +62,7 @@ describe("scenarios > models > revision history", () => {
 
     visitQuestion(3);
     openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("History").click();
@@ -68,7 +73,7 @@ describe("scenarios > models > revision history", () => {
       });
     cy.wait("@revertToRevision");
 
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
     cy.get(".LineAreaBarChart").should("not.exist");
 

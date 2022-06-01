@@ -3,13 +3,12 @@ import {
   visitQuestion,
   saveDashboard,
   popover,
+  openQuestionActions,
 } from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
 
 import { USERS } from "__support__/e2e/cypress_data";
-
-import { openQuestionActions } from "./helpers/e2e-question-helpers";
 
 const PERMISSIONS = {
   curate: ["admin", "normal", "nodata"],
@@ -68,7 +67,6 @@ describe("managing question from the question's details sidebar", () => {
 
             it("should be able to move the question (metabase#11719-2)", () => {
               // cy.skipOn(user === "nodata");
-              //cy.findByTestId("saved-question-header-button")
               openQuestionActions();
               cy.findByTestId("move-button").click();
               cy.findByText("My personal collection").click();

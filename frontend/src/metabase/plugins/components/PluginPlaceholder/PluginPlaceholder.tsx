@@ -1,7 +1,5 @@
 interface Props {
-  question?: any;
-  VerifyButton?: any;
-  verifyButtonProps?: any;
+  [key: string]: any;
 }
 
 function PluginPlaceholder(props: Props) {

@@ -7,9 +7,8 @@ import {
   visitQuestion,
   startNewQuestion,
   visualize,
+  openQuestionActions,
 } from "__support__/e2e/cypress";
-
-import { openQuestionActions } from "./helpers/e2e-question-helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {

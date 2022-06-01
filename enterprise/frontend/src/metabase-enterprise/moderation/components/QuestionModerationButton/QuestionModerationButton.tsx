@@ -17,11 +17,12 @@ import {
 import { VerifyButton as DefaultVerifyButton } from "../QuestionModerationSection/QuestionModerationSection.styled";
 
 import { State } from "metabase-types/store";
+import Question from "metabase-lib/lib/Question";
 
 interface Props {
-  question: any;
-  verifyCard: (id: string) => void;
-  removeCardReview: (id: string) => void;
+  question: Question;
+  verifyCard: (id: number) => void;
+  removeCardReview: (id: number) => void;
   isModerator: boolean;
   VerifyButton: React.FC;
   verifyButtonProps: any;
@@ -87,7 +88,7 @@ function QuestionModerationButton({
           data-testid="moderation-remove-verification-action"
           {...verifyButtonProps}
         >
-          {t`Remove Verification`}
+          {t`Remove verification`}
         </VerifyButton>
       )}
     </React.Fragment>

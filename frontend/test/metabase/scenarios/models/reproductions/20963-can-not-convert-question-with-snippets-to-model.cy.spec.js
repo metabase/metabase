@@ -3,8 +3,8 @@ import {
   modal,
   openNativeEditor,
   popover,
+  openQuestionActions,
 } from "__support__/e2e/cypress";
-import { openModelActions } from "../helpers/e2e-models-helpers";
 
 const snippetName = `string 'test'`;
 const questionName = "Converting questions with snippets to models";
@@ -48,7 +48,7 @@ describe("issue 20963", () => {
 
     // Convert into to a model
     // openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     popover().within(() => {
       cy.icon("model").click();
     });

@@ -1,4 +1,4 @@
-import { popover, modal } from "__support__/e2e/cypress";
+import { popover, modal, openQuestionActions } from "__support__/e2e/cypress";
 
 export function assertQuestionIsBasedOnModel({
   questionName,
@@ -68,7 +68,6 @@ export function assertIsModel() {
   popover().within(() => {
     cy.icon("model").should("not.exist");
   });
-  //cy.findByText("Model management");
   cy.findByText("Sample Database").should("not.exist");
 
   // For native
@@ -81,12 +80,11 @@ export function assertIsQuestion() {
   popover().within(() => {
     cy.icon("model");
   });
-  //cy.findByText("Model management").should("not.exist");
   cy.findByText("Sample Database");
 }
 
 export function turnIntoModel() {
-  openModelActions();
+  openQuestionActions();
   popover().within(() => {
     cy.icon("model").click();
   });
@@ -110,13 +108,3 @@ export function startQuestionFromModel(modelName) {
   cy.findByText("Models").click();
   cy.findByText(modelName).click();
 }
-
-export const openModelActions = () => {
-  cy.findAllByTestId("question-action-buttons-container").within(() => {
-    cy.icon("ellipsis").click();
-  });
-};
-
-export const closeModelActions = () => {
-  cy.findAllByTestId("qb-header").click();
-};

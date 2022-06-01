@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestion,
   popover,
+  openQuestionActions,
 } from "__support__/e2e/cypress";
 
 describeEE("scenarios > saved question moderation", () => {
@@ -15,9 +16,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to verify a saved question", () => {
-      cy.findByTestId("question-action-buttons-container").within(() => {
-        cy.icon("ellipsis").click();
-      });
+      openQuestionActions();
 
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
@@ -33,9 +32,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to unverify a verified saved question", () => {
-      cy.findByTestId("question-action-buttons-container").within(() => {
-        cy.icon("ellipsis").click();
-      });
+      openQuestionActions();
 
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
@@ -61,9 +58,7 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see evidence of verification/unverification in the question's timeline", () => {
-      cy.findByTestId("question-action-buttons-container").within(() => {
-        cy.icon("ellipsis").click();
-      });
+      openQuestionActions();
 
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
@@ -74,9 +69,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.findAllByText("You verified this").should("be.visible");
 
-      cy.findByTestId("question-action-buttons-container").within(() => {
-        cy.icon("ellipsis").click();
-      });
+      openQuestionActions();
 
       popover().within(() => {
         cy.findByTestId("moderation-remove-verification-action").click();

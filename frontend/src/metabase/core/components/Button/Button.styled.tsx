@@ -7,13 +7,14 @@ export const ButtonRoot = styled.button`
 
 export interface ButtonContentProps {
   iconVertical?: boolean;
+  justifyContent?: string;
 }
 
 export const ButtonContent = styled.div<ButtonContentProps>`
   display: flex;
   flex-direction: ${props => (props.iconVertical ? "column" : "row")};
   align-items: center;
-  justify-content: center;
+  justify-content: ${props => props.justifyContent || "center"};
   min-width: ${props => (props.iconVertical ? "60px" : "")};
 `;
 

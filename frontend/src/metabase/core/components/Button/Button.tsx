@@ -55,6 +55,7 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   borderless?: boolean;
   onlyIcon?: boolean;
   fullWidth?: boolean;
+  justifyContent?: string;
 }
 
 const BaseButton = forwardRef(function BaseButton(
@@ -67,6 +68,7 @@ const BaseButton = forwardRef(function BaseButton(
     iconVertical = false,
     labelBreakpoint,
     children,
+    justifyContent,
     ...props
   }: Props,
   ref: Ref<HTMLButtonElement>,
@@ -83,7 +85,10 @@ const BaseButton = forwardRef(function BaseButton(
       })}
       ref={ref}
     >
-      <ButtonContent iconVertical={iconVertical}>
+      <ButtonContent
+        iconVertical={iconVertical}
+        justifyContent={justifyContent}
+      >
         {icon && (
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
         )}

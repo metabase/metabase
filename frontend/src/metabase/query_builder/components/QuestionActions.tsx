@@ -1,29 +1,25 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { t } from "ttag";
-
-import { color } from "metabase/lib/colors";
 
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
-
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-
-import {
-  checkDatabaseSupportsModels,
-  checkCanBeModel,
-  checkDatabaseCanPersistDatasets,
-} from "metabase/lib/data-modeling/utils";
 
 import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 
+import { MODAL_TYPES } from "metabase/query_builder/constants";
+
+import { color } from "metabase/lib/colors";
+import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
+
+import Question from "metabase-lib/lib/Question";
+
 import {
   QuestionActionsContainer,
   PopoverContainer,
 } from "./QuestionActions.styled";
-
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 const ICON_SIZE = 18;
 
@@ -38,13 +34,21 @@ interface Props {
   isBookmarked: boolean;
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
-  question: any;
+  question: Question;
   setQueryBuilderMode: (
     mode: string,
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
 }
+
+const buttonProps = {
+  iconSize: ICON_SIZE,
+  borderless: true,
+  color: color("text-dark"),
+  fullWidth: true,
+  justifyContent: "start",
+};
 
 const QuestionActions = ({
   isBookmarked,
@@ -59,6 +63,18 @@ const QuestionActions = ({
 
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
+
+  const handleEditQuery = useCallback(() => {
+    setQueryBuilderMode("dataset", {
+      datasetEditorTab: "query",
+    });
+  }, [setQueryBuilderMode]);
+
+  const handleEditMetadata = useCallback(() => {
+    setQueryBuilderMode("dataset", {
+      datasetEditorTab: "metadata",
+    });
+  }, [setQueryBuilderMode]);
 
   return (
     <QuestionActionsContainer data-testid="question-action-buttons-container">
@@ -89,10 +105,7 @@ const QuestionActions = ({
               <PLUGIN_MODERATION.QuestionModerationButton
                 question={question}
                 VerifyButton={Button}
-                verifyButtonProps={{
-                  iconSize: ICON_SIZE,
-                  borderless: true,
-                }}
+                verifyButtonProps={buttonProps}
               />
             </div>
             {isDataset && (
@@ -101,18 +114,14 @@ const QuestionActions = ({
                   icon="notebook"
                   iconSize={ICON_SIZE}
                   borderless
-                  onClick={() => {
-                    setQueryBuilderMode("dataset", {
-                      datasetEditorTab: "query",
-                    });
-                  }}
+                  onClick={handleEditQuery}
                   data-testid={ADD_TO_DASH_TESTID}
+                  color={color("text-dark")}
+                  fullWidth
+                  justifyContent="start"
                 >
-                  Edit query definition{" "}
-                  <DatasetMetadataStrengthIndicator
-                    dataset={question}
-                    textOnly
-                  />
+                  {t`Edit query definition`}
+                  <DatasetMetadataStrengthIndicator dataset={question} />
                 </Button>
               </div>
             )}
@@ -122,14 +131,13 @@ const QuestionActions = ({
                   icon="label"
                   iconSize={ICON_SIZE}
                   borderless
-                  onClick={() => {
-                    setQueryBuilderMode("dataset", {
-                      datasetEditorTab: "metadata",
-                    });
-                  }}
+                  onClick={handleEditMetadata}
                   data-testid={ADD_TO_DASH_TESTID}
+                  color={color("text-dark")}
+                  fullWidth
+                  justifyContent="start"
                 >
-                  Edit metadata
+                  {t`Edit metadata`}
                 </Button>
               </div>
             )}
@@ -137,12 +145,11 @@ const QuestionActions = ({
               <div>
                 <Button
                   icon="dashboard"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
                   data-testid={ADD_TO_DASH_TESTID}
+                  {...buttonProps}
                 >
-                  Add to dashboard
+                  {t`Add to dashboard`}
                 </Button>
               </div>
             )}
@@ -150,25 +157,11 @@ const QuestionActions = ({
               <div>
                 <Button
                   icon="move"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
                   data-testid={MOVE_TESTID}
+                  {...buttonProps}
                 >
-                  Move
-                </Button>
-              </div>
-            )}
-            {canWrite && (
-              <div>
-                <Button
-                  icon="segment"
-                  iconSize={ICON_SIZE}
-                  borderless
-                  onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
-                  data-testid={CLONE_TESTID}
-                >
-                  Duplicate
+                  {t`Move`}
                 </Button>
               </div>
             )}
@@ -176,8 +169,6 @@ const QuestionActions = ({
               <div>
                 <Button
                   icon="model"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={() => {
                     const modal = checkCanBeModel(question)
                       ? MODAL_TYPES.TURN_INTO_DATASET
@@ -185,8 +176,9 @@ const QuestionActions = ({
                     onOpenModal(modal);
                   }}
                   data-testid={TURN_INTO_DATASET_TESTID}
+                  {...buttonProps}
                 >
-                  Turn into a model
+                  {t`Turn into a model`}
                 </Button>
               </div>
             )}
@@ -194,12 +186,23 @@ const QuestionActions = ({
               <div>
                 <Button
                   icon="model_framed"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={turnDatasetIntoQuestion}
                   data-testid=""
+                  {...buttonProps}
                 >
-                  Turn back to saved question
+                  {t`Turn back to saved question`}
+                </Button>
+              </div>
+            )}
+            {canWrite && (
+              <div>
+                <Button
+                  icon="segment"
+                  onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
+                  data-testid={CLONE_TESTID}
+                  {...buttonProps}
+                >
+                  {t`Duplicate`}
                 </Button>
               </div>
             )}
@@ -207,12 +210,11 @@ const QuestionActions = ({
               <div>
                 <Button
                   icon="archive"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
                   data-testid={ARCHIVE_TESTID}
+                  {...buttonProps}
                 >
-                  Archive
+                  {t`Archive`}
                 </Button>
               </div>
             )}

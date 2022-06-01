@@ -13,6 +13,8 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
+  openQuestionActions,
+  closeQuestionActions,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -26,8 +28,6 @@ import {
   saveQuestionBasedOnModel,
   assertIsQuestion,
   openDetailsSidebar,
-  openModelActions,
-  closeModelActions,
   getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
@@ -45,7 +45,7 @@ describe("scenarios > models", () => {
     visitQuestion(1);
 
     turnIntoModel();
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -95,7 +95,7 @@ describe("scenarios > models", () => {
     );
 
     turnIntoModel();
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -154,7 +154,7 @@ describe("scenarios > models", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
-    openModelActions();
+    openQuestionActions();
     assertIsQuestion();
   });
 
@@ -164,7 +164,7 @@ describe("scenarios > models", () => {
     cy.visit("/model/1");
 
     openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     popover().within(() => {
       cy.findByText("Turn back to saved question").click();
     });
@@ -172,12 +172,12 @@ describe("scenarios > models", () => {
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
-    openModelActions();
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -192,7 +192,7 @@ describe("scenarios > models", () => {
     cy.visit("/question/1");
     cy.wait("@dataset");
     //openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
     cy.url().should("include", "/model");
   });
@@ -497,7 +497,7 @@ describe("scenarios > models", () => {
     );
 
     openDetailsSidebar();
-    openModelActions();
+    openQuestionActions();
     popover().within(() => {
       cy.icon("model").click();
     });
@@ -506,9 +506,9 @@ describe("scenarios > models", () => {
       cy.button("Turn this into a model").should("not.exist");
       cy.icon("close").click();
     });
-    openModelActions();
+    openQuestionActions();
     assertIsQuestion();
-    closeModelActions();
+    closeQuestionActions();
 
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
@@ -524,7 +524,7 @@ describe("scenarios > models", () => {
       .click();
 
     turnIntoModel();
-    openModelActions();
+    openQuestionActions();
     assertIsModel();
   });
 

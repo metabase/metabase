@@ -53,16 +53,11 @@ function formatPercentage(percentage: number): string {
 
 type Props = {
   dataset: Question;
-  textOnly: boolean;
 };
 
 const TOOLTIP_DELAY: [number, null] = [700, null];
 
-function DatasetMetadataStrengthIndicator({
-  dataset,
-  textOnly = false,
-  ...props
-}: Props) {
+function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const [hoverRef, isHovered] = useHover<HTMLDivElement>();
   const resultMetadata = dataset.getResultMetadata();
 
