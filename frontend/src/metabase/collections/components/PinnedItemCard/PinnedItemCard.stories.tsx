@@ -14,9 +14,9 @@ const collection = {
   id: 1,
   name: "Collection Foo",
   archived: false,
+  color: "#ff0000",
 };
 
-const onToggleSelected = action("onToggleSelected");
 const onCopy = action("onCopy");
 const onMove = action("onMove");
 
