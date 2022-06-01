@@ -1,8 +1,8 @@
 import { Field } from "./Field";
-import { Metric } from "./Metric";
 import { DatabaseId } from "./Database";
 
 import { ForeignKey } from "metabase-types/api/foreignKey";
+import { Metric } from "metabase-types/api/metric";
 import { Segment } from "metabase-types/api/segment";
 import { SchemaName, TableId } from "metabase-types/api/table";
 import { ISO8601Time } from "metabase-types/api/time";

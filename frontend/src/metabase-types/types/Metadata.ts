@@ -2,8 +2,8 @@
 
 import { Database, DatabaseId } from "metabase-types/types/Database";
 import { Field, FieldId } from "metabase-types/types/Field";
-import { Metric, MetricId } from "metabase-types/types/Metric";
 
+import { Metric, MetricId } from "metabase-types/api/metric";
 import { Segment, SegmentId } from "metabase-types/api/segment";
 import { Table, TableId } from "metabase-types/api/table";
 
