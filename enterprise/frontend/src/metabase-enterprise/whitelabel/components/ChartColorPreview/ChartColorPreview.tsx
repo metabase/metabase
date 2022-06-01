@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { t } from "ttag";
-import { getAccentColors } from "metabase/lib/colors/groups";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import ChartColorSample from "../ChartColorSample";
+import { getAccents } from "./utils";
 import {
   TableBody,
   TableHeader,
@@ -19,12 +19,8 @@ export interface ChartColorPreviewProps {
 const ChartColorPreview = ({
   colorPalette,
 }: ChartColorPreviewProps): JSX.Element => {
-  const colors = useDebouncedValue(colorPalette, PREVIEW_TIMEOUT);
-
-  const accents = useMemo(
-    () => getAccentColors({ palette: colors, harmony: true }),
-    [colors],
-  );
+  const colorValues = useDebouncedValue(colorPalette, PREVIEW_TIMEOUT);
+  const colorAccents = useMemo(() => getAccents(colorValues), [colorValues]);
 
   return (
     <TableRoot>
@@ -32,7 +28,7 @@ const ChartColorPreview = ({
         <TableTitle>{t`Palette preview`}</TableTitle>
       </TableHeader>
       <TableBody>
-        <ChartColorSample colors={accents} />
+        <ChartColorSample colors={colorAccents} />
       </TableBody>
     </TableRoot>
   );
