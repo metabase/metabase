@@ -209,7 +209,7 @@ function ActionsViz({
     }
   }
 
-  function onDeleteClick() {
+  function handleDelete() {
     if (
       !question ||
       !table ||
@@ -261,7 +261,7 @@ function ActionsViz({
         {hasDeleteButton && (
           <Button
             disabled={!question}
-            onClick={onDeleteClick}
+            onClick={handleDelete}
             danger
           >{t`Delete`}</Button>
         )}
