@@ -3,7 +3,7 @@ import { ACCENT_COUNT } from "./palette";
 
 export const getColorsForValues = (
   keys: string[],
-  existingMapping: Record<string, string> | null | undefined,
+  existingMapping?: Record<string, string> | null,
 ) => {
   if (keys.length <= ACCENT_COUNT) {
     return getHashBasedMapping(
