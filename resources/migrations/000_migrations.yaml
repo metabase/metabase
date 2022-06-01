@@ -11794,7 +11794,7 @@ databaseChangeLog:
   - changeSet:
       id: v44.00-023
       author: qnkhuat
-      comment: Added 0.44.0 - Add parameter to report_card
+      comment: Added 0.44.0 - Add parameters to report_card
       changes:
         - addColumn:
             tableName: report_card
@@ -11810,7 +11810,7 @@ databaseChangeLog:
   - changeSet:
       id: v44.00-024
       author: qnkhuat
-      comment: Added 0.44.0 - Add parameter to report_card
+      comment: Added 0.44.0 - Add parameters to report_card
       changes:
         - addNotNullConstraint:
             columnDataType: ${text.type}

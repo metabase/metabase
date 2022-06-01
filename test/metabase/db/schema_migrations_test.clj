@@ -576,7 +576,6 @@
         (migrate!)
         (is (= #{"All Users"} (get-perms "/application/subscription/")))))))
 
-
 (deftest add-parameter-to-cards-test
   (testing "Migration v44.00-022: Add parameters to report_card"
     (impl/test-migrations ["v44.00-022" "v44.00-024"] [migrate!]

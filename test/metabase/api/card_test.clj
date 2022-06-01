@@ -301,16 +301,6 @@
 ;;; |                                        CREATING A CARD (POST /api/card)                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest create-card-validation-test
-  (testing "POST /api/card"
-   (is (= {:errors {:visualization_settings "value must be a map."}}
-          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
-
-   (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                     "Each parameter must be a map with String :id key")}}
-          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
-                                                             :parameters             "abc"})))))
-
 (deftest create-a-card
   (testing "POST /api/card"
     (testing "Test that we can create a new Card"
@@ -365,6 +355,16 @@
                                                    (-> edit-info
                                                        (update :id boolean)
                                                        (update :timestamp boolean))))))))))))))
+
+(deftest create-card-validation-test
+  (testing "POST /api/card"
+   (is (= {:errors {:visualization_settings "value must be a map."}}
+          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+
+   (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                     "Each parameter must be a map with String :id key")}}
+          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                             :parameters             "abc"})))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -793,7 +793,7 @@
                                      :type "number"}]}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
                                             {:parameters nil}))))
-      (testing "a non empty list will remove parameters"
+      (testing "an empty list will remove parameters"
         (is (partial= {:parameters []}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
                                             {:parameters []})))))))
