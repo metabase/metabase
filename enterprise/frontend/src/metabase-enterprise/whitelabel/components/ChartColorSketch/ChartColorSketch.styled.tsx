@@ -21,13 +21,17 @@ export const SketchGrid = styled(SketchLayer)`
   position: absolute;
 `;
 
-export const SketchGridLine = styled.div`
+export const SketchTick = styled.div`
+  border-top: 1px dashed ${color("border")};
+`;
+
+export const SketchAxis = styled.div`
   border-top: 1px solid ${color("border")};
 `;
 
 export const SketchPlot = styled(SketchLayer)`
   display: flex;
-  gap: 2rem;
+  gap: 10%;
   flex: 1 1 auto;
   padding: 0 1.5rem;
 `;

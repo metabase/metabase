@@ -10,15 +10,13 @@ import {
 } from "./ChartColorPreview.styled";
 
 const ChartColorPreview = (): JSX.Element => {
-  const colors = [...getHarmonyColors()].reverse();
-
   return (
     <TableRoot>
       <TableHeader>
         <TableTitle>{t`Palette preview`}</TableTitle>
       </TableHeader>
       <TableBody>
-        <ChartColorSketch colors={colors} />
+        <ChartColorSketch colors={getHarmonyColors()} />
       </TableBody>
     </TableRoot>
   );
