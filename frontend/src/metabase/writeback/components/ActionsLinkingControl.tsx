@@ -8,36 +8,29 @@ import { SelectList } from "metabase/components/select-list";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 
-import { Card, StructuredDatasetQuery } from "metabase-types/types/Card";
+import { SavedCard, StructuredDatasetQuery } from "metabase-types/types/Card";
 import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
-import Metadata from "metabase-lib/lib/metadata/Metadata";
 
-type StructuredQueryDashCard = DashCard<StructuredDatasetQuery>;
+type StructuredQuerySavedCard = SavedCard<StructuredDatasetQuery>;
+type StructuredQueryDashCard = DashCard<StructuredQuerySavedCard>;
 
 interface Props {
   card: DashCard;
   dashboard: DashboardWithCards;
-  metadata: Metadata;
   onUpdateVisualizationSettings: (settings: Record<string, unknown>) => void;
 }
 
 function ActionsLinkingControl({
   card,
   dashboard,
-  metadata,
   onUpdateVisualizationSettings,
 }: Props) {
-  const connectedTableId = card.visualization_settings["actions.linked_table"];
+  const connectedDashCardId =
+    card.visualization_settings["actions.linked_card"];
 
   const suitableDashCards = dashboard.ordered_cards.filter(dashCard =>
     Q_DEPRECATED.isStructured(dashCard.card.dataset_query),
-  );
-
-  const suitableTables = suitableDashCards
-    .map(dashCard => (dashCard as StructuredQueryDashCard).card)
-    .map(card => card.dataset_query.query["source-query"])
-    .map(tableId => metadata.table(tableId))
-    .filter(Boolean);
+  ) as StructuredQueryDashCard[];
 
   return (
     <PopoverWithTrigger
@@ -48,17 +41,17 @@ function ActionsLinkingControl({
       }
     >
       <SelectList>
-        {suitableTables.map(table => (
+        {suitableDashCards.map(dashCard => (
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
           <SelectList.Item
-            key={table.id}
-            name={table.displayName()}
+            key={dashCard.id}
+            name={dashCard.card.name}
             icon="table"
-            isSelected={table.id === connectedTableId}
+            isSelected={dashCard.id === connectedDashCardId}
             onSelect={() =>
               onUpdateVisualizationSettings({
-                "actions.linked_table": table.id,
+                "actions.linked_card": dashCard.id,
               })
             }
           />

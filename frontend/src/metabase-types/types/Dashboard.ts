@@ -33,14 +33,14 @@ export type DashboardWithCards = {
 
 export type DashCardId = number;
 
-export type DashCard<Query = DatasetQuery> = {
+export type DashCard<CardType = Card> = {
   id: DashCardId;
 
   card_id: CardId;
   dashboard_id: DashboardId;
 
-  card: Card<Query>;
-  series: Array<Card<Query>>;
+  card: CardType;
+  series: Array<CardType>;
 
   // incomplete
   parameter_mappings: Array<ParameterMapping>;

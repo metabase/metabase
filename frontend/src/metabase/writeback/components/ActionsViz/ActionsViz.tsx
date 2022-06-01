@@ -9,6 +9,8 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
+import Question from "metabase-lib/lib/Question";
+import { DashboardWithCards } from "metabase-types/types/Dashboard";
 import { VisualizationProps } from "metabase-types/types/Visualization";
 
 import { HorizontalAlignmentValue } from "./types";
@@ -54,9 +56,9 @@ const ACTIONS_VIZ_DEFINITION = {
       widget: "toggle",
       default: true,
     },
-    "actions.linked_table": {
+    "actions.linked_card": {
       section: t`Default actions`,
-      title: t`Linked table`,
+      title: t`Linked card`,
     },
     "actions.align_horizontal": {
       section: t`Display`,
@@ -75,21 +77,33 @@ const ACTIONS_VIZ_DEFINITION = {
 };
 
 interface ActionsVizProps extends VisualizationProps {
+  dashboard: DashboardWithCards;
   metadata?: Metadata;
 }
 
-function ActionsViz({ metadata, settings }: ActionsVizProps) {
+function ActionsViz({ dashboard, metadata, settings }: ActionsVizProps) {
   const [isModalOpen, { turnOn: showModal, turnOff: hideModal }] = useToggle(
     false,
   );
 
-  const connectedTableId = settings["actions.linked_table"];
-  const connectedTable = metadata?.table(connectedTableId);
-  const hasConnectedTable = !!connectedTable;
+  const connectedDashCardId = settings["actions.linked_card"];
+  const connectedDashCard = dashboard.ordered_cards.find(
+    dashCard => dashCard.id === connectedDashCardId,
+  );
 
-  const hasCreateButton = settings["actions.create_enabled"];
-  const hasUpdateButton = settings["actions.update_enabled"];
-  const hasDeleteButton = settings["actions.delete_enabled"];
+  const question = connectedDashCard
+    ? new Question(connectedDashCard?.card, metadata)
+    : null;
+
+  const isObjectDetailView = question?.display() === "object";
+  const table = question?.table();
+
+  const hasCreateButton =
+    settings["actions.create_enabled"] && !isObjectDetailView;
+  const hasUpdateButton =
+    settings["actions.update_enabled"] && isObjectDetailView;
+  const hasDeleteButton =
+    settings["actions.delete_enabled"] && isObjectDetailView;
 
   const horizontalAlignment = settings[
     "actions.align_horizontal"
@@ -99,21 +113,16 @@ function ActionsViz({ metadata, settings }: ActionsVizProps) {
     <>
       <Root horizontalAlignment={horizontalAlignment}>
         {hasCreateButton && (
-          <Button
-            disabled={!hasConnectedTable}
-            onClick={showModal}
-          >{t`New`}</Button>
+          <Button disabled={!question} onClick={showModal}>{t`New`}</Button>
         )}
-        {hasUpdateButton && (
-          <Button disabled={!hasConnectedTable}>{t`Edit`}</Button>
-        )}
+        {hasUpdateButton && <Button disabled={!question}>{t`Edit`}</Button>}
         {hasDeleteButton && (
-          <Button disabled={!hasConnectedTable} danger>{t`Delete`}</Button>
+          <Button disabled={!question} danger>{t`Delete`}</Button>
         )}
       </Root>
-      {connectedTable && (
+      {!!table && (
         <Modal isOpen={isModalOpen} onClose={hideModal}>
-          <WritebackModalForm table={connectedTable} onClose={hideModal} />
+          <WritebackModalForm table={table} onClose={hideModal} />
         </Modal>
       )}
     </>
