@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import React, { Component } from "react";
 
-import TableInteractive from "../components/TableInteractive.jsx";
+import TableInteractive from "../components/TableInteractive/TableInteractive";
 import TableSimple from "../components/TableSimple";
 import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";

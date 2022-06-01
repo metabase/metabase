@@ -30,12 +30,9 @@ function getCellData({
     return "-";
   }
   if (columnSettings["show_mini_bar"]) {
+    const [min, max] = getColumnExtent(cols, rows, columnIndex);
     return (
-      <MiniBar
-        value={value}
-        options={columnSettings}
-        extent={getColumnExtent(cols, rows, columnIndex)}
-      />
+      <MiniBar value={value} options={columnSettings} min={min} max={max} />
     );
   }
   return formatValue(value, {

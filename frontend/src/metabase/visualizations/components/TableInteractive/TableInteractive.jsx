@@ -12,12 +12,11 @@ import { Grid, ScrollSync } from "react-virtualized";
 import "./TableInteractive.css";
 
 import Icon from "metabase/components/Icon";
-import ExternalLink from "metabase/core/components/ExternalLink";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
 import { formatValue } from "metabase/lib/formatting";
-import { isID, isPK, isFK } from "metabase/lib/schema_metadata";
+import { isPK } from "metabase/lib/schema_metadata";
 import { memoizeClass } from "metabase-lib/lib/utils";
 import {
   getTableCellClickedObject,
@@ -25,7 +24,6 @@ import {
   getTableClickedObjectRowData,
   isColumnRightAligned,
 } from "metabase/visualizations/lib/table";
-import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import { isAdHocModelQuestionCard } from "metabase/lib/data-modeling/utils";
 import Dimension from "metabase-lib/lib/Dimension";
@@ -33,10 +31,11 @@ import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import MiniBar from "./MiniBar";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+
+import { TableCell } from "./TableCell";
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -476,20 +475,6 @@ class TableInteractive extends Component {
     const columnSettings = settings.column(column);
     const clicked = this.getCellClickedObject(rowIndex, columnIndex);
 
-    const cellData = columnSettings["show_mini_bar"] ? (
-      <MiniBar
-        value={value}
-        options={columnSettings}
-        extent={getColumnExtent(data.cols, data.rows, columnIndex)}
-        cellHeight={ROW_HEIGHT}
-      />
-    ) : (
-      this.getCellFormattedValue(value, columnSettings, clicked)
-      /* using formatValue instead of <Value> here for performance. The later wraps in an extra <span> */
-    );
-
-    const isLink = cellData && cellData.type === ExternalLink;
-    const isClickable = !isLink && this.visualizationIsClickable(clicked);
     const backgroundColor = this.getCellBackgroundColor(
       settings,
       value,
@@ -497,54 +482,34 @@ class TableInteractive extends Component {
       column.name,
     );
 
+    const formattedValue =
+      !columnSettings["show_mini_bar"] &&
+      this.getCellFormattedValue(value, columnSettings, clicked);
+
+    const columnLeft = this.getColumnLeft(style, columnIndex);
+
+    console.log(">>>for", formattedValue);
+
     return (
-      <div
+      <TableCell
         key={key}
-        style={{
-          ...style,
-          // use computed left if dragging
-          left: this.getColumnLeft(style, columnIndex),
-          // add a transition while dragging column
-          transition: dragColIndex != null ? "left 200ms" : null,
-          backgroundColor,
-        }}
-        className={cx("TableInteractive-cellWrapper text-dark", {
-          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-          padLeft: columnIndex === 0 && !showDetailShortcut,
-          "TableInteractive-cellWrapper--lastColumn":
-            columnIndex === cols.length - 1,
-          "TableInteractive-emptyCell": value == null,
-          "cursor-pointer": isClickable,
-          "justify-end": isColumnRightAligned(column),
-          "Table-ID": value != null && isID(column),
-          "Table-FK": value != null && isFK(column),
-          link: isClickable && isID(column),
-        })}
-        onClick={
-          isClickable
-            ? e => {
-                this.onVisualizationClick(clicked, e.currentTarget);
-              }
-            : undefined
-        }
-        onKeyUp={
-          isClickable
-            ? e => {
-                e.key === "Enter" &&
-                  this.onVisualizationClick(clicked, e.currentTarget);
-              }
-            : undefined
-        }
-        onMouseEnter={
-          showDetailShortcut ? e => this.handleHoverRow(e, rowIndex) : undefined
-        }
-        onMouseLeave={
-          showDetailShortcut ? e => this.handleLeaveRow() : undefined
-        }
-        tabIndex="0"
-      >
-        {this.props.renderTableCellWrapper(cellData)}
-      </div>
+        style={style}
+        rowIndex={rowIndex}
+        columnIndex={columnIndex}
+        data={data}
+        settings={settings}
+        dragColIndex={dragColIndex}
+        showDetailShortcut={showDetailShortcut}
+        clicked={clicked}
+        formattedValue={formattedValue}
+        visualizationIsClickable={this.visualizationIsClickable(clicked)}
+        backgroundColor={backgroundColor}
+        columnLeft={columnLeft}
+        renderTableCellWrapper={this.props.renderTableCellWrapper}
+        onClick={this.onVisualizationClick}
+        onHover={this.handleHoverRow}
+        onLeave={this.handleLeaveRow}
+      />
     );
   };
 

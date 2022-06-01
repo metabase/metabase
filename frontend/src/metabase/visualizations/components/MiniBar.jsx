@@ -10,7 +10,7 @@ const BORDER_RADIUS = 3;
 
 const LABEL_MIN_WIDTH = 30;
 
-const MiniBar = ({ value, extent: [min, max], options, cellHeight }) => {
+const MiniBar = React.memo(({ value, min, max, options }) => {
   const hasNegative = min < 0;
   const isNegative = value < 0;
   const barPercent =
@@ -87,6 +87,6 @@ const MiniBar = ({ value, extent: [min, max], options, cellHeight }) => {
       </div>
     </div>
   );
-};
+});
 
 export default MiniBar;
