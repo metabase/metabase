@@ -1,4 +1,4 @@
-(ns metabase.models.entity-id-test
+(ns metabase_enterprise.models.entity-id-test
   "To support serialization, all exported entities should have either an external name (eg. a database path) or a
   generated NanoID in a column called entity_id. There's a property :entity_id to automatically populate that field.
 
