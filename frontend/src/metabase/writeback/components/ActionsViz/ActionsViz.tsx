@@ -141,6 +141,7 @@ function getObjectDetailViewData(
 function ActionsViz({
   dashboard,
   dashCardData,
+  isEditing,
   metadata,
   settings,
   deleteRow,
@@ -175,12 +176,16 @@ function ActionsViz({
       : undefined;
   const row = connectedCardData?.rows[0];
 
+  const isEditingNotConnected = isEditing && !connectedDashCardId;
   const hasCreateButton =
-    settings["actions.create_enabled"] && !isObjectDetailView;
+    settings["actions.create_enabled"] &&
+    (!isObjectDetailView || isEditingNotConnected);
   const hasUpdateButton =
-    settings["actions.update_enabled"] && isObjectDetailView;
+    settings["actions.update_enabled"] &&
+    (isObjectDetailView || isEditingNotConnected);
   const hasDeleteButton =
-    settings["actions.delete_enabled"] && isObjectDetailView;
+    settings["actions.delete_enabled"] &&
+    (isObjectDetailView || isEditingNotConnected);
 
   const horizontalAlignment = settings[
     "actions.align_horizontal"
