@@ -1,10 +1,11 @@
 {:paths ["src" "resources"]
 
  :deps
- {common/common               {:local/root "../common"}
-  build-drivers/build-drivers {:local/root "../build-drivers"}
-  i18n/i18n                   {:local/root "../i18n"}
-  org.flatland/ordered        {:mvn/version "1.15.10"}}
+ {common/common                   {:local/root "../common"}
+  build-drivers/build-drivers     {:local/root "../build-drivers"}
+  i18n/i18n                       {:local/root "../i18n"}
+  org.flatland/ordered            {:mvn/version "1.15.10"}
+  io.github.clojure/tools.build   {:git/tag "v0.7.5" :git/sha "2526f58"}}
 
  :aliases
  {:test {:extra-paths ["test"]
