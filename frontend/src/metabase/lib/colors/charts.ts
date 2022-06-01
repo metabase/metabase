@@ -28,23 +28,25 @@ const getOrderBasedMapping = (
   existingMapping: Record<string, string> = {},
   getPreferredValue: (key: string) => string | undefined,
 ) => {
-  const newMapping: Record<string, string> = {};
+  const newMapping = { ...existingMapping };
   const unusedValues = new Set(values);
 
-  const setValue = (key: string, value: string) => {
-    newMapping[key] = value;
-    unusedValues.delete(value);
-  };
+  keys.forEach(key => {
+    const value = newMapping[key];
 
-  Object.entries(existingMapping).forEach(([key, value]) => {
-    setValue(key, value);
+    if (value) {
+      unusedValues.delete(value);
+    }
   });
 
   keys.forEach(key => {
-    const value = getPreferredValue(key);
+    if (!newMapping[key]) {
+      const value = getPreferredValue(key);
 
-    if (value && unusedValues.has(value)) {
-      setValue(key, value);
+      if (value && unusedValues.has(value)) {
+        newMapping[key] = value;
+        unusedValues.delete(value);
+      }
     }
   });
 
@@ -53,10 +55,10 @@ const getOrderBasedMapping = (
       values.forEach(value => unusedValues.add(value));
     }
 
-    const [value] = unusedValues;
-
     if (!newMapping[key]) {
-      setValue(key, value);
+      const [value] = unusedValues;
+      newMapping[key] = value;
+      unusedValues.delete(value);
     }
   });
 
@@ -71,42 +73,45 @@ const getHashBasedMapping = (
 ) => {
   const newMapping: Record<string, string> = {};
   const keyHashes = Object.fromEntries(keys.map(k => [k, getHashCode(k)]));
-  const unsetKeys = new Set([...keys].sort());
-  const allValues = new Set(values);
-  const usedValues = new Set();
+  const unsetKeys = new Set(keys);
+  const unusedValues = new Set(values);
 
-  const setValue = (key: string, value: string) => {
-    newMapping[key] = value;
-    unsetKeys.delete(key);
+  keys.forEach(key => {
+    const value = newMapping[key];
 
-    if (allValues.has(value)) {
-      usedValues.add(value);
+    if (value) {
+      unsetKeys.delete(key);
+      unusedValues.delete(value);
     }
-  };
-
-  Object.entries(existingMapping).forEach(([key, value]) => {
-    setValue(key, value);
   });
 
-  unsetKeys.forEach(key => {
-    const value = getPreferredValue(key);
+  keys.forEach(key => {
+    if (!newMapping[key]) {
+      const value = getPreferredValue(key);
 
-    if (value && !usedValues.has(value)) {
-      setValue(key, value);
+      if (value && unusedValues.has(value)) {
+        newMapping[key] = value;
+        unsetKeys.delete(key);
+        unusedValues.delete(value);
+      }
     }
   });
 
   for (let attempt = 0; unsetKeys.size > 0; attempt++) {
-    if (usedValues.size >= allValues.size) {
-      usedValues.clear();
+    if (!unusedValues.size) {
+      values.forEach(value => unusedValues.add(value));
     }
 
-    unsetKeys.forEach(key => {
-      const hash = keyHashes[key] + attempt;
-      const value = values[hash % values.length];
+    keys.forEach(key => {
+      if (!newMapping[key]) {
+        const hash = keyHashes[key] + attempt;
+        const value = values[hash % values.length];
 
-      if (!usedValues.has(value)) {
-        setValue(key, value);
+        if (unusedValues.has(value)) {
+          newMapping[key] = value;
+          unsetKeys.delete(key);
+          unusedValues.delete(value);
+        }
       }
     });
   }
