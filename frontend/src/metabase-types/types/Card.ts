@@ -20,7 +20,7 @@ export type UnsavedCard<Query = DatasetQuery> = {
 
 export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   id: CardId;
-  name?: string;
+  name: string;
   description?: string;
   dataset?: boolean;
   can_write: boolean;
