@@ -3,17 +3,20 @@ import React from "react";
 
 import { t, jt } from "ttag";
 
+import {
+  getBackgroundColors,
+  getStatusColorRanges,
+} from "metabase/lib/colors/groups";
+
 import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
-
 import Select, { Option } from "metabase/core/components/Select";
 import Radio from "metabase/core/components/Radio";
 import Toggle from "metabase/core/components/Toggle";
-import ColorPicker from "metabase/components/ColorPicker";
+import ColorRange from "metabase/core/components/ColorRange";
+import ColorSelector from "metabase/core/components/ColorSelector";
+import ColorRangeSelector from "metabase/core/components/ColorRangeSelector";
 
-import ColorRangePicker, {
-  ColorRangePreview,
-} from "metabase/components/ColorRangePicker";
 import NumericInput from "metabase/components/NumericInput";
 import {
   SortableContainer,
@@ -53,22 +56,9 @@ export const ALL_OPERATOR_NAMES = {
   ...STRING_OPERATOR_NAMES,
 };
 
-import { color, desaturated } from "metabase/lib/colors";
-
 // TODO
-const COLORS = Object.values(desaturated);
-const COLOR_RANGES = [].concat(
-  ...COLORS.map(color => [
-    ["white", color],
-    [color, "white"],
-  ]),
-  [
-    [color("error"), "white", color("success")],
-    [color("success"), "white", color("error")],
-    [color("error"), color("warning"), color("success")],
-    [color("success"), color("warning"), color("error")],
-  ],
-);
+const COLORS = getBackgroundColors();
+const COLOR_RANGES = getStatusColorRanges();
 
 const DEFAULTS_BY_TYPE = {
   single: {
@@ -277,11 +267,7 @@ const RulePreview = ({ rule, cols, onClick, onRemove }) => (
 
 const RuleBackground = ({ rule, className, style }) =>
   rule.type === "range" ? (
-    <ColorRangePreview
-      colors={rule.colors}
-      className={className}
-      style={style}
-    />
+    <ColorRange colors={rule.colors} className={className} style={style} />
   ) : rule.type === "single" ? (
     <SinglePreview color={rule.color} className={className} style={style} />
   ) : null;
@@ -390,7 +376,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
             />
           ) : null}
           <h3 className="mt3 mb1">{t`…turn its background this color:`}</h3>
-          <ColorPicker
+          <ColorSelector
             value={rule.color}
             colors={COLORS}
             onChange={color => onChange({ ...rule, color })}
@@ -404,7 +390,7 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
       ) : rule.type === "range" ? (
         <div>
           <h3 className="mt3 mb1">{t`Colors`}</h3>
-          <ColorRangePicker
+          <ColorRangeSelector
             value={rule.colors}
             onChange={colors => {
               MetabaseAnalytics.trackStructEvent(
@@ -415,7 +401,8 @@ const RuleEditor = ({ rule, cols, isNew, onChange, onDone, onRemove }) => {
               );
               onChange({ ...rule, colors });
             }}
-            ranges={COLOR_RANGES}
+            colors={COLORS}
+            colorRanges={COLOR_RANGES}
           />
           <h3 className="mt3 mb1">{t`Start the range at`}</h3>
           <Radio

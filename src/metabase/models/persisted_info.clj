@@ -74,7 +74,9 @@
   {:batched-hydrate :persisted}
   [cards]
   (when (seq cards)
-    (let [existing-ids (db/select-field :card_id PersistedInfo :card_id [:in (map :id cards)])]
+    (let [existing-ids (db/select-field :card_id PersistedInfo
+                                        :card_id [:in (map :id cards)]
+                                        :state [:not-in ["off" "deletable"]])]
       (map (fn [{id :id :as card}]
              (assoc card :persisted (contains? existing-ids id)))
            cards))))

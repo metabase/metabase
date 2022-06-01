@@ -123,16 +123,16 @@
   [_ message]
   (condp re-matches message
     #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^Unknown database .*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"Access denied for user.*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
     #"Must specify port after ':' in connection string"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
     #".*"                               ; default
     message))

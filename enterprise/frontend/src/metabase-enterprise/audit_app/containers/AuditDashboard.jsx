@@ -12,7 +12,7 @@ const DashboardWithData = DashboardData(Dashboard);
 
 import { AuditMode } from "../lib/mode";
 
-import { harmony } from "metabase/lib/colors";
+import { getHarmonyColors } from "metabase/lib/colors/groups";
 
 const AuditDashboard = ({ cards, ...props }) => (
   <DashboardWithData
@@ -26,7 +26,7 @@ const AuditDashboard = ({ cards, ...props }) => (
         sizeY: h,
         visualization_settings: {
           // use the legacy "graph.colors" settings with color harmony to force brand color, etc
-          "graph.colors": harmony,
+          "graph.colors": getHarmonyColors(),
           // we want to hide the background to help make the charts feel
           // like they're part of the page, so turn off the background
           "dashcard.background": false,

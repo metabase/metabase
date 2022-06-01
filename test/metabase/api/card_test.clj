@@ -51,6 +51,7 @@
    :description         nil
    :display             "scalar"
    :enable_embedding    false
+   :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
    :moderation_reviews  ()
@@ -318,6 +319,7 @@
                        :visualization_settings {:global {:title nil}}
                        :database_id            true
                        :table_id               true
+                       :entity_id              true
                        :can_write              true
                        :dashboard_count        0
                        :result_metadata        true
@@ -337,6 +339,7 @@
                          (update :collection_id integer?)
                          (update :dataset_query map?)
                          (update :collection map?)
+                         (update :entity_id string?)
                          (update :result_metadata (partial every? map?))
                          (update :creator dissoc :is_qbnewb)
                          (update :last-edit-info (fn [edit-info]
@@ -641,7 +644,7 @@
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (is (= (merge
                   card-defaults
-                  (select-keys card [:id :name :created_at :updated_at])
+                  (select-keys card [:id :name :entity_id :created_at :updated_at])
                   {:dashboard_count        0
                    :creator_id             (mt/user->id :rasta)
                    :creator                (merge

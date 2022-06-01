@@ -211,7 +211,7 @@
   (deferred-tru "Allow persisting models into the source database.")
   :type       :boolean
   :default    false
-  :visibility :admin)
+  :visibility :authenticated)
 
 (defsetting persisted-model-refresh-interval-hours
   (deferred-tru "Hour interval to refresh persisted models.")

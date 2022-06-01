@@ -43,7 +43,6 @@ import {
   ViewHeaderContainer,
   ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
-  StyledCollectionBadge,
   StyledQuestionDataSource,
 } from "./ViewHeader.styled";
 
@@ -217,7 +216,6 @@ function SavedQuestionLeftSide(props) {
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
-          <StyledCollectionBadge collectionId={question.collectionId()} />
           {QuestionDataSource.shouldRender(props) && (
             <StyledQuestionDataSource
               question={question}

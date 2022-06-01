@@ -56,6 +56,25 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.signInAsAdmin();
   });
 
+  it("should sort database fields by relevance", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
+    openFilterModal();
+
+    modal().within(() => {
+      cy.findAllByTestId("dimension-filter-label")
+        .eq(0)
+        .should("have.text", "Created At");
+
+      cy.findAllByTestId("dimension-filter-label")
+        .eq(1)
+        .should("have.text", "Discount");
+
+      cy.findAllByTestId("dimension-filter-label")
+        .last()
+        .should("include.text", "ID");
+    });
+  });
+
   it("should add a filter for a raw query", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     openFilterModal();
