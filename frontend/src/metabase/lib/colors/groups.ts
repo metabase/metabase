@@ -1,32 +1,31 @@
 import { times, unzip } from "lodash";
 import { ACCENT_COUNT, color } from "./palette";
-import { AccentColorOptions, ColorPalette } from "./types";
+import { AccentColorOptions } from "./types";
 
 export const getAccentColors = ({
   main = true,
   light = true,
   dark = true,
   harmony = false,
-  palette,
 }: AccentColorOptions = {}) => {
   const ranges = [];
-  main && ranges.push(getMainAccentColors(palette));
-  light && ranges.push(getLightAccentColors(palette));
-  dark && ranges.push(getDarkAccentColors(palette));
+  main && ranges.push(getMainAccentColors());
+  light && ranges.push(getLightAccentColors());
+  dark && ranges.push(getDarkAccentColors());
 
   return harmony ? unzip(ranges).flat() : ranges.flat();
 };
 
-export const getMainAccentColors = (palette?: ColorPalette) => {
-  return times(ACCENT_COUNT, i => color(`accent${i}`, palette));
+export const getMainAccentColors = () => {
+  return times(ACCENT_COUNT, i => color(`accent${i}`));
 };
 
-export const getLightAccentColors = (palette?: ColorPalette) => {
-  return times(ACCENT_COUNT, i => color(`accent${i}-light`, palette));
+export const getLightAccentColors = () => {
+  return times(ACCENT_COUNT, i => color(`accent${i}-light`));
 };
 
-export const getDarkAccentColors = (palette?: ColorPalette) => {
-  return times(ACCENT_COUNT, i => color(`accent${i}-dark`, palette));
+export const getDarkAccentColors = () => {
+  return times(ACCENT_COUNT, i => color(`accent${i}-dark`));
 };
 
 export const getStatusColorRanges = () => {
