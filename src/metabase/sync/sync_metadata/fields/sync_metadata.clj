@@ -23,14 +23,17 @@
          old-field-comment     :field-comment
          old-semantic-type     :semantic-type
          old-database-position :database-position
+         old-nfc-path          :nfc_path
          old-database-name     :name}  metabase-field
         {new-database-type     :database-type
          new-base-type         :base-type
          new-field-comment     :field-comment
          new-database-position :database-position
+         new-nfc-path          :nfc-path
          new-database-name     :name} field-metadata
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
+        new-nfc-path                               (map name (apply list new-nfc-path))
 
         new-db-type?
         (not= old-database-type new-database-type)
@@ -49,6 +52,9 @@
 
         new-database-position?
         (not= old-database-position new-database-position)
+
+        new-nfc-path?
+        (not-every? identity (map = old-nfc-path new-nfc-path))
 
         ;; these fields are paired by by metabase.sync.sync-metadata.fields.common/canonical-name, so if they are
         ;; different they have the same canonical representation (lower-casing at the moment).
@@ -84,6 +90,12 @@
                           (common/field-metadata-name-for-logging table metabase-field)
                           old-database-position
                           new-database-position))
+           {:database_position new-database-position})
+         (when new-nfc-path?
+           (log/info (trs "Nested field column path of {0} has changed from ''{1}'' to ''{2}''."
+                          (common/field-metadata-name-for-logging table metabase-field)
+                          old-nfc-path
+                          new-nfc-path))
            {:database_position new-database-position})
          (when new-name?
            (log/info (trs "Name of {0} has changed from ''{1}'' to ''{2}''."
