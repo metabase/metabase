@@ -1,7 +1,8 @@
 // NOTE: this file is used on the frontend and backend and there are some
 // limitations. See frontend/src/metabase-shared/color_selector for details
 
-import { alpha, getColorScale, roundColor } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
+import { getColorScale, getSafeColor } from "metabase/lib/colors/scales";
 
 const CELL_ALPHA = 0.65;
 const ROW_ALPHA = 0.2;
@@ -133,7 +134,7 @@ export function compileFormatter(
       [min, max],
       format.colors.map(c => alpha(c, GRADIENT_ALPHA)),
     ).clamp(true);
-    return value => roundColor(scale(value));
+    return value => getSafeColor(scale(value));
   } else {
     console.warn("Unknown format type", format.type);
     return () => null;
