@@ -34,9 +34,3 @@ export type Moment = {
   locale: () => Moment;
   format: (format: string) => string;
 };
-
-export type AsyncFn = (...args: any[]) => Promise<any>;
-
-export type AsyncReturnType<
-  T extends (...args: any) => Promise<any>
-> = T extends (...args: any) => Promise<infer R> ? R : any;

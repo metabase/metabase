@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { render } from "@testing-library/react";
 
-import { AsyncFn } from "metabase-types/types";
+import { AsyncFn } from "metabase-types/api/async";
 
 import { useMostRecentCall } from "./use-most-recent-call";
 

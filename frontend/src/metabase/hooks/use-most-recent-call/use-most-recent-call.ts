@@ -1,6 +1,6 @@
 import { useRef, useCallback } from "react";
 
-import { AsyncFn, AsyncReturnType } from "metabase-types/types";
+import { AsyncFn, AsyncReturnType } from "metabase-types/api/async";
 
 export function useMostRecentCall<T extends AsyncFn>(asyncFn: T) {
   const promiseRef = useRef<Promise<any>>();
