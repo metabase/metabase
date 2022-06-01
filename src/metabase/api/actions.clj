@@ -46,33 +46,32 @@
   {database (s/maybe s/Int)}
   (when database
     (do-check-actions-enabled database nil))
-  (if-not api/*is-superuser?*
-    {:status 403}
-    (let [cards+actions (db/query {:select    [:card.*
-                                               [:db.settings :db_settings]
-                                               [:a.id :a_id]
-                                               [:a.type :a_type]
-                                               [:a.created_at :a_created_at]
-                                               [:a.updated_at :a_updated_at]]
-                                   :from      [[:report_card :card]]
-                                   :left-join [[:metabase_database :db] [:= :card.database_id :db.id]
-                                               [:query_action :qa] [:= :card.id :qa.card_id]
-                                               [:action :a] [:= :qa.action_id :a.id]]
-                                   :where     [:and
-                                               [:= :card.is_write true]
-                                               [:= :card.archived false]
-                                               (when database
-                                                 [:= :card.database_id database])]
-                                   :order-by  [[:updated_at :desc]]})]
-      (keep (fn [{:keys [a_id a_type a_created_at a_updated_at db_settings] :as card+action}]
-              ;; n.b. must check db settings in memory, since db.settings can be encrypted
-              (when (-> db_settings (json/decode true) :database-enable-actions boolean)
-                {:id a_id
-                 :type a_type
-                 :created-at a_created_at
-                 :updated-at a_updated_at
-                 :card (dissoc card+action :a_id :a_type :a_created_at :a_updated_at :db_settings)}))
-            cards+actions))))
+  (api/check-superuser)
+  (let [cards+actions (db/query {:select    [:card.*
+                                             [:db.settings :db_settings]
+                                             [:a.id :a_id]
+                                             [:a.type :a_type]
+                                             [:a.created_at :a_created_at]
+                                             [:a.updated_at :a_updated_at]]
+                                 :from      [[:report_card :card]]
+                                 :left-join [[:metabase_database :db] [:= :card.database_id :db.id]
+                                             [:query_action :qa] [:= :card.id :qa.card_id]
+                                             [:action :a] [:= :qa.action_id :a.id]]
+                                 :where     [:and
+                                             [:= :card.is_write true]
+                                             [:= :card.archived false]
+                                             (when database
+                                               [:= :card.database_id database])]
+                                 :order-by  [[:updated_at :desc]]})]
+    (keep (fn [{:keys [a_id a_type a_created_at a_updated_at db_settings] :as card+action}]
+            ;; n.b. must check db settings in memory, since db.settings can be encrypted
+            (when (-> db_settings (json/decode true) :database-enable-actions boolean)
+              {:id a_id
+               :type a_type
+               :created-at a_created_at
+               :updated-at a_updated_at
+               :card (dissoc card+action :a_id :a_type :a_created_at :a_updated_at :db_settings)}))
+          cards+actions)))
 
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."
