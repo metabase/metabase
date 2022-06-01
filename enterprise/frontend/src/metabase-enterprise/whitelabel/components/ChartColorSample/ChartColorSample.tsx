@@ -1,13 +1,13 @@
-import React, { useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import { times } from "lodash";
 import {
-  SampleBar,
-  SampleBarItem,
-  SamplePlot,
-  SampleGrid,
-  SampleTick,
-  SampleRoot,
-  SampleAxis,
+  ChartBar,
+  ChartBarSection,
+  ChartPlot,
+  ChartGrid,
+  ChartTick,
+  ChartRoot,
+  ChartAxis,
 } from "./ChartColorSample.styled";
 
 const BAR_COUNT = 4;
@@ -21,27 +21,35 @@ const ChartColorSample = ({ colors }: ChartColorSampleProps): JSX.Element => {
   const reversedColors = useMemo(() => [...colors].reverse(), [colors]);
 
   return (
-    <SampleRoot>
-      <SampleGrid>
+    <ChartRoot>
+      <ChartGrid>
         {times(TICK_COUNT, index => (
-          <SampleTick key={index} />
+          <ChartTick key={index} />
         ))}
-        <SampleAxis />
-      </SampleGrid>
-      <SamplePlot>
+        <ChartAxis />
+      </ChartGrid>
+      <ChartPlot>
         {times(BAR_COUNT, index => (
-          <SampleBar key={index}>
+          <ChartBar key={index} style={{ height: getBarHeight(index) }}>
             {reversedColors.map((color, index) => (
-              <SampleBarItem
+              <ChartBarSection
                 key={index}
-                style={{ flexGrow: index + 1, backgroundColor: color }}
+                style={{ flexGrow: getBarGrow(index), backgroundColor: color }}
               />
             ))}
-          </SampleBar>
+          </ChartBar>
         ))}
-      </SamplePlot>
-    </SampleRoot>
+      </ChartPlot>
+    </ChartRoot>
   );
 };
 
-export default ChartColorSample;
+const getBarGrow = (index: number) => {
+  return index + 1;
+};
+
+const getBarHeight = (index: number) => {
+  return index === 0 ? "87.5%" : "100%";
+};
+
+export default memo(ChartColorSample);

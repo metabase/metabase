@@ -1,12 +1,12 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 
-export const SampleRoot = styled.div`
+export const ChartRoot = styled.div`
   position: relative;
   height: 100%;
 `;
 
-export const SampleLayer = styled.div`
+export const ChartLayer = styled.div`
   position: absolute;
   top: 0;
   left: 0;
@@ -14,34 +14,35 @@ export const SampleLayer = styled.div`
   height: 100%;
 `;
 
-export const SampleGrid = styled(SampleLayer)`
+export const ChartGrid = styled(ChartLayer)`
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: absolute;
 `;
 
-export const SampleTick = styled.div`
+export const ChartTick = styled.div`
   border-top: 1px dashed ${color("border")};
 `;
 
-export const SampleAxis = styled.div`
+export const ChartAxis = styled.div`
   border-top: 1px solid ${color("border")};
 `;
 
-export const SamplePlot = styled(SampleLayer)`
+export const ChartPlot = styled(ChartLayer)`
   display: flex;
   gap: 10%;
   flex: 1 1 auto;
   padding: 0 1.5rem;
+  align-items: flex-end;
 `;
 
-export const SampleBar = styled.div`
+export const ChartBar = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
 `;
 
-export const SampleBarItem = styled.div`
+export const ChartBarSection = styled.div`
   flex: 1 1 auto;
 `;
