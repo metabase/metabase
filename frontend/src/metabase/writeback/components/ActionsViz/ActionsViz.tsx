@@ -197,14 +197,14 @@ function ActionsViz({
   }
 
   function handleUpdate(values: Record<string, unknown>) {
-    if (table && connectedDashCard && connectedCardData && row) {
-      const pkColumnIndex = connectedCardData.cols.findIndex(
-        col => col.semantic_type === "type/PK",
-      );
-      const pkValue = row[pkColumnIndex];
-      if (typeof pkValue !== "string" && typeof pkValue !== "number") {
-        return;
-      }
+    if (!table || !connectedDashCard || !connectedCardData || !row) {
+      return;
+    }
+    const pkColumnIndex = connectedCardData.cols.findIndex(
+      col => col.semantic_type === "type/PK",
+    );
+    const pkValue = row[pkColumnIndex];
+    if (typeof pkValue === "string" || typeof pkValue === "number") {
       updateRow({ id: pkValue, table, values, dashCard: connectedDashCard });
     }
   }
