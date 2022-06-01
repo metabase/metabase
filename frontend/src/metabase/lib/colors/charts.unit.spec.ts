@@ -1,43 +1,26 @@
+import { times } from "lodash";
 import { color } from "./palette";
 import { getColorsForValues } from "./charts";
 
 describe("getColorsForValues", () => {
-  describe("hash-based mapping", () => {
-    it("should use preferred colors", () => {
-      const keys = ["count", "sum"];
+  it("should use harmony colors when there are many series", () => {
+    const keys = ["count", "sum", "profit", ...times(8, i => `S${i}`)];
+    const existingMapping = { count: color("accent1") };
 
-      const newMapping = getColorsForValues(keys);
+    const newMapping = getColorsForValues(keys, existingMapping);
 
-      expect(newMapping).toEqual({
-        count: color("accent0"),
-        sum: color("accent1"),
-      });
-    });
-
-    it("should use accent colors for other values", () => {
-      const keys = ["count", "sum", "sum_2", "distinct"];
-
-      const newMapping = getColorsForValues(keys);
-
-      expect(newMapping).toEqual({
-        count: color("accent0"),
-        sum: color("accent1"),
-        sum_2: color("accent6"),
-        distinct: color("accent4"),
-      });
-    });
-
-    it("should preserve existing colors", () => {
-      const keys = ["count", "sum", "average"];
-      const existingMapping = { count: color("brand"), sum: color("brand") };
-
-      const newMapping = getColorsForValues(keys, existingMapping);
-
-      expect(newMapping).toEqual({
-        count: color("brand"),
-        sum: color("brand"),
-        average: color("accent2"),
-      });
+    expect(newMapping).toEqual({
+      count: color("accent1"),
+      sum: color("accent0"),
+      profit: color("success"),
+      S0: color("accent0-light"),
+      S1: color("accent0-dark"),
+      S2: color("accent1-light"),
+      S3: color("accent1-dark"),
+      S4: color("accent2"),
+      S5: color("accent2-light"),
+      S6: color("accent2-dark"),
+      S7: color("accent3"),
     });
   });
 });
