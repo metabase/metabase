@@ -67,6 +67,8 @@ jobs:
           - "embedding"
           - "joins"
           - "models"
+          - "organization"
+          - "permissions"
           - "question"
           - "sharing"
         include:
