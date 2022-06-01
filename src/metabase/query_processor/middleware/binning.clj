@@ -273,10 +273,11 @@
   (let [bin-fields (->> query
                         :breakout
                         (filter (fn [[_ _ {:keys [binning]}]] (some? binning))))
+        bin-field-set (set bin-fields)
         table-alias "bin"
         join-conditions (mapv
                          (fn [bin-field]
-                           [:= (replace-bin-field (set bin-fields) bin-field table-alias)
+                           [:= (replace-bin-field bin-field-set bin-field table-alias)
                             bin-field])
                          bin-fields)
         bin-count (count bin-fields)]
@@ -292,12 +293,12 @@
                       :condition (if (= bin-count 1) (first join-conditions) (into [:and] join-conditions))}])
           (update-in [:query :breakout] (fn [breakout-fields]
                                           (mapv
-                                           #(replace-bin-field (set bin-fields) % table-alias)
+                                           #(replace-bin-field bin-field-set % table-alias)
                                            breakout-fields)))
           (m/update-existing-in [:query :order-by]
                                 (fn [order-by-clause]
                                   (mapv
                                    (fn fill-order-by [[direction order-by-field]]
-                                     [direction (replace-bin-field (set bin-fields) order-by-field table-alias)])
+                                     [direction (replace-bin-field bin-field-set order-by-field table-alias)])
                                    order-by-clause))))
       outer-query)))

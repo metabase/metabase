@@ -176,7 +176,7 @@
                  (mt/rows (qp/process-query query)))))))))
 
 
-(def fill-empty-bins-examples
+(def ^:private fill-empty-bins-examples
   [{:input
     {:query
      {:source-table 2,
