@@ -476,7 +476,7 @@
                           :source     {:description "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter"}
                           :state      {:description "The state or province of the account’s billing address"}
                           :zip        {:description  "The postal code of the account’s billing address"
-                                       :special_type "type/ZipCode"}}}
+                                       :semantic_type "type/ZipCode"}}}
    :products {:description "This is our product catalog. It includes all products ever sold by the Sample Company."
               :columns      {:category   {:description "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget"}
                              :created_at {:description "The date the product was added to our catalog."}
@@ -488,7 +488,7 @@
                              :vendor     {:description "The source of the product."}}}
    :reviews  {:description "These are reviews our customers have left on products. Note that these are not tied to orders so it is possible people have reviewed products they did not purchase from us."
               :columns     {:body       {:description  "The review the user left. Limited to 2000 characters."
-                                         :special_type "type/Description"}
+                                         :semantic_type "type/Description"}
                             :created_at {:description "The day and time a review was written by a user."}
                             :id         {:description "A unique internal identifier for the review. Should not be used externally."}
                             :product_id {:description "The product the review was for"}
