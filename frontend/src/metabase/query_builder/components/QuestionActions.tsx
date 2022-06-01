@@ -19,6 +19,7 @@ import Question from "metabase-lib/lib/Question";
 import {
   QuestionActionsContainer,
   PopoverContainer,
+  PopoverButton,
 } from "./QuestionActions.styled";
 
 const ICON_SIZE = 18;
@@ -46,8 +47,6 @@ const buttonProps = {
   iconSize: ICON_SIZE,
   borderless: true,
   color: color("text-dark"),
-  fullWidth: true,
-  justifyContent: "start",
 };
 
 const QuestionActions = ({
@@ -104,70 +103,62 @@ const QuestionActions = ({
             <div>
               <PLUGIN_MODERATION.QuestionModerationButton
                 question={question}
-                VerifyButton={Button}
+                VerifyButton={PopoverButton}
                 verifyButtonProps={buttonProps}
               />
             </div>
             {isDataset && (
               <div>
-                <Button
+                <PopoverButton
                   icon="notebook"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={handleEditQuery}
                   data-testid={ADD_TO_DASH_TESTID}
-                  color={color("text-dark")}
-                  fullWidth
-                  justifyContent="start"
+                  {...buttonProps}
                 >
                   {t`Edit query definition`}
                   <DatasetMetadataStrengthIndicator dataset={question} />
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {isDataset && (
               <div>
-                <Button
+                <PopoverButton
                   icon="label"
-                  iconSize={ICON_SIZE}
-                  borderless
                   onClick={handleEditMetadata}
                   data-testid={ADD_TO_DASH_TESTID}
-                  color={color("text-dark")}
-                  fullWidth
-                  justifyContent="start"
+                  {...buttonProps}
                 >
                   {t`Edit metadata`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {!isDataset && (
               <div>
-                <Button
+                <PopoverButton
                   icon="dashboard"
                   onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
                   data-testid={ADD_TO_DASH_TESTID}
                   {...buttonProps}
                 >
                   {t`Add to dashboard`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {canWrite && (
               <div>
-                <Button
+                <PopoverButton
                   icon="move"
                   onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
                   data-testid={MOVE_TESTID}
                   {...buttonProps}
                 >
                   {t`Move`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {!isDataset && canWrite && (
               <div>
-                <Button
+                <PopoverButton
                   icon="model"
                   onClick={() => {
                     const modal = checkCanBeModel(question)
@@ -179,43 +170,43 @@ const QuestionActions = ({
                   {...buttonProps}
                 >
                   {t`Turn into a model`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {isDataset && canWrite && (
               <div>
-                <Button
+                <PopoverButton
                   icon="model_framed"
                   onClick={turnDatasetIntoQuestion}
                   data-testid=""
                   {...buttonProps}
                 >
                   {t`Turn back to saved question`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {canWrite && (
               <div>
-                <Button
+                <PopoverButton
                   icon="segment"
                   onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
                   data-testid={CLONE_TESTID}
                   {...buttonProps}
                 >
                   {t`Duplicate`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
             {canWrite && (
               <div>
-                <Button
+                <PopoverButton
                   icon="archive"
                   onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
                   data-testid={ARCHIVE_TESTID}
                   {...buttonProps}
                 >
                   {t`Archive`}
-                </Button>
+                </PopoverButton>
               </div>
             )}
           </PopoverContainer>

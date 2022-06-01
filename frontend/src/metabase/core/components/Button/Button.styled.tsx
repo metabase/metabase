@@ -14,7 +14,7 @@ export const ButtonContent = styled.div<ButtonContentProps>`
   display: flex;
   flex-direction: ${props => (props.iconVertical ? "column" : "row")};
   align-items: center;
-  justify-content: ${props => props.justifyContent || "center"};
+  justify-content: center;
   min-width: ${props => (props.iconVertical ? "60px" : "")};
 `;
 
