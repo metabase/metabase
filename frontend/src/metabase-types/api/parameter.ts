@@ -1,5 +1,8 @@
-import { CardId } from "./Card";
-import { LocalFieldReference, ForeignFieldReference } from "./Query";
+import { CardId } from "metabase-types/types/Card";
+import {
+  LocalFieldReference,
+  ForeignFieldReference,
+} from "metabase-types/types/Query";
 
 export type ParameterId = string;
 

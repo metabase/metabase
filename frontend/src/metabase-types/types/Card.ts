@@ -1,8 +1,8 @@
 import { StructuredQuery, NativeQuery } from "./Query";
-import { Parameter, ParameterQueryObject } from "./Parameter";
 
 import { DatabaseId } from "metabase-types/api/database";
 import { VisualizationSettings } from "metabase-types/api/card";
+import { Parameter, ParameterQueryObject } from "metabase-types/api/parameter";
 
 export type CardId = number;
 

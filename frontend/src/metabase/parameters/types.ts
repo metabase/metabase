@@ -1,5 +1,5 @@
 import Field from "metabase-lib/lib/metadata/Field";
-import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
+import { Parameter, ParameterTarget } from "metabase-types/api/parameter";
 
 export interface ValuePopulatedParameter extends Parameter {
   value?: any;

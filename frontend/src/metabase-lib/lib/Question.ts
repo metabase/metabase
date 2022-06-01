@@ -60,12 +60,12 @@ import Questions from "metabase/entities/questions";
 import {
   Parameter as ParameterObject,
   ParameterValues,
-} from "metabase-types/types/Parameter";
+} from "metabase-types/api/parameter";
 import { Card as CardObject, DatasetQuery } from "metabase-types/types/Card";
 import { VisualizationSettings } from "metabase-types/api/card";
 import { Dataset, Value } from "metabase-types/types/Dataset";
 import { TableId } from "metabase-types/types/Table";
-import { DatabaseId } from "metabase-types/types/Database";
+import { DatabaseId } from "metabase-types/api/database";
 import { ClickObject } from "metabase-types/types/Visualization";
 import { DependentMetadataItem } from "metabase-types/types/Query";
 import {

@@ -1,7 +1,7 @@
 import { FieldId, BaseType } from "./Field";
-import { ParameterType } from "./Parameter";
 
 import { MetricId } from "metabase-types/api/metric";
+import { ParameterType } from "metabase-types/api/parameter";
 import { SegmentId } from "metabase-types/api/segment";
 import { TableId } from "metabase-types/api/table";
 

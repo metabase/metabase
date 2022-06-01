@@ -1,8 +1,8 @@
 import _ from "underscore";
 import { FIELD_FILTER_PARAMETER_TYPES } from "metabase/parameters/constants";
-
 import { FieldFilterUiParameter } from "metabase/parameters/types";
-import { Parameter } from "metabase-types/types/Parameter";
+
+import { Parameter } from "metabase-types/api/parameter";
 
 export function getParameterType(parameter: Parameter | string) {
   return typeof parameter === "string"

@@ -11,7 +11,7 @@ import {
   hasParameterValue,
 } from "metabase/parameters/utils/parameter-values";
 import { ParameterWithTarget } from "metabase/parameters/types";
-import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
+import { Parameter, ParameterTarget } from "metabase-types/api/parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";

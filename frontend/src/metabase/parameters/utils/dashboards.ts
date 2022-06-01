@@ -13,7 +13,7 @@ import {
   Parameter,
   ParameterMappingOptions,
   ParameterTarget,
-} from "metabase-types/types/Parameter";
+} from "metabase-types/api/parameter";
 import {
   Dashboard,
   DashboardParameterMapping,

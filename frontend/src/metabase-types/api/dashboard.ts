@@ -2,7 +2,7 @@ import {
   ParameterTarget,
   ParameterId,
   Parameter,
-} from "metabase-types/types/Parameter";
+} from "metabase-types/api/parameter";
 import { CardId, SavedCard } from "metabase-types/types/Card";
 
 export interface Dashboard {
