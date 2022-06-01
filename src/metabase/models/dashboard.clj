@@ -17,6 +17,7 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -140,7 +141,10 @@
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection
   mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
+  perms/IObjectPermissionsForParentCollection
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :collection)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

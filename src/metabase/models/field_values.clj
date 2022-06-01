@@ -1,5 +1,6 @@
 (ns metabase.models.field-values
   (:require [clojure.tools.logging :as log]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -75,7 +76,10 @@
           :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
           :pre-insert  pre-insert
           :pre-update  pre-update
-          :post-select post-select}))
+          :post-select post-select})
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.utils/hydrated-hash :field)])})
 
 
 ;; ## FieldValues Helper Functions

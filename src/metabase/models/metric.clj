@@ -7,6 +7,7 @@
             [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -49,7 +50,10 @@
     ;; for the time being you need to be a superuser in order to create or update Metrics because the UI for doing so
     ;; is only exposed in the admin panel
     :can-write?        mi/superuser?
-    :can-create?       mi/superuser?}))
+    :can-create?       mi/superuser?})
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :table)])})
 
 
 ;;; --------------------------------------------------- REVISIONS ----------------------------------------------------

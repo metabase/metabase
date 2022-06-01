@@ -6,6 +6,7 @@
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.interface :as mi]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -48,7 +49,13 @@
   (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial mi/current-user-has-full-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.utils/hydrated-hash :card)
+                                      (comp serdes.utils/identity-hash
+                                            #(db/select-one 'Dashboard :id %)
+                                            :dashboard_id)])})
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
@@ -59,6 +66,11 @@
   {:pre [(integer? dashboard_id)]}
   (db/select-one 'Dashboard, :id dashboard_id))
 
+(u/strict-extend (class DashboardCard)
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.utils/hydrated-hash :card)
+                                      (comp serdes.utils/identity-hash dashboard)
+                                      :visualization_settings])})
 
 (defn ^:hydrate series
   "Return the `Cards` associated as additional series on this DashboardCard."

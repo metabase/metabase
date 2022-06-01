@@ -13,6 +13,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.query :as query]
             [metabase.models.revision :as revision]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.moderation :as moderation]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -320,4 +321,7 @@
          :serialize-instance serialize-instance)
 
   dependency/IDependent
-  {:dependencies card-dependencies})
+  {:dependencies card-dependencies}
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :collection)])})

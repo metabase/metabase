@@ -2,6 +2,7 @@
   (:require [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.models.timeline-event :as timeline-event]
             [metabase.util :as u]
             [schema.core :as s]
@@ -55,4 +56,7 @@
                              :entity_id    true})})
 
   mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
+  perms/IObjectPermissionsForParentCollection
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :collection)])})

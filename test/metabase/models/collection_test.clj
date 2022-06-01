@@ -8,6 +8,7 @@
             [metabase.models :refer [Card Collection Dashboard NativeQuerySnippet Permissions PermissionsGroup Pulse User]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -1613,3 +1614,21 @@
               {:id 5 :here #{:card}}]}]
            (clean (collection/collections->tree {:card #{1 5} :dataset #{3 4}}
                                                 collections))))))
+
+(deftest identity-hash-test
+  (testing "Collection hashes are composed of the name, namespace, and parent collection's hash"
+    (mt/with-temp* [Collection [c1  {:name "top level"  :namespace "yolocorp" :location "/"}]
+                    Collection [c2  {:name "nested"     :namespace "yolocorp" :location (format "/%s/" (:id c1))}]
+                    Collection [c3  {:name "grandchild" :namespace "yolocorp" :location (format "/%s/%s/" (:id c1) (:id c2))}]]
+      (let [c1-hash (serdes.utils/identity-hash c1)
+            c2-hash (serdes.utils/identity-hash c2)]
+        (is (= "37e57249"
+               (serdes.utils/raw-hash ["top level" :yolocorp "ROOT"])
+               c1-hash)
+            "Top-level collections should use a parent hash of 'ROOT'")
+        (is (= "ce76f360"
+               (serdes.utils/raw-hash ["nested" :yolocorp c1-hash])
+               c2-hash))
+        (is (= "acb1ea3e"
+               (serdes.utils/raw-hash ["grandchild" :yolocorp c2-hash])
+               (serdes.utils/identity-hash c3)))))))

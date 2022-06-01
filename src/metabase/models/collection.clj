@@ -14,6 +14,7 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -876,6 +877,14 @@
           :read  (perms/collection-read-path collection-or-id)
           :write (perms/collection-readwrite-path collection-or-id))})))
 
+(defn- parent-identity-hash [coll]
+  (let [parent-id (-> coll
+                      (hydrate :parent_id)
+                      :parent_id)]
+   (if parent-id
+     (serdes.utils/identity-hash (Collection parent-id))
+     "ROOT")))
+
 (u/strict-extend (class Collection)
   models/IModel
   (merge models/IModelDefaults
@@ -891,7 +900,10 @@
   (merge mi/IObjectPermissionsDefaults
          {:can-read?         (partial mi/current-user-has-full-permissions? :read)
           :can-write?        (partial mi/current-user-has-full-permissions? :write)
-          :perms-objects-set perms-objects-set}))
+          :perms-objects-set perms-objects-set})
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

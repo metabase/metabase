@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [environ.core :as env]
             [medley.core :as m]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.test :as mt]
@@ -906,3 +907,11 @@
            (deferred-tru "test Setting")
            :user-local     :allowed
            :database-local :allowed)))))
+
+(deftest identity-hash-test
+  (testing "Settings are hashed based on the key"
+    (mt/with-temporary-setting-values [test-setting-1 "123"
+                                       test-setting-2 "123"]
+      (is (= "5f7f150c"
+             (serdes.utils/raw-hash ["test-setting-1"])
+             (serdes.utils/identity-hash (db/select-one Setting :key "test-setting-1")))))))

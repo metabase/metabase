@@ -2,6 +2,7 @@
   (:require [metabase.models.collection :as collection]
             [metabase.models.interface :as mi]
             [metabase.models.native-query-snippet.permissions :as snippet.perms]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -44,7 +45,10 @@
    {:can-read?   snippet.perms/can-read?
     :can-write?  snippet.perms/can-write?
     :can-create? snippet.perms/can-create?
-    :can-update? snippet.perms/can-update?}))
+    :can-update? snippet.perms/can-update?})
+
+  serdes.utils/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :collection)])})
 
 
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
