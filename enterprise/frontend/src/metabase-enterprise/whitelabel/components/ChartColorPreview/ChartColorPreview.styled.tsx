@@ -1,18 +1,28 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const TableRoot = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  margin-top: 2rem;
+
+  ${breakpointMinLarge} {
+    margin-top: 0;
+  }
 `;
 
 export const TableHeader = styled.div`
   display: block;
   padding: 1rem 1.5rem;
   border: 1px solid ${color("border")};
-  border-left: none;
-  border-top-right-radius: 0.5rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+
+  ${breakpointMinLarge} {
+    border-left: none;
+    border-top-left-radius: 0;
+  }
 `;
 
 export const TableTitle = styled.div`
@@ -22,10 +32,15 @@ export const TableTitle = styled.div`
 `;
 
 export const TableBody = styled.div`
-  flex: 1 1 auto;
+  flex: 1 1 0;
   padding: 3rem 2rem;
+  min-height: 24rem;
   border: 1px solid ${color("border")};
   border-top: none;
-  border-left: none;
-  border-bottom-right-radius: 0.5rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+
+  ${breakpointMinLarge} {
+    border-left: none;
+    border-bottom-left-radius: 0;
+  }
 `;
