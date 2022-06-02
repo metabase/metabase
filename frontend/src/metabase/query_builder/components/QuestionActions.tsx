@@ -83,6 +83,13 @@ const QuestionActions = ({
     });
   }, [setQueryBuilderMode]);
 
+  const handleTurnToModel = useCallback(() => {
+    const modal = checkCanBeModel(question)
+      ? MODAL_TYPES.TURN_INTO_DATASET
+      : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
+    onOpenModal(modal);
+  }, [onOpenModal, question]);
+
   return (
     <QuestionActionsContainer data-testid="question-action-buttons-container">
       <Tooltip tooltip={bookmarkTooltip}>
@@ -170,12 +177,7 @@ const QuestionActions = ({
               <div>
                 <PopoverButton
                   icon="model"
-                  onClick={() => {
-                    const modal = checkCanBeModel(question)
-                      ? MODAL_TYPES.TURN_INTO_DATASET
-                      : MODAL_TYPES.CAN_NOT_CREATE_MODEL;
-                    onOpenModal(modal);
-                  }}
+                  onClick={handleTurnToModel}
                   data-testid={TURN_INTO_DATASET_TESTID}
                   {...buttonProps}
                 >

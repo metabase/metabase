@@ -191,7 +191,6 @@ describe("scenarios > models", () => {
     // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
     cy.wait("@dataset");
-    //openDetailsSidebar();
     openQuestionActions();
     assertIsModel();
     cy.url().should("include", "/model");

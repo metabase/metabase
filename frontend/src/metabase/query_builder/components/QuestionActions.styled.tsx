@@ -9,7 +9,7 @@ import {
 } from "metabase/styled-components/theme/button";
 
 export const QuestionActionsContainer = styled.div`
-  border-left: 1px solid #eeecec;
+  border-left: 1px solid ${color("border")};
   margin-left: 1rem;
   padding-left: 1rem;
 `;
@@ -22,7 +22,7 @@ export const PopoverContainer = styled.div`
 export const PopoverButton = styled(Button)`
   width: 100%;
   ${Button.Content} {
-    justify-content: start;
+    justify-content: flex-start;
   }
 
   ${Button.TextContainer} {

@@ -36,8 +36,6 @@ describe("scenarios > models metadata", () => {
 
     cy.visit("/model/1");
 
-    //openDetailsSidebar();
-
     openQuestionActions();
 
     popover().within(() => {
@@ -146,7 +144,6 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Subtotal ($)");
     cy.findByText("Tax ($)").should("not.exist");
 
-    //openDetailsSidebar();
     openQuestionActions();
     cy.findByText("Edit metadata").click();
 

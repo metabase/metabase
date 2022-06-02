@@ -7,7 +7,6 @@ export const ButtonRoot = styled.button`
 
 export interface ButtonContentProps {
   iconVertical?: boolean;
-  justifyContent?: string;
 }
 
 export const ButtonContent = styled.div<ButtonContentProps>`

@@ -47,7 +47,6 @@ describe("issue 20963", () => {
     cy.findByText("Not now").click();
 
     // Convert into to a model
-    // openDetailsSidebar();
     openQuestionActions();
     popover().within(() => {
       cy.icon("model").click();

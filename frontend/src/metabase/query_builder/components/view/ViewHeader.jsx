@@ -545,14 +545,16 @@ function ViewTitleHeaderRightSide(props) {
           onCancel={cancelQuery}
         />
       )}
-      <QuestionActions
-        isBookmarked={isBookmarked}
-        handleBookmark={toggleBookmark}
-        onOpenModal={onOpenModal}
-        question={question}
-        setQueryBuilderMode={setQueryBuilderMode}
-        turnDatasetIntoQuestion={turnDatasetIntoQuestion}
-      />
+      {isSaved && (
+        <QuestionActions
+          isBookmarked={isBookmarked}
+          handleBookmark={toggleBookmark}
+          onOpenModal={onOpenModal}
+          question={question}
+          setQueryBuilderMode={setQueryBuilderMode}
+          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+        />
+      )}
     </div>
   );
 }

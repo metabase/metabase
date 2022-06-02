@@ -20,7 +20,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       popover().within(() => {
         cy.findByTestId("moderation-verify-action").click();
-        cy.findAllByText("Remove verification");
+        cy.findByText("Remove verification");
       });
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
