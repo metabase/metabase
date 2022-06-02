@@ -19,8 +19,6 @@ const mapStateToProps = (state: State) => ({
 });
 
 const GlobalStyles = ({ embedOptions, isEmbedded }: GlobalStylesProps) => {
-  console.log("isEmbedded", isEmbedded, embedOptions);
-
   const applicationFontStyles = css`
     :root {
       --default-font-family: "${
