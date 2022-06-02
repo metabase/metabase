@@ -63,9 +63,6 @@
                                      "'unsafe-inline'")]
                                   (when-not config/is-dev?
                                     (map (partial format "'sha256-%s'") inline-js-hashes)))
-                  :child-src    ["'self'"
-                                 ;; TODO - double check that we actually need this for Google Auth
-                                 "https://accounts.google.com"]
                   :style-src    ["'self'"
                                  "'unsafe-inline'"
                                  "https://accounts.google.com"]
