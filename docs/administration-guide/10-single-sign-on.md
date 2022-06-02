@@ -10,9 +10,9 @@ As time goes on we may add other auth providers. If you have a service you’d l
 
 To let your team start signing in with Google you’ll first need to create an application through Google’s [developer console](https://console.developers.google.com/projectselector2/apis/library).
 
-Next, you'll have to create authorization credentials for your application by following [the instructions from Google here](https://developers.google.com/identity/sign-in/web/sign-in#create_authorization_credentials). Specify the URI of your Metabase instance in the “Authorized JavaScript origins” section. You should leave the “Authorized Redirect URIs” section blank.
+Next, you'll have to create authorization credentials for your application by following [the instructions from Google here](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid). Specify the URI of your Metabase instance in the “Authorized JavaScript origins” section. You should leave the “Authorized Redirect URIs” section blank.
 
-Once you have your `client_id` (ending in `.apps.googleusercontent.com`), click `Configure` on the "Sign in with Google" section of the Authentication page in the Metabase Admin Panel. Paste your `client_id` into the first box.
+Once you have your `Client ID` (ending in `.apps.googleusercontent.com`), click `Configure` on the "Sign in with Google" section of the Authentication page in the Metabase Admin Panel. Paste your `client_id` into the first box.
 
 Now existing Metabase users signed into a Google account that matches their Metabase account email can sign in with just a click.
 
