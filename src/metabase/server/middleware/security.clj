@@ -72,8 +72,6 @@
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
-                                 ;; Google Identity Services
-                                 "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Google analytics
