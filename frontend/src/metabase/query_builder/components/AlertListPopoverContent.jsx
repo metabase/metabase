@@ -316,6 +316,7 @@ export class AlertCreatorTitle extends Component {
     const isAdmin = user.is_superuser;
     const isCurrentUser = alert.creator.id === user.id;
     const creator =
+      // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/172602198-66a283f7-c426-472c-b490-b73ae89460a1.png
       alert.creator.id === user.id ? t`You` : alert.creator.first_name;
     const text =
       !isCurrentUser && !isAdmin

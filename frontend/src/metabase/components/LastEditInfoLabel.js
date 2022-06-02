@@ -34,6 +34,7 @@ LastEditInfoLabel.propTypes = {
 
 function formatEditorName(firstName, lastName) {
   const lastNameFirstLetter = lastName.charAt(0);
+  // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/172189537-0eb7f620-559d-4537-8467-5e1ea5bab78a.png
   return `${firstName} ${lastNameFirstLetter}.`;
 }
 

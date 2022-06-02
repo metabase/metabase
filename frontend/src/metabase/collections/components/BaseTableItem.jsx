@@ -68,6 +68,10 @@ export function BaseTableItem({
 
     const lastEditInfo = item["last-edit-info"];
 
+    // XXX: Fallback to email. `lastEditInfo` doesn't have `common_name`,
+    // so it's not possible to change it to use common name instead.
+    // https://user-images.githubusercontent.com/1937582/172188787-f09970b9-fa89-4508-a549-6e13447c39e5.png
+
     // We don't keep last edit info for pulses
     // TODO Remove ternary when Pulses are gone (metabase#16519-1)
     const lastEditedBy = lastEditInfo

@@ -22,9 +22,13 @@ class UserActivationModalInner extends React.Component {
     if (user.is_active) {
       return (
         <ModalContent
+          // XXX: use common_name to standardize user display name.
+          // https://user-images.githubusercontent.com/1937582/172611760-f1a77c83-2f4c-4d13-baea-ade1c39637ea.png
           title={t`Deactivate ${user.getName()}?`}
           onClose={onClose}
         >
+          {/* XXX: use common_name to standardize user display name. */}
+          {/* // https://user-images.githubusercontent.com/1937582/172611760-f1a77c83-2f4c-4d13-baea-ade1c39637ea.png */}
           <Text>{t`${user.getName()} won't be able to log in anymore.`}</Text>
           <Button
             ml="auto"
@@ -38,6 +42,8 @@ class UserActivationModalInner extends React.Component {
     } else {
       return (
         <ModalContent
+          // XXX: use common_name to standardize user display name.
+          // https://user-images.githubusercontent.com/1937582/172611889-b2f7f474-dea1-4cab-85b7-d36da3e94dcb.png
           title={t`Reactivate ${user.getName()}?`}
           onClose={onClose}
         >

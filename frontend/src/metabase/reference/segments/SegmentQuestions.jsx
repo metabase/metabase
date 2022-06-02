@@ -93,6 +93,7 @@ class SegmentQuestions extends Component {
                             name={entity.display_name || entity.name}
                             description={t`Created ${moment(
                               entity.created_at,
+                              // Fallback to email. https://user-images.githubusercontent.com/1937582/172170740-4b927835-5f92-4544-bee2-252d117c258a.png
                             ).fromNow()} by ${entity.creator.common_name}`}
                             url={Urls.question(entity)}
                             icon={visualizations.get(entity.display).iconName}

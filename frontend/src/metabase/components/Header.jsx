@@ -147,6 +147,8 @@ class Header extends Component {
     if (this.props.item && this.props.item.creator) {
       attribution = (
         <div className="Header-attribution">
+          {/* XXX: I'm quite certain this can be removed because we never show attribution */}
+          {/* https://github.com/metabase/metabase/blob/e0dc20a689430a0cc439c1899be383f3eb4d48bb/frontend/src/metabase/css/components/header.css#L11 */}
           {t`Asked by ${this.props.item.creator.common_name}`}
         </div>
       );

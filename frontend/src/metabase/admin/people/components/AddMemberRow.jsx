@@ -63,6 +63,7 @@ export default function AddMemberRow({ users, excludeIds, onCancel, onDone }) {
               key={user.id}
               className="bg-medium p1 px2 mr1 rounded flex align-center"
             >
+              {/* XXX: Fallback to email.  https://user-images.githubusercontent.com/1937582/171614059-e110090d-2b42-4dc3-870f-3219f23673fc.png */}
               {user.common_name}
               <Icon
                 className="pl1 cursor-pointer text-slate text-medium-hover"
@@ -154,6 +155,7 @@ function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
         <UserAvatar background={color} user={user} />
       </span>
       <span className={cx("h3", { "text-white": selected })}>
+        {/* XXX: Fallback to email.  https://user-images.githubusercontent.com/1937582/171614859-01352adf-eb88-460b-a894-6027c95e96b2.png */}
         {user.common_name}
       </span>
     </div>

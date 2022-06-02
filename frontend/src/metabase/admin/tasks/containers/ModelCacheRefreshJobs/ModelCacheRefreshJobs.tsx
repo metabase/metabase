@@ -81,6 +81,7 @@ function JobTableItem({ job, onRefresh }: JobTableItemProps) {
           {lastRunAtLabel}
         </Tooltip>
       </th>
+      {/* XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/171618691-e93f913f-508a-4b71-b3d3-56f5a6a755c9.png */}
       <th>{job.creator?.common_name || t`Automatic`}</th>
       <th>
         {checkCanRefreshModelCache(job) && (

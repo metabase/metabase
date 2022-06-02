@@ -181,6 +181,7 @@ function GroupRow({
           <span className="text-white">
             <UserAvatar
               background={color}
+              // This is the avatar for a group name, so it didn't render any user info.
               user={{ first_name: getGroupNameLocalized(group) }}
             />
           </span>

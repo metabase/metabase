@@ -18,6 +18,8 @@ const AuditUserDetail = ({ params, ...props }) => {
         <EntityName
           entityType="users"
           entityId={userId}
+          // XXX: might need some other way to work around if `common_name` could be null
+          // in this case I assume we need to use user emails.
           property="common_name"
         />
       }

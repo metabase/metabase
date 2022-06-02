@@ -30,6 +30,7 @@ const Users = createEntity({
   path: "/api/user",
 
   objectSelectors: {
+    // XXX: We shouldn't need to change this.
     getName: user => user.common_name || `${user.first_name} ${user.last_name}`,
   },
 

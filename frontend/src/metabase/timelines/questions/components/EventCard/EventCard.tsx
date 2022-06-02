@@ -119,6 +119,7 @@ const getCreatorMessage = (event: TimelineEvent) => {
   const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
 
   if (event.creator) {
+    // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/172174350-719597f9-33c0-420d-9798-dda0f233e5a5.png
     return t`${event.creator.common_name} added this on ${createdAt}`;
   } else {
     return t`Added on ${createdAt}`;

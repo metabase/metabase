@@ -46,6 +46,8 @@ export default class Revision extends Component {
     if (user.id === currentUser.id) {
       return t`You`;
     } else {
+      // XXX: Change to common name and fallback to email.
+      // https://user-images.githubusercontent.com/1937582/172178353-3c17e2a1-bd69-4d97-8014-6c4e7723749e.png
       return user.first_name;
     }
   }

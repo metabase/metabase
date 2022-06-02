@@ -13,12 +13,14 @@ const getNameFields = () => [
     title: t`First name`,
     placeholder: "Johnny",
     autoFocus: true,
+    // XXX: Make the name optional after BE has relaxed name field constraint.
     validate: validate.required().maxLength(100),
   },
   {
     name: "last_name",
     title: t`Last name`,
     placeholder: "Appleseed",
+    // XXX: Make the name optional after BE has relaxed name field constraint.
     validate: validate.required().maxLength(100),
   },
 ];

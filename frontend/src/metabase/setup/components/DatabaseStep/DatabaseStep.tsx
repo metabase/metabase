@@ -187,6 +187,8 @@ const InviteForm = ({
       {({ Form, FormField, FormFooter }: FormProps) => (
         <Form>
           <StepFormGroup>
+            {/* XXX: There's nothing to do here. We just need to modify `entities/users/form.js` and we'll be all good. */}
+            {/* https://user-images.githubusercontent.com/1937582/172606593-63d17d24-b352-4e1e-888c-1b6e02e54bbe.png */}
             <FormField name="first_name" />
             <FormField name="last_name" />
           </StepFormGroup>

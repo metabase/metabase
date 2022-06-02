@@ -49,6 +49,7 @@ export default class HistoryModal extends Component {
                 <td className={cellClassName}>
                   {formatDate(revision.timestamp)}
                 </td>
+                {/* XXX: Fallback to email.  https://user-images.githubusercontent.com/1937582/171666340-a9329815-d836-4ae6-baa4-082fbd9ca470.png */}
                 <td className={cellClassName}>{revision.user.common_name}</td>
                 <td className={cellClassName}>
                   <span>{getRevisionDescription(revision)}</span>

@@ -81,6 +81,7 @@ function getModeratorDisplayName(user, currentUser) {
   if (currentUserId != null && userId === currentUserId) {
     return t`You`;
   } else if (userId != null) {
+    // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/171604849-aa9257d9-5bca-4559-8e1a-08611232f89a.png
     return common_name;
   } else {
     return t`A moderator`;

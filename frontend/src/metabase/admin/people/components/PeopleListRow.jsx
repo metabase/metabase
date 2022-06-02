@@ -47,6 +47,7 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
+        {/* XXX: Question: There would be no name in the column, how should we show this? https://user-images.githubusercontent.com/1937582/171615511-aae65719-6701-46ab-8dcd-54f83f7e0450.png */}
         <span className="ml2 text-bold">{user.common_name}</span>
       </td>
       <td>
