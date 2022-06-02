@@ -2,14 +2,14 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import Color from "color";
 
-import { getColors, setColor } from "metabase/lib/colors/palette";
+import { colors } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
 import memoize from "lodash.memoize";
 
-export const originalColors = { ...getColors() };
+export const originalColors = { ...colors };
 
-const BRAND_NORMAL_COLOR = Color(originalColors.brand).hsl();
+const BRAND_NORMAL_COLOR = Color(colors.brand).hsl();
 const COLOR_REGEX = /(?:#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3})?\b|(?:rgb|hsl)a?\(\s*\d+\s*(?:,\s*\d+(?:\.\d+)?%?\s*){2,3}\))/;
 
 const CSS_COLOR_UPDATORS_BY_COLOR_NAME = {};
@@ -137,7 +137,7 @@ function initColorJS(colorName) {
 
   JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName] = [];
   JS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
-    setColor(colorName, themeColor);
+    colors[colorName] = themeColor;
   });
 }
 

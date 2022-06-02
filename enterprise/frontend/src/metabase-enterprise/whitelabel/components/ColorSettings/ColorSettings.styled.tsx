@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
+import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const SettingRoot = styled.div`
   flex: 1 1 auto;
@@ -22,6 +23,11 @@ export const SettingDescription = styled.div`
 
 export const SectionContent = styled.div`
   display: flex;
+  flex-direction: column;
+
+  ${breakpointMinLarge} {
+    flex-direction: row;
+  }
 `;
 
 export const BrandColorSection = styled.div`

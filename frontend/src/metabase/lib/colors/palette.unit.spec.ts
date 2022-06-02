@@ -1,4 +1,4 @@
-import { color, setColor } from "./palette";
+import { color, colors } from "./palette";
 
 describe("palette", () => {
   it("should get a color from the palette", () => {
@@ -7,9 +7,9 @@ describe("palette", () => {
 
   it("should set a color in the palette", () => {
     const originalColor = color("brand");
-    setColor("brand", "blue");
+    colors["brand"] = "blue";
     const modifiedColor = color("brand");
-    setColor("brand", originalColor);
+    colors["brand"] = originalColor;
 
     expect(modifiedColor).toEqual("blue");
   });

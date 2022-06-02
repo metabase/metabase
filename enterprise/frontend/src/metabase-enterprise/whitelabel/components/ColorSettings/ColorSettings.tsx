@@ -58,7 +58,7 @@ const ColorSettings = ({
             colorPalette={colorPalette}
             onChange={handleChange}
           />
-          <ChartColorPreview />
+          <ChartColorPreview colorPalette={colorPalette} />
         </SectionContent>
       </ChartColorSection>
     </SettingRoot>

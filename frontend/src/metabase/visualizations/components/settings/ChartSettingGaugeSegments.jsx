@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
-import { getDistinctColors } from "metabase/lib/colors/groups";
+import { getAccentColors } from "metabase/lib/colors/groups";
 
 import ColorSelector from "metabase/core/components/ColorSelector";
 import Button from "metabase/core/components/Button";
@@ -101,7 +101,7 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 
 function getColorPalette() {
   return [
-    ...getDistinctColors(),
+    ...getAccentColors(),
     color("error"),
     color("warning"),
     color("success"),
