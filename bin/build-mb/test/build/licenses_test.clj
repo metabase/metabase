@@ -62,26 +62,19 @@
 (defn- jar ^Path [lib-name]
   (jar->path (-> basis :libs (get lib-name) :paths first)))
 
-(deftest pom->license-test
-  (testing "Can find license information from the pom"
-    (testing "If present"
-      (let [xml (parse (StringReader. clojure-xml))]
-        (is (= {:name         "Eclipse Public License 1.0"
-                :url          "http://opensource.org/licenses/eclipse-1.0.php"
-                :distribution "repo"}
-               (lic/pom->licenses xml))))
-      (let [jar-path                 (jar 'org.clojure/clojure)
-            jar-filename             (str jar-path)
-            ^ClassLoader classloader nil]
-        (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
-          (let [pom-path (lic/determine-pom jar-filename jar-fs)]
-            (is (= {:name         "Eclipse Public License 1.0"
-                    :url          "http://opensource.org/licenses/eclipse-1.0.php"
-                    :distribution "repo"}
-                   (lic/do-with-path-is pom-path (comp lic/pom->licenses parse))))))))
-    (testing "Returning nil if not present"
-      (let [xml (parse (StringReader. clojure-jdbc-xml))]
-        (is (nil? (lic/pom->licenses xml)))))))
+(deftest license-from-pom-test
+  (let [clojure-jar (-> basis :libs (get 'org.clojure/clojure) :paths first)
+        jar-path    (Paths/get ^String clojure-jar (into-array String []))]
+    (with-open [jar-fs (FileSystems/newFileSystem jar-path
+                                                  (ClassLoader/getSystemClassLoader))]
+      (let [clojure-pom (lic/determine-pom clojure-jar jar-fs)]
+        (is (some? clojure-pom) "Clojure pom not found")
+        (is (= {:name "Eclipse Public License 1.0"
+                :url "http://opensource.org/licenses/eclipse-1.0.php"}
+               (lic/license-from-pom clojure-pom))))))
+  (let [libs (-> basis :libs (select-keys '[org.clojure/clojure]) first)]
+    (is (= "Eclipse Public License 1.0: http://opensource.org/licenses/eclipse-1.0.php"
+           (-> (lic/discern-license-and-coords libs {}) second :license)))))
 
 (deftest license-from-jar-test
   (letfn [(license-path [j f]

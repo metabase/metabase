@@ -36,25 +36,6 @@
 
 (set! *warn-on-reflection* true)
 
-(def tag-name
-  "Fn helper to get the tag-name"
-  (comp keyword (fnil name "") :tag))
-
-(def ^:private tag-content (juxt tag-name (comp first :content)))
-
-(defn pom->licenses
-  "Get licenses from pom."
-  [pom-xml]
-  (some->> pom-xml
-           :content
-           (filter #(#{:licenses} (tag-name %)))
-           first
-           :content
-           first
-           :content
-           (map tag-content)
-           (into {})))
-
 (defn- ->BiPredicate [f]
   (reify java.util.function.BiPredicate
     (test [_ x y]
@@ -214,11 +195,12 @@
 
   Algorithm is:
     - check jar for license file at a few different standard paths. If present keep this text.
+    - Look in pom file next to jar or in jar for license information. If found this information is used,
+      it is not expanded into a full license text.
     - look in provided backfill information for license text or a resource containing the license text
-    - Look in pom file next to jar or in jar for license information. If found this information is used, it is not
-      expanded into a full license text.
 
-  Reports if `:report?` is true (the default). Writes missing license information to *err* and summary of identified licenses to *out*.
+  Reports if `:report?` is true (the default). Writes missing license information to *err* and summary of identified
+  licenses to *out*.
 
   Returns a map
   {:with-license [ [lib-name {:coords {:group :artifact :version} :license <text>}] ...]
