@@ -1289,7 +1289,6 @@ workflows:
             - build-uberjar-<< matrix.edition >>
             - snowplow-deps
           cypress-group: e2e-tests-<< matrix.edition >>
-          test-files: "./frontend/test/metabase/scenarios/**/*.cy.spec.js"
           grep: "grepTags=@OSS,grepFilterSpecs=true"
           qa-db: true
           snowplow: true
