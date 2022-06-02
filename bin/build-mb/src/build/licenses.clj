@@ -255,5 +255,10 @@
 
   (get-in basis [:libs 'org.clojure/clojure])
 
-  (:without-license libs)
+  (->> libs
+       :without-license
+       (map first))
+
+  (def libs-no-overrides (process* {:libs (jar-entries basis)}))
+  (->> libs-no-overrides :without-license (map first))
   )
