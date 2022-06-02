@@ -5,7 +5,7 @@
   This file makes it impossible to forget to add entity_id to new entities. It tests that every entity is either
   explicitly excluded, or has the :entity_id property."
   (:require
-    [clojure.test :refer [deftest is]]
+    [clojure.test :refer :all]
     [metabase.db.data-migrations]
     [metabase.models]
     [metabase.models.dependency-test]
@@ -66,9 +66,11 @@
     metabase_enterprise.sandbox.models.group_table_access_policy.GroupTableAccessPolicyInstance})
 
 (deftest comprehensive-entity-id-test
-  (is (empty? (->> (extenders IModel)
-                   (remove entities-not-exported)
-                   (remove entities-external-name)
-                   (remove (comp :entity_id toucan.models/properties #(.newInstance %)))))
-      "Every Toucan model should either: have an entity_id column and declare the :entity_id property, or be explicitly
-      listed as having an external name, or explicitly listed as excluded from serialization."))
+  (doseq [model (->> (extenders IModel)
+                     (remove entities-not-exported)
+                     (remove entities-external-name))]
+    (testing (format "Model %s should either: have the :entity_id property, or be explicitly listed as having an external name, or explicitly listed as excluded from serialization"
+                     (.getSimpleName model))
+      (is (= true (-> (.newInstance model)
+                      toucan.models/properties
+                      :entity_id))))))
