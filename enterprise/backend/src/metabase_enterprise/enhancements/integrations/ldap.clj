@@ -1,17 +1,16 @@
 (ns metabase-enterprise.enhancements.integrations.ldap
   "The Enterprise version of the LDAP integration is basically the same but also supports syncing user attributes."
-  (:require [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
-            [metabase.integrations.common :as integrations.common]
-            [metabase.integrations.ldap :as ldap]
+  (:require [metabase.integrations.common :as integrations.common]
             [metabase.integrations.ldap.default-implementation :as default-impl]
             [metabase.integrations.ldap.interface :as i]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.models.user :as user :refer [User]]
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise-schema]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [metabase.util.schema :as su]
-            [schema.core :as s])
+            [schema.core :as s]
+            [toucan.db :as db])
   (:import com.unboundid.ldap.sdk.LDAPConnectionPool))
 
 (def ^:private EEUserInfo
@@ -36,19 +35,27 @@
   (when (ldap-sync-user-attributes)
     (apply dissoc m :objectclass (map (comp keyword u/lower-case-en) (ldap-sync-user-attributes-blacklist)))))
 
-(defn fetch-or-create-user*!
-  "Returns a session map for the given `email`. Will create the user if needed."
-  [first-name last-name email user-attributes]
-  (when-not (ldap/ldap-configured?)
-    (throw (IllegalArgumentException. (str (tru "Can't create new LDAP user when LDAP is not configured")))))
-  (let [user {:first_name       first-name
-              :last_name        last-name
-              :email            email
-              :login_attributes (syncable-user-attributes user-attributes)}]
-    (or (sso-utils/fetch-and-update-login-attributes! user) ; this fn is also used by JWT/SAML
-        (user/create-new-ldap-auth-user! (merge user
-                                                (when-not first-name {:first_name (trs "Unknown")})
-                                                (when-not last-name {:last_name (trs "Unknown")}))))))
+(defn- attribute-synced-user
+  [{:keys [attributes first-name last-name email]}]
+  (when-let [user (db/select-one [User :id :last_login :first_name :last_name :login_attributes :is_active]
+                                 :%lower.email (u/lower-case-en email))]
+            (let [syncable-attributes (syncable-user-attributes attributes)
+                  old-first-name (:first_name user)
+                  old-last-name (:last_name user)
+                  new-first-name (default-impl/updated-name-part first-name old-first-name)
+                  new-last-name (default-impl/updated-name-part last-name old-last-name)
+                  user-changes (merge
+                                (when-not (= syncable-attributes (:login_attributes user))
+                                          {:login_attributes syncable-attributes})
+                                (when-not (= new-first-name old-first-name)
+                                          {:first_name new-first-name})
+                                (when-not (= new-last-name old-last-name)
+                                          {:last_name new-last-name}))]
+              (if (seq user-changes)
+                (do
+                  (db/update! User (:id user) user-changes)
+                  (db/select-one [User :id :last_login :is_active] :id (:id user))) ; Reload updated user
+                user))))
 
 (defenterprise-schema find-user :- (s/maybe EEUserInfo)
   "Get user information for the supplied username."
@@ -69,7 +76,12 @@
   :feature :any
   [{:keys [first-name last-name email groups attributes], :as user-info} :- EEUserInfo
    {:keys [sync-groups?], :as settings}                                  :- i/LDAPSettings]
-  (let [user (fetch-or-create-user*! first-name last-name email attributes)]
+  (let [user (or (attribute-synced-user user-info)
+                 (-> (user/create-new-ldap-auth-user! {:first_name       (or first-name (trs "Unknown"))
+                                                       :last_name        (or last-name (trs "Unknown"))
+                                                       :email            email
+                                                       :login_attributes attributes})
+                     (assoc :is_active true)))]
     (u/prog1 user
       (when sync-groups?
         (let [group-ids            (default-impl/ldap-groups->mb-group-ids groups settings)
