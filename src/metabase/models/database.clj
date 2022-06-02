@@ -56,7 +56,7 @@
     driver
     (assoc :features (driver.u/features driver database))
 
-    (and (driver/initialized? driver) (:details database))
+    (and driver (:details database))
     (->> (driver/normalize-db-details driver))))
 
 (defn- delete-orphaned-secrets!
