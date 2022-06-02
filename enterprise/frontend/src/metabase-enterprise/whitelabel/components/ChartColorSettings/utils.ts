@@ -35,12 +35,14 @@ const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
     newColors.push(getNextColor(index ? newColors[index - 1] : baseColor));
   });
 
-  const unusedColors = newColors.filter(color => !isCloseColors(color, colors));
+  const unusedColors = newColors.filter(
+    color => !isSimilarColors(color, colors),
+  );
   return colors.map(color => (color ? color : unusedColors.shift()));
 };
 
 const getNextColor = (color: Color) => {
-  const newHueChange = color.hue() >= 75 && color.hue() <= 90 ? 60 : 45;
+  const newHueChange = color.hue() >= 100 && color.hue() <= 120 ? 60 : 45;
   const newHue = (color.hue() + newHueChange) % 360;
   const newSaturation = newHue <= 65 || newHue >= 345 ? 55 : 40;
 
@@ -50,10 +52,12 @@ const getNextColor = (color: Color) => {
     .value(90);
 };
 
-const isCloseColor = (newColor: Color, oldColor: Color) => {
+const isSimilarColor = (newColor: Color, oldColor: Color) => {
   return Math.abs(newColor.hue() - oldColor.hue()) <= 20;
 };
 
-const isCloseColors = (newColor: Color, colors: (Color | undefined)[]) => {
-  return colors.some(oldColor => oldColor && isCloseColor(newColor, oldColor));
+const isSimilarColors = (newColor: Color, colors: (Color | undefined)[]) => {
+  return colors.some(
+    oldColor => oldColor && isSimilarColor(newColor, oldColor),
+  );
 };
