@@ -34,7 +34,10 @@ const ChartColorSample = ({ colors }: ChartColorSampleProps): JSX.Element => {
             {reversedColors.map((color, index) => (
               <ChartBarSection
                 key={index}
-                style={{ flexGrow: getBarGrow(index), backgroundColor: color }}
+                style={{
+                  flexGrow: getBarSectionHeight(index),
+                  backgroundColor: color,
+                }}
               />
             ))}
           </ChartBar>
@@ -44,12 +47,12 @@ const ChartColorSample = ({ colors }: ChartColorSampleProps): JSX.Element => {
   );
 };
 
-const getBarGrow = (index: number) => {
-  return index + 1;
-};
-
 const getBarHeight = (index: number) => {
   return index === 0 ? "87.5%" : "100%";
+};
+
+const getBarSectionHeight = (index: number) => {
+  return index + 1;
 };
 
 export default memo(ChartColorSample);
