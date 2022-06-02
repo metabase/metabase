@@ -6,7 +6,10 @@
   explicitly excluded, or has the :entity_id property."
   (:require
     [clojure.test :refer [deftest is]]
+    [metabase.db.data-migrations]
     [metabase.models]
+    [metabase.models.dependency-test]
+    [metabase.models.revision-test]
     [toucan.models :as models :refer [IModel]]))
 
 (def entities-external-name
@@ -26,7 +29,8 @@
   - not exported in serialization; or
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
-  #{metabase.models.activity.ActivityInstance
+  #{metabase.db.data_migrations.DataMigrationsInstance
+    metabase.models.activity.ActivityInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
     metabase.models.bookmark.BookmarkOrderingInstance
     metabase.models.bookmark.CardBookmarkInstance
@@ -35,6 +39,7 @@
     metabase.models.collection.root.RootCollection
     metabase.models.collection_permission_graph_revision.CollectionPermissionGraphRevisionInstance
     metabase.models.dashboard_card_series.DashboardCardSeriesInstance
+    metabase.models.dependency_test.MockInstance
     metabase.models.field_values.FieldValuesInstance
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance
@@ -51,6 +56,7 @@
     metabase.models.query_cache.QueryCacheInstance
     metabase.models.query_execution.QueryExecutionInstance
     metabase.models.revision.RevisionInstance
+    metabase.models.revision_test.FakedCardInstance
     metabase.models.secret.SecretInstance
     metabase.models.session.SessionInstance
     metabase.models.task_history.TaskHistoryInstance
