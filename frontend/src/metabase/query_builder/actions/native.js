@@ -148,7 +148,7 @@ export const setTemplateTag = createThunkAction(
       if (parameters && Array.isArray(parameters)) {
         if (parameters.length === 0) {
           // reconstruct from the existing template tags
-          const tags = getTemplateTagsForParameters(card);
+          const tags = getTemplateTagsForParameters(updatedTagsCard);
           const newParameters = getTemplateTagParameters(tags);
           return assoc(updatedTagsCard, "parameters", newParameters);
         } else {
