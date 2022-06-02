@@ -709,6 +709,7 @@ class TableInteractive extends Component {
         }}
       >
         <div
+          data-testid="header-cell"
           ref={e => (this.headerRefs[columnIndex] = e)}
           style={{
             ...style,
