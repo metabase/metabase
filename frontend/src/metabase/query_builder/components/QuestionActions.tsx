@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -20,6 +20,8 @@ import {
   QuestionActionsContainer,
   PopoverContainer,
   PopoverButton,
+  BookmarkButton,
+  AnimationStates,
 } from "./QuestionActions.styled";
 
 const ICON_SIZE = 18;
@@ -57,6 +59,12 @@ const QuestionActions = ({
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
 }: Props) => {
+  const [animation, setAnimation] = useState<AnimationStates>(null);
+
+  const handleClickBookmark = () => {
+    handleBookmark();
+    setAnimation(isBookmarked ? "shrink" : "expand");
+  };
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
@@ -78,11 +86,13 @@ const QuestionActions = ({
   return (
     <QuestionActionsContainer data-testid="question-action-buttons-container">
       <Tooltip tooltip={bookmarkTooltip}>
-        <Button
+        <BookmarkButton
+          animation={animation}
+          isBookmarked={isBookmarked}
           onlyIcon
           icon="bookmark"
           iconSize={ICON_SIZE}
-          onClick={handleBookmark}
+          onClick={handleClickBookmark}
           color={bookmarkButtonColor}
         />
       </Tooltip>
@@ -116,7 +126,6 @@ const QuestionActions = ({
                   {...buttonProps}
                 >
                   {t`Edit query definition`}
-                  <DatasetMetadataStrengthIndicator dataset={question} />
                 </PopoverButton>
               </div>
             )}
@@ -129,6 +138,7 @@ const QuestionActions = ({
                   {...buttonProps}
                 >
                   {t`Edit metadata`}
+                  <DatasetMetadataStrengthIndicator dataset={question} />
                 </PopoverButton>
               </div>
             )}

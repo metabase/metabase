@@ -11,8 +11,7 @@ export const PercentageLabel = styled.span`
 
 export const Root = styled.div`
   display: inline-block;
-  margin-left: 1.5rem;
-  position: relative;
+  float: right;
 `;
 
 export const TooltipParagraph = styled.p`
