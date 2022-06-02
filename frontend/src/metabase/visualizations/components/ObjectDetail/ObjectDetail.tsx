@@ -246,6 +246,7 @@ export function ObjectDetailFn({
         });
     }
   }, [canEdit, zoomedRowID, table, deleteRowFromObjectDetail]);
+
   const onSubmit = React.useMemo(
     () =>
       canEdit && table
@@ -319,7 +320,12 @@ export function ObjectDetailFn({
           <ObjectDetailBodyWrapper>
             {isEditing && table ? (
               <EditingFormContainer>
-                <WritebackForm table={table} row={zoomedRow} isModal />
+                <WritebackForm
+                  table={table}
+                  row={zoomedRow}
+                  onSubmit={onSubmit}
+                  isModal
+                />
               </EditingFormContainer>
             ) : (
               <ObjectDetailBody

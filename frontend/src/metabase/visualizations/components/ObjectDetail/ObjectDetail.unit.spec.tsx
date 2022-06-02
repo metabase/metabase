@@ -113,6 +113,7 @@ describe("Object Detail", () => {
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
         fetchTableFks={() => null}
+        updateRowFromObjectDetail={() => null}
         loadObjectDetailFKReferences={() => null}
         deleteRowFromObjectDetail={() => null}
         viewPreviousObjectDetail={() => null}

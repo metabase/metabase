@@ -1,5 +1,6 @@
 import { ActionsApi } from "metabase/services";
 import Table from "metabase-lib/lib/metadata/Table";
+import { setUIControls } from "metabase/query_builder/actions/ui";
 import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import {
   closeObjectDetail,
@@ -28,7 +29,8 @@ export const createRowFromTableView = (payload: InsertRowPayload) => {
 
     dispatch.action(INSERT_ROW_FROM_TABLE_VIEW, payload);
     if (result?.["created-row"]?.id) {
-      dispatch(zoomInRow({ objectId: result["created-row"].id }));
+      dispatch(setUIControls({ modal: null, modalContext: null }));
+      dispatch(runQuestionQuery());
     }
   };
 };
@@ -62,7 +64,8 @@ export const updateRowFromObjectDetail = (payload: UpdateRowPayload) => {
 
     dispatch.action(UPDATE_ROW_FROM_OBJECT_DETAIL, payload);
     if (result?.["rows-updated"]?.length > 0) {
-      dispatch(zoomInRow({ objectId: pk }));
+      dispatch(closeObjectDetail());
+      dispatch(runQuestionQuery());
     }
   };
 };
