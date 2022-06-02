@@ -43,7 +43,7 @@ const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
 
   const newColors = colors
     .map((_, index) => getAutoColor(baseColor, index))
-    .filter(newColor => isCloseColors(newColor, colors));
+    .filter(newColor => !isCloseColors(newColor, colors));
 
   return colors.map(color => (color ? color : newColors.shift()));
 };

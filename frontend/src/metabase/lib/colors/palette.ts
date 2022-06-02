@@ -9,6 +9,8 @@ export const ACCENT_COUNT = 8;
 export const colors: ColorPalette = {
   brand: "#509EE3",
   "brand-light": "#DDECFA",
+  summarize: "#88BF4D",
+  filter: "#7172AD",
   accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
@@ -51,10 +53,8 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: palette => color("brand", palette),
   nav: palette => color("bg-white", palette),
   content: palette => color("bg-light", palette),
-  summarize: palette => color("accent1", palette),
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
-  filter: palette => color("accent7", palette),
 
   "brand-light": palette => lighten(color("brand", palette), 0.532),
   focus: palette => lighten(color("brand", palette), 0.7),

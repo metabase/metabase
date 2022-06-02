@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
-import { getChartColorGroups } from "./utils";
+import { getAutoChartColors, getChartColorGroups } from "./utils";
 import {
   TableBody,
   TableBodyCell,
@@ -15,6 +15,7 @@ import {
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
+import groups from "metabase/entities/groups";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
@@ -45,6 +46,10 @@ const ChartColorSettings = ({
     onChange?.(omit({ ...colorsRef.current }, flatten(colorGroups)));
   }, [colorsRef, colorGroups, onChange]);
 
+  const handleGenerate = useCallback(() => {
+    onChange?.(getAutoChartColors(colorGroups, colors, colorPalette));
+  }, [colorGroups, colors, colorPalette, onChange]);
+
   return (
     <ChartColorTable
       colors={colors}
@@ -52,6 +57,7 @@ const ChartColorSettings = ({
       colorGroups={colorGroups}
       onChange={handleChange}
       onReset={handleReset}
+      onGenerate={handleGenerate}
     />
   );
 };
@@ -62,6 +68,7 @@ interface ChartColorTable {
   colorGroups: string[][];
   onChange: (name: string, color?: string) => void;
   onReset: () => void;
+  onGenerate: () => void;
 }
 
 const ChartColorTable = ({
@@ -70,6 +77,7 @@ const ChartColorTable = ({
   colorGroups,
   onChange,
   onReset,
+  onGenerate,
 }: ChartColorTable): JSX.Element => {
   return (
     <div>
@@ -93,7 +101,7 @@ const ChartColorTable = ({
         ))}
       </TableBody>
       <TableFooter>
-        <Button primary>{t`Generate chart colors`}</Button>
+        <Button primary onClick={onGenerate}>{t`Generate chart colors`}</Button>
       </TableFooter>
     </div>
   );
