@@ -52,13 +52,12 @@
 
 (defn- post-select [{driver :engine, :as database}]
   (cond-> database
-    (driver/initialized? driver)
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (as-> db* ; database from outer cond->
-        (assoc db* :features (driver.u/features driver database))
-        (if (:details db*)
-          (driver/normalize-db-details driver db*)
-          db*))))
+    :always
+    (assoc :features (driver.u/features driver database))
+
+    (and (driver/initialized? driver) (:details database))
+    (->> (driver/normalize-db-details driver))))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
