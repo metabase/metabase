@@ -6,6 +6,8 @@ import StructuredQuery, {
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
+import { isBoolean } from "metabase/lib/schema_metadata";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { InlineFilterSelect, INLINE_FIELD_TYPES } from "../InlineFilterSelect";
 
@@ -104,9 +106,10 @@ export const BulkFilterSelect = ({
 const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   const filter = new Filter([], null, dimension.query() ?? query);
 
-  const isBoolean = dimension.field().base_type === "type/Boolean";
+  const isBooleanField = isBoolean(dimension.field());
+
   return filter.setDimension(dimension.mbql(), {
-    useDefaultOperator: !isBoolean,
+    useDefaultOperator: !isBooleanField,
   });
 };
 

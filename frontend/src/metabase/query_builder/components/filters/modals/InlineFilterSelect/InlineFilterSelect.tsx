@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-import BooleanPicker from "metabase/query_builder/components/filters/pickers/BooleanPicker";
+import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import Warnings from "metabase/query_builder/components/Warnings";
 
 export interface InlineFilterSelectProps {
@@ -20,11 +20,7 @@ export const InlineFilterSelect = ({
   switch (fieldType) {
     case "type/Boolean":
       return (
-        <BooleanPicker
-          filter={filter}
-          onFilterChange={handleChange}
-          asCheckBox
-        />
+        <BooleanPickerCheckbox filter={filter} onFilterChange={handleChange} />
       );
     default:
       return <Warnings warnings={[t`Invalid field type`]} />;
