@@ -4,6 +4,7 @@ import moment from "moment";
 import { connect } from "react-redux";
 
 import PersistedModels from "metabase/entities/persisted-models";
+import { checkCanRefreshModelCache } from "metabase/lib/data-modeling/utils";
 
 import Question from "metabase-lib/lib/Question";
 import { ModelCacheRefreshStatus } from "metabase-types/api";
@@ -28,8 +29,14 @@ type LoaderRenderProps = {
 };
 
 function getStatusMessage(job: ModelCacheRefreshStatus) {
+  if (job.state === "off") {
+    return `Caching is turned off`;
+  }
   if (job.state === "error") {
     return t`Failed to update model cache`;
+  }
+  if (job.state === "creating") {
+    return t`Queued`;
   }
   if (job.state === "refreshing") {
     return t`Refreshing model cache`;
@@ -52,7 +59,11 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
       loadingAndErrorWrapper={false}
     >
       {({ persistedModel }: LoaderRenderProps) => {
-        if (!persistedModel) {
+        if (
+          !persistedModel ||
+          persistedModel.state === "off" ||
+          persistedModel.state === "deletable"
+        ) {
           return null;
         }
 
@@ -60,7 +71,7 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
         const lastRefreshTime = moment(persistedModel.refresh_end).fromNow();
 
         return (
-          <Row>
+          <Row data-testid="model-cache-section">
             <div>
               <StatusContainer>
                 <StatusLabel>{getStatusMessage(persistedModel)}</StatusLabel>
@@ -72,9 +83,15 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
                 </LastRefreshTimeLabel>
               )}
             </div>
-            <IconButton onClick={() => onRefresh(persistedModel)}>
-              <RefreshIcon name="refresh" tooltip={t`Refresh now`} size={14} />
-            </IconButton>
+            {checkCanRefreshModelCache(persistedModel) && (
+              <IconButton onClick={() => onRefresh(persistedModel)}>
+                <RefreshIcon
+                  name="refresh"
+                  tooltip={t`Refresh now`}
+                  size={14}
+                />
+              </IconButton>
+            )}
           </Row>
         );
       }}

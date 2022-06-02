@@ -1,5 +1,7 @@
 import Question from "metabase-lib/lib/Question";
 import Database from "metabase-lib/lib/metadata/Database";
+
+import { ModelCacheState } from "metabase-types/api";
 import {
   TemplateTag,
   TemplateTagType,
@@ -7,12 +9,16 @@ import {
   SourceTableId,
 } from "metabase-types/types/Query";
 import { CardId } from "metabase-types/types/Card";
+
 import { createMockDatabase } from "metabase-types/api/mocks/database";
+import { getMockModelCacheInfo } from "metabase-types/api/mocks/models";
 import { ORDERS, metadata } from "__support__/sample_database_fixture";
+
 import {
   checkCanBeModel,
   isAdHocModelQuestion,
   isAdHocModelQuestionCard,
+  checkCanRefreshModelCache,
 } from "./utils";
 
 type NativeQuestionFactoryOpts = {
@@ -247,6 +253,26 @@ describe("data model utils", () => {
       expect(
         isAdHocModelQuestionCard(question.card(), originalQuestion.card()),
       ).toBe(false);
+    });
+  });
+
+  describe("checkCanRefreshModelCache", () => {
+    const testCases: Record<ModelCacheState, boolean> = {
+      creating: false,
+      refreshing: false,
+      persisted: true,
+      error: true,
+      deletable: false,
+      off: false,
+    };
+    const states = Object.keys(testCases) as ModelCacheState[];
+
+    states.forEach(state => {
+      const canRefresh = testCases[state];
+      it(`returns '${canRefresh}' for '${state}' caching state`, () => {
+        const info = getMockModelCacheInfo({ state });
+        expect(checkCanRefreshModelCache(info)).toBe(canRefresh);
+      });
     });
   });
 });
