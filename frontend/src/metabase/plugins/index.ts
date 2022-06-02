@@ -113,6 +113,7 @@ export const PLUGIN_COLLECTION_COMPONENTS = {
 export const PLUGIN_MODERATION = {
   isEnabled: () => false,
   QuestionModerationSection: PluginPlaceholder,
+  QuestionModerationButton: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIconForQuestion: object,
   getStatusIcon: object,

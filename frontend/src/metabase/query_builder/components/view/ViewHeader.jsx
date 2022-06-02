@@ -32,6 +32,7 @@ import QuestionFilters, {
   QuestionFilterWidget,
 } from "./QuestionFilters";
 import { QuestionSummarizeWidget } from "./QuestionSummaries";
+import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
@@ -378,9 +379,12 @@ ViewTitleHeaderRightSide.propTypes = {
   onEditSummary: PropTypes.func,
   onCloseSummary: PropTypes.func,
   setQueryBuilderMode: PropTypes.func,
+  turnDatasetIntoQuestion: PropTypes.func,
   areFiltersExpanded: PropTypes.bool,
   onExpandFilters: PropTypes.func,
   onCollapseFilters: PropTypes.func,
+  isBookmarked: PropTypes.bool,
+  toggleBookmark: PropTypes.func,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -388,6 +392,8 @@ function ViewTitleHeaderRightSide(props) {
     question,
     result,
     queryBuilderMode,
+    isBookmarked,
+    toggleBookmark,
     isSaved,
     isDataset,
     isNative,
@@ -409,6 +415,7 @@ function ViewTitleHeaderRightSide(props) {
     onEditSummary,
     onCloseSummary,
     setQueryBuilderMode,
+    turnDatasetIntoQuestion,
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
@@ -536,6 +543,16 @@ function ViewTitleHeaderRightSide(props) {
           isPreviewing={isPreviewing}
           onRun={() => runQuestionQuery({ ignoreCache: true })}
           onCancel={cancelQuery}
+        />
+      )}
+      {isSaved && (
+        <QuestionActions
+          isBookmarked={isBookmarked}
+          handleBookmark={toggleBookmark}
+          onOpenModal={onOpenModal}
+          question={question}
+          setQueryBuilderMode={setQueryBuilderMode}
+          turnDatasetIntoQuestion={turnDatasetIntoQuestion}
         />
       )}
     </div>
