@@ -29,7 +29,10 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.build.api :as b])
-  (:import (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)))
+  (:import (java.nio.file Files FileSystem FileSystems FileVisitOption LinkOption OpenOption Path Paths)
+           (org.apache.maven.model License Model)
+           (org.apache.maven.model.io.xpp3 MavenXpp3Reader)
+           (java.io FileReader)))
 
 (set! *warn-on-reflection* true)
 
@@ -80,14 +83,34 @@
                                   (str/ends-with? (str path) "pom.xml")))]
         (.. (Files/find jar-root Integer/MAX_VALUE pred filevisit-options)
             findFirst
-            (orElse nil)))
-      (throw (ex-info "Cannot locate pom" {:jar jar-filename}))))
+            (orElse nil)))))
 
 (defn do-with-path-is
   "Open an inputstream on `path` and call `f` with the inputstream as an argument. Function `f` should not be lazy."
   [^Path path f]
   (with-open [is (Files/newInputStream path open-options)]
     (f is)))
+
+(defn license-from-pom
+  "Read license information from a pom. This reads only the local pom and does not trace parent poms. Clojure.core.async includes a parent pom:
+
+  <parent>
+    <groupId>org.clojure</groupId>
+    <artifactId>pom.contrib</artifactId>
+    <version>1.1.0</version>
+  </parent>
+
+  which would specify a license. To trace this would require setting up way more machinery and so just let the
+  overrides catch this scenario."
+  [^Path pom-path]
+  (try
+    (let [reader (MavenXpp3Reader.)
+          model  (.read reader (FileReader. (.toFile pom-path)))
+          license ^License (first (.getLicenses model))]
+      (when license
+        {:name (.getName license)
+         :url  (.getUrl license)}))
+    (catch Exception e (tap> e) nil)))
 
 (def ^:private license-file-names
   ["LICENSE" "LICENSE.txt" "META-INF/LICENSE"
@@ -128,18 +151,13 @@
       [lib-name {:error "Jar does not exist"}]
       (try
         (with-open [jar-fs (FileSystems/newFileSystem jar-path classloader)]
-          (let [pom-path             (determine-pom jar-filename jar-fs)
-                license-path         (license-from-jar jar-fs)
-                pom-license (do-with-path-is pom-path
-                                             (comp
-                                              pom->licenses
-                                              #(xml/parse % :skip-whitespace true)))
-                license              (or (when license-path
-                                           (with-open [is (Files/newInputStream license-path open-options)]
-                                             (slurp is)))
-                                         (license-from-backfill lib-name backfill)
-                                         (let [{:keys [name url]} pom-license]
-                                           (when name (str name ": " url))))]
+          (let [license  (or (when-let [license-path (license-from-jar jar-fs)]
+                               (with-open [is (Files/newInputStream license-path open-options)]
+                                 (slurp is)))
+                             (when-let [pom-path (determine-pom jar-filename jar-fs)]
+                               (let [{:keys [name url]} (license-from-pom pom-path)]
+                                 (when name (str name ": " url))))
+                             (license-from-backfill lib-name backfill))]
             [lib-name (cond-> {:coords {:group (namespace lib-name)
                                         :artifact (name lib-name)
                                         :version (:mvn/version info)}
@@ -147,7 +165,7 @@
                         (not license)
                         (assoc :error "Error determining license"))]))
         (catch Exception e
-          [jar-filename {:error e}])))))
+          [lib-name {:error e}])))))
 
 (defn write-license [success-os [lib {:keys [coords license]}]]
   (binding [*out* success-os]
@@ -226,3 +244,16 @@
         ;; best defaults. Want to make sure we never kill our build script
         #_(System/exit (if (seq without-license) 1 0))))
     license-info))
+
+(comment
+  (def basis (b/create-basis {:project "path-to-metabase/deps.edn"}))
+  (def libs (process* {:libs     (jar-entries basis)
+                       :backfill (edn/read-string
+                                  (slurp (io/resource "overrides.edn")))}))
+  (process* {:libs (-> basis :libs (select-keys '[org.clojure/clojure
+                                                  org.clojure/core.async]))})
+
+  (get-in basis [:libs 'org.clojure/clojure])
+
+  (:without-license libs)
+  )
