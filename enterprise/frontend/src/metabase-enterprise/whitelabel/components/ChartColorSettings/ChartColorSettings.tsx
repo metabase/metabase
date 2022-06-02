@@ -47,8 +47,8 @@ const ChartColorSettings = ({
   }, [colorsRef, colorGroups, onChange]);
 
   const handleGenerate = useCallback(() => {
-    onChange?.(getAutoChartColors(colorGroups, colors, colorPalette));
-  }, [colorGroups, colors, colorPalette, onChange]);
+    onChange?.(getAutoChartColors(colors, colorPalette));
+  }, [colors, colorPalette, onChange]);
 
   return (
     <ChartColorTable
