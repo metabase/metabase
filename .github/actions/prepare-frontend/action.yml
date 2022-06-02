@@ -16,6 +16,6 @@ runs:
       uses: actions/cache@v2
       with:
         path: node_modules
-        key: v2-${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
+        key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock') }}
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash
