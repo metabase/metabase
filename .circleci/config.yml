@@ -1260,7 +1260,6 @@ workflows:
                   "organization",
                   "permissions",
                   "question",
-                  "sharing",
                   "smoketest",
                   "visualizations",
                 ]
