@@ -80,6 +80,7 @@ const Questions = createEntity({
     "description",
     "visualization_settings",
     "parameters",
+    "parameter_mappings",
     "archived",
     "enable_embedding",
     "embedding_params",
