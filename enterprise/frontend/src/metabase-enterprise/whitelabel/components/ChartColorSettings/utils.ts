@@ -42,7 +42,7 @@ const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
 };
 
 const getNextColor = (color: Color) => {
-  const newHueChange = color.hue() >= 100 && color.hue() <= 120 ? 60 : 45;
+  const newHueChange = color.hue() >= 90 && color.hue() <= 130 ? 60 : 45;
   const newHue = (color.hue() + newHueChange) % 360;
   const newSaturation = newHue <= 65 || newHue >= 345 ? 55 : 40;
 
