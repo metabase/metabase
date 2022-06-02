@@ -27,24 +27,27 @@ export const getAutoChartColors = (
   return getChartColorValues(newColors.map(c => c?.hex()));
 };
 
-const getAutoColor = (color: Color, index: number) => {
-  const newHue = (color.hue() + index * 45) % 360;
+const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
+  const newColors: Color[] = [];
+  const baseColor = colors.find(oldColor => oldColor != null) ?? primaryColor;
+
+  colors.forEach((_, index) => {
+    newColors.push(getNextColor(index ? newColors[index - 1] : baseColor));
+  });
+
+  const unusedColors = newColors.filter(color => !isCloseColors(color, colors));
+  return colors.map(color => (color ? color : unusedColors.shift()));
+};
+
+const getNextColor = (color: Color) => {
+  const newHueChange = color.hue() >= 75 && color.hue() <= 90 ? 60 : 45;
+  const newHue = (color.hue() + newHueChange) % 360;
   const newSaturation = newHue <= 65 || newHue >= 345 ? 55 : 40;
 
   return color
     .hue(newHue)
     .saturationv(newSaturation)
     .value(90);
-};
-
-const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
-  const baseColor = colors.find(oldColor => oldColor != null) ?? primaryColor;
-
-  const newColors = colors
-    .map((_, index) => getAutoColor(baseColor, index))
-    .filter(newColor => !isCloseColors(newColor, colors));
-
-  return colors.map(color => (color ? color : newColors.shift()));
 };
 
 const isCloseColor = (newColor: Color, oldColor: Color) => {
