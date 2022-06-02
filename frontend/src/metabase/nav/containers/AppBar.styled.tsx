@@ -21,6 +21,10 @@ export const AppBarRoot = styled.header`
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
   z-index: 4;
+
+  @media print {
+    display: none;
+  }
 `;
 
 export const LogoLink = styled(Link)`
