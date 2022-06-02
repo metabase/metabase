@@ -91,7 +91,7 @@
       (when license
         {:name (.getName license)
          :url  (.getUrl license)}))
-    (catch Exception e (tap> e) nil)))
+    (catch Exception _e nil)))
 
 (def ^:private license-file-names
   ["LICENSE" "LICENSE.txt" "META-INF/LICENSE"
