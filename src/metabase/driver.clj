@@ -438,7 +438,8 @@
     ;; Does the driver support experimental "writeback" actions like "delete this row" or "insert a new row" from 44+?
     :actions
 
-    ;; Does the driver support custom writeback actions using `is_write` Saved Questions
+    ;; Does the driver support custom writeback actions using `is_write` Saved Questions. Drivers that support this must
+    ;; implement [[execute-write-query!]]
     :actions/custom})
 
 (defmulti supports?
@@ -712,3 +713,10 @@
 (defmethod superseded-by :default
   [_]
   nil)
+
+(defmulti execute-write-query!
+  "Execute a writeback query (from an `is_write` Card) e.g. one powering a custom
+  `QueryAction` (see [[metabase.models.action]]). Drivers that support `:actions/custom` must implement this method."
+  {:added "0.44.0", :arglists '([driver query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

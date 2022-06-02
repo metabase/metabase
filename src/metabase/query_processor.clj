@@ -351,3 +351,16 @@
 
   ([query info context]
    (process-query-and-save-execution! (add-default-constraints query) info context)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                 Write Queries                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn execute-write-query!
+  "Execute an writeback query from an `is_write` SavedQuestion."
+  [{database-id :database, :as query}]
+  ;; TODO -- perms check
+  ;; TODO -- middleware
+  (let [driver (driver.u/database->driver database-id)]
+    (driver/execute-write-query! driver query)))

@@ -31,4 +31,11 @@
   (db/delete! Emitter :id emitter-id)
   api/generic-204-no-content)
 
+(api/defendpoint POST "/:id/execute"
+  "Execute a custom emitter."
+  [id]
+  (println "id:" id) ; NOCOMMIT
+  {:id id}
+  )
+
 (api/define-routes actions/+check-actions-enabled)
