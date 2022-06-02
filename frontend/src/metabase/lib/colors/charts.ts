@@ -15,7 +15,7 @@ export const getColorsForValues = (
   } else {
     return getOrderBasedMapping(
       keys,
-      getHarmonyColors(),
+      getHarmonyColors({ light: keys.length > ACCENT_COUNT * 2 }),
       existingMapping,
       getPreferredColor,
     );

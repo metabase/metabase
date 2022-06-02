@@ -4,7 +4,7 @@ import React from "react";
 import { t, jt } from "ttag";
 
 import {
-  getBackgroundColors,
+  getDistinctColors,
   getStatusColorRanges,
 } from "metabase/lib/colors/groups";
 
@@ -57,7 +57,7 @@ export const ALL_OPERATOR_NAMES = {
 };
 
 // TODO
-const COLORS = getBackgroundColors();
+const COLORS = getDistinctColors({ dark: false });
 const COLOR_RANGES = getStatusColorRanges();
 
 const DEFAULTS_BY_TYPE = {
