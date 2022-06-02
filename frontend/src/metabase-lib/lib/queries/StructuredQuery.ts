@@ -1119,7 +1119,7 @@ export default class StructuredQuery extends AtomicQuery {
       }
     }
 
-    if (this.isRaw()) {
+    if (this.isRaw() && this.sourceQuery()) {
       query = query.clearFields();
     }
 
