@@ -4,16 +4,13 @@ import Table from "metabase-lib/lib/metadata/Table";
 import { fetchCardData } from "metabase/dashboard/actions";
 import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import { setUIControls } from "metabase/query_builder/actions/ui";
-import {
-  closeObjectDetail,
-  zoomInRow,
-} from "metabase/query_builder/actions/object-detail";
+import { closeObjectDetail } from "metabase/query_builder/actions/object-detail";
 
 import { DashCard } from "metabase-types/types/Dashboard";
 
 export type InsertRowPayload = {
   table: Table;
-  values: { [key: string]: number | string };
+  values: Record<string, unknown>;
 };
 
 export const createRow = (payload: InsertRowPayload) => {
