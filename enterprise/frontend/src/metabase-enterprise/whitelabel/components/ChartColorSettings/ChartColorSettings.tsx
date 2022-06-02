@@ -3,12 +3,14 @@ import { t } from "ttag";
 import { flatten, omit, set } from "lodash";
 import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
 import { getChartColorGroups } from "./utils";
 import {
   TableBody,
   TableBodyCell,
   TableBodyRow,
+  TableFooter,
   TableHeader,
   TableLink,
   TableTitle,
@@ -90,6 +92,9 @@ const ChartColorTable = ({
           </TableBodyRow>
         ))}
       </TableBody>
+      <TableFooter>
+        <Button primary>{t`Generate chart colors`}</Button>
+      </TableFooter>
     </div>
   );
 };
