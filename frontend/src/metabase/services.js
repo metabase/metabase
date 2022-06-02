@@ -343,10 +343,6 @@ export const MetabaseApi = {
     // this prevents the `endpoint` parameter from being URL encoded
     raw: { endpoint: true },
   }),
-
-  actions: {
-    deleteRow: POST("/api/actions/row/delete"),
-  },
 };
 
 export const ModerationReviewApi = {
@@ -526,3 +522,9 @@ function setParamsEndpoints(prefix) {
     prefix + "/dashboard/:dashId/params/:paramId/search/:query",
   );
 }
+
+export const ActionsApi = {
+  create: POST("/api/actions/row/create"),
+  update: POST("/api/actions/row/update"),
+  delete: POST("/api/actions/row/delete"),
+};

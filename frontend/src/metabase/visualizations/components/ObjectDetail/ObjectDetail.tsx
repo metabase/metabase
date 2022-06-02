@@ -60,6 +60,8 @@ import {
 import {
   deleteRowFromObjectDetail,
   DeleteRowPayload,
+  updateRowFromObjectDetail,
+  UpdateRowPayload,
 } from "metabase/writeback/actions";
 import ActionHeader from "metabase/writeback/components/ObjectDetails/ActionHeader";
 
@@ -99,6 +101,8 @@ const mapDispatchToProps = (dispatch: any) => ({
     dispatch(followForeignKey({ objectId, fk })),
   viewPreviousObjectDetail: () => dispatch(viewPreviousObjectDetail()),
   viewNextObjectDetail: () => dispatch(viewNextObjectDetail()),
+  updateRowFromObjectDetail: (payload: UpdateRowPayload) =>
+    dispatch(updateRowFromObjectDetail(payload)),
   deleteRowFromObjectDetail: (payload: DeleteRowPayload) =>
     dispatch(deleteRowFromObjectDetail(payload)),
   closeObjectDetail: () => dispatch(closeObjectDetail()),
@@ -123,6 +127,7 @@ export interface ObjectDetailProps {
   showRelations?: boolean;
   onVisualizationClick: OnVisualizationClickType;
   visualizationIsClickable: (clicked: any) => boolean;
+  updateRowFromObjectDetail: (opts: UpdateRowPayload) => void;
   deleteRowFromObjectDetail: (opts: DeleteRowPayload) => void;
   fetchTableFks: (id: number) => void;
   loadObjectDetailFKReferences: (opts: { objectId: ObjectId }) => void;
@@ -136,6 +141,7 @@ export function ObjectDetailFn({
   data,
   question,
   table,
+  updateRowFromObjectDetail,
   deleteRowFromObjectDetail,
   zoomedRow,
   zoomedRowID,
@@ -241,6 +247,21 @@ export function ObjectDetailFn({
     }
   }, [canEdit, zoomedRowID, table, deleteRowFromObjectDetail]);
 
+  const onSubmit = React.useMemo(
+    () =>
+      canEdit && table
+        ? (values: any) => {
+            updateRowFromObjectDetail({
+              table,
+              id: zoomedRowID,
+              values,
+            });
+            setIsEditing(false);
+          }
+        : undefined,
+    [updateRowFromObjectDetail, canEdit, table, zoomedRowID],
+  );
+
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: { [key: string]: () => void } = {
       ArrowUp: viewPreviousObjectDetail,
@@ -299,7 +320,12 @@ export function ObjectDetailFn({
           <ObjectDetailBodyWrapper>
             {isEditing && table ? (
               <EditingFormContainer>
-                <WritebackForm table={table} row={zoomedRow} isModal />
+                <WritebackForm
+                  table={table}
+                  row={zoomedRow}
+                  onSubmit={onSubmit}
+                  isModal
+                />
               </EditingFormContainer>
             ) : (
               <ObjectDetailBody

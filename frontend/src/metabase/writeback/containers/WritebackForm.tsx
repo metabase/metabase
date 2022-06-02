@@ -7,13 +7,14 @@ import { TYPE } from "metabase/lib/types";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import Table from "metabase-lib/lib/metadata/Table";
+import { Value } from "metabase-types/types/Dataset";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";
 
 export interface WritebackFormProps {
   table: Table;
   row?: unknown[];
-  onSubmit?: () => void;
+  onSubmit?: (values: { [key: string]: Value }) => void;
 
   // Form props
   isModal?: boolean;
@@ -77,9 +78,12 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
     };
   }, [table, row, editableFields]);
 
-  const handleSubmit = useCallback(() => {
-    onSubmit?.();
-  }, [onSubmit]);
+  const handleSubmit = useCallback(
+    values => {
+      onSubmit?.(values);
+    },
+    [onSubmit],
+  );
 
   const submitTitle = row ? t`Update` : t`Create`;
 
