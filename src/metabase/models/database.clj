@@ -53,7 +53,7 @@
 (defn- post-select [{driver :engine, :as database}]
   (cond-> database
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    :always
+    driver
     (assoc :features (driver.u/features driver database))
 
     (and (driver/initialized? driver) (:details database))
