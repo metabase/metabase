@@ -1,35 +1,34 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, screen } from "@testing-library/react";
 import Slider from "./Slider";
 
 describe("Slider", () => {
   it("should render 2 range inputs", () => {
-    const { container } = render(
-      <Slider value={[10, 40]} onChange={() => null} min={0} max={100} />,
-    );
+    render(<Slider value={[10, 40]} onChange={() => null} min={0} max={100} />);
 
-    expect(container.querySelectorAll('input[type="range"]').length).toBe(2);
+    const minInput = screen.getByLabelText("min");
+    const maxInput = screen.getByLabelText("max");
+
+    expect(minInput).toHaveAttribute("type", "range");
+    expect(maxInput).toHaveAttribute("type", "range");
   });
 
   it("should always have values in range", () => {
-    const { container } = render(
+    render(
       <Slider value={[10, 412]} onChange={() => null} min={0} max={100} />,
     );
 
-    expect(
-      container.querySelector('input[type="range"]')?.getAttribute("max"),
-    ).toBe("412");
+    const minInput = screen.getByLabelText("min");
+
+    expect(minInput).toHaveAttribute("max", "412");
   });
 
   it("should call onChange with the new value on input change", () => {
     const spy = jest.fn();
-    const { container } = render(
-      <Slider value={[10, 20]} onChange={spy} min={0} max={100} />,
-    );
+    render(<Slider value={[10, 20]} onChange={spy} min={0} max={100} />);
 
-    const [minInput, maxInput] = container.querySelectorAll(
-      'input[type="range"]',
-    );
+    const minInput = screen.getByLabelText("min");
+    const maxInput = screen.getByLabelText("max");
 
     // would be nice to use userEvent when we upgrade to v14 so we mock drage events
     fireEvent.change(minInput, { target: { value: "5" } });
@@ -43,13 +42,9 @@ describe("Slider", () => {
 
   it("should sort input values on mouse up", () => {
     const spy = jest.fn();
-    const { container } = render(
-      <Slider value={[2, 1]} onChange={spy} min={0} max={100} />,
-    );
+    render(<Slider value={[2, 1]} onChange={spy} min={0} max={100} />);
 
-    const minInput = container.querySelector(
-      'input[type="range"]',
-    ) as HTMLInputElement;
+    const minInput = screen.getByLabelText("min");
 
     fireEvent.mouseUp(minInput);
     expect(spy.mock.calls[0][0]).toEqual([1, 2]);
