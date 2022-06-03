@@ -24,21 +24,23 @@ export const getAutoChartColors = (
   const oldColors = getChartColors(values).map(c => (c ? Color(c) : undefined));
   const primaryColor = Color(color("brand", palette));
   const newColors = getAutoColors(oldColors, primaryColor);
+
   return getChartColorValues(newColors.map(c => c?.hex()));
 };
 
 const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
-  const newColors: Color[] = [];
   const baseColor = colors.find(oldColor => oldColor != null) ?? primaryColor;
 
-  colors.forEach((_, index) => {
-    newColors.push(getNextColor(index ? newColors[index - 1] : baseColor));
-  });
-
-  const unusedColors = newColors.filter(
-    color => !isSimilarColors(color, colors),
+  const autoColors: Color[] = [];
+  colors.forEach((_, index) =>
+    autoColors.push(getNextColor(index ? autoColors[index - 1] : baseColor)),
   );
-  return colors.map(color => (color ? color : unusedColors.shift()));
+
+  const availableColors = autoColors.filter(
+    color => !isSimilarToColors(color, colors),
+  );
+
+  return colors.map(color => (color ? color : availableColors.shift()));
 };
 
 const getNextColor = (color: Color) => {
@@ -56,7 +58,7 @@ const isSimilarColor = (newColor: Color, oldColor: Color) => {
   return Math.abs(newColor.hue() - oldColor.hue()) <= 20;
 };
 
-const isSimilarColors = (newColor: Color, colors: (Color | undefined)[]) => {
+const isSimilarToColors = (newColor: Color, colors: (Color | undefined)[]) => {
   return colors.some(
     oldColor => oldColor && isSimilarColor(newColor, oldColor),
   );
