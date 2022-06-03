@@ -26,6 +26,7 @@ export type Column = {
   expression_name?: any;
   settings?: ColumnSettings;
   field_ref?: Field;
+  visibility_type?: "normal" | "details-only" | "hidden";
 };
 
 export type Value =

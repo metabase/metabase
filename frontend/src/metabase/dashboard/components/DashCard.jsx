@@ -175,7 +175,8 @@ export default class DashCard extends Component {
 
     const hideBackground =
       !isEditing &&
-      mainCard.visualization_settings["dashcard.background"] === false;
+      (mainCard.visualization_settings["dashcard.background"] === false ||
+        mainCard.display === "list");
 
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
