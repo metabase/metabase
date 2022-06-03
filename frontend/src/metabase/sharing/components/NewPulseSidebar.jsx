@@ -55,7 +55,7 @@ function NewPulseSidebar({
               {!emailConfigured &&
                 jt`You'll need to ${(
                   <Link key="link" to="/admin/settings/email" className="link">
-                    set up email
+                    {t`set up email`}
                   </Link>
                 )} first.`}
               {emailConfigured &&
@@ -93,7 +93,7 @@ function NewPulseSidebar({
               {!slackConfigured &&
                 jt`First, you'll have to ${(
                   <Link key="link" to="/admin/settings/slack" className="link">
-                    configure Slack
+                    {t`configure Slack`}
                   </Link>
                 )}.`}
               {slackConfigured &&
