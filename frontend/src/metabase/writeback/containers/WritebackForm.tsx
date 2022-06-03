@@ -14,7 +14,7 @@ import CategoryFieldPicker from "./CategoryFieldPicker";
 export interface WritebackFormProps {
   table: Table;
   row?: unknown[];
-  onSubmit?: (values: { [key: string]: Value }) => void;
+  onSubmit?: (values: Record<string, unknown>) => void;
 
   // Form props
   isModal?: boolean;
@@ -80,9 +80,25 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
 
   const handleSubmit = useCallback(
     values => {
-      onSubmit?.(values);
+      const isUpdate = !!row;
+      const changes = isUpdate ? {} : values;
+
+      if (isUpdate) {
+        const fields = form.fields;
+
+        // makes sure we only pass fields that were actually changed
+        Object.keys(values).forEach(fieldName => {
+          const field = fields.find(field => field.name === fieldName);
+          const hasChanged = !field || field.initial !== values[fieldName];
+          if (hasChanged) {
+            changes[fieldName] = values[fieldName];
+          }
+        });
+      }
+
+      onSubmit?.(changes);
     },
-    [onSubmit],
+    [form, row, onSubmit],
   );
 
   const submitTitle = row ? t`Update` : t`Create`;
