@@ -13,4 +13,3 @@
   serdes.utils/IdentityHashable
   {:identity-hash-fields (constantly [(comp serdes.utils/identity-hash dashboard-card)
                                       (serdes.utils/hydrated-hash :card)])})
-
