@@ -4,6 +4,7 @@
             [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
+            [metabase.driver.impl :as driver.impl]
             [metabase.driver.util :as driver.u]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
@@ -53,10 +54,10 @@
 (defn- post-select [{driver :engine, :as database}]
   (cond-> database
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    driver
+    (driver.impl/registered? driver)
     (assoc :features (driver.u/features driver database))
 
-    (and driver (:details database))
+    (and (driver.impl/registered? driver) (:details database))
     (->> (driver/normalize-db-details driver))))
 
 (defn- delete-orphaned-secrets!
