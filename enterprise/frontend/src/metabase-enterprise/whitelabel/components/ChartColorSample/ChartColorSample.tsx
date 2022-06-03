@@ -1,16 +1,17 @@
 import React, { memo, useMemo } from "react";
 import { times } from "lodash";
 import {
+  ChartAxis,
   ChartBar,
   ChartBarSection,
-  ChartPlot,
   ChartGrid,
-  ChartTick,
+  ChartPlot,
   ChartRoot,
-  ChartAxis,
+  ChartTick,
 } from "./ChartColorSample.styled";
 
 const BAR_COUNT = 4;
+const BAR_HEIGHTS = [0.625, 0.75, 1, 0.875];
 const TICK_COUNT = 8;
 
 export interface ChartColorSampleProps {
@@ -34,10 +35,7 @@ const ChartColorSample = ({ colors }: ChartColorSampleProps): JSX.Element => {
             {reversedColors.map((color, index) => (
               <ChartBarSection
                 key={index}
-                style={{
-                  flexGrow: getBarSectionHeight(index),
-                  backgroundColor: color,
-                }}
+                style={{ flexGrow: index + 1, backgroundColor: color }}
               />
             ))}
           </ChartBar>
@@ -48,11 +46,7 @@ const ChartColorSample = ({ colors }: ChartColorSampleProps): JSX.Element => {
 };
 
 const getBarHeight = (index: number) => {
-  return index === 0 ? "87.5%" : "100%";
-};
-
-const getBarSectionHeight = (index: number) => {
-  return index + 1;
+  return `${BAR_HEIGHTS[index] * 100}%`;
 };
 
 export default memo(ChartColorSample);
