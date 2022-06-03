@@ -168,13 +168,24 @@ export type DeleteRowFromDataAppPayload = DeleteRowPayload & {
 
 export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
   return async (dispatch: any) => {
-    const result = await deleteRow(payload);
-    if (result?.["rows-deleted"]?.length > 0) {
-      const { dashCard } = payload;
+    try {
+      const result = await deleteRow(payload);
+      if (result?.["rows-deleted"]?.length > 0) {
+        const { dashCard } = payload;
+        dispatch(
+          fetchCardData(dashCard.card, dashCard, {
+            reload: true,
+            ignoreCache: true,
+          }),
+        );
+      }
+    } catch (err) {
+      console.error(err);
       dispatch(
-        fetchCardData(dashCard.card, dashCard, {
-          reload: true,
-          ignoreCache: true,
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong while deleting the row`,
         }),
       );
     }
