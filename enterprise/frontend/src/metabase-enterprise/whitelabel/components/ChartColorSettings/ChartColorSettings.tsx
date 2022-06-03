@@ -15,7 +15,6 @@ import {
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
-import groups from "metabase/entities/groups";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
@@ -47,8 +46,8 @@ const ChartColorSettings = ({
   }, [colorsRef, colorGroups, onChange]);
 
   const handleGenerate = useCallback(() => {
-    onChange?.(getAutoChartColors(colors, colorPalette));
-  }, [colors, colorPalette, onChange]);
+    onChange?.(getAutoChartColors(colors, colorGroups, colorPalette));
+  }, [colors, colorGroups, colorPalette, onChange]);
 
   return (
     <ChartColorTable

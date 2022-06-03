@@ -1,17 +1,5 @@
 import Color from "color";
-import { times } from "lodash";
-import { color } from "metabase/lib/colors";
-
-export const getChartColors = (values: Record<string, string>) => {
-  return times(8, i => values[`accent${i}`]);
-};
-
-export const getChartColorValues = (colors: (string | undefined)[]) => {
-  return colors.reduce<Record<string, string>>((values, color, i) => {
-    color && (values[`accent${i}`] = color);
-    return values;
-  }, {});
-};
+import { chain, flatten, omit, times } from "lodash";
 
 export const getChartColorGroups = (): string[][] => {
   return times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
@@ -19,28 +7,41 @@ export const getChartColorGroups = (): string[][] => {
 
 export const getAutoChartColors = (
   values: Record<string, string>,
+  groups: string[][],
   palette: Record<string, string>,
 ) => {
-  const oldColors = getChartColors(values).map(c => (c ? Color(c) : undefined));
-  const primaryColor = Color(color("brand", palette));
-  const newColors = getAutoColors(oldColors, primaryColor);
+  const oldColors = chain(groups)
+    .map(([name]) => values[name])
+    .map(value => (value ? Color(value) : undefined))
+    .value();
 
-  return getChartColorValues(newColors.map(c => c?.hex()));
+  const fallbackColor = Color(palette["brand"]);
+  const newColors = getAutoColors(oldColors, fallbackColor);
+
+  return chain(groups)
+    .map(([name], index) => [name, newColors[index]?.hex()])
+    .filter(([_, value]) => value != null)
+    .fromPairs()
+    .omit(flatten(groups))
+    .value();
 };
 
-const getAutoColors = (colors: (Color | undefined)[], primaryColor: Color) => {
-  const baseColor = colors.find(oldColor => oldColor != null) ?? primaryColor;
+const getAutoColors = (
+  oldColors: (Color | undefined)[],
+  fallbackColor: Color,
+) => {
+  const baseColor = oldColors.find(color => color != null) ?? fallbackColor;
 
   const autoColors: Color[] = [];
-  colors.forEach((_, index) =>
+  oldColors.forEach((_, index) =>
     autoColors.push(getNextColor(index ? autoColors[index - 1] : baseColor)),
   );
 
   const availableColors = autoColors.filter(
-    color => !isSimilarToColors(color, colors),
+    color => !isSimilarToColors(color, oldColors),
   );
 
-  return colors.map(color => (color ? color : availableColors.shift()));
+  return oldColors.map(color => (color ? color : availableColors.shift()));
 };
 
 const getNextColor = (color: Color) => {
