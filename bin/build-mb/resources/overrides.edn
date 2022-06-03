@@ -20,7 +20,7 @@
  "amalloy"                    {"ring-gzip-middleware" {:resource "MIT.txt"}}
  "buddy"                      {"buddy-core" {:resource "apache2_0.txt"}}
  "colorize"                   {"colorize" {:resource "EPL.txt"}}
- "com.github.jnr"             {"jffi" {:resource "apache2_0.txt"}}
+ "com.github.jnr"             {"jffi$native" {:resource "apache2_0.txt"}}
  "com.google.api-client"      {"google-api-client" {:resource "apache2_0.txt"}}
  "com.google.auto.value"      {"auto-value-annotations" {:resource "apache2_0.txt"}}
  "com.google.http-client"     {"google-http-client"          {:resource "apache2_0.txt"}
