@@ -63,6 +63,9 @@
                                      "'unsafe-inline'")]
                                   (when-not config/is-dev?
                                     (map (partial format "'sha256-%s'") inline-js-hashes)))
+                  :child-src    ["'self'"
+                                 ;; TODO - double check that we actually need this for Google Auth
+                                 "https://accounts.google.com"]
                   :style-src    ["'self'"
                                  "'unsafe-inline'"
                                  "https://accounts.google.com"]
@@ -72,6 +75,8 @@
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                 ;; Google Identity Services
+                                 "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Google analytics
