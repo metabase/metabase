@@ -11,7 +11,7 @@ import {
 } from "./ChartColorSample.styled";
 
 const BAR_COUNT = 4;
-const BAR_HEIGHTS = [0.625, 0.75, 1, 0.875];
+const BAR_HEIGHTS = [0.75, 0.875, 1, 0.9375];
 const TICK_COUNT = 8;
 
 export interface ChartColorSampleProps {
