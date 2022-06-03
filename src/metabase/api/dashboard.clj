@@ -69,7 +69,7 @@
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
-   parameters          [su/Map]
+   parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -275,7 +275,7 @@
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Map])
+   parameters              (s/maybe [su/Parameter])
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)

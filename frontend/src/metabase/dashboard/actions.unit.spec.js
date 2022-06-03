@@ -11,8 +11,8 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
-  fetchDashboardParameterValues,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  fetchDashboardParameterValuesWithCache,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
 } from "./actions";
 import { SIDEBAR_NAME } from "./constants";
 
@@ -154,7 +154,7 @@ describe("dashboard actions", () => {
     });
   });
 
-  describe("fetchDashboardParameterValues", () => {
+  describe("fetchDashboardParameterValuesWithCache", () => {
     const dashboardId = 1;
     const parameter = { id: "a" };
     const parameterWithFilteringParameters = {
@@ -183,7 +183,7 @@ describe("dashboard actions", () => {
     });
 
     it("should fetch parameter values using the given query string", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter,
         parameters,
@@ -201,12 +201,12 @@ describe("dashboard actions", () => {
             "dashboardId: 1, parameterId: a, query: foo, filteringParameterValues: []",
           results: [[1], [2], [3]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
     it("should fetch parameter values without a query string", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter,
         parameters,
@@ -223,12 +223,12 @@ describe("dashboard actions", () => {
             "dashboardId: 1, parameterId: a, query: null, filteringParameterValues: []",
           results: [[4], [5], [6]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
     it("should fetch parameter values using a query string and filtering parameters", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter: parameterWithFilteringParameters,
         parameters,
@@ -247,12 +247,12 @@ describe("dashboard actions", () => {
             'dashboardId: 1, parameterId: a, query: bar, filteringParameterValues: [["b","bbb"]]',
           results: [[1], [2], [3]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
     it("should fetch parameter values without a query string but with filtering parameters", async () => {
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter: parameterWithFilteringParameters,
         parameters,
@@ -270,7 +270,7 @@ describe("dashboard actions", () => {
             'dashboardId: 1, parameterId: a, query: null, filteringParameterValues: [["b","bbb"]]',
           results: [[4], [5], [6]],
         },
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
 
@@ -281,7 +281,7 @@ describe("dashboard actions", () => {
         [cacheKey]: [[1], [2], [3]],
       };
 
-      const action = await fetchDashboardParameterValues({
+      const action = await fetchDashboardParameterValuesWithCache({
         dashboardId,
         parameter: parameterWithFilteringParameters,
         parameters,
@@ -293,7 +293,7 @@ describe("dashboard actions", () => {
 
       expect(action).toEqual({
         payload: undefined,
-        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+        type: FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
       });
     });
   });

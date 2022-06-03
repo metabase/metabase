@@ -1,8 +1,11 @@
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Database from "metabase-lib/lib/metadata/Database";
+
 import { isStructured } from "metabase/lib/query";
 import { getQuestionVirtualTableId } from "metabase/lib/saved-questions";
+
+import { ModelCacheRefreshStatus } from "metabase-types/api";
 import { TemplateTag } from "metabase-types/types/Query";
 import {
   Card as CardObject,
@@ -65,4 +68,10 @@ export function isAdHocModelQuestion(
     return false;
   }
   return isAdHocModelQuestionCard(question.card(), originalQuestion.card());
+}
+
+export function checkCanRefreshModelCache(
+  refreshInfo: ModelCacheRefreshStatus,
+) {
+  return refreshInfo.state === "persisted" || refreshInfo.state === "error";
 }

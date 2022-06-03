@@ -1,4 +1,5 @@
 import d3 from "d3";
+import Color from "color";
 
 export const getColorScale = (
   extent: [number, number],
@@ -21,4 +22,12 @@ export const getColorScale = (
       )
       .range(colors);
   }
+};
+
+const RGBA_REGEX = /rgba\((\d+\.\d+),\s*(\d+\.\d+),\s*(\d+\.\d+),\s*(\d+\.\d+)\)/;
+
+export const getSafeColor = (color: string) => {
+  return color.replace(RGBA_REGEX, (_, r, g, b, a) => {
+    return `rgba(${Math.round(r)},${Math.round(g)},${Math.round(b)},${a})`;
+  });
 };

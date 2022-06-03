@@ -15,6 +15,7 @@
             [metabase.config :as config]
             [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [nano-id.core :refer [nano-id]]
             [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
@@ -956,3 +957,8 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn generate-nano-id
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models."
+  []
+  (nano-id))

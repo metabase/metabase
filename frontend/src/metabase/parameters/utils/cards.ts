@@ -30,7 +30,24 @@ function getTemplateTagType(tag: TemplateTag) {
   }
 }
 
+export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
+  const target: ParameterTarget =
+    tag.type === "dimension"
+      ? ["dimension", ["template-tag", tag.name]]
+      : ["variable", ["template-tag", tag.name]];
+
+  return {
+    id: tag.id,
+    type: tag["widget-type"] || getTemplateTagType(tag),
+    target,
+    name: tag["display-name"],
+    slug: tag.name,
+    default: tag.default,
+  };
+}
+
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
+
 export function getTemplateTagParameters(
   tags: TemplateTag[],
 ): ParameterWithTarget[] {
@@ -39,21 +56,7 @@ export function getTemplateTagParameters(
       tag =>
         tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
-    .map(tag => {
-      const target: ParameterTarget =
-        tag.type === "dimension"
-          ? ["dimension", ["template-tag", tag.name]]
-          : ["variable", ["template-tag", tag.name]];
-
-      return {
-        id: tag.id,
-        type: tag["widget-type"] || getTemplateTagType(tag),
-        target,
-        name: tag["display-name"],
-        slug: tag.name,
-        default: tag.default,
-      };
-    });
+    .map(getTemplateTagParameter);
 }
 
 export function getTemplateTagsForParameters(card: Card) {
@@ -74,7 +77,11 @@ export function getTemplateTagsForParameters(card: Card) {
 export function getParametersFromCard(
   card: Card,
 ): Parameter[] | ParameterWithTarget[] {
-  if (card && card.parameters) {
+  if (!card) {
+    return [];
+  }
+
+  if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
   }
 
@@ -86,12 +93,12 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
   card: Card,
   metadata: Metadata,
   parameterValues: { [key: string]: any },
+  parameters = getParametersFromCard(card),
 ) {
   if (!card) {
     return [];
   }
 
-  const parameters = getParametersFromCard(card);
   const valuePopulatedParameters: (Parameter[] | ParameterWithTarget[]) & {
     value?: any;
   } = getValuePopulatedParameters(parameters, parameterValues);

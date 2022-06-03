@@ -83,7 +83,8 @@
    (boolean-ids-and-timestamps
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
-                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id :timestamp}
+                           :date_joined :date-joined :last_login :dimension-id :human-readable-field-id :timestamp
+                           :entity_id}
                          #(str/ends-with? % "_id")
                          #(str/ends-with? % "_at")))
     data))

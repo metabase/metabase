@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   breakpointMinMedium,
@@ -14,8 +14,8 @@ export const AccountHeaderRoot = styled.div`
   justify-content: center;
   align-items: center;
   padding-top: ${space(1)};
-  border-bottom: 1px solid ${colors["border"]};
-  background-color: ${colors["white"]};
+  border-bottom: 1px solid ${color("border")};
+  background-color: ${color("white")};
 
   ${breakpointMinSmall} {
     padding-top: ${space(2)};
