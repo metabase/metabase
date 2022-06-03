@@ -105,7 +105,7 @@
   "Add a `:common_name` key to `user` by combining their first and last names."
   [{:keys [first_name last_name], :as user}]
   (cond-> user
-    (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+    (or first_name last_name) (assoc :common_name (str/trim (str first_name " " last_name)))))
 
 (defn- post-select [user]
   (add-common-name user))
