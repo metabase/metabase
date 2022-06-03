@@ -29,6 +29,10 @@ describe("issue 22518", () => {
 
     cy.findByText("Save changes").click();
 
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 3)
+      .and("contain", "BAR");
+
     summarize();
 
     sidebar()
