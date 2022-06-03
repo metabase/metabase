@@ -908,6 +908,9 @@ jobs:
       test-files:
         type: string
         default: ""
+      grep:
+        type: string
+        default: ""
       qa-db:
         type: boolean
         default: false
@@ -944,6 +947,7 @@ jobs:
                   # Make both `test-files`,  `source-folder` and `currents-record` parameters optional. Translates to: if `parameter` => run associated flag (`--spec`, `--folder` and `--key $CURRENTS_KEY --record` respectively)
                 command: |
                   run test-cypress-run \
+                  <<# parameters.grep >> --env << parameters.grep >> <</ parameters.grep >> \
                   <<# parameters.test-files >> --spec << parameters.test-files >> <</ parameters.test-files >> \
                   <<# parameters.source-folder >> --folder << parameters.source-folder >> <</ parameters.source-folder >>
                 after-steps:
@@ -1249,7 +1253,7 @@ workflows:
       - fe-tests-cypress:
           matrix:
             parameters:
-              edition: ["ee", "oss"]
+              edition: ["ee"]
               folder:
                 [
                   "admin",
@@ -1270,6 +1274,22 @@ workflows:
             - snowplow-deps
           cypress-group: "<< matrix.folder >>-<< matrix.edition >>"
           source-folder: << matrix.folder >>
+          qa-db: true
+          snowplow: true
+          before-steps:
+            - run-snowplow-micro
+            - wait-for-databases
+
+      - fe-tests-cypress:
+          matrix:
+            parameters:
+              edition: ["oss"]
+          name: e2e-tests-<< matrix.edition >>
+          requires:
+            - build-uberjar-<< matrix.edition >>
+            - snowplow-deps
+          cypress-group: e2e-tests-<< matrix.edition >>
+          grep: "grepTags=@OSS,grepFilterSpecs=true"
           qa-db: true
           snowplow: true
           before-steps:
