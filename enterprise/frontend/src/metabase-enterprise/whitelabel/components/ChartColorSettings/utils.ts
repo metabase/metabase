@@ -47,7 +47,7 @@ const getAutoColors = (
   );
 
   const availableColors = autoColors.filter(
-    color => !isSimilarToColors(color, oldColors),
+    newColor => !isSimilarToColors(newColor, oldColors),
   );
 
   return oldColors.map(color => (color ? color : availableColors.shift()));
