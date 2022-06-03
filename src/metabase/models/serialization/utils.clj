@@ -35,9 +35,7 @@
   [entity]
   (-> (for [f (identity-hash-fields entity)]
         (f entity))
-      (#(do (prn %) %))
-      raw-hash
-      (#(do (prn %) %))))
+      raw-hash))
 
 (defn hydrated-hash
   "Many entities reference other entities. Using the autoincrementing ID is not portable, so we use the identity-hash
