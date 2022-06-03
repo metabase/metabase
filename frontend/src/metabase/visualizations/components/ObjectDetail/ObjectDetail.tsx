@@ -250,7 +250,7 @@ export function ObjectDetailFn({
   const onSubmit = React.useMemo(
     () =>
       canEdit && table
-        ? (values: any) => {
+        ? (values: Record<string, unknown>) => {
             updateRowFromObjectDetail({
               table,
               id: zoomedRowID,
@@ -261,6 +261,7 @@ export function ObjectDetailFn({
         : undefined,
     [updateRowFromObjectDetail, canEdit, table, zoomedRowID],
   );
+  const canUpdate = isEditing && typeof onSubmit === "function" && table;
 
   const onKeyDown = (event: KeyboardEvent) => {
     const capturedKeys: { [key: string]: () => void } = {
@@ -318,7 +319,7 @@ export function ObjectDetailFn({
             onToggleEditingModeClick={() => setIsEditing(editing => !editing)}
           />
           <ObjectDetailBodyWrapper>
-            {isEditing && table ? (
+            {canUpdate ? (
               <EditingFormContainer>
                 <WritebackForm
                   table={table}
