@@ -6,11 +6,16 @@
   explicitly excluded, or has the :entity_id property."
   (:require
     [clojure.test :refer :all]
-    [metabase.db.data-migrations]
-    [metabase.models]
-    [metabase.models.dependency-test]
-    [metabase.models.revision-test]
-    [toucan.models :as models :refer [IModel]]))
+    metabase.db.data-migrations
+    metabase.models
+    metabase.models.dependency-test
+    metabase.models.revision-test
+    [toucan.models :refer [IModel properties]]))
+
+(comment metabase.models/keep-me
+         metabase.db.data-migrations/keep-me
+         metabase.models.dependency-test/keep-me
+         metabase.models.revision-test/keep-me)
 
 (def entities-external-name
   "Entities with external names, so they don't need a generated entity_id."
