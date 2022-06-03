@@ -98,7 +98,40 @@ describe("scenarios > question > relative-datetime", () => {
     });
   });
 
+  function assertOptions(expectedOptions) {
+    cy.findAllByRole("option").each(($option, index) => {
+      cy.wrap($option).should("have.text", expectedOptions[index]);
+    });
+  }
+
   describe("basic functionality", () => {
+    it("starting from should contain units only equal or greater than the filter unit", () => {
+      openOrdersTable();
+
+      cy.findByTextEnsureVisible("Created At").click();
+      popover().within(() => {
+        cy.findByText("Filter by this column").click();
+        cy.findByText("Relative dates...").click();
+      });
+
+      addStartingFrom();
+
+      cy.findByTestId("starting-from-unit").click();
+
+      assertOptions([
+        "days ago",
+        "weeks ago",
+        "months ago",
+        "quarters ago",
+        "years ago",
+      ]);
+
+      setRelativeDatetimeUnit("quarters");
+      cy.findByTestId("starting-from-unit").click();
+
+      assertOptions(["quarters ago", "years ago"]);
+    });
+
     it("should go back to shortcuts view", () => {
       openOrdersTable();
 

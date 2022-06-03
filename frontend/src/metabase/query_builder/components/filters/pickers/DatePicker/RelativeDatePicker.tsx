@@ -122,6 +122,25 @@ const TIME_PERIODS = ["minute", "hour"];
 // define ALL_PERIODS in increasing order of duration
 const ALL_PERIODS = TIME_PERIODS.concat(DATE_PERIODS.flat());
 
+const isSmallerUnit = (unit: string, unitToCompare: string) => {
+  return ALL_PERIODS.indexOf(unit) < ALL_PERIODS.indexOf(unitToCompare);
+};
+
+const getStartingFromUnits = (
+  filterUnit: string,
+  selectedStartingFromUnit: string,
+) => {
+  const largerUnits = ALL_PERIODS.filter(
+    period => !isSmallerUnit(period, filterUnit),
+  );
+
+  if (!largerUnits.includes(selectedStartingFromUnit)) {
+    largerUnits.unshift(selectedStartingFromUnit);
+  }
+
+  return largerUnits;
+};
+
 const getCurrentString = (filter: Filter) =>
   t`Include ${getCurrentIntervalName(filter)}`;
 
@@ -290,8 +309,8 @@ const RelativeDatePicker: React.FC<Props> = props => {
             }
             intervals={Math.abs(startingFrom[0])}
             formatter={formatter}
-            periods={ALL_PERIODS}
-            testId={"starting-from-unit"}
+            periods={getStartingFromUnits(unit, startingFrom[1])}
+            testId="starting-from-unit"
           />
           <MoreButton
             icon="close"
