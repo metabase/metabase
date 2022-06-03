@@ -6,10 +6,9 @@ import { PLUGIN_GROUP_MANAGERS } from "metabase/plugins";
 import Group from "metabase/entities/groups";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import GroupsListing from "../components/GroupsListing";
-import { getGroupsWithoutMetabot } from "../selectors";
 
 const mapStateToProps = (state, props) => ({
-  groups: getGroupsWithoutMetabot(state, props),
+  groups: Group.selectors.getList(state, props),
   isAdmin: getUserIsAdmin(state),
 });
 
