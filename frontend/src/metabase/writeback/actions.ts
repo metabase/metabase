@@ -1,5 +1,9 @@
+import { t } from "ttag";
+
 import { ActionsApi } from "metabase/services";
 import Table from "metabase-lib/lib/metadata/Table";
+
+import { addUndo } from "metabase/redux/undo";
 
 import { fetchCardData } from "metabase/dashboard/actions";
 import { runQuestionQuery } from "metabase/query_builder/actions/querying";
@@ -45,12 +49,19 @@ export type InsertRowFromDataAppPayload = InsertRowPayload & {
 export const createRowFromDataApp = (payload: InsertRowFromDataAppPayload) => {
   return async (dispatch: any) => {
     const result = await createRow(payload);
+    const { table } = payload;
     if (result?.["created-row"]?.id) {
       const { dashCard } = payload;
       dispatch(
         fetchCardData(dashCard.card, dashCard, {
           reload: true,
           ignoreCache: true,
+        }),
+      );
+      dispatch(
+        addUndo({
+          message: t`Successfully inserted a row into the ${table.displayName()} table`,
+          toastColor: "success",
         }),
       );
     }
