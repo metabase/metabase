@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { color } from "metabase/lib/colors";
 import { capitalize, inflect } from "metabase/lib/formatting";
 import { dismissUndo, performUndo } from "metabase/redux/undo";
 import { getUndos } from "metabase/selectors/undo";
@@ -61,8 +62,11 @@ UndoToast.propTypes = {
 };
 
 function UndoToast({ undo, onUndo, onDismiss }) {
+  const style = undo.toastColor
+    ? { backgroundColor: color(undo.toastColor) }
+    : undefined;
   return (
-    <ToastCard dark data-testid="toast-undo">
+    <ToastCard dark data-testid="toast-undo" style={style}>
       <CardContent>
         <CardContentSide>
           <CardIcon name={undo.icon || "check"} color="white" />
