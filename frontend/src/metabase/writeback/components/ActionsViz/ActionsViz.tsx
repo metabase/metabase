@@ -192,7 +192,7 @@ function ActionsViz({
 
   function handleInsert(values: Record<string, unknown>) {
     if (table && connectedDashCard) {
-      insertRow({
+      return insertRow({
         table,
         values,
         dashCard: connectedDashCard,
@@ -209,7 +209,12 @@ function ActionsViz({
     );
     const pkValue = row[pkColumnIndex];
     if (typeof pkValue === "string" || typeof pkValue === "number") {
-      updateRow({ id: pkValue, table, values, dashCard: connectedDashCard });
+      return updateRow({
+        id: pkValue,
+        table,
+        values,
+        dashCard: connectedDashCard,
+      });
     }
   }
 

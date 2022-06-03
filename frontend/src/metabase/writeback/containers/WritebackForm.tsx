@@ -7,7 +7,6 @@ import { TYPE } from "metabase/lib/types";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import Table from "metabase-lib/lib/metadata/Table";
-import { Value } from "metabase-types/types/Dataset";
 
 import CategoryFieldPicker from "./CategoryFieldPicker";
 
@@ -96,7 +95,7 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
         });
       }
 
-      onSubmit?.(changes);
+      return onSubmit?.(changes);
     },
     [form, row, onSubmit],
   );
