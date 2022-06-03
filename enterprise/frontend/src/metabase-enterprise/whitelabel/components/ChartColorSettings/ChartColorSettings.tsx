@@ -5,7 +5,11 @@ import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
-import { getAutoChartColors, getChartColorGroups } from "./utils";
+import {
+  getAutoChartColors,
+  getChartColorGroups,
+  getDefaultChartColors,
+} from "./utils";
 import {
   TableBody,
   TableBodyCell,
@@ -19,7 +23,7 @@ import {
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
   colorPalette: Record<string, string>;
-  onChange?: (colors: Record<string, string>) => void;
+  onChange: (colors: Record<string, string>) => void;
 }
 
 const ChartColorSettings = ({
@@ -33,21 +37,21 @@ const ChartColorSettings = ({
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
-        onChange?.(set({ ...colorsRef.current }, colorName, color));
+        onChange(set({ ...colorsRef.current }, colorName, color));
       } else {
-        onChange?.(omit({ ...colorsRef.current }, colorName));
+        onChange(omit({ ...colorsRef.current }, colorName));
       }
     },
     [colorsRef, onChange],
   );
 
   const handleReset = useCallback(() => {
-    onChange?.(omit({ ...colorsRef.current }, flatten(colorGroups)));
+    onChange(getDefaultChartColors(colorsRef.current, colorGroups));
   }, [colorsRef, colorGroups, onChange]);
 
   const handleGenerate = useCallback(() => {
-    onChange?.(getAutoChartColors(colors, colorGroups, colorPalette));
-  }, [colors, colorGroups, colorPalette, onChange]);
+    onChange(getAutoChartColors(colorsRef.current, colorGroups, colorPalette));
+  }, [colorsRef, colorGroups, colorPalette, onChange]);
 
   return (
     <ChartColorTable

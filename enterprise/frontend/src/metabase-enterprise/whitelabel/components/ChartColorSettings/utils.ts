@@ -5,6 +5,13 @@ export const getChartColorGroups = (): string[][] => {
   return times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]);
 };
 
+export const getDefaultChartColors = (
+  values: Record<string, string>,
+  groups: string[][],
+) => {
+  return omit({ ...values }, flatten(groups));
+};
+
 export const getAutoChartColors = (
   values: Record<string, string>,
   groups: string[][],
@@ -17,13 +24,15 @@ export const getAutoChartColors = (
 
   const fallbackColor = Color(palette["brand"]);
   const newColors = getAutoColors(oldColors, fallbackColor);
+  const defaultValues = getDefaultChartColors(values, groups);
 
-  return chain(groups)
+  const newValues = chain(groups)
     .map(([name], index) => [name, newColors[index]?.hex()])
     .filter(([_, value]) => value != null)
     .fromPairs()
-    .omit(flatten(groups))
     .value();
+
+  return { ...defaultValues, ...newValues };
 };
 
 const getAutoColors = (
