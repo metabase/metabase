@@ -81,9 +81,7 @@ function ActionMenu({
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
-        onArchive={
-          collection.can_write && item.setArchived ? handleArchive : null
-        }
+        onArchive={collection.can_write ? handleArchive : null}
         onToggleBookmark={handleToggleBookmark}
         analyticsContext={ANALYTICS_CONTEXT}
       />
