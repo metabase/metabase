@@ -293,6 +293,13 @@
            '[clojure.java.io :as io])
   (import javax.net.ssl.SSLSocketFactory)
 
+  ;; The following forms help experimenting with the behaviour of Mongo
+  ;; servers with different configurations. They can be used to check if
+  ;; the environment has been set up correctly (or at least according to
+  ;; the expectations), as well as the exceptions thrown in various
+  ;; constellations.
+
+  ;; Test connection to Mongo with client and server SSL authentication.
   (let [ssl-socket-factory
         (driver.u/ssl-socket-factory
          :private-key (-> "ssl/mongo/metabase.key" io/resource slurp)
@@ -310,6 +317,7 @@
                                        credentials)]
       (mg/get-db-names connection)))
 
+  ;; Test what happens if the client only support server authentication.
   (let [server-auth-ssl-socket-factory
         (driver.u/ssl-socket-factory
          :trust-cert (-> "ssl/mongo/metaca.crt" io/resource slurp))
@@ -326,6 +334,8 @@
                             credentials)]
       (mg/get-db-names server-auth-connection)))
 
+  ;; Test what happens if the client support only server authentication
+  ;; with well known (default) CAs.
   (let [unauthenticated-connection-options
         (mg/mongo-options {:ssl-enabled true
                            :ssl-invalid-host-name-allowed false
