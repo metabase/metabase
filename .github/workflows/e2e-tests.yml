@@ -60,6 +60,7 @@ jobs:
         edition: [ee]
         folder:
           - "binning"
+          - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
