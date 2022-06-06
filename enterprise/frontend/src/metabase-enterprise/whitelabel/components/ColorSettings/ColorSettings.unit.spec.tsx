@@ -52,4 +52,23 @@ describe("ColorSettings", () => {
       accent1: color("text-light"),
     });
   });
+
+  it("should reset chart colors", () => {
+    const onChange = jest.fn();
+
+    render(
+      <ColorSettings
+        initialColors={initialColors}
+        originalColors={colors}
+        onChange={onChange}
+      />,
+    );
+
+    userEvent.click(screen.getByText("Reset to default colors"));
+    userEvent.click(screen.getByText("Reset"));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      brand: color("success"),
+    });
+  });
 });
