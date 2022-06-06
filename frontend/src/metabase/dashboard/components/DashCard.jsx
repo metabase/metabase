@@ -179,7 +179,8 @@ export default class DashCard extends Component {
       !isEditing &&
       (mainCard.visualization_settings["dashcard.background"] === false ||
         mainCard.display === "list" ||
-        mainCard.display === "actions");
+        mainCard.display === "actions" ||
+        mainCard.display === "action-button");
 
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
