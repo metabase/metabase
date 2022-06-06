@@ -10,6 +10,7 @@ import {
   getAutoChartColors,
   getChartColorGroups,
   getDefaultChartColors,
+  hasCustomChartColors,
 } from "./utils";
 import {
   TableBody,
@@ -36,6 +37,10 @@ const ChartColorSettings = ({
   const colorsRef = useCurrentRef(colors);
   const colorGroups = useMemo(getChartColorGroups, []);
 
+  const hasCustomColors = useMemo(() => {
+    return hasCustomChartColors(colors, colorGroups);
+  }, [colors, colorGroups]);
+
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
@@ -60,6 +65,7 @@ const ChartColorSettings = ({
       colors={colors}
       colorPalette={colorPalette}
       colorGroups={colorGroups}
+      hasCustomColors={hasCustomColors}
       onChange={handleChange}
       onReset={handleReset}
       onGenerate={handleGenerate}
@@ -71,6 +77,7 @@ interface ChartColorTableProps {
   colors: Record<string, string>;
   colorPalette: Record<string, string>;
   colorGroups: string[][];
+  hasCustomColors: boolean;
   onChange: (name: string, color?: string) => void;
   onReset: () => void;
   onGenerate: () => void;
@@ -84,6 +91,7 @@ const ChartColorTable = ({
   colors,
   colorPalette,
   colorGroups,
+  hasCustomColors,
   onChange,
   onReset,
   onGenerate,
@@ -92,14 +100,16 @@ const ChartColorTable = ({
     <div>
       <TableHeader>
         <TableTitle>{t`Chart colors`}</TableTitle>
-        <ModalWithTrigger
-          as={TableLink}
-          triggerElement={t`Reset to default colors`}
-        >
-          {({ onClose }: ChartColorModalProps) => (
-            <ChartColorModal onReset={onReset} onClose={onClose} />
-          )}
-        </ModalWithTrigger>
+        {hasCustomColors && (
+          <ModalWithTrigger
+            as={TableLink}
+            triggerElement={t`Reset to default colors`}
+          >
+            {({ onClose }: ChartColorModalProps) => (
+              <ChartColorModal onReset={onReset} onClose={onClose} />
+            )}
+          </ModalWithTrigger>
+        )}
       </TableHeader>
       <TableBody>
         {colorGroups.map((colorGroup, index) => (

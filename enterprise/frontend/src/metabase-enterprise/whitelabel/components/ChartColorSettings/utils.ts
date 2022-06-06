@@ -12,6 +12,13 @@ export const getDefaultChartColors = (
   return omit({ ...values }, flatten(groups));
 };
 
+export const hasCustomChartColors = (
+  values: Record<string, string>,
+  groups: string[][],
+) => {
+  return flatten(groups).some(name => values[name] != null);
+};
+
 export const getAutoChartColors = (
   values: Record<string, string>,
   groups: string[][],
