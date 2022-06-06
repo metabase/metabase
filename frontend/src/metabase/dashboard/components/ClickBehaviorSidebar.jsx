@@ -15,6 +15,7 @@ import ModalContent from "metabase/components/ModalContent";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import DashboardPicker from "metabase/containers/DashboardPicker";
 import Questions from "metabase/entities/questions";
@@ -39,6 +40,7 @@ const clickBehaviorOptions = [
   { value: "menu", icon: "popover" },
   { value: "link", icon: "link" },
   { value: "crossfilter", icon: "filter" },
+  { value: "action", icon: "play" },
 ];
 
 function getClickBehaviorOptionName(value, dashcard) {
@@ -47,11 +49,16 @@ function getClickBehaviorOptionName(value, dashcard) {
       ? t`Open the Metabase actions menu`
       : t`Do nothing`;
   }
-  return value === "link"
-    ? t`Go to a custom destination`
-    : value === "crossfilter"
-    ? t`Update a dashboard filter`
-    : "Unknown";
+  if (value === "link") {
+    return t`Go to a custom destination`;
+  }
+  if (value === "crossfilter") {
+    return t`Update a dashboard filter`;
+  }
+  if (value === "action") {
+    return t`Perform action`;
+  }
+  return t`Unknown`;
 }
 
 const Heading = ({ children }) => (
@@ -502,6 +509,13 @@ class ClickBehaviorSidebar extends React.Component {
                   dashcard={dashcard}
                   updateSettings={this.updateSettings}
                 />
+              ) : clickBehavior.type === "action" ? (
+                <ActionOptions
+                  clickBehavior={clickBehavior}
+                  dashcard={dashcard}
+                  parameters={parameters}
+                  updateSettings={this.updateSettings}
+                />
               ) : null}
             </div>
           )}
@@ -539,6 +553,67 @@ function TypeSelector({
         </div>
       ))}
     </div>
+  );
+}
+
+const ActionOption = ({ name, description, isSelected, onClick }) => {
+  return (
+    <SidebarItemWrapper
+      onClick={onClick}
+      style={{
+        ...SidebarItemStyle,
+        backgroundColor: isSelected ? color("brand") : "transparent",
+        color: isSelected ? color("white") : "inherit",
+        alignItems: description ? "flex-start" : "center",
+        marginTop: "2px",
+      }}
+    >
+      <SidebarIconWrapper>
+        <Icon
+          name="bolt"
+          color={isSelected ? color("text-white") : color("brand")}
+        />
+      </SidebarIconWrapper>
+      <div>
+        <h4>{name}</h4>
+        {description && (
+          <span
+            className={isSelected ? "text-white" : "text-medium"}
+            style={{ width: "95%", marginTop: "2px" }}
+          >
+            {description}
+          </span>
+        )}
+      </div>
+    </SidebarItemWrapper>
+  );
+};
+
+function ActionOptions({ clickBehavior, updateSettings }) {
+  return (
+    <SidebarContent>
+      <Heading className="text-medium">{t`Pick an action`}</Heading>
+      <Actions.ListLoader>
+        {({ actions }) => (
+          <>
+            {actions.map(action => (
+              <ActionOption
+                key={action.id}
+                name={action.card.name}
+                description={action.card.description}
+                isSelected={clickBehavior.action === action.id}
+                onClick={() =>
+                  updateSettings({
+                    type: clickBehavior.type,
+                    action: action.id,
+                  })
+                }
+              />
+            ))}
+          </>
+        )}
+      </Actions.ListLoader>
+    </SidebarContent>
   );
 }
 

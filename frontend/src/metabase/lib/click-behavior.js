@@ -219,11 +219,15 @@ export function clickBehaviorIsValid(clickBehavior) {
     linkType,
     targetId,
     linkTemplate,
+    action,
   } = clickBehavior;
   if (type === "crossfilter") {
     return Object.keys(parameterMapping).length > 0;
   }
-  // if it's not a crossfilter, it's a link
+  if (type === "action") {
+    return typeof action === "number";
+  }
+  // if it's not a crossfilter/action, it's a link
   if (linkType === "url") {
     return (linkTemplate || "").length > 0;
   }
