@@ -1263,7 +1263,6 @@ workflows:
                   "onboarding",
                   "organization",
                   "permissions",
-                  "question",
                   "smoketest",
                   "visualizations",
                 ]
