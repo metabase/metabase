@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - master
+      - run-percy-on-gh-runners
     paths-ignore:
       - "docs/**"
       - "**.md"
