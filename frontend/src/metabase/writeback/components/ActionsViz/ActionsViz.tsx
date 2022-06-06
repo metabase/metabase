@@ -141,7 +141,6 @@ function getObjectDetailViewData(
 function ActionsViz({
   dashboard,
   dashCardData,
-  isEditing,
   metadata,
   settings,
   deleteRow,
