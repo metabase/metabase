@@ -344,8 +344,8 @@
                                                                       (into #{} (keys acc)))]
                                (if (empty? cyclic-props)
                                  (recur transitive-props next-acc)
-                                 (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
-                                     (trs driver cyclic-props)
+                                 (-> (trs "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
+                                          driver cyclic-props)
                                      (ex-info {:type               qp.error-type/driver
                                                :driver             driver
                                                :cyclic-visible-ifs cyclic-props})
