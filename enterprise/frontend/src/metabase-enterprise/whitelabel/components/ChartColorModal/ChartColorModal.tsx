@@ -19,7 +19,7 @@ const ChartColorModal = ({
 
   return (
     <ModalContent
-      title={t`Reset to default colors?`}
+      title={t`Are you sure you want to reset to default colors?`}
       footer={[
         <Button key="close" onClick={onClose}>
           {t`Cancel`}
@@ -30,7 +30,7 @@ const ChartColorModal = ({
       ]}
       onClose={onClose}
     >
-      {t`This cannot be undone.`}
+      {t`If you do this, your colors will change to our default colors. This action can’t be undone`}
     </ModalContent>
   );
 };
