@@ -5,6 +5,7 @@ import Color from "color";
 import { colors } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
+import { omit } from "lodash";
 import memoize from "lodash.memoize";
 
 export const originalColors = { ...colors };
@@ -163,8 +164,16 @@ function updateColorsJS() {
 }
 
 function updateColorsCSS() {
+  /*
+    Currently, CSS variables are not preserved in the build and are replaced
+    by computed values. Therefore, there is no way to distinguish different
+    variables based on their names only. We should omit new configurable colors
+    with the same values as old ones until `color-mod` function is no longer
+    used in CSS and variables are preserved during the build.
+   */
   const scheme = colorScheme();
-  for (const [colorName, themeColor] of Object.entries(scheme)) {
+  const colors = omit(scheme, ["filter", "summarize", "accent0"]);
+  for (const [colorName, themeColor] of Object.entries(colors)) {
     updateColorCSS(colorName, themeColor);
   }
 }
