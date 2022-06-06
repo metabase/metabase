@@ -1386,7 +1386,7 @@
 ;; supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
 ;; allowed.
 
-;; this is the reference like [:template-tag "whatever"], not the [[TemplateTag]] schema for when it's declared in
+;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in
 ;; `:template-tags`
 (defclause template-tag
   tag-name
