@@ -32,7 +32,7 @@ To create the service account JSON file, follow Google's documentation on [setti
 
 4. Click **Done** to create your service account.
 
-4. From the three dot menu, go to **Manages keys** > **Add key**.
+4. From the **...** menu, go to **Manages keys** > **Add key**.
    - Select **JSON** for the **key type**. 
    - Click **Create** to download the JSON file to your computer. **You can only download the key once**. 
    - If you delete the key, you'll need to create another service account with the same roles.
