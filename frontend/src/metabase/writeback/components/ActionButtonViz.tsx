@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import cx from "classnames";
 
 import Button from "metabase/core/components/Button";
 
@@ -57,7 +58,7 @@ interface ActionButtonVizProps extends VisualizationProps {
   dashboard: DashboardWithCards;
 }
 
-function ActionButtonViz({ settings }: ActionButtonVizProps) {
+function ActionButtonViz({ isSettings, settings }: ActionButtonVizProps) {
   const label = settings["button.label"];
   const variant = settings["button.variant"];
 
@@ -66,7 +67,16 @@ function ActionButtonViz({ settings }: ActionButtonVizProps) {
     variantProps[variant] = true;
   }
 
-  return <Button {...variantProps}>{label}</Button>;
+  return (
+    <Button
+      className={cx({
+        "full-height": !isSettings,
+      })}
+      {...variantProps}
+    >
+      {label}
+    </Button>
+  );
 }
 
 export default Object.assign(ActionButtonViz, ACTIONS_VIZ_DEFINITION);
