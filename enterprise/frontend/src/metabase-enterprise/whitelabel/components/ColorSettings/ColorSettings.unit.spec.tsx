@@ -71,4 +71,30 @@ describe("ColorSettings", () => {
       brand: color("success"),
     });
   });
+
+  it("should generate chart colors", () => {
+    const onChange = jest.fn();
+
+    render(
+      <ColorSettings
+        initialColors={initialColors}
+        originalColors={colors}
+        onChange={onChange}
+      />,
+    );
+
+    userEvent.click(screen.getByText("Generate chart colors"));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      brand: color("success"),
+      accent0: expect.any(String),
+      accent1: color("text-medium"),
+      accent2: expect.any(String),
+      accent3: expect.any(String),
+      accent4: expect.any(String),
+      accent5: expect.any(String),
+      accent6: expect.any(String),
+      accent7: expect.any(String),
+    });
+  });
 });
