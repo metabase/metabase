@@ -6,7 +6,7 @@
             [metabase.actions :as actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.table :refer [Table] :as table]
+            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
