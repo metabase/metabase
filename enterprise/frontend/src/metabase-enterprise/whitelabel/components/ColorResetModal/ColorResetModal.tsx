@@ -3,15 +3,15 @@ import { t } from "ttag";
 import Button from "metabase/core/components/Button/Button";
 import ModalContent from "metabase/components/ModalContent";
 
-export interface ChartColorModalProps {
+export interface ColorResetModalProps {
   onReset?: () => void;
   onClose?: () => void;
 }
 
-const ChartColorModal = ({
+const ColorResetModal = ({
   onReset,
   onClose,
-}: ChartColorModalProps): JSX.Element => {
+}: ColorResetModalProps): JSX.Element => {
   const handleReset = useCallback(() => {
     onReset?.();
     onClose?.();
@@ -35,4 +35,4 @@ const ChartColorModal = ({
   );
 };
 
-export default ChartColorModal;
+export default ColorResetModal;

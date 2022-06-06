@@ -21,7 +21,7 @@ import {
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
-import ChartColorModal from "metabase-enterprise/whitelabel/components/ChartColorModal";
+import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
@@ -106,7 +106,7 @@ const ChartColorTable = ({
             triggerElement={t`Reset to default colors`}
           >
             {({ onClose }: ChartColorModalProps) => (
-              <ChartColorModal onReset={onReset} onClose={onClose} />
+              <ColorResetModal onReset={onReset} onClose={onClose} />
             )}
           </ModalWithTrigger>
         )}
