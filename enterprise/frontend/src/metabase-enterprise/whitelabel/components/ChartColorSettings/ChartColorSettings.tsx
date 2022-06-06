@@ -5,6 +5,7 @@ import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
 import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import {
   getAutoChartColors,
   getChartColorGroups,
@@ -19,6 +20,7 @@ import {
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
+import ChartColorModal from "metabase-enterprise/whitelabel/components/ChartColorModal";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
@@ -65,13 +67,17 @@ const ChartColorSettings = ({
   );
 };
 
-interface ChartColorTable {
+interface ChartColorTableProps {
   colors: Record<string, string>;
   colorPalette: Record<string, string>;
   colorGroups: string[][];
   onChange: (name: string, color?: string) => void;
   onReset: () => void;
   onGenerate: () => void;
+}
+
+interface ChartColorModalProps {
+  onClose?: () => void;
 }
 
 const ChartColorTable = ({
@@ -81,12 +87,19 @@ const ChartColorTable = ({
   onChange,
   onReset,
   onGenerate,
-}: ChartColorTable): JSX.Element => {
+}: ChartColorTableProps): JSX.Element => {
   return (
     <div>
       <TableHeader>
         <TableTitle>{t`Chart colors`}</TableTitle>
-        <TableLink onClick={onReset}>{t`Reset to default colors`}</TableLink>
+        <ModalWithTrigger
+          as={TableLink}
+          triggerElement={t`Reset to default colors`}
+        >
+          {({ onClose }: ChartColorModalProps) => (
+            <ChartColorModal onReset={onReset} onClose={onClose} />
+          )}
+        </ModalWithTrigger>
       </TableHeader>
       <TableBody>
         {colorGroups.map((colorGroup, index) => (
