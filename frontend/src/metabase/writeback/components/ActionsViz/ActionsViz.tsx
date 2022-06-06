@@ -45,7 +45,7 @@ const ACTIONS_VIZ_DEFINITION = {
   hidden: true,
   supportPreviewing: false,
 
-  minSize: { width: 4, height: 1 },
+  minSize: { width: 3, height: 1 },
 
   checkRenderable: () => true,
   isSensible: () => false,
