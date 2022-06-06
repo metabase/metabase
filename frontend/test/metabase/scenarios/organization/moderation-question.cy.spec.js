@@ -1,4 +1,10 @@
-import { describeEE, restore, visitQuestion } from "__support__/e2e/cypress";
+import {
+  describeEE,
+  restore,
+  visitQuestion,
+  popover,
+  openQuestionActions,
+} from "__support__/e2e/cypress";
 
 describeEE("scenarios > saved question moderation", () => {
   describe("as an admin", () => {
@@ -10,11 +16,12 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to verify a saved question", () => {
-      cy.findByTestId("saved-question-header-button").click();
+      openQuestionActions();
 
-      cy.findByTestId("moderation-verify-action").click();
-
-      cy.findAllByText("You verified this");
+      popover().within(() => {
+        cy.findByTestId("moderation-verify-action").click();
+        cy.findByText("Remove verification");
+      });
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count").icon("verified");
@@ -25,15 +32,18 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to unverify a verified saved question", () => {
-      cy.findByTestId("saved-question-header-button").click();
+      openQuestionActions();
 
-      cy.findByTestId("moderation-verify-action").click();
-      cy.findByTestId("moderation-remove-review-action").click();
+      popover().within(() => {
+        cy.findByTestId("moderation-verify-action").click();
+        cy.findByTestId("moderation-remove-verification-action").click();
+      });
 
-      cy.findByText("You verified this").should("not.be.visible");
-      cy.findByTestId("saved-question-header-button").click();
+      cy.findByText("Verify this question").should("be.visible");
 
-      cy.icon("verified").should("not.exist");
+      cy.findByTestId("saved-question-header-button").within(() => {
+        cy.icon("verified").should("not.exist");
+      });
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
       cy.findByText("Orders, Count")
@@ -48,13 +58,23 @@ describeEE("scenarios > saved question moderation", () => {
     });
 
     it("should be able to see evidence of verification/unverification in the question's timeline", () => {
+      openQuestionActions();
+
+      popover().within(() => {
+        cy.findByTestId("moderation-verify-action").click();
+      });
+
       cy.findByTestId("saved-question-header-button").click();
       cy.findByText("History").click();
 
-      cy.findByTestId("moderation-verify-action").click();
       cy.findAllByText("You verified this").should("be.visible");
 
-      cy.findByTestId("moderation-remove-review-action").click();
+      openQuestionActions();
+
+      popover().within(() => {
+        cy.findByTestId("moderation-remove-verification-action").click();
+      });
+
       cy.findByText("You removed verification").should("be.visible");
     });
   });

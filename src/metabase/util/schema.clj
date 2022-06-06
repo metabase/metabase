@@ -327,6 +327,18 @@
                                                     false)))
     (deferred-tru "value must be a valid JSON string.")))
 
+(def Parameter
+  "Schema for a valid Parameter."
+  (with-api-error-message {:id       NonBlankString
+                           s/Keyword s/Any}
+    (deferred-tru "parameter must be a map with String :id key")))
+
+(def ParameterMapping
+  "Schema for a valid Parameter Mapping"
+  (with-api-error-message {:parameter_id       NonBlankString
+                           s/Keyword s/Any}
+    (deferred-tru "parameter mapping must be a String :parameter_id key")))
+
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})

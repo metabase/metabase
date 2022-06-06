@@ -12,6 +12,7 @@
   "dependencies": {
     "@emotion/react": "^11.7.1",
     "@emotion/styled": "^11.6.0",
+    "@react-oauth/google": "^0.2.1",
     "@snowplow/browser-tracker": "^3.1.6",
     "@tippyjs/react": "^4.2.6",
     "@visx/axis": "1.8.0",
@@ -201,7 +202,7 @@
     "chromatic": "^6.3.3",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "^9.6.1",
+    "cypress": "9.7.0",
     "cypress-grep": "^2.13.1",
     "cypress-real-events": "^1.7.0",
     "documentation": "^13.2.5",

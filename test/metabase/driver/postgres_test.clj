@@ -295,7 +295,8 @@
   (mt/test-driver :postgres
     (testing "json breakouts and order bys have alias coercion"
       (drop-if-exists-and-create-db! "json-alias-test")
-      (let [details   (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"})
+      (let [details   (mt/dbdef->connection-details :postgres :db {:database-name "json-alias-test"
+                                                                   :json-unfolding true})
             spec      (sql-jdbc.conn/connection-details->spec :postgres details)
             json-part (json/generate-string {:bob :dobbs})
             insert    (str "CREATE TABLE json_alias_test (json_part JSON NOT NULL);"
@@ -325,7 +326,8 @@
   (mt/test-driver :postgres
     (testing "describes json columns and gives types for ones with coherent schemas only"
       (drop-if-exists-and-create-db! "describe-json-test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"})
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-test"
+                                                                 :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [(str "CREATE TABLE describe_json_table (coherent_json_val JSON NOT NULL, incoherent_json_val JSON NOT NULL);"
@@ -383,7 +385,8 @@
   (mt/test-driver :postgres
     (testing "sync goes and runs with identifier if there is a schema other than default public one"
       (drop-if-exists-and-create-db! "describe-json-with-schema-test")
-      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-with-schema-test"})
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-with-schema-test"
+                                                                 :json-unfolding true})
             spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (jdbc/execute! spec [(str "CREATE SCHEMA bobdobbs;"
@@ -405,7 +408,8 @@
   (mt/test-driver :postgres
     (testing "blank out if huge. blank out instead of silently limiting"
       (drop-if-exists-and-create-db! "big-json-test")
-      (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"})
+      (let [details  (mt/dbdef->connection-details :postgres :db {:database-name "big-json-test"
+                                                                  :json-unfolding true})
             spec     (sql-jdbc.conn/connection-details->spec :postgres details)
             big-map  (into {} (for [x (range 300)] [x :dobbs]))
             big-json (json/generate-string big-map)

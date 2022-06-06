@@ -66,7 +66,7 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleApplyQuery = useCallback(() => {
-    query.update(undefined, { run: true });
+    query.clean().update(undefined, { run: true });
     onClose?.();
   }, [query, onClose]);
 

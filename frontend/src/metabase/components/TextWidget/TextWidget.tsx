@@ -38,8 +38,6 @@ class TextWidget extends React.Component<Props, State> {
 
   static noPopover = true;
 
-  static format = (value: string) => value;
-
   UNSAFE_componentWillMount() {
     this.UNSAFE_componentWillReceiveProps(this.props);
   }
