@@ -6,6 +6,7 @@
             [metabase.actions :as actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.models.table :refer [Table] :as table]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
@@ -24,7 +25,7 @@
        (jdbc/query conn)
        (map :column_name)))
 
-(defn- violates-not-null-constraint [conn error-message]
+(defn- violates-not-null-constraint [_conn error-message]
   (let [[match? value column]
         (re-find #"ERROR:\s+(\w+) value in column \"([^\"]+)\" violates not-null constraint" error-message)]
     (when match?
@@ -62,7 +63,7 @@
   of maps with a :column and :message key indicating what went wrong."
   (fn [driver _conn _message] driver))
 
-(defmethod parse-sql-error :default [& args] (throw "not implemented."))
+(defmethod parse-sql-error :default [& _args] (throw "not implemented."))
 
 (defmethod parse-sql-error :postgres
   [_driver conn message]
@@ -109,19 +110,20 @@
                           (throw
                            (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))}))
 
-(defn- table-id->fields [table-id]
-  (:fields (first (metabase.models.table/with-fields
-                    [(metabase.models/Table table-id)]))))
-
-(defn cast-values [create-or-update-map table-id]
-  (let [column->field (m/index-by (comp keyword #(str/replace % "_" "-") :name) (table-id->fields table-id))]
+(defn- cast-values
+  "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
+  uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
+  types that do not need casting like integer or string."
+  [create-or-update-map table-id]
+  (let [column->field (m/index-by (comp keyword #(str/replace % "_" "-") :name)
+                                  (:fields (first (table/with-fields [(Table table-id)]))))]
     (m/map-kv-vals (fn [k v]
                      (try
                        (metabase.driver.sql.query-processor/->honeysql
                         :postgres
                         [:value v (get column->field k)])
                        (catch Exception e
-                         (throw (ex-info (str "Could not cast column " k)
+                         (throw (ex-info (str "Could not cast column: " k)
                                          {:column k
                                           :original-ex (ex-message e)
                                           :status-code 400})))))
@@ -147,7 +149,7 @@
                              (ex-info "Update action error." (assoc (parse-error driver conn e) :status-code 400)))))})))
 
 (defmethod actions/row-action! [:create :sql-jdbc]
-  [action driver {database-id :database :keys [create-row] :as query}]
+  [_action driver {database-id :database :keys [create-row] :as query}]
   (let [conn        (sql-jdbc.conn/db->pooled-connection-spec database-id)
         raw-hsql    (qp.store/with-store
                       (try
@@ -184,25 +186,3 @@
                                   :driver     driver
                                   :raw-hsql   raw-hsql
                                   :create-sql create-hsql}))))}))
-
-
-(comment
-  (map (juxt :id :name ) (metabase.models/Database))
-
-  (hydrate/hydrate (metabase.models/Database 182) :tables)
-
-  (def errors
-  ["ERROR: duplicate key value violates unique constraint \"products_pkey\"\n  Detail: Key (id)=(123) already exists."
-   "ERROR: null value in column \"id\" violates not-null constraint\n  Detail: Failing row contains (null, 1234567891234, Title, Gadget, Jefferey Volkman LLC, 11.45, 3, null)."
-   "ERROR:  update or delete on table \"child_t\" violates foreign key constraint \"parent_t_child_name_fkey\" on table \"parent_t\"\nDETAIL:  Key (name)=(tim) is still referenced from table \"parent_t\"."
-   "ERROR:  update or delete on table \"child_t\" violates foreign key constraint \"parent_t_child_name_fkey\" on table \"parent_t\"\nDETAIL:  Key (name with spaces)=(tim) is still referenced from table \"parent_t\"."
-   "ERROR:  update or delete on table \"a\" violates foreign key constraint \"b_a_first_a_last_fkey\" on table \"b\"\nDETAIL:  Key (first name, last name, last name)=(one, two) is still referenced from table \"b\"."
-   "ERROR:  duplicate key value violates unique constraint \"my_pk\"\nDETAIL:  Key (a, b)=(aaa, bbb) already exists."
-   "ERROR:  insert or update on table \"b\" violates foreign key constraint \"b_a_first_a_last_fkey\"\nDETAIL:  Key (a_first, a_last)=(one, twooo) is not present in table \"a\"."
-   "ERROR:  syntax error at or near \")\"\n  Position: 30"])
-
-(mapv #(parse-sql-error :postgres (sql-jdbc.conn/db->pooled-connection-spec 182) %)
-
-      errors)
-
-  )
