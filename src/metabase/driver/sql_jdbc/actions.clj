@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.actions
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.actions :as actions]
@@ -118,7 +119,12 @@
                      (try
                        (metabase.driver.sql.query-processor/->honeysql
                         :postgres
-                        [:value v (get column->field k)])))
+                        [:value v (get column->field k)])
+                       (catch Exception e
+                         (throw (ex-info (str "Could not cast column " k)
+                                         {:column k
+                                          :original-ex (ex-message e)
+                                          :status-code 400})))))
                    create-or-update-map)))
 
 (defmethod actions/row-action! [:update :sql-jdbc]
