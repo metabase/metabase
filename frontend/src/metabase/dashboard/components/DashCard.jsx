@@ -266,9 +266,16 @@ export default class DashCard extends Component {
           }
           replacementContent={
             (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
-            isVirtualDashCard(dashcard) ? (
+            isVirtualDashCard(dashcard) &&
+            dashcard.visualization_settings.virtual_card.display !==
+              "action-button" ? (
               <div className="flex full-height align-center justify-center">
-                <h4 className="text-medium">{t`Text card`}</h4>
+                <h4 className="text-medium">
+                  {dashcard.visualization_settings.virtual_card.display ===
+                  "text"
+                    ? t`Text card`
+                    : t`Standard actions`}
+                </h4>
               </div>
             ) : isEditingParameter ? (
               <DashCardParameterMapper dashcard={dashcard} />
@@ -373,7 +380,7 @@ const DashCardActionButtons = ({
         />,
       );
     }
-    if (!isVirtualDashCard) {
+    if (!isVirtualDashCard || card.display === "action-button") {
       buttons.push(
         <Tooltip key="click-behavior-tooltip" tooltip={t`Click behavior`}>
           <a

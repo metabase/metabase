@@ -104,6 +104,12 @@ class DashboardHeader extends Component {
     });
   }
 
+  onAddActionButton() {
+    this.props.addActionButtonDashCardToDashboard({
+      dashId: this.props.dashboard.id,
+    });
+  }
+
   onDoneEditing() {
     this.props.onEditingChange(false);
   }
@@ -232,6 +238,18 @@ class DashboardHeader extends Component {
             >
               <DashboardHeaderButton>
                 <Icon name="bolt" size={18} />
+              </DashboardHeaderButton>
+            </a>
+          </Tooltip>,
+          <Tooltip key="add-action-button" tooltip={t`Add action button`}>
+            <a
+              data-metabase-event="Dashboard;Add Action Button"
+              key="add-action-button"
+              className="text-brand-hover cursor-pointer"
+              onClick={() => this.onAddActionButton()}
+            >
+              <DashboardHeaderButton>
+                <Icon name="play" size={18} />
               </DashboardHeaderButton>
             </a>
           </Tooltip>,

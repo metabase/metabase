@@ -323,6 +323,26 @@ export const addActionsDashCardToDashboard = ({ dashId }) => {
   });
 };
 
+export const addActionButtonDashCardToDashboard = ({ dashId }) => {
+  const virtualActionsCard = {
+    ...createCard(),
+    display: "action-button",
+    archived: false,
+  };
+  const dashcardOverrides = {
+    card: virtualActionsCard,
+    sizeX: 1,
+    sizeY: 1,
+    visualization_settings: {
+      virtual_card: virtualActionsCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
 export const saveDashboardAndCards = createThunkAction(
   SAVE_DASHBOARD_AND_CARDS,
   function() {
