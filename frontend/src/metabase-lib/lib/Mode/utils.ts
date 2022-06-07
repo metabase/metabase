@@ -1,15 +1,18 @@
-import SegmentMode from "../components/modes/SegmentMode";
-import MetricMode from "../components/modes/MetricMode";
-import TimeseriesMode from "../components/modes/TimeseriesMode";
-import GeoMode from "../components/modes/GeoMode";
-import PivotMode from "../components/modes/PivotMode";
-import NativeMode from "../components/modes/NativeMode";
-import DefaultMode from "../components/modes/DefaultMode";
-
+import Question from "metabase-lib/lib/Question";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { ModeType } from "./types";
+import {
+  MODE_TYPE_NATIVE,
+  MODE_TYPE_SEGMENT,
+  MODE_TYPE_METRIC,
+  MODE_TYPE_TIMESERIES,
+  MODE_TYPE_GEO,
+  MODE_TYPE_PIVOT,
+  MODE_TYPE_DEFAULT,
+} from "metabase-lib/lib/Mode/constants";
 
-export function getMode(question) {
+export function getMode(question: Question): ModeType | null {
   if (!question) {
     return null;
   }
@@ -17,7 +20,7 @@ export function getMode(question) {
   const query = question.query();
 
   if (query instanceof NativeQuery) {
-    return NativeMode;
+    return MODE_TYPE_NATIVE;
   }
 
   if (query instanceof StructuredQuery) {
@@ -25,11 +28,13 @@ export function getMode(question) {
     const breakouts = query.breakouts();
 
     if (aggregations.length === 0 && breakouts.length === 0) {
-      return SegmentMode;
+      return MODE_TYPE_SEGMENT;
     }
+
     if (aggregations.length > 0 && breakouts.length === 0) {
-      return MetricMode;
+      return MODE_TYPE_METRIC;
     }
+
     if (aggregations.length > 0 && breakouts.length > 0) {
       const breakoutFields = breakouts.map(b => b.field());
       if (
@@ -38,21 +43,23 @@ export function getMode(question) {
           breakoutFields[0].isDate() &&
           breakoutFields[1].isCategory())
       ) {
-        return TimeseriesMode;
+        return MODE_TYPE_TIMESERIES;
       }
+
       if (breakoutFields.length === 1 && breakoutFields[0].isAddress()) {
-        return GeoMode;
+        return MODE_TYPE_GEO;
       }
+
       if (
         (breakoutFields.length === 1 && breakoutFields[0].isCategory()) ||
         (breakoutFields.length === 2 &&
           breakoutFields[0].isCategory() &&
           breakoutFields[1].isCategory())
       ) {
-        return PivotMode;
+        return MODE_TYPE_PIVOT;
       }
     }
   }
 
-  return DefaultMode;
+  return MODE_TYPE_DEFAULT;
 }
