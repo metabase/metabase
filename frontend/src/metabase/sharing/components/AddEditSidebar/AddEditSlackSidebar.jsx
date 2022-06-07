@@ -1,35 +1,33 @@
 import React from "react";
 import PropTypes from "prop-types";
-import _ from "underscore";
 import { t } from "ttag";
-
-import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
-import { dashboardPulseIsValid } from "metabase/lib/pulse";
+import _ from "underscore";
 
 import { CHANNEL_NOUN_PLURAL } from "./constants";
-import Icon from "metabase/components/Icon";
-import Heading from "./Heading";
-import Toggle from "metabase/core/components/Toggle";
-import CaveatMessage from "./CaveatMessage";
-import ChannelFields from "./ChannelFields";
-import SchedulePicker from "metabase/components/SchedulePicker";
-import DefaultParametersSection from "./DefaultParametersSection";
-import Sidebar from "metabase/dashboard/components/Sidebar";
-import EmailAttachmentPicker from "metabase/sharing/components/EmailAttachmentPicker";
-import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
-import RecipientPicker from "metabase/pulse/components/RecipientPicker";
-import SendTestPulse from "metabase/components/SendTestPulse";
 
-function _AddEditEmailSidebar({
+import ChannelFields from "./ChannelFields";
+import DefaultParametersSection from "./DefaultParametersSection";
+import DeleteSubscriptionAction from "./DeleteSubscriptionAction";
+import Heading from "./Heading";
+import CaveatMessage from "./CaveatMessage";
+import Icon from "metabase/components/Icon";
+import SchedulePicker from "metabase/components/SchedulePicker";
+import SendTestPulse from "metabase/components/SendTestPulse";
+import Sidebar from "metabase/dashboard/components/Sidebar";
+import Toggle from "metabase/core/components/Toggle";
+
+import { dashboardPulseIsValid } from "metabase/lib/pulse";
+
+import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
+
+function _AddEditSlackSidebar({
   pulse,
   formInput,
   channel,
   channelSpec,
-  users,
   parameters,
   defaultParametersById,
   dashboard,
-
   // form callbacks
   handleSave,
   onCancel,
@@ -37,7 +35,6 @@ function _AddEditEmailSidebar({
   onChannelScheduleChange,
   testPulse,
   toggleSkipIfEmpty,
-  setPulse,
   handleArchive,
   setPulseParameters,
 }) {
@@ -49,28 +46,12 @@ function _AddEditEmailSidebar({
       onClose={handleSave}
       onCancel={onCancel}
     >
-      <div className="pt4 px4 flex align-center">
-        <Icon name="mail" className="mr1" size={21} />
-        <Heading>{t`Email this dashboard`}</Heading>
+      <div className="pt4 flex align-center px4 mb3">
+        <Icon name="slack" className="mr1" size={21} />
+        <Heading>{t`Send this dashboard to Slack`}</Heading>
       </div>
       <CaveatMessage />
-      <div className="my2 px4">
-        <div>
-          <div className="text-bold mb1">{t`To:`}</div>
-          <RecipientPicker
-            isNewPulse={pulse.id == null}
-            autoFocus={false}
-            recipients={channel.recipients}
-            recipientTypes={channelSpec.recipients}
-            users={users}
-            onRecipientsChange={recipients =>
-              onChannelPropertyChange("recipients", recipients)
-            }
-            invalidRecipientText={domains =>
-              t`You're only allowed to email subscriptions to addresses ending in ${domains}`
-            }
-          />
-        </div>
+      <div className="pb2 px4">
         {channelSpec.fields && (
           <ChannelFields
             channel={channel}
@@ -101,8 +82,8 @@ function _AddEditEmailSidebar({
             channelSpecs={formInput.channels}
             pulse={pulse}
             testPulse={testPulse}
-            normalText={t`Send email now`}
-            successText={t`Email sent`}
+            normalText={t`Send to Slack now`}
+            successText={t`Slack sent`}
             disabled={!isValid}
           />
         </div>
@@ -122,29 +103,13 @@ function _AddEditEmailSidebar({
             defaultParametersById={defaultParametersById}
           />
         )}
-        <div className="text-bold py3 flex justify-between align-center border-top">
+        <div className="text-bold py2 flex justify-between align-center border-top">
           <Heading>{t`Don't send if there aren't results`}</Heading>
           <Toggle
             value={pulse.skip_if_empty || false}
             onChange={toggleSkipIfEmpty}
           />
         </div>
-        <div className="text-bold py2 flex justify-between align-center border-top">
-          <div className="flex align-center">
-            <Heading>{t`Attach results`}</Heading>
-            <Icon
-              name="info"
-              className="text-medium ml1"
-              size={12}
-              tooltip={t`Attachments can contain up to 2,000 rows of data.`}
-            />
-          </div>
-        </div>
-        <EmailAttachmentPicker
-          cards={pulse.cards}
-          pulse={pulse}
-          setPulse={setPulse}
-        />
         {pulse.id != null && (
           <DeleteSubscriptionAction
             pulse={pulse}
@@ -156,7 +121,7 @@ function _AddEditEmailSidebar({
   );
 }
 
-_AddEditEmailSidebar.propTypes = {
+_AddEditSlackSidebar.propTypes = {
   pulse: PropTypes.object,
   formInput: PropTypes.object.isRequired,
   channel: PropTypes.object.isRequired,
@@ -171,9 +136,8 @@ _AddEditEmailSidebar.propTypes = {
   onChannelScheduleChange: PropTypes.func.isRequired,
   testPulse: PropTypes.func.isRequired,
   toggleSkipIfEmpty: PropTypes.func.isRequired,
-  setPulse: PropTypes.func.isRequired,
   handleArchive: PropTypes.func.isRequired,
   setPulseParameters: PropTypes.func.isRequired,
 };
 
-export default _AddEditEmailSidebar;
+export default _AddEditSlackSidebar;
