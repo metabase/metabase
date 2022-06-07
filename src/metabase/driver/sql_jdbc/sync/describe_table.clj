@@ -92,12 +92,17 @@
                   (some->> table-name (driver/escape-entity-name-for-metadata driver))
                   nil)
     (fn [^ResultSet rs]
-      #(merge
-         {:name          (.getString rs "COLUMN_NAME")
-          :database-type (.getString rs "TYPE_NAME")}
-         (when-let [remarks (.getString rs "REMARKS")]
-           (when-not (str/blank? remarks)
-             {:field-comment remarks}))))))
+      #(let [default (.getString rs "COLUMN_DEF")
+             nullable? (.getBoolean rs "NULLABLE")
+             column-name (.getString rs "COLUMN_NAME")
+             required? (and nullable? (not default))]
+         (merge
+           {:name              column-name
+            :database-type     (.getString rs "TYPE_NAME")
+            :database-required required?}
+           (when-let [remarks (.getString rs "REMARKS")]
+             (when-not (str/blank? remarks)
+               {:field-comment remarks})))))))
 
 (defn- fields-metadata
   "Returns reducible metadata for the Fields in a `table`."
@@ -141,7 +146,7 @@
    (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                   (let [semantic-type (calculated-semantic-type driver column-name database-type)]
                     (merge
-                      (u/select-non-nil-keys col [:name :database-type :field-comment])
+                      (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
                       {:base-type         (database-type->base-type-or-warn driver database-type)
                        :database-position i}
                       (when semantic-type
