@@ -1,7 +1,23 @@
 (ns metabase.models.serialization.utils
-  "Defines several multimethods and helper functions for the serialization system.
+  "Defines several helper functions and protocols for the serialization system.
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
-  methods are defined here and implemented for all the exported models."
+  methods are defined here and implemented for all the exported models.
+
+  Whether to export a new model:
+  - Generally, the high-profile user facing things (databases, questions, dashboards, snippets, etc.) are exported.
+  - Internal or automatic things (users, activity logs, permissions) are not.
+
+  If the model is not exported, add it to the exclusion lists in the tests.
+
+  For models that are exported, you have to implement this file's protocols and multimethods for it:
+  - All exported models should either have an CHAR(21) column `entity_id`, or a portable external name (like a database
+    URL).
+  - identity-hash-fields should give the list of fields that distinguish an instance of this model from another, on a
+    best-effort basis.
+    - Use things like names, labels, or other stable identifying features.
+    - NO numeric database IDs!
+    - Any foreign keys should be hydrated and the identity-hash of the foreign entity used as part of the hash.
+      - There's a `hydrated-hash` helper for this with several example uses."
   (:require [potemkin.types :as p.types]
             [toucan.hydrate :refer [hydrate]]))
 
@@ -17,9 +33,12 @@
     "You probably want to call metabase.models.serialization/identity-hash instead of calling this directly.
 
     Content-based identity for the entities we export in serialization. This should return a sequence of functions to
-    apply to an entity and then hash. For example, Metric's identity-hash-fields is [:name :table_id]. These functions are
+    apply to an entity and then hash. For example, Metric's identity-hash-fields is [:name :table]. These functions are
     mapped over each entity and clojure.core/hash called on the result. This gives a portable hash value across JVMs,
-    Clojure versions, and platforms."))
+    Clojure versions, and platforms.
+
+    NOTE: No numeric database IDs! For any foreign key, use `hydrated-hash` to hydrate the foreign entity and include
+    its identity-hash as part of this hash. This is a portable way of capturing the foreign relationship."))
 
 (defn raw-hash
   "Hashes a Clojure value into an 8-character hex string, which is used as the identity hash.
