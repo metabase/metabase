@@ -39,7 +39,7 @@ jobs:
 
   e2e-tests:
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -61,15 +61,15 @@ jobs:
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
-          - "dashboard-filters-sql"
           - "downloads"
           - "embedding"
+          - "filters"
           - "joins"
           - "models"
-          - "moderation"
           - "native"
           - "native-filters"
           - "onboarding"
+          - "organization"
           - "permissions"
           - "question"
           - "sharing"
@@ -126,7 +126,8 @@ jobs:
       run: |
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
-    - name: Run Cypress tests on ${{ matrix.folder }}
+
+    - name: Run Cypress tests on ${{ matrix.folder }} - Master Branch
       if: ${{ github.ref == 'refs/heads/master' }}
       run: |
         yarn run test-cypress-run \
@@ -136,6 +137,7 @@ jobs:
           --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
       env:
         TERM: xterm
+
     - name: Run Cypress tests on ${{ matrix.folder }}
       if: ${{ github.ref != 'refs/heads/master' }}
       run: |
