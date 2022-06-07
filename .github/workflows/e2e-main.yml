@@ -127,7 +127,8 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run Cypress tests on ${{ matrix.folder }} - Master Branch
+      if: ${{ github.ref == 'refs/heads/master' }}
       run: |
         yarn run test-cypress-run \
           --folder ${{ matrix.folder }} \
@@ -137,6 +138,14 @@ jobs:
       env:
         TERM: xterm
 
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      if: ${{ github.ref != 'refs/heads/master' }}
+      run: |
+        yarn run test-cypress-run \
+          --folder ${{ matrix.folder }}
+      env:
+        TERM: xterm
+        
     - name: Upload Cypress recording upon failure
       uses: actions/upload-artifact@v2
       if: failure()
