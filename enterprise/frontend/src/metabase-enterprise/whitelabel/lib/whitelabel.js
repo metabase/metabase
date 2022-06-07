@@ -101,7 +101,7 @@ function getCSSColorMapping(colorName) {
   if (colorName in COLOR_MAPPINGS) {
     return COLOR_MAPPINGS[colorName];
   } else {
-    return [originalColors[colorName], color => color];
+    return [[originalColors[colorName], color => color]];
   }
 }
 
