@@ -1,5 +1,6 @@
 (ns metabase.driver.sql-jdbc.actions
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.actions :as actions]
