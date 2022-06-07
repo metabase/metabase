@@ -4,6 +4,8 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
+import Tooltip from "metabase/components/Tooltip";
+
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
 import {
@@ -12,7 +14,6 @@ import {
   onCloseQuestionHistory,
 } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
-import { getQuestionDetailsTimelineDrawerState } from "metabase/query_builder/selectors";
 
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
@@ -26,7 +27,6 @@ const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
-  drawerState: getQuestionDetailsTimelineDrawerState(state, props),
 });
 
 const mapDispatchToProps = {
@@ -48,25 +48,6 @@ export default _.compose(
   }),
   connect(mapStateToProps, mapDispatchToProps),
 )(QuestionActivityTimeline);
-
-RevisionEventFooter.propTypes = {
-  revision: PropTypes.object.isRequired,
-  onRevisionClick: PropTypes.func.isRequired,
-};
-
-function RevisionEventFooter({ revision, onRevisionClick }) {
-  return (
-    <div>
-      <RevertButton
-        actionFn={() => onRevisionClick(revision)}
-        normalText={t`Revert`}
-        activeText={t`Reverting…`}
-        failedText={t`Revert failed`}
-        successText={t`Reverted`}
-      />
-    </div>
-  );
-}
 
 QuestionActivityTimeline.propTypes = {
   question: PropTypes.object.isRequired,
@@ -96,28 +77,42 @@ export function QuestionActivityTimeline({
     const revisionEvents = getRevisionEventsForTimeline(revisions, {
       currentUser,
       canWrite,
+    }).map(revisionEvent => {
+      if (revisionEvent.isRevertable) {
+        const { title, revision } = revisionEvent;
+        const newTitle = (
+          <>
+            {title}
+            <Tooltip tooltip={t`Revert`} placement="bottom">
+              <RevertButton
+                icon="revert"
+                onlyIcon
+                borderless
+                onClick={() => revertToRevision(revision)}
+              />
+            </Tooltip>
+          </>
+        );
+        return { ...revisionEvent, title: newTitle };
+      } else {
+        return revisionEvent;
+      }
     });
+
     return [...revisionEvents, ...moderationEvents];
-  }, [canWrite, moderationReviews, revisions, usersById, currentUser]);
+  }, [
+    canWrite,
+    moderationReviews,
+    revisions,
+    usersById,
+    currentUser,
+    revertToRevision,
+  ]);
 
   return (
     <div>
       <Header>History</Header>
-      <Timeline
-        items={events}
-        data-testid="saved-question-history-list"
-        renderFooter={item => {
-          const { isRevertable, revision } = item;
-          if (isRevertable) {
-            return (
-              <RevisionEventFooter
-                revision={revision}
-                onRevisionClick={revertToRevision}
-              />
-            );
-          }
-        }}
-      />
+      <Timeline items={events} data-testid="saved-question-history-list" />
     </div>
   );
 }

@@ -30,8 +30,6 @@ Timeline.propTypes = {
   "data-testid": PropTypes.string,
 };
 
-export default Timeline;
-
 function Timeline({
   className,
   items = [],
@@ -93,3 +91,9 @@ function Timeline({
     </TimelineContainer>
   );
 }
+
+export default Object.assign(Timeline, {
+  ItemBody,
+  ItemHeader,
+  ItemIcon,
+});
