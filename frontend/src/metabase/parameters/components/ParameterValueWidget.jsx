@@ -7,6 +7,7 @@ import _ from "underscore";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { isOnlyMappedToFields } from "metabase/parameters/utils/fields";
+import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
@@ -94,7 +95,7 @@ class ParameterValueWidget extends Component {
       dashboard,
     );
     const isDashParamWithoutMappingText = t`This filter needs to be connected to a card.`;
-    const { noPopover, format } = getWidgetDefinition(parameter);
+    const { noPopover } = getWidgetDefinition(parameter);
     const parameterTypeIcon = getParameterIconName(parameter);
     const showTypeIcon = !isEditing && !hasValue && !isFocused;
 
@@ -164,7 +165,9 @@ class ParameterValueWidget extends Component {
                   />
                 )}
                 <div className="mr1 text-nowrap">
-                  {hasValue ? format(value) : placeholderText}
+                  {hasValue
+                    ? formatParameterValue(value, parameter)
+                    : placeholderText}
                 </div>
                 <WidgetStatusIcon
                   isFullscreen={isFullscreen}

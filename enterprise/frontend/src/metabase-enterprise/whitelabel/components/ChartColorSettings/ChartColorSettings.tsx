@@ -3,21 +3,30 @@ import { t } from "ttag";
 import { flatten, omit, set } from "lodash";
 import { color } from "metabase/lib/colors";
 import { useCurrentRef } from "metabase/hooks/use-current-ref";
+import Button from "metabase/core/components/Button";
 import ColorPicker from "metabase/core/components/ColorPicker";
-import { getChartColorGroups } from "./utils";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import {
+  getAutoChartColors,
+  getChartColorGroups,
+  getDefaultChartColors,
+  hasCustomChartColors,
+} from "./utils";
 import {
   TableBody,
   TableBodyCell,
   TableBodyRow,
+  TableFooter,
   TableHeader,
   TableLink,
   TableTitle,
 } from "./ChartColorSettings.styled";
+import ColorResetModal from "metabase-enterprise/whitelabel/components/ColorResetModal";
 
 export interface ChartColorSettingsProps {
   colors: Record<string, string>;
   colorPalette: Record<string, string>;
-  onChange?: (colors: Record<string, string>) => void;
+  onChange: (colors: Record<string, string>) => void;
 }
 
 const ChartColorSettings = ({
@@ -28,52 +37,79 @@ const ChartColorSettings = ({
   const colorsRef = useCurrentRef(colors);
   const colorGroups = useMemo(getChartColorGroups, []);
 
+  const hasCustomColors = useMemo(() => {
+    return hasCustomChartColors(colors, colorGroups);
+  }, [colors, colorGroups]);
+
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
-        onChange?.(set({ ...colorsRef.current }, colorName, color));
+        onChange(set({ ...colorsRef.current }, colorName, color));
       } else {
-        onChange?.(omit({ ...colorsRef.current }, colorName));
+        onChange(omit({ ...colorsRef.current }, colorName));
       }
     },
     [colorsRef, onChange],
   );
 
   const handleReset = useCallback(() => {
-    onChange?.(omit({ ...colorsRef.current }, flatten(colorGroups)));
+    onChange(getDefaultChartColors(colorsRef.current, colorGroups));
   }, [colorsRef, colorGroups, onChange]);
+
+  const handleGenerate = useCallback(() => {
+    onChange(getAutoChartColors(colorsRef.current, colorGroups, colorPalette));
+  }, [colorsRef, colorGroups, colorPalette, onChange]);
 
   return (
     <ChartColorTable
       colors={colors}
       colorPalette={colorPalette}
       colorGroups={colorGroups}
+      hasCustomColors={hasCustomColors}
       onChange={handleChange}
       onReset={handleReset}
+      onGenerate={handleGenerate}
     />
   );
 };
 
-interface ChartColorTable {
+interface ChartColorTableProps {
   colors: Record<string, string>;
   colorPalette: Record<string, string>;
   colorGroups: string[][];
+  hasCustomColors: boolean;
   onChange: (name: string, color?: string) => void;
   onReset: () => void;
+  onGenerate: () => void;
+}
+
+interface ChartColorModalProps {
+  onClose?: () => void;
 }
 
 const ChartColorTable = ({
   colors,
   colorPalette,
   colorGroups,
+  hasCustomColors,
   onChange,
   onReset,
-}: ChartColorTable): JSX.Element => {
+  onGenerate,
+}: ChartColorTableProps): JSX.Element => {
   return (
     <div>
       <TableHeader>
         <TableTitle>{t`Chart colors`}</TableTitle>
-        <TableLink onClick={onReset}>{t`Reset to default colors`}</TableLink>
+        {hasCustomColors && (
+          <ModalWithTrigger
+            as={TableLink}
+            triggerElement={t`Reset to default colors`}
+          >
+            {({ onClose }: ChartColorModalProps) => (
+              <ColorResetModal onReset={onReset} onClose={onClose} />
+            )}
+          </ModalWithTrigger>
+        )}
       </TableHeader>
       <TableBody>
         {colorGroups.map((colorGroup, index) => (
@@ -90,6 +126,9 @@ const ChartColorTable = ({
           </TableBodyRow>
         ))}
       </TableBody>
+      <TableFooter>
+        <Button primary onClick={onGenerate}>{t`Generate chart colors`}</Button>
+      </TableFooter>
     </div>
   );
 };
