@@ -1,12 +1,10 @@
 (ns metabase.driver.sql-jdbc.actions
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
             [honeysql.format :as hformat]
             [medley.core :as m]
             [metabase.actions :as actions]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
@@ -110,25 +108,6 @@
                           (throw
                            (ex-info "Delete action error." (assoc (parse-error driver conn e) :status-code 400)))))}))
 
-(defn- cast-values
-  "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
-  uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
-  types that do not need casting like integer or string."
-  [create-or-update-map table-id]
-  (let [column->field (m/index-by (comp keyword #(str/replace % "_" "-") :name)
-                                  (:fields (first (table/with-fields [(Table table-id)]))))]
-    (m/map-kv-vals (fn [k v]
-                     (try
-                       (metabase.driver.sql.query-processor/->honeysql
-                        :postgres
-                        [:value v (get column->field k)])
-                       (catch Exception e
-                         (throw (ex-info (str "Could not cast column: " k)
-                                         {:column k
-                                          :original-ex (ex-message e)
-                                          :status-code 400})))))
-                   create-or-update-map)))
-
 (defmethod actions/row-action! [:update :sql-jdbc]
   [_action driver {database-id :database :keys [update-row] :as query}]
   (let [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)
@@ -142,7 +121,7 @@
     (let [target-table (first (:from raw-hsql))
           update-hsql (-> raw-hsql
                           (select-keys [:where])
-                          (assoc :update target-table :set (cast-values update-row (-> query :query :source-table))))]
+                          (assoc :update target-table :set update-row))]
       {:rows-updated (try (jdbc/execute! conn (hformat/format update-hsql))
                           (catch Exception e
                             (throw
@@ -159,7 +138,7 @@
                           (catch-throw e 404))))
         create-hsql (-> raw-hsql
                         (assoc :insert-into (first (:from raw-hsql)))
-                        (assoc :values [(cast-values create-row (-> query :query :source-table))])
+                        (assoc :values [create-row])
                         (dissoc :select :from))]
     {:created-row
      (if (= driver :postgres)
