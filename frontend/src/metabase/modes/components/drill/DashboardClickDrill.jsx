@@ -8,6 +8,7 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
+import { executeRowAction } from "metabase/writeback/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -33,7 +34,7 @@ export default ({ question, clicked }) => {
   }
   const { extraData } = clicked || {};
   const data = getDataFromClicked(clicked);
-  const { type, linkType, parameterMapping, targetId } = clickBehavior;
+  const { action, type, linkType, parameterMapping, targetId } = clickBehavior;
 
   let behavior;
 
@@ -41,7 +42,20 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  if (type === "crossfilter") {
+  if (type === "action") {
+    const parameters = getParameterValuesBySlug(parameterMapping, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    behavior = {
+      action: () =>
+        executeRowAction({
+          action: extraData.actions[action],
+          parameters,
+        }),
+    };
+  } else if (type === "crossfilter") {
     const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
       data,
       extraData,
