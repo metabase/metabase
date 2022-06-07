@@ -276,6 +276,15 @@
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
+(deftest json-query-support-test
+  (let [default-db        {:details {}}
+        json-unfold-db    {:details {:json-unfolding true}}
+        no-json-unfold-db {:details {:json-unfolding false}}]
+    (testing "JSON database support options behave as they're supposed to"
+      (is (= true (driver/database-supports? :postgres :nested-field-columns default-db)))
+      (is (= true (driver/database-supports? :postgres :nested-field-columns json-unfold-db)))
+      (is (= false (driver/database-supports? :postgres :nested-field-columns no-json-unfold-db))))))
+
 (deftest ^:parallel json-query-test
   (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
@@ -425,7 +434,7 @@
                  (sql-jdbc.sync/describe-nested-field-columns
                    :postgres
                    database
-                   {:schema "AAAH_#" :name "dESCribe_json_table_%"})))))))
+                   {:schema "AAAH_#" :name "dESCribe_json_table_%"}))))))))
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
