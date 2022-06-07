@@ -348,9 +348,10 @@
         #{}
         (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
               table-identifier (apply hx/identifier :table table-identifier-info)
+              quote-type       (case driver :postgres :ansi :mysql :mysql)
               sql-args         (hsql/format {:select json-field-names
                                              :from   [table-identifier]
-                                             :limit  nested-field-sample-limit} :quoting :ansi)
+                                             :limit  nested-field-sample-limit} :quoting quote-type)
               query            (jdbc/reducible-query spec sql-args {:identifiers identity})
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
