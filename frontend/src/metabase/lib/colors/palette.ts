@@ -8,7 +8,6 @@ export const ACCENT_COUNT = 8;
 /* eslint-disable no-color-literals */
 export const colors: ColorPalette = {
   brand: "#509EE3",
-  "brand-light": "#DDECFA",
   accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
@@ -34,7 +33,6 @@ export const colors: ColorPalette = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
-  focus: "#CBE2F7",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
 
@@ -57,7 +55,7 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   filter: palette => color("accent7", palette),
 
   "brand-light": palette => lighten(color("brand", palette), 0.532),
-  focus: palette => lighten(color("brand", palette), 0.7),
+  focus: palette => lighten(color("brand", palette), 0.465),
 
   "accent0-light": palette => lighten(color(`accent0`, palette), 0.3),
   "accent1-light": palette => lighten(color(`accent1`, palette), 0.3),

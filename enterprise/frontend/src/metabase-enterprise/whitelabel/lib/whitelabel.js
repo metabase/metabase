@@ -2,7 +2,7 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import Color from "color";
 
-import { colors } from "metabase/lib/colors/palette";
+import { colors, lighten } from "metabase/lib/colors/palette";
 import { addCSSRule } from "metabase/lib/dom";
 
 import { omit } from "lodash";
@@ -89,6 +89,22 @@ const getColorStyleProperties = memoize(function() {
   return properties;
 });
 
+const COLOR_MAPPINGS = {
+  brand: [
+    ["#509ee3", color => color], // brand
+    ["#cbe2f7", color => lighten(color, 0.465)], // focus
+    ["#ddecfa", color => lighten(color, 0.532)], // brand-light
+  ],
+};
+
+function getCSSColorMapping(colorName) {
+  if (colorName in COLOR_MAPPINGS) {
+    return COLOR_MAPPINGS[colorName];
+  } else {
+    return [originalColors[colorName], color => color];
+  }
+}
+
 function initColorCSS(colorName) {
   if (CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName]) {
     return;
@@ -100,6 +116,7 @@ function initColorCSS(colorName) {
     initCSSBrandHueUpdator();
   }
 
+  const colorMappings = getCSSColorMapping(colorName);
   // look for CSS rules which have colors matching the brand colors or very light or desaturated
   for (const {
     style,
@@ -107,13 +124,15 @@ function initColorCSS(colorName) {
     cssValue,
     cssPriority,
   } of getColorStyleProperties()) {
-    const originalColor = originalColors[colorName];
-    // try replacing with a random color to see if we actually need to
-    if (cssValue !== replaceColors(cssValue, originalColor, RANDOM_COLOR)) {
-      CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
-        const newCssValue = replaceColors(cssValue, originalColor, themeColor);
-        style.setProperty(cssProperty, newCssValue, cssPriority);
-      });
+    for (const [originalColor, colorMapping] of colorMappings) {
+      // try replacing with a random color to see if we actually need to
+      if (cssValue !== replaceColors(cssValue, originalColor, RANDOM_COLOR)) {
+        CSS_COLOR_UPDATORS_BY_COLOR_NAME[colorName].push(themeColor => {
+          const newColor = colorMapping(themeColor);
+          const newCssValue = replaceColors(cssValue, originalColor, newColor);
+          style.setProperty(cssProperty, newCssValue, cssPriority);
+        });
+      }
     }
   }
 }
@@ -213,4 +232,6 @@ export function enabledApplicationNameReplacement() {
 // Don't update CSS colors yet since all the CSS hasn't been loaded yet
 try {
   updateColorsJS();
-} catch (e) {}
+} catch (e) {
+  console.log(e);
+}
