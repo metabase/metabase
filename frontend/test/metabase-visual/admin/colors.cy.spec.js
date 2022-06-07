@@ -38,7 +38,13 @@ describeEE("visual tests > admin > colors", () => {
     updateColor(title, "#7172AD", "#F9CF48");
 
     visitQuestionAdhoc(questionDetails);
-    cy.percySnapshot();
+    cy.percySnapshot("chart");
+
+    cy.findByText("Filter").click();
+    cy.percySnapshot("filters");
+
+    cy.findByText("Summarize").click();
+    cy.percySnapshot("summarize");
   });
 });
 
