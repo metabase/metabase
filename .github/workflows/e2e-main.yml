@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - 'release-**'
     paths-ignore:
       - "docs/**"
       - "**.md"
