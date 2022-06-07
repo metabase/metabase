@@ -6,18 +6,26 @@ import {
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const questionDetails = {
-  display: "line",
   dataset_query: {
     database: SAMPLE_DB_ID,
     type: "query",
     query: {
       "source-table": ORDERS_ID,
-      aggregation: [["cum-sum", ["field", ORDERS.TOTAL, null]]],
-      breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
+      aggregation: [["count"]],
+      breakout: [
+        ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+        ["field", PEOPLE.STATE, { "source-field": 11 }],
+      ],
     },
+  },
+  display: "bar",
+  visualization_settings: {
+    "graph.dimensions": ["CREATED_AT", "STATE"],
+    "graph.metrics": ["count"],
+    "stackable.stack_type": "stacked",
   },
 };
 
