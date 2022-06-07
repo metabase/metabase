@@ -1,6 +1,6 @@
 import { restore, describeEE } from "__support__/e2e/cypress";
 
-describeEE("visual tests > admin > permissions", () => {
+describeEE("visual tests > admin > fonts", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

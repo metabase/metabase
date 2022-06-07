@@ -8,7 +8,6 @@ export const ACCENT_COUNT = 8;
 /* eslint-disable no-color-literals */
 export const colors: ColorPalette = {
   brand: "#509EE3",
-  "brand-light": "#DDECFA",
   summarize: "#88BF4D",
   filter: "#7172AD",
   accent0: "#509EE3",
@@ -36,7 +35,6 @@ export const colors: ColorPalette = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
-  focus: "#CBE2F7",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
 
