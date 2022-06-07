@@ -53,6 +53,8 @@ import {
   onCloseSidebars,
   onOpenQuestionDetails,
   onCloseQuestionDetails,
+  onOpenQuestionInfo,
+  onCloseQuestionInfo,
   onOpenQuestionHistory,
   onCloseQuestionHistory,
   onOpenTimelines,
@@ -78,6 +80,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingQuestionDetailsSidebar: false,
+  isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
   isPreviewing: true, // sql preview mode
@@ -295,6 +298,30 @@ export const uiControls = handleActions(
       return {
         ...state,
         isShowingQuestionDetailsSidebar: false,
+        questionDetailsTimelineDrawerState: undefined,
+      };
+    },
+    [onOpenQuestionInfo]: state =>
+      setUIControls(state, {
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        isShowingQuestionInfoSidebar: true,
+        questionDetailsTimelineDrawerState: undefined,
+        queryBuilderMode: "view",
+      }),
+    [onCloseQuestionInfo]: (
+      state,
+      { payload: { closeOtherSidebars } = {} } = {},
+    ) => {
+      if (closeOtherSidebars) {
+        return {
+          ...state,
+          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+          questionDetailsTimelineDrawerState: undefined,
+        };
+      }
+      return {
+        ...state,
+        isShowingQuestionInfoSidebar: false,
         questionDetailsTimelineDrawerState: undefined,
       };
     },

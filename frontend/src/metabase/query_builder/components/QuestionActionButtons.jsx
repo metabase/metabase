@@ -3,12 +3,10 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 import { connect } from "react-redux";
 
-import { checkDatabaseCanPersistDatasets } from "metabase/lib/data-modeling/utils";
 import { onModelPersistenceChange } from "metabase/query_builder/actions";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getNestedQueriesEnabled } from "metabase/selectors/settings";
 
-import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 import Button from "metabase/core/components/Button";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -39,20 +37,7 @@ const mapDispatchToProps = {
   onModelPersistenceChange,
 };
 
-function QuestionActionButtons({
-  question,
-  canWrite,
-  onOpenModal,
-  onModelPersistenceChange,
-}) {
-  const isSaved = question.isSaved();
-  const isDataset = question.isDataset();
-  const canPersistDataset =
-    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
-    canWrite &&
-    isSaved &&
-    isDataset &&
-    checkDatabaseCanPersistDatasets(question.query().database());
+function QuestionActionButtons({ canWrite, onOpenModal }) {
   return (
     <Container data-testid="question-action-buttons">
       {canWrite && (
@@ -65,14 +50,6 @@ function QuestionActionButtons({
             data-testid={EDIT_TESTID}
           />
         </Tooltip>
-      )}
-      {canPersistDataset && (
-        <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
-          model={question}
-          size={ICON_SIZE}
-          onChange={onModelPersistenceChange}
-          data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
-        />
       )}
     </Container>
   );

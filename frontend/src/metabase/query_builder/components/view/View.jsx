@@ -30,6 +30,7 @@ import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
 import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
+import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
 import { ViewSubHeader } from "./ViewHeader";
@@ -165,6 +166,7 @@ class View extends React.Component {
       isShowingSummarySidebar,
       isShowingFilterSidebar,
       isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
       runQuestionQuery,
       visibleTimelineIds,
       selectedTimelineEventIds,
@@ -177,6 +179,7 @@ class View extends React.Component {
       onCloseSummary,
       onCloseFilter,
       onCloseTimelines,
+      onSave,
     } = this.props;
 
     if (isShowingSummarySidebar) {
@@ -210,6 +213,10 @@ class View extends React.Component {
           onClose={onCloseTimelines}
         />
       );
+    }
+
+    if (isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
     }
 
     return null;

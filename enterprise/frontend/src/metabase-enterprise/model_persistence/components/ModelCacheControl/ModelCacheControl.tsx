@@ -2,7 +2,6 @@ import React, { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
-import Tooltip from "metabase/components/Tooltip";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import { delay } from "metabase/lib/promise";
@@ -52,15 +51,9 @@ function ModelCacheControl({
       <LoadingSpinner size={size} />
     </SpinnerContainer>
   ) : (
-    <Tooltip tooltip={tooltip}>
-      <Button
-        {...props}
-        icon="database"
-        onClick={handleClick}
-        iconSize={size}
-        onlyIcon
-      />
-    </Tooltip>
+    <Button {...props} icon="database" onClick={handleClick} iconSize={size}>
+      {tooltip}
+    </Button>
   );
 }
 

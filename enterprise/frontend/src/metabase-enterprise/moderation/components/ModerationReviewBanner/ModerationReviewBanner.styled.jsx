@@ -4,19 +4,25 @@ import Button from "metabase/core/components/Button";
 import Icon from "metabase/components/Icon";
 
 export const Container = styled.div`
-  padding: 1rem;
-  background-color: ${props => props.backgroundColor};
+  padding: 1rem 0.5rem;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  column-gap: 0.5rem;
+  align-items: start;
+  column-gap: 1rem;
   border-radius: 8px;
 `;
 
-export const Text = styled.span`
+export const TextContainer = styled.div`
   flex: 1;
+  display: flex;
+  flex-direction: column;
+`;
+
+export const Text = styled.span`
   font-size: 14px;
+  line-height: 17px;
   font-weight: 700;
+  margin-bottom: 4px;
 `;
 
 export const Time = styled.time`
@@ -35,6 +41,4 @@ export const IconButton = styled(Button)`
   }
 `;
 
-export const StatusIcon = styled(Icon)`
-  padding: 0 0.5rem;
-`;
+export const StatusIcon = styled(Icon)``;

@@ -60,6 +60,13 @@ export const onCloseQuestionHistory = createAction(
   "metabase/qb/CLOSE_QUESTION_HISTORY",
 );
 
+export const onOpenQuestionInfo = createAction(
+  "metabase/qb/OPEN_QUESTION_INFO",
+);
+export const onCloseQuestionInfo = createAction(
+  "metabase/qb/CLOSE_QUESTION_INFO",
+);
+
 export const onOpenTimelines = createAction("metabase/qb/OPEN_TIMELINES");
 export const onCloseTimelines = createAction("metabase/qb/CLOSE_TIMELINES");
 

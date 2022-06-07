@@ -7,12 +7,15 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import { color } from "metabase/lib/colors";
-import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
+import {
+  checkCanBeModel,
+  checkDatabaseCanPersistDatasets,
+} from "metabase/lib/data-modeling/utils";
 
 import Question from "metabase-lib/lib/Question";
 
@@ -43,6 +46,8 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
+  onInfoClick: () => void;
+  onModelPersistenceChange: () => void;
 }
 
 const buttonProps = {
@@ -58,6 +63,8 @@ const QuestionActions = ({
   question,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
+  onInfoClick,
+  onModelPersistenceChange,
 }: Props) => {
   const [animation, setAnimation] = useState<AnimationStates>(null);
 
@@ -70,6 +77,14 @@ const QuestionActions = ({
 
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
+  const isSaved = question.isSaved();
+
+  const canPersistDataset =
+    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
+    canWrite &&
+    isSaved &&
+    isDataset &&
+    checkDatabaseCanPersistDatasets(question.query().database());
 
   const handleEditQuery = useCallback(() => {
     setQueryBuilderMode("dataset", {
@@ -101,6 +116,14 @@ const QuestionActions = ({
           iconSize={ICON_SIZE}
           onClick={handleClickBookmark}
           color={bookmarkButtonColor}
+        />
+      </Tooltip>
+      <Tooltip tooltip={t`More info`}>
+        <Button
+          onlyIcon
+          icon="info"
+          iconSize={ICON_SIZE}
+          onClick={onInfoClick}
         />
       </Tooltip>
 
@@ -148,6 +171,15 @@ const QuestionActions = ({
                   <DatasetMetadataStrengthIndicator dataset={question} />
                 </PopoverButton>
               </div>
+            )}
+            {canPersistDataset && (
+              <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
+                model={question}
+                size={ICON_SIZE}
+                onChange={onModelPersistenceChange}
+                data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
+                {...buttonProps}
+              />
             )}
             {!isDataset && (
               <div>

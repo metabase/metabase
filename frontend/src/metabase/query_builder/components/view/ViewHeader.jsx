@@ -385,6 +385,10 @@ ViewTitleHeaderRightSide.propTypes = {
   onCollapseFilters: PropTypes.func,
   isBookmarked: PropTypes.bool,
   toggleBookmark: PropTypes.func,
+  onOpenQuestionInfo: PropTypes.func,
+  onCloseQuestionInfo: PropTypes.func,
+  isShowingQuestionInfoSidebar: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.bool,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -419,6 +423,10 @@ function ViewTitleHeaderRightSide(props) {
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
+    isShowingQuestionInfoSidebar,
+    onCloseQuestionInfo,
+    onOpenQuestionInfo,
+    onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -445,6 +453,14 @@ function ViewTitleHeaderRightSide(props) {
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 
   const hasNewRowButton = isWritebackEnabled && !isNative && query.isRaw();
+
+  const handleInfoClick = useCallback(() => {
+    if (isShowingQuestionInfoSidebar) {
+      onCloseQuestionInfo();
+    } else {
+      onOpenQuestionInfo({ closeOtherSidebars: true });
+    }
+  }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
   return (
     <div
@@ -555,6 +571,8 @@ function ViewTitleHeaderRightSide(props) {
           question={question}
           setQueryBuilderMode={setQueryBuilderMode}
           turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          onInfoClick={handleInfoClick}
+          onModelPersistenceChange={onModelPersistenceChange}
         />
       )}
     </div>

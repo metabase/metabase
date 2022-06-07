@@ -16,10 +16,11 @@ import { getQuestionDetailsTimelineDrawerState } from "metabase/query_builder/se
 
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
-import DrawerSection, {
-  STATES as DRAWER_STATES,
-} from "metabase/components/DrawerSection/DrawerSection";
-import { Timeline, RevertButton } from "./QuestionActivityTimeline.styled";
+import {
+  Timeline,
+  RevertButton,
+  Header,
+} from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
@@ -73,9 +74,6 @@ QuestionActivityTimeline.propTypes = {
   users: PropTypes.array,
   currentUser: PropTypes.object.isRequired,
   revertToRevision: PropTypes.func.isRequired,
-  drawerState: PropTypes.oneOf([DRAWER_STATES.open, DRAWER_STATES.closed]),
-  onOpenQuestionHistory: PropTypes.func.isRequired,
-  onCloseQuestionHistory: PropTypes.func.isRequired,
 };
 
 export function QuestionActivityTimeline({
@@ -84,9 +82,6 @@ export function QuestionActivityTimeline({
   users,
   currentUser,
   revertToRevision,
-  drawerState,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
 }) {
   const usersById = useMemo(() => _.indexBy(users, "id"), [users]);
   const canWrite = question.canWrite();
@@ -105,20 +100,9 @@ export function QuestionActivityTimeline({
     return [...revisionEvents, ...moderationEvents];
   }, [canWrite, moderationReviews, revisions, usersById, currentUser]);
 
-  const onDrawerStateChange = state => {
-    if (state === DRAWER_STATES.open) {
-      onOpenQuestionHistory();
-    } else {
-      onCloseQuestionHistory();
-    }
-  };
-
   return (
-    <DrawerSection
-      header={t`History`}
-      state={drawerState}
-      onStateChange={onDrawerStateChange}
-    >
+    <div>
+      <Header>History</Header>
       <Timeline
         items={events}
         data-testid="saved-question-history-list"
@@ -134,6 +118,6 @@ export function QuestionActivityTimeline({
           }
         }}
       />
-    </DrawerSection>
+    </div>
   );
 }
