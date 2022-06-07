@@ -1,7 +1,7 @@
 (ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
-  (:require [clojure.test :refer :all]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
