@@ -51,4 +51,8 @@
            (datetime/format-temporal-str "UTC" nil :now))))
   (testing "Not-null values work"
     (is (= "Jul 16, 2020"
-           (datetime/format-temporal-str "UTC" now :day)))))
+           (datetime/format-temporal-str "UTC" now :day))))
+  (testing "Can render time types (#15146)"
+    (is (= "08:05:06"
+           (datetime/format-temporal-str "UTC" "08:05:06Z"
+                                         {:effective_type :type/Time})))))

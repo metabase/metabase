@@ -7,7 +7,8 @@
             [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [schema.core :as s])
-  (:import java.time.Period
+  (:import java.time.format.DateTimeFormatter
+           java.time.Period
            java.time.temporal.Temporal))
 
 (defn- reformat-temporal-str [timezone-id s new-format-string]
@@ -17,22 +18,26 @@
   "Reformat a temporal literal string `s` (i.e., an ISO-8601 string) with a human-friendly format based on the
   column `:unit`."
   [timezone-id s col]
-  (if (str/blank? s)
-    ""
-    (case (:unit col)
-      ;; these types have special formatting
-      :hour    (reformat-temporal-str timezone-id s "h a - MMM yyyy")
-      :week    (str "Week " (reformat-temporal-str timezone-id s "w - YYYY"))
-      :month   (reformat-temporal-str timezone-id s "MMMM yyyy")
-      :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+  (cond (str/blank? s) ""
 
-      ;; no special formatting here : return as ISO-8601
-      ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
-      (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
-      s
+        (isa? (or (:effective_type col) (:base_type col)) :type/Time)
+        (t/format DateTimeFormatter/ISO_LOCAL_TIME (u.date/parse s timezone-id))
 
-      ;; for everything else return in this format
-      (reformat-temporal-str timezone-id s "MMM d, yyyy"))))
+        :else
+        (case (:unit col)
+          ;; these types have special formatting
+          :hour    (reformat-temporal-str timezone-id s "h a - MMM yyyy")
+          :week    (str "Week " (reformat-temporal-str timezone-id s "w - YYYY"))
+          :month   (reformat-temporal-str timezone-id s "MMMM yyyy")
+          :quarter (reformat-temporal-str timezone-id s "QQQ - yyyy")
+
+          ;; no special formatting here : return as ISO-8601
+          ;; TODO: probably shouldn't even be showing sparkline for x-of-y groupings?
+          (:year :hour-of-day :day-of-week :week-of-year :month-of-year)
+          s
+
+          ;; for everything else return in this format
+          (reformat-temporal-str timezone-id s "MMM d, yyyy"))))
 
 (def ^:private RenderableInterval
   {:interval-start     Temporal
