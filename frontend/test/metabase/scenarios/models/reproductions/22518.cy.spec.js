@@ -1,9 +1,5 @@
-import {
-  restore,
-  openQuestionActions,
-  summarize,
-  sidebar,
-} from "__support__/e2e/cypress";
+import { restore, summarize, sidebar } from "__support__/e2e/cypress";
+import { openDetailsSidebar } from "../helpers/e2e-models-helpers";
 
 describe.skip("issue 22518", () => {
   beforeEach(() => {
@@ -22,7 +18,7 @@ describe.skip("issue 22518", () => {
   });
 
   it("UI should immediately reflect model query changes upon saving (metabase#22518)", () => {
-    openQuestionActions();
+    openDetailsSidebar();
     cy.findByText("Edit query definition").click();
 
     cy.get(".ace_content").type(", 'b' bar");
