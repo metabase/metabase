@@ -1435,11 +1435,6 @@ export default class StructuredQuery extends AtomicQuery {
     }));
   }
 
-  canNest() {
-    const db = this.database();
-    return db && db.hasFeature("nested-queries");
-  }
-
   /**
    * The (wrapped) source query, if any
    */
