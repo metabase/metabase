@@ -15,6 +15,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -885,6 +886,33 @@
      (serdes.hash/identity-hash (Collection parent-id))
      "ROOT")))
 
+(defn- serialize-collection
+  "The base serdes-serialize-one removes primary keys, but the :location also uses database IDs.
+  This drops :location and adds a portable :parent_id with the parent's entity ID."
+  [coll]
+  (let [parent       (some-> coll
+                             (hydrate :parent_id)
+                             :parent_id
+                             Collection)
+        parent-id    (when parent
+                       (or (:entity_id parent) (serdes.hash/identity-hash parent)))
+        owner-email  (when (:personal_owner_id coll)
+                       (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
+    (-> coll
+      (dissoc :location)
+      (assoc :parent_id parent-id :personal_owner_id owner-email))))
+
+(defn- deserialize-collection [{:keys [parent_id personal_owner_id] :as contents}]
+  (let [location   (if parent_id
+                     (let [{:keys [id location]} (serdes.utils/lookup-by-id Collection parent_id)]
+                       (str location id "/"))
+                     "/")
+        user-id    (when personal_owner_id
+                     (db/select-one-field :id 'User :email personal_owner_id))]
+    (-> contents
+        (dissoc :parent_id)
+        (assoc :location location :personal_owner_id user-id))))
+
 (u/strict-extend (class Collection)
   models/IModel
   (merge models/IModelDefaults
@@ -903,8 +931,27 @@
           :perms-objects-set perms-objects-set})
 
   serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
+  {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])}
 
+  serdes.utils/ISerializable
+  (merge serdes.utils/ISerializableDefaults
+         {:serialize-query
+          (fn [_ user-or-nil]
+            (let [unowned (db/select-reducible Collection :personal_owner_id nil :archived false)]
+              (if user-or-nil
+                (eduction cat [unowned
+                               (db/select-reducible Collection
+                                                    :personal_owner_id user-or-nil :archived false)])
+                unowned)))
+
+          :serialize-one    (serdes.utils/serialize-one-plus serialize-collection)
+          :deserialize-file (serdes.utils/deserialize-file-plus deserialize-collection)}))
+
+(defmethod serdes.utils/serdes-dependencies "Collection"
+  [{:keys [parent_id]}]
+  (if parent_id
+    [parent_id]
+    []))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

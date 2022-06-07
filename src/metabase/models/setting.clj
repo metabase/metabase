@@ -82,6 +82,7 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.models.serialization.hash :as serdes.hash]
+            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -132,6 +133,8 @@
   Primarily used in test to disable retired setting check."
   false)
 
+(declare admin-writable-site-wide-settings get-value-of-type set-value-of-type!)
+
 (models/defmodel Setting
   "The model that underlies [[defsetting]]."
   :setting)
@@ -143,9 +146,22 @@
           :primary-key (constantly :key)})
 
   serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:key])})
+  {:identity-hash-fields (constantly [:key])}
 
-(declare get-value-of-type)
+  serdes.utils/ISerializable
+  (merge serdes.utils/ISerializableDefaults
+         {:serialize-all (fn [_ _]
+                           [["settings.yaml"
+                             {:serdes_type "Setting"
+                              :settings
+                              (into {} (for [{:keys [key value]} (admin-writable-site-wide-settings
+                                                                   :getter (partial get-value-of-type :string))]
+                                         [key value]))}]])
+          :deserialize-file (fn [_ {:keys [settings]} _]
+                              (doseq [[k v] settings
+                                      :when v]
+                                (prn "setting" k)
+                                (set-value-of-type! :string k v)))}))
 
 (def ^:private Type
   (s/pred (fn [a-type]
