@@ -18,6 +18,7 @@ import {
   ParametersWidgetContainer,
 } from "./Dashboard.styled";
 import DashboardGrid from "../DashboardGrid";
+import EditModeParametersList from "metabase/parameters/components/EditModeParametersList";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList/SyncedParametersList";
 import DashboardEmptyState from "./DashboardEmptyState/DashboardEmptyState";
 import { updateParametersWidgetStickiness } from "./stickyParameters";
@@ -230,17 +231,20 @@ class Dashboard extends Component {
     const shouldRenderAsNightMode = isNightMode && isFullscreen;
     const dashboardHasCards = dashboard => dashboard.ordered_cards.length > 0;
 
-    const parametersWidget = (
-      <SyncedParametersList
-        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+    const parametersWidget = isEditing ? (
+      <EditModeParametersList
+        parameters={parameters}
         editingParameter={editingParameter}
-        dashboard={dashboard}
-        isFullscreen={isFullscreen}
-        isNightMode={shouldRenderAsNightMode}
-        isEditing={isEditing}
         setParameterValue={setParameterValue}
         setParameterIndex={setParameterIndex}
         setEditingParameter={setEditingParameter}
+      />
+    ) : (
+      <SyncedParametersList
+        parameters={getValuePopulatedParameters(parameters, parameterValues)}
+        dashboard={dashboard}
+        isFullscreen={isFullscreen}
+        isNightMode={shouldRenderAsNightMode}
       />
     );
 
