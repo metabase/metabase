@@ -7,12 +7,35 @@
    [grasp.api :as g]
    [metabuild-common.core :as u])
   (:import [org.fedorahosted.tennera.jgettext
-            Catalog HeaderFields HeaderUtil HeaderFields Message PoWriter]))
+            Catalog HeaderFields HeaderFields Message PoWriter]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private roots (into [] (map (partial str u/project-root-directory))
-                           ["/src" "/shared/src" "/enterprise/backend/src"]))
+                           ["/src" "/shared/src" "/enterprise/backend/src"
+                            "/modules/drivers/bigquery-cloud-sdk/src"
+                            "/modules/drivers/druid/src"
+                            "/modules/drivers/google/src"
+                            "/modules/drivers/googleanalytics/src"
+                            "/modules/drivers/mongo/src"
+                            "/modules/drivers/oracle/src"
+                            "/modules/drivers/presto/src"
+                            "/modules/drivers/presto-common/src"
+                            "/modules/drivers/presto-jdbc/src"
+                            "/modules/drivers/redshift/src"
+                            "/modules/drivers/snowflake/src"
+                            "/modules/drivers/sparksql/src"
+                            "/modules/drivers/sqlite/src"
+                            "/modules/drivers/sqlserver/src"
+                            "/modules/drivers/vertica/src"]))
+
+(def overrides
+  (into []
+        (map (fn [override]
+               (update override :file (partial str u/project-root-directory))))
+        ;; doesn't find the usage in fingerprinters, which is a macro emitting a defmethod
+        [{:file "/src/metabase/sync/analyze/fingerprint/fingerprinters.clj"
+          :message "Error generating fingerprint for {0}"}]))
 
 (defn- strip-roots
   [path]
@@ -49,6 +72,7 @@
   "Want all filenames collapsed into a list for each form"
   [results]
   (->> results
+       (concat overrides)
        (sort-by :file)
        (group-by :message)
        (sort-by (comp :file first val))
