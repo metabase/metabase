@@ -13,7 +13,7 @@
   (let [select-hsql     (-> raw-hsql (assoc :select [[:%count.* :row-count]]))
         row-count       (:row_count (first (jdbc/query conn (hformat/format select-hsql))) 0)]
     (when-not (= row-count 1)
-      (throw (ex-info (i18n/tru "Sorry, this would affect {0} rows, but you can only act on 1" row-count)
+      (throw (ex-info (tru "Sorry, this would affect {0} rows, but you can only act on 1" row-count)
                       {:query       query
                        :sql         select-hsql
                        :status-code 400})))))
