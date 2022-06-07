@@ -1,3 +1,8 @@
+---
+title: "About the information Metabase collects"
+description: "Metabase uses Google Analytics and Snowplow to collect anonymous usage information from the installed servers that enable this feature."
+---
+
 # About the Information we collect:
 
 Metabase uses Google Analytics and Snowplow to collect anonymous usage information from the installed servers that enable this feature. Below is a representative list of the events we have instrumented, as well as the information we collect about the user performing the action and the instance being used.
