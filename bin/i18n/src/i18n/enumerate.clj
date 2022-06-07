@@ -43,13 +43,19 @@
                (re-pattern (str/join "|" (map #(str "file:" % "/") roots)))
                ""))
 
+(def translation-vars
+  "Vars that are looked for for translations strings"
+  #{'metabase.util.i18n/trs
+    'metabase.util.i18n/tru
+    'metabase.util.i18n/deferred-trs
+    'metabase.util.i18n/deferred-tru
+    'metabase.shared.util.i18n/tru})
+
 (s/def ::translate (s/and
                      (complement vector?)
                      (s/cat :translate-symbol (fn [x]
-                                               (and (symbol? x)
-                                                    (#{"trs" "deferred-trs"
-                                                       "tru" "deferred-tru"}
-                                                      (name x))))
+                                                (and (symbol? x)
+                                                     (translation-vars (g/resolve-symbol x))))
                             :args (s/+ any?))))
 
 (defn- form->string-for-translation
