@@ -927,9 +927,8 @@ const CustomLinkText = ({
 
 const ValuesYouCanReference = withUserAttributes(
   ({ dashcard, parameters, userAttributes }) => {
-    const columns = dashcard.card.result_metadata
-      .filter(isMappableColumn)
-      .map(c => c.name);
+    const columnMetadata = dashcard.card.result_metadata || [];
+    const columns = columnMetadata?.filter(isMappableColumn).map(c => c.name);
     const parameterNames = parameters.map(p => p.name);
     const sections = [
       {

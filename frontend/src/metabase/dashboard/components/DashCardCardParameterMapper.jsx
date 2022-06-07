@@ -67,7 +67,6 @@ function DashCardCardParameterMapper({
   dashcard,
   editingParameter,
   target,
-  mappingsByParameter,
   mappingOptions,
   metadata,
   setParameterMapping,

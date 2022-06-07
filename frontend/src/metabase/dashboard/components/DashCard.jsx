@@ -175,12 +175,15 @@ export default class DashCard extends Component {
       parameterValues,
     );
 
+    const isStandardCRUDActionsRow = mainCard.display === "actions";
+    const isActionButton = mainCard.display === "action-button";
+
     const hideBackground =
       !isEditing &&
       (mainCard.visualization_settings["dashcard.background"] === false ||
         mainCard.display === "list" ||
-        mainCard.display === "actions" ||
-        mainCard.display === "action-button");
+        isStandardCRUDActionsRow ||
+        isActionButton);
 
     const isEditingDashboardLayout =
       isEditing && clickBehaviorSidebarDashcard == null && !isEditingParameter;
@@ -268,8 +271,7 @@ export default class DashCard extends Component {
           replacementContent={
             (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
             isVirtualDashCard(dashcard) &&
-            dashcard.visualization_settings.virtual_card.display !==
-              "action-button" ? (
+            isActionButton ? (
               <div className="flex full-height align-center justify-center">
                 <h4 className="text-medium">
                   {dashcard.visualization_settings.virtual_card.display ===
@@ -278,7 +280,7 @@ export default class DashCard extends Component {
                     : t`Standard actions`}
                 </h4>
               </div>
-            ) : isEditingParameter ? (
+            ) : isEditingParameter && !isActionButton ? (
               <DashCardParameterMapper dashcard={dashcard} />
             ) : clickBehaviorSidebarDashcard != null ? (
               <ClickBehaviorSidebarOverlay
