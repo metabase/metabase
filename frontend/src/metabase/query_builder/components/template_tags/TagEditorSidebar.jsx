@@ -14,6 +14,10 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+} from "metabase/parameters/utils/cards";
 
 export default class TagEditorSidebar extends React.Component {
   state = {
@@ -41,6 +45,7 @@ export default class TagEditorSidebar extends React.Component {
 
   render() {
     const {
+      card,
       databases,
       databaseFields,
       sampleDatabaseId,
@@ -50,6 +55,12 @@ export default class TagEditorSidebar extends React.Component {
       setParameterValue,
       onClose,
     } = this.props;
+
+    // Sync card's parameters with the template tags;
+    card.parameters = getTemplateTagParameters(
+      getTemplateTagsForParameters(card),
+    );
+
     // The tag editor sidebar excludes snippets since they have a separate sidebar.
     const tags = query.templateTagsWithoutSnippets();
     const database = query.database();
