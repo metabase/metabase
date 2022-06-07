@@ -32,7 +32,12 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   & > .icon.icon-share {
     transform: translateY(-2px);
   }
-  ${hover};
+
+  &:hover {
+    color: ${props => props.hover?.color};
+    background-color: ${props => props.hover?.backgroundColor};
+  }
+
   transition: all 300ms ease-in-out;
 
   @media (prefers-reduced-motion) {
