@@ -34,8 +34,9 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   }
 
   &:hover {
-    color: ${props => props.hover?.color};
-    background-color: ${props => props.hover?.backgroundColor};
+    color: ${({ hover }) => hover?.color ?? color("brand")};
+    background-color: ${({ hover }) =>
+      hover?.backgroundColor ?? color("bg-medium")};
   }
 
   transition: all 300ms ease-in-out;
@@ -44,13 +45,6 @@ export const IconWrapper = styled.div<IconWrapperProps>`
     transition: none;
   }
 `;
-
-IconWrapper.defaultProps = {
-  hover: {
-    backgroundColor: c("bg-medium"),
-    color: c("brand"),
-  },
-};
 
 const stringOrNumberPropType = PropTypes.oneOfType([
   PropTypes.number,

@@ -77,6 +77,10 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
 };
 
 export const color = (color: string, palette = colors) => {
+  if (color === "brand" && palette[color] === "#509EE3") {
+    console.log("error");
+  }
+
   if (color in palette) {
     return palette[color];
   }
