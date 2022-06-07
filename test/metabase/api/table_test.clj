@@ -72,7 +72,7 @@
    (field-defaults)
    (select-keys
     field
-    [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at])))
+    [:created_at :fingerprint :fingerprint_version :fk_target_field_id :id :last_analyzed :updated_at :database_required])))
 
 (defn- fk-field-details [field]
   (-> (field-details field)
@@ -153,7 +153,8 @@
                                      :base_type        "type/BigInteger"
                                      :effective_type   "type/BigInteger"
                                      :visibility_type  "normal"
-                                     :has_field_values "none")
+                                     :has_field_values "none"
+                                     :database_required false)
                               (assoc (field-details (Field (mt/id :users :name)))
                                      :semantic_type             "type/Name"
                                      :table_id                 (mt/id :users)
@@ -167,7 +168,8 @@
                                      :default_dimension_option nil
                                      :has_field_values         "list"
                                      :position                 1
-                                     :database_position        1)
+                                     :database_position        1
+                                     :database_required        true)
                               (assoc (field-details (Field (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -180,7 +182,8 @@
                                      :default_dimension_option (var-get #'api.table/date-default-index)
                                      :has_field_values         "none"
                                      :position                 2
-                                     :database_position        2)
+                                     :database_position        2
+                                     :database_required        true)
                               (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
@@ -192,7 +195,8 @@
                                      :visibility_type  "sensitive"
                                      :has_field_values "list"
                                      :position          3
-                                     :database_position 3)]
+                                     :database_position 3
+                                     :database_required true)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
           "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
@@ -215,7 +219,8 @@
                                      :database_type    "BIGINT"
                                      :base_type        "type/BigInteger"
                                      :effective_type   "type/BigInteger"
-                                     :has_field_values "none")
+                                     :has_field_values "none"
+                                     :database_required false)
                               (assoc (field-details (Field (mt/id :users :name)))
                                      :table_id         (mt/id :users)
                                      :semantic_type     "type/Name"
@@ -226,7 +231,8 @@
                                      :effective_type   "type/Text"
                                      :has_field_values "list"
                                      :position          1
-                                     :database_position 1)
+                                     :database_position 1
+                                     :database_required true)
                               (assoc (field-details (Field (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -238,7 +244,8 @@
                                      :default_dimension_option (var-get #'api.table/date-default-index)
                                      :has_field_values         "none"
                                      :position                 2
-                                     :database_position        2)]
+                                     :database_position        2
+                                     :database_required        true)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
           "Make sure that getting the User table does *not* include password info"))))
@@ -435,7 +442,8 @@
                               :database_type    "BIGINT"
                               :base_type        "type/BigInteger"
                               :effective_type   "type/BigInteger"
-                              :has_field_values "none"})
+                              :has_field_values "none"
+                              :database_required false})
                             (merge
                              (field-details (Field (mt/id :categories :name)))
                              {:table_id                 (mt/id :categories)
@@ -449,7 +457,8 @@
                               :default_dimension_option nil
                               :has_field_values         "list"
                               :database_position        1
-                              :position                 1})]
+                              :position                 1
+                              :database_required        true})]
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 
