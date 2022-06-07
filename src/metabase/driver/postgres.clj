@@ -267,8 +267,6 @@
       (condp #(isa? %2 %1) base-type
         :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
                              (UUID/fromString  value))
-        :type/DateTime     (u.date/parse value)
-        :type/Date         (u.date/parse value)
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
