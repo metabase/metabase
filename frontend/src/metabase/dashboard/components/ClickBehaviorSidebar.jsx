@@ -589,29 +589,47 @@ const ActionOption = ({ name, description, isSelected, onClick }) => {
   );
 };
 
-function ActionOptions({ clickBehavior, updateSettings }) {
+function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
   return (
     <SidebarContent>
       <Heading className="text-medium">{t`Pick an action`}</Heading>
       <Actions.ListLoader>
-        {({ actions }) => (
-          <>
-            {actions.map(action => (
-              <ActionOption
-                key={action.id}
-                name={action.card.name}
-                description={action.card.description}
-                isSelected={clickBehavior.action === action.id}
-                onClick={() =>
-                  updateSettings({
-                    type: clickBehavior.type,
-                    action: action.id,
-                  })
-                }
-              />
-            ))}
-          </>
-        )}
+        {({ actions }) => {
+          const selectedAction = actions.find(
+            action => action.id === clickBehavior.action,
+          );
+          return (
+            <>
+              {actions.map(action => (
+                <ActionOption
+                  key={action.id}
+                  name={action.card.name}
+                  description={action.card.description}
+                  isSelected={clickBehavior.action === action.id}
+                  onClick={() =>
+                    updateSettings({
+                      type: clickBehavior.type,
+                      action: action.id,
+                    })
+                  }
+                />
+              ))}
+              {selectedAction && (
+                <ClickMappings
+                  object={{
+                    ...selectedAction.card,
+                    dataset_query: JSON.parse(
+                      selectedAction.card.dataset_query,
+                    ),
+                  }}
+                  dashcard={dashcard}
+                  clickBehavior={clickBehavior}
+                  updateSettings={updateSettings}
+                />
+              )}
+            </>
+          );
+        }}
       </Actions.ListLoader>
     </SidebarContent>
   );
