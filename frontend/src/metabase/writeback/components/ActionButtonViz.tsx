@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import cx from "classnames";
 
@@ -58,7 +58,12 @@ interface ActionButtonVizProps extends VisualizationProps {
   dashboard: DashboardWithCards;
 }
 
-function ActionButtonViz({ isSettings, settings }: ActionButtonVizProps) {
+function ActionButtonViz({
+  isSettings,
+  settings,
+  getExtraDataForClick,
+  onVisualizationClick,
+}: ActionButtonVizProps) {
   const label = settings["button.label"];
   const variant = settings["button.variant"];
 
@@ -67,11 +72,35 @@ function ActionButtonViz({ isSettings, settings }: ActionButtonVizProps) {
     variantProps[variant] = true;
   }
 
+  const clicked = useMemo(
+    () => ({
+      settings,
+    }),
+    [settings],
+  );
+
+  const extraData = useMemo(() => getExtraDataForClick?.(clicked), [
+    clicked,
+    getExtraDataForClick,
+  ]);
+
+  const onClick = useCallback(
+    (e: React.MouseEvent) => {
+      onVisualizationClick({
+        ...clicked,
+        extraData,
+        element: e.currentTarget as HTMLElement,
+      });
+    },
+    [clicked, extraData, onVisualizationClick],
+  );
+
   return (
     <Button
       className={cx({
         "full-height": !isSettings,
       })}
+      onClick={onClick}
       {...variantProps}
     >
       {label}
