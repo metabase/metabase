@@ -94,14 +94,21 @@ export default class SaveQuestionModal extends Component {
         card.collection_id === undefined
           ? initialCollectionId
           : card.collection_id,
-      saveType: originalCard && !originalCard.dataset ? "overwrite" : "create",
+      saveType:
+        originalCard && !originalCard.dataset && originalCard.can_write
+          ? "overwrite"
+          : "create",
     };
 
     const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 
-    const showSaveType = !card.id && !!originalCard && !originalCard.dataset;
+    const showSaveType =
+      !card.id &&
+      !!originalCard &&
+      !originalCard.dataset &&
+      originalCard.can_write;
 
     return (
       <ModalContent
@@ -133,6 +140,7 @@ export default class SaveQuestionModal extends Component {
                 originalCard={originalCard}
               />
               <CSSTransitionGroup
+                component="div"
                 transitionName="saveQuestionModalFields"
                 transitionEnterTimeout={500}
                 transitionLeaveTimeout={500}

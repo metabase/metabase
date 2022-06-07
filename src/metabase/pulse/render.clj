@@ -1,7 +1,7 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.models.dashboard-card :as dc-model]
+            [metabase.models.dashboard-card :as dashboard-card]
             [metabase.pulse.render.body :as body]
             [metabase.pulse.render.common :as common]
             [metabase.pulse.render.image-bundle :as image-bundle]
@@ -48,9 +48,10 @@
                                  :src   (:image-src image-bundle)}])]]]]})))
 
 (s/defn ^:private make-description-if-needed :- (s/maybe common/RenderedPulseCard)
-  [dashcard]
+  [dashcard card]
   (when *include-description*
-    (when-let [description (-> dashcard :visualization_settings :card.description)]
+    (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
+                               (:description card))]
       {:attachments {}
        :content [:div {:style (style/style {:color style/color-text-medium
                                             :font-size :12px
@@ -102,7 +103,7 @@
         (chart-type :smartscalar "result has two columns and insights")
 
         (and (some? maybe-dashcard)
-             (> (count (dc-model/dashcard->multi-cards maybe-dashcard)) 0)
+             (> (count (dashboard-card/dashcard->multi-cards maybe-dashcard)) 0)
              (not (#{:combo} display-type)))
         (chart-type :multiple "result has multiple card semantics, a multiple chart")
 
@@ -162,7 +163,7 @@
   scalar results where text is preferable to an image of a div of a single result."
   [render-type timezone-id :- (s/maybe s/Str) card dashcard results]
   (let [{title :content, title-attachments :attachments} (make-title-if-needed render-type card dashcard)
-        {description :content}                           (make-description-if-needed dashcard)
+        {description :content}                           (make-description-if-needed dashcard card)
         {pulse-body       :content
          body-attachments :attachments
          text             :render/text}                  (render-pulse-card-body render-type timezone-id card dashcard results)]

@@ -6,7 +6,7 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.revision :refer [push-revision! Revision revisions]]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -16,7 +16,7 @@
 
 (def ^:private rasta-revision-info
   (delay
-    {:id (test-users/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
+    {:id (test.users/user->id :rasta), :common_name "Rasta Toucan", :first_name "Rasta", :last_name "Toucan"}))
 
 (defn- get-revisions [entity object-id]
   (for [revision (mt/user-http-request :rasta :get "revision" :entity entity, :id object-id)]
@@ -27,7 +27,7 @@
     :object       card
     :entity       Card
     :id           (:id card)
-    :user-id      (test-users/user->id user)
+    :user-id      (test.users/user->id user)
     :is-creation? is-creation?))
 
 (defn- create-dashboard-revision! [dash is-creation? user]
@@ -35,7 +35,7 @@
     :object       (Dashboard (:id dash))
     :entity       Dashboard
     :id           (:id dash)
-    :user-id      (test-users/user->id user)
+    :user-id      (test.users/user->id user)
     :is-creation? is-creation?))
 
 ;;; # GET /revision
@@ -95,7 +95,7 @@
                (db/insert! Revision
                  :model        (:name Card)
                  :model_id     id
-                 :user_id      (test-users/user->id :rasta)
+                 :user_id      (test.users/user->id :rasta)
                  :object       (serialize-instance Card (:id card) card)
                  :message      "because i wanted to"
                  :is_creation  false

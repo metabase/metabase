@@ -21,7 +21,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { color, getColorsForValues } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getColorsForValues } from "metabase/lib/colors/charts";
 
 import cx from "classnames";
 
@@ -137,10 +138,11 @@ export default class PieChart extends Component {
           ? getColorsForValues(settings["pie._dimensionValues"])
           : [],
       getProps: (series, settings) => ({
-        seriesTitles: settings["pie._dimensionValues"] || [],
+        seriesValues: settings["pie._dimensionValues"] || [],
+        seriesTitles: settings["pie._dimensionTitles"] || [],
       }),
       getDisabled: (series, settings) => !settings["pie._dimensionValues"],
-      readDependencies: ["pie._dimensionValues"],
+      readDependencies: ["pie._dimensionValues", "pie._dimensionTitles"],
     },
     // this setting recomputes color assignment using pie.colors as the existing
     // assignments in case the user previous modified pie.colors and a new value
@@ -186,10 +188,34 @@ export default class PieChart extends Component {
         settings,
       ) => {
         const dimensionIndex = settings["pie._dimensionIndex"];
-        return dimensionIndex >= 0
-          ? // cast to string because getColorsForValues expects strings
-            rows.map(row => String(row[dimensionIndex]))
-          : null;
+        if (dimensionIndex == null || dimensionIndex < 0) {
+          return null;
+        }
+
+        return rows.map(row => String(row[dimensionIndex]));
+      },
+      readDependencies: ["pie._dimensionIndex"],
+    },
+    "pie._dimensionTitles": {
+      getValue: (
+        [
+          {
+            data: { rows, cols },
+          },
+        ],
+        settings,
+      ) => {
+        const dimensionIndex = settings["pie._dimensionIndex"];
+        if (dimensionIndex == null || dimensionIndex < 0) {
+          return null;
+        }
+
+        return rows.map(row =>
+          formatValue(
+            row[dimensionIndex],
+            settings.column(cols[dimensionIndex]),
+          ),
+        );
       },
       readDependencies: ["pie._dimensionIndex"],
     },
@@ -442,7 +468,7 @@ export default class PieChart extends Component {
               viewBox="0 0 100 100"
               style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
             >
-              <g ref={this.chartGroup} transform={`translate(50,50)`}>
+              <g ref={this.chartGroup} transform="translate(50,50)">
                 {pie(slices).map((slice, index) => (
                   <path
                     data-testid="slice"

@@ -74,8 +74,8 @@
     "http:/"                                                                                 false))
 
 (deftest ^:parallel state?-test
-  (mt/are+ [s expected] (= expected
-                        (u/state? s))
+  (mt/are+ [x expected] (= expected
+                           (u/state? x))
     "louisiana"      true
     "north carolina" true
     "WASHINGTON"     true
@@ -102,12 +102,6 @@
   (testing "we shouldn't ignore non-nil values -- `u/qualified-name` should throw an Exception if `name` would"
     (is (thrown? ClassCastException
                  (u/qualified-name false)))))
-
-(deftest ^:parallel rpartial-test
-  (is (= 3
-         ((u/rpartial - 5) 8)))
-  (is (= -7
-         ((u/rpartial - 5 10) 8))))
 
 (deftest ^:parallel key-by-test
   (is (= {1 {:id 1, :name "Rasta"}
@@ -235,7 +229,7 @@
 
 (deftest ^:parallel one-or-many-test
   (mt/are+ [input expected] (= expected
-                            (u/one-or-many input))
+                               (u/one-or-many input))
     nil   nil
     [nil] [nil]
     42    [42]
@@ -322,7 +316,7 @@
     (let [limit 5
           rf    (u/sorted-take limit compare)]
       (reduce (fn [q x]
-                (let [q' (rf q x)]
+                (let [_q' (rf q x)]
                   ;; a bit internal but this is really what we're after: bounded size while we look for the biggest
                   ;; elements
                   (is (<= (count q) limit))
@@ -364,3 +358,13 @@
     true  "cam@metabase.com"          "metabase.com"
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
+
+(deftest ^:parallel round-to-precision-test
+  (are [exp figs n]
+       (is (= exp (u/round-to-precision figs n)))
+       1.0     1 1.234
+       1.2     2 1.234
+       1.3     2 1.278
+       1.3     2 1.251
+       12300.0 3 12345.67
+       0.00321 3 0.003209817))

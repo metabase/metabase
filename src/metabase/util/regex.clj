@@ -28,8 +28,8 @@
   x)
 
 (defmethod rx-dispatch 'opt
-  [[_ expr]]
-  `(re-optional (rx* ~expr)))
+  [[_ & args]]
+  `(re-optional (rx* (~'and ~@args))))
 
 (defmethod rx-dispatch 'or
   [[_ & args]]

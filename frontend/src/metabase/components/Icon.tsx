@@ -169,4 +169,6 @@ const Icon = forwardRef(function Icon(
   );
 });
 
-export default Icon;
+export default Object.assign(Icon, {
+  Root: StyledIcon,
+});

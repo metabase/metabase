@@ -3,7 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.config :as config]
             [metabase.models.database :refer [Database]]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [ring.util.codec :as codec]
@@ -48,7 +48,7 @@
   (try
     (execute-no-auto-retry request)
     (catch Throwable e
-      (when-not (error-type/client-error? (:type (u/all-ex-data e)))
+      (when-not (qp.error-type/client-error? (:type (u/all-ex-data e)))
         (execute-no-auto-retry request)))))
 
 (defn- create-application-name

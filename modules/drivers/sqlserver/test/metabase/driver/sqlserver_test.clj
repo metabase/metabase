@@ -15,7 +15,7 @@
             [metabase.models :refer [Database]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]))
 
@@ -338,7 +338,7 @@
                          mt/native-query
                          ;; add default query constraints to ensure the default limit of 2000 is overridden by the
                          ;; `:rowcount-override` connection property we defined in the details above
-                         (assoc :constraints constraints/default-query-constraints)
+                         (assoc :constraints (qp.constraints/default-query-constraints))
                          qp/process-query
                          mt/rows
                          ffirst))))))))

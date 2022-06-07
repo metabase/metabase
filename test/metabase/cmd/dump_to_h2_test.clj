@@ -9,14 +9,14 @@
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.cmd.test-util :as cmd.test-util]
             [metabase.db.connection :as mdb.connection]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.db.test-util :as mdb.test-util]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Setting]]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
-            [metabase.util.encryption-test :as eu]
+            [metabase.util.encryption-test :as encryption-test]
             [metabase.util.i18n.impl :as i18n.impl]
             [toucan.db :as db]))
 
@@ -57,7 +57,7 @@
                {:subprotocol "h2"
                 :subname     (format "mem:%s;DB_CLOSE_DELAY=10" db-name)
                 :classname   "org.h2.Driver"}
-               (db.spec/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
+               (mdb.spec/spec db-type (tx/dbdef->connection-details db-type :db {:database-name db-name})))]
     (mdb.test-util/->ClojureJDBCSpecDataSource spec)))
 
 (deftest dump-to-h2-dump-plaintext-test
@@ -76,7 +76,7 @@
               (when-not (= driver/*driver* :h2)
                 (tx/create-db! driver/*driver* {:database-name db-name}))
               (load-from-h2/load-from-h2! h2-fixture-db-file)
-              (eu/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
+              (encryption-test/with-secret-key "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A="
                 (db/insert! Setting {:key "my-site-admin", :value "baz"})
                 (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (dump-to-h2/dump-to-h2! h2-file-plaintext {:dump-plaintext? true})

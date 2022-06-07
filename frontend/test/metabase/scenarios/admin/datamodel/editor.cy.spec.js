@@ -148,7 +148,7 @@ describe.skip("scenarios > admin > datamodel > editor", () => {
     cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
 
     visitAlias("@ORDERS_URL");
-    cy.contains("Column order:").click();
+    cy.icon("sort_arrows").click();
 
     // switch to alphabetical ordering
     popover()

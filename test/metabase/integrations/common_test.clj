@@ -2,8 +2,8 @@
   (:require [clojure.test :refer :all]
             [clojure.tools.logging :as log]
             [metabase.integrations.common :as integrations.common]
-            [metabase.models.permissions-group :as group :refer [PermissionsGroup]]
-            [metabase.models.permissions-group-membership :as pgm :refer [PermissionsGroupMembership]]
+            [metabase.models.permissions-group :as perms-group :refer [PermissionsGroup]]
+            [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
             [metabase.test :as mt :refer [with-user-in-groups]]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -86,36 +86,36 @@
   (mt/with-test-user :crowberto
     (testing "Admin should be synced just like a other groups group."
       (testing "remove admin role if users are not mapped to it"
-        (with-user-in-groups [user [(group/admin)]]
-          (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
+        (with-user-in-groups [user [(perms-group/admin)]]
+          (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
           (is (= #{"All Users"}
                  (group-memberships user)))))
 
       (testing "but it's ignored if admin is not in mappings"
-        (with-user-in-groups [user [(group/admin)]]
+        (with-user-in-groups [user [(perms-group/admin)]]
           (integrations.common/sync-group-memberships! user #{} #{})
           (is (= #{"All Users" "Administrators"}
                  (group-memberships user)))))
 
       (testing "add admin role if the users are mapped to it"
         (with-user-in-groups [user []]
-          (integrations.common/sync-group-memberships! user #{(group/admin)} #{(group/admin)})
+          (integrations.common/sync-group-memberships! user #{(perms-group/admin)} #{(perms-group/admin)})
           (is (= #{"All Users" "Administrators"}
                  (group-memberships user)))))))
 
   (testing "Make sure the delete last admin exception is catched"
     (mt/with-log-level :warn
-      (with-user-in-groups [user [(group/admin)]]
+      (with-user-in-groups [user [(perms-group/admin)]]
         (let [log-warn-count (atom #{})]
           (with-redefs [db/delete! (fn [model & _args]
                                      (when (= model PermissionsGroupMembership)
-                                       (throw (ex-info (str pgm/fail-to-remove-last-admin-msg)
+                                       (throw (ex-info (str perms-group-membership/fail-to-remove-last-admin-msg)
                                                        {:status-code 400}))))
                         log/log*   (fn [_logger level _throwable msg]
                                      (when (:= level :warn)
                                        (swap! log-warn-count conj msg)))]
             ;; make sure sync run without throwing exception
-            (integrations.common/sync-group-memberships! user #{} #{(group/admin)})
+            (integrations.common/sync-group-memberships! user #{} #{(perms-group/admin)})
             ;; make sure we log a msg for that
             (is (@log-warn-count
                  (str "Attempted to remove the last admin during group sync! "

@@ -312,7 +312,7 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Data Model").click();
       cy.findByText("Orders").click();
-      cy.get(".TableEditor-table-name")
+      cy.findByTestId("table-name")
         .click()
         .type("abc", { delay: 100 })
         .clear()

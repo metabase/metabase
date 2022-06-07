@@ -1,10 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import ColorPicker from "metabase/components/ColorPicker";
+import { getAccentColors } from "metabase/lib/colors/groups";
+import ColorSelector from "metabase/core/components/ColorSelector";
 import { SegmentedControl } from "metabase/components/SegmentedControl";
 import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 // various props injected by chartSettingNestedSettings HOC
 export default class ChartNestedSettingSeries extends React.Component {
@@ -38,20 +40,20 @@ export default class ChartNestedSettingSeries extends React.Component {
                 className="px4 pt2 mt2 border-top align-self-stretch"
               >
                 <div className="flex align-center">
-                  <ColorPicker
+                  <ColorSelector
                     value={settings.color}
-                    triggerSize={21}
+                    colors={getAccentColors()}
                     onChange={value =>
                       onChangeObjectSettings(single, { color: value })
                     }
                   />
-                  <input
+                  <InputBlurChange
                     className="input flex-full ml1 align-self-stretch"
                     // set vertical padding to 0 and use align-self-stretch to match siblings
                     style={{ paddingTop: 0, paddingBottom: 0 }}
                     size={1}
                     value={settings.title}
-                    onChange={e =>
+                    onBlurChange={e =>
                       onChangeObjectSettings(single, { title: e.target.value })
                     }
                   />

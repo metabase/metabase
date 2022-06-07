@@ -6,9 +6,9 @@
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
-            [metabase.api.dashboard :as dashboard-api]
-            [metabase.api.dataset :as dataset-api]
-            [metabase.api.field :as field-api]
+            [metabase.api.dashboard :as api.dashboard]
+            [metabase.api.dataset :as api.dataset]
+            [metabase.api.field :as api.field]
             [metabase.async.util :as async.u]
             [metabase.db.util :as mdb.u]
             [metabase.mbql.util :as mbql.u]
@@ -21,7 +21,7 @@
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.util :as u]
@@ -49,11 +49,10 @@
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
-                              :archived false, conditions))
-        remove-card-non-public-columns
-        (hydrate :param_values :param_fields))))
+  (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
+                            :archived false, conditions))
+      remove-card-non-public-columns
+      (hydrate :param_fields)))
 
 (defn- card-with-uuid [uuid] (public-card :public_uuid uuid))
 
@@ -148,7 +147,7 @@
    credentials. Public sharing must be enabled."
   [uuid export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
-   export-format dataset-api/ExportFormat}
+   export-format api.dataset/ExportFormat}
   (run-query-for-card-with-public-uuid-async
    uuid
    export-format
@@ -165,18 +164,17 @@
   "Return a public Dashboard matching key-value `conditions`, removing all columns that should not be visible to the
    general public. Throws a 404 if the Dashboard doesn't exist."
   [& conditions]
-  (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
-        (hydrate [:ordered_cards :card :series] :param_values :param_fields)
-        dashboard-api/add-query-average-durations
-        (update :ordered_cards (fn [dashcards]
-                                 (for [dashcard dashcards]
-                                   (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
-                                                              :sizeY :parameter_mappings :visualization_settings])
-                                       (update :card remove-card-non-public-columns)
-                                       (update :series (fn [series]
-                                                         (for [series series]
-                                                           (remove-card-non-public-columns series)))))))))))
+  (-> (api/check-404 (apply db/select-one [Dashboard :name :description :id :parameters], :archived false, conditions))
+      (hydrate [:ordered_cards :card :series] :param_fields)
+      api.dashboard/add-query-average-durations
+      (update :ordered_cards (fn [dashcards]
+                               (for [dashcard dashcards]
+                                 (-> (select-keys dashcard [:id :card :card_id :dashboard_id :series :col :row :sizeX
+                                                            :sizeY :parameter_mappings :visualization_settings])
+                                     (update :card remove-card-non-public-columns)
+                                     (update :series (fn [series]
+                                                       (for [series series]
+                                                         (remove-card-non-public-columns series))))))))))
 
 (defn- dashboard-with-uuid [uuid] (public-dashboard :public_uuid uuid))
 
@@ -204,7 +202,7 @@
       :as   options}]
   (let [options (merge
                  {:context     :public-dashboard
-                  :constraints constraints/default-query-constraints}
+                  :constraints (qp.constraints/default-query-constraints)}
                  options
                  {:parameters    (cond-> parameters
                                    (string? parameters) (json/parse-string keyword))
@@ -307,7 +305,7 @@
   "Return the FieldValues for a Field with `field-id` that is referenced by Card with `card-id`."
   [card-id field-id]
   (check-field-is-referenced-by-card field-id card-id)
-  (field-api/field->values (Field field-id)))
+  (api.field/field->values (Field field-id)))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a public Card."
@@ -321,7 +319,7 @@
   in Dashboard with `dashboard-id`."
   [dashboard-id field-id]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
-  (field-api/field->values (Field field-id)))
+  (api.field/field->values (Field field-id)))
 
 (api/defendpoint GET "/dashboard/:uuid/field/:field-id/values"
   "Fetch FieldValues for a Field that is referenced by a Card in a public Dashboard."
@@ -339,7 +337,7 @@
   [card-id field-id search-id value limit]
   (check-field-is-referenced-by-card field-id card-id)
   (check-search-field-is-allowed field-id search-id)
-  (field-api/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (Field field-id) (Field search-id) value limit))
 
 (defn search-dashboard-fields
   "Wrapper for `metabase.api.field/search-values` for use with public/embedded Dashboards. See that functions
@@ -347,7 +345,7 @@
   [dashboard-id field-id search-id value limit]
   (check-field-is-referenced-by-dashboard field-id dashboard-id)
   (check-search-field-is-allowed field-id search-id)
-  (field-api/search-values (Field field-id) (Field search-id) value limit))
+  (api.field/search-values (Field field-id) (Field search-id) value limit))
 
 (api/defendpoint GET "/card/:uuid/field/:field-id/search/:search-field-id"
   "Search for values of a Field that is referenced by a public Card."
@@ -374,7 +372,7 @@
   (let [field          (api/check-404 (Field field-id))
         remapped-field (api/check-404 (Field remapped-field-id))]
     (check-search-field-is-allowed field-id remapped-field-id)
-    (field-api/remapped-value field remapped-field (field-api/parse-query-param-value-for-field field value-str))))
+    (api.field/remapped-value field remapped-field (api.field/parse-query-param-value-for-field field value-str))))
 
 (defn card-field-remapped-values
   "Return the reampped Field values for a Field referenced by a *Card*. This explanation is almost useless, so see the
@@ -415,14 +413,14 @@
   [uuid param-key :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params))))
+      (api.dashboard/chain-filter dashboard param-key query-params))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
   [uuid param-key query :as {:keys [query-params]}]
   (let [dashboard (dashboard-with-uuid uuid)]
     (binding [api/*current-user-permissions-set* (atom #{"/"})]
-      (dashboard-api/chain-filter dashboard param-key query-params query))))
+      (api.dashboard/chain-filter dashboard param-key query-params query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 

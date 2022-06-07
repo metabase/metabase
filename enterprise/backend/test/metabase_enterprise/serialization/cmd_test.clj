@@ -5,11 +5,11 @@
             [metabase-enterprise.serialization.load :as load]
             [metabase.cmd :as cmd]
             [metabase.db :as mdb]
-            [metabase.db.connection :as mdb.conn]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.data-source :as mdb.data-source]
             [metabase.db.schema-migrations-test.impl :as schema-migrations-test.impl]
             [metabase.models :refer [Card Dashboard DashboardCard Database User]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -30,8 +30,8 @@
   `(schema-migrations-test.impl/with-temp-empty-app-db [conn# :h2]
      (schema-migrations-test.impl/run-migrations-in-range! conn# [0 "v99.00-000"]) ; this should catch all migrations)
      ;; since the actual group defs are not dynamic, we need with-redefs to change them here
-     (with-redefs [group/all-users (#'group/magic-group group/all-users-group-name)
-                   group/admin     (#'group/magic-group group/admin-group-name)]
+     (with-redefs [perms-group/all-users (#'perms-group/magic-group perms-group/all-users-group-name)
+                   perms-group/admin     (#'perms-group/magic-group perms-group/admin-group-name)]
        ~@body)))
 
 (defn- random-dump-dir []
@@ -69,6 +69,8 @@
           :dataset_query          "{}"
           :creator_id             (u/the-id user)
           :visualization_settings "{}"
+          :parameters             "[]"
+          :parameter_mappings     "[]"
           :created_at             :%now
           :updated_at             :%now)
         ;; serialize "everything" (which should just be the card and user), which should succeed if #16931 is fixed
@@ -98,7 +100,7 @@
     ;; DB should stay open as long as `conn` is held open.
     (with-open [_conn (.getConnection data-source)]
       (letfn [(do-with-app-db [thunk]
-                (binding [mdb.conn/*application-db* (mdb.conn/application-db :h2 data-source)]
+                (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 data-source)]
                   (testing (format "\nApp DB = %s" (pr-str connection-string))
                     (thunk))))]
         (do-with-app-db

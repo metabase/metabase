@@ -126,13 +126,11 @@ function getXAxisProps(props, datas, warn) {
 ///------------------------------------------------------------ DIMENSIONS & GROUPS ------------------------------------------------------------///
 
 function getDimensionsAndGroupsForScatterChart(datas) {
-  const dataset = crossfilter();
-  datas.map(data => dataset.add(data));
-
+  const dataset = crossfilter(datas);
   const dimension = dataset.dimension(row => row);
   const groups = datas.map(data => {
     const dim = crossfilter(data).dimension(row => row);
-    return [dim.group().reduceSum(d => d[2] || 1)];
+    return [dim.group().reduceSum(d => d[1] ?? 1)];
   });
 
   return { dimension, groups };
@@ -455,7 +453,7 @@ function doScatterChartStuff(chart, datas, index, { yExtent, yExtents }) {
     if (isBubble) {
       const BUBBLE_SCALE_FACTOR_MAX = 64;
       chart
-        .radiusValueAccessor(d => d.value)
+        .radiusValueAccessor(d => d.key[2])
         .r(
           d3.scale
             .sqrt()
@@ -934,6 +932,7 @@ export default function lineAreaBar(element, props) {
     xInterval: xAxisProps.xInterval,
     isStacked: isStacked(parent.settings, datas),
     isTimeseries: isTimeseries(parent.settings),
+    hasDrills: typeof props.onChangeCardAndRun === "function",
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
     onGoalHover,
     onHoverChange,

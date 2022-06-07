@@ -7,7 +7,7 @@
             [metabase.sync.analyze.classifiers.category :as classifiers.category]
             [metabase.sync.analyze.classifiers.name :as classifiers.name]
             [metabase.sync.analyze.classifiers.no-preview-display :as classifiers.no-preview-display]
-            [metabase.sync.analyze.classifiers.text-fingerprint :as classify-text-fingerprint]
+            [metabase.sync.analyze.classifiers.text-fingerprint :as classifiers.text-fingerprint]
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.concurrent :as sync.concurrent]
             [metabase.sync.interface :as i]
@@ -89,7 +89,7 @@
     (sync-survives-crash? classifiers.name/semantic-type-for-name-and-base-type)
     (sync-survives-crash? classifiers.category/infer-is-category-or-list)
     (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
-    (sync-survives-crash? classify-text-fingerprint/infer-semantic-type)))
+    (sync-survives-crash? classifiers.text-fingerprint/infer-semantic-type)))
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
@@ -97,7 +97,7 @@
 
 (defn- classified-semantic-type [values]
   (let [field (field/map->FieldInstance {:base_type :type/Text})]
-    (:semantic_type (classify-text-fingerprint/infer-semantic-type
+    (:semantic_type (classifiers.text-fingerprint/infer-semantic-type
                     field
                     (transduce identity (fingerprinters/fingerprinter field) values)))))
 

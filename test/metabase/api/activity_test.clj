@@ -2,15 +2,15 @@
   "Tests for /api/activity endpoints."
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.api.activity :as activity-api]
+            [metabase.api.activity :as api.activity]
             [metabase.models.activity :refer [Activity]]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.models.interface :as models]
+            [metabase.models.interface :as mi]
             [metabase.models.query-execution :refer [QueryExecution]]
             [metabase.models.table :refer [Table]]
             [metabase.models.view-log :refer [ViewLog]]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -96,7 +96,7 @@
                           (case model
                             "card" {:executor_id user :card_id model-id
                                     :context :question
-                                    :hash (qputil/query-hash {})
+                                    :hash (qp.util/query-hash {})
                                     :running_time 1
                                     :result_rows 1
                                     :native false
@@ -234,12 +234,12 @@
   (is (= {"dashboard" #{41 43 42}
           "card"      #{113 108 109 111 112 114}
           "user"      #{90}}
-         (#'activity-api/activities->referenced-objects fake-activities))))
+         (#'api.activity/activities->referenced-objects fake-activities))))
 
 (deftest referenced-objects->existing-objects-test
   (mt/with-temp Dashboard [{dashboard-id :id}]
     (is (= {"dashboard" #{dashboard-id}}
-           (#'activity-api/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
+           (#'api.activity/referenced-objects->existing-objects {"dashboard" #{dashboard-id 0}
                                                                  "card"      #{0}})))))
 (deftest add-model-exists-info-test
   (mt/with-temp* [Dashboard [{dashboard-id :id}]
@@ -255,7 +255,7 @@
              :details      {:dashcards [{:card_id card-id, :exists true}
                                         {:card_id 0, :exists false}
                                         {:card_id dataset-id, :exists true}]}}]
-           (#'activity-api/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
+           (#'api.activity/add-model-exists-info [{:model "dashboard", :model_id dashboard-id}
                                                   {:model "card", :model_id 0}
                                                   {:model "card", :model_id dataset-id}
                                                   {:model    "dashboard"
@@ -276,10 +276,10 @@
         (testing "admin should see `:user-joined` activities"
           (testing "Sanity check: admin should be able to read the activity"
             (mt/with-test-user :crowberto
-              (is (models/can-read? activity))))
+              (is (mi/can-read? activity))))
           (is (contains? (activity-topics :crowberto) "user-joined")))
         (testing "non-admin should *not* see `:user-joined` activities"
           (testing "Sanity check: non-admin should *not* be able to read the activity"
             (mt/with-test-user :rasta
-              (is (not (models/can-read? activity)))))
+              (is (not (mi/can-read? activity)))))
           (is (not (contains? (activity-topics :rasta) "user-joined"))))))))

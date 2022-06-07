@@ -6,7 +6,7 @@ Whenever you’ve arrived at an answer that you want to save for later, click th
 
 ![Save button](images/sharing-answers/save-button.png)
 
-A pop-up box will appear, prompting you to give your question a name and description, and to pick which [collection][collections] to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection][collection-permissions], but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
+A modal will appear, prompting you to give your question a name and description, and to pick which [collection][collections] to save it in. Note that your administrator might have set things up so that you're only allowed to [save questions in certain collection][collection-permissions], but you can always save things in your Personal Collection. After saving your question, you'll be asked if you want to add it to a new or existing dashboard.
 
 Now, whenever you want to refer to your question again you can find it by searching for it in the search bar at the top of Metabase, or by navigating to the collection where you saved it.
 
@@ -25,8 +25,10 @@ Once you save your question, a down arrow will appear to the right of the questi
 - **Edit details** (Pencil icon). Change the title of the question, and add some description for context. Adding a description will also make the question easier to find using the search bar. You can also select more options to [cache the results of the question](#caching-results).
 - **Add to dashbboard** (Dashboard icon with plus symbol). See [dashboards][dashboards].
 - **Move** (Document icon with right arrow). Relocate the question to a different [collection][collections].
+- **Turn this into a model**. See [Models](models.md).
 - **Duplicate** (Square with little square). Create a copy of the question. Keep in mind that whenever you start editing a saved question, Metabase will create a copy of the question. You can either save your edits as a new question, or overwrite the original saved question.
 - **Archive** (Folder with down arrow). See [Archiving items][archiving-items].
+- **Bookmark** Save the question as a favorite, which will show up in the bookmarks section of your navigation sidebar. See [Bookmarks](03-basic-exploration.md#bookmarks).
 
 ### Caching results
 

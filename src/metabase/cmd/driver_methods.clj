@@ -1,13 +1,13 @@
 (ns metabase.cmd.driver-methods
   (:require [clojure.java.classpath :as classpath]
             [clojure.string :as str]
-            [clojure.tools.namespace.find :as ns-find]
+            [clojure.tools.namespace.find :as ns.find]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]))
 
 (defn- driver-ns-symbs []
   (sort
-   (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
+   (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
          :let    [starts-with? (partial str/starts-with? (name ns-symb))]
          :when   (and (or (starts-with? "metabase.driver")
                           (starts-with? "metabase.test.data"))

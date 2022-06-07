@@ -1,7 +1,10 @@
+/* eslint-disable react/display-name */
+import React from "react";
 import _ from "underscore";
 import { createSelector } from "reselect";
+import { t, jt } from "ttag";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SettingsLicense from "./components/SettingsLicense";
 import SiteUrlWidget from "./components/widgets/SiteUrlWidget";
@@ -17,13 +20,16 @@ import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import FormattingWidget from "./components/widgets/FormattingWidget";
 import { PremiumEmbeddingLinkWidget } from "./components/widgets/PremiumEmbeddingLinkWidget";
+import PersistedModelAnchorTimeWidget from "./components/widgets/PersistedModelAnchorTimeWidget";
+import PersistedModelRefreshIntervalWidget from "./components/widgets/PersistedModelRefreshIntervalWidget";
+import SectionDivider from "./components/widgets/SectionDivider";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
 import SlackSettings from "./slack/containers/SlackSettings";
 import { trackTrackingPermissionChanged } from "./analytics";
 
-import { UtilApi } from "metabase/services";
+import { PersistedModelsApi, UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 
@@ -48,6 +54,8 @@ function updateSectionsWithPlugins(sections) {
     return sections;
   }
 }
+
+const CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING = 6;
 
 const SECTIONS = updateSectionsWithPlugins({
   setup: {
@@ -304,7 +312,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "enable-embedding",
         description: null,
         widget: EmbeddingLegalese,
-        getHidden: settings => settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => derivedSettings["enable-embedding"],
         onChanged: async (
           oldValue,
           newValue,
@@ -326,35 +334,47 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "enable-embedding",
         display_name: t`Enable Embedding Metabase in other Applications`,
         type: "boolean",
-        getHidden: settings => !settings["enable-embedding"],
+        showActualValue: true,
+        getProps: setting => {
+          if (setting.is_env_setting) {
+            return {
+              tooltip: setting.placeholder,
+              disabled: true,
+            };
+          }
+          return null;
+        },
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         widget: EmbeddingCustomizationInfo,
-        getHidden: settings =>
-          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding"] ||
+          MetabaseSettings.isEnterprise(),
       },
       {
         key: "embedding-secret-key",
         display_name: t`Embedding secret key`,
         widget: SecretKeyWidget,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         key: "-embedded-dashboards",
         display_name: t`Embedded Dashboards`,
         widget: EmbeddedDashboardListing,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         key: "-embedded-questions",
         display_name: t`Embedded Questions`,
         widget: EmbeddedQuestionListing,
-        getHidden: settings => !settings["enable-embedding"],
+        getHidden: (_, derivedSettings) => !derivedSettings["enable-embedding"],
       },
       {
         widget: PremiumEmbeddingLinkWidget,
-        getHidden: settings =>
-          !settings["enable-embedding"] || MetabaseSettings.isEnterprise(),
+        getHidden: (_, derivedSettings) =>
+          !derivedSettings["enable-embedding"] ||
+          MetabaseSettings.isEnterprise(),
       },
     ],
   },
@@ -370,7 +390,7 @@ const SECTIONS = updateSectionsWithPlugins({
     settings: [
       {
         key: "enable-query-caching",
-        display_name: t`Enable Caching`,
+        display_name: t`Saved questions`,
         type: "boolean",
       },
       {
@@ -394,6 +414,67 @@ const SECTIONS = updateSectionsWithPlugins({
         getHidden: settings => !settings["enable-query-caching"],
         allowValueCollection: true,
       },
+      {
+        widget: SectionDivider,
+      },
+      {
+        key: "persisted-models-enabled",
+        display_name: t`Models`,
+        description: jt`Enabling cache will create tables for your models in a dedicated schema and Metabase will refresh them on a schedule. Questions based on your models will query these tables. ${(
+          <ExternalLink
+            key="model-caching-link"
+            href={MetabaseSettings.docsUrl("users-guide/models")}
+          >{t`Learn more`}</ExternalLink>
+        )}.`,
+        type: "boolean",
+        disableDefaultUpdate: true,
+        onChanged: async (wasEnabled, isEnabled) => {
+          if (isEnabled) {
+            await PersistedModelsApi.enablePersistence();
+          } else {
+            await PersistedModelsApi.disablePersistence();
+          }
+        },
+      },
+      {
+        key: "persisted-model-refresh-interval-hours",
+        description: "",
+        display_name: t`Refresh every`,
+        type: "radio",
+        options: {
+          1: t`Hour`,
+          2: t`2 hours`,
+          3: t`3 hours`,
+          6: t`6 hours`,
+          12: t`12 hours`,
+          24: t`24 hours`,
+        },
+        disableDefaultUpdate: true,
+        widget: PersistedModelRefreshIntervalWidget,
+        getHidden: settings => !settings["persisted-models-enabled"],
+        onChanged: (oldHours, hours) =>
+          PersistedModelsApi.setRefreshInterval({ hours }),
+      },
+      {
+        key: "persisted-model-refresh-anchor-time",
+        display_name: t`Anchoring time`,
+        disableDefaultUpdate: true,
+        widget: PersistedModelAnchorTimeWidget,
+        getHidden: settings => {
+          if (!settings["persisted-models-enabled"]) {
+            return true;
+          }
+          const DEFAULT_REFRESH_INTERVAL = 6;
+          const refreshInterval =
+            settings["persisted-model-refresh-interval-hours"] ||
+            DEFAULT_REFRESH_INTERVAL;
+          return (
+            refreshInterval < CACHING_MIN_REFRESH_HOURS_FOR_ANCHOR_TIME_SETTING
+          );
+        },
+        onChanged: (oldAnchor, anchor) =>
+          PersistedModelsApi.setRefreshInterval({ anchor }),
+      },
     ],
   },
 });
@@ -409,6 +490,11 @@ export const getSettings = createSelector(
     ),
 );
 
+// getSettings selector returns settings for admin setting page and values specified by
+// environment variables set to "null". Actual applied setting values are coming from
+// /api/session/properties API handler and getDerivedSettingValues returns them.
+export const getDerivedSettingValues = state => state.settings?.values ?? {};
+
 export const getSettingValues = createSelector(getSettings, settings => {
   const settingValues = {};
   for (const setting of settings) {
@@ -423,8 +509,9 @@ export const getNewVersionAvailable = createSelector(getSettings, settings => {
 
 export const getSections = createSelector(
   getSettings,
+  getDerivedSettingValues,
   getUserIsAdmin,
-  (settings, isAdmin) => {
+  (settings, derivedSettingValues, isAdmin) => {
     if (!settings || _.isEmpty(settings)) {
       return {};
     }
@@ -439,11 +526,16 @@ export const getSections = createSelector(
       const settings = section.settings.map(function(setting) {
         const apiSetting =
           settingsByKey[setting.key] && settingsByKey[setting.key][0];
+
         if (apiSetting) {
+          const value = setting.showActualValue
+            ? derivedSettingValues[setting.key]
+            : apiSetting.value;
           return {
             placeholder: apiSetting.default,
             ...apiSetting,
             ...setting,
+            value,
           };
         } else {
           return setting;

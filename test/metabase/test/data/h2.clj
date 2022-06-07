@@ -2,7 +2,8 @@
   "Code for creating / destroying an H2 database from a `DatabaseDefinition`."
   (:require [clojure.string :as str]
             [metabase.db :as mdb]
-            [metabase.db.spec :as dbspec]
+            [metabase.db.spec :as mdb.spec]
+            [metabase.driver.ddl.interface :as ddl.i]
             [metabase.driver.sql.util :as sql.u]
             [metabase.models.database :refer [Database]]
             [metabase.test.data.impl :as data.impl]
@@ -49,7 +50,7 @@
   (defmethod sql.tx/field-base-type->sql-type [:h2 base-type] [_ _] database-type))
 
 (defmethod tx/dbdef->connection-details :h2
-  [_ context dbdef]
+  [driver_ context dbdef]
   {:db (str "mem:" (tx/escaped-database-name dbdef) (when (= context :db)
                                                       ;; Return details with the GUEST user added so SQL queries are
                                                       ;; allowed.
@@ -81,11 +82,11 @@
    ((get-method sql.tx/create-table-sql :sql-jdbc/test-extensions) driver dbdef tabledef)
    ";\n"
    ;; Grant the GUEST account r/w permissions for this table
-   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (tx/format-name driver table-name)))))
+   (format "GRANT ALL ON %s TO GUEST;" (sql.u/quote-name driver :table (ddl.i/format-name driver table-name)))))
 
 (defmethod tx/has-questionable-timezone-support? :h2 [_] true)
 
-(defmethod tx/format-name :h2
+(defmethod ddl.i/format-name :h2
   [_ s]
   (str/upper-case s))
 
@@ -111,7 +112,7 @@
 ;; Don't use the h2 driver implementation, which makes the connection string read-only & if-exists only
 (defmethod spec/dbdef->spec :h2
   [driver context dbdef]
-  (dbspec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
+  (mdb.spec/spec :h2 (tx/dbdef->connection-details driver context dbdef)))
 
 (defmethod load-data/load-data! :h2
   [& args]

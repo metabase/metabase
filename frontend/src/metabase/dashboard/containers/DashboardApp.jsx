@@ -40,6 +40,9 @@ import {
   getFavicon,
   getDocumentTitle,
   getIsRunning,
+  getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsAdditionalInfoVisible,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -81,6 +84,9 @@ const mapStateToProps = (state, props) => {
     pageFavicon: getFavicon(state),
     documentTitle: getDocumentTitle(state),
     isRunning: getIsRunning(state),
+    isLoadingComplete: getIsLoadingComplete(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
   };
 };
 
@@ -96,16 +102,17 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
 
-  const [shouldSendNotification, setShouldSendNotification] = useState(false);
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
   const onTimeout = useCallback(() => {
-    setIsShowingToaster(true);
+    if ("Notification" in window && Notification.permission === "default") {
+      setIsShowingToaster(true);
+    }
   }, []);
 
   useLoadingTimer(isRunning, {
@@ -118,26 +125,24 @@ const DashboardApp = props => {
   useOnUnmount(props.reset);
 
   useEffect(() => {
-    if (!isRunning) {
+    if (isLoadingComplete) {
       setIsShowingToaster(false);
-    }
-    if (!isRunning && shouldSendNotification) {
-      if (document.hidden) {
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
         showNotification(
-          t`All Set! ${dashboard.name} is ready.`,
+          t`All Set! ${dashboard?.name} is ready.`,
           t`All questions loaded`,
         );
       }
-      setShouldSendNotification(false);
     }
-  }, [isRunning, shouldSendNotification, showNotification, dashboard?.name]);
+  }, [isLoadingComplete, showNotification, dashboard?.name]);
 
   const onConfirmToast = useCallback(async () => {
-    const result = await requestPermission();
-    if (result === "granted") {
-      setIsShowingToaster(false);
-      setShouldSendNotification(true);
-    }
+    await requestPermission();
+    setIsShowingToaster(false);
   }, [requestPermission]);
 
   const onDismissToast = useCallback(() => {

@@ -10,4 +10,4 @@ export interface Bookmark {
   type: BookmarkableEntities;
 }
 
-export type Bookmarks = Bookmark[];
+export type BookmarksType = Bookmark[];

@@ -10,8 +10,8 @@
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
-            [ring.util.response :as ring.response]
-            [ring.util.servlet :as ring.servlet])
+            [ring.util.response :as response]
+            [ring.util.servlet :as servlet])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            java.nio.ByteBuffer
            [java.nio.channels ClosedChannelException SocketChannel]
@@ -185,7 +185,7 @@
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (merge headers (:headers response-map)) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
-        (#'ring.servlet/set-headers response headers)
+        (#'servlet/set-headers response headers)
         (let [output-stream-delay (output-stream-delay gzip? response)
               delay-os            (delay-output-stream output-stream-delay)]
           (start-async-cancel-loop! request finished-chan canceled-chan)
@@ -225,11 +225,11 @@
 ;; TODO -- don't think any of this is needed any mo
 (defn- render [^StreamingResponse streaming-response gzip?]
   (let [{:keys [headers content-type], :as options} (.options streaming-response)]
-    (assoc (ring.response/response (if gzip?
-                                     (StreamingResponse. (.f streaming-response)
-                                                         (assoc options :gzip? true)
-                                                         (.donechan streaming-response))
-                                     streaming-response))
+    (assoc (response/response (if gzip?
+                                (StreamingResponse. (.f streaming-response)
+                                                    (assoc options :gzip? true)
+                                                    (.donechan streaming-response))
+                                streaming-response))
            :headers      (cond-> (assoc headers "Content-Type" content-type)
                            gzip? (assoc "Content-Encoding" "gzip"))
            :status       202)))

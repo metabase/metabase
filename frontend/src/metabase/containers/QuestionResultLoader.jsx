@@ -51,6 +51,8 @@ export class QuestionResultLoader extends React.Component {
    * load the result by calling question.apiGetResults
    */
   async _loadResult(question, onLoad, keepPreviousWhileLoading) {
+    const { collectionPreview } = this.props;
+
     // we need to have a question for anything to happen
     if (question) {
       try {
@@ -67,6 +69,7 @@ export class QuestionResultLoader extends React.Component {
         // call apiGetResults and pass our cancel to allow for cancelation
         const results = await question.apiGetResults({
           cancelDeferred: this._cancelDeferred,
+          collectionPreview,
         });
 
         // setState with our result, remove our cancel since we've finished

@@ -1,14 +1,14 @@
 (ns metabase.api.metric-test
   "Tests for /api/metric endpoints."
   (:require [clojure.test :refer :all]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :as metric :refer [Metric]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :refer [Revision]]
             [metabase.models.table :refer [Table]]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.util :as u]
@@ -26,6 +26,7 @@
    :created_at              true
    :updated_at              true
    :archived                false
+   :entity_id               true
    :definition              nil})
 
 (defn- user-details [user]
@@ -37,6 +38,7 @@
   (-> (into {} metric)
       (dissoc :id :table_id)
       (update :creator #(into {} %))
+      (update :entity_id boolean)
       (assoc :created_at (some? created_at)
              :updated_at (some? updated_at))))
 
@@ -44,11 +46,11 @@
   (testing "AUTHENTICATION"
     ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
     ;; authentication test on every single individual endpoint
-    (is (= (get middleware.u/response-unauthentic :body)
-           (http/client :get 401 "metric")))
+    (is (= (get mw.util/response-unauthentic :body)
+           (client/client :get 401 "metric")))
 
-    (is (= (get middleware.u/response-unauthentic :body)
-           (http/client :put 401 "metric/13")))))
+    (is (= (get mw.util/response-unauthentic :body)
+           (client/client :put 401 "metric/13")))))
 
 (deftest create-test
   (testing "POST /api/metric"
@@ -219,7 +221,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table  {:db_id (u/the-id db)}]
                       Metric   [metric {:table_id (u/the-id table)}]]
-        (perms/revoke-data-perms! (group/all-users) db)
+        (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (str "metric/" (u/the-id metric)))))))
 
@@ -242,7 +244,7 @@
       (mt/with-temp* [Database [db]
                       Table    [table  {:db_id (u/the-id db)}]
                       Metric   [metric {:table_id (u/the-id table)}]]
-        (perms/revoke-data-perms! (group/all-users) db)
+        (perms/revoke-data-perms! (perms-group/all-users) db)
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :get 403 (format "metric/%d/revisions" (u/the-id metric)))))))
 

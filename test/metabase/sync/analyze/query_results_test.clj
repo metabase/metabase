@@ -5,12 +5,12 @@
             [metabase.models.card :refer [Card]]
             [metabase.query-processor :as qp]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.analyze.fingerprint.insights :as insights]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
-            [metabase.test.mock.util :as mock.u]
-            [metabase.test.sync :as sync-test]
+            [metabase.test.mock.util :as mock.util]
+            [metabase.test.sync :as test.sync]
             [metabase.test.util :as tu]
             [metabase.util :as u]))
 
@@ -64,8 +64,8 @@
 (deftest mbql-result-metadata-test
   (testing "Getting the result metadata for a card backed by an MBQL query should use the fingerprints from the related fields"
     (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query venues))]
-      (is (= mock.u/venue-fingerprints
-             (tu/throw-if-called fprint/with-global-fingerprinter (name->fingerprints (query->result-metadata (query-for-card card))))))))
+      (is (= mock.util/venue-fingerprints
+             (tu/throw-if-called fingerprinters/with-global-fingerprinter (name->fingerprints (query->result-metadata (query-for-card card))))))))
 
   (testing "Getting the result metadata for a card backed by an MBQL query should just infer the types of all the fields"
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
@@ -76,7 +76,7 @@
   (testing (str "Native queries don't know what the associated Fields are for the results, we need to compute the fingerprints, but "
                 "they should sill be the same except for some of the optimizations we do when we have all the information.")
     (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query "select * from venues"}}}]
-      (is (= (assoc-in mock.u/venue-fingerprints [:category_id :type] #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0, :sd 23.06}})
+      (is (= (assoc-in mock.util/venue-fingerprints [:category_id :type] #:type{:Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0, :sd 23.06}})
              (name->fingerprints (query->result-metadata (query-for-card card))))))))
 
 (deftest compute-semantic-types-test
@@ -92,8 +92,8 @@
 (deftest one-column-test
   (testing "Limiting to just 1 column on an MBQL query should still get the result metadata from the Field"
     (mt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query (mt/mbql-query venues))]
-      (is (= (select-keys mock.u/venue-fingerprints [:longitude])
-             (tu/throw-if-called fprint/fingerprinter
+      (is (= (select-keys mock.util/venue-fingerprints [:longitude])
+             (tu/throw-if-called fingerprinters/fingerprinter
                (-> card
                    query-for-card
                    (assoc-in [:query :fields] [[:field (mt/id :venues :longitude) nil]])
@@ -102,7 +102,7 @@
 
   (testing "Similar query as above, just native so that we need to calculate the fingerprint"
     (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query "select longitude from venues"}}}]
-      (is (= (select-keys mock.u/venue-fingerprints [:longitude])
+      (is (= (select-keys mock.util/venue-fingerprints [:longitude])
              (name->fingerprints (query->result-metadata (query-for-card card))))))))
 
 (defn- timeseries-dataset
@@ -115,9 +115,9 @@
 (deftest error-resilience-test
   (testing "Data should come back even if there is an error during fingerprinting"
     (is (= 36 (mt/suppress-output
-                (with-redefs [fprint/earliest sync-test/crash-fn]
+                (with-redefs [fingerprinters/earliest test.sync/crash-fn]
                   (-> (timeseries-dataset) :rows count))))))
   (testing "Data should come back even if there is an error when calculating insights"
     (is (= 36 (mt/suppress-output
-                (with-redefs [insights/change sync-test/crash-fn]
+                (with-redefs [insights/change test.sync/crash-fn]
                   (-> (timeseries-dataset) :rows count)))))))

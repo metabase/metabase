@@ -1,12 +1,13 @@
 (ns metabase.models.table
   (:require [honeysql.core :as hsql]
+            [metabase.db.connection :as mdb.connection]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.models.database :refer [Database]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :refer [FieldValues]]
             [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
@@ -45,15 +46,20 @@
 (defn- pre-delete [{:keys [db_id schema id]}]
   (db/delete! Permissions :object [:like (str (perms/data-perms-path db_id schema id) "%")]))
 
-(defn- perms-objects-set [table read-or-write]
-  ;; To read (e.g., fetch metadata) a Table you (predictably) have read permissions
+(defn- perms-objects-set [{db-id :db_id, schema :schema, table-id :id, :as table} read-or-write]
+  ;; To read (e.g., fetch metadata) a Table you must have either self-service data permissions for the Table, or write
+  ;; permissions for the Table (detailed below). `can-read?` checks the former, while `can-write?` checks the latter;
+  ;; the permission-checking function to call when reading a Table depends on the context of the request. When reading
+  ;; Tables to power the admin data model page; `can-write?` should be called; in other contexts, `can-read?` should
+  ;; be called. (TODO: is there a way to clear up the semantics here?)
+  ;;
   ;; To write a Table (e.g. update its metadata):
   ;;   * If Enterprise Edition code is available and the :advanced-permissions feature is enabled, you must have
   ;;     data-model permissions for othe table
   ;;   * Else, you must be an admin
   #{(case read-or-write
       :read  (perms/table-read-path table)
-      :write (perms/data-model-write-perms-path (:db_id table) (:schema table) (:id table)))})
+      :write (perms/data-model-write-perms-path db-id schema table-id))})
 
 (u/strict-extend (class Table)
   models/IModel
@@ -65,10 +71,10 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 
@@ -216,7 +222,7 @@
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [table-id]
      {:pre [(integer? table-id)]}
      (db/select-one-field :db_id Table, :id table-id))))

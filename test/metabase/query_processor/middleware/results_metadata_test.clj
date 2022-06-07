@@ -4,12 +4,12 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Dimension]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test :as mt]
-            [metabase.test.mock.util :as mutil]
+            [metabase.test.mock.util :as mock.util]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -33,42 +33,42 @@
     :base_type    :type/BigInteger
     :effective_type :type/BigInteger
     :semantic_type :type/PK
-    :fingerprint  (:id mutil/venue-fingerprints)
+    :fingerprint  (:id mock.util/venue-fingerprints)
     :field_ref    [:field "ID" {:base-type :type/BigInteger}]}
    {:name         "NAME"
     :display_name "Name"
     :base_type    :type/Text
     :effective_type :type/Text
     :semantic_type :type/Name
-    :fingerprint  (:name mutil/venue-fingerprints)
+    :fingerprint  (:name mock.util/venue-fingerprints)
     :field_ref    [:field "NAME" {:base-type :type/Text}]}
    {:name         "PRICE"
     :display_name "Price"
     :base_type    :type/Integer
     :effective_type :type/Integer
     :semantic_type nil
-    :fingerprint  (:price mutil/venue-fingerprints)
+    :fingerprint  (:price mock.util/venue-fingerprints)
     :field_ref    [:field "PRICE" {:base-type :type/Integer}]}
    {:name         "CATEGORY_ID"
     :display_name "Category ID"
     :base_type    :type/Integer
     :effective_type :type/Integer
     :semantic_type nil
-    :fingerprint  (:category_id mutil/venue-fingerprints)
+    :fingerprint  (:category_id mock.util/venue-fingerprints)
     :field_ref    [:field "CATEGORY_ID" {:base-type :type/Integer}]}
    {:name         "LATITUDE"
     :display_name "Latitude"
     :base_type    :type/Float
     :effective_type :type/Float
     :semantic_type :type/Latitude
-    :fingerprint  (:latitude mutil/venue-fingerprints)
+    :fingerprint  (:latitude mock.util/venue-fingerprints)
     :field_ref    [:field "LATITUDE" {:base-type :type/Float}]}
    {:name         "LONGITUDE"
     :display_name "Longitude"
     :base_type    :type/Float
     :effective_type :type/Float
     :semantic_type :type/Longitude
-    :fingerprint  (:longitude mutil/venue-fingerprints)
+    :fingerprint  (:longitude mock.util/venue-fingerprints)
     :field_ref    [:field "LONGITUDE" {:base-type :type/Float}]}])
 
 (def ^:private default-card-results-native
@@ -82,7 +82,7 @@
       (let [result (qp/process-userland-query
                     (assoc (mt/native-query {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"})
                            :info {:card-id    (u/the-id card)
-                                  :query-hash (qputil/query-hash {})}))]
+                                  :query-hash (qp.util/query-hash {})}))]
         (when-not (= :completed (:status result))
           (throw (ex-info "Query failed." result))))
       (is (= default-card-results-native
@@ -104,7 +104,7 @@
                     Card       [card {:collection_id   (u/the-id collection)
                                       :dataset_query   (mt/native-query {:query "SELECT * FROM VENUES"})
                                       :result_metadata [{:name "NAME", :display_name "Name", :base_type :type/Text}]}]]
-      (perms/grant-collection-read-permissions! (group/all-users) collection)
+      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
       (mt/user-http-request :rasta :post 202 "dataset" {:database mbql.s/saved-questions-virtual-database-id
                                                         :type     :query
                                                         :query    {:source-table (str "card__" (u/the-id card))}})
@@ -175,7 +175,7 @@
                    :aggregation  [[:count]]
                    :breakout     [[:field (mt/id :checkins :date) {:temporal-unit :year}]]}
         :info     {:card-id    (u/the-id card)
-                   :query-hash (qputil/query-hash {})}})
+                   :query-hash (qp.util/query-hash {})}})
       (is (= [{:base_type    :type/DateTime
                :effective_type    :type/DateTime
                :coercion_strategy nil

@@ -1,10 +1,10 @@
 (ns metabase.query-processor.streaming.xlsx-test
-  (:require [cheshire.generate :as generate]
+  (:require [cheshire.generate :as json.generate]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [metabase.query-processor.streaming.interface :as i]
-            [metabase.query-processor.streaming.xlsx :as xlsx]
+            [metabase.query-processor.streaming.interface :as qp.si]
+            [metabase.query-processor.streaming.xlsx :as qp.xlsx]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator
@@ -19,9 +19,8 @@
   ([format-settings]
    (format-string format-settings nil))
 
-  ([format-settings semantic-type]
-   (let [format-strings (@#'xlsx/format-settings->format-strings format-settings {:semantic_type  semantic-type
-                                                                                  :effective_type :type/Temporal})]
+  ([format-settings col]
+   (let [format-strings (@#'qp.xlsx/format-settings->format-strings format-settings col)]
      ;; If only one format string is returned (for datetimes) or both format strings
      ;; are equal, just return a single value to make tests more readable.
      (cond
@@ -110,126 +109,137 @@
                                                                   ::mb.viz/suffix "suffix"})))))
 
     (testing "Currency formatting"
-      (testing "Default currency formatting is dollar sign"
-        (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} :type/Price))))
+      (let [price-col {:semantic_type :type/Price, :effective_type :type/Float}]
+        (testing "Default currency formatting is dollar sign"
+          (is (= "[$$]#,##0.00" (format-string {::mb.viz/currency-in-header false} price-col))))
 
-      (testing "Uses native currency symbol if supported"
-        (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "USD"} :type/Price)))
-        (is (= "[$CA$]#,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "CAD"} :type/Price)))
-        (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "EUR"} :type/Price)))
-        (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"} :type/Price))))
+        (testing "Uses native currency symbol if supported"
+          (is (= "[$$]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "USD"} price-col)))
+          (is (= "[$CA$]#,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "CAD"} price-col)))
+          (is (= "[$€]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "EUR"} price-col)))
+          (is (= "[$¥]#,##0.00"   (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "JPY"} price-col))))
 
-      (testing "Falls back to code if native symbol not supported"
-        (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "KGS"} :type/Price)))
-        (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
-                                                 ::mb.viz/currency "KGS",
-                                                 ::mb.viz/currency-style "symbol"}
-                                                :type/Price))))
+        (testing "Falls back to code if native symbol not supported"
+          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false, ::mb.viz/currency "KGS"} price-col)))
+          (is (= "[$KGS] #,##0.00" (format-string {::mb.viz/currency-in-header false,
+                                                   ::mb.viz/currency "KGS",
+                                                   ::mb.viz/currency-style "symbol"}
+                                                  price-col))))
 
-      (testing "Respects currency-style option"
-        (is (= "[$$]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
-                                                         ::mb.viz/currency-style "symbol"}
-                                                        :type/Price)))
-        (is (= "[$USD] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
-                                                         ::mb.viz/currency-style "code"}
-                                                        :type/Price)))
-        (is (= "#,##0.00\" US dollars\"" (format-string {::mb.viz/currency-in-header false,
-                                                         ::mb.viz/currency-style "name"}
-                                                        :type/Price)))
-        (is (= "[$€]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
-                                                         ::mb.viz/currency "EUR",
-                                                         ::mb.viz/currency-style "symbol"}
-                                                        :type/Price)))
-        (is (= "[$EUR] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
-                                                         ::mb.viz/currency "EUR",
-                                                         ::mb.viz/currency-style "code"}
-                                                        :type/Price)))
-        (is (= "#,##0.00\" euros\""      (format-string {::mb.viz/currency-in-header false,
-                                                         ::mb.viz/currency "EUR",
-                                                         ::mb.viz/currency-style "name"}
-                                                        :type/Price))))
+        (testing "Respects currency-style option"
+          (is (= "[$$]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
+                                                           ::mb.viz/currency-style "symbol"}
+                                                          price-col)))
+          (is (= "[$USD] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
+                                                           ::mb.viz/currency-style "code"}
+                                                          price-col)))
+          (is (= "#,##0.00\" US dollars\"" (format-string {::mb.viz/currency-in-header false,
+                                                           ::mb.viz/currency-style "name"}
+                                                          price-col)))
+          (is (= "[$€]#,##0.00"            (format-string {::mb.viz/currency-in-header false,
+                                                           ::mb.viz/currency "EUR",
+                                                           ::mb.viz/currency-style "symbol"}
+                                                          price-col)))
+          (is (= "[$EUR] #,##0.00"         (format-string {::mb.viz/currency-in-header false,
+                                                           ::mb.viz/currency "EUR",
+                                                           ::mb.viz/currency-style "code"}
+                                                          price-col)))
+          (is (= "#,##0.00\" euros\""      (format-string {::mb.viz/currency-in-header false,
+                                                           ::mb.viz/currency "EUR",
+                                                           ::mb.viz/currency-style "name"}
+                                                          price-col))))
 
-      (testing "Currency not included for non-currency semantic types"
-        (is (= "#,##0.00" (format-string {::mb.viz/currency-in-header false} :type/Quantity))))
+        (testing "Currency not included for non-currency semantic types"
+          (is (= "#,##0.00" (format-string {::mb.viz/currency-in-header false} {:semantic_type :type/Quantity}))))
 
-      (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
-        (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} :type/Price)))
-        (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"} :type/Price))))
+        (testing "Formatting options are ignored if currency-in-header is true or absent (defaults to true)"
+          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "name"} price-col)))
+          (is (= "#,##0.00" (format-string {::mb.viz/currency-style "code"} price-col)))
+          (is (= "#,##0.00" (format-string {::mb.viz/currency "USD"} price-col)))
+          (is (= "#,##0.00" (format-string {::mb.viz/currency "EUR"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "symbol"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "name"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency-style "code"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "USD"} price-col)))
+          (is (= "#,##0.00" (format-string {::currency-in-header true, ::mb.viz/currency "EUR"} price-col))))
 
-      (testing "Global localization settings are incorporated with lower precedence than column format settings"
-        (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency "EUR",
-                                                                              :currency_in_header false,
-                                                                              :currency_style "code"}}]
-          (is (= "[$EUR] #,##0.00" (format-string {} :type/Price)))
-          (is (= "[$CAD] #,##0.00" (format-string {::mb.viz/currency "CAD"} :type/Price)))
-          (is (= "[$€]#,##0.00"    (format-string {::mb.viz/currency-style "symbol"} :type/Price)))
-          (is (= "#,##0.00"        (format-string {::mb.viz/currency-in-header true} :type/Price))))))
+        (testing "Global localization settings are incorporated with lower precedence than column format settings"
+          (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency "EUR",
+                                                                                :currency_in_header false,
+                                                                                :currency_style "code"}}]
+            (is (= "[$EUR] #,##0.00" (format-string {} price-col)))
+            (is (= "[$CAD] #,##0.00" (format-string {::mb.viz/currency "CAD"} price-col)))
+            (is (= "[$€]#,##0.00"    (format-string {::mb.viz/currency-style "symbol"} price-col)))
+            (is (= "#,##0.00"        (format-string {::mb.viz/currency-in-header true} price-col)))))))
 
     (testing "Datetime formatting"
-      (testing "date-style"
-        (is (= "m/d/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "M/D/YYYY"})))
-        (is (= "d/m/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "D/M/YYYY"})))
-        (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"})))
-        (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"})))
-        (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"})))
-        (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"}))))
+      (let [date-col {:semantic_type :type/CreationTimestamp, :effective_type :type/Temporal}]
+        (testing "date-style"
+          (is (= "m/d/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "M/D/YYYY"} date-col)))
+          (is (= "d/m/yyyy, h:mm am/pm"           (format-string {::mb.viz/date-style "D/M/YYYY"} date-col)))
+          (is (= "yyyy/m/d, h:mm am/pm"           (format-string {::mb.viz/date-style "YYYY/M/D"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-style "MMMM D, YYYY"} date-col)))
+          (is (= "dmmmm, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-style "DMMMM, YYYY"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY"} date-col))))
 
-      (testing "date-separator"
-        (is (= "m/d/yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "/"})))
-        (is (= "m.d.yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "."})))
-        (is (= "m-d-yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"}))))
+        (testing "date-separator"
+          (is (= "m/d/yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "/"} date-col)))
+          (is (= "m.d.yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "."} date-col)))
+          (is (= "m-d-yyyy, h:mm am/pm" (format-string {::mb.viz/date-style "M/D/YYYY", ::mb.viz/date-separator "-"} date-col))))
 
-      (testing "date-abbreviate"
-        (is (= "mmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-abbreviate true})))
-        (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-abbreviate false})))
-        (is (= "ddd, mmm d, yyyy, h:mm am/pm"   (format-string {::mb.viz/date-abbreviate true
-                                                                ::mb.viz/date-style, "dddd, MMMM D, YYYY"})))
-        (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-abbreviate false
-                                                                ::mb.viz/date-style, "dddd, MMMM D, YYYY"}))))
+        (testing "date-abbreviate"
+          (is (= "mmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/date-abbreviate true} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"       (format-string {::mb.viz/date-abbreviate false} date-col)))
+          (is (= "ddd, mmm d, yyyy, h:mm am/pm"   (format-string {::mb.viz/date-abbreviate true
+                                                                  ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/date-abbreviate false
+                                                                  ::mb.viz/date-style, "dddd, MMMM D, YYYY"} date-col))))
 
-      (testing "time-style"
-        (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"})))
-        (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "k:mm"})))
-        (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"})))
-        (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"}))))
+        (testing "time-style"
+          (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "HH:mm"} date-col)))
+          (is (= "mmmm d, yyyy, hh:mm"      (format-string {::mb.viz/time-style "k:mm"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"} date-col)))
+          (is (= "mmmm d, yyyy, h am/pm"    (format-string {::mb.viz/time-style "h A"} date-col))))
 
-      (testing "time-enabled"
-        (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-enabled nil})))
-        (is (= "mmmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/time-enabled "minutes"})))
-        (is (= "mmmm d, yyyy, h:mm:ss am/pm"     (format-string {::mb.viz/time-enabled "seconds"})))
-        (is (= "mmmm d, yyyy, h:mm:ss.000 am/pm" (format-string {::mb.viz/time-enabled "milliseconds"})))
-        ;; time-enabled overrides time-styled
-        (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil}))))
+        (testing "time-enabled"
+          (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-enabled nil} date-col)))
+          (is (= "mmmm d, yyyy, h:mm am/pm"        (format-string {::mb.viz/time-enabled "minutes"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm:ss am/pm"     (format-string {::mb.viz/time-enabled "seconds"} date-col)))
+          (is (= "mmmm d, yyyy, h:mm:ss.000 am/pm" (format-string {::mb.viz/time-enabled "milliseconds"} date-col)))
+          ;; time-enabled overrides time-styled
+          (is (= "mmmm d, yyyy"                    (format-string {::mb.viz/time-style "h:mm A", ::mb.viz/time-enabled nil} date-col))))
 
-      (testing "misc combinations"
-        (is (= "yyyy.m.d, h:mm:ss am/pm"          (format-string {::mb.viz/date-style "YYYY/M/D",
-                                                                  ::mb.viz/date-separator ".",
-                                                                  ::mb.viz/time-style "h:mm A",
-                                                                  ::mb.viz/time-enabled "seconds"})))
-        (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
-                                                                  ::mb.viz/time-style "HH:mm",
-                                                                  ::mb.viz/time-enabled "milliseconds"}))))
+        (testing ":unit values on temporal breakout fields"
+          (let [month-col (assoc date-col :unit :month)
+                year-col  (assoc date-col :unit :year)]
+            (is (= "mmmm, yyyy" (format-string {} month-col)))
+            (is (= "m/yyyy"     (format-string {::mb.viz/date-style "M/D/YYYY"} month-col)))
+            (is (= "yyyy/m"     (format-string {::mb.viz/date-style "YYYY/M/D"} month-col)))
+            (is (= "yyyy"       (format-string {} year-col)))
+            (is (= "yyyy"       (format-string {::mb.viz/date-style "M/D/YYYY"} year-col)))))
 
-      (testing "Global localization settings are incorporated with lower precedence than column format settings"
-        (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "YYYY/M/D",
-                                                                              :date_separator ".",
-                                                                              :time_style "HH:mm"}}]
-          (is (= "yyyy.m.d, hh:mm"      (format-string {} :type/DateTime)))
-          (is (= "d.m.yyyy, hh:mm"      (format-string {::mb.viz/date-style "D/M/YYYY"} :type/DateTime)))
-          (is (= "yyyy-m-d, hh:mm"      (format-string {::mb.viz/date-separator "-"} :type/DateTime)))
-          (is (= "yyyy.m.d, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"} :type/DateTime))))))
+        (testing "misc combinations"
+          (is (= "yyyy.m.d, h:mm:ss am/pm"          (format-string {::mb.viz/date-style "YYYY/M/D",
+                                                                    ::mb.viz/date-separator ".",
+                                                                    ::mb.viz/time-style "h:mm A",
+                                                                    ::mb.viz/time-enabled "seconds"} date-col)))
+          (is (= "dddd, mmmm d, yyyy, hh:mm:ss.000" (format-string {::mb.viz/date-style "dddd, MMMM D, YYYY",
+                                                                    ::mb.viz/time-style "HH:mm",
+                                                                    ::mb.viz/time-enabled "milliseconds"} date-col))))
+
+        (testing "Global localization settings are incorporated with lower precedence than column format settings"
+          (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "YYYY/M/D",
+                                                                                :date_separator ".",
+                                                                                :time_style "HH:mm"}}]
+            (is (= "yyyy.m.d, hh:mm"      (format-string {} date-col)))
+            (is (= "d.m.yyyy, hh:mm"      (format-string {::mb.viz/date-style "D/M/YYYY"} date-col)))
+            (is (= "yyyy-m-d, hh:mm"      (format-string {::mb.viz/date-separator "-"} date-col)))
+            (is (= "yyyy.m.d, h:mm am/pm" (format-string {::mb.viz/time-style "h:mm A"} date-col)))))))
 
     (testing "primary key and foreign key formatting"
-      (is (= "0" (format-string {} :type/PK)))
-      (is (= "0" (format-string {} :type/FK))))))
+      (is (= "0" (format-string {} {:semantic_type :type/PK})))
+      (is (= "0" (format-string {} {:semantic_type :type/FK}))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               XLSX export tests                                                |
@@ -264,12 +274,12 @@
   ([ordered-cols viz-settings rows parse-fn]
    (with-open [bos (ByteArrayOutputStream.)
                os  (BufferedOutputStream. bos)]
-     (let [results-writer (i/streaming-results-writer :xlsx os)]
-       (i/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
+     (let [results-writer (qp.si/streaming-results-writer :xlsx os)]
+       (qp.si/begin! results-writer {:data {:ordered-cols ordered-cols}} viz-settings)
        (doall (map-indexed
-               (fn [i row] (i/write-row! results-writer row i ordered-cols viz-settings))
+               (fn [i row] (qp.si/write-row! results-writer row i ordered-cols viz-settings))
                rows))
-       (i/finish! results-writer {:row_count (count rows)}))
+       (qp.si/finish! results-writer {:row_count (count rows)}))
      (let [bytea (.toByteArray bos)]
        (parse-xlsx-results bytea parse-fn)))))
 
@@ -380,6 +390,13 @@
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code",
                                                            ::mb.viz/currency-in-header false}}}
+                               [])))))
+
+  (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
+    (is (= ["Correct title"]
+           (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1"}]
+                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Incorrect title"}
+                                                          {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
                                []))))))
 
 (deftest scale-test
@@ -423,7 +440,7 @@
   (testing "LocalDateTime formatted as a string; should be parsed when *parse-temporal-string-values* is true"
     (is (= ["2020-03-28T10:12:06.681"]
            (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))
-    (binding [xlsx/*parse-temporal-string-values* true]
+    (binding [qp.xlsx/*parse-temporal-string-values* true]
       (is (= [#inst "2020-03-28T10:12:06.681"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["2020-03-28T10:12:06.681"]]))))))
   (mt/with-everything-store
@@ -438,7 +455,7 @@
         (is (= [#inst "2020-03-28T10:12:06.000-00:00"]
                (second (xlsx-export [{:id 0, :name "Col"}] {} [[#t "2020-03-28T10:12:06Z"]])))))))
   (testing "Strings representing country names/codes don't error when *parse-temporal-string-values* is true (#18724)"
-    (binding [xlsx/*parse-temporal-string-values* true]
+    (binding [qp.xlsx/*parse-temporal-string-values* true]
       (is (= ["GB"]
              (second (xlsx-export [{:id 0, :name "Col"}] {} [["GB"]]))))
       (is (= ["Portugal"]
@@ -454,7 +471,7 @@
 
 (defrecord ^:private SampleNastyClass [^String v])
 
-(generate/add-encoder
+(json.generate/add-encoder
  SampleNastyClass
  (fn [obj, ^JsonGenerator json-generator]
    (.writeString json-generator (str (:v obj)))))
@@ -485,7 +502,7 @@
       (is (<= 2300 col1-width 2400))
       (is (<= 7950 col2-width 8200))))
   (testing "Auto-sizing works when the number of rows is at or above the auto-sizing threshold"
-    (binding [xlsx/*auto-sizing-threshold* 2]
+    (binding [qp.xlsx/*auto-sizing-threshold* 2]
       (let [[col-width] (second (xlsx-export [{:id 0, :name "Col1"}]
                                              {}
                                              [["abcdef"] ["abcedf"]]
@@ -509,10 +526,10 @@
           expected-poifiles-count (count (file-seq poifiles-directory))
           bos                (ByteArrayOutputStream.)
           os                 (BufferedOutputStream. bos)
-          results-writer     (i/streaming-results-writer :xlsx os)]
+          results-writer     (qp.si/streaming-results-writer :xlsx os)]
       (.close os)
-      (i/begin! results-writer {:data {:ordered-cols []}} {})
-      (i/finish! results-writer {:row_count 0})
+      (qp.si/begin! results-writer {:data {:ordered-cols []}} {})
+      (qp.si/finish! results-writer {:row_count 0})
       ;; No additional files should exist in the temp directory
       (is (= expected-poifiles-count (count (file-seq poifiles-directory)))))))
 

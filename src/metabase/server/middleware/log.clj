@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.async.streaming-response :as streaming-response]
-            [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
+            [metabase.async.streaming-response.thread-pool :as thread-pool]
             [metabase.async.util :as async.u]
             [metabase.db.connection :as mdb.connection]
             [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
@@ -65,9 +65,9 @@
    " "
    (trs "({0} total active threads)" (Thread/activeCount))
    " "
-   (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
+   (trs "Queries in flight: {0}" (thread-pool/active-thread-count))
    " "
-   (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count))
+   (trs "({0} queued)" (thread-pool/queued-thread-count))
    (when diag-info-fn
      (when-let [diag-info (not-empty (diag-info-fn))]
        (format

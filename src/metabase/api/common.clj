@@ -10,7 +10,7 @@
              [add-route-param-regexes auto-parse route-dox route-fn-name validate-params wrap-response-if-needed]]
             [metabase.models.interface :as mi]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [deferred-tru tru]]
+            [metabase.util.i18n :as i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -33,6 +33,10 @@
   "Is the current user a superuser?"
   false)
 
+(def ^:dynamic ^Boolean *is-group-manager?*
+  "Is the current user a group manager of at least one group?"
+  false)
+
 (def ^:dynamic *current-user-permissions-set*
   "Delay to the set of permissions granted to the current user. See documentation in [[metabase.models.permissions]] for
   more information about the Metabase permissions system."
@@ -44,7 +48,7 @@
 (defn- check-one [condition code message]
   (when-not condition
     (let [[message info] (if (and (map? message)
-                                  (not (ui18n/localized-string? message)))
+                                  (not (i18n/localized-string? message)))
                            [(:message message) message]
                            [message])]
       (throw (ex-info (str message) (assoc info :status-code code)))))
@@ -320,8 +324,10 @@
   {:style/indent 0}
   [& middleware]
   (let [api-route-fns (namespace->api-route-fns *ns*)
-        routes        `(compojure/routes ~@api-route-fns)]
+        routes        `(compojure/routes ~@api-route-fns)
+        docstring     (str "Routes for " *ns*)]
     `(def ~(vary-meta 'routes assoc :doc (api-routes-docstring *ns* api-route-fns middleware))
+       ~docstring
        ~(if (seq middleware)
           `(-> ~routes ~@middleware)
           routes))))

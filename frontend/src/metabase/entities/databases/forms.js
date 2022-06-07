@@ -372,15 +372,6 @@ forms.setup = {
     })),
 };
 
-forms.connection = {
-  ...forms.details,
-  fields: (...args) =>
-    forms.details.fields(...args).map(field => ({
-      ...field,
-      hidden: field.hidden,
-    })),
-};
-
 const ADVANCED_FIELDS = new Set([
   "auto_run_queries",
   "details.let-user-control-scheduling",

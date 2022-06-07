@@ -30,8 +30,7 @@ import AddSeriesModal from "./AddSeriesModal/AddSeriesModal";
 import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
 import DashCard from "./DashCard";
 
-@ExplicitSize()
-export default class DashboardGrid extends Component {
+class DashboardGrid extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -92,9 +91,10 @@ export default class DashboardGrid extends Component {
         card => String(card.id) === layoutItem.i,
       );
 
+      const keys = ["h", "w", "x", "y"];
       const changed = !_.isEqual(
-        layoutItem,
-        this.getLayoutForDashCard(dashboardCard),
+        _.pick(layoutItem, keys),
+        _.pick(this.getLayoutForDashCard(dashboardCard), keys),
       );
 
       if (changed) {
@@ -264,7 +264,7 @@ export default class DashboardGrid extends Component {
     }
   };
 
-  renderDashCard(dc, { isMobile, gridItemWidth }) {
+  renderDashCard(dc, { isMobile, gridItemWidth, totalNumGridCols }) {
     return (
       <DashCard
         dashcard={dc}
@@ -274,6 +274,7 @@ export default class DashboardGrid extends Component {
         slowCards={this.props.slowCards}
         fetchCardData={this.props.fetchCardData}
         gridItemWidth={gridItemWidth}
+        totalNumGridCols={totalNumGridCols}
         markNewCardSeen={this.props.markNewCardSeen}
         isEditing={this.props.isEditing}
         isEditingParameter={this.props.isEditingParameter}
@@ -313,11 +314,17 @@ export default class DashboardGrid extends Component {
     );
   }
 
-  renderGridItem = ({ item: dc, breakpoint, gridItemWidth }) => (
+  renderGridItem = ({
+    item: dc,
+    breakpoint,
+    gridItemWidth,
+    totalNumGridCols,
+  }) => (
     <div key={String(dc.id)} className="DashCard">
       {this.renderDashCard(dc, {
         isMobile: breakpoint === "mobile",
         gridItemWidth,
+        totalNumGridCols,
       })}
     </div>
   );
@@ -361,3 +368,5 @@ export default class DashboardGrid extends Component {
     );
   }
 }
+
+export default ExplicitSize()(DashboardGrid);

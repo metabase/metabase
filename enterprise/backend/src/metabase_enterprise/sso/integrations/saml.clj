@@ -24,7 +24,7 @@
             [metabase-enterprise.sso.integrations.sso-settings :as sso-settings]
             [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
             [metabase.api.common :as api]
-            [metabase.api.session :as session]
+            [metabase.api.session :as api.session]
             [metabase.integrations.common :as integrations.common]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
@@ -32,7 +32,7 @@
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
-            [ring.util.response :as resp]
+            [ring.util.response :as response]
             [saml20-clj.core :as saml]
             [schema.core :as s])
   (:import java.util.UUID))
@@ -74,16 +74,18 @@
                               (sso-settings/saml-attribute-email))
                          " "
                          (tru "Please make sure your SAML IdP is properly configured."))
-             {:status-code 400, :user-attributes (keys user-attributes)})))
-  (when-let [user (or (sso-utils/fetch-and-update-login-attributes! email user-attributes)
-                      (sso-utils/create-new-sso-user! {:first_name       first-name
-                                                       :last_name        last-name
-                                                       :email            email
-                                                       :sso_source       "saml"
-                                                       :login_attributes user-attributes}))]
-    (sync-groups! user group-names)
-    (session/create-session! :sso user device-info)))
-
+                    {:status-code 400, :user-attributes (keys user-attributes)})))
+  (let [new-user {:first_name       first-name
+                  :last_name        last-name
+                  :email            email
+                  :sso_source       "saml"
+                  :login_attributes user-attributes}]
+    (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
+                        (sso-utils/create-new-sso-user! (merge new-user
+                                                               (when-not first-name {:first_name (trs "Unknown")})
+                                                               (when-not last-name {:last_name (trs "Unknown")}))))]
+      (sync-groups! user group-names)
+      (api.session/create-session! :sso user device-info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -111,24 +113,25 @@
   ;; and redirect them back to us
   [req]
   (check-saml-enabled)
-  (try
-    (let [redirect-url (or (get-in req [:params :redirect])
-                           (log/warn (trs "Warning: expected `redirect` param, but none is present"))
-                           (public-settings/site-url))
-          idp-url      (sso-settings/saml-identity-provider-uri)
-          saml-request (saml/request
-                        {:request-id (str "id-" (java.util.UUID/randomUUID))
-                         :sp-name    (sso-settings/saml-application-name)
-                         :issuer     (sso-settings/saml-application-name)
-                         :acs-url    (acs-url)
-                         :idp-url    idp-url
-                         :credential (sp-cert-keystore-details)})
-          relay-state  (saml/str->base64 redirect-url)]
-      (saml/idp-redirect-response saml-request idp-url relay-state))
+  (let [redirect-url (or (get-in req [:params :redirect])
+                         (log/warn (trs "Warning: expected `redirect` param, but none is present"))
+                         (public-settings/site-url))]
+    (sso-utils/check-sso-redirect redirect-url)
+    (try
+      (let [idp-url      (sso-settings/saml-identity-provider-uri)
+            saml-request (saml/request
+                           {:request-id (str "id-" (java.util.UUID/randomUUID))
+                            :sp-name    (sso-settings/saml-application-name)
+                            :issuer     (sso-settings/saml-application-name)
+                            :acs-url    (acs-url)
+                            :idp-url    idp-url
+                            :credential (sp-cert-keystore-details)})
+            relay-state  (saml/str->base64 redirect-url)]
+        (saml/idp-redirect-response saml-request idp-url relay-state))
     (catch Throwable e
       (let [msg (trs "Error generating SAML request")]
         (log/error e msg)
-        (throw (ex-info msg {:status-code 500} e))))))
+        (throw (ex-info msg {:status-code 500} e)))))))
 
 (defn- validate-response [response]
   (let [idp-cert (or (sso-settings/saml-identity-provider-certificate)
@@ -177,20 +180,21 @@
   (let [continue-url  (u/ignore-exceptions
                         (when-let [s (some-> (:RelayState params) base64-decode)]
                           (when-not (str/blank? s)
-                            s)))
-        xml-string    (base64-decode (:SAMLResponse params))
-        saml-response (xml-string->saml-response xml-string)
-        attrs         (saml-response->attributes saml-response)
-        email         (get attrs (sso-settings/saml-attribute-email))
-        first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
-        last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
-        groups        (get attrs (sso-settings/saml-attribute-group))
-        session       (fetch-or-create-user!
-                       {:first-name      first-name
-                        :last-name       last-name
-                        :email           email
-                        :group-names     groups
-                        :user-attributes attrs
-                        :device-info     (request.u/device-info request)})
-        response      (resp/redirect (or continue-url (public-settings/site-url)))]
-    (mw.session/set-session-cookie request response session)))
+                            s)))]
+    (sso-utils/check-sso-redirect continue-url)
+    (let [xml-string    (base64-decode (:SAMLResponse params))
+          saml-response (xml-string->saml-response xml-string)
+          attrs         (saml-response->attributes saml-response)
+          email         (get attrs (sso-settings/saml-attribute-email))
+          first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
+          last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
+          groups        (get attrs (sso-settings/saml-attribute-group))
+          session       (fetch-or-create-user!
+                          {:first-name      first-name
+                           :last-name       last-name
+                           :email           email
+                           :group-names     groups
+                           :user-attributes attrs
+                           :device-info     (request.u/device-info request)})
+          response      (response/redirect (or continue-url (public-settings/site-url)))]
+      (mw.session/set-session-cookie request response session))))

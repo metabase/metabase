@@ -6,7 +6,7 @@ import cx from "classnames";
 import EntityMenu from "metabase/components/EntityMenu";
 import Swapper from "metabase/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import { isItemPinned } from "metabase/collections/utils";
@@ -125,7 +125,7 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
         onToggleBookmark && {
-          title: isBookmarked ? t`Remove bookmark` : t`Bookmark`,
+          title: isBookmarked ? t`Remove from bookmarks` : t`Bookmark`,
           icon: "bookmark",
           action: onToggleBookmark,
           event: `${analyticsContext};Entity Item;Bookmark Item;${item.model}`,

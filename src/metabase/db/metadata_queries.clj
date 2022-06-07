@@ -8,8 +8,8 @@
             [metabase.driver.util :as driver.u]
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.interface :as qpi]
-            [metabase.sync.interface :as si]
+            [metabase.query-processor.interface :as qp.i]
+            [metabase.sync.interface :as i]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -17,7 +17,7 @@
 
 (defn- qp-query [db-id mbql-query]
   {:pre [(integer? db-id)]}
-  (-> (binding [qpi/*disable-qp-logging* true]
+  (-> (binding [qp.i/*disable-qp-logging* true]
         (qp/process-query
          {:type       :query
           :database   db-id
@@ -137,9 +137,9 @@
   `:rff`: [optional] a reducing function function (a function that given initial results metadata returns a reducing
   function) to reduce over the result set in the the query-processor rather than realizing the whole collection"
   {:style/indent 1}
-  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff]
+  ([table :- i/TableInstance, fields :- [i/FieldInstance], rff]
    (table-rows-sample table fields rff nil))
-  ([table :- si/TableInstance, fields :- [si/FieldInstance], rff, opts :- TableRowsSampleOptions]
+  ([table :- i/TableInstance, fields :- [i/FieldInstance], rff, opts :- TableRowsSampleOptions]
    (let [query   (table-rows-sample-query table fields opts)
          qp      (resolve 'metabase.query-processor/process-query)]
      (qp query {:rff rff}))))

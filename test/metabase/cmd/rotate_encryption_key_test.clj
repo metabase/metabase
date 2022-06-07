@@ -10,14 +10,14 @@
             [metabase.db.connection :as mdb.connection]
             [metabase.driver :as driver]
             [metabase.models :refer [Database Secret Setting User]]
-            [metabase.models.interface :as interface]
+            [metabase.models.interface :as mi]
             [metabase.models.setting :as setting]
             [metabase.test :as mt]
             [metabase.test.data.interface :as tx]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [metabase.util.encryption :as encrypt]
-            [metabase.util.encryption-test :as eu]
+            [metabase.util.encryption :as encryption]
+            [metabase.util.encryption-test :as encryption-test]
             [metabase.util.i18n :as i18n]
             [toucan.db :as db]
             [toucan.models :as models])
@@ -50,7 +50,7 @@
               "89ulvIGoiYw6mNELuOoEZphQafnF/zYe+3vT+v70D1A=")))))
 
 (deftest rotate-encryption-key!-test
-  (eu/with-secret-key nil
+  (encryption-test/with-secret-key nil
     (let [h2-fixture-db-file @cmd.test-util/fixture-db-file-path
           db-name            (str "test_" (str/lower-case (mt/random-name)))
           original-timestamp "2021-02-11 18:38:56.042236+00"
@@ -62,7 +62,7 @@
           secret-id-enc      (atom nil)
           secret-id-unenc    (atom nil)]
       (mt/test-drivers #{:postgres :h2 :mysql}
-        (with-model-type :encrypted-json {:out #'interface/encrypted-json-out}
+        (with-model-type :encrypted-json {:out #'mi/encrypted-json-out}
           (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
             (binding [;; EXPLANATION FOR WHY THIS TEST WAS FLAKY
                       ;; at this point, all the state switching craziness that happens for
@@ -98,7 +98,7 @@
                                                :value      (.getBytes secret-val StandardCharsets/UTF_8)
                                                :creator_id @user-id})]
                 (reset! secret-id-unenc (u/the-id secret)))
-              (eu/with-secret-key k1
+              (encryption-test/with-secret-key k1
                 (db/insert! Setting {:key "k1crypted", :value "encrypted with k1"})
                 (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (let [secret (db/insert! Secret {:name       "My Secret (encrypted)"
@@ -108,7 +108,7 @@
                   (reset! secret-id-enc (u/the-id secret))))
 
               (testing "rotating with the same key is a noop"
-                (eu/with-secret-key k1
+                (encryption-test/with-secret-key k1
                   (rotate-encryption-key! k1)
                   ;; plain->newkey
                   (testing "for unencrypted values"
@@ -123,36 +123,36 @@
 
               (testing "settings-last-updated is updated AND plaintext"
                 (is (not= original-timestamp (raw-value "settings-last-updated")))
-                (is (not (encrypt/possibly-encrypted-string? (raw-value "settings-last-updated")))))
+                (is (not (encryption/possibly-encrypted-string? (raw-value "settings-last-updated")))))
 
               (testing "rotating with a new key is recoverable"
-                (eu/with-secret-key k1 (rotate-encryption-key! k2))
+                (encryption-test/with-secret-key k1 (rotate-encryption-key! k2))
                 (testing "with new key"
-                  (eu/with-secret-key k2
+                  (encryption-test/with-secret-key k2
                     (is (= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
                     (is (= {:db "/tmp/test.db"} (db/select-one-field :details Database :id 1)))
                     (is (mt/secret-value-equals? secret-val (db/select-one-field :value Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
-                  (eu/with-secret-key k1
+                  (encryption-test/with-secret-key k1
                     (is (not= "unencrypted value" (db/select-one-field :value Setting :key "nocrypt")))
                     (is (not= "{\"db\":\"/tmp/test.db\"}" (db/select-one-field :details Database :id 1)))
                     (is (not (mt/secret-value-equals? secret-val
                                                       (db/select-one-field :value Secret :id @secret-id-unenc)))))))
 
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
-                (eu/with-secret-key k3
+                (encryption-test/with-secret-key k3
                   (db/insert! Database {:name "k3", :engine :mysql, :details "{\"db\":\"/tmp/k3.db\"}"}))
-                (eu/with-secret-key k2
+                (encryption-test/with-secret-key k2
                   (db/insert! Database {:name "k2", :engine :mysql, :details "{\"db\":\"/tmp/k2.db\"}"})
                   (is (thrown? clojure.lang.ExceptionInfo (rotate-encryption-key! k3))))
-                (eu/with-secret-key k3
+                (encryption-test/with-secret-key k3
                   (is (not= {:db "/tmp/k2.db"} (db/select-one-field :details Database :name "k2")))
                   (is (= {:db "/tmp/k3.db"} (db/select-one-field :details Database :name "k3")))))
 
               (testing "rotate-encryption-key! to nil decrypts the encrypted keys"
                 (db/update! Database 1 {:details "{\"db\":\"/tmp/test.db\"}"})
                 (db/update-where! Database {:name "k3"} :details "{\"db\":\"/tmp/test.db\"}")
-                (eu/with-secret-key k2 ; with the last key that we rotated to in the test
+                (encryption-test/with-secret-key k2 ; with the last key that we rotated to in the test
                   (rotate-encryption-key! nil))
                 (is (= "unencrypted value" (raw-value "nocrypt")))
                 ;; at this point, both the originally encrypted, and the originally unencrypted secret instances

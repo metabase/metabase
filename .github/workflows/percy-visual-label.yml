@@ -1,0 +1,34 @@
+# Triggers Percy job on pull requests that contain "visual" label
+name: Percy visual tests
+
+on:
+  pull_request:
+    types: [synchronize, labeled]
+
+jobs:
+  percy:
+    if: contains(github.event.pull_request.labels.*.name, 'visual')
+    timeout-minutes: 30
+    runs-on: buildjet-4vcpu-ubuntu-2004
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Prepare cypress environment
+        uses: ./.github/actions/prepare-cypress
+      - run: ./bin/build
+      - name: Get the version info
+        run: |
+          jar xf target/uberjar/metabase.jar version.properties
+          mv version.properties resources/
+      - name: Run maildev
+        run: docker run -d -p 80:80 -p 25:25 maildev/maildev:1.1.0
+      - name: Percy Test
+        run: yarn run test-visual-run
+        env:
+          PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}

@@ -173,9 +173,7 @@ export default class Table extends Component {
         // otherwise it will be overwritten by `getDefault` below
         card.visualization_settings["table.columns"].length !== 0 &&
         _.all(
-          card.visualization_settings["table.columns"].filter(
-            columnSetting => columnSetting.enabled,
-          ),
+          card.visualization_settings["table.columns"],
           columnSetting =>
             findColumnIndexForColumnSetting(data.cols, columnSetting) >= 0,
         ),

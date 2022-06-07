@@ -3,7 +3,7 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer :all]
-            [clojure.tools.namespace.find :as ns-find]
+            [clojure.tools.namespace.find :as ns.find]
             [clojure.tools.reader :as tools.reader]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
@@ -11,7 +11,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qp-util]
+            [metabase.query-processor.util :as qp.util]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
@@ -44,7 +44,7 @@
   (testing "non-admin users with monitoring permissions"
     (mt/with-user-in-groups [group {:name "New Group"}
                              user  [group]]
-      (perms/grant-general-permissions! group :monitoring)
+      (perms/grant-application-permissions! group :monitoring)
       (testing "still fail if advanced-permissions is disabled"
         (premium-features-test/with-premium-features #{:audit-app}
           (is (= {:status "failed", :error "You don't have permissions to do that."}
@@ -65,7 +65,7 @@
   "Return a set of all audit/internal query types (excluding test/`:default` impls)."
   []
   ;; load all `metabase-enterprise.audit-app.pages` namespaces.
-  (doseq [ns-symb  (ns-find/find-namespaces (classpath/system-classpath))
+  (doseq [ns-symb  (ns.find/find-namespaces (classpath/system-classpath))
           :when    (and (str/starts-with? (name ns-symb) "metabase-enterprise.audit-app.pages")
                         (not (str/ends-with? (name ns-symb) "-test")))]
     (classloader/require ns-symb))
@@ -149,7 +149,7 @@
                :database-id       (u/the-id database)
                :table-id          (u/the-id table)
                :model             "card"
-               :query-hash        (codec/base64-encode (qp-util/query-hash {:database 1, :type :native}))
+               :query-hash        (codec/base64-encode (qp.util/query-hash {:database 1, :type :native}))
                :query-string      "toucans"
                :question-filter   "bird sales"
                :collection-filter "coin collection"

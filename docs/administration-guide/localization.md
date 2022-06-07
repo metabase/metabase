@@ -16,6 +16,7 @@ The languages you can currently pick from are:
 - Farsi/Persian
 - French
 - German
+- Indonesian
 - Italian
 - Japanese
 - Norwegian Bokmål

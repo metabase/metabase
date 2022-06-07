@@ -20,11 +20,7 @@ import {
   UpdateAlertModalContent,
 } from "metabase/query_builder/components/AlertModals";
 
-@connect(
-  state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
-  null,
-)
-export default class AlertListPopoverContent extends Component {
+class AlertListPopoverContent extends Component {
   state = {
     adding: false,
     hasJustUnsubscribedFromOwnAlert: false,
@@ -110,11 +106,12 @@ export default class AlertListPopoverContent extends Component {
   }
 }
 
-@connect(state => ({ user: getUser(state) }), {
-  unsubscribeFromAlert,
-  deleteAlert,
-})
-export class AlertListItem extends Component {
+export default connect(
+  state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
+  null,
+)(AlertListPopoverContent);
+
+class AlertListItemInner extends Component {
   state = {
     unsubscribingProgress: null,
     hasJustUnsubscribed: false,
@@ -176,7 +173,7 @@ export class AlertListItem extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className={`ml-auto text-bold text-small`}
+              className="ml-auto text-bold text-small"
               style={{
                 transform: `translateY(4px)`,
               }}
@@ -238,13 +235,18 @@ export class AlertListItem extends Component {
   }
 }
 
+export const AlertListItem = connect(state => ({ user: getUser(state) }), {
+  unsubscribeFromAlert,
+  deleteAlert,
+})(AlertListItemInner);
+
 export const UnsubscribedListItem = () => (
   <li className="border-bottom flex align-center py4 text-bold">
     <div className="circle flex align-center justify-center p1 bg-light ml2">
       <Icon name="check" className="text-success" />
     </div>
     <h3
-      className={`text-dark`}
+      className="text-dark"
       style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>

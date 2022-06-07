@@ -4,7 +4,11 @@ import styled from "@emotion/styled";
 import { color, space } from "styled-system";
 import _ from "underscore";
 import Icon from "metabase/components/Icon";
-import { ButtonContent, ButtonRoot } from "./Button.styled";
+import {
+  ButtonContent,
+  ButtonRoot,
+  ButtonTextContainer,
+} from "./Button.styled";
 
 const BUTTON_VARIANTS = [
   "small",
@@ -25,6 +29,7 @@ const BUTTON_VARIANTS = [
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
+
   icon?: string;
   iconSize?: number;
   iconColor?: string;
@@ -59,7 +64,7 @@ const BaseButton = forwardRef(function BaseButton(
     iconRight,
     iconSize,
     iconColor,
-    iconVertical,
+    iconVertical = false,
     labelBreakpoint,
     children,
     ...props
@@ -83,15 +88,16 @@ const BaseButton = forwardRef(function BaseButton(
           <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
         )}
         {children && (
-          <div
+          <ButtonTextContainer
+            hasIcon={!!icon}
+            hasRightIcon={!!iconRight}
+            iconVertical={iconVertical}
             className={cx({
-              [iconVertical ? "mt1" : "ml1"]: icon,
-              [iconVertical ? "mb1" : "mr1"]: iconRight,
               [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
             })}
           >
             {children}
-          </div>
+          </ButtonTextContainer>
         )}
         {iconRight && (
           <Icon
@@ -115,4 +121,5 @@ Button.displayName = "Button";
 export default Object.assign(Button, {
   Root: ButtonRoot,
   Content: ButtonContent,
+  TextContainer: ButtonTextContainer,
 });

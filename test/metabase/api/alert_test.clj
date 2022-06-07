@@ -3,15 +3,15 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.email-test :as et]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-test :as pulse-test]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.data.users :as users :refer :all]
+            [metabase.test.data.users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.test.util :as tu]
             [metabase.util :as u]
@@ -109,7 +109,7 @@
   [grant-collection-perms-fn! alerts-or-ids f]
   (mt/with-non-admin-groups-no-root-collection-perms
     (mt/with-temp Collection [collection]
-      (grant-collection-perms-fn! (group/all-users) collection)
+      (grant-collection-perms-fn! (perms-group/all-users) collection)
       ;; Go ahead and put all the Cards for all of the Alerts in the temp Collection
       (when (seq alerts-or-ids)
         (doseq [alert (db/select Pulse :id [:in (set (map u/the-id alerts-or-ids))])
@@ -132,11 +132,11 @@
 ;; authentication test on every single individual endpoint
 
 (deftest auth-tests
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :get 401 "alert")))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :get 401 "alert")))
 
-  (is (= (get middleware.u/response-unauthentic :body)
-         (http/client :put 401 "alert/13"))))
+  (is (= (get mw.util/response-unauthentic :body)
+         (client/client :put 401 "alert/13"))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 GET /api/alert                                                 |
@@ -254,6 +254,7 @@
 (defn- default-alert [card]
   {:id                  true
    :name                nil
+   :entity_id           true
    :creator_id          true
    :creator             (user-details :rasta)
    :created_at          true
@@ -298,7 +299,7 @@
              (mt/with-temp Collection [collection]
                (db/update! Card (u/the-id card) :collection_id (u/the-id collection))
                (with-alert-setup
-                 (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+                 (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
                  [(et/with-expected-messages 1
                     (alert-response
                      ((alert-client :rasta) :post 200 "alert"
@@ -358,7 +359,7 @@
                            Card       [card {:name          "My question"
                                              :display       "line"
                                              :collection_id (u/the-id collection)}]]
-             (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
                  (mt/user-http-request
@@ -380,7 +381,7 @@
                            Card       [card {:name          "My question"
                                              :display       "bar"
                                              :collection_id (u/the-id collection)}]]
-             (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              (with-alert-setup
                (et/with-expected-messages 1
                  (mt/user-http-request
@@ -432,7 +433,7 @@
                                      :card             {:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
                                      :channels         ["abc"]}))))
 
-(defn- default-alert-req
+(defn default-alert-req
   ([card pulse-card-or-id]
    (default-alert-req card pulse-card-or-id {} []))
   ([card pulse-card-or-id alert-map users]
@@ -445,23 +446,23 @@
            :skip_if_empty    false}
           alert-map)))
 
-(defn- basic-alert []
+(defn basic-alert []
   {:alert_condition  "rows"
    :alert_first_only false
    :creator_id       (mt/user->id :rasta)
    :name             nil})
 
-(defn- recipient [pulse-channel-or-id username-keyword]
+(defn recipient [pulse-channel-or-id username-keyword]
   (let [user (mt/fetch-user username-keyword)]
     {:user_id          (u/the-id user)
      :pulse_channel_id (u/the-id pulse-channel-or-id)}))
 
-(defn- pulse-card [alert-or-id card-or-id]
+(defn pulse-card [alert-or-id card-or-id]
   {:pulse_id (u/the-id alert-or-id)
    :card_id  (u/the-id card-or-id)
    :position 0})
 
-(defn- pulse-channel [alert-or-id]
+(defn pulse-channel [alert-or-id]
   {:pulse_id (u/the-id alert-or-id)})
 
 (defn- alert-url [alert-or-id]
@@ -537,10 +538,11 @@
                     PulseCard             [_     (pulse-card alert card)]
                     PulseChannel          [pc    (pulse-channel alert)]
                     PulseChannelRecipient [_     (recipient pc :rasta)]]
-      (is (= "Non-admin users are not allowed to modify the channels for an alert"
+      (is (= (str "Non-admin users without monitoring or subscription permissions "
+                  "are not allowed to modify the channels for an alert")
              (with-alerts-in-writeable-collection [alert]
                (tu/with-model-cleanup [Pulse]
-                 ((alert-client :rasta) :put 400 (alert-url alert)
+                 ((alert-client :rasta) :put 403 (alert-url alert)
                   (default-alert-req card pc {} [(fetch-user :crowberto)])))))))))
 
 (deftest admin-users-remove-recipient-test
@@ -566,7 +568,7 @@
                  (mt/regex-email-bodies #"https://metabase.com/testmb"
                                         #"letting you know that Crowberto Corv"))))))))
 
-(deftest permissions-test
+(deftest update-alert-permissions-test
   (testing "Non-admin users cannot update alerts for cards in a collection they don't have access to"
     (is (= "You don't have permissions to do that."
          (tu/with-non-admin-groups-no-root-collection-perms
@@ -590,8 +592,20 @@
                              PulseChannelRecipient [_     (recipient pc :crowberto)]]
                (with-alert-setup
                  ((alert-client :rasta) :put 403 (alert-url alert)
-                  (default-alert-req card pc)))))))))
+                  (default-alert-req card pc))))))))
 
+  (testing "Non-admin users can update alerts in collection they have view permisisons"
+    (tu/with-non-admin-groups-no-root-collection-perms
+      (with-alert-in-collection [_ collection alert card]
+        (mt/with-temp* [PulseCard [pc (pulse-card alert card)]]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+
+          (mt/user-http-request :rasta :put 200 (alert-url alert)
+                                (dissoc (default-alert-req card pc {} []) :card :channels))
+
+          (testing "but not allowed to edit the card"
+            (mt/user-http-request :rasta :put 403 (alert-url alert)
+                                  (dissoc (default-alert-req card pc {} []) :channels))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            GET /alert/question/:id                                             |

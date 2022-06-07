@@ -69,7 +69,7 @@
            `(t/do-report
              (query=-report ~message ~expected ~actual)))))
 
-;; `partial=` is like `=` but only compares stuff (using [[data/diff]] that's in `expected`. Anything else is ignored.
+;; `partial=` is like `=` but only compares stuff (using [[data/diff]]) that's in `expected`. Anything else is ignored.
 
 (defn- remove-keys-not-in-expected
   "Remove all the extra stuff (i.e. extra map keys or extra sequence elements) from the `actual` diff that's not
@@ -118,10 +118,10 @@
      :diffs    [[actual [only-in-expected only-in-actual]]]}))
 
 (defmethod t/assert-expr 'partial=
-  [message [_ expected & actuals]]
-  `(do ~@(for [actual actuals]
-           `(t/do-report
-             (partial=-report ~message ~expected ~actual)))))
+  [message [_ expected actual :as form]]
+  (assert (= (count (rest form)) 2) "partial= expects exactly 2 arguments")
+  `(t/do-report
+    (partial=-report ~message ~expected ~actual)))
 
 (defn sql=-report
   [message expected query]

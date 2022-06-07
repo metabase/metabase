@@ -31,16 +31,7 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
   success: t`Changes saved!`,
 };
 
-@connect(
-  null,
-  (dispatch, { updateSettings }) => ({
-    updateSettings:
-      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
-  }),
-  null,
-  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
-)
-export default class SettingsBatchForm extends Component {
+class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {
@@ -310,6 +301,16 @@ export default class SettingsBatchForm extends Component {
     );
   }
 }
+
+export default connect(
+  null,
+  (dispatch, { updateSettings }) => ({
+    updateSettings:
+      updateSettings || (settings => dispatch(defaultUpdateSettings(settings))),
+  }),
+  null,
+  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
+)(SettingsBatchForm);
 
 const StandardSection = ({ title, children }) => (
   <div>

@@ -7,7 +7,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [clojure.tools.namespace.find :as ns-find]
+            [clojure.tools.namespace.find :as ns.find]
             [clojure.walk :as walk]
             [colorize.core :as colorize]
             [flatland.ordered.map :refer [ordered-map]]
@@ -15,10 +15,12 @@
             [metabase.config :as config]
             [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [nano-id.core :refer [nano-id]]
             [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
-  (:import [java.net InetAddress InetSocketAddress Socket]
+  (:import [java.math MathContext RoundingMode]
+           [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            (java.util Locale PriorityQueue)
            java.util.concurrent.TimeoutException
@@ -187,27 +189,6 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
-(defn ^:deprecated rpartial
-  "Like `partial`, but applies additional args *before* `bound-args`.
-   Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
-
-    ((partial - 5) 8)  -> (- 5 8) -> -3
-    ((rpartial - 5) 8) -> (- 8 5) -> 3
-
-  DEPRECATED: just use `#()` function literals instead. No need to be needlessly confusing."
-  [f & bound-args]
-  (fn [& args]
-    (apply f (concat args bound-args))))
-
-(defmacro pdoseq
-  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and
-  only supports a single binding </3"
-  {:style/indent 1}
-  [[binding collection] & body]
-  `(dorun (pmap (fn [~binding]
-                  ~@body)
-                ~collection)))
-
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -338,7 +319,7 @@
   [reff timeout-ms]
   (let [result (deref reff timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (when (instance? java.util.concurrent.Future reff)
+      (when (future? reff)
         (future-cancel reff))
       (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
@@ -346,16 +327,10 @@
 (defn do-with-timeout
   "Impl for `with-timeout` macro."
   [timeout-ms f]
-  (let [result (deref-with-timeout
-                (future
-                  (try
-                    (f)
-                    (catch Throwable e
-                      e)))
-                timeout-ms)]
-    (if (instance? Throwable result)
-      (throw result)
-      result)))
+  (try
+    (deref-with-timeout (future-call f) timeout-ms)
+    (catch java.util.concurrent.ExecutionException e
+      (throw (.getCause e)))))
 
 (defmacro with-timeout
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
@@ -365,10 +340,25 @@
 (defn round-to-decimals
   "Round (presumabily floating-point) `number` to `decimal-place`. Returns a `Double`.
 
-     (round-to-decimals 2 35.5058998M) -> 35.51"
+  Rounds by decimal places, no matter how many significant figures the number has. See [[round-to-precision]].
+
+    (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
   (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP)))
+
+(defn round-to-precision
+  "Round (presumably floating-point) `number` to a precision of `sig-figures`. Returns a `Double`.
+
+  This rounds by significant figures, not decimal places. See [[round-to-decimals]] for that.
+
+    (round-to-precision 4 1234567.89) -> 123500.0"
+  ^Double [^Integer sig-figures ^Number number]
+  {:pre [(integer? sig-figures) (number? number)]}
+  (-> number
+      bigdec
+      (.round (MathContext. sig-figures RoundingMode/HALF_EVEN))
+      double))
 
 (defn real-number?
   "Is `x` a real number (i.e. not a `NaN` or an `Infinity`)?"
@@ -471,7 +461,10 @@
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
 
-   Consider using the `auto-retry` macro instead of calling this function directly."
+   Consider using the `auto-retry` macro instead of calling this function directly.
+
+   For implementing more fine grained retry policies like exponential backoff,
+   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
@@ -489,7 +482,10 @@
   until it succeeds.
 
   You can disable auto-retries for a specific ExceptionInfo by including `{:metabase.util/no-auto-retry? true}` in its
-  data (or the data of one of its causes.)"
+  data (or the data of one of its causes.)
+
+  For implementing more fine grained retry policies like exponential backoff,
+  consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
@@ -534,7 +530,7 @@
 (defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for
   use by various routines that load related namespaces, such as task and events initialization."}
   metabase-namespace-symbols
-  (vec (sort (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
+  (vec (sort (for [ns-symb (ns.find/find-namespaces (classpath/system-classpath))
                    :when   (and (.startsWith (name ns-symb) "metabase.")
                                 (not (.contains (name ns-symb) "test")))]
                ns-symb))))
@@ -630,7 +626,7 @@
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
 
-(defn update-when
+(defn update-if-exists
   "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
   cruft."
   [m k f & args]
@@ -638,7 +634,7 @@
     (apply update m k f args)
     m))
 
-(defn update-in-when
+(defn update-in-if-exists
   "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
   cruft."
   [m ks f & args]
@@ -961,3 +957,8 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn generate-nano-id
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models."
+  []
+  (nano-id))

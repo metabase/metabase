@@ -6,7 +6,7 @@
             [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.events :as events]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.database :as database :refer [Database]]
@@ -15,9 +15,9 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.middleware.permissions :as qp.perms]
-            [metabase.query-processor.pivot :as pivot]
+            [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.shared.models.visualization-settings :as mb.viz]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -33,7 +33,7 @@
   is a wrapper for the function of the same name in the QP util namespace; it adds additional permissions checking as
   well."
   [outer-query]
-  (when-let [source-card-id (qputil/query->source-card-id outer-query)]
+  (when-let [source-card-id (qp.util/query->source-card-id outer-query)]
     (log/info (trs "Source query for this query is Card {0}" source-card-id))
     (api/read-check Card source-card-id)
     source-card-id))
@@ -113,7 +113,7 @@
    export-format          ExportFormat}
   (let [query        (json/parse-string query keyword)
         viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
-                         (update-in [:table.columns] normalize/normalize)
+                         (update-in [:table.columns] mbql.normalize/normalize)
                          mb.viz/db->norm)
         query        (-> (assoc query
                                 :async? true
@@ -141,9 +141,9 @@
   ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
   ;; there's no data there. If we still can't find relevant info, just default to 0
   {:average (or
-             (some (comp query/average-execution-time-ms qputil/query-hash)
+             (some (comp query/average-execution-time-ms qp.util/query-hash)
                    [query
-                    (assoc query :constraints qp.constraints/default-query-constraints)])
+                    (assoc query :constraints (qp.constraints/default-query-constraints))])
              0)})
 
 (api/defendpoint POST "/native"
@@ -162,6 +162,6 @@
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [context :api]
-      (pivot/run-pivot-query (assoc query :async? true) info context))))
+      (qp.pivot/run-pivot-query (assoc query :async? true) info context))))
 
 (api/define-routes)

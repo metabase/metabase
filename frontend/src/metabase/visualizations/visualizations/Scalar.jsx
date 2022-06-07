@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { t } from "ttag";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 
 import { formatValue } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
@@ -177,6 +177,9 @@ export default class Scalar extends Component {
       visualizationIsClickable,
       onVisualizationClick,
       width,
+      height,
+      gridSize,
+      totalNumGridCols,
     } = this.props;
 
     const columnIndex = this._getColumnIndex(cols, settings);
@@ -235,7 +238,15 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={displayValue} />
+            <ScalarValue
+              isDashboard={isDashboard}
+              gridSize={gridSize}
+              minGridSize={Scalar.minSize}
+              width={width}
+              height={height}
+              value={displayValue}
+              totalNumGridCols={totalNumGridCols}
+            />
           </span>
         </Ellipsified>
         {isDashboard && (

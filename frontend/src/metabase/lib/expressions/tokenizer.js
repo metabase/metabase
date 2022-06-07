@@ -5,6 +5,7 @@ export const TOKEN = {
   Number: 2,
   String: 3,
   Identifier: 4,
+  Boolean: 5,
 };
 
 export const OPERATOR = {
@@ -24,6 +25,8 @@ export const OPERATOR = {
   Not: "not",
   And: "and",
   Or: "or",
+  True: "true",
+  False: "false",
 };
 
 export function tokenize(expression) {
@@ -292,6 +295,11 @@ export function tokenize(expression) {
     const id = source.slice(start, end).toLowerCase();
     if (id === OPERATOR.Not || id === OPERATOR.And || id === OPERATOR.Or) {
       const type = TOKEN.Operator;
+      const op = id;
+      const error = null;
+      return { type, op, start, end, error };
+    } else if (id === OPERATOR.True || id === OPERATOR.False) {
+      const type = TOKEN.Boolean;
       const op = id;
       const error = null;
       return { type, op, start, end, error };

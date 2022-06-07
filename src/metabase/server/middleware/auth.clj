@@ -2,7 +2,7 @@
   "Middleware related to enforcing authentication/API keys (when applicable). Unlike most other middleware most of this
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
   (:require [metabase.models.setting :refer [defsetting]]
-            [metabase.server.middleware.util :as middleware.u]))
+            [metabase.server.middleware.util :as mw.util]))
 
 (def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
@@ -12,7 +12,7 @@
   (fn [{:keys [metabase-user-id] :as request} respond raise]
     (if metabase-user-id
       (handler request respond raise)
-      (respond middleware.u/response-unauthentic))))
+      (respond mw.util/response-unauthentic))))
 
 (defn- wrap-api-key* [{:keys [headers], :as request}]
   (if-let [api-key (headers metabase-api-key-header)]
@@ -43,10 +43,10 @@
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
     (cond (not metabase-api-key)
-          (respond middleware.u/response-forbidden)
+          (respond mw.util/response-forbidden)
 
           (= (api-key) metabase-api-key)
           (handler request respond raise)
 
           :else
-          (respond middleware.u/response-forbidden))))
+          (respond mw.util/response-forbidden))))

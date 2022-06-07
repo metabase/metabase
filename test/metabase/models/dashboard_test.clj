@@ -16,7 +16,7 @@
             [metabase.models.user :as user]
             [metabase.test :as mt]
             [metabase.test.data :refer :all]
-            [metabase.test.data.users :as users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.util :as tu]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -145,7 +145,7 @@
                                 :series  true}]}
                (update serialized-dashboard :cards check-ids))))
       (testing "delete the dashcard and modify the dash attributes"
-        (dashboard-card/delete-dashboard-card! dashboard-card (users/user->id :rasta))
+        (dashboard-card/delete-dashboard-card! dashboard-card (test.users/user->id :rasta))
         (db/update! Dashboard dashboard-id
           :name        "Revert Test"
           :description "something")
@@ -153,7 +153,7 @@
           (is (= empty-dashboard
                  (serialize-dashboard (Dashboard dashboard-id))))))
       (testing "now do the reversion; state should return to original"
-        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) serialized-dashboard)
+        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) serialized-dashboard)
         (is (= {:name         "Test Dashboard"
                 :description  nil
                 :cache_ttl    nil
@@ -166,7 +166,7 @@
                                 :series  true}]}
                (update (serialize-dashboard (Dashboard dashboard-id)) :cards check-ids))))
       (testing "revert back to the empty state"
-        (#'dashboard/revert-dashboard! nil dashboard-id (users/user->id :crowberto) empty-dashboard)
+        (#'dashboard/revert-dashboard! nil dashboard-id (test.users/user->id :crowberto) empty-dashboard)
         (is (= empty-dashboard
                (serialize-dashboard (Dashboard dashboard-id))))))))
 
@@ -250,9 +250,9 @@
 (deftest transient-dashboards-test
   (testing "test that we save a transient dashboard"
     (tu/with-model-cleanup [Card Dashboard DashboardCard Collection]
-      (let [rastas-personal-collection (collection/user->personal-collection (users/user->id :rasta))]
-        (binding [api/*current-user-id*              (users/user->id :rasta)
-                  api/*current-user-permissions-set* (-> :rasta users/user->id user/permissions-set atom)]
+      (let [rastas-personal-collection (collection/user->personal-collection (test.users/user->id :rasta))]
+        (binding [api/*current-user-id*              (test.users/user->id :rasta)
+                  api/*current-user-permissions-set* (-> :rasta test.users/user->id user/permissions-set atom)]
           (let [dashboard       (magic/automagic-analysis (Table (id :venues)) {})
                 saved-dashboard (save-transient-dashboard! dashboard (u/the-id rastas-personal-collection))]
             (is (= (db/count DashboardCard :dashboard_id (u/the-id saved-dashboard))
@@ -282,13 +282,13 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with String :id keys"
+           #":parameters must be a sequence of maps with String :id key"
            (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
     (testing "updating"
       (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with String :id keys"
+             #":parameters must be a sequence of maps with String :id key"
              (db/update! Dashboard id :parameters [{:id 100}])))))))
 
 (deftest normalize-parameters-test

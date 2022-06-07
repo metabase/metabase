@@ -1,9 +1,41 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
 import { breakpointMinSmall, space } from "metabase/styled-components/theme";
+import {
+  shrinkOrExpandOnClick,
+  shrinkOrExpandDuration,
+} from "metabase/styled-components/theme/button.ts";
 
-import Icon from "metabase/components/Icon";
+import Icon, { IconWrapper } from "metabase/components/Icon";
+
+export const BookmarkIconWrapper = styled(IconWrapper)`
+  ${props =>
+    !props.isBookmarked &&
+    css`
+      &:hover {
+        ${BookmarkIcon} {
+          color: ${color("text-dark")};
+        }
+      }
+    `}
+`;
+export const BookmarkIcon = styled(Icon)`
+  ${shrinkOrExpandOnClick}
+
+  ${props =>
+    props.animation === "expand" &&
+    css`
+      animation: expand linear ${shrinkOrExpandDuration};
+    `}
+
+  ${props =>
+    props.animation === "shrink" &&
+    css`
+      animation: shrink linear ${shrinkOrExpandDuration};
+    `}
+`;
 
 export const Container = styled.div`
   display: flex;

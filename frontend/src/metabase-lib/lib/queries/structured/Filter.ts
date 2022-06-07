@@ -9,7 +9,11 @@ import {
 import { FilterOperator } from "metabase-types/types/Metadata";
 import StructuredQuery from "../StructuredQuery";
 import Dimension from "../../Dimension";
-import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
+import {
+  generateTimeFilterValuesDescriptions,
+  getRelativeDatetimeField,
+  isStartingFrom,
+} from "metabase/lib/query_time";
 import {
   isStandard,
   isSegment,
@@ -21,6 +25,11 @@ import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
+
+export interface FilterDisplayNameOpts {
+  includeDimension?: boolean;
+}
+
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -51,15 +60,17 @@ export default class Filter extends MBQLClause {
   /**
    * Returns the display name for the filter
    */
-  displayName() {
+  displayName({ includeDimension = true }: FilterDisplayNameOpts = {}) {
     if (this.isSegment()) {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
     } else if (this.isStandard()) {
       const dimension = this.dimension();
       const operator = this.operator();
-      const dimensionName = dimension && dimension.displayName();
-      const operatorName = operator && operator.moreVerboseName;
+      const dimensionName =
+        dimension && includeDimension && dimension.displayName();
+      const operatorName =
+        operator && !isStartingFrom(this) && operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
@@ -163,6 +174,10 @@ export default class Filter extends MBQLClause {
   dimension(): Dimension | null | undefined {
     if (this.isFieldFilter()) {
       return this._query.parseFieldReference(this[1]);
+    }
+    const field = getRelativeDatetimeField(this);
+    if (field) {
+      return this._query.parseFieldReference(field);
     }
   }
 

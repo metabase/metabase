@@ -1,5 +1,6 @@
 (ns metabase.models
   (:require [metabase.models.activity :as activity]
+            [metabase.models.application-permissions-revision :as a-perm-revision]
             [metabase.models.bookmark :as bookmark]
             [metabase.models.card :as card]
             [metabase.models.collection :as collection]
@@ -12,16 +13,16 @@
             [metabase.models.dimension :as dimension]
             [metabase.models.field :as field]
             [metabase.models.field-values :as field-values]
-            [metabase.models.general-permissions-revision :as g-perm-revision]
             [metabase.models.login-history :as login-history]
             [metabase.models.metric :as metric]
             [metabase.models.metric-important-field :as metric-important-field]
             [metabase.models.moderation-review :as moderation-review]
             [metabase.models.native-query-snippet :as native-query-snippet]
-            [metabase.models.permissions :as permissions]
-            [metabase.models.permissions-group :as permissions-group]
-            [metabase.models.permissions-group-membership :as permissions-group-membership]
-            [metabase.models.permissions-revision :as permissions-revision]
+            [metabase.models.permissions :as perms]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.permissions-group-membership :as perms-group-membership]
+            [metabase.models.permissions-revision :as perms-revision]
+            [metabase.models.persisted-info :as persisted-info]
             [metabase.models.pulse :as pulse]
             [metabase.models.pulse-card :as pulse-card]
             [metabase.models.pulse-channel :as pulse-channel]
@@ -55,16 +56,17 @@
          dimension/keep-me
          field/keep-me
          field-values/keep-me
-         g-perm-revision/keep-me
+         a-perm-revision/keep-me
          login-history/keep-me
          metric/keep-me
          moderation-review/keep-me
          metric-important-field/keep-me
          native-query-snippet/keep-me
-         permissions/keep-me
-         permissions-group/keep-me
-         permissions-group-membership/keep-me
-         permissions-revision/keep-me
+         perms/keep-me
+         perms-group/keep-me
+         perms-group-membership/keep-me
+         perms-revision/keep-me
+         persisted-info/keep-me
          pulse/keep-me
          pulse-card/keep-me
          pulse-channel/keep-me
@@ -88,6 +90,7 @@
  [bookmark CardBookmark]
  [bookmark DashboardBookmark]
  [bookmark CollectionBookmark]
+ [bookmark BookmarkOrdering]
  [card Card]
  [collection Collection]
  [c-perm-revision CollectionPermissionGraphRevision]
@@ -104,11 +107,12 @@
  [moderation-review ModerationReview]
  [metric-important-field MetricImportantField]
  [native-query-snippet NativeQuerySnippet]
- [permissions Permissions]
- [permissions-group PermissionsGroup]
- [permissions-group-membership PermissionsGroupMembership]
- [permissions-revision PermissionsRevision]
- [g-perm-revision GeneralPermissionsRevision]
+ [perms Permissions]
+ [perms-group PermissionsGroup]
+ [perms-group-membership PermissionsGroupMembership]
+ [perms-revision PermissionsRevision]
+ [a-perm-revision ApplicationPermissionsRevision]
+ [persisted-info PersistedInfo]
  [pulse Pulse]
  [pulse-card PulseCard]
  [pulse-channel PulseChannel]

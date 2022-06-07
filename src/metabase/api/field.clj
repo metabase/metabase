@@ -2,7 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase.api.common :as api]
-            [metabase.db.metadata-queries :as metadata]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
@@ -12,7 +12,7 @@
             [metabase.models.table :as table :refer [Table]]
             [metabase.query-processor :as qp]
             [metabase.related :as related]
-            [metabase.server.middleware.offset-paging :as offset-paging]
+            [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.sync :as sync]
             [metabase.sync.concurrent :as sync.concurrent]
             [metabase.types :as types]
@@ -153,8 +153,8 @@
   "Get the count and distinct count of `Field` with ID."
   [id]
   (let [field (api/read-check Field id)]
-    [[:count     (metadata/field-count field)]
-     [:distincts (metadata/field-distinct-count field)]]))
+    [[:count     (metadata-queries/field-count field)]
+     [:distincts (metadata-queries/field-distinct-count field)]]))
 
 
 ;;; --------------------------------------------------- Dimensions ---------------------------------------------------
@@ -280,7 +280,12 @@
   "Manually trigger an update for the FieldValues for this Field. Only applies to Fields that are eligible for
    FieldValues."
   [id]
-  (field-values/create-or-update-field-values! (api/write-check (Field id)))
+  (let [field (api/write-check (Field id))]
+    ;; Override *current-user-permissions-set* so that permission checks pass during sync. If a user has DB detail perms
+    ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
+    ;; return any actual field values from this API. (#21764)
+    (binding [api/*current-user-permissions-set* (atom #{"/"})]
+      (field-values/create-or-update-field-values! field)))
   {:status :success})
 
 (api/defendpoint POST "/:id/discard_values"
@@ -377,7 +382,7 @@
         search-field (api/check-404 (Field search-id))]
     (throw-if-no-read-or-segmented-perms field)
     (throw-if-no-read-or-segmented-perms search-field)
-    (search-values field search-field value offset-paging/*limit*)))
+    (search-values field search-field value mw.offset-paging/*limit*)))
 
 (defn remapped-value
   "Search for one specific remapping where the value of `field` exactly matches `value`. Returns a pair like

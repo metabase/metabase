@@ -14,7 +14,12 @@ import _ from "underscore";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { closeNavbar } from "metabase/redux/app";
+
+import {
+  closeNavbar,
+  setCollectionId,
+  clearBreadcrumbs,
+} from "metabase/redux/app";
 import { MetabaseApi } from "metabase/services";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
@@ -86,6 +91,10 @@ import {
   getDocumentTitle,
   getPageFavicon,
   getIsTimeseries,
+  getIsLoadingComplete,
+  getIsHeaderVisible,
+  getIsActionListVisible,
+  getIsAdditionalInfoVisible,
 } from "../selectors";
 import * as actions from "../actions";
 
@@ -161,6 +170,9 @@ const mapStateToProps = (state, props) => {
     isVisualized: getIsVisualized(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
+    isHeaderVisible: getIsHeaderVisible(state),
+    isActionListVisible: getIsActionListVisible(state),
+    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
     databaseFields: getDatabaseFields(state),
@@ -186,11 +198,14 @@ const mapStateToProps = (state, props) => {
     snippetCollectionId: getSnippetCollectionId(state),
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
+    isLoadingComplete: getIsLoadingComplete(state),
   };
 };
 
 const mapDispatchToProps = {
   ...actions,
+  setCollectionId,
+  clearBreadcrumbs,
   closeNavbar,
   onChangeLocation: push,
   createBookmark: id => Bookmark.actions.create({ id, type: "card" }),
@@ -222,6 +237,9 @@ function QueryBuilder(props) {
     allLoaded,
     showTimelinesForCollection,
     card,
+    isLoadingComplete,
+    setCollectionId,
+    clearBreadcrumbs,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -236,6 +254,14 @@ function QueryBuilder(props) {
   const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
   const hasQuestion = question != null;
   const collectionId = question?.collectionId();
+  const isSaved = question?.isSaved();
+
+  useEffect(() => {
+    if (isSaved) {
+      setCollectionId(collectionId);
+      return () => clearBreadcrumbs();
+    }
+  }, [collectionId, isSaved, setCollectionId, clearBreadcrumbs]);
 
   const openModal = useCallback(
     (modal, modalContext) => setUIControls({ modal, modalContext }),
@@ -365,13 +391,14 @@ function QueryBuilder(props) {
     }
   });
 
-  const { isRunning } = uiControls;
-
-  const [shouldSendNotification, setShouldSendNotification] = useState(false);
   const [isShowingToaster, setIsShowingToaster] = useState(false);
 
+  const { isRunning } = uiControls;
+
   const onTimeout = useCallback(() => {
-    setIsShowingToaster(true);
+    if ("Notification" in window && Notification.permission === "default") {
+      setIsShowingToaster(true);
+    }
   }, []);
 
   useLoadingTimer(isRunning, {
@@ -382,26 +409,25 @@ function QueryBuilder(props) {
   const [requestPermission, showNotification] = useWebNotification();
 
   useEffect(() => {
-    if (!isRunning) {
+    if (isLoadingComplete) {
       setIsShowingToaster(false);
-    }
-    if (!isRunning && shouldSendNotification) {
-      if (document.hidden) {
+
+      if (
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
         showNotification(
           t`All Set! Your question is ready.`,
           t`${card.name} is loaded.`,
         );
       }
-      setShouldSendNotification(false);
     }
-  }, [isRunning, shouldSendNotification, showNotification, card?.name]);
+  }, [isLoadingComplete, showNotification, card?.name]);
 
   const onConfirmToast = useCallback(async () => {
-    const result = await requestPermission();
-    if (result === "granted") {
-      setIsShowingToaster(false);
-      setShouldSendNotification(true);
-    }
+    await requestPermission();
+    setIsShowingToaster(false);
   }, [requestPermission]);
 
   const onDismissToast = useCallback(() => {

@@ -4,12 +4,13 @@ import {
   restore,
   openNativeEditor,
   visitDashboard,
+  filterWidget,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
 
 // NOTE: some overlap with parameters-embedded.cy.spec.js
 
-const { PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS } = SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
   beforeEach(() => {
@@ -18,7 +19,6 @@ describe("scenarios > dashboard > parameters", () => {
     cy.intercept("POST", "/api/card/**/query").as("cardQuery");
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
     cy.intercept("GET", "/api/collection/**").as("collection");
-    cy.intercept("GET", "/api/field/**/values").as("fieldValues");
   });
 
   it("should be visible if previously added", () => {
@@ -198,59 +198,101 @@ describe("scenarios > dashboard > parameters", () => {
     cy.findByText("Add filter").click();
   });
 
-  it("should remove previously deleted dashboard parameter from URL (metabase#10829)", () => {
+  it("should remove parameter from URL after its name has been removed (metabase#10829)", () => {
     // Mirrored issue in metabase-enterprise#275
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
 
-    // Go directly to "Orders in a dashboard" dashboard
-    visitDashboard(1);
-    cy.findByTextEnsureVisible("Created At");
+    const questionDetails = {
+      query: {
+        "source-table": ORDERS_ID,
+        limit: 5,
+      },
+    };
 
-    // Add filter and save dashboard
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
-    cy.findByText("Text or Category").click();
-    cy.findByText("Ends with").click();
+    const filter = {
+      name: "Text ends with",
+      slug: "text_ends_with",
+      id: "88a1257c",
+      type: "string/ends-with",
+      sectionId: "string",
+    };
 
-    // map the parameter to the Category field
-    selectFilter(cy.get(".DashCard"), "Category");
+    const dashboardDetails = {
+      parameters: [filter],
+    };
 
-    cy.findByText("Save").click();
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: { id, card_id, dashboard_id } }) => {
+        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
+          cards: [
+            {
+              id,
+              card_id,
+              row: 0,
+              col: 0,
+              sizeX: 12,
+              sizeY: 8,
+              series: [],
+              visualization_settings: {},
+              parameter_mappings: [
+                {
+                  parameter_id: filter.id,
+                  card_id,
+                  target: [
+                    "dimension",
+                    [
+                      "field",
+                      PRODUCTS.CATEGORY,
+                      {
+                        "source-field": ORDERS.PRODUCT_ID,
+                      },
+                    ],
+                  ],
+                },
+              ],
+            },
+          ],
+        });
 
-    // wait for saving to finish
-    cy.contains("You're editing this dashboard.").should("not.exist");
+        visitDashboard(dashboard_id);
+        cy.findByTextEnsureVisible("Created At");
+      },
+    );
 
     // populate the filter input
-    cy.findByText("Text ends with").click();
-    popover()
-      .find("input")
-      .type("zmo");
-
-    popover()
-      .contains("Add filter")
-      .click();
+    filterWidget().click();
+    cy.findByPlaceholderText("Enter some text").type("zmo{enter}");
+    cy.button("Add filter").click();
 
     cy.log(
       "**URL is updated correctly with the given parameter at this point**",
     );
-    cy.url().should("include", "text_ends_with=zmo");
+    cy.location("search").should("eq", "?text_ends_with=zmo");
 
     // Remove filter name
     cy.icon("pencil").click();
     cy.get(".Dashboard")
       .find(".Icon-gear")
       .click();
+
     cy.findByDisplayValue("Text ends with")
-      .click()
-      .clear();
-    cy.findByText("Save").click();
-    cy.wait("@dashboard");
-    cy.findByText("You're editing this dashboard.").should("not.exist");
+      .clear()
+      .blur();
+
+    cy.findByDisplayValue("unnamed");
+
+    cy.location("search").should("eq", "?unnamed=zmo");
+
+    cy.button("Save").click();
+    cy.wait("@dashcardQuery");
 
     cy.log("Filter name should be 'unnamed' and the value cleared");
-    cy.findByText(/unnamed/i);
+    filterWidget().contains(/unnamed/i);
 
     cy.log("URL should reset");
-    cy.location("pathname").should("eq", "/dashboard/1");
+    cy.location("search").should("eq", "");
   });
 
   it("should allow linked question to be changed without breaking (metabase#9299)", () => {
@@ -294,6 +336,8 @@ describe("scenarios > dashboard > parameters", () => {
     // update the filter with the default option "Previous 30 days"
     // it will automatically be selected - just press "Update filter"
     cy.findByText("No default").click();
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
     cy.findByText("Update filter").click();
 
     // connect that filter to the second card/question (dashboard already had one question previously)
@@ -513,7 +557,6 @@ describe("scenarios > dashboard > parameters", () => {
     it("should not see mapping options", () => {
       cy.icon("pencil").click();
       cy.findByText("Location").click({ force: true });
-      cy.wait("@fieldValues");
 
       cy.icon("key");
     });
@@ -525,7 +568,6 @@ function selectFilter(selection, filterName) {
   popover()
     .contains(filterName)
     .click({ force: true });
-  cy.wait("@fieldValues");
 }
 
 function addQuestion(name) {
@@ -545,7 +587,6 @@ function addCityFilterWithDefault() {
   cy.findByText("Select…").click();
   popover().within(() => {
     cy.findByText("City").click();
-    cy.wait("@fieldValues");
   });
 
   // Create a default value and save filter

@@ -58,7 +58,7 @@ export function getVisualizationRaw(series) {
 
 export function getVisualizationTransformed(series) {
   // don't transform if we don't have the data
-  if (_.any(series, s => s.data == null)) {
+  if (_.any(series, s => s.data == null) || _.any(series, s => s.error)) {
     return getVisualizationRaw(series);
   }
 

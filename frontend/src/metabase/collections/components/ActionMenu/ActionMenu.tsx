@@ -6,10 +6,10 @@ import { Item, isItemPinned } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
 
 import { EntityItemMenu } from "./ActionMenu.styled";
-import { Bookmarks } from "metabase-types/api/bookmark";
+import { BookmarksType } from "metabase-types/api/bookmark";
 
 type Props = {
-  bookmarks?: Bookmarks;
+  bookmarks?: BookmarksType;
   createBookmark?: (id: string, collection: string) => void;
   deleteBookmark?: (id: string, collection: string) => void;
   className?: string;
@@ -19,7 +19,7 @@ type Props = {
   onMove: (items: Item[]) => void;
 };
 
-function getIsBookmarked(item: Item, bookmarks: Bookmarks) {
+function getIsBookmarked(item: Item, bookmarks: BookmarksType) {
   const normalizedItemModel = normalizeItemModel(item);
 
   return bookmarks.some(

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import Icon from "metabase/components/Icon";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -10,6 +11,45 @@ import {
   space,
 } from "metabase/styled-components/theme";
 import { SidebarLink } from "./SidebarItems";
+
+const openSidebarCSS = css`
+  width: ${NAV_SIDEBAR_WIDTH};
+
+  border-right: 1px solid ${color("border")};
+
+  ${breakpointMaxSmall} {
+    width: 90vw;
+  }
+`;
+
+export const Sidebar = styled.aside<{ isOpen: boolean }>`
+  width: 0;
+  height: 100%;
+
+  position: relative;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0.5rem 0;
+  background-color: ${color("white")};
+
+  overflow: auto;
+  overflow-x: hidden;
+  z-index: 4;
+
+  transition: width 0.2s;
+
+  @media (prefers-reduced-motion) {
+    transition: none;
+  }
+
+  ${props => props.isOpen && openSidebarCSS};
+
+  ${breakpointMaxSmall} {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+`;
 
 export const NavRoot = styled.nav<{ isOpen: boolean }>`
   display: flex;
@@ -96,15 +136,24 @@ export const LoadingTitle = styled.h2`
 export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   position: fixed;
   bottom: 0;
+  // Height is hard-set so it remains
+  // the same as the ArchiveBarContent
+  // in ArchiveApp
+  height: 49px;
   left: 0;
   padding: ${space(0)};
   width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};
   border-top: 1px solid ${color("border")};
   background-color: ${color("white")};
   display: flex;
+  overflow: hidden;
   align-items: center;
   margin-right: ${space(2)};
   color: ${color("text-light")};
+`;
+
+export const HomePageLink = styled(SidebarLink)`
+  padding-left: 12px;
 `;
 
 export const BrowseLink = styled(SidebarLink)`
@@ -115,11 +164,9 @@ export const AddYourOwnDataLink = styled(SidebarLink)`
   background: ${color("brand")};
   border-radius: 8px;
   color: ${color("white")};
-  float: left;
   margin: ${space(1)};
   padding: 2px 6px;
   transition: background-color 0.3s linear;
-  width: auto;
 
   @media (prefers-reduced-motion) {
     transition: none;

@@ -3,14 +3,14 @@
   (:require [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.driver.common.parameters.operators :as params.operators]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.driver.common.parameters.operators :as params.ops]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.query-processor.card :as qp.card]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -69,7 +69,7 @@
        request-param
        ;; if value comes in as a lone value for an operator filter type (as will be the case for embedding) wrap it in a
        ;; vector so the parameter handling code doesn't explode.
-       (when (and (params.operators/operator? (:type matching-param))
+       (when (and (params.ops/operator? (:type matching-param))
                   (seq (:value request-param))
                   (not (sequential? (:value request-param))))
          {:value [(:value request-param)]})
@@ -97,7 +97,7 @@
                            :target (some (fn [{mapping-card-id :card_id, :keys [target]}]
                                             (when (= mapping-card-id card-id)
                                               target))
-                                          mappings)}]))
+                                         mappings)}]))
          (filter (fn [[_ {:keys [target]}]]
                    target)))
    dashboard-param-id->param))
@@ -111,7 +111,7 @@
    dashcard-id    :- su/IntGreaterThanZero
    request-params :- (s/maybe [su/Map])]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-  (let [request-params            (normalize/normalize-fragment [:parameters] request-params)
+  (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
         ;; ignore default values in request params as well. (#20516)
         request-params            (for [param request-params]
                                     (dissoc param :default))
@@ -160,7 +160,7 @@
   (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
         options         (merge
                          {:ignore_cache false
-                          :constraints  constraints/default-query-constraints
+                          :constraints  (qp.constraints/default-query-constraints)
                           :context      :dashboard}
                          options
                          {:parameters   resolved-params

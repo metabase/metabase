@@ -1,7 +1,7 @@
 (ns metabase.logger
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
-            [clj-time.coerce :as coerce]
-            [clj-time.format :as time]
+            [clj-time.coerce :as time.coerce]
+            [clj-time.format :as time.format]
             [metabase.config :refer [local-process-uuid]])
   (:import org.apache.commons.lang3.exception.ExceptionUtils
            [org.apache.logging.log4j.core Appender LogEvent LoggerContext]
@@ -18,8 +18,8 @@
   (reverse (seq @messages*)))
 
 (defn- event->log-data [^LogEvent event]
-  {:timestamp    (time/unparse (time/formatter :date-time)
-                               (coerce/from-long (.getTimeMillis event)))
+  {:timestamp    (time.format/unparse (time.format/formatter :date-time)
+                                      (time.coerce/from-long (.getTimeMillis event)))
    :level        (.getLevel event)
    :fqns         (.getLoggerName event)
    :msg          (.getMessage event)

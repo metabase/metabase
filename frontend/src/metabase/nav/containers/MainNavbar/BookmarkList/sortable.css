@@ -1,0 +1,9 @@
+.react-sortable-hoc-helper.sorting {
+  background: white;
+  border-bottom: 2px solid var(--color-brand);
+}
+
+.react-sortable-hoc-helper.sorting > svg {
+  color: var(--color-brand);
+  opacity: 0.5;
+}

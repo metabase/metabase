@@ -10,7 +10,7 @@ import DataPermissionsPage from "./pages/DataPermissionsPage";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES,
-  PLUGIN_GENERAL_PERMISSIONS,
+  PLUGIN_APPLICATION_PERMISSIONS,
 } from "metabase/plugins";
 
 const getRoutes = () => (
@@ -39,7 +39,7 @@ const getRoutes = () => (
       <Route path=":collectionId" />
     </Route>
 
-    {PLUGIN_GENERAL_PERMISSIONS.getRoutes()}
+    {PLUGIN_APPLICATION_PERMISSIONS.getRoutes()}
   </Route>
 );
 

@@ -9,7 +9,7 @@
             [medley.core :as m]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.query :as query :refer [Query]]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor :as qp]
@@ -21,8 +21,8 @@
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.streaming :as qp.streaming]
-            [metabase.query-processor.util :as qputil]
-            [metabase.server.middleware.session :as session]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.util :as tu]
@@ -274,7 +274,7 @@
     (with-mock-cache [save-chan]
       (run-query)
       (mt/wait-for-result save-chan)
-      (let [query-hash (qputil/query-hash (test-query nil))]
+      (let [query-hash (qp.util/query-hash (test-query nil))]
         (testing "Cached results should exist"
           (is (= true
                  (i/cached-results cache/*backend* query-hash 100
@@ -332,7 +332,7 @@
   (testing "Cached results don't impact average execution time"
     (let [query                         (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                                                :cache-ttl 5000)
-          q-hash                        (qputil/query-hash query)
+          q-hash                        (qp.util/query-hash query)
           call-count                    (atom 0)
           called-promise                (promise)
           save-query-execution-original (var-get #'process-userland-query/save-query-execution!*)]
@@ -445,7 +445,7 @@
 (deftest perms-checks-should-still-apply-test
   (testing "Double-check that perms checks still happen even for cached results"
     (mt/with-temp-copy-of-db
-      (perms/revoke-data-perms! (group/all-users) (mt/db))
+      (perms/revoke-data-perms! (perms-group/all-users) (mt/db))
       (mt/with-test-user :rasta
         (with-mock-cache [save-chan]
           (letfn [(run-forbidden-query []
@@ -457,7 +457,7 @@
                    #"You do not have permissions to run this query"
                    (run-forbidden-query))))
             (testing "Run forbidden query as superuser to populate the cache"
-              (session/with-current-user (mt/user->id :crowberto)
+              (mw.session/with-current-user (mt/user->id :crowberto)
                 (is (= [[1000]]
                        (mt/rows (run-forbidden-query))))))
             (testing "Cache entry should be saved within 5 seconds"
@@ -465,7 +465,7 @@
                 (is (= save-chan
                        chan))))
             (testing "Run forbidden query again as superuser again, should be cached"
-              (session/with-current-user (mt/user->id :crowberto)
+              (mw.session/with-current-user (mt/user->id :crowberto)
                 (is (schema= {:cached (s/eq true), s/Keyword s/Any}
                              (run-forbidden-query)))))
             (testing "Run query as regular user, should get perms Exception even though result is cached"

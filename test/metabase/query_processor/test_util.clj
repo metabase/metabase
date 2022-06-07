@@ -11,7 +11,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
+            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data :as data]
@@ -116,7 +116,7 @@
 
     (fk-table-alias-name (data/id :categories) (data/id :venues :category_id)) ;; -> \"CATEGORIES__via__CATEGORY_ID\""
   [table-or-id field-or-id]
-  (#'add-implicit-joins/join-alias
+  (#'qp.add-implicit-joins/join-alias
    (db/select-one-field :name Table :id (u/the-id table-or-id))
    (db/select-one-field :name Field :id (u/the-id field-or-id))))
 

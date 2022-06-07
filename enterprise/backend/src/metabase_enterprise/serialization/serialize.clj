@@ -5,7 +5,7 @@
             [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
-            [metabase.mbql.util :as mbql.util]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -41,7 +41,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.util/replace
+      (mbql.u/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
         [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
@@ -64,7 +64,7 @@
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.util/replace entity
+  (mbql.u/replace entity
     mbql-entity-reference?
     (mbql-id->fully-qualified-name &match)
 

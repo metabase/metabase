@@ -11,16 +11,16 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
-            [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
-            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
+            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.models.setting :refer [defsetting]]
-            [metabase.query-processor.context :as context]
+            [metabase.query-processor.context :as qp.context]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
             [potemkin :as p])
@@ -149,7 +149,7 @@
   {:deprecated "0.35.0"}
   [driver ^Connection conn ^String timezone-id]
   (when timezone-id
-    (when-let [format-string (execute.old/set-timezone-sql driver)]
+    (when-let [format-string (sql-jdbc.execute.old/set-timezone-sql driver)]
       (try
         (let [sql (format format-string (str \' timezone-id \'))]
           (log/debug (trs "Setting {0} database timezone with statement: {1}" driver (pr-str sql)))
@@ -273,7 +273,7 @@
       (set-parameter driver stmt (inc i) param))
     params)))
 
-(defsetting ^:private sql-jdbc-fetch-size
+(defsetting sql-jdbc-fetch-size
   "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory."
   :default 500
@@ -432,9 +432,9 @@
   "Implementation of deprecated method `old/read-column` if a non-default one is available."
   [driver rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [col-type (.getColumnType rsmeta i)
-        method   (get-method execute.old/read-column [driver col-type])
+        method   (get-method sql-jdbc.execute.old/read-column [driver col-type])
         default? (some (fn [dispatch-val]
-                         (= method (get-method execute.old/read-column dispatch-val)))
+                         (= method (get-method sql-jdbc.execute.old/read-column dispatch-val)))
                        [:default
                         [::driver/driver col-type]
                         [:sql-jdbc col-type]])]
@@ -462,7 +462,7 @@
    (fn [^Integer i]
      (let [col-name     (.getColumnLabel rsmeta i)
            db-type-name (.getColumnTypeName rsmeta i)
-           base-type    (sql-jdbc.sync/database-type->base-type driver (keyword db-type-name))]
+           base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
        (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                    i col-name db-type-name base-type driver)
        {:name      col-name
@@ -488,14 +488,14 @@
   {:added "0.35.0", :arglists '([driver query context respond] [driver sql params max-rows context respond])}
   ([driver {{sql :query, params :params} :native, :as outer-query} context respond]
    {:pre [(string? sql) (seq sql)]}
-   (let [remark   (qputil/query->remark driver outer-query)
+   (let [remark   (qp.util/query->remark driver outer-query)
          sql      (str "-- " remark "\n" sql)
          max-rows (limit/determine-query-max-rows outer-query)]
      (execute-reducible-query driver sql params max-rows context respond)))
 
   ([driver sql params max-rows context respond]
    (with-open [conn          (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-               stmt          (statement-or-prepared-statement driver conn sql params (context/canceled-chan context))
+               stmt          (statement-or-prepared-statement driver conn sql params (qp.context/canceled-chan context))
                ^ResultSet rs (try
                                (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                (catch Throwable e
@@ -504,7 +504,7 @@
                                                  e))))]
      (let [rsmeta           (.getMetaData rs)
            results-metadata {:cols (column-metadata driver rsmeta)}]
-       (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
+       (respond results-metadata (reducible-rows driver rs rsmeta (qp.context/canceled-chan context)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -512,7 +512,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (p/import-vars
- [execute.old
+ [sql-jdbc.execute.old
   ;; interface (set-parameter is imported as well at the top of the namespace)
   set-timezone-sql
   read-column])

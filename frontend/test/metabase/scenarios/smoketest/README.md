@@ -9,7 +9,7 @@ From the root of the repository:
 - If you already have built Metabase with `./bin/build`, just run this to run all the tests.
 
 ```shell
-yarn run test-cypress-no-build --folder smoketest
+yarn run test-cypress-run --folder smoketest
 ```
 
 - Active development, add `--open`

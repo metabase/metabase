@@ -2,8 +2,10 @@
 import React from "react";
 import { t } from "ttag";
 
-import DatePicker, { getDateTimeFieldTarget } from "./DatePicker";
-import HoursMinutesInput from "./HoursMinutesInput";
+import DatePicker, {
+  getDateTimeFieldTarget,
+} from "./LegacyDatePicker/DatePicker";
+import HoursMinutesInput from "./LegacyDatePicker/HoursMinutesInput";
 
 import { parseTime } from "metabase/lib/time";
 
@@ -43,7 +45,7 @@ const MultiTimePicker = ({ filter, onFilterChange }) => (
         onFilterChange([filter[0], filter[1], ...sortTimes(time, filter[3])])
       }
     />
-    <span className="h3">and</span>
+    <span className="h3">{t`and`}</span>
     <TimeInput
       value={getTime(filter[3])}
       onChange={time =>

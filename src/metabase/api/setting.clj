@@ -27,7 +27,7 @@
   "Get all `Settings` and their values. You must be a superuser or have `setting` permission to do this.
   For non-superusers, a list of visible settings and values can be retrieved using the /api/session/properties endpoint."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (setting/admin-writable-settings))
 
 (api/defendpoint PUT "/"

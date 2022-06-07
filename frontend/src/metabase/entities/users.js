@@ -61,7 +61,7 @@ const Users = createEntity({
     },
     update: thunkCreator => user => async (dispatch, getState) => {
       const result = await thunkCreator(user)(dispatch, getState);
-      if (user.group_ids) {
+      if (user.user_group_memberships) {
         // group ids were just updated
         dispatch(loadMemberships());
       }

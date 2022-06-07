@@ -7,15 +7,15 @@
   (:require [clojure.string :as str]
             [compojure.core :refer [GET POST PUT]]
             [honeysql.core :as hsql]
-            [honeysql.helpers :as h]
+            [honeysql.helpers :as hh]
             [medley.core :as m]
-            [metabase.api.card :as card-api]
+            [metabase.api.card :as api.card]
             [metabase.api.common :as api]
-            [metabase.api.timeline :as timeline-api]
+            [metabase.api.timeline :as api.timeline]
             [metabase.db :as mdb]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
-            [metabase.models.collection.graph :as collection.graph]
+            [metabase.models.collection.graph :as graph]
             #_:clj-kondo/ignore ;; bug: when alias defined for namespaced keywords is run through kondo macro, ns should be regarded as used
             [metabase.models.collection.root :as collection.root]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -26,7 +26,7 @@
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.timeline :as timeline :refer [Timeline]]
-            [metabase.server.middleware.offset-paging :as offset-paging]
+            [metabase.server.middleware.offset-paging :as mw.offset-paging]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.schema :as su]
@@ -69,19 +69,21 @@
 (api/defendpoint GET "/tree"
   "Similar to `GET /`, but returns Collections in a tree structure, e.g.
 
+  ```
   [{:name     \"A\"
   :below    #{:card :dataset}
   :children [{:name \"B\"}
-  {:name     \"C\"
-  :here     #{:dataset :card}
-  :below    #{:dataset :card}
-  :children [{:name     \"D\"
-  :here     #{:dataset}
-  :children [{:name \"E\"}]}
-  {:name     \"F\"
-  :here     #{:card}
-  :children [{:name \"G\"}]}]}]}
+             {:name     \"C\"
+              :here     #{:dataset :card}
+              :below    #{:dataset :card}
+              :children [{:name     \"D\"
+                          :here     #{:dataset}
+                          :children [{:name \"E\"}]}
+                         {:name     \"F\"
+                          :here     #{:card}
+                          :children [{:name \"G\"}]}]}]}
   {:name \"H\"}]
+  ```
 
   The here and below keys indicate the types of items at this particular level of the tree (here) and in its
   subtree (below)."
@@ -183,6 +185,7 @@
   [_ collection {:keys [archived? pinned-state]}]
   (-> {:select    [:p.id
                    :p.name
+                   :p.entity_id
                    :p.collection_position
                    [(hx/literal "pulse") :model]]
        :modifiers [:distinct]
@@ -195,7 +198,7 @@
                    [:= :p.alert_condition    nil]
                    ;; exclude dashboard subscriptions
                    [:= :p.dashboard_id nil]]}
-      (h/merge-where (pinned-state->clause pinned-state :p.collection_position))))
+      (hh/merge-where (pinned-state->clause pinned-state :p.collection_position))))
 
 (defmethod post-process-collection-children :pulse
   [_ rows]
@@ -204,7 +207,7 @@
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
-  {:select [:id :name [(hx/literal "snippet") :model]]
+  {:select [:id :name :entity_id [(hx/literal "snippet") :model]]
    :from   [[NativeQuerySnippet :nqs]]
    :where  [:and
             [:= :collection_id (:id collection)]
@@ -212,7 +215,7 @@
 
 (defmethod collection-children-query :timeline
   [_ collection {:keys [archived? pinned-state]}]
-  {:select [:id :name [(hx/literal "timeline") :model] :description :icon]
+  {:select [:id :name [(hx/literal "timeline") :model] :description :entity_id :icon]
    :from   [[Timeline :timeline]]
    :where  [:and
             (poison-when-pinned-clause pinned-state)
@@ -232,7 +235,7 @@
             :moderated_status :icon :personal_owner_id)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.collection_position :c.display
+  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
                    [(hx/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
@@ -265,7 +268,7 @@
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
                    [:= :dataset dataset?]]}
-      (h/merge-where (pinned-state->clause pinned-state))))
+      (hh/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
@@ -285,7 +288,7 @@
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:d.id :d.name :d.description :d.collection_position [(hx/literal "dashboard") :model]
+  (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position [(hx/literal "dashboard") :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
                    [:r.timestamp :last_edit_timestamp]]
@@ -304,7 +307,7 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]]}
-      (h/merge-where (pinned-state->clause pinned-state))))
+      (hh/merge-where (pinned-state->clause pinned-state))))
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
@@ -321,11 +324,12 @@
              :select [:id
                       :name
                       :description
+                      :entity_id
                       :personal_owner_id
                       [(hx/literal "collection") :model]
                       :authority_level])
       ;; the nil indicates that collections are never pinned.
-      (h/merge-where (pinned-state->clause pinned-state nil))))
+      (hh/merge-where (pinned-state->clause pinned-state nil))))
 
 (defmethod post-process-collection-children :collection
   [_ rows]
@@ -396,7 +400,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :display :model :collection_position :authority_level [:personal_owner_id :integer]
+  [:id :name :description :entity_id :display :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 
@@ -427,7 +431,7 @@
   ;; generate the set of columns across all child queries. Remember to add type info if not a text column
   (into []
         (comp cat (map select-name) (distinct))
-        (for [model [:card :dashboard :snippet :pulse :collection]]
+        (for [model [:card :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
 
@@ -491,19 +495,19 @@
         ;; We didn't implement collection pagination for snippets namespace for root/items
         ;; Rip out the limit for now and put it back in when we want it
         limit-query (if (or
-                          (nil? offset-paging/*limit*)
-                          (nil? offset-paging/*offset*)
+                          (nil? mw.offset-paging/*limit*)
+                          (nil? mw.offset-paging/*offset*)
                           (= (:collection-namespace options) "snippets"))
                       rows-query
                       (assoc rows-query
-                             :limit  offset-paging/*limit*
-                             :offset offset-paging/*offset*))
+                             :limit  mw.offset-paging/*limit*
+                             :offset mw.offset-paging/*offset*))
         res          {:total  (->> (db/query total-query) first :count)
                       :data   (->> (db/query limit-query) post-process-rows)
                       :models models}
         limit-res   (assoc res
-                           :limit  offset-paging/*limit*
-                           :offset offset-paging/*offset*)]
+                           :limit  mw.offset-paging/*limit*
+                           :offset mw.offset-paging/*offset*)]
     (if (= (:collection-namespace options) "snippets")
       res
       limit-res)))
@@ -524,8 +528,8 @@
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
       {:total  0
        :data   []
-       :limit  offset-paging/*limit*
-       :offset offset-paging/*offset*
+       :limit  mw.offset-paging/*limit*
+       :offset mw.offset-paging/*offset*
        :models valid-models})))
 
 (s/defn ^:private collection-detail
@@ -544,7 +548,7 @@
 (api/defendpoint GET "/root/timelines"
   "Fetch the root Collection's timelines."
   [include archived]
-  {include  (s/maybe timeline-api/Include)
+  {include  (s/maybe api.timeline/Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection nil {:timeline/events?   (= include "events")
@@ -553,7 +557,7 @@
 (api/defendpoint GET "/:id/timelines"
   "Fetch a specific Collection's timelines."
   [id include archived]
-  {include  (s/maybe timeline-api/Include)
+  {include  (s/maybe api.timeline/Include)
    archived (s/maybe su/BooleanString)}
   (let [archived? (Boolean/parseBoolean archived)]
     (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
@@ -719,7 +723,7 @@
   (when (api/column-will-change? :archived collection-before-update collection-updates)
     (when-let [alerts (seq (pulse/retrieve-alerts-for-cards
                             {:card-ids (db/select-ids Card :collection_id (u/the-id collection-before-update))}))]
-      (card-api/delete-alert-and-notify-archived! alerts))))
+      (api.card/delete-alert-and-notify-archived! alerts))))
 
 (api/defendpoint PUT "/:id"
   "Modify an existing Collection, including archiving or unarchiving it, or moving it."
@@ -771,7 +775,7 @@
   [namespace]
   {namespace (s/maybe su/NonBlankString)}
   (api/check-superuser)
-  (collection.graph/graph namespace))
+  (graph/graph namespace))
 
 (defn- ->int [id] (Integer/parseInt (name id)))
 
@@ -800,7 +804,7 @@
   (api/check-superuser)
   (->> (dissoc body :namespace)
        dejsonify-graph
-       (collection.graph/update-graph! namespace))
-  (collection.graph/graph namespace))
+       (graph/update-graph! namespace))
+  (graph/graph namespace))
 
 (api/define-routes)

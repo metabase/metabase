@@ -1,12 +1,12 @@
-## Getting alerts about questions
+# Getting alerts about questions
 
 Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
 
-### Getting alerts
+## Getting alerts
 
-To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../administration-guide/02-setting-up-email.md) is set up first.
+To start using alerts, someone on your team who's an administrator will need to make sure that [email integration](../administration-guide/02-setting-up-email.md) or Slack is set up first.
 
-### Types of alerts
+## Types of alerts
 
 There are three kinds of things you can get alerted about in Metabase:
 
@@ -16,7 +16,7 @@ There are three kinds of things you can get alerted about in Metabase:
 
 We'll go through these one by one.
 
-### Goal line alerts
+## Goal line alerts
 
 This kind of alert is useful when you're doing things like tracking daily active users and you want to know when you reach a certain number of them, or when you're tracking orders per week and you want to know whenever that number ever goes below a certain threshold.
 
@@ -38,27 +38,23 @@ This is where you'll get to choose a few things:
 
 Click Done, and your alert will be all set up! You'll get an email confirmation, too. If you need to edit or unsubscribe from the alert you set up, just click that same icon. You'll see the Edit and Unsubscribe buttons. This is also where you'll see alerts about this question that administrators might have added you to.
 
-![Edit menu](./images/alerts/edit-menu.png)
-
-### Progress bar alerts
+## Progress bar alerts
 
 Setting up this kind of alert is really similar to setting up a goal line alert. First, create a question that returns a single number as its result, then choose the Progress Bar chart type from the Visualization menu. Open the settings menu to select a goal value, click Done, then save your question.
 
 Next, click the bell icon in the bottom-right and you'll see that same screen of options for when you want to get alerts about this progress bar.
 
-### Results alerts
+## Results alerts
 
-Lastly, you can get an alert when one of your saved questions returns any result. This kind of alert is the most useful if you have a question that doesn't _usually_ return any results, but you just want to know when it _does_. For example, you might have a table called `Reviews`, and you want to know any time a customer leaves a bad review, which you consider to be anything below three stars. To set up an alert for this situation, you'd go and create a raw data question (i.e., a question that returns a list of reviews), and add a filter to only include results with one or two stars.
+Lastly, you can get an alert when one of your saved questions returns _any_ result. This kind of alert is the most useful if you have a question that doesn't _usually_ return any results, but you just want to know when it _does_ return results. 
 
-![Bad reviews](./images/alerts/bad-reviews.png)
+For example, you might have a table called `Reviews`, and you want to know any time a customer leaves a bad review, which you consider to be anything below three stars. To set up an alert for this situation, you'd go and create a raw data question (i.e., a question that returns a list of reviews), and add a filter to only include results with one or two stars.
 
 You probably don't want to be alerted about all the bad reviews you've _ever_ gotten, but just recent ones. So you can add a filter to only include results from yesterday or today, depending on how often you want to check for these bad reviews. At this point, when you check the results of this question, it probably won't return any results, which is a good thing.
 
-![No results](./images/alerts/no-results.png)
-
 Save the question, the click on the bell icon in the bottom-right of the screen, and select how often you want Metabase to check this question for results. That's it!
 
-### Adding additional recipients to your alerts
+## Adding additional recipients to your alerts
 
 If you're an administrator of your Metabase instance, you'll be able to see and edit every alert on all saved questions. You'll also see some additional options to add recipients to alerts, which look like this:
 
@@ -68,7 +64,7 @@ You can add any Metabase user, email address, or even a Slack channel as a recip
 
 Here's more information about [setting up email integration](../administration-guide/02-setting-up-email.md) and [setting up Slack integration](../administration-guide/09-setting-up-slack.md).
 
-### Stopping alerts
+## Stopping alerts
 
 There are a few ways alerts can be stopped:
 
@@ -77,8 +73,3 @@ There are a few ways alerts can be stopped:
 - If a saved question that has an alert on it gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
 - If a question gets archived, any alerts on it will be deleted.
 
----
-
-## That's it!
-
-If you still have questions about using alerts, you can head over to our [discussion forum](https://discourse.metabase.com/). See you there!

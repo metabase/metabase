@@ -1,11 +1,13 @@
-import fs from "fs-promise";
-import os from "os";
-import path from "path";
-import { spawn } from "child_process";
+#!/usr/bin/env node
 
-import fetch from "isomorphic-fetch";
+const fs = require("fs-promise");
+const os = require("os");
+const path = require("path");
+const { spawn } = require("child_process");
 
-export const DEFAULT_DB_KEY = "/test_db_fixture.db";
+const fetch = require("isomorphic-fetch");
+
+const DEFAULT_DB_KEY = "/test_db_fixture.db";
 
 let testDbId = 0;
 const getDbFile = () =>
@@ -14,7 +16,7 @@ const getDbFile = () =>
 let port = 4000;
 const getPort = () => port++;
 
-export const BackendResource = createSharedResource("BackendResource", {
+const BackendResource = createSharedResource("BackendResource", {
   getKey({ dbKey = DEFAULT_DB_KEY }) {
     return dbKey || {};
   },
@@ -79,6 +81,7 @@ export const BackendResource = createSharedResource("BackendResource", {
             }),
             MB_SNOWPLOW_AVAILABLE: process.env["MB_SNOWPLOW_AVAILABLE"],
             MB_SNOWPLOW_URL: process.env["MB_SNOWPLOW_URL"],
+            PATH: process.env.PATH,
           },
           stdio:
             process.env["DISABLE_LOGGING"] ||
@@ -124,7 +127,7 @@ export const BackendResource = createSharedResource("BackendResource", {
   },
 });
 
-export async function isReady(host) {
+async function isReady(host) {
   try {
     const response = await fetch(`${host}/api/health`);
     if (response.status === 200) {
@@ -191,3 +194,5 @@ function createSharedResource(
 function delay(duration) {
   return new Promise((resolve, reject) => setTimeout(resolve, duration));
 }
+
+module.exports = { DEFAULT_DB_KEY, BackendResource, isReady };

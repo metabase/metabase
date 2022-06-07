@@ -10,7 +10,7 @@
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters :as params]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
@@ -50,19 +50,35 @@
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre i/SingleValue MultipleValues su/Map))
+  (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/Map))
            "Valid param value(s)"))
 
-(s/defn ^:private params-with-target
-  "Return `params` with a matching `target`. `target` is something like:
+(s/defn ^:private tag-targets
+  "Given a template tag, returns a set of `target` structures that can be used to target the tag.
+  Potential targets look something like:
 
-     [:dimension [:template-tag <param-name>]] ; for FieldFilters (Field Filters)
-     [:variable  [:template-tag <param-name>]] ; for other types of params"
-  [params :- (s/maybe [mbql.s/Parameter]) target :- mbql.s/ParameterTarget]
-  (seq (for [param params
-             :when (= (:target param) target)]
-         param)))
+     [:dimension [:template-tag {:id <param-id>}]
+     [:dimension [:template-tag <param-name>]]     ; for Field Filters
 
+     [:variable  [:template-tag {:id <param-id>}]]
+     [:variable  [:template-tag <param-name>]]     ; for other types of params
+
+  Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
+  compatibility."
+  [tag :- mbql.s/TemplateTag]
+  (let [target-type (case (:type tag)
+                      :dimension :dimension
+                      :variable)]
+    #{[target-type [:template-tag (:name tag)]]
+      [target-type [:template-tag {:id (:id tag)}]]}))
+
+(s/defn ^:private tag-params
+  "Return params from the provided `params` list targeting the provided `tag`."
+  [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
+  (let [targets (tag-targets tag)]
+    (seq (for [param params
+               :when (contains? targets (:target param))]
+           param))))
 
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
 
@@ -79,7 +95,7 @@
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
   [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
-  (let [matching-params  (params-with-target params [:dimension [:template-tag (:name tag)]])
+  (let [matching-params  (tag-params tag params)
         normalize-params (fn [params]
                            ;; remove `:target` which is no longer needed after this point.
                            (let [params (map #(dissoc % :target) params)]
@@ -102,15 +118,15 @@
                 (every? :default matching-params))
        (normalize-params matching-params))
      ;; otherwise there is no value for this Field filter ("dimension"), throw Exception if this param is required,
-     ;; otherwise return [[i/no-value]] to signify that
+     ;; otherwise return [[params/no-value]] to signify that
      (if (:required tag)
        (throw (missing-required-param-exception (:display-name tag)))
-       i/no-value))))
+       params/no-value))))
 
 (s/defmethod parse-tag :dimension :- (s/maybe FieldFilter)
   [{field-filter :dimension, :as tag} :- mbql.s/TemplateTag
    params                             :- (s/maybe [mbql.s/Parameter])]
-  (i/map->FieldFilter
+  (params/map->FieldFilter
    {:field (let [field-id (field-filter->field-id field-filter)]
              (qp.store/fetch-and-store-fields! #{field-id})
              (or (qp.store/field field-id)
@@ -119,7 +135,7 @@
     :value (field-filter-value tag params)}))
 
 (s/defmethod parse-tag :card :- ReferencedCardQuery
-  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
+  [{:keys [card-id], :as tag} :- mbql.s/TemplateTag _params]
   (when-not card-id
     (throw (ex-info (tru "Invalid :card parameter: missing `:card-id`")
                     {:tag tag, :type qp.error-type/invalid-parameter})))
@@ -127,9 +143,11 @@
                   (throw (ex-info (tru "Card {0} not found." card-id)
                                   {:card-id card-id, :tag tag, :type qp.error-type/invalid-parameter})))]
     (try
-      (i/map->ReferencedCardQuery
-       (merge {:card-id card-id}
-              (qp/compile (assoc query :parameters params, :info {:card-id card-id}))))
+      (params/map->ReferencedCardQuery
+       (let [query (assoc query :info {:card-id card-id})]
+         (log/tracef "Compiling referenced query for Card %d\n%s" card-id (u/pprint-to-str query))
+         (merge {:card-id card-id}
+                (qp/compile query))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -151,7 +169,7 @@
                                         :snippet-name snippet-name
                                         :tag          tag
                                         :type         qp.error-type/invalid-parameter})))]
-    (i/map->ReferencedQuerySnippet
+    (params/map->ReferencedQuerySnippet
      {:snippet-id (:id snippet)
       :content    (:content snippet)})))
 
@@ -160,9 +178,9 @@
 
 (s/defn ^:private param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
-  [{tag-name :name, :as tag} :- mbql.s/TemplateTag
-   params                    :- (s/maybe [mbql.s/Parameter])]
-  (let [matching-param (when-let [matching-params (not-empty (params-with-target params [:variable [:template-tag tag-name]]))]
+  [tag    :- mbql.s/TemplateTag
+   params :- (s/maybe [mbql.s/Parameter])]
+  (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
                          ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
                          (when (> (count matching-params) 1)
                            (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -176,7 +194,7 @@
         (:default matching-param)
         (if (:required tag)
           (throw (missing-required-param-exception (:display-name tag)))
-          i/no-value))))
+          params/no-value))))
 
 (defmethod parse-tag :number
   [tag params]
@@ -218,7 +236,7 @@
     (vector? value)
     (let [values (mapv value->number value)]
       (if (next values)
-        (i/map->CommaSeparatedNumbers {:numbers values})
+        (params/map->CommaSeparatedNumbers {:numbers values})
         (first values)))
     ;; if the value is a string, then split it by commas in the string. Usually there should be none.
     ;; Parse each part as a number.
@@ -227,7 +245,7 @@
                   (parse-number part))]
       (if (> (count parts) 1)
         ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
-        (i/map->CommaSeparatedNumbers {:numbers parts})
+        (params/map->CommaSeparatedNumbers {:numbers parts})
         ;; otherwise just return the single number
         (first parts)))))
 
@@ -273,14 +291,14 @@
   base type Fields as UUIDs."
   [param-type :- mbql.s/TemplateTagType value]
   (cond
-   (= value i/no-value)
+   (= value params/no-value)
    value
 
    (= param-type :number)
    (value->number value)
 
    (= param-type :date)
-   (i/map->Date {:s value})
+   (params/map->Date {:s value})
 
    ;; Field Filters
    (and (= param-type :dimension)
@@ -288,8 +306,8 @@
    (update-in value [:value :value] value->number)
 
    (sequential? value)
-   (i/map->MultipleValues {:values (for [v value]
-                                     (parse-value-for-type param-type v))})
+   (params/map->MultipleValues {:values (for [v value]
+                                         (parse-value-for-type param-type v))})
 
    ;; Field Filters with "special" base types
    (and (= param-type :dimension)
@@ -320,7 +338,7 @@
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
-  (log/tracef "Building params map out of tags\n%s\nand params\n%s" (u/pprint-to-str tags) (u/pprint-to-str params))
+  (log/tracef "Building params map out of tags\n%s\nand params\n%s\n" (u/pprint-to-str tags) (u/pprint-to-str params))
   (try
     (into {} (for [[k tag] tags
                    :let    [v (value-for-tag tag params)]

@@ -5,8 +5,9 @@ import { t } from "ttag";
 import moment from "moment";
 
 import { getUser } from "metabase/selectors/user";
-
 import { TextButton } from "metabase/components/Button.styled";
+import Tooltip from "metabase/components/Tooltip";
+import DateTime from "metabase/components/DateTime";
 
 function mapStateToProps(state) {
   return {
@@ -46,12 +47,14 @@ function LastEditInfoLabel({ item, user, onClick, className }) {
     editorId === user.id ? t`you` : formatEditorName(first_name, last_name);
 
   return (
-    <TextButton
-      size="small"
-      className={className}
-      onClick={onClick}
-      data-testid="revision-history-button"
-    >{t`Edited ${time} by ${editor}`}</TextButton>
+    <Tooltip tooltip={<DateTime value={timestamp} />}>
+      <TextButton
+        size="small"
+        className={className}
+        onClick={onClick}
+        data-testid="revision-history-button"
+      >{t`Edited ${time} by ${editor}`}</TextButton>
+    </Tooltip>
   );
 }
 

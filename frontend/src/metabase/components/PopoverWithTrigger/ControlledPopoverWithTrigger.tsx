@@ -6,6 +6,8 @@ import TippyPopover, {
   ITippyPopoverProps,
 } from "metabase/components/Popover/TippyPopover";
 
+import { TriggerButton } from "./ControlledPopoverWithTrigger.styled";
+
 export type ControlledPopoverWithTriggerProps = Omit<
   ITippyPopoverProps,
   // this is explicitly a "controlled" component, so we need to remove TippyPopover's optional `visible` prop and make it required
@@ -31,7 +33,7 @@ export type PopoverWithTriggerContent =
   | React.ReactNode
   | ((args: PopoverWithTriggerContentArgs) => React.ReactNode);
 type PopoverWithTriggerContentArgs = {
-  onClose: () => void;
+  closePopover: () => void;
 };
 
 export type RenderTrigger = (
@@ -65,24 +67,23 @@ function ControlledPopoverWithTrigger({
   const computedTrigger = _.isFunction(renderTrigger) ? (
     renderTrigger({ visible, onClick: handleTriggerClick })
   ) : (
-    <button
+    <TriggerButton
+      disabled={disabled}
       className={cx(
         triggerClasses,
         visible && triggerClassesOpen,
         !visible && triggerClassesClose,
-        disabled && "cursor-default",
-        "no-decoration",
       )}
       aria-disabled={disabled}
       style={triggerStyle}
       onClick={handleTriggerClick}
     >
       {triggerContent}
-    </button>
+    </TriggerButton>
   );
 
   const computedPopoverContent = _.isFunction(popoverContent)
-    ? popoverContent({ onClose })
+    ? popoverContent({ closePopover: onClose })
     : popoverContent;
 
   return (

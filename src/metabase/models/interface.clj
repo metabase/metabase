@@ -5,11 +5,11 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.db.connection :as mdb.connection]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
-            [metabase.util.cron :as cron-util]
+            [metabase.util.cron :as u.cron]
             [metabase.util.encryption :as encryption]
             [metabase.util.i18n :refer [trs tru]]
             [potemkin.types :as p.types]
@@ -67,7 +67,7 @@
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
   (cond-> query
-    (seq query) normalize/normalize))
+    (seq query) mbql.normalize/normalize))
 
 (defn catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
@@ -89,7 +89,7 @@
 (defn normalize-parameters-list
   "Normalize `parameters` or `parameter-mappings` when coming out of the application database or in via an API request."
   [parameters]
-  (or (normalize/normalize-fragment [:parameters] parameters)
+  (or (mbql.normalize/normalize-fragment [:parameters] parameters)
       []))
 
 (models/add-type! :parameters-list
@@ -107,7 +107,7 @@
 ;; `metric-segment-definition` is, predictably, for Metric/Segment `:definition`s, which are just the inner MBQL query
 (defn- normalize-metric-segment-definition [definition]
   (when (seq definition)
-    (u/prog1 (normalize/normalize-fragment [:query] definition)
+    (u/prog1 (mbql.normalize/normalize-fragment [:query] definition)
       (validate-metric-segment-definition <>))))
 
 ;; For inner queries like those in Metric definitions
@@ -119,7 +119,7 @@
   ;; frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`; we need to normalize them
   ;; to modern MBQL clauses so things work correctly
   (letfn [(normalize-column-settings-key [k]
-            (some-> k u/qualified-name json/parse-string normalize/normalize json/generate-string))
+            (some-> k u/qualified-name json/parse-string mbql.normalize/normalize json/generate-string))
           (normalize-column-settings [column-settings]
             (into {} (for [[k v] column-settings]
                        [(normalize-column-settings-key k) (walk/keywordize-keys v)])))
@@ -132,7 +132,7 @@
             (walk/postwalk
              (fn [form]
                (cond-> form
-                 (mbql-field-clause? form) normalize/normalize))
+                 (mbql-field-clause? form) mbql.normalize/normalize))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
@@ -194,7 +194,7 @@
   :out decompress)
 
 (defn- validate-cron-string [s]
-  (s/validate (s/maybe cron-util/CronScheduleString) s))
+  (s/validate (s/maybe u.cron/CronScheduleString) s))
 
 (models/add-type! :cron-string
   :in  validate-cron-string
@@ -232,6 +232,11 @@
   :insert add-updated-at-timestamp
   :update add-updated-at-timestamp)
 
+(defn- add-entity-id [obj & _]
+  (assoc obj :entity_id (u/generate-nano-id)))
+
+(models/add-property! :entity_id
+  :insert add-entity-id)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
@@ -248,7 +253,8 @@
     this param).")
 
   (can-read? [instance] [entity ^Integer id]
-    "Return whether `*current-user*` has *read* permissions for an object. You should use one of these implmentations:
+    "Return whether `*current-user*` has *read* permissions for an object. You should typically use one of these
+    implementations:
 
   *  `(constantly true)`
   *  `superuser?`
@@ -257,7 +263,8 @@
      this)")
 
   (^{:hydrate :can_write} can-write? [instance] [entity ^Integer id]
-   "Return whether `*current-user*` has *write* permissions for an object. You should use one of these implmentations:
+   "Return whether `*current-user*` has *write* permissions for an object. You should typically use one of these
+   implmentations:
 
   *  `(constantly true)`
   *  `superuser?`

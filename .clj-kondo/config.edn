@@ -15,20 +15,34 @@
                       (clojure.core.logic/fresh)
                       (clojure.core.logic/matcha)
                       (clojure.core.logic/run)
-                      (metabase.test/with-temporary-setting-values)
-                      (clojure.test/is [query= sql=])
+                      (clojure.test/is [query= sql= partial=])
                       (toucan.util.test/with-temp*)
                       (metabase.test/with-temp*)
                       (taoensso.nippy/extend-freeze)
                       (taoensso.nippy/extend-thaw)
                       (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
                       (clojure.tools.macro/macrolet)]}
-           :refer-all {:exclude [clojure.test
+           :refer-all {:level   :warning
+                       :exclude [clojure.test
                                  monger.operators]}
-           :unexpected-recur {:level :off}
-           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :unexpected-recur             {:level :off}
+           :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :missing-else-branch          {:level :warning}
+           :misplaced-docstring          {:level :warning}
+           :non-arg-vec-return-type-hint {:level :warning}
+           :missing-body-in-when         {:level :warning}
+           :missing-docstring            {:level :warning}
+           ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
+           :namespace-name-mismatch      {:level :off}
+           :use                          {:level :warning}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
                                       {:namespaces ["metabase.*"]}
+                                      metabase.db.data-migrations/data-migrations
+                                      {:namespaces ["metabase.db.data-migrations"]}
+                                      metabase.db.data-migrations/defmigration
+                                      {:namespaces ["metabase.db.data-migrations"]}
+                                      metabase.db.data-migrations/run-migration-if-needed!
+                                      {:namespaces ["metabase.db.data-migrations"]}
                                       metabase.driver/supports?
                                       {:namespaces ["metabase.*"]}
                                       metabase.driver/current-db-time
@@ -77,12 +91,267 @@
                                       {:namespaces ["metabase.*"]}
                                       schema.core/both
                                       {:namespaces ["metabase.*"]}}}
-           :unresolved-var {:exclude [colorize.core]}}
+           :unresolved-var {:exclude [colorize.core]}
+           :unsorted-required-namespaces {:level :warning}
+           :consistent-alias {:aliases {buddy.core.hash                                                 buddy-hash
+                                        cheshire.generate                                               json.generate
+                                        clj-http.client                                                 http
+                                        clj-ldap.client                                                 ldap
+                                        clj-time.coerce                                                 time.coerce
+                                        clj-time.format                                                 time.format
+                                        clojure.core.async                                              a
+                                        clojure.core.match                                              clojure.core.match ; Prefer :refer [match]
+                                        clojure.data                                                    data
+                                        clojure.math.combinatorics                                      math.combo
+                                        clojure.pprint                                                  pprint
+                                        clojure.spec.alpha                                              s
+                                        clojure.string                                                  str
+                                        clojure.test                                                    t
+                                        clojure.tools.build.api                                         b
+                                        clojure.tools.namespace.dependency                              ns.deps
+                                        clojure.tools.namespace.find                                    ns.find
+                                        clojure.tools.namespace.parse                                   ns.parse
+                                        colorize.core                                                   colorize
+                                        environ.core                                                    env
+                                        hf.depstar.api                                                  depstar
+                                        hiccup.core                                                     hiccup
+                                        hiccup.util                                                     hiccup.util
+                                        honeysql.core                                                   hsql
+                                        honeysql.format                                                 hformat
+                                        honeysql.helpers                                                hh
+                                        honeysql.types                                                  htypes
+                                        java-time                                                       t
+                                        metabase-enterprise.audit-app.pages.common                      common
+                                        metabase-enterprise.sandbox.api.table                           table
+                                        metabase.analytics.stats                                        stats
+                                        metabase.api.activity                                           api.activity
+                                        metabase.api.alert                                              api.alert
+                                        metabase.api.automagic-dashboards                               api.magic
+                                        metabase.api.bookmark                                           api.bookmark
+                                        metabase.api.card                                               api.card
+                                        metabase.api.card-test                                          api.card-test
+                                        metabase.api.collection                                         api.collection
+                                        metabase.api.common                                             api
+                                        metabase.api.dashboard                                          api.dashboard
+                                        metabase.api.dashboard-test                                     api.dashboard-test
+                                        metabase.api.database                                           api.database
+                                        metabase.api.dataset                                            api.dataset
+                                        metabase.api.email                                              api.email
+                                        metabase.api.embed                                              api.embed
+                                        metabase.api.field                                              api.field
+                                        metabase.api.geojson                                            api.geojson
+                                        metabase.api.ldap                                               api.ldap
+                                        metabase.api.logic-history                                      api.login-history
+                                        metabase.api.metric                                             api.metric
+                                        metabase.api.native-query-snippet                               api.native-query-snippet
+                                        metabase.api.notify                                             api.notify
+                                        metabase.api.permission-graph                                   api.permission-graph
+                                        metabase.api.permissions                                        api.permissions
+                                        metabase.api.pivots                                             api.pivots
+                                        metabase.api.premium-features                                   api.premium-features
+                                        metabase.api.preview-embed                                      api.preview-embed
+                                        metabase.api.public                                             api.public
+                                        metabase.api.pulse                                              api.pulse
+                                        metabase.api.query-description                                  api.qd
+                                        metabase.api.revision                                           api.revision
+                                        metabase.api.search                                             api.search
+                                        metabase.api.segment                                            api.segment
+                                        metabase.api.session                                            api.session
+                                        metabase.api.setting                                            api.setting
+                                        metabase.api.setup                                              api.setup
+                                        metabase.api.slack                                              api.slack
+                                        metabase.api.table                                              api.table
+                                        metabase.api.task                                               api.task
+                                        metabase.api.tiles                                              api.tiles
+                                        metabase.api.timeline                                           api.timeline
+                                        metabase.api.timeline-event                                     api.timeline-event
+                                        metabase.api.transform                                          api.transform
+                                        metabase.api.user                                               api.user
+                                        metabase.api.util                                               api.util
+                                        metabase.async.streaming-response.thread-pool                   thread-pool
+                                        metabase.automagic-dashboards.core                              magic
+                                        metabase.automagic-dashboards.populate                          populate
+                                        metabase.cmd.copy.h2                                            copy.h2
+                                        metabase.config                                                 config
+                                        metabase.connection-pool                                        connection-pool
+                                        metabase.db.connection                                          mdb.connection
+                                        metabase.db.jdbc-protocols                                      mdb.jdbc-protocols
+                                        metabase.db.metadata-queries                                    metadata-queries
+                                        metabase.db.spec                                                mdb.spec
+                                        metabase.domain-entities.specs                                  de.specs
+                                        metabase.driver.common.parameters                               params
+                                        metabase.driver.common.parameters.dates                         params.dates
+                                        metabase.driver.common.parameters.operators                     params.ops
+                                        metabase.driver.common.parameters.parse                         params.parse
+                                        metabase.driver.common.parameters.values                        params.values
+                                        metabase.driver.druid.client                                    druid.client
+                                        metabase.driver.druid.execute                                   druid.execute
+                                        metabase.driver.druid.js                                        druid.js
+                                        metabase.driver.druid.query-processor                           druid.qp
+                                        metabase.driver.druid.sync                                      druid.sync
+                                        metabase.driver.googleanalytics.client                          ga.client
+                                        metabase.driver.googleanalytics.execute                         ga.execute
+                                        metabase.driver.googleanalytics.metadata                        ga.metadata
+                                        metabase.driver.googleanalytics.query-processor                 ga.qp
+                                        metabase.driver.impl                                            driver.impl
+                                        metabase.driver.mongo.execute                                   mongo.execute
+                                        metabase.driver.mongo.parameters                                mongo.params
+                                        metabase.driver.mongo.query-processor                           mongo.qp
+                                        metabase.driver.mongo.util                                      mongo.util
+                                        metabase.driver.sql-jdbc.connection                             sql-jdbc.conn
+                                        metabase.driver.sql-jdbc.execute                                sql-jdbc.execute
+                                        metabase.driver.sql-jdbc.execute.diagnostic                     sql-jdbc.execute.diagnostic
+                                        metabase.driver.sql-jdbc.execute.legacy-impl                    sql-jdbc.legacy
+                                        metabase.driver.sql-jdbc.execute.old-impl                       sql-jdbc.execute.old
+                                        metabase.driver.sql-jdbc.sync                                   sql-jdbc.sync
+                                        metabase.driver.sql-jdbc.sync.common                            sql-jdbc.common
+                                        metabase.driver.sql-jdbc.sync.describe-database                 sql-jdbc.describe-database
+                                        metabase.driver.sql-jdbc.sync.describe-table                    sql-jdbc.describe-table
+                                        metabase.driver.sql-jdbc.sync.interface                         sql-jdbc.sync.interface
+                                        metabase.driver.sql-jdbc.test-util                              sql-jdbc.tu
+                                        metabase.driver.sql.parameters.substitute                       sql.params.substitute
+                                        metabase.driver.sql.parameters.substitution                     sql.params.substitution
+                                        metabase.email-test                                             et
+                                        metabase.email.messages                                         messages
+                                        metabase.http-client                                            client
+                                        metabase.mbql.normalize                                         mbql.normalize
+                                        metabase.mbql.schema                                            mbql.s
+                                        metabase.mbql.util                                              mbql.u
+                                        metabase.models.activity                                        activity
+                                        metabase.models.application-permissions-revision                a-perm-revision
+                                        metabase.models.bookmark                                        bookmark
+                                        metabase.models.collection                                      collection
+                                        metabase.models.collection.graph                                graph
+                                        metabase.models.collection-permission-graph-revision            c-perm-revision
+                                        metabase.models.dashboard-card                                  dashboard-card
+                                        metabase.models.database                                        database
+                                        metabase.models.dependency                                      dependency
+                                        metabase.models.field-values                                    field-values
+                                        metabase.models.interface                                       mi
+                                        metabase.models.moderation-review                               moderation-review
+                                        metabase.models.native-query-snippet                            native-query-snippet
+                                        metabase.models.permissions                                     perms
+                                        metabase.models.permissions-group                               perms-group
+                                        metabase.models.permissions-group-membership                    perms-group-membership
+                                        metabase.models.permissions-revision                            perms-revision
+                                        metabase.models.permissions.parse                               perms-parse
+                                        metabase.models.pulse                                           pulse
+                                        metabase.models.pulse-channel                                   pulse-channel
+                                        metabase.models.pulse-channel-recipient                         pulse-channel-recipient
+                                        metabase.models.query.permissions                               query-perms
+                                        metabase.models.setting.cache                                   setting.cache
+                                        metabase.models.timeline                                        timeline
+                                        metabase.models.timeline-event                                  timeline-event
+                                        metabase.plugins.initialize                                     plugins.init
+                                        metabase.public-settings                                        public-settings
+                                        metabase.public-settings.premium-features                       premium-features
+                                        metabase.pulse                                                  pulse   ; NB some conflicts with metabase.models.pulse
+                                        metabase.pulse.markdown                                         markdown
+                                        metabase.pulse.render                                           render
+                                        metabase.pulse.render.body                                      body
+                                        metabase.pulse.render.common                                    common
+                                        metabase.pulse.render.style                                     style
+                                        metabase.query-processor-test                                   qp.test
+                                        metabase.query-processor.context                                qp.context
+                                        metabase.query-processor.error-type                             qp.error-type
+                                        metabase.query-processor.interface                              qp.i
+                                        metabase.query-processor.middleware.add-dimension-projections   qp.add-dimension-projections
+                                        metabase.query-processor.middleware.add-implicit-clauses        qp.add-implicit-clauses
+                                        metabase.query-processor.middleware.add-implicit-joins          qp.add-implicit-joins
+                                        metabase.query-processor.middleware.auto-bucket-datetimes       qp.auto-bucket-datetimes
+                                        metabase.query-processor.middleware.constraints                 qp.constraints
+                                        metabase.query-processor.middleware.cumulative-aggregations     qp.cumulative-aggregations
+                                        metabase.query-processor.middleware.parameters.mbql             qp.mbql
+                                        metabase.query-processor.middleware.parameters.native           qp.native
+                                        metabase.query-processor.middleware.permissions                 qp.perms
+                                        metabase.query-processor.middleware.pre-alias-aggregations      qp.pre-alias-aggregations
+                                        metabase.query-processor.middleware.resolve-database-and-driver qp.resolve-database-and-driver
+                                        metabase.query-processor.middleware.resolve-fields              qp.resolve-fields
+                                        metabase.query-processor.middleware.resolve-referenced          qp.resolve-referenced
+                                        metabase.query-processor.middleware.resolve-source-table        qp.resolve-source-table
+                                        metabase.query-processor.middleware.wrap-value-literals         qp.wrap-value-literals
+                                        metabase.query-processor.pivot                                  qp.pivot
+                                        metabase.query-processor.streaming                              qp.streaming
+                                        metabase.query-processor.streaming.interface                    qp.si
+                                        metabase.query-processor.streaming.xlsx                         qp.xlsx
+                                        metabase.query-processor.timezone                               qp.timezone
+                                        metabase.query-processor.util                                   qp.util
+                                        metabase.related                                                related
+                                        metabase.search.scoring                                         scoring
+                                        metabase.server.middleware.auth                                 mw.auth
+                                        metabase.server.middleware.browser-cookie                       mw.browser-cookie
+                                        metabase.server.middleware.exceptions                           mw.exceptions
+                                        metabase.server.middleware.json                                 mw.json
+                                        metabase.server.middleware.log                                  mw.log
+                                        metabase.server.middleware.misc                                 mw.misc
+                                        metabase.server.middleware.offset-paging                        mw.offset-paging
+                                        metabase.server.middleware.security                             mw.security
+                                        metabase.server.middleware.session                              mw.session
+                                        metabase.server.middleware.ssl                                  mw.ssl
+                                        metabase.server.middleware.util                                 mw.util
+                                        metabase.server.protocols                                       server.protocols
+                                        metabase.sync.analyze.classifiers.category                      classifiers.category
+                                        metabase.sync.analyze.classifiers.name                          classifiers.name
+                                        metabase.sync.analyze.classifiers.no-preview-display            classifiers.no-preview-display
+                                        metabase.sync.analyze.classifiers.text-fingerprint              classifiers.text-fingerprint
+                                        metabase.sync.analyze.fingerprint                               fingerprint
+                                        metabase.sync.analyze.fingerprint.fingerprinters                fingerprinters
+                                        metabase.sync.analyze.fingerprint.insights                      insights
+                                        metabase.sync.analyze.query-results                             qr
+                                        metabase.sync.field-values                                      field-values
+                                        metabase.sync.interface                                         i
+                                        metabase.sync.schedules                                         sync.schedules
+                                        metabase.sync.sync-metadata.fields.fetch-metadata               fetch-metadata
+                                        metabase.sync.util                                              sync-util
+                                        metabase.sync.util-test                                         sync.util-test
+                                        metabase.task.sync-databases                                    task.sync-databases
+                                        metabase.test-runner.assert-exprs                               test-runner.assert-exprs
+                                        metabase.test-runner.init                                       test-runner.init
+                                        metabase.test-runner.junit                                      test-runner.junit
+                                        metabase.test-runner.parallel                                   test-runner.parallel
+                                        metabase.test.data.dataset-definitions                          defs
+                                        metabase.test.data.env.impl                                     tx.env.impl
+                                        metabase.test.data.impl                                         data.impl
+                                        metabase.test.data.users                                        test.users
+                                        metabase.test.domain-entities                                   test.de
+                                        metabase.test.mock.util                                         mock.util
+                                        metabase.test.sync                                              test.sync
+                                        metabase.test.util.timezone                                     test.tz
+                                        metabase.timeseries-query-processor-test.util                   tqpt
+                                        metabase.transforms.core                                        tf
+                                        metabase.transforms.materialize                                 tf.materialize
+                                        metabase.transforms.specs                                       tf.specs
+                                        metabase.util.cron                                              u.cron
+                                        metabase.util.date-2                                            u.date
+                                        metabase.util.date-2.common                                     u.date.common
+                                        metabase.util.date-2.parse                                      u.date.parse
+                                        metabase.util.embed                                             embed
+                                        metabase.util.encryption                                        encryption
+                                        metabase.util.encryption-test                                   encryption-test
+                                        metabase.util.files                                             u.files
+                                        metabase.util.i18n                                              i18n
+                                        metabase.util.i18n.impl                                         i18n.impl
+                                        metabase.util.password                                          u.password
+                                        metabase.util.schema                                            su
+                                        metabase.util.ui-logic                                          ui-logic
+                                        metabase.util.urls                                              urls
+                                        metabuild-common.core                                           u
+                                        metabuild-common.output                                         out
+                                        metabuild-common.shell                                          shell
+                                        ring.mock.request                                               ring.mock
+                                        ring.util.codec                                                 codec
+                                        ring.util.response                                              response
+                                        ring.util.servlet                                               servlet
+                                        saml20-clj.core                                                 saml
+                                        toucan.db                                                       db
+                                        toucan.models                                                   models}}}
  :lint-as {metabase.api.common/let-404 clojure.core/let
            metabase.db.data-migrations/defmigration clojure.core/def
            metabase.query-processor.error-type/deferror clojure.core/def
            metabase.models.setting/defsetting clj-kondo.lint-as/def-catch-all
            metabase.mbql.schema.macros/defclause clj-kondo.lint-as/def-catch-all
+           metabase.public-settings.premium-features/defenterprise clj-kondo.lint-as/def-catch-all
+           metabase.public-settings.premium-features/defenterprise-schema clj-kondo.lint-as/def-catch-all
            metabase.public-settings.premium-features/define-premium-feature clojure.core/def
            metabase.sync.util/sum-for clojure.core/for
            metabase.sync.util/with-emoji-progress-bar clojure.core/let
@@ -92,9 +361,11 @@
            metabase.db.liquibase/with-liquibase clojure.core/let
            metabase.models.setting.multi-setting/define-multi-setting clojure.core/def
            metabase.integrations.ldap/with-ldap-connection clojure.core/fn
+           metabase.test/are+ clojure.test/are
            metabase.test/defdataset clojure.core/def
            metabase.test/with-temp-file clojure.core/let
            metabase.test/with-open-channels clojure.core/let
+           metabase.test/with-user-in-groups clojure.core/let
            metabase.test.data.interface/defdataset clojure.core/def
            metabase.test.data.interface/defdataset-edn clojure.core/def
            metabase.driver.mongo.util/with-mongo-connection clojure.core/let
@@ -112,25 +383,35 @@
            honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all
            clojure.core.logic/defne clj-kondo.lint-as/def-catch-all
            monger.operators/defoperator clojure.core/def}
- :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
-                          metabase.test/dataset             hooks.metabase.test.data/dataset
-                          metabase.test.data/$ids           hooks.metabase.test.data/$ids
-                          metabase.test/$ids                hooks.metabase.test.data/$ids
-                          metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
-                          metabase.test/mbql-query          hooks.metabase.test.data/$ids
-                          metabase.test/data-query          hooks.metabase.test.data/$ids
-                          metabase.test/query hooks.metabase.test.data/$ids
-                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids
-                          metabase.test.data/run-mbql-query      hooks.metabase.test.data/$ids
-                          metabase.api.common/defendpoint   hooks.metabase.api.common/defendpoint
-                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint
+ :hooks
+ {:analyze-call
+  {metabase.api.common/defendpoint                            hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async                      hooks.metabase.api.common/defendpoint
+   metabase.models.setting/defsetting                         hooks.metabase.models.setting/defsetting
+   metabase.models.setting.multi-setting/define-multi-setting hooks.metabase.models.setting/defsetting
+   metabase.test/$ids                                         hooks.metabase.test.data/$ids
+   metabase.test/data-query                                   hooks.metabase.test.data/$ids
+   metabase.test/dataset                                      hooks.metabase.test.data/dataset
+   metabase.test/mbql-query                                   hooks.metabase.test.data/$ids
+   metabase.test/query                                        hooks.metabase.test.data/$ids
+   metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
+   metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
+   metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
+   metabase.test.data/dataset                                 hooks.metabase.test.data/dataset
+   metabase.test.data/mbql-query                              hooks.metabase.test.data/$ids
+   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/$ids
+   metabase.test.util/with-temporary-setting-values           hooks.metabase.test.util/with-temporary-setting-values}
 
-                          metabase.test/with-temp hooks.toucan.util.test/with-temp}
-           :macroexpand {metabase.query-processor.streaming/streaming-response
-                         metabase.query-processor.streaming/streaming-response
-                         metabase.api.common/define-routes macros.metabase.api.common/define-routes
-                         toucan.models/defmodel toucan.models/defmodel
-                         clojurewerkz.quartzite.jobs/build macros.quartz/build-job
-                         clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
-                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule}}
- :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}
+  :macroexpand
+  {metabase.query-processor.streaming/streaming-response macros.metabase.query-processor.streaming/streaming-response
+   metabase.api.common/define-routes                     macros.metabase.api.common/define-routes
+
+   toucan.models/defmodel                          macros.toucan.models/defmodel
+   clojurewerkz.quartzite.jobs/build               macros.quartz/build-job
+   clojurewerkz.quartzite.triggers/build           macros.quartz/build-trigger
+   clojurewerkz.quartzite.schedule.cron/schedule   macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
+
+ :config-in-comment
+ {:linters {:unresolved-symbol {:level :off}}}}

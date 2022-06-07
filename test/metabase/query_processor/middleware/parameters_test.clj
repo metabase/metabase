@@ -3,7 +3,7 @@
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.card :refer [Card]]
             [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
             [metabase.query-processor.middleware.parameters :as parameters]
@@ -22,7 +22,7 @@
 
 (defn- substitute-params [query]
   (driver/with-driver :h2
-    (parameters/substitute-parameters (normalize/normalize query))))
+    (parameters/substitute-parameters (mbql.normalize/normalize query))))
 
 (deftest expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"

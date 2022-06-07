@@ -5,8 +5,8 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.driver.common.parameters :as common.params]
-            [metabase.driver.mongo.parameters :as params]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.mongo.parameters :as mongo.params]
             [metabase.query-processor :as qp]
             [metabase.test :as mt])
   (:import com.fasterxml.jackson.core.JsonGenerator))
@@ -18,28 +18,28 @@
              #t "2020-03-13T17:00:00-07:00[America/Los_Angeles]"]]
     (testing (format "%s %s" (class t) (pr-str t))
       (is (= (t/instant "2020-03-14T00:00:00Z")
-             (#'params/->utc-instant t))))))
+             (#'mongo.params/->utc-instant t))))))
 
 (defn- substitute [param->value xs]
-  (#'params/substitute param->value xs))
+  (#'mongo.params/substitute param->value xs))
 
 (defn- param [k]
-  (common.params/->Param k))
+  (params/->Param k))
 
 (defn- optional [& xs]
-  (common.params/->Optional xs))
+  (params/->Optional xs))
 
 (defn- field-filter
   ([field-name value-type value]
    (field-filter field-name nil value-type value))
   ([field-name base-type value-type value]
-   (common.params/->FieldFilter (cond-> {:name (name field-name)}
-                                  base-type
-                                  (assoc :base_type base-type))
-                                {:type value-type, :value value})))
+   (params/->FieldFilter (cond-> {:name (name field-name)}
+                           base-type
+                           (assoc :base_type base-type))
+                         {:type value-type, :value value})))
 
 (defn- comma-separated-numbers [nums]
-  (common.params/->CommaSeparatedNumbers nums))
+  (params/->CommaSeparatedNumbers nums))
 
 (deftest substitute-test
   (testing "non-parameterized strings should not be substituted"
@@ -162,7 +162,7 @@
                        ["[{$match: " (param :date) "}]"]))))
   (testing "parameter not supplied"
     (is (= (to-bson [{:$match {}}])
-           (substitute {:date (common.params/->FieldFilter {:name "date"} common.params/no-value)} ["[{$match: " (param :date) "}]"]))))
+           (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"]))))
   (testing "operators"
     (testing "string"
       (doseq [[operator form input] [[:string/starts-with {"$regex" "^foo"} ["foo"]]

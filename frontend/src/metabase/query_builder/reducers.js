@@ -72,6 +72,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingNewbModal: false,
   isEditing: false,
   isRunning: false,
+  isQueryComplete: false,
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
@@ -93,6 +94,8 @@ const DEFAULT_LOADING_CONTROLS = {
   timeoutId: "",
 };
 
+const DEFAULT_QUERY_STATUS = "idle";
+
 const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingSummarySidebar: false,
   isShowingFilterSidebar: false,
@@ -111,22 +114,34 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingTimelineSidebar: false,
 };
 
-// various ui state options
+function setUIControls(state, changes) {
+  const { queryBuilderMode: currentQBMode, ...currentState } = state;
+  const { queryBuilderMode: nextQBMode, ...nextStateChanges } = changes;
+
+  const isChangingQBMode = nextQBMode && currentQBMode !== nextQBMode;
+  const isOpeningEditingQBMode = isChangingQBMode && nextQBMode !== "view";
+
+  const queryBuilderMode = nextQBMode || currentQBMode;
+  const previousQueryBuilderMode = isChangingQBMode
+    ? currentQBMode
+    : state.previousQueryBuilderMode;
+
+  // Close all the sidebars when entering notebook/dataset QB modes
+  const extraState = isOpeningEditingQBMode ? UI_CONTROLS_SIDEBAR_DEFAULTS : {};
+
+  return {
+    ...currentState,
+    ...extraState,
+    ...nextStateChanges,
+    queryBuilderMode,
+    previousQueryBuilderMode,
+  };
+}
+
 export const uiControls = handleActions(
   {
     [SET_UI_CONTROLS]: {
-      next: (
-        { queryBuilderMode: currentQBMode, ...state },
-        { payload: { queryBuilderMode: nextQBMode, ...payload } },
-      ) => ({
-        ...state,
-        ...payload,
-        queryBuilderMode: nextQBMode || currentQBMode,
-        previousQueryBuilderMode:
-          nextQBMode && currentQBMode !== nextQBMode
-            ? currentQBMode
-            : state.previousQueryBuilderMode,
-      }),
+      next: (state, { payload }) => setUIControls(state, payload),
     },
 
     [RESET_UI_CONTROLS]: {
@@ -196,12 +211,18 @@ export const uiControls = handleActions(
       next: (state, { payload }) => ({ ...state, isEditing: false }),
     },
 
-    [RUN_QUERY]: state => ({ ...state, isRunning: true }),
+    [RUN_QUERY]: state => ({
+      ...state,
+      isRunning: true,
+    }),
     [CANCEL_QUERY]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
     },
     [QUERY_COMPLETED]: {
-      next: (state, { payload }) => ({ ...state, isRunning: false }),
+      next: (state, { payload }) => ({
+        ...state,
+        isRunning: false,
+      }),
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => ({ ...state, isRunning: false }),
@@ -253,12 +274,13 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenQuestionDetails]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingQuestionDetailsSidebar: true,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
+    [onOpenQuestionDetails]: state =>
+      setUIControls(state, {
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        isShowingQuestionDetailsSidebar: true,
+        questionDetailsTimelineDrawerState: undefined,
+        queryBuilderMode: "view",
+      }),
     [onCloseQuestionDetails]: (
       state,
       { payload: { closeOtherSidebars } = {} } = {},
@@ -276,12 +298,13 @@ export const uiControls = handleActions(
         questionDetailsTimelineDrawerState: undefined,
       };
     },
-    [onOpenQuestionHistory]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingQuestionDetailsSidebar: true,
-      questionDetailsTimelineDrawerState: "open",
-    }),
+    [onOpenQuestionHistory]: state =>
+      setUIControls(state, {
+        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
+        isShowingQuestionDetailsSidebar: true,
+        questionDetailsTimelineDrawerState: "open",
+        queryBuilderMode: "view",
+      }),
     [onCloseQuestionHistory]: state => ({
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
@@ -322,6 +345,15 @@ export const loadingControls = handleActions(
     }),
   },
   DEFAULT_LOADING_CONTROLS,
+);
+
+export const queryStatus = handleActions(
+  {
+    [RUN_QUERY]: state => "running",
+    [QUERY_COMPLETED]: state => "complete",
+    [CANCEL_QUERY]: state => "idle",
+  },
+  DEFAULT_QUERY_STATUS,
 );
 
 export const zoomedRowObjectId = handleActions(

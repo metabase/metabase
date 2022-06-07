@@ -10,8 +10,8 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
             [metabase.models.table :refer [Table]]
-            [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -139,7 +139,7 @@
 
     :else
     (let [form (cond-> form
-                 (empty? source-query-fields) (update :source-query add-implicit-clauses/add-implicit-mbql-clauses))]
+                 (empty? source-query-fields) (update :source-query qp.add-implicit-clauses/add-implicit-mbql-clauses))]
       (if (empty? (get-in form [:source-query :fields]))
         form
         (-> form
@@ -237,6 +237,6 @@
       (when-not (driver/database-supports? driver/*driver* :foreign-keys (qp.store/database))
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                         {:driver driver/*driver*
-                         :type   error-type/unsupported-feature})))
+                         :type   qp.error-type/unsupported-feature})))
       (update query :query resolve-implicit-joins))
     query))

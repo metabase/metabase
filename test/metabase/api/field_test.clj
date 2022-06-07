@@ -2,13 +2,13 @@
   "Tests for `/api/field` endpoints."
   (:require [clojure.test :refer :all]
             [medley.core :as m]
-            [metabase.api.field :as field-api]
+            [metabase.api.field :as api.field]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Field FieldValues Table]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.timeseries-query-processor-test.util :as tqp.test]
+            [metabase.timeseries-query-processor-test.util :as tqpt]
             [metabase.util :as u]
             [ring.util.codec :as codec]
             [toucan.db :as db]
@@ -350,6 +350,7 @@
       (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
       (let [new-dim (dimension-for-field field-id)]
         (is (= {:id                      true
+                :entity_id               true
                 :created_at              true
                 :updated_at              true
                 :type                    :internal
@@ -361,6 +362,7 @@
           (create-dimension-via-API! field-id {:name "different dimension name", :type "internal"})
           (let [updated-dim (dimension-for-field field-id)]
             (is (= {:id                      true
+                    :entity_id               true
                     :created_at              true
                     :updated_at              true
                     :type                    :internal
@@ -388,6 +390,7 @@
         {:name "some dimension name", :type "external" :human_readable_field_id field-id-2})
       (testing "after creation"
         (is (= {:id                      true
+                :entity_id               true
                 :created_at              true
                 :updated_at              true
                 :type                    :external
@@ -418,6 +421,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before deletion"
           (is (= {:id                      true
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -447,6 +451,7 @@
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (testing "before update"
           (is (= {:id                      true
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :external
@@ -469,6 +474,7 @@
         (create-dimension-via-API! field-id-1
           {:name "fk-remove-dimension", :type "external" :human_readable_field_id field-id-2})
         (let [expected {:id                      true
+                        :entity_id               true
                         :created_at              true
                         :updated_at              true
                         :type                    :external
@@ -603,6 +609,7 @@
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (testing "before API request"
           (is (= {:id                      true
+                  :entity_id               true
                   :created_at              true
                   :updated_at              true
                   :type                    :internal
@@ -620,6 +627,7 @@
                                            :base_type "type/Integer"}]
         (create-dimension-via-API! field-id {:name "some dimension name", :type "internal"})
         (let [expected {:id                      true
+                        :entity_id               true
                         :created_at              true
                         :updated_at              true
                         :type                    :internal
@@ -648,11 +656,11 @@
       (is (= [[1 "Red Medicine"]
               [10 "Fred 62"]]
              (mt/format-rows-by [int str]
-               (field-api/search-values (Field (mt/id :venues :id))
+               (api.field/search-values (Field (mt/id :venues :id))
                                         (Field (mt/id :venues :name))
                                         "Red"
                                         nil)))))
-    (tqp.test/test-timeseries-drivers
+    (tqpt/test-timeseries-drivers
       (is (= [["139" "Red Medicine"]
               ["148" "Fred 62"]
               ["308" "Fred 62"]
@@ -662,7 +670,7 @@
               ["648" "Fred 62"]
               ["72" "Red Medicine"]
               ["977" "Fred 62"]]
-             (field-api/search-values (Field (mt/id :checkins :id))
+             (api.field/search-values (Field (mt/id :checkins :id))
                                       (Field (mt/id :checkins :venue_name))
                                       "Red"
                                       nil)))))
@@ -670,7 +678,7 @@
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]
              (mt/format-rows-by [int str]
-                                (field-api/search-values (Field (mt/id :venues :id))
+                                (api.field/search-values (Field (mt/id :venues :id))
                                                          (Field (mt/id :venues :name))
                                                          "Red"
                                                          1)))))))
@@ -679,13 +687,13 @@
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
-             (field-api/search-values (Field (mt/id :venues :name))
+             (api.field/search-values (Field (mt/id :venues :name))
                                       (Field (mt/id :venues :name))
                                       "Red"
                                       nil))))
-    (tqp.test/test-timeseries-drivers
+    (tqpt/test-timeseries-drivers
       (is (= [["Fred 62" "Fred 62"] ["Red Medicine" "Red Medicine"]]
-             (field-api/search-values (Field (mt/id :checkins :venue_name))
+             (api.field/search-values (Field (mt/id :checkins :venue_name))
                                       (Field (mt/id :checkins :venue_name))
                                       "Red"
                                       nil))))))

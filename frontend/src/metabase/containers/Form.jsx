@@ -54,8 +54,7 @@ const ReduxFormComponent = reduxForm()(
   },
 );
 
-@connect(makeMapStateToProps)
-export default class Form extends React.Component {
+class Form extends React.Component {
   _state = {
     submitting: false,
     failed: false,
@@ -170,6 +169,7 @@ export default class Form extends React.Component {
         initialize(this.props.formName, this._getInitialValues(), newFields),
       );
     }
+    this.props.onChange?.(this.props.values);
   }
 
   _registerFormField = field => {
@@ -213,7 +213,7 @@ export default class Form extends React.Component {
       const normalized = formObject.normalize(values);
       return (this._state.result = await this.props.onSubmit(normalized));
     } catch (error) {
-      console.error("Form submission error", error);
+      console.error("Form submission error:", error);
       this._state.failed = true;
       this._state.result = error;
       // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
@@ -227,12 +227,19 @@ export default class Form extends React.Component {
         const errorNames = Object.keys(error.data.errors);
         const hasUnknownFields = errorNames.some(name => !fieldNames.has(name));
         throw {
-          _error: hasUnknownFields ? t`An error occurred` : null,
+          _error:
+            error.data?.message ||
+            error.message ||
+            (hasUnknownFields ? t`An error occurred` : null),
           ...error.data.errors,
         };
       } else if (error) {
         throw {
-          _error: error.data.message || error.data,
+          _error:
+            error.data?.message ||
+            error.message ||
+            error.data ||
+            t`An error occurred`,
         };
       }
     } finally {
@@ -278,6 +285,8 @@ export default class Form extends React.Component {
     );
   }
 }
+
+export default connect(makeMapStateToProps)(Form);
 
 // returns a function that takes an object
 // apply the top level method (if any) to the whole object

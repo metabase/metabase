@@ -5,15 +5,13 @@
             [clojure.test :refer :all]
             [metabase.api.session :as api.session]
             [metabase.driver.h2 :as h2]
-            [metabase.http-client :as http-client]
-            [metabase.models :refer [LoginHistory]]
-            [metabase.models.session :refer [Session]]
+            [metabase.http-client :as client]
+            [metabase.models :refer [LoginHistory PermissionsGroup PermissionsGroupMembership Session User]]
             [metabase.models.setting :as setting]
-            [metabase.models.user :refer [User]]
             [metabase.public-settings :as public-settings]
             [metabase.server.middleware.session :as mw.session]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
             [metabase.test.integrations.ldap :as ldap.test]
             [metabase.util :as u]
@@ -53,7 +51,7 @@
           (is (schema= {:id                 su/IntGreaterThanZero
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          http-client/UUIDString
+                        :device_id          client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq true)
@@ -125,7 +123,7 @@
 
 (defn- send-login-request [username & [{:or {} :as headers}]]
   (try
-    (http/post (http-client/build-url "session" {})
+    (http/post (client/build-url "session" {})
                {:form-params {"username" username,
                               "password" "incorrect-password"}
                 :content-type :json
@@ -170,7 +168,7 @@
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
-      (dotimes [n 50]
+      (dotimes [n 40]
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
           (assert (= status-code 401) (str "Unexpected response status code:" status-code))))
@@ -189,8 +187,8 @@
     (testing "Test that we can logout"
       ;; clear out cached session tokens so next time we make an API request it log in & we'll know we have a valid
       ;; Session
-      (test-users/clear-cached-session-tokens!)
-      (let [session-id       (test-users/username->token :rasta)
+      (test.users/clear-cached-session-tokens!)
+      (let [session-id       (test.users/username->token :rasta)
             login-history-id (db/select-one-id LoginHistory :session_id session-id)]
         (testing "LoginHistory should have been recorded"
           (is (integer? login-history-id)))
@@ -204,7 +202,7 @@
           (is (schema= {:id                 (s/eq login-history-id)
                         :timestamp          java.time.OffsetDateTime
                         :user_id            (s/eq (mt/user->id :rasta))
-                        :device_id          http-client/UUIDString
+                        :device_id          client/UUIDString
                         :device_description su/NonBlankString
                         :ip_address         su/NonBlankString
                         :active             (s/eq false)
@@ -401,15 +399,11 @@
 (deftest ldap-login-test
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
-      (let [user-id (mt/user->id :rasta)]
-        (try
-          ;; TODO -- it's not so nice to go around permanently deleting stuff like Sessions like this in tests. We
-          ;; should just create a temp User instead for this test
-          (db/simple-delete! Session :user_id user-id)
-          (is (schema= SessionResponse
-                       (mt/client :post 200 "session" (mt/user->credentials :rasta))))
-          (finally
-            (db/update! User user-id :login_attributes nil)))))
+      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                             :password "securedpassword"}]
+        (is (schema= SessionResponse
+                     (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                     :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
       (mt/with-temporary-setting-values [enable-password-login true]
@@ -426,24 +420,20 @@
              (mt/client :post 401 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that a deactivated user cannot login with LDAP"
-      (let [user-id (mt/user->id :rasta)]
-        (try
-          (db/update! User user-id :is_active false)
-          (is (= {:errors {:_error "Your account is disabled."}}
-                 (mt/client :post 401 "session" (mt/user->credentials :rasta))))
-          (finally
-            (db/update! User user-id :is_active true)))))
+      (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                             :password "securedpassword"
+                             :is_active false}]
+        (is (= {:errors {:_error "Your account is disabled."}}
+               (mt/client :post 401 "session" {:username "ngoc@metabase.com"
+                                               :password "securedpassword"})))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
-        ;; delete all other sessions for the bird first, otherwise test doesn't seem to work (TODO - why?)
-        (let [user-id (mt/user->id :rasta)]
-          (try
-            (db/simple-delete! Session :user_id user-id)
+        (mt/with-temp User [_ {:email    "ngoc@metabase.com"
+                               :password "securedpassword"}]
             (is (schema= SessionResponse
-                         (mt/client :post 200 "session" (mt/user->credentials :rasta))))
-            (finally
-              (db/update! User user-id :login_attributes nil))))))
+                         (mt/client :post 200 "session" {:username "ngoc@metabase.com"
+                                                         :password "securedpassword"}))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
@@ -462,7 +452,16 @@
              SessionResponse
              (mt/client :post 200 "session" {:username "John.Smith@metabase.com", :password "strongpassword"})))
         (finally
-          (db/delete! User :email "John.Smith@metabase.com"))))))
+          (db/delete! User :email "John.Smith@metabase.com"))))
+
+    (testing "test that group sync works even if ldap doesn't return uid (#22014)"
+      (mt/with-temp PermissionsGroup [group {:name "Accounting"}]
+        (mt/with-temporary-raw-setting-values
+          [ldap-group-mappings (json/generate-string {"cn=Accounting,ou=Groups,dc=metabase,dc=com" [(:id group)]})]
+          (is (schema= SessionResponse
+                    (mt/client :post 200 "session" {:username "fred.taylor@metabase.com", :password "pa$$word"})))
+          (let [user-id (db/select-one-id User :email "fred.taylor@metabase.com")]
+            (is (= true (db/exists? PermissionsGroupMembership :group_id (:id group) (:user_id user-id))))))))))
 
 (deftest no-password-no-login-test
   (testing "A user with no password should not be able to do password-based login"

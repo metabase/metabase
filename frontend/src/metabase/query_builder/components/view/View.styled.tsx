@@ -8,13 +8,12 @@ import { color } from "metabase/lib/colors";
 import { breakpointMaxSmall } from "metabase/styled-components/theme/media-queries";
 
 import { ViewTitleHeader } from "./ViewHeader";
-import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 export const QueryBuilderViewRoot = styled.div`
   display: flex;
   flex-direction: column;
   background-color: ${color("bg-white")};
-  height: calc(100vh - ${APP_BAR_HEIGHT});
+  height: 100%;
   position: relative;
 `;
 

@@ -3,10 +3,11 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [medley.core :as m]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.dimension :refer [Dimension]]
-            [metabase.models.field-values :as fv :refer [FieldValues]]
+            [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.humanization :as humanization]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -14,6 +15,8 @@
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]]
             [toucan.models :as models]))
+
+(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 ;;; ------------------------------------------------- Type Mappings --------------------------------------------------
 
@@ -135,6 +138,8 @@
   see), would require only a few megs of RAM, and again only if every single Table was looked up in a span of 5
   seconds."
   (memoize/ttl
+   ^{::memoize/args-fn (fn [[table-id read-or-write]]
+                         [(mdb.connection/unique-identifier) table-id read-or-write])}
    (fn [table-id read-or-write]
      (let [{schema :schema, db-id :db_id} (db/select-one ['Table :schema :db_id] :id table-id)]
        (perms-objects-set* db-id schema table-id read-or-write)))
@@ -142,7 +147,7 @@
 
 (defn- perms-objects-set
   "Calculate set of permissions required to access a Field. For the time being permissions to access a Field are the
-   same as permissions to access its parent Table, and there are not separate permissions for reading/writing."
+   same as permissions to access its parent Table."
   [{table-id :table_id, {db-id :db_id, schema :schema} :table} read-or-write]
   {:arglists '([field read-or-write])}
   (if db-id
@@ -164,8 +169,8 @@
                         (partial m/map-vals maybe-parse-semantic-numeric-values)))
 
 (models/add-type! :json-for-fingerprints
-  :in  i/json-in
-  :out (comp update-semantic-numeric-values i/json-out-with-keywordization))
+  :in  mi/json-in
+  :out (comp update-semantic-numeric-values mi/json-out-with-keywordization))
 
 
 (u/strict-extend (class Field)
@@ -184,11 +189,11 @@
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert})
 
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -247,7 +252,7 @@
   "Efficiently hydrate the `FieldValues` for visibility_type normal `fields`."
   {:batched-hydrate :normal_values}
   [fields]
-  (let [id->field-values (select-field-id->instance (filter fv/field-should-have-field-values? fields)
+  (let [id->field-values (select-field-id->instance (filter field-values/field-should-have-field-values? fields)
                                                     [FieldValues :id :human_readable_values :values :field_id])]
     (for [field fields]
       (assoc field :values (get id->field-values (:id field) [])))))
@@ -303,7 +308,7 @@
   "Efficiently checks if each field is readable and returns only readable fields"
   [fields]
   (for [field (hydrate fields :table)
-        :when (i/can-read? field)]
+        :when (mi/can-read? field)]
     (dissoc field :table)))
 
 (defn with-targets
@@ -332,6 +337,11 @@
                        table-name))))
         field-name))
 
+(defn json-field?
+  "Return true if field is a JSON field, false if not."
+  [field]
+  (some? (:nfc_path field)))
+
 (defn qualified-name
   "Return a combined qualified name for `field`, e.g. `table_name.parent_field_name.field_name`."
   [field]
@@ -339,7 +349,7 @@
 
 (def ^{:arglists '([field-id])} field-id->table-id
   "Return the ID of the Table this Field belongs to."
-  (memoize
+  (mdb.connection/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
      (db/select-one-field :table_id Field, :id field-id))))

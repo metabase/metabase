@@ -1,5 +1,15 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import React, {
+  MouseEvent,
+  useEffect,
+  useCallback,
+  useRef,
+  useState,
+} from "react";
+import _ from "underscore";
 import { t } from "ttag";
+import { connect } from "react-redux";
+import { push } from "react-router-redux";
+import { withRouter } from "react-router";
 import { Location, LocationDescriptorObject } from "history";
 
 import Icon from "metabase/components/Icon";
@@ -11,12 +21,12 @@ import { useToggle } from "metabase/hooks/use-toggle";
 import { isSmallScreen } from "metabase/lib/dom";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { SearchResults } from "./SearchResults";
+import SearchResults from "./SearchResults";
 import RecentsList from "./RecentsList";
 import {
   SearchInputContainer,
   SearchIcon,
-  ClearIconButton,
+  CloseSearchButton,
   SearchInput,
   SearchResultsFloatingContainer,
   SearchResultsContainer,
@@ -26,11 +36,23 @@ const ALLOWED_SEARCH_FOCUS_ELEMENTS = new Set(["BODY", "A"]);
 
 type SearchAwareLocation = Location<{ q?: string }>;
 
-type Props = {
+type RouterProps = {
   location: SearchAwareLocation;
+};
+
+type DispatchProps = {
+  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
+};
+
+type OwnProps = {
   onSearchActive?: () => void;
   onSearchInactive?: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
+};
+
+type Props = RouterProps & DispatchProps & OwnProps;
+
+const mapDispatchToProps = {
+  onChangeLocation: push,
 };
 
 function isSearchPageLocation(location: Location) {
@@ -71,10 +93,6 @@ function SearchBar({
 
   const onTextChange = useCallback(e => {
     setSearchText(e.target.value);
-  }, []);
-
-  const onClear = useCallback(e => {
-    setSearchText("");
   }, []);
 
   useOnClickOutside(container, setInactive);
@@ -138,6 +156,14 @@ function SearchBar({
 
   const hasSearchText = searchText.trim().length > 0;
 
+  const handleClickOnClose = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      setInactive();
+    },
+    [setInactive],
+  );
+
   return (
     <div ref={container}>
       <SearchInputContainer isActive={isActive} onClick={onInputContainerClick}>
@@ -151,10 +177,10 @@ function SearchBar({
           onKeyPress={handleInputKeyPress}
           ref={searchInput}
         />
-        {isSmallScreen() && hasSearchText && (
-          <ClearIconButton onClick={onClear}>
+        {isSmallScreen() && isActive && (
+          <CloseSearchButton onClick={handleClickOnClose}>
             <Icon name="close" />
-          </ClearIconButton>
+          </CloseSearchButton>
         )}
       </SearchInputContainer>
       {isActive && MetabaseSettings.searchTypeaheadEnabled() && (
@@ -171,4 +197,7 @@ function SearchBar({
     </div>
   );
 }
-export default SearchBar;
+export default _.compose(
+  withRouter,
+  connect(null, mapDispatchToProps),
+)(SearchBar);

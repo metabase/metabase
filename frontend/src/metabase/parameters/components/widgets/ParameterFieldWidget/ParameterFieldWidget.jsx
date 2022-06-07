@@ -12,6 +12,8 @@ import Button from "metabase/core/components/Button";
 
 import { normalizeValue } from "./normalizeValue";
 
+import { deriveFieldOperatorFromParameter } from "metabase/parameters/utils/operators";
+
 import cx from "classnames";
 import {
   getFilterArgumentFormatOptions,
@@ -23,7 +25,6 @@ const propTypes = {
   dashboard: PropTypes.object,
   fields: PropTypes.array.isRequired,
   isEditing: PropTypes.bool.isRequired,
-  operator: PropTypes.object.isRequired,
   parameter: PropTypes.object.isRequired,
   parameters: PropTypes.array.isRequired,
   parentFocusChanged: PropTypes.bool,
@@ -69,11 +70,11 @@ export default class ParameterFieldWidget extends Component {
       isEditing,
       fields,
       parentFocusChanged,
-      operator,
       parameter,
       parameters,
       dashboard,
     } = this.props;
+    const operator = deriveFieldOperatorFromParameter(parameter);
     const { isFocused, widgetWidth } = this.state;
     const { numFields = 1, multi = false, verboseName } = operator || {};
     const savedValue = normalizeValue(this.props.value);

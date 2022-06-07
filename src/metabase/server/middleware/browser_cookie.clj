@@ -6,7 +6,7 @@
   (:require [java-time :as t]
             [metabase.server.request.util :as request.u]
             [metabase.util.schema :as su]
-            [ring.util.response :as resp]
+            [ring.util.response :as response]
             [schema.core :as s])
   (:import java.util.UUID))
 
@@ -28,7 +28,7 @@
            {:same-site :lax})))
 
 (s/defn ^:private add-browser-id-cookie [request response browser-id :- su/NonBlankString]
-  (resp/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
+  (response/set-cookie response browser-id-cookie-name browser-id (cookie-options request)))
 
 (defn ensure-browser-id-cookie
   "Set a permanent browser identifier cookie if one is not already set."

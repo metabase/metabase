@@ -1,8 +1,8 @@
 (ns metabase.driver.common.parameters.parse
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.driver.common.parameters :as i]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.driver.common.parameters :as params]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
@@ -68,18 +68,18 @@
   (when (or (seq more)
             (not (string? k)))
     (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
-             {:type error-type/invalid-query})))
+             {:type qp.error-type/invalid-query})))
   (let [k (str/trim k)]
     (when (empty? k)
       (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
-               {:type error-type/invalid-query})))
-    (i/->Param k)))
+               {:type qp.error-type/invalid-query})))
+    (params/->Param k)))
 
 (defn- optional [& parsed]
-  (when-not (some i/Param? parsed)
+  (when-not (some params/Param? parsed)
     (throw (ex-info (tru "'[[...]]' clauses must contain at least one '{{...}}' clause.")
-             {:type error-type/invalid-query})))
-  (i/->Optional parsed))
+             {:type qp.error-type/invalid-query})))
+  (params/->Optional parsed))
 
 (s/defn ^:private parse-tokens* :- [(s/one [ParsedToken] "parsed tokens") (s/one [StringOrToken] "remaining tokens")]
   [tokens :- [StringOrToken], level :- s/Int]
@@ -88,7 +88,7 @@
       nil
       (if (pos? level)
         (throw (ex-info (tru "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'")
-                 {:type error-type/invalid-query}))
+                 {:type qp.error-type/invalid-query}))
         [acc nil])
 
       :optional-begin

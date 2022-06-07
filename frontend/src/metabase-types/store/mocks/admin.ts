@@ -12,6 +12,7 @@ export const createMockAdminAppState = (
   opts?: Partial<AdminAppState>,
 ): AdminAppState => ({
   isNoticeEnabled: false,
+  paths: [],
   ...opts,
 });
 

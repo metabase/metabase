@@ -6,11 +6,11 @@ import _ from "underscore";
 import { getIn, updateIn } from "icepick";
 import { Grid, Collection, ScrollSync, AutoSizer } from "react-virtualized";
 
-import { color, lighten } from "metabase/lib/colors";
+import { darken, lighten } from "metabase/lib/colors";
 import "metabase/visualizations/components/TableInteractive.css";
 import { getScrollBarSize } from "metabase/lib/dom";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import { isDimension } from "metabase/lib/schema_metadata";
 import {
@@ -25,9 +25,13 @@ import { formatColumn } from "metabase/lib/formatting";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { findDOMNode } from "react-dom";
+import { connect } from "react-redux";
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 
-const getBgLightColor = () => lighten(color("brand"), 0.65);
-const getBgDarkColor = () => lighten(color("brand"), 0.6);
+const getBgLightColor = hasCustomColors =>
+  hasCustomColors ? darken("white", 0.01) : lighten("brand", 0.65);
+const getBgDarkColor = hasCustomColors =>
+  hasCustomColors ? darken("white", 0.035) : lighten("brand", 0.6);
 
 const partitions = [
   {
@@ -60,7 +64,11 @@ const CELL_HEIGHT = 25;
 const LEFT_HEADER_LEFT_SPACING = 24;
 const LEFT_HEADER_CELL_WIDTH = 145;
 
-export default class PivotTable extends Component {
+const mapStateToProps = state => ({
+  hasCustomColors: PLUGIN_SELECTORS.getHasCustomColors(state),
+});
+
+class PivotTable extends Component {
   static uiName = t`Pivot Table`;
   static identifier = "pivot";
   static iconName = "pivot_table";
@@ -230,7 +238,13 @@ export default class PivotTable extends Component {
   }
 
   render() {
-    const { settings, data, width, onUpdateVisualizationSettings } = this.props;
+    const {
+      settings,
+      data,
+      width,
+      hasCustomColors,
+      onUpdateVisualizationSettings,
+    } = this.props;
     if (data == null || !data.cols.some(isPivotGroupColumn)) {
       return null;
     }
@@ -286,7 +300,10 @@ export default class PivotTable extends Component {
       return (
         <div
           key={key}
-          style={{ ...style, backgroundColor: getBgLightColor() }}
+          style={{
+            ...style,
+            backgroundColor: getBgLightColor(hasCustomColors),
+          }}
           className={cx("overflow-hidden", {
             "border-right border-medium": !hasChildren,
           })}
@@ -296,6 +313,7 @@ export default class PivotTable extends Component {
             value={value}
             isSubtotal={isSubtotal}
             isGrandTotal={isGrandTotal}
+            hasCustomColors={hasCustomColors}
             onClick={this.getCellClickHander(clicked)}
             icon={
               (isSubtotal || hasSubtotal) && (
@@ -378,6 +396,7 @@ export default class PivotTable extends Component {
               value={value}
               isSubtotal={isSubtotal}
               isGrandTotal={isGrandTotal}
+              hasCustomColors={hasCustomColors}
               isBody
               onClick={this.getCellClickHander(clicked)}
             />
@@ -398,7 +417,7 @@ export default class PivotTable extends Component {
                     "border-right border-bottom border-medium": leftHeaderWidth,
                   })}
                   style={{
-                    backgroundColor: getBgLightColor(),
+                    backgroundColor: getBgLightColor(hasCustomColors),
                     // add left spacing unless the header width is 0
                     paddingLeft: leftHeaderWidth && LEFT_HEADER_LEFT_SPACING,
                     width: leftHeaderWidth,
@@ -410,6 +429,7 @@ export default class PivotTable extends Component {
                       key={rowIndex}
                       value={this.getColumnTitle(rowIndex)}
                       style={{ width: LEFT_HEADER_CELL_WIDTH }}
+                      hasCustomColors={hasCustomColors}
                       icon={
                         // you can only collapse before the last column
                         index < rowIndexes.length - 1 &&
@@ -418,6 +438,7 @@ export default class PivotTable extends Component {
                             value={index + 1}
                             settings={settings}
                             updateSettings={onUpdateVisualizationSettings}
+                            hasCustomColors={hasCustomColors}
                           />
                         )
                       }
@@ -502,12 +523,15 @@ export default class PivotTable extends Component {
   }
 }
 
+export default connect(mapStateToProps)(PivotTable);
+
 function RowToggleIcon({
   value,
   settings,
   updateSettings,
   hideUnlessCollapsed,
   rowIndex,
+  hasCustomColors,
 }) {
   if (value == null) {
     return null;
@@ -565,7 +589,9 @@ function RowToggleIcon({
       style={{
         padding: "4px",
         borderRadius: "4px",
-        backgroundColor: isCollapsed ? getBgLightColor() : getBgDarkColor(),
+        backgroundColor: isCollapsed
+          ? getBgLightColor(hasCustomColors)
+          : getBgDarkColor(hasCustomColors),
       }}
       onClick={e => {
         e.stopPropagation();
@@ -588,6 +614,7 @@ function Cell({
   isBody = false,
   className,
   icon,
+  hasCustomColors,
 }) {
   return (
     <div
@@ -595,7 +622,9 @@ function Cell({
         lineHeight: `${CELL_HEIGHT}px`,
         ...(isGrandTotal ? { borderTop: "1px solid white" } : {}),
         ...style,
-        ...(isSubtotal ? { backgroundColor: getBgDarkColor() } : {}),
+        ...(isSubtotal
+          ? { backgroundColor: getBgDarkColor(hasCustomColors) }
+          : {}),
       }}
       className={cx(
         "shrink-below-content-size flex-full flex-basis-none TableInteractive-cellWrapper",

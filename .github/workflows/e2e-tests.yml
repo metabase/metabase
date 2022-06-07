@@ -16,7 +16,7 @@ jobs:
 
   build:
     if: github.event.pull_request.draft == false
-    runs-on: buildjet-2vcpu-ubuntu-2004
+    runs-on: ubuntu-20.04
     timeout-minutes: 25
     strategy:
       matrix:
@@ -42,8 +42,8 @@ jobs:
       uses: ./.github/actions/prepare-uberjar-artifact
 
   e2e-tests:
-    runs-on: buildjet-4vcpu-ubuntu-2004
-    timeout-minutes: 30
+    runs-on: ubuntu-20.04
+    timeout-minutes: 35
     needs: build
     name: e2e-tests-${{ matrix.folder }}-${{ matrix.edition }}
     env:
@@ -57,11 +57,24 @@ jobs:
       fail-fast: false
       matrix:
         java-version: [11]
-        edition: [oss, ee]
+        edition: [ee]
         folder:
+          - "binning"
+          - "collections"
+          - "custom-column"
+          - "dashboard"
+          - "dashboard-filters"
           - "downloads"
-          - "moderation"
+          - "embedding"
+          - "joins"
+          - "models"
+          - "organization"
           - "permissions"
+          - "question"
+          - "sharing"
+        include:
+          - edition: oss
+            java-version: 11
     services:
       maildev:
         image: maildev/maildev:1.1.0
@@ -115,8 +128,18 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - name: Run Cypress tests on ${{ matrix.folder }}
-      run: yarn run test-cypress-no-build --folder ${{ matrix.folder }}
+    - name: Run OSS-specific Cypress tests
+      if: matrix.edition == 'oss'
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags=@OSS,grepFilterSpecs=true \
+        --spec './frontend/test/metabase/scenarios/**/*.cy.spec.js'
+      env:
+        TERM: xterm
+
+    - name: Run EE Cypress tests on ${{ matrix.folder }}
+      if: matrix.edition == 'ee'
+      run: yarn run test-cypress-run --folder ${{ matrix.folder }}
       env:
         TERM: xterm
 

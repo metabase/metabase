@@ -273,7 +273,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     });
   });
 
-  describe("OSS email subscriptions", () => {
+  describe("OSS email subscriptions", { tags: "@OSS" }, () => {
     beforeEach(() => {
       cy.onlyOn(isOSS);
       cy.visit(`/dashboard/1`);

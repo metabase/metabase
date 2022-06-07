@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase.test :as mt]
-            [metabase.test.util.timezone :as tu.timezone]
+            [metabase.test.util.timezone :as test.tz]
             [metabase.util.date-2 :as u.date]
             [metabase.util.date-2.common :as u.date.common])
   (:import java.time.temporal.ChronoField))
@@ -11,7 +11,7 @@
 (deftest parse-test
   ;; system timezone should not affect the way strings are parsed
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
+    (test.tz/with-system-timezone-id system-timezone-id
       (letfn [(message [expected s default-timezone-id]
                 (if default-timezone-id
                   (format "parsing '%s' with default timezone id '%s' should give you %s" s default-timezone-id (pr-str expected))

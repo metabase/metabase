@@ -11341,6 +11341,22 @@ databaseChangeLog:
             newDataType: ${timestamp_type}
 
   - changeSet:
+        id: v43.00-050
+        author: qnkhuat
+        comment: Added 0.43.0. Add permissions_group_membership.is_group_manager
+        changes:
+          - addColumn:
+              columns:
+              - column:
+                  remarks: Boolean flag to indicate whether user is a group's manager.
+                  name: is_group_manager
+                  type: boolean
+                  constraints:
+                    nullable: false
+                  defaultValue: false
+              tableName: permissions_group_membership
+
+  - changeSet:
       id: v43.00-051
       author: adam-james
       comment: Added 0.43.0 - default boolean on timelines to indicate default timeline for a collection
@@ -11355,6 +11371,481 @@ databaseChangeLog:
                 constraints:
                   nullable: false
             tableName: timeline
+
+  - changeSet:
+      id: v43.00-052
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - createTable:
+            tableName: bookmark_ordering
+            remarks: Table holding ordering information for various bookmark tables
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'ID of the User who ordered bookmarks'
+                  constraints:
+                    nullable: false
+                    references: core_user(id)
+                    foreignKeyName: fk_bookmark_ordering_user_id
+                    deleteCascade: true
+              - column:
+                  name: type
+                  type: varchar(255)
+                  remarks: 'type of the Bookmark'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: item_id
+                  type: int
+                  remarks: 'id of the item being bookmarked (Card, Collection, Dashboard, ...) no FK, so may no longer exist'
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ordering
+                  type: int
+                  remarks: 'order of bookmark for user'
+                  constraints:
+                    nullable: false
+  - changeSet:
+      id: v43.00-053
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - addUniqueConstraint:
+            tableName: bookmark_ordering
+            columnNames: user_id, type, item_id
+            constraintName: unique_bookmark_user_id_type_item_id
+  - changeSet:
+      id: v43.00-054
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - addUniqueConstraint:
+            tableName: bookmark_ordering
+            columnNames: user_id, ordering
+            constraintName: unique_bookmark_user_id_ordering
+  - changeSet:
+      id: v43.00-055
+      author: snoe
+      comment: Added 0.43.0 - bookmark ordering
+      changes:
+        - createIndex:
+            tableName: bookmark_ordering
+            columns:
+              - column:
+                  name: user_id
+            indexName: idx_bookmark_ordering_user_id
+
+  - changeSet:
+      id: v43.00-056
+      author: qnkhuat
+      comment: >-
+        Added 0.43.0 - Rename general permission revision table
+        It's safe to rename this table without breaking downgrades compatibility because this table was also added in 0.43.0.
+      changes:
+        - renameTable:
+            oldTableName: general_permissions_revision
+            newTableName: application_permissions_revision
+
+  - changeSet:
+      id: v43.00-057
+      author: qnkhuat
+      comment: Added 0.43.0 - Rename general_permissions_revision_id_seq
+      failOnError: false # mysql and h2 don't have this sequence
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: postgresql
+      changes:
+        - sql:
+            - sql: ALTER SEQUENCE general_permissions_revision_id_seq RENAME TO application_permissions_revision_id_seq;
+
+  - changeSet:
+      id: v43.00-058
+      author: qnkhuat
+      comment: Added 0.43.0 - Rename general permissios to application permissions
+      changes:
+        - sql:
+            sql: >-
+              UPDATE permissions
+              SET object = REPLACE(object, '/general/', '/application/')
+              WHERE object LIKE '/general/%';
+
+  - changeSet:
+      id: v43.00-059
+      author: adam-james
+      comment: Added 0.43.0 - disallow nil timeline icons
+      changes:
+        - addNotNullConstraint:
+            columnDataType: varchar(128)
+            tableName: timeline
+            columnName: icon
+            defaultNullValue: "star"
+  - changeSet:
+      id: v43.00-060
+      author: adam-james
+      comment: Added 0.43.0 - disallow nil timeline event icons
+      changes:
+        - addNotNullConstraint:
+            columnDataType: varchar(128)
+            tableName: timeline_event
+            columnName: icon
+            defaultNullValue: "star"
+
+  - changeSet:
+      id: v43.00-062
+      author: snoe
+      comment: Added 0.43.0 - Unify datatype with revision.timestamp for timezone info (see 17829).
+      changes:
+        - modifyDataType:
+            tableName: revision
+            columnName: timestamp
+            newDataType: ${timestamp_type}
+
+  - changeSet:
+      id: v44.00-000
+      author: dpsutton
+      comment: Added 0.44.0 - Persisted Info for models
+      changes:
+        - createTable:
+            tableName: persisted_info
+            remarks: Table holding information about persisted models
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: 'ID of the database associated to the persisted card'
+                  constraints:
+                    nullable: false
+                    referencedTableName: metabase_database
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_database_id
+                    deleteCascade: true
+              - column:
+                  name: card_id
+                  type: int
+                  remarks: 'ID of the Card model persisted'
+                  constraints:
+                    nullable: false
+                    unique: true
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: Slug of the card which will form the persisted table name
+                  name: question_slug
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Name of the table persisted
+                  name: table_name
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: JSON object that captures the state of the table when we persisted
+                  name: definition
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Hash of the query persisted
+                  name: query_hash
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Indicating whether the persisted table is active and can be swapped
+                  name: active
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: Persisted table state (creating, persisted, refreshing, deleted)
+                  name: state
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh was started
+                  name: refresh_begin
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the most recent refresh ended
+                  name: refresh_end
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the most recent state changed
+                  name: state_change_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: Error message from persisting if applicable
+                  name: error
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: The timestamp of when the model was first persisted
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The person who persisted a model
+                  constraints:
+                    nullable: false
+                    referencedTableName: core_user
+                    referencedColumnNames: id
+                    foreignKeyName: fk_persisted_info_ref_creator_id
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-001
+      author: snoe
+      comment: Added 0.44.0 - Remove not null constraint from persisted_info.creator_id
+      changes:
+        - dropNotNullConstraint:
+            tableName: persisted_info
+            columnName: creator_id
+            columnDataType: int
+
+  # v44.00-002 through -011 add entity_id columns to several internal entities.
+  # These are fixed-width string fields populated with a random 21-character
+  # NanoID value, and used by the serialization system to de-duplicate entities
+  # in a portable way. See the serialization design doc in the design repo.
+  - changeSet:
+      id: v44.00-002
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: metric
+  - changeSet:
+      id: v44.00-003
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: segment
+  - changeSet:
+      id: v44.00-004
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: collection
+  - changeSet:
+      id: v44.00-005
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboard
+  - changeSet:
+      id: v44.00-006
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: dimension
+  - changeSet:
+      id: v44.00-007
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse
+  - changeSet:
+      id: v44.00-008
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_card
+  - changeSet:
+      id: v44.00-009
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: native_query_snippet
+  - changeSet:
+      id: v44.00-010
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: timeline
+  - changeSet:
+      id: v44.00-011
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboardcard
+  - changeSet:
+      id: v44.00-023
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameters to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-024
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameters to report_card
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            columnName: parameters
+            defaultNullValue: '[]'
+            tableName: report_card
+
+  - changeSet:
+      id: v44.00-025
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: parameter_mappings
+                  type: ${text.type}
+                  remarks: List of parameter associated to a card
+                  constraints:
+                    nullable: true
+                    deferrable: false
+                    initiallyDeferred: false
+  - changeSet:
+      id: v44.00-026
+      author: qnkhuat
+      comment: Added 0.44.0 - Add parameter_mappings to report_card
+      changes:
+        - addNotNullConstraint:
+            columnDataType: ${text.type}
+            columnName: parameter_mappings
+            defaultNullValue: '[]'
+            tableName: report_card
+
+
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

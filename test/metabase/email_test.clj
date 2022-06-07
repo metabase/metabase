@@ -4,7 +4,7 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.email :as email]
-            [metabase.test.data.users :as user]
+            [metabase.test.data.users :as test.users]
             [metabase.test.util :as tu]
             [metabase.util :refer [prog1]]
             [postal.message :as message])
@@ -116,7 +116,7 @@
   "Indicate whether a user received an email whose subject matches the `regex`. First argument should be a keyword
   like :rasta, or an email address string."
   [user-or-email regex]
-  (let [address (if (string? user-or-email) user-or-email (:username (user/user->credentials user-or-email)))
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map :subject emails)))))
 
@@ -124,7 +124,7 @@
   "Indicate whether a user received an email whose body matches the `regex`. First argument should be a keyword
   like :rasta, or an email address string."
   [user-or-email regex]
-  (let [address (if (string? user-or-email) user-or-email (:username (user/user->credentials user-or-email)))
+  (let [address (if (string? user-or-email) user-or-email (:username (test.users/user->credentials user-or-email)))
         emails  (get @inbox address)]
     (boolean (some #(re-find regex %) (map (comp :content first :body) emails)))))
 
@@ -187,9 +187,9 @@
                 @inbox)))
 
 (defn email-to
-  "Creates a default email map for `user-kwd` via `user/fetch-user`, as would be returned by `with-fake-inbox`"
+  "Creates a default email map for `user-kwd` via `test.users/fetch-user`, as would be returned by `with-fake-inbox`"
   [user-kwd & [email-map]]
-  (let [{:keys [email]} (user/fetch-user user-kwd)]
+  (let [{:keys [email]} (test.users/fetch-user user-kwd)]
     {email [(merge {:from (email/email-from-address)
                     :to #{email}}
                    email-map)]}))

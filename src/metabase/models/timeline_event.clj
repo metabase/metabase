@@ -1,5 +1,5 @@
 (ns metabase.models.timeline-event
-  (:require [metabase.models.interface :as i]
+  (:require [metabase.models.interface :as mi]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [schema.core :as s]
@@ -22,7 +22,7 @@
   [event read-or-write]
   (let [timeline (or (:timeline event)
                      (db/select-one 'Timeline :id (:timeline_id event)))]
-    (i/perms-objects-set timeline read-or-write)))
+    (mi/perms-objects-set timeline read-or-write)))
 
 ;;;; hydration
 
@@ -83,9 +83,9 @@
    ;; todo: add hydration keys??
    {:properties (constantly {:timestamped? true})})
 
-  i/IObjectPermissions
+  mi/IObjectPermissions
   (merge
-   i/IObjectPermissionsDefaults
+   mi/IObjectPermissionsDefaults
    {:perms-objects-set perms-objects-set
-    :can-read?         (partial i/current-user-has-full-permissions? :read)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+    :can-read?         (partial mi/current-user-has-full-permissions? :read)
+    :can-write?        (partial mi/current-user-has-full-permissions? :write)}))

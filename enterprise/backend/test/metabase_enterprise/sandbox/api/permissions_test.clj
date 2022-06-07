@@ -1,8 +1,13 @@
 (ns metabase-enterprise.sandbox.api.permissions-test
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.string :as str]
+            [clojure.test :refer :all]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
-            [metabase.models :refer [Database PermissionsGroup Table]]
-            [metabase.models.permissions-group :as group]
+            [metabase.models :refer [Card Database PermissionsGroup
+                                     PersistedInfo Table]]
+            [metabase.models.permissions-group :as perms-group]
+            [metabase.models.persisted-info :as persisted-info]
+            [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -117,13 +122,59 @@
   (testing "PUT /api/permissions/graph"
     (testing "granting sandboxed permissions for a group should *not* delete an associated GTAP (#16190)"
       (mt/with-temp-copy-of-db
-        (mt/with-temp GroupTableAccessPolicy [_ {:group_id (u/the-id (group/all-users))
+        (mt/with-temp GroupTableAccessPolicy [_ {:group_id (u/the-id (perms-group/all-users))
                                                  :table_id (mt/id :venues)}]
           (let [graph    (mt/user-http-request :crowberto :get 200 "permissions/graph")
-                graph'   (assoc-in graph (db-graph-keypath (group/all-users)) {:schemas
-                                                                               {"PUBLIC"
-                                                                                {(mt/id :venues)
-                                                                                 {:read :all, :query :segmented}}}})]
+                graph'   (assoc-in graph (db-graph-keypath (perms-group/all-users))
+                                   {:schemas
+                                    {"PUBLIC"
+                                     {(mt/id :venues)
+                                      {:read :all, :query :segmented}}}})]
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
-              (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (group/all-users)), :table_id (mt/id :venues))))))))))
+              (is (db/exists? GroupTableAccessPolicy :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
+
+(defn- fake-persist-card! [card]
+  (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
+    (db/update-where! PersistedInfo {:card_id (u/the-id card)}
+                      :definition (json/encode
+                                    (persisted-info/metadata->definition
+                                      (:result_metadata card)
+                                      (:table_name persisted-info)))
+                      :active true
+                      :state "persisted"
+                      :query_hash (persisted-info/query-hash (:dataset_query card)))))
+
+(deftest persistence-and-permissions
+  (mt/with-model-cleanup [PersistedInfo]
+    (testing "Queries from cache if not sandboxed"
+      (mt/with-current-user
+        (mt/user->id :rasta)
+        (mt/with-temp*
+          [Card [card {:dataset_query (mt/mbql-query venues)
+                       :dataset true
+                       :database_id (mt/id)}]]
+          (fake-persist-card! card)
+          (is (str/includes?
+                (:query (qp/compile
+
+                          {:database (mt/id)
+                           :query {:source-table (str "card__" (u/the-id card))}
+                           :type :query}))
+                "metabase_cache")))))
+    (testing "Queries from source if sandboxed"
+      (mt/with-gtaps
+        {:gtaps {:venues {:query (mt/mbql-query venues)
+                          :remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+         :attributes {"cat" 50}}
+        (mt/with-temp*
+          [Card [card {:dataset_query (mt/mbql-query venues)
+                       :dataset true
+                       :database_id (mt/id)}]]
+          (fake-persist-card! card)
+          (is (not (str/includes?
+                     (:query (qp/compile
+                               {:database (mt/id)
+                                :query {:source-table (str "card__" (u/the-id card))}
+                                :type :query}))
+                     "metabase_cache"))))))))

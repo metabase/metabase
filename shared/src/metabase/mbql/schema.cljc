@@ -2,21 +2,21 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure :exclude [count distinct min max + - / * and or not not-empty = < > <= >= time case concat replace abs])
   #?@
-   (:clj
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])
-     (:import java.time.format.DateTimeFormatter)]
-    :cljs
-    [(:require
-      [clojure.core :as core]
-      [clojure.set :as set]
-      [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
-      [metabase.mbql.schema.macros :refer [defclause one-of]]
-      [schema.core :as s])]))
+  (:clj
+   [(:require
+     [clojure.core :as core]
+     [clojure.set :as set]
+     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+     [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [schema.core :as s])
+    (:import java.time.format.DateTimeFormatter)]
+   :cljs
+   [(:require
+     [clojure.core :as core]
+     [clojure.set :as set]
+     [metabase.mbql.schema.helpers :as helpers :refer [is-clause?]]
+     [metabase.mbql.schema.macros :refer [defclause one-of]]
+     [schema.core :as s])]))
 
 ;; A NOTE ABOUT METADATA:
 ;;
@@ -41,6 +41,9 @@
 
 ;;; ------------------------------------------------- Datetime Stuff -------------------------------------------------
 
+;; `:day-of-week` depends on the [[metabase.public-settings/start-of-week]] Setting, by default Sunday.
+;; 1 = first day of the week (e.g. Sunday)
+;; 7 = last day of the week (e.g. Saturday)
 (def date-bucketing-units
   "Set of valid units for bucketing or comparing against a *date* Field."
   #{:default :day :day-of-week :day-of-month :day-of-year :week :week-of-year
@@ -98,15 +101,18 @@
 
 ;; TODO -- currently these are all the same between date/time/datetime
 
-(def ^:private ^{:arglists '([s])} can-parse-date?
+(def ^{:arglists '([s])} can-parse-date?
+  "Returns whether a string can be parsed to an ISO 8601 date or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-datetime?
+(def ^{:arglists '([s])} can-parse-datetime?
+  "Returns whether a string can be parsed to an ISO 8601 datetime or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_DATE_TIME)
      :cljs can-parse-iso-8601?))
 
-(def ^:private ^{:arglists '([s])} can-parse-time?
+(def ^{:arglists '([s])} can-parse-time?
+  "Returns whether a string can be parsed to an ISO 8601 time or not."
   #?(:clj (partial can-parse-iso-8601? DateTimeFormatter/ISO_TIME)
      :cljs can-parse-iso-8601?))
 
@@ -287,21 +293,28 @@
       validate-bin-width
       validate-num-bins))
 
+(defn valid-temporal-unit-for-base-type?
+  "Whether `temporal-unit` (e.g. `:day`) is valid for the given `base-type` (e.g. `:type/Date`). If either is `nil` this
+  will return truthy. Accepts either map of `field-options` or `base-type` and `temporal-unit` passed separately."
+  ([{:keys [base-type temporal-unit] :as _field-options}]
+   (valid-temporal-unit-for-base-type? base-type temporal-unit))
+
+  ([base-type temporal-unit]
+   (if-let [units (when (core/and temporal-unit base-type)
+                    (condp #(isa? %2 %1) base-type
+                      :type/Date     date-bucketing-units
+                      :type/Time     time-bucketing-units
+                      :type/DateTime datetime-bucketing-units
+                      nil))]
+     (contains? units temporal-unit)
+     true)))
+
 (defn- validate-temporal-unit [schema]
   ;; TODO - consider breaking this out into separate constraints for the three different types so we can generate more
   ;; specific error messages
   (s/constrained
    schema
-   (fn [{:keys [base-type temporal-unit]}]
-     (if-not temporal-unit
-       true
-       (if-let [units (condp #(isa? %2 %1) base-type
-                        :type/Date     date-bucketing-units
-                        :type/Time     time-bucketing-units
-                        :type/DateTime datetime-bucketing-units
-                        nil)]
-         (contains? units temporal-unit)
-         true)))
+   valid-temporal-unit-for-base-type?
    "Invalid :temporal-unit for the specified :base-type."))
 
 (defn- no-binning-options-at-top-level [schema]
@@ -443,9 +456,14 @@
   "Set of valid arithmetic expression clause keywords."
   #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp :case})
 
+(def boolean-expressions
+  "Set of valid boolean expression clause keywords."
+  #{:and :or :not :< :<= :> :>= := :!=})
+
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
 (declare ArithmeticExpression)
+(declare BooleanExpression)
 (declare Aggregation)
 
 (def ^:private NumericExpressionArg
@@ -469,6 +487,12 @@
   (s/conditional
    number?
    s/Num
+
+   boolean?
+   s/Bool
+
+   (partial is-clause? boolean-expressions)
+   (s/recursive #'BooleanExpression)
 
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
@@ -699,10 +723,20 @@
 ;; segments and pass-thru to GA.
 (defclause ^:sugar segment, segment-id (s/cond-pre helpers/IntGreaterThanZero helpers/NonBlankString))
 
+(declare BooleanExpression*)
+
+(def ^:private BooleanExpression
+  "Schema for the definition of an arithmetic expression."
+  (s/recursive #'BooleanExpression*))
+
+(def ^:private BooleanExpression*
+  (one-of and or not < <= > >= = !=))
+
 (def ^:private Filter*
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    :else
    (one-of
     ;; filters drivers must implement
@@ -737,6 +771,7 @@
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? boolean-expressions)    BooleanExpression
    (partial is-clause? :case)                  case
    :else                                       Field))
 
@@ -1116,7 +1151,7 @@
      (s/cond-pre
       (s/enum :all :none)
       (s/recursive #'Fields))
-    "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
+     "Valid Join `:fields`: `:all`, `:none`, or a sequence of `:field` clauses that have `:join-alias`.")
     ;;
     ;; The name used to alias the joined table or query. This is usually generated automatically and generally looks
     ;; like `table__via__field`. You can specify this yourself if you need to reference a joined field with a
@@ -1251,7 +1286,6 @@
   Field filter like `:date` or `:text` and you pass in a parameter like `string/!=` `NOTHING_WILL_MATCH_THIS`.
   Non-exact-match parameters can be abused to enumerate *all* the rows in a table when the parameter was supposed to
   lock the results down to a single row or set of rows."
-  ;; `:type` -- the gener
   {;; the basic raw-value types. These can be used with [[TemplateTag:RawValue]] template tags as well as
    ;; [[TemplateTag:FieldFilter]] template tags.
    :number  {:type :numeric, :allowed-for #{:number :number/= :id :category :location/zip_code}}
@@ -1306,7 +1340,7 @@
    :date/all-options {:type :date, :allowed-for #{:date/all-options}}
 
    ;; "operator" parameter types.
-   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=} }
+   :number/!=               {:type :numeric, :operator :variadic, :allowed-for #{:number/!=}}
    :number/<=               {:type :numeric, :operator :unary, :allowed-for #{:number/<=}}
    :number/=                {:type :numeric, :operator :variadic, :allowed-for #{:number/= :number :id :category
                                                                                  :location/zip_code}}
@@ -1336,7 +1370,9 @@
 ;; examples:
 ;;
 ;;    {:target [:dimension [:template-tag "my_tag"]]}
+;;    {:target [:dimension [:template-tag {:id "my_tag_id"}]]}
 ;;    {:target [:variable [:template-tag "another_tag"]]}
+;;    {:target [:variable [:template-tag {:id "another_tag_id"}]]}
 ;;    {:target [:dimension [:field 100 nil]]}
 ;;    {:target [:field 100 nil]}
 ;;
@@ -1350,10 +1386,12 @@
 ;; supposed to work, but we have test #18747 that attempts to set it. I'm not convinced this should actually be
 ;; allowed.
 
-;; this is the reference like [:template-tag "whatever"], not the [[TemplateTag]] schema for when it's declared in
+;; this is the reference like [:template-tag <whatever>], not the [[TemplateTag]] schema for when it's declared in
 ;; `:template-tags`
 (defclause template-tag
-  tag-name helpers/NonBlankString)
+  tag-name
+  (s/cond-pre helpers/NonBlankString
+              {:id helpers/NonBlankString}))
 
 (defclause dimension
   target (s/cond-pre Field template-tag))
@@ -1481,6 +1519,7 @@
 (def Context
   "Schema for `info.context`; used for informational purposes to record how a query was executed."
   (s/enum :ad-hoc
+          :collection
           :csv-download
           :dashboard
           :embedded-dashboard

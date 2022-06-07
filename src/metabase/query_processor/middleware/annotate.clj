@@ -9,11 +9,11 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.util :as qputil]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.query-processor.util :as qp.util]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru tru]]
             [metabase.util.schema :as su]
@@ -50,7 +50,7 @@
 (defmethod column-info :default
   [{query-type :type, :as query} _]
   (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
-           {:type  error-type/invalid-query
+           {:type  qp.error-type/invalid-query
             :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -70,7 +70,7 @@
                                expected-count actual-count))
                  {:expected-columns (map :name cols)
                   :first-row        (first rows)
-                  :type             error-type/qp}))))))
+                  :type             qp.error-type/qp}))))))
 
 (defn- annotate-native-cols [cols]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
@@ -494,6 +494,9 @@
 (s/defn ^:private merge-source-metadata-col :- (s/maybe su/Map)
   [source-metadata-col :- (s/maybe su/Map) col :- (s/maybe su/Map)]
   (merge
+    {} ;; ensure the type is not FieldInstance
+    (when-let [field-id (:id source-metadata-col)]
+      (dissoc (qp.store/field field-id) :database_type))
    source-metadata-col
    col
    ;; pass along the unit from the source query metadata if the top-level metadata has unit `:default`. This way the
@@ -521,7 +524,7 @@
         (merge-source-metadata-col source-metadata-for-field
                                    (merge col
                                           (when dataset?
-                                            (select-keys source-metadata-for-field qputil/preserved-keys))))
+                                            (select-keys source-metadata-for-field qp.util/preserved-keys))))
         col))))
 
 (declare mbql-cols)
@@ -531,7 +534,7 @@
   (let [columns       (if native-source-query
                         (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
                         (mbql-cols source-query results))]
-    (qputil/combine-metadata columns source-metadata)))
+    (qp.util/combine-metadata columns source-metadata)))
 
 (defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
@@ -624,10 +627,11 @@
   If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
   of rows and infer the base type based on the classes of the values"
   [{:keys [cols]}]
-  (apply f/col-wise (for [{driver-base-type :base_type} cols]
-                      (if (contains? #{nil :type/*} driver-base-type)
-                        (driver.common/values->base-type)
-                        (f/constant-fingerprinter driver-base-type)))))
+  (apply fingerprinters/col-wise
+         (for [{driver-base-type :base_type} cols]
+           (if (contains? #{nil :type/*} driver-base-type)
+             (driver.common/values->base-type)
+             (fingerprinters/constant-fingerprinter driver-base-type)))))
 
 (defn- add-column-info-xform
   [query metadata rf]
@@ -661,13 +665,13 @@
     (if (= query-type :query)
       (rff (cond-> (assoc metadata :cols (merged-column-info query metadata))
              (seq dataset-metadata)
-             (update :cols qputil/combine-metadata dataset-metadata)))
+             (update :cols qp.util/combine-metadata dataset-metadata)))
       ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
       ;; queries...
       (let [metadata (cond-> (update metadata :cols annotate-native-cols)
                        ;; annotate-native-cols ensures that column refs are present which we need to match metadata
                        (seq dataset-metadata)
-                       (update :cols qputil/combine-metadata dataset-metadata)
+                       (update :cols qp.util/combine-metadata dataset-metadata)
                        ;; but we want those column refs removed since they have type info which we don't know yet
                        :always
                        (update :cols (fn [cols] (map #(dissoc % :field_ref) cols))))]

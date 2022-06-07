@@ -10,7 +10,7 @@
             [metabase.config :as config]
             [metabase.db.connection :as mdb.connection]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.util :as mbql.util]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :refer [Collection]]
             [metabase.models.dashboard :refer [Dashboard]]
@@ -124,7 +124,7 @@
                 (vector? v)
                 (map (fn [x] (conj node x)) (range (count v)))
 
-                :default
+                :else
                 [])))
           (branch? [node] (-> (children node) seq boolean))]
     (->> (keys m)
@@ -150,7 +150,7 @@
 
 (defn- mbql-fully-qualified-names->ids*
   [entity]
-  (mbql.util/replace entity
+  (mbql.u/replace entity
     ;; handle legacy `:field-id` forms encoded prior to 0.39.0
     ;; and also *current* expresion forms used in parameter mapping dimensions
     ;; example relevant clause - [:dimension [:fk-> [:field-id 1] [:field-id 2]]]
@@ -410,7 +410,7 @@
               (if (names/fully-qualified-field-name? f-str)
                 [f-type ((comp :field fully-qualified-name->context) f-str) f-md]
                 [f-type f-str f-md]))
-            (resolve-field-id [{:keys [::mb.viz/table-column-field-ref] :as tbl-col}]
+            (resolve-field-id [tbl-col]
               (update tbl-col ::mb.viz/table-column-field-ref resolve-table-column-field-ref))]
       (update vs-norm ::mb.viz/table-columns (fn [tbl-cols]
                                                (mapv resolve-field-id tbl-cols))))
@@ -617,7 +617,7 @@
           (-> card
               :dataset_query
               :type
-              mbql.util/normalize-token
+              mbql.u/normalize-token
               (= :query)) resolve-card-dataset-query
           (-> card
               :dataset_query

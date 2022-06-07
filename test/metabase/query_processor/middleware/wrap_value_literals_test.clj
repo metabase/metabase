@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test :as mt]))
 
@@ -18,7 +18,7 @@
   ([query, ^String timezone-id]
    (mt/with-everything-store
      (mt/with-results-timezone-id timezone-id
-       (wrap-value-literals/wrap-value-literals query)))))
+       (qp.wrap-value-literals/wrap-value-literals query)))))
 
 (deftest wrap-integers-test
   (is (= (mt/mbql-query venues
@@ -60,7 +60,7 @@
                                   (is (= (qp.timezone/results-timezone-id)
                                          timezone-id)
                                       "Make sure `results-timezone-id` is returning the bound value")
-                                  (second (#'wrap-value-literals/add-type-info datetime-str
+                                  (second (#'qp.wrap-value-literals/add-type-info datetime-str
                                                                                {:unit :day})))))]
     (doseq [[timezone expected] {"UTC"        (t/zoned-date-time "2018-10-01T00:00:00Z[UTC]")
                                  "US/Pacific" (t/zoned-date-time "2018-10-01T00:00:00-07:00[US/Pacific]")}]
@@ -183,7 +183,7 @@
                                  [:field "A" {:base-type :type/Text}]
                                  [:value "f" {:base_type :type/Text}]]]
             :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}
-           (#'wrap-value-literals/wrap-value-literals-in-mbql-query
+           (#'qp.wrap-value-literals/wrap-value-literals-in-mbql-query
             {:order-by     [[:asc [:field "A" {:base-type :type/Text}]]],
              :filter       [:not [:starts-with [:field "A" {:base-type :type/Text}] "f"]],
              :source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}}

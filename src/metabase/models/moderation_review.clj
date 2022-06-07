@@ -1,7 +1,7 @@
 (ns metabase.models.moderation-review
   "TODO -- this should be moved to `metabase-enterprise.content-management.models.moderation-review` since it's a
   premium-only model."
-  (:require [metabase.models.interface :as i]
+  (:require [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.moderation :as moderation]
             [metabase.util :as u]
@@ -36,7 +36,7 @@
           :types      (constantly {:moderated_item_type :keyword})})
 
   ;; Todo: this is wrong, but what should it be?
-  i/IObjectPermissions
+  mi/IObjectPermissions
   perms/IObjectPermissionsForParentCollection)
 
 (def max-moderation-reviews

@@ -1,6 +1,6 @@
 (ns metabase.analytics.stats
   "Functions which summarize the usage of an instance"
-  (:require [clj-http.client :as client]
+  (:require [clj-http.client :as http]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
@@ -105,6 +105,7 @@
   []
   {:version              (config/mb-version-info :tag)
    :running_on           (environment-type)
+   :startup_time_millis  (public-settings/startup-time-millis)
    :application_database (config/config-str :mb-db-type)
    :check_for_updates    (public-settings/check-for-updates)
    :site_name            (not= (public-settings/site-name) "Metabase")
@@ -393,7 +394,7 @@
   "send stats to Metabase tracking server"
   [stats]
   (try
-     (client/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
+     (http/post metabase-usage-url {:form-params stats, :content-type :json, :throw-entire-message? true})
      (catch Throwable e
        (log/error e (trs "Sending usage stats FAILED")))))
 

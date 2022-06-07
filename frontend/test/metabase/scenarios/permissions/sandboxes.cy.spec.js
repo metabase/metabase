@@ -494,7 +494,8 @@ describeEE("formatting > sandboxes", () => {
         cy.log(
           "It should show object details instead of filtering by this Product ID",
         );
-        cy.findByText("McClure-Lockman");
+        cy.findByTestId("object-detail");
+        cy.findAllByText("McClure-Lockman");
       });
 
       /**
@@ -596,7 +597,8 @@ describeEE("formatting > sandboxes", () => {
             "It should show object details instead of filtering by this Product ID",
           );
           // The name of this Vendor is visible in "details" only
-          cy.findByText("McClure-Lockman");
+          cy.findByTestId("object-detail");
+          cy.findAllByText("McClure-Lockman");
 
           /**
            * Helper function related to this test only!

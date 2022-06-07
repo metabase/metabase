@@ -86,7 +86,7 @@ export const DATE_FILTER_SUBTYPES = {
   },
   "Date Filter": {
     value: {
-      timeBucket: "Years",
+      timeBucket: "years",
     },
     representativeResult: "Small Marble Shoes",
   },

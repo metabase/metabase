@@ -13,6 +13,8 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
+  openQuestionActions,
+  closeQuestionActions,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -43,6 +45,7 @@ describe("scenarios > models", () => {
     visitQuestion(1);
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -92,6 +95,7 @@ describe("scenarios > models", () => {
     );
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -150,6 +154,7 @@ describe("scenarios > models", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
+    openQuestionActions();
     assertIsQuestion();
   });
 
@@ -159,14 +164,20 @@ describe("scenarios > models", () => {
     cy.visit("/model/1");
 
     openDetailsSidebar();
-    cy.findByText("Turn back into a saved question").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Turn back to saved question").click();
+    });
+
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -180,7 +191,7 @@ describe("scenarios > models", () => {
     // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
     cy.wait("@dataset");
-    openDetailsSidebar();
+    openQuestionActions();
     assertIsModel();
     cy.url().should("include", "/model");
   });
@@ -485,7 +496,8 @@ describe("scenarios > models", () => {
     );
 
     openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    openQuestionActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
     modal().within(() => {
@@ -493,7 +505,9 @@ describe("scenarios > models", () => {
       cy.button("Turn this into a model").should("not.exist");
       cy.icon("close").click();
     });
+    openQuestionActions();
     assertIsQuestion();
+    closeQuestionActions();
 
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
@@ -509,6 +523,7 @@ describe("scenarios > models", () => {
       .click();
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -530,6 +545,22 @@ describe("scenarios > models", () => {
         cy.findByTestId("tag-editor-sidebar").should("be.visible");
       });
     });
+  });
+
+  it("should correctly show native models for no-data users", () => {
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.createNativeQuestion({
+      name: "TEST MODEL",
+      dataset: true,
+      native: {
+        query: "select * from orders",
+      },
+    });
+    cy.signIn("nodata");
+    cy.visit("/collection/root");
+    cy.findByText("TEST MODEL").click();
+    cy.wait("@cardQuery");
+    cy.findByText(/This question is written in SQL/i).should("not.exist");
   });
 
   describe("listing", () => {

@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util.password :as pwu]))
+            [metabase.util.password :as u.password]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -18,7 +18,7 @@
                               "^^Wut4nG^^" {:total 10, :lower 3, :upper 2, :letter 5, :digit 1, :special 4}}]
       (testing (pr-str (list 'count-occurrences input))
         (is (= expected
-               (#'pwu/count-occurrences input)))))))
+               (#'u.password/count-occurrences input)))))))
 
 (deftest ^:parallel password-has-char-counts?-test
   (doseq [[group input->expected]
@@ -49,7 +49,7 @@
       (doseq [[input expected] input->expected]
         (testing (pr-str (cons 'password-has-char-counts? input))
           (is (= expected
-                 (apply #'pwu/password-has-char-counts? input))))))))
+                 (apply #'u.password/password-has-char-counts? input))))))))
 
 (deftest ^:parallel is-valid?-normal-test
   (testing "Do some tests with the default (:normal) password requirements"
@@ -64,7 +64,7 @@
                               "s6n!8z-6.gcJe" true}]
       (testing (pr-str (list 'is-valid? input))
         (is (= expected
-               (pwu/is-valid? input)))))))
+               (u.password/is-valid? input)))))))
 
 (deftest is-valid?-weak-test
   (testing "Do some tests with password complexity requirements set to :weak.
@@ -76,4 +76,4 @@
                                 "passw0rd" true}]
         (testing (pr-str (list 'is-valid? input))
           (is (= expected
-                 (pwu/is-valid? input))))))))
+                 (u.password/is-valid? input))))))))

@@ -87,9 +87,10 @@ export default function DefaultPicker({
 
   const fieldWidgets = operatorFields
     .map((operatorField, index) => {
-      let values, onValuesChange;
       const placeholder =
         (operator.placeholders && operator.placeholders[index]) || undefined;
+
+      let values, onValuesChange;
       if (operator.multi) {
         values = filter.arguments();
         onValuesChange = values => setValues(values);
@@ -97,6 +98,7 @@ export default function DefaultPicker({
         values = [filter.arguments()[index]];
         onValuesChange = values => setValue(index, values[0]);
       }
+
       if (operatorField.type === "hidden") {
         return null;
       } else if (operatorField.type === "select") {
@@ -111,7 +113,7 @@ export default function DefaultPicker({
             onCommit={onCommit}
           />
         );
-      } else if (field && field.id != null && !isBetweenLayout) {
+      } else if (field?.id !== null && !isBetweenLayout) {
         // get the underling field if the query is nested
         let underlyingField = field;
         let sourceField;

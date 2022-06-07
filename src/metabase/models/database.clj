@@ -2,13 +2,12 @@
   (:require [cheshire.generate :refer [add-encoder encode-map]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
-            [metabase.api.common :refer [*current-user*]]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as perm-group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -45,9 +44,9 @@
 (defn- post-insert [database]
   (u/prog1 database
     ;; add this database to the All Users permissions group
-    (perms/grant-full-data-permissions! (perm-group/all-users) database)
+    (perms/grant-full-data-permissions! (perms-group/all-users) database)
     ;; give full download perms for this database to the All Users permissions group
-    (perms/grant-full-download-permissions! (perm-group/all-users) database)
+    (perms/grant-full-download-permissions! (perms-group/all-users) database)
     ;; schedule the Database sync & analyze tasks
     (schedule-tasks! database)))
 
@@ -183,10 +182,10 @@
       handle-secrets-changes
       (assoc :initial_sync_status "incomplete")))
 
-(defn- perms-objects-set [database read-or-write]
+(defn- perms-objects-set [{db-id :id} read-or-write]
   #{(case read-or-write
-      :read (perms/data-perms-path (u/the-id database))
-      :write (perms/db-details-write-perms-path (u/the-id database)))})
+      :read  (perms/data-perms-path db-id)
+      :write (perms/db-details-write-perms-path db-id))})
 
 (u/strict-extend (class Database)
   models/IModel
@@ -205,11 +204,11 @@
           :pre-insert     pre-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-partial-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+          :can-read?         (partial mi/current-user-has-partial-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
@@ -259,13 +258,14 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
-;; when encoding a Database as JSON remove the `details` and `settings` for any non-admin User. For admin users they can
-;; still see the `details` but remove anything resembling a password. No one gets to see this in an API response!
+;; when encoding a Database as JSON remove the `details` and `settings` for any User without write perms for the DB.
+;; Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
+;; an API response!
 (add-encoder
  DatabaseInstance
  (fn [db json-generator]
    (encode-map
-    (if (not (:is_superuser @*current-user*))
+    (if (not (mi/can-write? db))
       (dissoc db :details :settings)
       (update db :details (fn [details]
                             (reduce

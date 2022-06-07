@@ -49,8 +49,9 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
-    cy.findByText("Days");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
+    cy.findByText("days");
   });
 
   it("should handle CASE (metabase#13122)", () => {
@@ -69,8 +70,9 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
-    cy.findByText("Days");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
+    cy.findByText("days");
   });
 
   it("should handle COALESCE", () => {
@@ -89,8 +91,9 @@ describe("scenarios > question > custom column > data type", () => {
 
     cy.findByPlaceholderText("Enter a number").should("not.exist");
 
-    cy.findByText("Previous");
-    cy.findByText("Days");
+    cy.findByText("Relative dates...").click();
+    cy.findByText("Past").click();
+    cy.findByText("days");
   });
 });
 

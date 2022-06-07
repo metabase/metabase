@@ -46,8 +46,7 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class QuestionEmbedWidget extends Component {
+class QuestionEmbedWidget extends Component {
   render() {
     const {
       className,
@@ -102,6 +101,11 @@ export default class QuestionEmbedWidget extends Component {
     );
   }
 }
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(QuestionEmbedWidget);
 
 export function QuestionEmbedWidgetTrigger({ onClick }) {
   return (

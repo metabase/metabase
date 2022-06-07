@@ -14,7 +14,7 @@ import { getIsNavbarOpen, openNavbar } from "metabase/redux/app";
 
 import BulkActions from "metabase/collections/components/BulkActions";
 import CollectionEmptyState from "metabase/components/CollectionEmptyState";
-import Header from "metabase/collections/components/CollectionHeader/CollectionHeader";
+import Header from "metabase/collections/containers/CollectionHeader";
 import ItemsTable from "metabase/collections/components/ItemsTable";
 import PinnedItemOverview from "metabase/collections/components/PinnedItemOverview";
 import { isPersonalCollectionChild } from "metabase/collections/utils";
@@ -24,6 +24,7 @@ import PaginationControls from "metabase/components/PaginationControls";
 
 import { useOnMount } from "metabase/hooks/use-on-mount";
 import { usePagination } from "metabase/hooks/use-pagination";
+import { usePrevious } from "metabase/hooks/use-previous";
 import { useListSelect } from "metabase/hooks/use-list-select";
 import { isSmallScreen } from "metabase/lib/dom";
 import {
@@ -82,12 +83,19 @@ function CollectionContent({
     getIsSelected,
     clear,
   } = useListSelect(itemKeyFn);
+  const previousCollection = usePrevious(collection);
 
   useOnMount(() => {
     if (!isSmallScreen()) {
       openNavbar();
     }
   });
+
+  useEffect(() => {
+    if (previousCollection && previousCollection.id !== collection.id) {
+      clear();
+    }
+  }, [previousCollection, collection, clear]);
 
   useEffect(() => {
     const shouldBeBookmarked = bookmarks.some(
@@ -195,6 +203,9 @@ function CollectionContent({
                 )}
               />
               <PinnedItemOverview
+                bookmarks={bookmarks}
+                createBookmark={createBookmark}
+                deleteBookmark={deleteBookmark}
                 items={pinnedItems}
                 collection={collection}
                 metadata={metadata}

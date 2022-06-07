@@ -5,7 +5,7 @@
             [metabase.models :refer [Database Permissions PermissionsGroup]]
             [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.sync.sync-metadata.tables :as sync-tables]
             [metabase.test :as mt]
@@ -83,7 +83,13 @@
                                                                                             id-4 :full}}})
             (is (= {:schemas {"PUBLIC" {id-1 :full id-2 :full id-3 :full id-4 :full}}
                     :native :full}
-                   (download-perms-by-group-id group-id))))))
+                   (download-perms-by-group-id group-id)))))
+
+        (testing "Download perms are revoked when block perms are set"
+          (ee-perms/update-db-download-permissions! group-id (mt/id) {:schemas :full :native :full})
+          (is (= {:schemas :full :native :full} (download-perms-by-group-id group-id)))
+          (@#'perms/update-db-data-access-permissions! group-id (mt/id) {:schemas :block})
+          (is (= nil (download-perms-by-group-id group-id)))))
 
       (premium-features-test/with-premium-features #{}
         (testing "Download permissions cannot be modified without the :advanced-permissions feature flag"
@@ -118,7 +124,7 @@
   (mt/with-temp* [Database [{db-id :id :as database} {:engine ::download-permissions}]]
     (replace-tables ["Table 1" "Table 2"])
     (letfn [(all-users-native-download-perms []
-              (get-in (perms/data-perms-graph) [:groups (u/the-id (group/all-users)) db-id :download :native]))]
+              (get-in (perms/data-perms-graph) [:groups (u/the-id (perms-group/all-users)) db-id :download :native]))]
       (testing "If a group has full download perms for a DB, native download perms are unchanged when a new table is
                found during sync"
         (is (= :full (all-users-native-download-perms)))
@@ -134,7 +140,7 @@
                                (-> (into {} (for [id table-ids] [id :full]))
                                    (assoc limited-downloads-id :limited))}}]
           (premium-features-test/with-premium-features #{:advanced-permissions}
-            (@#'ee-perms/update-db-download-permissions! (u/the-id (group/all-users)) db-id graph))
+            (@#'ee-perms/update-db-download-permissions! (u/the-id (perms-group/all-users)) db-id graph))
           (is (= :limited (all-users-native-download-perms)))
           (replace-tables ["Table 1" "Table 2" "Table 3" "Table 4"])
           (sync-tables/sync-tables-and-database! database)
@@ -226,3 +232,27 @@
                clojure.lang.ExceptionInfo
                #"The details permissions functionality is only enabled if you have a premium token with the advanced-permissions feature."
                (ee-perms/update-db-details-permissions! group-id (mt/id) :yes))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    Graph                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest get-graph-should-unescape-slashes-test
+  (testing "If a schema name contains slash, getting graph should unescape it"
+    (doseq [[perm-type perm-value] [[:data-model :all] [:download :full]]]
+      (testing (pr-str perm-type)
+        (testing "slash"
+          (mt/with-temp PermissionsGroup [group]
+            (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema/with_slash")
+            (is (= "schema/with_slash"
+                   (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
+                       keys
+                       first)))))
+
+        (testing "backslash"
+          (mt/with-temp PermissionsGroup [group]
+            (#'ee-perms/grant-permissions! perm-type perm-value (:id group) (mt/id) "schema\\with_backslash")
+            (is (= "schema\\with_backslash"
+                   (-> (get-in (perms/data-perms-graph) [:groups (u/the-id group) (mt/id) perm-type :schemas])
+                       keys
+                       first)))))))))

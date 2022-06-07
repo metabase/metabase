@@ -1,7 +1,7 @@
 (ns metabase.test.automagic-dashboards
   "Helper functions and macros for writing tests for automagic dashboards."
   (:require [clojure.test :refer :all]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models :refer [Card Collection Dashboard DashboardCard]]
             [metabase.test :as mt]
@@ -37,7 +37,7 @@
     (testing (format "\nCard =\n%s\n" (u/pprint-to-str card))
       (testing "Card query should be valid"
         (is (schema= mbql.s/Query
-                     (normalize/normalize query)))))))
+                     (mbql.normalize/normalize query)))))))
 
 (defn test-dashboard-is-valid
   "Is generated dashboard valid?

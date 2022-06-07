@@ -5,7 +5,6 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   const mockResolve = (kind, name) => [kind, name];
   const process = (source, type) => resolve(parse(source), type, mockResolve);
   const filter = expr => process(expr, "boolean");
-  const aggregation = expr => process(expr, "aggregation");
 
   // handy references
   const X = ["segment", "X"];
@@ -133,6 +132,29 @@ describe("metabase/lib/expressions/recursive-parser", () => {
     expect(filter("NOT contains(B,C)")).toEqual(["does-not-contain", B, C]);
   });
 
+  it("should parse booleans", () => {
+    expect(process("Canceled = true")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      true,
+    ]);
+    expect(process("Canceled = True")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      true,
+    ]);
+    expect(process("Canceled = false")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      false,
+    ]);
+    expect(process("Canceled = False")).toEqual([
+      "=",
+      ["dimension", "Canceled"],
+      false,
+    ]);
+  });
+
   it("should parse comparisons", () => {
     expect(process("round(3.14) = 3")).toEqual(["=", ["round", 3.14], 3]);
     expect(process("Tax != 0")).toEqual(["!=", ["dimension", "Tax"], 0]);
@@ -156,8 +178,61 @@ describe("metabase/lib/expressions/recursive-parser", () => {
   });
 
   it("should detect aggregation functions with no argument", () => {
-    expect(aggregation("COUNT/2")).toEqual(["/", ["count"], 2]);
+    const mockResolve = (kind, name) => {
+      if ("ABC".indexOf(name) >= 0) {
+        return [kind, name];
+      }
+      throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
+    };
+    const type = "aggregation";
+    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+
+    // sanity check first
+    expect(aggregation("SUM(A)")).toEqual(["sum", ["dimension", "A"]]);
+    expect(aggregation("Max(B)")).toEqual(["max", ["dimension", "B"]]);
+    expect(aggregation("Average(C)")).toEqual(["avg", ["dimension", "C"]]);
+
+    // functions without argument, hence no "()"
+    expect(aggregation("Count")).toEqual(["count"]);
+    expect(aggregation("CumulativeCount")).toEqual(["cum-count"]);
+
+    // mixed them in some arithmetic
+    expect(aggregation("COUNT/B")).toEqual(["/", ["count"], ["metric", "B"]]);
     expect(aggregation("1+CumulativeCount")).toEqual(["+", 1, ["cum-count"]]);
+  });
+
+  it("should handle aggregation with another function", () => {
+    const type = "aggregation";
+    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+
+    const A = ["dimension", "A"];
+    const B = ["dimension", "B"];
+
+    expect(aggregation("floor(Sum(A))")).toEqual(["floor", ["sum", A]]);
+    expect(aggregation("round(Distinct(B)/2)")).toEqual([
+      "round",
+      ["/", ["distinct", B], 2],
+    ]);
+  });
+
+  it("should prioritize existing metrics over functions", () => {
+    const mockResolve = (kind, name) => {
+      if (name === "Count" || "ABC".indexOf(name) >= 0) {
+        return [kind, name];
+      }
+      throw new ReferenceError(`Unknown ["${kind}", "${name}"]`);
+    };
+    const type = "aggregation";
+    const aggregation = expr => resolve(parse(expr), type, mockResolve);
+
+    // sanity check first
+    expect(aggregation("SUM(A)")).toEqual(["sum", ["dimension", "A"]]);
+    expect(aggregation("Max(B)")).toEqual(["max", ["dimension", "B"]]);
+    expect(aggregation("Average(C)")).toEqual(["avg", ["dimension", "C"]]);
+
+    // Count is recognized as a metric instead of a function
+    expect(aggregation("[Count]")).toEqual(["metric", "Count"]);
+    expect(aggregation("[Count] + 7")).toEqual(["+", ["metric", "Count"], 7]);
   });
 
   it("should resolve segments", () => {

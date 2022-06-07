@@ -5,7 +5,7 @@
             [metabase.api.common :as api]
             [metabase.models :refer [Card Collection Database Permissions PermissionsGroup PermissionsGroupMembership User]]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -159,7 +159,7 @@
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
     (mt/with-temp* [Database    [{db-id :id}]
-                    Permissions [_ {:group_id (u/the-id (group/all-users))
+                    Permissions [_ {:group_id (u/the-id (perms-group/all-users))
                                     :object   (perms/database-block-perms-path db-id)}]]
       (letfn [(perms-exist? []
                 (db/exists? Permissions :object (perms/database-block-perms-path db-id)))]
@@ -183,7 +183,7 @@
                                                                  :dataset_query query}]
                       Permissions                [_ {:group_id group-id, :object (perms/collection-read-path collection-id)}]]
         (premium-features-test/with-premium-features #{:advanced-permissions}
-          (perms/revoke-data-perms! (group/all-users) (mt/id))
+          (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
           (perms/revoke-data-perms! group-id (mt/id))
           (letfn [(run-ad-hoc-query []
                     (mt/with-current-user user-id

@@ -4,10 +4,10 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.analytics.snowplow-test :as snowplow-test]
-            [metabase.api.setup :as setup-api]
+            [metabase.api.setup :as api.setup]
             [metabase.email :as email]
             [metabase.events :as events]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.integrations.slack :as slack]
             [metabase.models :refer [Activity Database Table User]]
             [metabase.models.setting :as setting]
@@ -61,10 +61,10 @@
     (do-with-setup*
      request-body
      (fn []
-       (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true]
+       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
          (testing "API response should return a Session UUID"
            (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
-                        (http/client :post 200 "setup" request-body))))
+                        (client/client :post 200 "setup" request-body))))
          ;; reset our setup token
          (setup/create-token!)
          (thunk))))))
@@ -203,11 +203,11 @@
     (testing "error conditions"
       (testing "should throw Exception if driver is invalid"
         (is (= {:errors {:database {:engine "Cannot create Database: cannot find driver my-fake-driver."}}}
-               (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true]
-                 (http/client :post 400 "setup" (assoc (default-setup-input)
-                                                       :database {:engine  "my-fake-driver"
-                                                                  :name    (mt/random-name)
-                                                                  :details {}})))))))))
+               (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
+                 (client/client :post 400 "setup" (assoc (default-setup-input)
+                                                         :database {:engine  "my-fake-driver"
+                                                                    :name    (mt/random-name)
+                                                                    :details {}})))))))))
 
 (defn- setup! [f & args]
   (let [body {:token (setup/create-token!)
@@ -217,7 +217,7 @@
                       :email      (mt/random-email)
                       :password   "anythingUP12!!"}}
         body (apply f body args)]
-    (do-with-setup* body #(http/client :post 400 "setup" body))))
+    (do-with-setup* body #(client/client :post 400 "setup" body))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"
@@ -289,28 +289,26 @@
 (deftest create-superuser-only-once-test
   (testing "POST /api/setup"
     (testing "Check that we cannot create a new superuser via setup-token when a user exists"
-      (let [token (setup/create-token!)
-            body  {:token token
-                   :prefs {:site_locale "es_MX"
-                           :site_name   (mt/random-name)}
-                   :user  {:first_name (mt/random-name)
-                           :last_name  (mt/random-name)
-                           :email      (mt/random-email)
-                           :password   "p@ssword1"}}]
-        (with-redefs [setup/has-user-setup (let [value (atom false)]
-                                             (fn
-                                               ([] @value)
-                                               ([t-or-f] (reset! value t-or-f))))]
-          (mt/discard-setting-changes
-              [site-name site-locale anon-tracking-enabled admin-email]
-            (http/client :post 200 "setup" body))
-
+      (let [token          (setup/create-token!)
+            body           {:token token
+                            :prefs {:site_locale "es_MX"
+                                    :site_name   (mt/random-name)}
+                            :user  {:first_name (mt/random-name)
+                                    :last_name  (mt/random-name)
+                                    :email      (mt/random-email)
+                                    :password   "p@ssword1"}}
+            has-user-setup (atom false)]
+        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
+          (is (not (setup/has-user-setup)))
+          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+            (is (schema= {:id client/UUIDString}
+                         (client/client :post 200 "setup" body))))
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
-          (setup/has-user-setup true)
-
-          (mt/discard-setting-changes
-              [site-name site-locale anon-tracking-enabled admin-email]
-            (http/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))
+          (reset! has-user-setup true)
+          (is (setup/has-user-setup))
+          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+            (is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+                   (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
 (deftest transaction-test
   (testing "POST /api/setup/"
@@ -331,13 +329,13 @@
         (do-with-setup*
          body
          (fn []
-           (with-redefs [setup-api/*allow-api-setup-after-first-user-is-created* true
-                         setup-api/setup-set-settings! (let [orig @#'setup-api/setup-set-settings!]
+           (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true
+                         api.setup/setup-set-settings! (let [orig @#'api.setup/setup-set-settings!]
                                                          (fn [& args]
                                                            (apply orig args)
                                                            (throw (ex-info "Oops!" {}))))]
              (is (schema= {:message (s/eq "Oops!"), s/Keyword s/Any}
-                          (http/client :post 500 "setup" body))))
+                          (client/client :post 500 "setup" body))))
            (testing "New user shouldn't exist"
              (is (= false
                     (db/exists? User :email user-email))))
@@ -364,25 +362,27 @@
   (testing "POST /api/setup/validate"
     (testing "Should validate token"
       (is (= {:errors {:token "Token does not match the setup token."}}
-             (http/client :post 400 "setup/validate" {})))
+             (client/client :post 400 "setup/validate" {})))
       (is (= {:errors {:token "Token does not match the setup token."}}
-             (http/client :post 400 "setup/validate" {:token "foobar"})))
+             (client/client :post 400 "setup/validate" {:token "foobar"})))
       ;; make sure we have a valid setup token
       (setup/create-token!)
       (is (= {:errors {:engine "value must be a valid database engine."}}
-             (http/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
+             (client/client :post 400 "setup/validate" {:token (setup/setup-token)}))))
 
     (testing "should validate that database connection works"
-      (is (= {:errors {:dbname "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"}}
-             (http/client :post 400 "setup/validate" {:token   (setup/setup-token)
-                                                      :details {:engine  "h2"
-                                                                :details {:db "file:///tmp/fake.db"}}}))))
+      (is (= {:errors {:host "check your host settings"
+                       :port "check your port settings"}
+              :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"}
+             (client/client :post 400 "setup/validate" {:token   (setup/setup-token)
+                                                        :details {:engine  "h2"
+                                                                  :details {:db "file:///tmp/fake.db"}}}))))
 
     (testing "should return 204 no content if everything is valid"
       (is (= nil
-             (http/client :post 204 "setup/validate" {:token   (setup/setup-token)
-                                                      :details {:engine  "h2"
-                                                                :details (:details (mt/db))}}))))))
+             (client/client :post 204 "setup/validate" {:token   (setup/setup-token)
+                                                        :details {:engine  "h2"
+                                                                  :details (:details (mt/db))}}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -443,15 +443,15 @@
 (deftest user-defaults-test
   (testing "with no user defaults configured"
     (mt/with-temp-env-var-value [mb-user-defaults nil]
-      (is (= "Not found." (http/client :get "setup/user_defaults")))))
+      (is (= "Not found." (client/client :get "setup/user_defaults")))))
 
   (testing "with defaults containing no token"
     (mt/with-temp-env-var-value [mb-user-defaults "{}"]
-      (is (= "Not found." (http/client :get "setup/user_defaults")))))
+      (is (= "Not found." (client/client :get "setup/user_defaults")))))
 
   (testing "with valid configuration"
     (mt/with-temp-env-var-value [mb-user-defaults "{\"token\":\"123456\",\"email\":\"john.doe@example.com\"}"]
       (testing "with mismatched token"
-        (is (= "You don't have permissions to do that." (http/client :get "setup/user_defaults?token=987654"))))
+        (is (= "You don't have permissions to do that." (client/client :get "setup/user_defaults?token=987654"))))
       (testing "with valid token"
-        (is (= {:email "john.doe@example.com"} (http/client :get "setup/user_defaults?token=123456")))))))
+        (is (= {:email "john.doe@example.com"} (client/client :get "setup/user_defaults?token=123456")))))))

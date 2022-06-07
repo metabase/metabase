@@ -1,7 +1,7 @@
 (ns metabase.query-processor.util
   "Utility functions used by the global query processor and middleware functions."
   (:require [buddy.core.codecs :as codecs]
-            [buddy.core.hash :as hash]
+            [buddy.core.hash :as buddy-hash]
             [cheshire.core :as json]
             [clojure.string :as str]
             [metabase.driver :as driver]
@@ -85,10 +85,11 @@
       (empty? constraints) (dissoc :constraints)
       (empty? parameters)  (dissoc :parameters))))
 
+#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
 (s/defn ^bytes query-hash :- (Class/forName "[B")
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   [query]
-  (hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
+  (buddy-hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 
 
 ;;; --------------------------------------------- Query Source Card IDs ----------------------------------------------

@@ -342,7 +342,6 @@
     [ldap-group-mappings    (json/generate-string ldap-group-mappings)
      saml-group-mappings    (json/generate-string sso-group-mappings)
      jwt-group-mappings     (json/generate-string sso-group-mappings)
-     ldap-sync-admin-group  "false"
      saml-enabled           "true"
      ldap-enabled           "true"
      jwt-enabled            "true"]

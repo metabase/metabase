@@ -55,7 +55,7 @@
 
 (defn- prep-for-html-rendering'
   [cols rows bar-column min-value max-value]
-  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows} (count cols)
+  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows}
                                                 {:bar-column bar-column :min-value min-value :max-value max-value})]
     [(first results)
      (col-counts results)]))
@@ -134,16 +134,14 @@
               :bar-width nil}
              (first (#'body/prep-for-html-rendering pacific-tz
                                                     card
-                                                    {:cols cols :rows []}
-                                                    (count test-columns)))))
+                                                    {:cols cols :rows []}))))
 
       ;; card does not contain custom column names
       (is (= {:row       ["Last Login" "Name"]
               :bar-width nil}
              (first (#'body/prep-for-html-rendering pacific-tz
                                                     {}
-                                                    {:cols cols :rows []}
-                                                    (count test-columns))))))))
+                                                    {:cols cols :rows []})))))))
 
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
@@ -162,14 +160,14 @@
   (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} (count test-columns))))))
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data})))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
 (deftest bar-column
   (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
           {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
           {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} (count test-columns)
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data}
                                                {:bar-column second, :min-value 0, :max-value 40})))))
 
 (defn- add-rating
@@ -214,27 +212,18 @@
           [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
          (map :row (rest (#'body/prep-for-html-rendering pacific-tz
                                                          {}
-                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}
-                                                         (count test-columns-with-remapping)))))))
+                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
 (deftest no-truncation-warnig
   (is (= ""
-         (html (#'body/render-truncation-warning 100 10 100 10)))))
+         (html (#'body/render-truncation-warning 100 10)))))
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
 (deftest truncation-warning-when-rows-exceed-max
-  (is (= [true false]
-         (let [html-output (html (#'body/render-truncation-warning 100 10 10 100))]
-           [(boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))
-            (boolean (re-find #"Showing .* of .* columns" html-output))]))))
-
-;; When there are more columns than the limit, check to ensure a truncation warning is present
-(deftest truncation-warning-when-cols-exceed-max
-  (is (= [true false]
-         (let [html-output (html (#'body/render-truncation-warning 10 100 100 10))]
-           [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
-            (boolean (re-find #"Showing .* of .* rows" html-output))]))))
+  (is (= true
+         (let [html-output (html (#'body/render-truncation-warning 10 100))]
+           (boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))))))
 
 (def ^:private test-columns-with-date-semantic-type
   (update test-columns 2 merge {:base_type    :type/Text
@@ -247,8 +236,7 @@
           {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
          (rest (#'body/prep-for-html-rendering pacific-tz
                                                {}
-                                               {:cols test-columns-with-date-semantic-type :rows test-data}
-                                               (count test-columns))))))
+                                               {:cols test-columns-with-date-semantic-type :rows test-data})))))
 
 (deftest error-test
   (testing "renders error"
@@ -363,46 +351,14 @@
   (comp replace-style-maps #'body/render-truncation-warning))
 
 (deftest no-truncation-warnig-for-style
-  (is (nil? (render-truncation-warning' 10 5 20 10))))
+  (is (nil? (render-truncation-warning' 10 5))))
 
-(deftest renders-truncation-style-1
-  (is (= [:div :style-map
-          [:div :style-map
-           "Showing " [:strong :style-map "10"] " of "
-           [:strong :style-map "11"] " columns."]]
-         (render-truncation-warning' 10 11 20 10))))
-
-(deftest renders-truncation-style-2
+(deftest renders-truncation
   (is (= [:div
           :style-map
           [:div :style-map "Showing "
            [:strong :style-map "20"] " of " [:strong :style-map "21"] " rows."]]
-         (render-truncation-warning' 10 5 20 21))))
-
-(deftest renders-truncation-style-3
-  (is (= [:div
-          :style-map
-          [:div
-           :style-map
-           "Showing "
-           [:strong :style-map "20"]
-           " of "
-           [:strong :style-map "21"]
-           " rows and "
-           [:strong :style-map "10"]
-           " of "
-           [:strong :style-map "11"]
-           " columns."]]
-         (render-truncation-warning' 10 11 20 21))))
-
-(deftest counts-displayed-columns
-  (is (= 4
-         (#'body/count-displayed-columns test-columns))))
-
-(deftest counts-displayed-columns-excludes-undisplayed
-  (is (= 4
-         (#'body/count-displayed-columns
-          (concat test-columns [description-col detail-col sensitive-col retired-col])))))
+         (render-truncation-warning' 20 21))))
 
 ;; Test rendering a bar graph
 ;;

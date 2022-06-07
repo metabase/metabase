@@ -2,7 +2,7 @@
   (:require [honeysql.core :as hsql]
             [metabase-enterprise.audit-app.interface :as audit.i]
             [metabase-enterprise.audit-app.pages.common :as common]
-            [metabase.util.cron :as cron]
+            [metabase.util.cron :as u.cron]
             [schema.core :as s]))
 
 ;; SELECT
@@ -105,4 +105,4 @@
                  :order-by  [[:%lower.db.name :asc]
                              [:database_id :asc]]}
                 (common/add-search-clause query-string :db.name)))
-    :xform    (map #(update (vec %) 3 cron/describe-cron-string))}))
+    :xform    (map #(update (vec %) 3 u.cron/describe-cron-string))}))

@@ -6,8 +6,8 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [java-time.core :as t.core]
-            [metabase.util.date-2.common :as common]
-            [metabase.util.date-2.parse :as parse]
+            [metabase.util.date-2.common :as u.date.common]
+            [metabase.util.date-2.parse :as u.date.parse]
             [metabase.util.i18n :as i18n :refer [tru]]
             [potemkin.types :as p.types]
             [schema.core :as s])
@@ -36,7 +36,7 @@
   `OffsetDateTime`. With a second arg, literals that do not explicitly specify a timezone are interpreted as being in
   `timezone-id`."
   ([s]
-   (parse/parse s))
+   (u.date.parse/parse s))
 
   ([s default-timezone-id]
    (let [result (parse s)]
@@ -189,7 +189,7 @@
   (keyword ((requiring-resolve 'metabase.public-settings/start-of-week))))
 
 (def ^:private ^{:arglists '(^java.time.DayOfWeek [k])} day-of-week*
-  (common/static-instances DayOfWeek))
+  (u.date.common/static-instances DayOfWeek))
 
 (defn- week-fields
   "Create a new instance of a `WeekFields`, which is used for localized day-of-week, week-of-month, and week-of-year.
@@ -382,6 +382,9 @@
                      :exclusive (add t resolution -1)))}
      :=  (range t unit options))))
 
+;; Moving the type hints to the arg lists makes clj-kondo happy, but breaks eastwood (and maybe causes reflection
+;; warnings) at the call sites.
+#_{:clj-kondo/ignore [:non-arg-vec-return-type-hint]}
 (defn ^PeriodDuration period-duration
   "Return the Duration between two temporal values `x` and `y`."
   {:arglists '([s] [period] [duration] [period duration] [start end])}
@@ -471,11 +474,11 @@
   ;; convert to a OffsetTime with no offset (UTC); the OffsetTime method impl will apply the zone shift.
   LocalTime
   (with-time-zone-same-instant [t zone-id]
-    (t/offset-time t (common/standard-offset zone-id)))
+    (t/offset-time t (u.date.common/standard-offset zone-id)))
 
   OffsetTime
   (with-time-zone-same-instant [t ^java.time.ZoneId zone-id]
-    (t/with-offset-same-instant t (common/standard-offset zone-id)))
+    (t/with-offset-same-instant t (u.date.common/standard-offset zone-id)))
 
   LocalDate
   (with-time-zone-same-instant [t zone-id]

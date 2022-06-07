@@ -1,7 +1,6 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 import { t } from "ttag";
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
@@ -12,7 +11,8 @@ import { capitalize } from "metabase/lib/formatting";
 export default ({ question, clicked = {} }) => {
   const { column, value } = clicked;
   const query = question.query();
-  if (!column || value !== undefined || !(query instanceof StructuredQuery)) {
+  const isStructured = question.isStructured();
+  if (!column || value !== undefined || !isStructured || !query.isEditable()) {
     return [];
   }
   const dateDimension = query

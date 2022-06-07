@@ -4,7 +4,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :as dashboard :refer [Dashboard]]
             [metabase.models.database :refer [Database]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models.field :as field :refer [Field]]
             [metabase.models.field-values :as field-values]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
@@ -29,7 +29,7 @@
    :native   {:query "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS"}})
 
 (defn- native-query-with-template-tag [field-or-id]
-  {:database (data/id)
+  {:database (field/field-id->database-id (u/the-id field-or-id))
    :type     "native"
    :native   {:query         "SELECT AVG(SUBTOTAL) AS \"Average Price\"\nFROM ORDERS nWHERE {{category}}"
               :template-tags {:category {:name         "category"

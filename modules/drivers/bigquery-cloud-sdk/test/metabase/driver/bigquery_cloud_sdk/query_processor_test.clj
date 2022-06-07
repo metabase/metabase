@@ -17,7 +17,7 @@
             [metabase.test :as mt]
             [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
             [metabase.test.util :as tu]
-            [metabase.test.util.timezone :as tu.tz]
+            [metabase.test.util.timezone :as test.tz]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
@@ -153,7 +153,7 @@
         "A UTC date is returned, we should read/return it as UTC")
 
     (is (= "2018-08-31T00:00:00-05:00"
-           (tu.tz/with-system-timezone-id "America/Chicago"
+           (test.tz/with-system-timezone-id "America/Chicago"
              (tt/with-temp* [Database [db {:engine  :bigquery-cloud-sdk
                                            :details (assoc (:details (mt/db))
                                                            :use-jvm-timezone true)}]]
@@ -163,7 +163,7 @@
              "the correct date is compared"))
 
     (is (= "2018-08-31T00:00:00+07:00"
-           (tu.tz/with-system-timezone-id "Asia/Jakarta"
+           (test.tz/with-system-timezone-id "Asia/Jakarta"
              (tt/with-temp* [Database [db {:engine  :bigquery-cloud-sdk
                                            :details (assoc (:details (mt/db))
                                                            :use-jvm-timezone true)}]]
@@ -846,3 +846,11 @@
         (mt/with-native-query-testing-context query
           (is (= [["2" 1]]
                  (mt/rows (qp/process-query query)))))))))
+
+(deftest cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
+  (testing "cast timestamps to datetimes so we can use datetime_add() if needed for units like month (#21969)"
+    (is (= ["datetime_add(CAST((`absolute-datetime`, ?) AS datetime), INTERVAL 3 month)"
+            #t "2022-04-22T18:27-08:00"]
+           (let [t         [:absolute-datetime #t "2022-04-22T18:27:00-08:00"]
+                 hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
+             (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))

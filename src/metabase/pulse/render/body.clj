@@ -53,11 +53,6 @@
   "Maximum number of rows to render in a Pulse image."
   10)
 
-(def cols-limit
-  "Maximum number of columns to render in a Pulse image. Set to infinity, so that columns are not truncated.
-  TODO: we should eventually remove the column limiting logic if it's not used anywhere."
-  ##Inf)
-
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -69,12 +64,6 @@
   [{:keys [semantic_type visibility_type] :as _column}]
   (and (not (isa? semantic_type :type/Description))
        (not (contains? #{:details-only :retired :sensitive} visibility_type))))
-
-(defn- count-displayed-columns
-  "Return a count of the number of columns to be included in a table display"
-  [cols]
-  (count (filter show-in-table? cols)))
-
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
@@ -178,15 +167,14 @@
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
-  ([timezone-id :- (s/maybe s/Str) card data column-limit]
-   (prep-for-html-rendering timezone-id card data column-limit {}))
-  ([timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings]} column-limit
+  ([timezone-id :- (s/maybe s/Str) card data]
+   (prep-for-html-rendering timezone-id card data {}))
+  ([timezone-id :- (s/maybe s/Str) card {:keys [cols rows viz-settings]}
     {:keys [bar-column] :as data-attributes}]
-   (let [remapping-lookup (create-remapping-lookup cols)
-         limited-cols (take column-limit cols)]
+   (let [remapping-lookup (create-remapping-lookup cols)]
      (cons
-      (query-results->header-row remapping-lookup card limited-cols bar-column)
-      (query-results->row-seq timezone-id remapping-lookup limited-cols
+      (query-results->header-row remapping-lookup card cols bar-column)
+      (query-results->row-seq timezone-id remapping-lookup cols
                               (take rows-limit rows)
                               viz-settings
                               data-attributes)))))
@@ -195,42 +183,21 @@
   [:strong {:style (style/style {:color style/color-gray-3})} (h (common/format-number number))])
 
 (defn- render-truncation-warning
-  [col-limit col-count row-limit row-count]
-  (let [over-row-limit (> row-count row-limit)
-        over-col-limit (> col-count col-limit)]
-    (when (or over-row-limit over-col-limit)
+  [row-limit row-count]
+  (let [over-row-limit (> row-count row-limit)]
+    (when over-row-limit
       [:div {:style (style/style {:padding-top :16px})}
-       (cond
-
-         (and over-row-limit over-col-limit)
-         [:div {:style (style/style {:color          style/color-gray-2
-                                     :padding-bottom :10px})}
-          "Showing " (strong-limit-text row-limit)
-          " of "     (strong-limit-text row-count)
-          " rows and " (strong-limit-text col-limit)
-          " of "     (strong-limit-text col-count)
-          " columns."]
-
-         over-row-limit
-         [:div {:style (style/style {:color          style/color-gray-2
-                                     :padding-bottom :10px})}
-          "Showing " (strong-limit-text row-limit)
-          " of "     (strong-limit-text row-count)
-          " rows."]
-
-         over-col-limit
-         [:div {:style (style/style {:color          style/color-gray-2
-                                     :padding-bottom :10px})}
-          "Showing " (strong-limit-text col-limit)
-          " of "     (strong-limit-text col-count)
-          " columns."])])))
+       [:div {:style (style/style {:color          style/color-gray-2
+                                   :padding-bottom :10px})}
+        "Showing " (strong-limit-text row-limit)
+        " of "     (strong-limit-text row-count)
+        " rows."]])))
 
 (defn- attached-results-text
   "Returns hiccup structures to indicate truncated results are available as an attachment"
-  [render-type cols cols-limit rows rows-limit]
+  [render-type rows rows-limit]
   (when (and (not= :inline render-type)
-             (or (< cols-limit (count-displayed-columns cols))
-                 (< rows-limit (count rows))))
+             (< rows-limit (count rows)))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
      (trs "More results have been included as a file attachment")]))
@@ -246,18 +213,18 @@
   (fn [chart-type _ _ _ _ _] chart-type))
 
 (s/defmethod render :table :- common/RenderedPulseCard
-  [_ render-type timezone-id :- (s/maybe s/Str) card _ {:keys [cols rows] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card _ {:keys [rows] :as data}]
   (let [table-body [:div
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
                      (mapv :name (:cols data))
-                     (prep-for-html-rendering timezone-id card data cols-limit))
-                    (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
+                     (prep-for-html-rendering timezone-id card data))
+                    (render-truncation-warning rows-limit (count rows))]]
     {:attachments
      nil
 
      :content
-     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
+     (if-let [results-attached (attached-results-text render-type rows rows-limit)]
        (list results-attached table-body)
        (list table-body))}))
 
@@ -304,7 +271,7 @@
   [col-settings col]
   (-> (m/map-keys (fn [k] (-> k name (str/replace #"-" "_") keyword)) col-settings)
       (backfill-currency)
-      (u/update-when :date_style update-date-style (:unit col))))
+      (u/update-if-exists :date_style update-date-style (:unit col))))
 
 (defn- ->js-viz
   "Include viz settings for js.
@@ -332,7 +299,6 @@
   For further details look at frontend/src/metabase/static-viz/XYChart/types.ts"
   [x-col y-col labels {::mb.viz/keys [column-settings] :as viz-settings}]
   (let [default-format {:number_style "decimal"
-                        :decimals 0
                         :currency "USD"
                         :currency_style "symbol"}
         x-col-settings (or (settings-from-column x-col column-settings) {})
@@ -353,7 +319,7 @@
      :x        {:type (or (:graph.x_axis.scale viz-settings) default-x-type)
                 :format x-format}
      :y        {:type (or (:graph.y_axis.scale viz-settings) "linear")
-                :format y-format }
+                :format y-format}
      :labels   labels}))
 
 (defn- set-default-stacked
@@ -538,15 +504,15 @@
         image-bundle  (image-bundle/make-image-bundle
                         render-type
                         (js-svg/combo-chart series settings))]
-  {:attachments
-   (when image-bundle
-     (image-bundle/image-bundle->attachment image-bundle))
+   {:attachments
+    (when image-bundle
+      (image-bundle/image-bundle->attachment image-bundle))
 
-   :content
-   [:div
-    [:img {:style (style/style {:display :block
-                                :width   :100%})
-           :src   (:image-src image-bundle)}]]}))
+    :content
+    [:div
+     [:img {:style (style/style {:display :block
+                                 :width   :100%})
+            :src   (:image-src image-bundle)}]]}))
 
 (defn- series-setting [viz-settings inner-key outer-key]
   (get-in viz-settings [:series_settings (keyword outer-key) inner-key]))
@@ -567,11 +533,11 @@
           selected-rows (sort-by first (map #(vector (ffirst %) (nth (second %) idx)) joined-rows))
           y-axis-pos    (or (series-setting viz-settings y-col-key :axis)
                             (nth (default-y-pos viz-settings) idx))]
-    {:name          card-name
-     :color         card-color
-     :type          card-type
-     :data          selected-rows
-     :yAxisPosition y-axis-pos})))
+     {:name          card-name
+      :color         card-color
+      :type          card-type
+      :data          selected-rows
+      :yAxisPosition y-axis-pos})))
 
 (defn- double-x-axis-combo-series
   "This munges rows and columns into series in the format that we want for combo staticviz for literal combo displaytype,
@@ -831,13 +797,13 @@
                                 :measure {:format (:y jsviz-settings)}))
         svg            (js-svg/funnel rows settings)
         image-bundle   (image-bundle/make-image-bundle render-type svg)]
-  {:attachments
-   (image-bundle/image-bundle->attachment image-bundle)
+   {:attachments
+    (image-bundle/image-bundle->attachment image-bundle)
 
-   :content
-   [:div
-    [:img {:style (style/style {:display :block :width :100%})
-           :src   (:image-src image-bundle)}]]}))
+    :content
+    [:div
+     [:img {:style (style/style {:display :block :width :100%})
+            :src   (:image-src image-bundle)}]]}))
 
 
 (s/defmethod render :empty :- common/RenderedPulseCard

@@ -70,7 +70,7 @@
   "Update multiple email Settings. You must be a superuser or have `setting` permission to do this."
   [:as {settings :body}]
   {settings su/Map}
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (let [settings (-> settings
                      (select-keys (keys mb-to-smtp-settings))
                      (set/rename-keys mb-to-smtp-settings))
@@ -92,7 +92,7 @@
 (api/defendpoint DELETE "/"
   "Clear all email related settings. You must be a superuser or have `setting` permission to do this."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (setting/set-many! (zipmap (keys mb-to-smtp-settings) (repeat nil)))
   api/generic-204-no-content)
 
@@ -100,7 +100,7 @@
   "Send a test email using the SMTP Settings. You must be a superuser or have `setting` permission to do this.
   Returns `{:ok true}` if we were able to send the message successfully, otherwise a standard 400 error response."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (let [response (email/send-message!
                    :subject      "Metabase Test Email"
                    :recipients   [(:email @api/*current-user*)]

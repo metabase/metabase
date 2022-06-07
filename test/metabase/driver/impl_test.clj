@@ -3,30 +3,30 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.impl :as impl]
+            [metabase.driver.impl :as driver.impl]
             [metabase.test.util.async :as tu.async]))
 
 (deftest driver->expected-namespace-test
   (testing "expected namespace for a non-namespaced driver should be `metabase.driver.<driver>`"
     (is (= 'metabase.driver.sql-jdbc
-           (#'impl/driver->expected-namespace :sql-jdbc))))
+           (#'driver.impl/driver->expected-namespace :sql-jdbc))))
   (testing "for a namespaced driver it should be the namespace of the keyword"
     (is (= 'metabase.driver.impl-test
-           (#'impl/driver->expected-namespace ::toucans)))))
+           (#'driver.impl/driver->expected-namespace ::toucans)))))
 
 (deftest load-driver-namespace-race-condition-test
   (testing "Make sure we don't report a driver as being registered if its namespace is in the process of being loaded (#13114)"
-    (alter-var-root #'impl/hierarchy underive ::race-condition-test :metabase.driver/driver)
+    (alter-var-root #'driver.impl/hierarchy underive ::race-condition-test :metabase.driver/driver)
     ;; basic idea for this test is simulate loading a driver namespace on a different thread and have it register
     ;; itself immediately. Then on another thread we should call `the-initialized-driver`, but it shouldn't return
     ;; until the namespace has completed loading.
     (tu.async/with-open-channels [started-loading-chan (a/promise-chan)]
       (let [finished-loading (atom false)]
-        (with-redefs [impl/require-driver-ns (fn [_]
-                                               (driver/register! ::race-condition-test)
-                                               (a/>!! started-loading-chan :start)
-                                               (Thread/sleep 100)
-                                               (reset! finished-loading true))]
+        (with-redefs [driver.impl/require-driver-ns (fn [_]
+                                                      (driver/register! ::race-condition-test)
+                                                      (a/>!! started-loading-chan :start)
+                                                      (Thread/sleep 100)
+                                                      (reset! finished-loading true))]
           ;; fire off a separate thread that will start loading the driver
           (future (driver/the-initialized-driver ::race-condition-test))
           (tu.async/wait-for-result started-loading-chan 500)
@@ -37,7 +37,7 @@
 
 (deftest truncate-string-to-byte-count-test
   (letfn [(truncate-string-to-byte-count [s byte-length]
-            (let [^String truncated (#'impl/truncate-string-to-byte-count s byte-length)]
+            (let [^String truncated (#'driver.impl/truncate-string-to-byte-count s byte-length)]
               (is (<= (count (.getBytes truncated "UTF-8")) byte-length))
               (is (str/starts-with? s truncated))
               truncated))]
@@ -69,13 +69,13 @@
                                        15 "가나다라"
                                        20 "가나다라"}}
             [max-length expected] max-length->expected]
-      (testing (pr-str (list `impl/truncate-string-to-byte-count s max-length))
+      (testing (pr-str (list `driver.impl/truncate-string-to-byte-count s max-length))
         (is (= expected
                (truncate-string-to-byte-count s max-length)))))))
 
 (deftest truncate-alias-test
   (letfn [(truncate-alias [s max-bytes]
-            (let [truncated (impl/truncate-alias s max-bytes)]
+            (let [truncated (driver.impl/truncate-alias s max-bytes)]
               (is (<= (count (.getBytes truncated "UTF-8")) max-bytes))
               truncated))]
     (doseq [[s max-bytes->expected] { ;; 20-character plain ASCII string
@@ -109,6 +109,6 @@
                                       30 "a가b나c다d라e마f_99a0fe0c"
                                       40 "a가b나c다d라e마f바g사h아i"}}
             [max-bytes expected] max-bytes->expected]
-      (testing (pr-str (list `impl/truncate-alias s max-bytes))
+      (testing (pr-str (list `driver.impl/truncate-alias s max-bytes))
         (is (= expected
                (truncate-alias s max-bytes)))))))

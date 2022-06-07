@@ -7,7 +7,7 @@
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util :as sql.u]
@@ -18,7 +18,7 @@
            [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
 (driver/register! :hive-like
-  :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
+  :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
 
 (defmethod driver/escape-alias :hive-like

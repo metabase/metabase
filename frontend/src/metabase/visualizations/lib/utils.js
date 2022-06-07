@@ -9,6 +9,7 @@ export const MAX_SERIES = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
+const SPLIT_AXIS_MAX_DEPTH = 8;
 
 // NOTE Atte Keinänen 8/3/17: Moved from settings.js because this way we
 // are able to avoid circular dependency errors in e2e tests
@@ -59,14 +60,24 @@ export function getAvailableCanvasWidth(element) {
   return parentWidth - parentPaddingLeft - parentPaddingRight;
 }
 
-function generateSplits(list, left = [], right = []) {
+function generateSplits(list, left = [], right = [], depth = 0) {
   // NOTE: currently generates all permutations, some of which are equivalent
-  if (list.length === 0) {
+  if (list.length === 0 || depth > SPLIT_AXIS_MAX_DEPTH) {
     return [[left, right]];
   } else {
     return [
-      ...generateSplits(list.slice(1), left.concat([list[0]]), right),
-      ...generateSplits(list.slice(1), left, right.concat([list[0]])),
+      ...generateSplits(
+        list.slice(1),
+        left.concat([list[0]]),
+        right,
+        depth + 1,
+      ),
+      ...generateSplits(
+        list.slice(1),
+        left,
+        right.concat([list[0]]),
+        depth + 1,
+      ),
     ];
   }
 }

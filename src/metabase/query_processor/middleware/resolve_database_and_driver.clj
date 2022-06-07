@@ -2,7 +2,7 @@
   (:require [metabase.driver :as driver]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.setting :as setting]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]))
@@ -20,7 +20,7 @@
     (when-not ((every-pred integer? pos?) database-id)
       (throw (ex-info (tru "Unable to resolve database for query: missing or invalid `:database` ID.")
                       {:database database-id
-                       :type     error-type/invalid-query})))
+                       :type     qp.error-type/invalid-query})))
     (resolve-database* query)
     (let [{:keys [settings], driver :engine} (qp.store/database)]
       ;; make sure the driver is initialized.
@@ -28,7 +28,7 @@
         (driver/the-initialized-driver driver)
         (catch Throwable e
           (throw (ex-info (tru "Unable to resolve driver for query")
-                          {:type error-type/invalid-query}
+                          {:type qp.error-type/invalid-query}
                           e))))
       (binding [setting/*database-local-values* settings]
         (driver/with-driver driver

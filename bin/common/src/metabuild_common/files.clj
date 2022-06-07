@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [metabuild-common.misc :as misc]
             [metabuild-common.output :as out]
-            [metabuild-common.shell :as sh]
+            [metabuild-common.shell :as shell]
             [metabuild-common.steps :as steps])
   (:import java.io.File
            [java.nio.file Files FileSystems FileVisitOption Path Paths]
@@ -62,9 +62,9 @@
     ;; don't preserve symlinks or something like that.
     (if (.isDirectory source-file)
       (steps/step (format "Copying directory %s -> %s" source dest)
-        (sh/sh "cp" "-R" source dest))
+        (shell/sh "cp" "-R" source dest))
       (steps/step (format "Copying file %s -> %s" source dest)
-        (sh/sh "cp" source dest))))
+        (shell/sh "cp" source dest))))
   (assert-file-exists dest))
 
 (defn- ->URI ^java.net.URI [filename]
@@ -114,7 +114,7 @@
   {:pre [(string? url) (string? dest-path) (str/starts-with? url "http")]}
   (steps/step (format "Download %s -> %s" url dest-path)
     (delete-file-if-exists! dest-path)
-    (sh/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" dest-path url)
+    (shell/sh {:quiet? true} "wget" "--quiet" "--no-cache" "--output-document" dest-path url)
     (assert-file-exists dest-path)))
 
 (defn nio-path

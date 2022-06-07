@@ -2,7 +2,7 @@
   "A Segment is a saved MBQL 'macro', expanding to a `:filter` subclause. It is passed in as a `:filter` subclause but is
   replaced by the `expand-macros` middleware with the appropriate clauses."
   (:require [medley.core :as m]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -24,25 +24,26 @@
 (defn- perms-objects-set [segment read-or-write]
   (let [table (or (:table segment)
                   (db/select-one ['Table :db_id :schema :id] :id (u/the-id (:table_id segment))))]
-    (i/perms-objects-set table read-or-write)))
+    (mi/perms-objects-set table read-or-write)))
 
 (u/strict-extend (class Segment)
   models/IModel
   (merge
    models/IModelDefaults
    {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})
-  i/IObjectPermissions
+  mi/IObjectPermissions
   (merge
-   i/IObjectPermissionsDefaults
+   mi/IObjectPermissionsDefaults
    {:perms-objects-set perms-objects-set
-    :can-read?         (partial i/current-user-has-full-permissions? :read)
+    :can-read?         (partial mi/current-user-has-full-permissions? :read)
     ;; for the time being you need to be a superuser in order to create or update Segments because the UI for
     ;; doing so is only exposed in the admin panel
-    :can-write?        i/superuser?
-    :can-create?       i/superuser?}))
+    :can-write?        mi/superuser?
+    :can-create?       mi/superuser?}))
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

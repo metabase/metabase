@@ -133,28 +133,80 @@ export function visitQuestion(id) {
 }
 
 /**
- * Visit a dashboard and wait for its query to load.
+ * Visit a dashboard and wait for the related queries to load.
  *
- * NOTE: Avoid using this helper if you need to explicitly wait for
- * and assert on the individual dashcard queries.
- *
- * @param {number} id
+ * @param {number} dashboard_id
  */
-export function visitDashboard(id) {
-  cy.intercept("GET", `/api/dashboard/${id}`).as("getDashboard");
-  // The very last request when visiting dashboard always checks the collection it is in.
-  // That is - IF user has the permission to view that dashboard!
-  cy.intercept("GET", `/api/collection/*`).as("getParentCollection");
+export function visitDashboard(dashboard_id) {
+  // Some users will not have permissions for this request
+  cy.request({
+    method: "GET",
+    url: `/api/dashboard/${dashboard_id}`,
+    // That's why we have to ignore failures
+    failOnStatusCode: false,
+  }).then(({ status, body: { ordered_cards } }) => {
+    const dashboardAlias = "getDashboard" + dashboard_id;
 
-  cy.visit(`/dashboard/${id}`);
+    cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(dashboardAlias);
 
-  // If users doesn't have permissions to even view the dashboard,
-  // the last request for them would be `getDashboard`.
-  cy.wait("@getDashboard").then(({ response: { statusCode } }) => {
-    canViewDashboard(statusCode) && cy.wait("@getParentCollection");
+    const canViewDashboard = hasAccess(status);
+    const validQuestions = dashboardHasQuestions(ordered_cards);
+
+    if (canViewDashboard && validQuestions) {
+      // If dashboard has valid questions (GUI or native),
+      // we need to alias each request and wait for their reponses
+      const aliases = validQuestions.map(
+        ({ id, card_id, card: { display } }) => {
+          const baseUrl =
+            display === "pivot"
+              ? `/api/dashboard/pivot/${dashboard_id}`
+              : `/api/dashboard/${dashboard_id}`;
+
+          const interceptUrl = `${baseUrl}/dashcard/${id}/card/${card_id}/query`;
+
+          const alias = "dashcardQuery" + id;
+
+          cy.intercept("POST", interceptUrl).as(alias);
+
+          return `@${alias}`;
+        },
+      );
+
+      cy.visit(`/dashboard/${dashboard_id}`);
+
+      cy.wait(aliases);
+    } else {
+      // For a dashboard:
+      //  - without questions (can be empty or markdown only) or
+      //  - the one which user doesn't have access to
+      // the last request will always be `GET /api/dashboard/:dashboard_id`
+      cy.visit(`/dashboard/${dashboard_id}`);
+
+      cy.wait(`@${dashboardAlias}`);
+    }
   });
 }
 
-function canViewDashboard(statusCode) {
+function hasAccess(statusCode) {
   return statusCode !== 403;
+}
+
+function dashboardHasQuestions(cards) {
+  if (Array.isArray(cards) && cards.length > 0) {
+    const questions = cards
+      // Filter out markdown cards
+      .filter(({ card_id }) => {
+        return card_id !== null;
+      })
+      // Filter out cards which the current user is not allowed to see
+      .filter(({ card }) => {
+        return card.dataset_query !== undefined;
+      });
+
+    const isPopulated = questions.length > 0;
+
+    return isPopulated && questions;
+  } else {
+    return false;
+  }
 }

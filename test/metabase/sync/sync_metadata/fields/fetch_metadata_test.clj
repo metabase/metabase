@@ -5,7 +5,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.table :refer [Table]]
             [metabase.sync.sync-metadata :as sync-metadata]
-            [metabase.sync.sync-metadata.fields.fetch-metadata :as sync-fields.fetch-metadata]
+            [metabase.sync.sync-metadata.fields.fetch-metadata :as fetch-metadata]
             [metabase.test :as mt]
             [metabase.test.mock.toucanery :as toucanery]
             [metabase.util :as u]
@@ -76,4 +76,4 @@
                                                                    ;; defined in sets. changing keys will change the
                                                                    ;; order in the set implementation
                                                                    (m/filter-vals some? (dissoc % :id :database-position))))]
-             (remove-ids-and-nil-vals (#'sync-fields.fetch-metadata/our-metadata (Table transactions-table-id))))))))
+             (remove-ids-and-nil-vals (#'fetch-metadata/our-metadata (Table transactions-table-id))))))))

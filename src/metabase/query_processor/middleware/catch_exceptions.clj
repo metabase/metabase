@@ -1,9 +1,9 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require [clojure.tools.logging :as log]
-            [metabase.query-processor.context :as context]
-            [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.permissions :as perms]
+            [metabase.query-processor.context :as qp.context]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             schema.utils)
@@ -69,10 +69,10 @@
      ((get-method format-exception Throwable) e)
      (when (= error-type :schema.core/error)
        (merge
-        {:error_type error-type/invalid-query}
+        {:error_type qp.error-type/invalid-query}
         (when-let [error-msg (explain-schema-validation-error error)]
           {:error error-msg})))
-     (when (error-type/known-error-type? error-type)
+     (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      {:ex-data (dissoc data :schema)})))
@@ -112,7 +112,6 @@
      (when (seq more)
        {:via (vec more)}))))
 
-
 (defn- query-info
   "Map of about `query` to add to the exception response."
   [{query-type :type, :as query} {:keys [preprocessed native]}]
@@ -122,7 +121,7 @@
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
      {:preprocessed preprocessed
-      :native       (when (perms/current-user-has-adhoc-native-query-perms? query)
+      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
                       native)})))
 
 (defn- query-execution-info [query-execution]
@@ -147,17 +146,17 @@
   exceptions to the `result-chan`."
   [qp]
   (fn [query rff context]
-    (let [extra-info (atom
+    (let [extra-info (delay
                       {:native       (u/ignore-exceptions
-                                       ((resolve 'metabase.query-processor/compile) query))
+                                      ((resolve 'metabase.query-processor/compile) query))
                        :preprocessed (u/ignore-exceptions
-                                       ((resolve 'metabase.query-processor/preprocess) query))})]
+                                      ((resolve 'metabase.query-processor/preprocess) query))})]
       (letfn [(raisef* [e context]
                 ;; format the Exception and return it
                 (let [formatted-exception (format-exception* query e @extra-info)]
                   (log/error (str (trs "Error processing query: {0}" (:error format-exception))
                                   "\n" (u/pprint-to-str formatted-exception)))
-                  (context/resultf formatted-exception context)))]
+                  (qp.context/resultf formatted-exception context)))]
         (try
           (qp query rff (assoc context :raisef raisef*))
           (catch Throwable e

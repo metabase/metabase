@@ -34,8 +34,7 @@ const mapDispatchToProps = {
   push,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class NewQueryOptions extends Component {
+class NewQueryOptions extends Component {
   componentDidMount() {
     // We need to check if any databases exist otherwise show an empty state.
     // Be aware that the embedded version does not have the Navbar, which also
@@ -82,7 +81,7 @@ export default class NewQueryOptions extends Component {
                 description={t`Pick some data, view it, and easily filter, summarize, and visualize it.`}
                 width={180}
                 to={Urls.newQuestion({ creationType: "simple_question" })}
-                data-metabase-event={`New Question; Simple Question Start`}
+                data-metabase-event="New Question; Simple Question Start"
               />
             </QueryOptionsGridItem>
           )}
@@ -97,7 +96,7 @@ export default class NewQueryOptions extends Component {
                   mode: "notebook",
                   creationType: "custom_question",
                 })}
-                data-metabase-event={`New Question; Custom Question Start`}
+                data-metabase-event="New Question; Custom Question Start"
               />
             </QueryOptionsGridItem>
           )}
@@ -112,7 +111,7 @@ export default class NewQueryOptions extends Component {
                   creationType: "native_question",
                 })}
                 width={180}
-                data-metabase-event={`New Question; Native Query Start`}
+                data-metabase-event="New Question; Native Query Start"
               />
             </QueryOptionsGridItem>
           )}
@@ -121,3 +120,5 @@ export default class NewQueryOptions extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(NewQueryOptions);

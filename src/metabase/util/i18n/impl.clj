@@ -190,9 +190,16 @@
                (f)))))))))
 
 (defn site-locale-from-setting
-  "Fetch the value of the `site-locale` Setting."
+  "Fetch the value of the `site-locale` Setting.
+  When metabase is shutting down, we need to log some messages after the db connection is closed, so we keep around a
+  cached-site-locale for that purpose."
   []
-  (@site-locale-from-setting-fn))
+  (let [cached-site-locale (atom "en")]
+    (try
+      (let [site-locale (@site-locale-from-setting-fn)]
+        (reset! cached-site-locale site-locale)
+        site-locale)
+      (catch Exception _ @cached-site-locale))))
 
 (defmethod print-method Locale
   [locale ^java.io.Writer writer]

@@ -6,7 +6,7 @@ import {
   enterCustomColumnDetails,
 } from "__support__/e2e/cypress";
 
-describe.skip("issue 21513", () => {
+describe("issue 21513", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();

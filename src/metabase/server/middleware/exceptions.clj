@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.server.middleware.security :as mw.security]
-            [metabase.util.i18n :as ui18n :refer [trs]])
+            [metabase.util.i18n :refer [trs]])
   (:import java.sql.SQLException
            org.eclipse.jetty.io.EofException))
 

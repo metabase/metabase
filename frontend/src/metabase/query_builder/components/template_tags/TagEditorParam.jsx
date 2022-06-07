@@ -18,8 +18,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { SchemaTableAndFieldDataSelector } from "metabase/query_builder/components/DataSelector";
 import MetabaseSettings from "metabase/lib/settings";
 
-@connect(state => ({ metadata: getMetadata(state) }), { fetchField })
-export default class TagEditorParam extends Component {
+class TagEditorParam extends Component {
   UNSAFE_componentWillMount() {
     const { tag, fetchField } = this.props;
 
@@ -111,12 +110,12 @@ export default class TagEditorParam extends Component {
 
   render() {
     const { tag, database, databases, metadata, parameter } = this.props;
-    let widgetOptions = [],
-      table,
-      fieldMetadataLoaded = false;
+    let widgetOptions = [];
+    let field = null;
+    let table = null;
+    let fieldMetadataLoaded = false;
     if (tag.type === "dimension" && Array.isArray(tag.dimension)) {
-      const field = metadata.field(tag.dimension[1]);
-
+      field = metadata.field(tag.dimension[1]);
       if (field) {
         widgetOptions = getParameterOptionsForField(field);
         table = field.table;
@@ -168,8 +167,11 @@ export default class TagEditorParam extends Component {
                 {() => (
                   <SchemaTableAndFieldDataSelector
                     databases={databases}
-                    selectedDatabaseId={database ? database.id : null}
-                    selectedTableId={table ? table.id : null}
+                    selectedDatabase={database || null}
+                    selectedDatabaseId={database?.id || null}
+                    selectedTable={table || null}
+                    selectedTableId={table?.id || null}
+                    selectedField={field || null}
                     selectedFieldId={
                       hasSelectedDimensionField ? tag.dimension[1] : null
                     }
@@ -288,3 +290,7 @@ export default class TagEditorParam extends Component {
     );
   }
 }
+
+export default connect(state => ({ metadata: getMetadata(state) }), {
+  fetchField,
+})(TagEditorParam);

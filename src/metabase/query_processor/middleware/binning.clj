@@ -5,7 +5,7 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.public-settings :as public-settings]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -47,7 +47,7 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value")
-               {:type        error-type/invalid-query
+               {:type        qp.error-type/invalid-query
                 :field-id    field-id
                 :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))

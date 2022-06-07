@@ -23,12 +23,15 @@ const Revision = createEntity({
 
   objectActions: {
     // use thunk since we don't actually want to dispatch an action
-    revert: revision => (dispatch, getState) =>
-      Revision.api.revert({
+    revert: revision => async (dispatch, getState) => {
+      await Revision.api.revert({
         entity: revision.model_type,
         id: revision.model_id,
         revision_id: revision.id,
-      }),
+      });
+
+      return dispatch(Revision.actions.invalidateLists());
+    },
   },
 
   actionShouldInvalidateLists(action) {

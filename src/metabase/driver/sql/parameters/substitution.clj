@@ -9,14 +9,14 @@
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
-            [metabase.driver.common.parameters :as i]
-            [metabase.driver.common.parameters.dates :as date-params]
-            [metabase.driver.common.parameters.operators :as ops]
+            [metabase.driver.common.parameters :as params]
+            [metabase.driver.common.parameters.dates :as params.dates]
+            [metabase.driver.common.parameters.operators :as params.ops]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.query-processor.util.add-alias-info :as add]
@@ -131,7 +131,7 @@
 
 (defmethod ->replacement-snippet-info [:sql Keyword]
   [driver this]
-  (if (= this i/no-value)
+  (if (= this params/no-value)
     {:replacement-snippet ""}
     (create-replacement-snippet driver this)))
 
@@ -203,8 +203,8 @@
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
   [driver value]
-  (->> (date-params/date-string->range value)
-       i/map->DateRange
+  (->> (params.dates/date-string->range value)
+       params/map->DateRange
        (->replacement-snippet-info driver)))
 
 (s/defn ^:private field-filter->equals-clause-sql :- ParamSnippetInfo
@@ -214,7 +214,7 @@
 
 (s/defn ^:private field-filter-multiple-values->in-clause-sql :- ParamSnippetInfo
   [driver values]
-  (-> (->replacement-snippet-info driver (i/map->MultipleValues {:values values}))
+  (-> (->replacement-snippet-info driver (params/map->MultipleValues {:values values}))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
@@ -237,7 +237,7 @@
   [:field
    (u/the-id field)
    {:base-type                (:base_type field)
-    :temporal-unit            (when (date-params/date-type? param-type)
+    :temporal-unit            (when (params.dates/date-type? param-type)
                                 :day)
     ::add/source-table        (:table_id field) ; TODO -- are we sure we want to qualify this?
     ;; in case anyone needs to know we're compiling a Field filter.
@@ -261,21 +261,21 @@
             (update x :replacement-snippet
                     (partial str (field->identifier driver field param-type) " ")))]
     (cond
-      (ops/operator? param-type)
+      (params.ops/operator? param-type)
       (let [[snippet & args]
             (as-> (assoc params :target [:template-tag (field->clause driver field param-type)]) form
-              (ops/to-clause form)
+              (params.ops/to-clause form)
               (mbql.u/desugar-filter-clause form)
-              (wrap-value-literals/wrap-value-literals-in-mbql form)
+              (qp.wrap-value-literals/wrap-value-literals-in-mbql form)
               (sql.qp/->honeysql driver form)
               (hsql/format-predicate form :quoting (sql.qp/quote-style driver)))]
         {:replacement-snippet snippet, :prepared-statement-args (vec args)})
       ;; convert date ranges to DateRange record types
-      (date-params/date-range-type? param-type) (prepend-field
-                                                 (date-range-field-filter->replacement-snippet-info driver value))
+      (params.dates/date-range-type? param-type) (prepend-field
+                                                  (date-range-field-filter->replacement-snippet-info driver value))
       ;; convert all other dates to `= <date>`
-      (date-params/date-type? param-type)       (prepend-field
-                                                 (field-filter->equals-clause-sql driver (i/map->Date {:s value})))
+      (params.dates/date-type? param-type)       (prepend-field
+                                                  (field-filter->equals-clause-sql driver (params/map->Date {:s value})))
       ;; for sequences of multiple values we want to generate an `IN (...)` clause
       (sequential? value)                       (prepend-field
                                                  (field-filter-multiple-values->in-clause-sql driver value))
@@ -288,7 +288,7 @@
   (cond
     ;; otherwise if the value isn't present just put in something that will always be true, such as `1` (e.g. `WHERE 1
     ;; = 1`). This is only used for field filters outside of optional clauses
-    (= value i/no-value) {:replacement-snippet "1 = 1"}
+    (= value params/no-value) {:replacement-snippet "1 = 1"}
     ;; if we have a vector of multiple values recursively convert them to SQL and combine into an `AND` clause
     ;; (This is multiple values in the sense that the frontend provided multiple maps with value values for the same
     ;; FieldFilter, not in the sense that we have a single map with multiple values for `:value`.)

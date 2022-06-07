@@ -11,23 +11,23 @@
             [metabase.driver.util :as driver.u]
             [metabase.mbql.util :as mbql.u]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.error-type :as error-type]
-            [metabase.query-processor.middleware.add-default-temporal-unit :as add-default-temporal-unit]
-            [metabase.query-processor.middleware.add-dimension-projections :as add-dim]
-            [metabase.query-processor.middleware.add-implicit-clauses :as implicit-clauses]
-            [metabase.query-processor.middleware.add-implicit-joins :as add-implicit-joins]
-            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
+            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.add-default-temporal-unit :as qp.add-default-temporal-unit]
+            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
+            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
+            [metabase.query-processor.middleware.add-implicit-joins :as qp.add-implicit-joins]
+            [metabase.query-processor.middleware.add-rows-truncated :as qp.add-rows-truncated]
+            [metabase.query-processor.middleware.add-source-metadata :as qp.add-source-metadata]
+            [metabase.query-processor.middleware.add-timezone-info :as qp.add-timezone-info]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.middleware.auto-bucket-datetimes :as bucket-datetime]
+            [metabase.query-processor.middleware.auto-bucket-datetimes :as qp.auto-bucket-datetimes]
             [metabase.query-processor.middleware.auto-parse-filter-values :as auto-parse-filter-values]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
             [metabase.query-processor.middleware.check-features :as check-features]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.query-processor.middleware.cumulative-aggregations :as cumulative-ags]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
+            [metabase.query-processor.middleware.cumulative-aggregations :as qp.cumulative-aggregations]
             [metabase.query-processor.middleware.desugar :as desugar]
             [metabase.query-processor.middleware.escape-join-aliases :as escape-join-aliases]
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
@@ -40,17 +40,18 @@
             [metabase.query-processor.middleware.normalize-query :as normalize]
             [metabase.query-processor.middleware.optimize-temporal-filters :as optimize-temporal-filters]
             [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.query-processor.middleware.permissions :as perms]
-            [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-ags]
+            [metabase.query-processor.middleware.permissions :as qp.perms]
+            [metabase.query-processor.middleware.persistence :as qp.persistence]
+            [metabase.query-processor.middleware.pre-alias-aggregations :as qp.pre-alias-aggregations]
             [metabase.query-processor.middleware.prevent-infinite-recursive-preprocesses :as prevent-infinite-recursive-preprocesses]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
-            [metabase.query-processor.middleware.resolve-database-and-driver :as resolve-database-and-driver]
-            [metabase.query-processor.middleware.resolve-fields :as resolve-fields]
+            [metabase.query-processor.middleware.resolve-database-and-driver :as qp.resolve-database-and-driver]
+            [metabase.query-processor.middleware.resolve-fields :as qp.resolve-fields]
             [metabase.query-processor.middleware.resolve-joined-fields :as resolve-joined-fields]
             [metabase.query-processor.middleware.resolve-joins :as resolve-joins]
-            [metabase.query-processor.middleware.resolve-referenced :as resolve-referenced]
-            [metabase.query-processor.middleware.resolve-source-table :as resolve-source-table]
+            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
+            [metabase.query-processor.middleware.resolve-source-table :as qp.resolve-source-table]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.middleware.splice-params-in-response :as splice-params-in-response]
             [metabase.query-processor.middleware.store :as store]
@@ -58,7 +59,7 @@
             [metabase.query-processor.middleware.validate :as validate]
             [metabase.query-processor.middleware.validate-temporal-bucketing :as validate-temporal-bucketing]
             [metabase.query-processor.middleware.visualization-settings :as viz-settings]
-            [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
+            [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
@@ -81,32 +82,33 @@
 
     (f query) -> query"
   ;; ↓↓↓ PRE-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
-  [#'perms/remove-permissions-key
+  [#'qp.perms/remove-permissions-key
    #'validate/validate-query
    #'expand-macros/expand-macros
-   #'resolve-referenced/resolve-referenced-card-resources
+   #'qp.resolve-referenced/resolve-referenced-card-resources
    #'parameters/substitute-parameters
-   #'resolve-source-table/resolve-source-tables
-   #'bucket-datetime/auto-bucket-datetimes
+   #'qp.resolve-source-table/resolve-source-tables
+   #'qp.auto-bucket-datetimes/auto-bucket-datetimes
    #'reconcile-bucketing/reconcile-breakout-and-order-by-bucketing
-   #'add-source-metadata/add-source-metadata-for-source-queries
+   #'qp.add-source-metadata/add-source-metadata-for-source-queries
    #'upgrade-field-literals/upgrade-field-literals
    (resolve 'ee.sandbox.rows/apply-sandboxing)
-   #'implicit-clauses/add-implicit-clauses
-   #'add-dim/add-remapped-columns
-   #'resolve-fields/resolve-fields
+   #'qp.persistence/substitute-persisted-query
+   #'qp.add-implicit-clauses/add-implicit-clauses
+   #'qp.add-dimension-projections/add-remapped-columns
+   #'qp.resolve-fields/resolve-fields
    #'binning/update-binning-strategy
    #'desugar/desugar
-   #'add-default-temporal-unit/add-default-temporal-unit
-   #'add-implicit-joins/add-implicit-joins
+   #'qp.add-default-temporal-unit/add-default-temporal-unit
+   #'qp.add-implicit-joins/add-implicit-joins
    #'resolve-joins/resolve-joins
    #'resolve-joined-fields/resolve-joined-fields
    #'fix-bad-refs/fix-bad-references
    #'escape-join-aliases/escape-join-aliases
    (resolve 'ee.sandbox.rows/apply-sandboxing)
-   #'cumulative-ags/rewrite-cumulative-aggregations
-   #'pre-alias-ags/pre-alias-aggregations
-   #'wrap-value-literals/wrap-value-literals
+   #'qp.cumulative-aggregations/rewrite-cumulative-aggregations
+   #'qp.pre-alias-aggregations/pre-alias-aggregations
+   #'qp.wrap-value-literals/wrap-value-literals
    #'auto-parse-filter-values/auto-parse-filter-values
    #'validate-temporal-bucketing/validate-temporal-bucketing
    #'optimize-temporal-filters/optimize-temporal-filters
@@ -138,7 +140,7 @@
 
     (f (f query rff context)) -> (f query rff context)"
   [#'cache/maybe-return-cached-results
-   #'perms/check-query-permissions
+   #'qp.perms/check-query-permissions
    (resolve 'ee.perms/check-download-permissions)
    (resolve 'ee.sandbox.columns/maybe-apply-column-level-perms-check)])
 
@@ -153,15 +155,15 @@
   [#'results-metadata/record-and-return-metadata!
    #'limit/limit-result-rows
    (resolve 'ee.perms/limit-download-result-rows)
-   #'add-rows-truncated/add-rows-truncated
+   #'qp.add-rows-truncated/add-rows-truncated
    #'splice-params-in-response/splice-params-in-response
-   #'add-timezone-info/add-timezone-info
+   #'qp.add-timezone-info/add-timezone-info
    (resolve 'ee.sandbox.rows/merge-sandboxing-metadata)
-   #'add-dim/remap-results
+   #'qp.add-dimension-projections/remap-results
    #'format-rows/format-rows
    #'large-int-id/convert-id-to-string
    #'viz-settings/update-viz-settings
-   #'cumulative-ags/sum-cumulative-aggregation-columns
+   #'qp.cumulative-aggregations/sum-cumulative-aggregation-columns
    #'annotate/add-column-info])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
@@ -185,7 +187,7 @@
   Where `qp` has the form
 
     (f query rff context)"
-  [#'resolve-database-and-driver/resolve-database-and-driver
+  [#'qp.resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
    ;; `normalize` has to be done at the very beginning or `resolve-card-id-source-tables` and the like might not work.
@@ -198,7 +200,9 @@
 ;; query -> results      = around + pre-process + compile + execute + post-process = default-middleware
 
 (def default-middleware
-  "The default set of middleware applied to queries ran via [[process-query]]."
+  "The default set of middleware applied to queries ran via [[process-query]].
+  NOTE: if you add any new middleware groups, you may need to modify [[dev.debug-qp/default-debug-middleware]] as well,
+  so that [[dev.debug-qp/process-query-debug]] still works as expected."
   (letfn [(combined-pre-process [qp]
             (fn combined-pre-process* [query rff context]
               (qp (preprocess* query) rff context)))
@@ -261,7 +265,7 @@
   [{query-type :type, :as query}]
   (when-not (= (mbql.u/normalize-token query-type) :query)
     (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
-             {:type error-type/qp})))
+             {:type qp.error-type/qp})))
   ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
   ;; check where this is used.
   (qp.store/with-store
@@ -307,7 +311,7 @@
     (f (f query rff context)) -> (f query rff context)"
   (concat
    default-middleware
-   [#'constraints/add-default-userland-constraints
+   [#'qp.constraints/add-default-userland-constraints
     #'process-userland-query/process-userland-query
     #'catch-exceptions/catch-exceptions]))
 

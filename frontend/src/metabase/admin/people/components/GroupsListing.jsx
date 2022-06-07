@@ -30,7 +30,7 @@ import { AddRow } from "./AddRow";
 // ------------------------------------------------------------ Add Group ------------------------------------------------------------
 
 function AddGroupRow({ text, onCancelClicked, onCreateClicked, onTextChange }) {
-  const textIsValid = text && text.length;
+  const textIsValid = text?.trim().length;
   return (
     <tr>
       <td colSpan="3" style={{ padding: 0 }}>
@@ -85,18 +85,20 @@ function ActionsPopover({ group, onEditGroupClicked, onDeleteGroupClicked }) {
       className="block"
       triggerElement={<Icon className="text-light" name="ellipsis" />}
     >
-      <ul className="UserActionsSelect">
+      <ul className="UserActionsSelect py1">
         <li
-          className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer"
+          className="py1 px2 bg-brand-hover text-white-hover cursor-pointer"
           onClick={onEditGroupClicked.bind(null, group)}
         >
           {t`Edit Name`}
         </li>
-        <li className="pt1 pb2 px2 bg-brand-hover text-white-hover cursor-pointer text-error">
-          <ModalWithTrigger triggerElement={t`Remove Group`}>
-            <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
-          </ModalWithTrigger>
-        </li>
+        <ModalWithTrigger
+          as="li"
+          triggerClasses="py1 px2 bg-brand-hover text-white-hover cursor-pointer text-error"
+          triggerElement={t`Remove Group`}
+        >
+          <DeleteGroupModal group={group} onConfirm={onDeleteGroupClicked} />
+        </ModalWithTrigger>
       </ul>
     </PopoverWithTrigger>
   );
@@ -151,8 +153,6 @@ function GroupRow({
   group,
   groupBeingEdited,
   index,
-  showGroupDetail,
-  showAddGroupRow,
   onEditGroupClicked,
   onDeleteGroupClicked,
   onEditGroupTextChange,
@@ -176,9 +176,9 @@ function GroupRow({
       <td>
         <Link
           to={"/admin/people/groups/" + group.id}
-          className="link no-decoration"
+          className="link no-decoration flex align-center"
         >
-          <span className="text-white inline-block">
+          <span className="text-white">
             <UserAvatar
               background={color}
               user={{ first_name: getGroupNameLocalized(group) }}
@@ -271,7 +271,7 @@ export default class GroupsListing extends Component {
     MetabaseAnalytics.trackStructEvent("People Groups", "Group Added");
 
     try {
-      await this.props.create({ name: this.state.text });
+      await this.props.create({ name: this.state.text.trim() });
       this.setState({
         showAddGroupRow: false,
         text: "",
@@ -331,7 +331,7 @@ export default class GroupsListing extends Component {
       // ok, fire off API call to change the group
       MetabaseAnalytics.trackStructEvent("People Groups", "Group Updated");
       try {
-        await this.props.update({ id: group.id, name: group.name });
+        await this.props.update({ id: group.id, name: group.name.trim() });
         this.setState({ groupBeingEdited: null });
       } catch (error) {
         console.error("Error updating group name:", error);
@@ -356,13 +356,13 @@ export default class GroupsListing extends Component {
   }
 
   render() {
-    const { groups } = this.props;
+    const { groups, isAdmin } = this.props;
     const { alertMessage } = this.state;
 
     return (
       <AdminPaneLayout
         title={t`Groups`}
-        buttonText={t`Create a group`}
+        buttonText={isAdmin ? t`Create a group` : null}
         buttonAction={
           this.state.showAddGroupRow
             ? null

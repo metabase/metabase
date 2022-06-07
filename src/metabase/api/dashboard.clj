@@ -9,7 +9,7 @@
             [metabase.api.common :as api]
             [metabase.api.common.validation :as validation]
             [metabase.api.dataset :as api.dataset]
-            [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
@@ -21,15 +21,15 @@
             [metabase.models.params :as params]
             [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.query :as query :refer [Query]]
-            [metabase.models.query.permissions :as query.perms]
+            [metabase.models.query.permissions :as query-perms]
             [metabase.models.revision :as revision]
             [metabase.models.revision.last-edit :as last-edit]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.dashboard :as qp.dashboard]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.constraints :as constraints]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.query-processor.pivot :as qp.pivot]
-            [metabase.query-processor.util :as qp-util]
+            [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -69,7 +69,7 @@
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
-   parameters          [su/Map]
+   parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -146,8 +146,8 @@
   run."
   [{:keys [dataset_query]}]
   (u/ignore-exceptions
-    [(qp-util/query-hash dataset_query)
-     (qp-util/query-hash (assoc dataset_query :constraints constraints/default-query-constraints))]))
+    [(qp.util/query-hash dataset_query)
+     (qp.util/query-hash (assoc dataset_query :constraints (qp.constraints/default-query-constraints)))]))
 
 (defn- dashcard->query-hashes
   "Return a sequence of all the query hashes for this `dashcard`, including the top-level Card and any Series."
@@ -205,7 +205,7 @@
       ;; i'm a bit worried that this is an n+1 situation here. The cards can be batch hydrated i think because they
       ;; have a hydration key and an id. moderation_reviews currently aren't batch hydrated but i'm worried they
       ;; cannot be in this situation
-      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields :param_values)
+      (hydrate [:ordered_cards [:card [:moderation_reviews :moderator_details]] :series] :collection_authority_level :can_write :param_fields)
       api/read-check
       api/check-not-archived
       hide-unreadable-cards
@@ -275,7 +275,7 @@
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Map])
+   parameters              (s/maybe [su/Parameter])
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
@@ -349,7 +349,7 @@
       (doseq [table-id table-ids
               :let     [database-id (table-id->database-id table-id)]]
         ;; check whether we'd actually be able to query this Table (do we have ad-hoc data perms for it?)
-        (when-not (query.perms/can-query-table? database-id table-id)
+        (when-not (query-perms/can-query-table? database-id table-id)
           (throw (ex-info (tru "You must have data permissions to add a parameter referencing the Table {0}."
                                (pr-str (db/select-one-field :name Table :id table-id)))
                           {:status-code        403
@@ -490,7 +490,7 @@
 (api/defendpoint DELETE "/:dashboard-id/public_link"
   "Delete the publicly-accessible link to this Dashboard."
   [dashboard-id]
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (api/check-exists? Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (db/update! Dashboard dashboard-id
@@ -502,7 +502,7 @@
   "Fetch a list of Dashboards with public UUIDs. These dashboards are publicly-accessible *if* public sharing is
   enabled."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-public-sharing-enabled)
   (db/select [Dashboard :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
 
@@ -510,7 +510,7 @@
   "Fetch a list of Dashboards where `enable_embedding` is `true`. The dashboards can be embedded using the embedding
   endpoints and a signed JWT."
   []
-  (validation/check-has-general-permission :setting)
+  (validation/check-has-application-permission :setting)
   (validation/check-embedding-enabled)
   (db/select [Dashboard :name :id], :enable_embedding true, :archived false))
 
@@ -532,7 +532,7 @@
   "Save a denormalized description of dashboard."
   [:as {dashboard :body}]
   (let [parent-collection-id (if api/*is-superuser?*
-                               (:id (magic.populate/get-or-create-root-container-collection))
+                               (:id (populate/get-or-create-root-container-collection))
                                (db/select-one-field :id 'Collection
                                  :personal_owner_id api/*current-user-id*))]
     (->> (dashboard/save-transient-dashboard! dashboard parent-collection-id)
@@ -590,12 +590,14 @@
    (let [dashboard (hydrate dashboard :resolved-params)]
      (when-not (get (:resolved-params dashboard) param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))})))
+                       {:resolved-params (keys (:resolved-params dashboard))
+                        :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
        (when (empty? field-ids)
          (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param (get (:resolved-params dashboard) param-key)})))
+                         {:param       (get (:resolved-params dashboard) param-key)
+                          :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
        (try

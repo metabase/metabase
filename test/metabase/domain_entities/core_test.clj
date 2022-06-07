@@ -4,7 +4,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.models.table :as table :refer [Table]]
             [metabase.test.data :as data]
-            [metabase.test.domain-entities :as test.domain-entities]
+            [metabase.test.domain-entities :as test.de]
             [toucan.hydrate :as hydrate]))
 
 (deftest mbql-reference-test
@@ -19,16 +19,16 @@
   (-> table-name data/id Table (hydrate/hydrate :fields)))
 
 (deftest satisfies-requierments?-test
-  (is (de/satisfies-requierments? (hydrated-table :venues) (test.domain-entities/test-domain-entity-specs "Venues"))))
+  (is (de/satisfies-requierments? (hydrated-table :venues) (test.de/test-domain-entity-specs "Venues"))))
 
 (deftest best-match-test
   (testing "Do we correctly pick the best (most specific and most defined) candidate"
     (is (= "Venues"
-           (-> test.domain-entities/test-domain-entity-specs vals (#'de/best-match) :name)))))
+           (-> test.de/test-domain-entity-specs vals (#'de/best-match) :name)))))
 
 (deftest instantiate-snippets-test
   (testing "Do all the MBQL snippets get instantiated correctly"
-    (test.domain-entities/with-test-domain-entity-specs
+    (test.de/with-test-domain-entity-specs
       (is (= {:metrics             {"Avg Price" {:name        "Avg Price"
                                                  :aggregation [:avg (#'de/mbql-reference (Field (data/id :venues :price)))]}}
               :segments            nil

@@ -10,13 +10,13 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.interface :as qp.i]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [monger.operators :refer :all]
             [schema.core :as s])
@@ -157,11 +157,17 @@
             (name id-or-name))
     temporal-unit (with-lvalue-temporal-bucketing temporal-unit)))
 
+(defn- add-start-of-week-offset [expr offset]
+  (cond
+    (zero? offset) expr
+    (neg? offset)  (recur expr (+ offset 7))
+    :else          {$mod [{$add [expr offset]}
+                          7]}))
+
 (defn- day-of-week
   [column]
-  (mongo-let [day_of_week {$mod [{$add [{$dayOfWeek column}
-                                        (driver.common/start-of-week-offset :mongo)]}
-                                 7]}]
+  (mongo-let [day_of_week (add-start-of-week-offset {$dayOfWeek column}
+                                                    (driver.common/start-of-week-offset :mongo))]
     {$cond {:if   {$eq [day_of_week 0]}
             :then 7
             :else day_of_week}}))
@@ -778,7 +784,7 @@
       (:collection &match))))
 
 (defn- log-aggregation-pipeline [form]
-  (when-not i/*disable-qp-logging*
+  (when-not qp.i/*disable-qp-logging*
     (log/tracef "\nMongo aggregation pipeline:\n%s\n"
                 (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 

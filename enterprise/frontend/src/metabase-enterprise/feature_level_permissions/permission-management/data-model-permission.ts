@@ -1,5 +1,7 @@
 import { push } from "react-router-redux";
-import { GroupsPermissions } from "metabase-types/api";
+import { Group, GroupsPermissions } from "metabase-types/api";
+import { t } from "ttag";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
   EntityId,
@@ -12,9 +14,10 @@ import {
   getSchemasPermission,
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
-import { t } from "ttag";
-
-export const DATA_MODEL_PERMISSION_REQUIRES_DATA_ACCESS = t`Data model access requires full data access.`;
+import {
+  getPermissionWarning,
+  getPermissionWarningModal,
+} from "metabase/admin/permissions/selectors/confirmations";
 
 export const DATA_MODEL_PERMISSION_OPTIONS = {
   none: {
@@ -24,10 +27,10 @@ export const DATA_MODEL_PERMISSION_OPTIONS = {
     iconColor: "danger",
   },
   edit: {
-    label: t`Edit`,
+    label: t`Yes`,
     value: "all",
-    icon: "pencil",
-    iconColor: "accent7",
+    icon: "check",
+    iconColor: "success",
   },
   controlled: {
     label: t`Granular`,
@@ -37,17 +40,11 @@ export const DATA_MODEL_PERMISSION_OPTIONS = {
   },
 };
 
-const buildControlledActionUrl = (
-  entityId: EntityId,
-  groupId: number,
-  permissionSubject: PermissionSubject,
-) => {
-  if (permissionSubject === "schemas") {
-    return `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}`;
-  }
-
-  return `/admin/permissions/data/group/${groupId}/database/${entityId.databaseId}/schema/${entityId.schemaName}`;
-};
+const DATA_MODEL_PERMISSIONS_DESC = [
+  DATA_MODEL_PERMISSION_OPTIONS.edit.value,
+  DATA_MODEL_PERMISSION_OPTIONS.controlled.value,
+  DATA_MODEL_PERMISSION_OPTIONS.none.value,
+];
 
 const getPermissionValue = (
   permissions: GroupsPermissions,
@@ -80,6 +77,7 @@ export const buildDataModelPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
+  defaultGroup: Group,
   permissionSubject: PermissionSubject,
 ) => {
   const hasChildEntities = permissionSubject !== "fields";
@@ -91,15 +89,42 @@ export const buildDataModelPermission = (
     permissionSubject,
   );
 
+  const defaultGroupValue = getPermissionValue(
+    permissions,
+    defaultGroup.id,
+    entityId,
+    permissionSubject,
+  );
+
+  const warning = getPermissionWarning(
+    value,
+    defaultGroupValue,
+    permissionSubject,
+    defaultGroup,
+    groupId,
+    DATA_MODEL_PERMISSIONS_DESC,
+  );
+
+  const confirmations = (newValue: string) => [
+    getPermissionWarningModal(
+      newValue,
+      defaultGroupValue,
+      permissionSubject,
+      defaultGroup,
+      groupId,
+      DATA_MODEL_PERMISSIONS_DESC,
+    ),
+  ];
+
   return {
     permission: "data-model",
     type: "data-model",
     isDisabled: isAdmin,
-    disabledTooltip: isAdmin
-      ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-      : DATA_MODEL_PERMISSION_REQUIRES_DATA_ACCESS,
-    isHighlighted: isAdmin,
+    warning,
+    confirmations,
     value,
+    isHighlighted: isAdmin,
+    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     options: [
       DATA_MODEL_PERMISSION_OPTIONS.none,
       ...(hasChildEntities ? [DATA_MODEL_PERMISSION_OPTIONS.controlled] : []),
@@ -108,9 +133,7 @@ export const buildDataModelPermission = (
     postActions: hasChildEntities
       ? {
           controlled: () =>
-            push(
-              buildControlledActionUrl(entityId, groupId, permissionSubject),
-            ),
+            push(getGroupFocusPermissionsUrl(groupId, entityId)),
         }
       : undefined,
   };

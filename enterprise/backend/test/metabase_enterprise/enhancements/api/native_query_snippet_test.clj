@@ -3,7 +3,7 @@
             [metabase.models :refer [Collection NativeQuerySnippet]]
             [metabase.models.collection :as collection]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.public-settings.premium-features-test :as premium-features-test]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -32,7 +32,7 @@
                   (is (= false
                          (has-perms? snippet))
                       "allowed?"))
-                (perms/grant-collection-read-permissions! (group/all-users) collection)
+                (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
                 (testing (format "\nShould %s allowed if we have read perms for %s"
                                  (case required-perms :read "be" :write "NOT be")
                                  collection-name)
@@ -41,7 +41,7 @@
                            :write false)
                          (has-perms? snippet))
                       "allowed?"))
-                (perms/grant-collection-readwrite-permissions! (group/all-users) collection)
+                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                 (testing (format "\nShould be allowed if we have write perms for %s" collection-name)
                   (is (= true
                          (has-perms? snippet))
@@ -120,17 +120,17 @@
                         (doseq [c [source-collection dest-collection]]
                           (testing (format "\nPerms for only %s should fail" (:name c))
                             (try
-                              (perms/grant-collection-readwrite-permissions! (group/all-users) c)
+                              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c)
                               (is (= false
                                      (has-perms?)))
                               (finally
-                                (perms/revoke-collection-permissions! (group/all-users) c)))))
+                                (perms/revoke-collection-permissions! (perms-group/all-users) c)))))
                         (testing "\nShould succeed with both"
                           (try
                             (doseq [c [source-collection dest-collection]]
-                              (perms/grant-collection-readwrite-permissions! (group/all-users) c))
+                              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) c))
                             (is (= true
                                    (has-perms?)))
                             (finally
                               (doseq [c [source-collection dest-collection]]
-                                (perms/revoke-collection-permissions! (group/all-users) c)))))))))))))))))
+                                (perms/revoke-collection-permissions! (perms-group/all-users) c)))))))))))))))))

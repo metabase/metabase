@@ -13,7 +13,7 @@
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -28,14 +28,14 @@
            [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 
-(driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+(driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod driver/humanize-connection-error-message :snowflake
   [_ message]
   (log/spy :error (type message))
   (condp re-matches message
     #"(?s).*Object does not exist.*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"(?s).*" ; default - the Snowflake errors have a \n in them
     message))
@@ -45,23 +45,17 @@
   :sunday)
 
 (defn- start-of-week-setting->snowflake-offset
-  "Returns the Snowflake offset for the current :start-of-week setting, if defined. Snowflake considers :monday to be
-  1, through :sunday as 7, so we need to increment our raw offset value."
+  "Value to use for the `WEEK_START` connection parameter -- see
+  https://docs.snowflake.com/en/sql-reference/parameters.html#label-week-start -- based on
+  the [[metabase.public-settings/start-of-week]] Setting. Snowflake considers `:monday` to be `1`, through `:sunday`
+  as `7`."
   []
-  (when-let [offset (driver.common/start-of-week->int)]
-    (inc offset)))
-
-(defn- maybe-set-week-start [{:keys [:additional-options] :as details}]
-  (if-not (str/blank? additional-options)
-    (let [week-start-from-opts (-> (sql-jdbc.common/additional-options->map additional-options :url)
-                                   (get "week_start"))]
-      (if-not week-start-from-opts
-        (assoc details :week_start (or (start-of-week-setting->snowflake-offset) 7))
-        details))
-    (assoc details :week_start (or (start-of-week-setting->snowflake-offset) 7))))
+  (inc (driver.common/start-of-week->int)))
 
 (defmethod sql-jdbc.conn/connection-details->spec :snowflake
-  [_ {:keys [account], :as opts}]
+  [_ {:keys [account additional-options], :as details}]
+  (when (get "week_start" (sql-jdbc.common/additional-options->map additional-options :url))
+    (log/warn (trs "You should not set WEEK_START in Snowflake connection options; this might lead to incorrect results. Set the Start of Week Setting instead.")))
   (let [upcase-not-nil (fn [s] (when s (u/upper-case-en s)))]
     ;; it appears to be the case that their JDBC driver ignores `db` -- see my bug report at
     ;; https://support.snowflake.net/s/question/0D50Z00008WTOMCSA5/
@@ -76,17 +70,19 @@
                 ;; other SESSION parameters
                 ;; not 100% sure why we need to do this but if we don't set the connection to UTC our report timezone
                 ;; stuff doesn't work, even though we ultimately override this when we set the session timezone
-                :timezone                                   "UTC"}
-               (-> opts
-                   ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead of
-                   ;; `db`. If we run across `dbname`, correct our behavior
-                   maybe-set-week-start
+                :timezone                                   "UTC"
+                ;; tell Snowflake to use the same start of week that we have set for the
+                ;; [[metabase.public-settings/start-of-week]] Setting.
+                :week_start                                 (start-of-week-setting->snowflake-offset)}
+               (-> details
+                   ;; original version of the Snowflake driver incorrectly used `dbname` in the details fields instead
+                   ;; of `db`. If we run across `dbname`, correct our behavior
                    (set/rename-keys {:dbname :db})
                    ;; see https://github.com/metabase/metabase/issues/9511
                    (update :warehouse upcase-not-nil)
                    (update :schema upcase-not-nil)
                    (dissoc :host :port :timezone)))
-        (sql-jdbc.common/handle-additional-options opts))))
+        (sql-jdbc.common/handle-additional-options details))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake
   [_ base-type]
@@ -158,13 +154,14 @@
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
 (defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
 
+;; these don't need to be adjusted for start of week, since we're Setting the WEEK_START connection parameter
 (defmethod sql.qp/date [:snowflake :week]
-  [_ _ expr]
-  (sql.qp/adjust-start-of-week :snowflake (partial date-trunc :week) expr))
+  [_driver _unit expr]
+  (date-trunc :week expr))
 
 (defmethod sql.qp/date [:snowflake :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :snowflake (extract :dayofweek expr)))
+  [_driver _unit expr]
+  (extract :dayofweek expr))
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]

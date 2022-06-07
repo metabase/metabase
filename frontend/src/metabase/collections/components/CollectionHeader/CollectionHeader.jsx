@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import React, { useState } from "react";
 import { t } from "ttag";
 
 import * as Urls from "metabase/lib/urls";
@@ -16,6 +16,8 @@ import { color } from "metabase/lib/colors";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 
 import {
+  BookmarkIcon,
+  BookmarkIconWrapper,
   Container,
   DescriptionHeading,
   MenuContainer,
@@ -105,14 +107,28 @@ function EditMenu({
 }
 
 function Bookmark({ isBookmarked, onClickBookmark }) {
-  const title = t`Bookmarks`;
+  const title = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
   const iconColor = isBookmarked ? color("brand") : "";
+  const [animation, setAnimation] = useState(null);
+
+  const handleClickBookmark = () => {
+    onClickBookmark();
+    setAnimation(isBookmarked ? "shrink" : "expand");
+  };
 
   return (
     <Tooltip tooltip={title}>
-      <IconWrapper onClick={onClickBookmark}>
-        <Icon name="bookmark" color={iconColor} size={20} />
-      </IconWrapper>
+      <BookmarkIconWrapper
+        isBookmarked={isBookmarked}
+        onClick={handleClickBookmark}
+      >
+        <BookmarkIcon
+          name="bookmark"
+          color={iconColor}
+          size={20}
+          animation={animation}
+        />
+      </BookmarkIconWrapper>
     </Tooltip>
   );
 }

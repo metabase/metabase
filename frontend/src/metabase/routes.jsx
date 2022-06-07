@@ -11,12 +11,11 @@ import { t } from "ttag";
 import { loadCurrentUser } from "metabase/redux/user";
 import MetabaseSettings from "metabase/lib/settings";
 
-import App from "metabase/App.jsx";
+import App from "metabase/App.tsx";
 
 import ActivityApp from "metabase/home/containers/ActivityApp";
 
 // auth containers
-import AuthApp from "metabase/auth/containers/AuthApp";
 import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
 import LoginApp from "metabase/auth/containers/LoginApp";
 import LogoutApp from "metabase/auth/containers/LogoutApp";
@@ -47,7 +46,8 @@ import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
-import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
+import { Unauthorized } from "metabase/containers/ErrorPages";
+import NotFoundFallbackPage from "metabase/containers/NotFoundFallbackPage";
 
 // Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
@@ -82,7 +82,6 @@ import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
 import DashboardDetailsModal from "metabase/dashboard/components/DashboardDetailsModal";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { canAccessAdmin } from "metabase/nav/utils";
 
 import HomePage from "metabase/home/homepage/containers/HomePage";
 import CollectionLanding from "metabase/components/CollectionLanding/CollectionLanding";
@@ -90,6 +89,7 @@ import CollectionLanding from "metabase/components/CollectionLanding/CollectionL
 import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 import { trackPageView } from "metabase/lib/analytics";
+import { getAdminPaths } from "metabase/admin/app/selectors";
 
 const MetabaseIsSetup = UserAuthWrapper({
   predicate: authData => authData.hasUserSetup,
@@ -126,10 +126,9 @@ const UserIsNotAuthenticated = UserAuthWrapper({
 });
 
 const UserCanAccessSettings = UserAuthWrapper({
-  predicate: currentUser =>
-    currentUser?.is_superuser || canAccessAdmin(currentUser),
+  predicate: adminItems => adminItems?.length > 0,
   failureRedirectPath: "/unauthorized",
-  authSelector: state => state.currentUser,
+  authSelector: getAdminPaths,
   allowRedirectBack: false,
   wrapperDisplayName: "UserCanAccessSettings",
   redirectAction: routerActions.replace,
@@ -185,7 +184,7 @@ export const getRoutes = store => (
       }}
     >
       {/* AUTH */}
-      <Route path="/auth" component={AuthApp}>
+      <Route path="/auth">
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />
@@ -273,89 +272,92 @@ export const getRoutes = store => (
         {/* INDIVIDUAL DASHBOARDS */}
 
         <Route path="/auto/dashboard/*" component={AutomaticDashboardApp} />
-      </Route>
 
-      <Route path="/collections">
-        <Route path="create" component={CollectionCreate} />
-      </Route>
-
-      {/* REFERENCE */}
-      <Route path="/reference" title={`Data Reference`}>
-        <IndexRedirect to="/reference/databases" />
-        <Route path="metrics" component={MetricListContainer} />
-        <Route path="metrics/:metricId" component={MetricDetailContainer} />
-        <Route
-          path="metrics/:metricId/edit"
-          component={MetricDetailContainer}
-        />
-        <Route
-          path="metrics/:metricId/questions"
-          component={MetricQuestionsContainer}
-        />
-        <Route
-          path="metrics/:metricId/revisions"
-          component={MetricRevisionsContainer}
-        />
-        <Route path="segments" component={SegmentListContainer} />
-        <Route path="segments/:segmentId" component={SegmentDetailContainer} />
-        <Route
-          path="segments/:segmentId/fields"
-          component={SegmentFieldListContainer}
-        />
-        <Route
-          path="segments/:segmentId/fields/:fieldId"
-          component={SegmentFieldDetailContainer}
-        />
-        <Route
-          path="segments/:segmentId/questions"
-          component={SegmentQuestionsContainer}
-        />
-        <Route
-          path="segments/:segmentId/revisions"
-          component={SegmentRevisionsContainer}
-        />
-        <Route path="databases" component={DatabaseListContainer} />
-        <Route
-          path="databases/:databaseId"
-          component={DatabaseDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables"
-          component={TableListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId"
-          component={TableDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields"
-          component={FieldListContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/fields/:fieldId"
-          component={FieldDetailContainer}
-        />
-        <Route
-          path="databases/:databaseId/tables/:tableId/questions"
-          component={TableQuestionsContainer}
-        />
-      </Route>
-
-      {/* PULSE */}
-      <Route path="/pulse" title={t`Pulses`}>
-        {/* NOTE: legacy route, not linked to in app */}
-        <IndexRedirect to="/search" query={{ type: "pulse" }} />
-        <Route path="create" component={PulseEditApp} />
-        <Route path=":pulseId">
-          <IndexRoute component={PulseEditApp} />
+        <Route path="/collections">
+          <Route path="create" component={CollectionCreate} />
         </Route>
+
+        {/* REFERENCE */}
+        <Route path="/reference" title={t`Data Reference`}>
+          <IndexRedirect to="/reference/databases" />
+          <Route path="metrics" component={MetricListContainer} />
+          <Route path="metrics/:metricId" component={MetricDetailContainer} />
+          <Route
+            path="metrics/:metricId/edit"
+            component={MetricDetailContainer}
+          />
+          <Route
+            path="metrics/:metricId/questions"
+            component={MetricQuestionsContainer}
+          />
+          <Route
+            path="metrics/:metricId/revisions"
+            component={MetricRevisionsContainer}
+          />
+          <Route path="segments" component={SegmentListContainer} />
+          <Route
+            path="segments/:segmentId"
+            component={SegmentDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields"
+            component={SegmentFieldListContainer}
+          />
+          <Route
+            path="segments/:segmentId/fields/:fieldId"
+            component={SegmentFieldDetailContainer}
+          />
+          <Route
+            path="segments/:segmentId/questions"
+            component={SegmentQuestionsContainer}
+          />
+          <Route
+            path="segments/:segmentId/revisions"
+            component={SegmentRevisionsContainer}
+          />
+          <Route path="databases" component={DatabaseListContainer} />
+          <Route
+            path="databases/:databaseId"
+            component={DatabaseDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables"
+            component={TableListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId"
+            component={TableDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields"
+            component={FieldListContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/fields/:fieldId"
+            component={FieldDetailContainer}
+          />
+          <Route
+            path="databases/:databaseId/tables/:tableId/questions"
+            component={TableQuestionsContainer}
+          />
+        </Route>
+
+        {/* PULSE */}
+        <Route path="/pulse" title={t`Pulses`}>
+          {/* NOTE: legacy route, not linked to in app */}
+          <IndexRedirect to="/search" query={{ type: "pulse" }} />
+          <Route path="create" component={PulseEditApp} />
+          <Route path=":pulseId">
+            <IndexRoute component={PulseEditApp} />
+          </Route>
+        </Route>
+
+        {/* ACCOUNT */}
+        {getAccountRoutes(store, IsAuthenticated)}
+
+        {/* ADMIN */}
+        {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
       </Route>
-
-      {/* ACCOUNT */}
-      {getAccountRoutes(store, IsAuthenticated)}
-
-      {/* ADMIN */}
-      {getAdminRoutes(store, CanAccessSettings, IsAdmin)}
     </Route>
 
     {/* INTERNAL */}
@@ -385,7 +387,7 @@ export const getRoutes = store => (
         })
       }
     />
-    <Redirect from="/dash/:dashboardId" to="/dashboard/:slug" />
+    <Redirect from="/dash/:dashboardId" to="/dashboard/:dashboardId" />
     <Redirect
       from="/collections/permissions"
       to="/admin/permissions/collections"
@@ -393,6 +395,6 @@ export const getRoutes = store => (
 
     {/* MISC */}
     <Route path="/unauthorized" component={Unauthorized} />
-    <Route path="/*" component={NotFound} />
+    <Route path="/*" component={NotFoundFallbackPage} />
   </Route>
 );

@@ -8,19 +8,22 @@
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
-            [metabase.db.spec :as db.spec]
+            [metabase.db.spec :as mdb.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
+            [metabase.driver.ddl.interface :as ddl.i]
+            [metabase.driver.ddl.postgres :as ddl.postgres]
             [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.sync.describe-table]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.field :as field]
             [metabase.models.secret :as secret]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.honeysql-extensions :as hx]
@@ -31,15 +34,26 @@
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
 
+(comment
+  ddl.postgres/keep-me)
+
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database] (get-in database [:details :json-unfolding]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
+
+(defmethod driver/database-supports? [:postgres :persist-models]
+  [_driver _feat _db]
+  true)
+
+(defmethod driver/database-supports? [:postgres :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
@@ -57,19 +71,19 @@
   [_ message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"^No suitable driver found for.*$"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
     #"^Connection refused. Check that the hostname and port are correct and that the postmaster is accepting TCP/IP connections.$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^FATAL: role \".*\" does not exist$"
-    (driver.common/connection-error-messages :username-incorrect)
+    :username-incorrect
 
     #"^FATAL: password authentication failed for user.*$"
-    (driver.common/connection-error-messages :password-incorrect)
+    :password-incorrect
 
     #"^FATAL: .*$" ; all other FATAL messages: strip off the 'FATAL' part, capitalize, and add a period
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
@@ -147,6 +161,12 @@
      :visible-if   {"ssl-use-client-auth" true}}
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
+    {:name         "json-unfolding"
+     :display-name (trs "Unfold JSON Columns")
+     :type         :boolean
+     :visible-if   {"advanced-options" true}
+     :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
+     :default      true}
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]
@@ -176,21 +196,14 @@
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
-
 ;; Describe the nested fields present in a table (currently and maybe forever just JSON),
 ;; including if they have proper keyword and type stability.
 ;; Not to be confused with existing nested field functionality for mongo,
 ;; since this one only applies to JSON fields, whereas mongo only has BSON (JSON basically) fields.
 (defmethod sql-jdbc.sync/describe-nested-field-columns :postgres
   [driver database table]
-  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
-        fields (sql-jdbc.sync.describe-table/describe-nested-field-columns driver spec table)]
-    (if (> (count fields) max-nested-field-columns)
-      #{}
-      fields)))
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -233,8 +246,14 @@
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
 (defmethod sql.qp/date [:postgres :day-of-week]
-  [_ _ expr]
-  (sql.qp/adjust-day-of-week :postgres (extract-integer :dow expr)))
+  [_ driver expr]
+  ;; Postgres extract(dow ...) returns Sunday(0)...Saturday(6)
+  ;;
+  ;; Since that's different than what we normally consider the [[metabase.driver/db-start-of-week]] for Postgres
+  ;; (Monday) we need to pass in a custom offset here
+  (sql.qp/adjust-day-of-week driver
+                             (hx/+ (extract-integer :dow expr) 1)
+                             (driver.common/start-of-week-offset-for-day :sunday)))
 
 (defmethod sql.qp/date [:postgres :week]
   [_ _ expr]
@@ -245,7 +264,8 @@
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
     (when (some? value)
       (condp #(isa? %2 %1) base-type
-        :type/UUID         (UUID/fromString value)
+        :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
+                             (UUID/fromString  value))
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
@@ -281,43 +301,82 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- json-query [identifier nfc-field]
+(defmethod sql.qp/json-query :postgres
+  [_ identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
-    (let [field-type           (:effective_type nfc-field)
+    (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
           unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-          ;; Array and sub-JSON coerced to text
-          cast-type            (cond
-                                 (isa? field-type :type/Integer)
-                                 :type/Integer
-                                 (isa? field-type :type/Float)
-                                 :type/Float
-                                 (isa? field-type :type/Boolean)
-                                 :type/Boolean
-                                 :else
-                                 :type/Text)]
-      (hx/cast cast-type
-               (apply hsql/call [:json_extract_path_text
-                                 (hx/cast :json parent-identifier)
-                                 (mapv #(hx/cast :text (handle-name %)) (rest nfc-path))])))))
+          names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
+      (reify
+        hformat/ToSql
+        (to-sql [_]
+          (hformat/to-params-default names "nfc_path")
+          (format "(%s#>> ?::text[])::%s " (hformat/to-sql parent-identifier) field-type))))))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name _opts :as clause]]
+  [driver [_ id-or-name opts :as clause]]
   (let [stored-field (when (integer? id-or-name)
                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
         identifier    (parent-method driver clause)
-        nfc-path      (:nfc_path stored-field)]
+        _nfc-path     (:nfc_path stored-field)]
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
 
-      (some? nfc-path)
-      (json-query identifier stored-field)
+      (field/json-field? stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (sql.qp/json-query :postgres identifier stored-field))
 
       :else
       identifier)))
+
+;; Postgres is not happy with JSON fields which are in group-bys or order-bys
+;; being described twice instead of using the alias.
+;; Therefore, force the alias, but only for JSON fields to avoid ambiguity.
+;; The alias names in JSON fields are unique wrt nfc path"
+(defmethod sql.qp/apply-top-level-clause
+  [:postgres :breakout]
+  [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
+  (let [stored-field-ids (map second breakout-fields)
+        stored-fields    (map #(when (integer? %) (qp.store/field %)) stored-field-ids)
+        parent-method    (partial (get-method sql.qp/apply-top-level-clause [:sql :breakout])
+                                  driver clause honeysql-form)
+        qualified        (parent-method query)
+        unqualified      (parent-method (update query
+                                                :breakout
+                                                sql.qp/rewrite-fields-to-force-using-column-aliases))]
+    (if (some field/json-field? stored-fields)
+      (merge qualified
+             (select-keys unqualified #{:group-by}))
+      qualified)))
+
+(defn- order-by-is-json-field?
+  [clause]
+  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
+        stored-field-id (-> clause (second) (second))
+        stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
+                          (qp.store/field stored-field-id))]
+    (and
+      (some? stored-field)
+      (field/json-field? stored-field))))
+
+(defmethod sql.qp/->honeysql [:postgres :desc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
+
+(defmethod sql.qp/->honeysql [:postgres :asc]
+  [driver clause]
+  (let [new-clause (if (order-by-is-json-field? clause)
+                     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+                     clause)]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
@@ -396,6 +455,23 @@
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
 
+(doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
+                             :type/Boolean             "BOOL"
+                             :type/Date                "DATE"
+                             :type/DateTime            "TIMESTAMP"
+                             :type/DateTimeWithTZ      "TIMESTAMP WITH TIME ZONE"
+                             :type/DateTimeWithLocalTZ "TIMESTAMP WITH TIME ZONE"
+                             :type/Decimal             "DECIMAL"
+                             :type/Float               "FLOAT"
+                             :type/Integer             "INTEGER"
+                             :type/IPAddress           "INET"
+                             :type/Text                "TEXT"
+                             :type/Time                "TIME"
+                             :type/TimeWithTZ          "TIME WITH TIME ZONE"
+                             :type/UUID                "UUID"}]
+  ;; todo: we get DB types in the metadata, let's persist these in model metadata
+  (defmethod ddl.i/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
+
 (defmethod sql-jdbc.sync/database-type->base-type :postgres
   [_driver column]
   (if (contains? *enum-types* column)
@@ -472,7 +548,7 @@
                 (merge disable-ssl-params props))
         props (as-> props it
                 (set/rename-keys it {:dbname :db})
-                (db.spec/spec :postgres it)
+                (mdb.spec/spec :postgres it)
                 (sql-jdbc.common/handle-additional-options it details-map))]
     props))
 

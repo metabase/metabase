@@ -3,14 +3,14 @@
             [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.models :refer [Card Collection Metric Segment]]
-            [metabase.related :as r :refer :all]
+            [metabase.related :as related :refer :all]
             [metabase.sync :as sync]
             [metabase.test :as mt]
             [metabase.test.data.one-off-dbs :as one-off-dbs]))
 
 (deftest collect-context-bearing-forms-test
   (is (= #{[:field 1 nil] [:metric 1] [:field 2 nil] [:segment 1]}
-         (#'r/collect-context-bearing-forms [[:> [:field 1 nil] 3]
+         (#'related/collect-context-bearing-forms [[:> [:field 1 nil] 3]
                                              ["and" [:= ["FIELD-ID" 2] 2]
                                               ["segment" 1]]
                                              [:metric 1]]))))
@@ -37,7 +37,7 @@
                                                      [1 1] 1.0}]
         (testing (format "Similarity between Card #%d and Card #%d" card-x card-y)
           (is (= expected-similarity
-                 (double (#'r/similarity (Card (get cards card-x)) (Card (get cards card-y)))))))))))
+                 (double (#'related/similarity (Card (get cards card-x)) (Card (get cards card-y)))))))))))
 
 (def ^:private ^:dynamic *world*)
 

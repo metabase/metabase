@@ -26,6 +26,7 @@ import Timelines from "metabase/entities/timelines";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { getAlerts } from "metabase/alert/selectors";
+import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { parseTimestamp } from "metabase/lib/time";
 import { getSortedTimelines } from "metabase/lib/timelines";
 import {
@@ -38,6 +39,7 @@ import ObjectMode from "metabase/modes/components/modes/ObjectMode";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 export const getUiControls = state => state.qb.uiControls;
+const getQueryStatus = state => state.qb.queryStatus;
 const getLoadingControls = state => state.qb.loadingControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
@@ -69,6 +71,8 @@ export const getIsAnySidebarOpen = createSelector([getUiControls], uiControls =>
 
 export const getIsEditing = state => getUiControls(state).isEditing;
 export const getIsRunning = state => getUiControls(state).isRunning;
+export const getIsLoadingComplete = state =>
+  getQueryStatus(state) === "complete";
 
 export const getCard = state => state.qb.card;
 export const getOriginalCard = state => state.qb.originalCard;
@@ -136,6 +140,10 @@ export const getPKColumnIndex = createSelector(
       return;
     }
     const { cols } = result.data;
+    const hasMultiplePks = cols.filter(isPK).length > 1;
+    if (hasMultiplePks) {
+      return -1;
+    }
     return cols.findIndex(isPK);
   },
 );
@@ -147,6 +155,9 @@ export const getPKRowIndexMap = createSelector(
       return {};
     }
     const { rows } = result.data;
+    if (PKColumnIndex < 0) {
+      return rows.map((_, index) => index);
+    }
     const map = {};
     rows.forEach((row, index) => {
       const PKValue = row[PKColumnIndex];
@@ -327,7 +338,6 @@ export function normalizeQuery(query, tableMetadata) {
     return query;
   }
   if (query.query) {
-    // sort query.fields
     if (tableMetadata) {
       query = updateIn(query, ["query", "fields"], fields => {
         fields = fields
@@ -339,23 +349,6 @@ export function normalizeQuery(query, tableMetadata) {
           JSON.stringify(b).localeCompare(JSON.stringify(a)),
         );
       });
-    }
-
-    // sort query.joins[int].fields
-    if (query.query.joins) {
-      query = updateIn(query, ["query", "joins"], joins =>
-        joins.map(joinedTable => {
-          if (!joinedTable.fields || joinedTable.fields === "all") {
-            return joinedTable;
-          }
-
-          const joinedTableFields = [...joinedTable.fields];
-          joinedTableFields.sort((a, b) =>
-            JSON.stringify(b).localeCompare(JSON.stringify(a)),
-          );
-          return { ...joinedTable, fields: joinedTableFields };
-        }),
-      );
     }
     ["aggregation", "breakout", "filter", "joins", "order-by"].forEach(
       clauseList => {
@@ -401,12 +394,18 @@ export const getIsResultDirty = createSelector(
       return false;
     }
 
+    const hasParametersChange = !Utils.equals(lastParameters, nextParameters);
+    if (hasParametersChange) {
+      return true;
+    }
+
+    if (question && question.query().readOnly()) {
+      return false;
+    }
+
     lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
     nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
-    return (
-      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-      !Utils.equals(lastParameters, nextParameters)
-    );
+    return !Utils.equals(lastDatasetQuery, nextDatasetQuery);
   },
 );
 
@@ -434,6 +433,9 @@ export const getPreviousRowPKValue = createSelector(
     if (!result) {
       return;
     }
+    if (PKColumnIndex === -1) {
+      return rowIndex - 1;
+    }
     const { rows } = result.data;
     return rows[rowIndex - 1][PKColumnIndex];
   },
@@ -444,6 +446,9 @@ export const getNextRowPKValue = createSelector(
   (result, PKColumnIndex, rowIndex) => {
     if (!result) {
       return;
+    }
+    if (PKColumnIndex === -1) {
+      return rowIndex + 1;
     }
     const { rows } = result.data;
     return rows[rowIndex + 1][PKColumnIndex];
@@ -488,15 +493,8 @@ export const getMode = createSelector(
 );
 
 export const getIsObjectDetail = createSelector(
-  [getMode, getQueryResults, isZoomingRow],
-  (mode, results, isZoomingSingleRow) => {
-    if (isZoomingSingleRow) {
-      return true;
-    }
-    // It handles filtering by a manually set PK column that is not unique
-    const hasMultipleRows = results?.some(({ data }) => data?.rows.length > 1);
-    return mode?.name() === "object" && !hasMultipleRows;
-  },
+  [getMode, isZoomingRow],
+  (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
 export const getIsDirty = createSelector(
@@ -520,8 +518,16 @@ export const getQuery = createSelector(
 );
 
 export const getIsRunnable = createSelector(
-  [getQuestion],
-  question => question && question.canRun(),
+  [getQuestion, getIsDirty],
+  (question, isDirty) => {
+    if (!question) {
+      return false;
+    }
+    if (!question.isSaved() || isDirty) {
+      return question.canRun() && !question.query().readOnly();
+    }
+    return question.canRun();
+  },
 );
 
 export const getQuestionAlerts = createSelector(
@@ -564,9 +570,7 @@ export const getRawSeries = createSelector(
     let display = question && question.display();
     let settings = question && question.settings();
 
-    if (isObjectDetail) {
-      display = "object";
-    } else if (isShowingRawTable) {
+    if (isShowingRawTable) {
       display = "table";
       settings = { "table.pivot": false };
     }
@@ -837,4 +841,19 @@ export const getPageFavicon = createSelector(
 export const getTimeoutId = createSelector(
   [getLoadingControls],
   loadingControls => loadingControls.timeoutId,
+);
+
+export const getIsHeaderVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.header,
+);
+
+export const getIsActionListVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.action_buttons,
+);
+
+export const getIsAdditionalInfoVisible = createSelector(
+  [getIsEmbedded, getEmbedOptions],
+  (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );

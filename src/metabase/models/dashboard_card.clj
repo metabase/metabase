@@ -4,7 +4,7 @@
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -25,8 +25,8 @@
                    (db/select-one [Card :dataset_query] :id (u/the-id (:card_id dashcard))))
         series (or (:series dashcard)
                    (series dashcard))]
-    (apply set/union (i/perms-objects-set card read-or-write) (for [series-card series]
-                                                                (i/perms-objects-set series-card read-or-write)))))
+    (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
+                                                                 (mi/perms-objects-set series-card read-or-write)))))
 
 (defn- pre-insert [dashcard]
   (let [defaults {:sizeX                  2
@@ -38,16 +38,17 @@
 (u/strict-extend (class DashboardCard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameter_mappings     :parameters-list
                                     :visualization_settings :visualization-settings})
           :pre-insert  pre-insert
           :post-select #(set/rename-keys % {:sizex :sizeX, :sizey :sizeY})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
-          :can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+          :can-read?         (partial mi/current-user-has-full-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
 
 
 ;;; --------------------------------------------------- HYDRATION ----------------------------------------------------

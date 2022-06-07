@@ -1,59 +1,99 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { Location, LocationDescriptorObject } from "history";
+import _ from "underscore";
+import { connect } from "react-redux";
+import { withRouter } from "react-router";
 
-import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 import LogoIcon from "metabase/components/LogoIcon";
 
 import SearchBar from "metabase/nav/components/SearchBar";
 import SidebarButton from "metabase/nav/components/SidebarButton";
 import NewButton from "metabase/nav/containers/NewButton";
+import PathBreadcrumbs from "../components/PathBreadcrumbs/PathBreadcrumbs";
 
-import Database from "metabase/entities/databases";
+import { State } from "metabase-types/store";
+
+import { getIsNavbarOpen, closeNavbar, toggleNavbar } from "metabase/redux/app";
+import {
+  getIsNewButtonVisible,
+  getIsSearchVisible,
+  getBreadcrumbCollectionId,
+  getShowBreadcumb,
+} from "metabase/selectors/app";
 import { isMac } from "metabase/lib/browser";
 import { isSmallScreen } from "metabase/lib/dom";
 
 import {
   AppBarRoot,
-  LogoIconWrapper,
+  LogoLink,
   SearchBarContainer,
   SearchBarContent,
-  RowLeft,
-  RowRight,
+  LeftContainer,
+  MiddleContainer,
+  RightContainer,
+  SidebarButtonContainer,
+  PathBreadcrumbsContainer,
 } from "./AppBar.styled";
 
 type Props = {
-  isSidebarOpen: boolean;
-  location: Location;
-  onNewClick: () => void;
-  onToggleSidebarClick: () => void;
-  handleCloseSidebar: () => void;
-  onChangeLocation: (nextLocation: LocationDescriptorObject) => void;
+  isNavBarOpen: boolean;
+  isNavBarVisible: boolean;
+  isSearchVisible: boolean;
+  isNewButtonVisible: boolean;
+  collectionId: string;
+  showBreadcrumb: boolean;
+  toggleNavbar: () => void;
+  closeNavbar: () => void;
 };
 
+function mapStateToProps(state: State) {
+  return {
+    isNavBarOpen: getIsNavbarOpen(state),
+    isSearchVisible: getIsSearchVisible(state),
+    isNewButtonVisible: getIsNewButtonVisible(state),
+    collectionId: getBreadcrumbCollectionId(state),
+    showBreadcrumb: getShowBreadcumb(state),
+  };
+}
+
+const mapDispatchToProps = {
+  toggleNavbar,
+  closeNavbar,
+};
+
+function HomepageLink({ handleClick }: { handleClick: () => void }) {
+  return (
+    <LogoLink to="/" onClick={handleClick} data-metabase-event="Navbar;Logo">
+      <LogoIcon height={32} />
+    </LogoLink>
+  );
+}
+
 function AppBar({
-  isSidebarOpen,
-  location,
-  onNewClick,
-  onToggleSidebarClick,
-  handleCloseSidebar,
-  onChangeLocation,
+  isNavBarOpen,
+  isNavBarVisible,
+  isSearchVisible,
+  isNewButtonVisible,
+  collectionId,
+  showBreadcrumb,
+  toggleNavbar,
+  closeNavbar,
 }: Props) {
   const [isSearchActive, setSearchActive] = useState(false);
 
   const onLogoClick = useCallback(() => {
     if (isSmallScreen()) {
-      handleCloseSidebar();
+      closeNavbar();
     }
-  }, [handleCloseSidebar]);
+  }, [closeNavbar]);
 
   const onSearchActive = useCallback(() => {
     if (isSmallScreen()) {
       setSearchActive(true);
-      handleCloseSidebar();
+      closeNavbar();
     }
-  }, [handleCloseSidebar]);
+  }, [closeNavbar]);
 
   const onSearchInactive = useCallback(() => {
     if (isSmallScreen()) {
@@ -62,43 +102,62 @@ function AppBar({
   }, []);
 
   const sidebarButtonTooltip = useMemo(() => {
-    const message = isSidebarOpen ? t`Close sidebar` : t`Open sidebar`;
+    const message = isNavBarOpen ? t`Close sidebar` : t`Open sidebar`;
     const shortcut = isMac() ? "(⌘ + .)" : "(Ctrl + .)";
     return `${message} ${shortcut}`;
-  }, [isSidebarOpen]);
+  }, [isNavBarOpen]);
 
   return (
     <AppBarRoot>
-      <RowLeft>
-        <LogoIconWrapper>
-          <Link to="/" onClick={onLogoClick} data-metabase-event="Navbar;Logo">
-            <LogoIcon size={24} />
-          </Link>
-        </LogoIconWrapper>
-        {!isSearchActive && (
-          <Tooltip tooltip={sidebarButtonTooltip}>
-            <SidebarButton
-              isSidebarOpen={isSidebarOpen}
-              onClick={onToggleSidebarClick}
-            />
-          </Tooltip>
+      <LeftContainer
+        isLogoActive={!isNavBarVisible}
+        isSearchActive={isSearchActive}
+      >
+        <HomepageLink handleClick={onLogoClick} />
+        {isNavBarVisible && (
+          <SidebarButtonContainer>
+            <Tooltip
+              tooltip={sidebarButtonTooltip}
+              isEnabled={!isSmallScreen()}
+            >
+              <SidebarButton
+                isSidebarOpen={isNavBarOpen}
+                onClick={toggleNavbar}
+              />
+            </Tooltip>
+          </SidebarButtonContainer>
         )}
-      </RowLeft>
-      <RowRight>
-        <SearchBarContainer>
-          <SearchBarContent>
-            <SearchBar
-              location={location}
-              onChangeLocation={onChangeLocation}
-              onSearchActive={onSearchActive}
-              onSearchInactive={onSearchInactive}
-            />
-          </SearchBarContent>
-        </SearchBarContainer>
-        <NewButton setModal={onNewClick} />
-      </RowRight>
+        {showBreadcrumb && (
+          <PathBreadcrumbsContainer isVisible={!isNavBarOpen}>
+            <PathBreadcrumbs collectionId={collectionId} />
+          </PathBreadcrumbsContainer>
+        )}
+      </LeftContainer>
+      {!isSearchActive && (
+        <MiddleContainer>
+          <HomepageLink handleClick={onLogoClick} />
+        </MiddleContainer>
+      )}
+      {(isSearchVisible || isNewButtonVisible) && (
+        <RightContainer>
+          {isSearchVisible && (
+            <SearchBarContainer>
+              <SearchBarContent>
+                <SearchBar
+                  onSearchActive={onSearchActive}
+                  onSearchInactive={onSearchInactive}
+                />
+              </SearchBarContent>
+            </SearchBarContainer>
+          )}
+          {isNewButtonVisible && <NewButton />}
+        </RightContainer>
+      )}
     </AppBarRoot>
   );
 }
 
-export default Database.loadList({ loadingAndErrorWrapper: false })(AppBar);
+export default _.compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(AppBar);

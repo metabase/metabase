@@ -30,7 +30,9 @@ Don't worry if you don't understand this just yet. Click the blue **Run query** 
 
 You'll notice that the table that comes back is the same as if you had used the [query builder][asking-questions] to ask for the sum of `Subtotal` in the `Orders` table, grouped by the `Created At` date.
 
-**Tip:** You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only part of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
+### Running query selections
+
+You can run your SQL query by pressing **ctrl + enter** on Windows and Linux, or **⌘ + return** on a Mac. You can also run only part of a query by highlighting the part you'd like to run before clicking the run button or using the run shortcut key.
 
 Questions asked using SQL can be saved, downloaded, converted to models, and added to dashboards just like questions asked using the query builder.
 
@@ -48,9 +50,25 @@ Writing SQL queries that use variables or parameters can be very powerful, but i
 
 You can use [SQL snippets](sql-snippets.md) to save, reuse, and share SQL code across multiple questions that are composed using the SQL editor.
 
+## How Metabase executes SQL queries
+
+When you run a query from the SQL editor, Metabase sends the query to your database exactly as it is written. Any results or errors displayed in Metabase are the same as the results or errors that you would get if you ran the query directly against your database. If the SQL syntax of your query doesn’t match the SQL dialect used by your database, your database won’t be able to run the query.
+
+## How Metabase executes SQL variables
+
+When you run a query that includes a [variable][variable-gloss], the query will be executed by replacing the `{% raw %}{{ variable_name_or_id }}{% endraw %}` tag with the SQL query of the referenced question or model.
+
+This means that your main query must be aware of all the tables that your variable is pointing to, otherwise you'll get a SQL syntax error. For example, if your main query uses the `Products` table, but your variable points to a query that uses the `Orders` table, you'll need to include a join to `Orders` in your main query.
+
+For an example, see the documentation on [Referencing models and saved questions in SQL queries](../users-guide/referencing-saved-questions-in-queries.html).
+
 ## Learn more
 
 - [Best practices for writing SQL queries](https://www.metabase.com/learn/sql-questions/sql-best-practices.html)
+
+## Need help?
+
+If you're having trouble with your SQL query, go to the [SQL troubleshooting guide][troubleshooting-sql].
 
 ---
 
@@ -63,4 +81,5 @@ Now that you have an answer to your question, you can learn about [visualizing a
 [ref-models]: ./referencing-saved-questions-in-queries.md
 [sample-database-gloss]: /glossary/sample_database
 [sql-gloss]: /glossary/sql
+[troubleshooting-sql]: ../troubleshooting-guide/sql.md
 [variable-gloss]: /glossary/variable

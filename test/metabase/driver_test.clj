@@ -1,7 +1,7 @@
 (ns metabase.driver-test
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.driver.impl :as impl]
+            [metabase.driver.impl :as driver.impl]
             [metabase.plugins.classloader :as classloader]
             [metabase.test.data.env :as tx.env]))
 
@@ -33,7 +33,7 @@
            (.getContextClassLoader (Thread/currentThread))))))
 
 (deftest available?-test
-  (with-redefs [impl/concrete? (constantly true)]
+  (with-redefs [driver.impl/concrete? (constantly true)]
     (is (driver/available? ::test-driver))
     (is (driver/available? "metabase.driver-test/test-driver")
         "`driver/available?` should work for if `driver` is a string -- see #10135")))

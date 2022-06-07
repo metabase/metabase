@@ -1,3 +1,4 @@
+import _ from "underscore";
 import {
   getFieldType,
   TEMPORAL,
@@ -14,6 +15,8 @@ import {
   doesOperatorExist,
   getOperatorByTypeAndName,
   getFilterOperators,
+  getSupportedAggregationOperators,
+  getAggregationOperators,
   isFuzzyOperator,
   getSemanticTypeIcon,
   getSemanticTypeName,
@@ -31,15 +34,18 @@ describe("schema_metadata", () => {
       expect(getFieldType({ effective_type: TYPE.DateTime })).toEqual(TEMPORAL);
       expect(getFieldType({ effective_type: TYPE.Time })).toEqual(TEMPORAL);
     });
+
     it("should know a number", () => {
       expect(getFieldType({ base_type: TYPE.BigInteger })).toEqual(NUMBER);
       expect(getFieldType({ base_type: TYPE.Integer })).toEqual(NUMBER);
       expect(getFieldType({ base_type: TYPE.Float })).toEqual(NUMBER);
       expect(getFieldType({ base_type: TYPE.Decimal })).toEqual(NUMBER);
     });
+
     it("should know a string", () => {
       expect(getFieldType({ base_type: TYPE.Text })).toEqual(STRING);
     });
+
     it("should know things that are types of strings", () => {
       expect(
         getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.Name }),
@@ -54,18 +60,22 @@ describe("schema_metadata", () => {
         getFieldType({ base_type: TYPE.Text, semantic_type: TYPE.URL }),
       ).toEqual(STRING);
     });
+
     it("should know a pk", () => {
       expect(
         getFieldType({ base_type: TYPE.Integer, semantic_type: TYPE.PK }),
       ).toEqual(PRIMARY_KEY);
     });
+
     it("should know a bool", () => {
       expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN);
     });
+
     it("should know a location", () => {
       expect(getFieldType({ semantic_type: TYPE.City })).toEqual(LOCATION);
       expect(getFieldType({ semantic_type: TYPE.Country })).toEqual(LOCATION);
     });
+
     it("should know a coordinate", () => {
       expect(getFieldType({ semantic_type: TYPE.Latitude })).toEqual(
         COORDINATE,
@@ -74,16 +84,29 @@ describe("schema_metadata", () => {
         COORDINATE,
       );
     });
+
     describe("should know something that is string-like", () => {
       it("TYPE.TextLike", () => {
         expect(getFieldType({ base_type: TYPE.TextLike })).toEqual(STRING_LIKE);
       });
+
       it("TYPE.IPAddress", () => {
         expect(getFieldType({ base_type: TYPE.IPAddress })).toEqual(
           STRING_LIKE,
         );
       });
     });
+
+    it("should still recognize some types as a string regardless of its base type", () => {
+      // TYPE.Float can occur in a field filter
+      expect(
+        getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Name }),
+      ).toEqual(STRING);
+      expect(
+        getFieldType({ base_type: TYPE.Float, semantic_type: TYPE.Category }),
+      ).toEqual(STRING);
+    });
+
     it("should know what it doesn't know", () => {
       expect(getFieldType({ base_type: "DERP DERP DERP" })).toEqual(undefined);
     });
@@ -93,9 +116,11 @@ describe("schema_metadata", () => {
     it("should work with null input", () => {
       expect(foreignKeyCountsByOriginTable(null)).toEqual(null);
     });
+
     it("should require an array as input", () => {
       expect(foreignKeyCountsByOriginTable({})).toEqual(null);
     });
+
     it("should count occurrences by origin.table.id", () => {
       expect(
         foreignKeyCountsByOriginTable([
@@ -187,6 +212,7 @@ describe("schema_metadata", () => {
         "not-null",
       ]);
     });
+
     it("should return proper filter operators for type/Text primary key", () => {
       expect(
         getFilterOperators({
@@ -206,6 +232,7 @@ describe("schema_metadata", () => {
         "ends-with",
       ]);
     });
+
     it("should return proper filter operators for type/TextLike foreign key", () => {
       expect(
         getFilterOperators({
@@ -255,6 +282,226 @@ describe("schema_metadata", () => {
     it("should return undefined if the semantic type does not exist", () => {
       expect(getSemanticTypeName(TYPE.Boolean)).toBeUndefined();
       expect(getSemanticTypeName("foo")).toBeUndefined();
+    });
+  });
+
+  describe("getSupportedAggregationOperators", () => {
+    function getTable(features) {
+      return {
+        db: {
+          features,
+        },
+      };
+    }
+
+    it("returns nothing without DB features", () => {
+      const table = getTable([]);
+      const operators = getSupportedAggregationOperators(table);
+      expect(operators).toHaveLength(0);
+    });
+
+    it("returns correct basic aggregation operators", () => {
+      const table = getTable(["basic-aggregations"]);
+      const operators = getSupportedAggregationOperators(table);
+      expect(operators.map(o => o.short)).toEqual([
+        "rows",
+        "count",
+        "sum",
+        "avg",
+        "distinct",
+        "cum-sum",
+        "cum-count",
+        "min",
+        "max",
+      ]);
+    });
+
+    it("filters out operators not supported by database", () => {
+      const table = getTable(["standard-deviation-aggregations"]);
+      const operators = getSupportedAggregationOperators(table);
+      expect(operators).toEqual([
+        expect.objectContaining({
+          short: "stddev",
+          requiredDriverFeature: "standard-deviation-aggregations",
+        }),
+      ]);
+    });
+  });
+
+  describe("getAggregationOperators", () => {
+    function setup({ fields = [] } = {}) {
+      const table = {
+        fields,
+        db: {
+          features: ["basic-aggregations", "standard-deviation-aggregations"],
+        },
+      };
+      const fullOperators = getAggregationOperators(table);
+      return {
+        fullOperators,
+        operators: fullOperators.map(operator => operator.short),
+        operatorByName: _.indexBy(fullOperators, "short"),
+      };
+    }
+
+    function getTypedFields(type) {
+      return [
+        { base_type: type },
+        { effective_type: type },
+        { semantic_type: type },
+      ];
+    }
+
+    const PK = { semantic_type: TYPE.PK };
+    const FK = { semantic_type: TYPE.FK };
+    const ENTITY_NAME = { semantic_type: TYPE.Name };
+    const ADDRESS = { semantic_type: TYPE.Address };
+    const CATEGORY = { semantic_type: TYPE.Category };
+    const NUMBERS = getTypedFields(TYPE.Number);
+    const STRINGS = getTypedFields(TYPE.Text);
+    const TEMPORALS = getTypedFields(TYPE.Temporal);
+
+    describe("count", () => {
+      it("offers without fields", () => {
+        const { operators } = setup();
+        expect(operators).toEqual(expect.arrayContaining(["count"]));
+      });
+
+      it("offers 'count' with fields", () => {
+        const { operators } = setup({ fields: [PK, FK, STRINGS] });
+        expect(operators).toEqual(expect.arrayContaining(["count"]));
+      });
+    });
+
+    describe("distinct", () => {
+      it("is not available without fields", () => {
+        const { operators } = setup();
+        expect(operators).toEqual(expect.not.arrayContaining(["distinct"]));
+      });
+
+      it("is available with any field", () => {
+        const fields = [
+          PK,
+          FK,
+          ADDRESS,
+          CATEGORY,
+          ...NUMBERS,
+          ...STRINGS,
+          ...TEMPORALS,
+        ];
+        const { operators, operatorByName } = setup({ fields });
+        expect(operators).toEqual(expect.arrayContaining(["distinct"]));
+        expect(operatorByName.distinct.fields[0]).toHaveLength(fields.length);
+      });
+    });
+
+    describe("cumulative count", () => {
+      it("is available without fields", () => {
+        const { operators } = setup();
+        expect(operators).toEqual(expect.arrayContaining(["cum-count"]));
+      });
+
+      it("is available with any field", () => {
+        const { operators, operatorByName } = setup({
+          fields: [
+            PK,
+            FK,
+            ADDRESS,
+            CATEGORY,
+            ...NUMBERS,
+            ...STRINGS,
+            ...TEMPORALS,
+          ],
+        });
+        expect(operators).toEqual(expect.arrayContaining(["cum-count"]));
+        expect(operatorByName["cum-count"].fields).toHaveLength(0);
+      });
+    });
+
+    describe("summable operators", () => {
+      ["sum", "avg", "cum-sum", "stddev"].forEach(operator => {
+        describe(operator, () => {
+          it("is not available without fields", () => {
+            const { operators } = setup();
+            expect(operators).toEqual(expect.not.arrayContaining([operator]));
+          });
+
+          it("is not available without summable fields", () => {
+            const { operators } = setup({
+              fields: [PK, FK, ADDRESS, ...STRINGS, ...TEMPORALS],
+            });
+            expect(operators).toEqual(expect.not.arrayContaining([operator]));
+          });
+
+          ["base_type", "effective_type", "semantic_type"].forEach(type => {
+            it(`is available with numeric field's ${type}`, () => {
+              const field = { [type]: TYPE.Number };
+              const { operators, operatorByName } = setup({ fields: [field] });
+              expect(operators).toEqual(expect.arrayContaining([operator]));
+              expect(operatorByName[operator].fields[0]).toEqual([field]);
+            });
+          });
+        });
+      });
+    });
+
+    describe("scoping operators", () => {
+      ["min", "max"].forEach(operator => {
+        describe(operator, () => {
+          it("is not available without fields", () => {
+            const { operators } = setup();
+            expect(operators).toEqual(expect.not.arrayContaining([operator]));
+          });
+
+          it("is not available without scope fields", () => {
+            const { operators } = setup({ fields: [ADDRESS] });
+            expect(operators).toEqual(expect.not.arrayContaining([operator]));
+          });
+
+          ["base_type", "effective_type", "semantic_type"].forEach(type => {
+            it(`is available with numeric field's ${type}`, () => {
+              const field = { [type]: TYPE.Number };
+              const { operators, operatorByName } = setup({ fields: [field] });
+              expect(operators).toEqual(expect.arrayContaining([operator]));
+              expect(operatorByName[operator].fields[0]).toEqual([field]);
+            });
+
+            it(`is available with temporal field's ${type}`, () => {
+              const field = { [type]: TYPE.Temporal };
+              const { operators, operatorByName } = setup({ fields: [field] });
+              expect(operators).toEqual(expect.arrayContaining([operator]));
+              expect(operatorByName[operator].fields[0]).toEqual([field]);
+            });
+
+            it(`is available with string field's ${type}`, () => {
+              const field = { [type]: TYPE.Text };
+              const { operators, operatorByName } = setup({ fields: [field] });
+              expect(operators).toEqual(expect.arrayContaining([operator]));
+              expect(operatorByName[operator].fields[0]).toEqual([field]);
+            });
+          });
+
+          [
+            { field: PK, name: "PK" },
+            { field: FK, name: "FK" },
+            { field: ENTITY_NAME, name: "entity name" },
+            { field: CATEGORY, name: "category" },
+            { field: { base_type: TYPE.Boolean }, name: "boolean (base type)" },
+            {
+              field: { effective_type: TYPE.Boolean },
+              name: "boolean (effective type)",
+            },
+          ].forEach(testCase => {
+            const { field, name } = testCase;
+
+            it(`is available for ${name} fields`, () => {
+              const { operators, operatorByName } = setup({ fields: [field] });
+              expect(operators).toEqual(expect.arrayContaining([operator]));
+              expect(operatorByName[operator].fields[0]).toEqual([field]);
+            });
+          });
+        });
+      });
     });
   });
 });

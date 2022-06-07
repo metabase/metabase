@@ -8,14 +8,16 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [medley.core :as m]
             [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.db.connection :as mdb.connection]
             [metabase.models.collection.root :as collection.root]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.public-settings.premium-features :as settings.premium-features]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :as ui18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.schema :as su]
             [potemkin :as p]
             [schema.core :as s]
@@ -25,6 +27,7 @@
   (:import metabase.models.collection.root.RootCollection))
 
 (comment collection.root/keep-me)
+(comment mdb.connection/keep-me) ;; for [[memoize/ttl]]
 
 (p/import-vars [collection.root root-collection])
 
@@ -179,11 +182,12 @@
 (defn root-collection-with-ui-details
   "The special Root Collection placeholder object with some extra details to facilitate displaying it on the FE."
   [collection-namespace]
-  (assoc root-collection
-         :name (case (keyword collection-namespace)
-                 :snippets (tru "Top folder")
-                 (tru "Our analytics"))
-         :id   "root"))
+  (m/assoc-some root-collection
+                :name (case (keyword collection-namespace)
+                        :snippets (tru "Top folder")
+                        (tru "Our analytics"))
+                :namespace collection-namespace
+                :id   "root"))
 
 (def ^:private CollectionWithLocationOrRoot
   (s/cond-pre
@@ -363,7 +367,7 @@
   [collection :- CollectionWithLocationAndIDOrRoot]
   (if (collection.root/is-root-collection? collection)
     []
-    (filter i/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
 
 (s/defn parent-id :- (s/maybe su/IntGreaterThanZero)
   "Get the immediate parent `collection` id, if set."
@@ -864,7 +868,7 @@
     ;;
     ;; TODO -- Pretty sure snippet perms should be feature flagged by `advanced-permissions` instead
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-             (not (settings.premium-features/enable-enhancements?)))
+             (not (premium-features/enable-enhancements?)))
       #{}
       ;; This is not entirely accurate as you need to be a superuser to modifiy a collection itself (e.g., changing its
       ;; name) but if you have write perms you can add/remove cards
@@ -878,14 +882,15 @@
          {:hydration-keys (constantly [:collection])
           :types          (constantly {:namespace       :keyword
                                        :authority_level :keyword})
+          :properties     (constantly {:entity_id true})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update
           :pre-delete     pre-delete})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         (partial i/current-user-has-full-permissions? :read)
-          :can-write?        (partial i/current-user-has-full-permissions? :write)
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         (partial mi/current-user-has-full-permissions? :read)
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set}))
 
 
@@ -994,8 +999,10 @@
   required to caclulate the Current User's permissions set, which is done for every API call; thus it is cached to
   save a DB call for *every* API call."
   (memoize/ttl
-   (s/fn user->personal-collection-id* :- su/IntGreaterThanZero
-     [user-id :- su/IntGreaterThanZero]
+   ^{::memoize/args-fn (fn [[user-id]]
+                         [(mdb.connection/unique-identifier) user-id])}
+   (fn user->personal-collection-id*
+     [user-id]
      (u/the-id (user->personal-collection user-id)))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large

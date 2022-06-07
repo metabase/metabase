@@ -111,20 +111,25 @@
         (not= model "table")
         (merge {:left-join [Collection [:= (db/qualify Collection :id) :collection_id]]}))))
 
+(defn- select-items! [model ids]
+  (when (seq ids)
+    (for [model (hydrate (models-query model ids) :moderation_reviews)
+          :let [reviews (:moderation_reviews model)
+                status  (->> reviews
+                             (filter :most_recent)
+                             first
+                             :status)]]
+      (assoc model :moderated_status status))))
+
 (defn- models-for-views
   "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
   [views]
-  (letfn [(select-items! [model ids]
-            (when (seq ids)
-              (-> (models-query model ids)
-                  (hydrate :moderation_reviews))))
-          (by-id [models] (m/index-by :id models))]
-    (into {} (map (fn [[model models]]
-                    [model (->> models
-                                (map :model_id)
-                                (select-items! model)
-                                (by-id))]))
-          (group-by :model views))))
+  (into {} (map (fn [[model models]]
+                  [model (->> models
+                              (map :model_id)
+                              (select-items! model)
+                              (m/index-by :id))]))
+        (group-by :model views)))
 
 (defn- views-and-runs
   "Common query implementation for `recent_views` and `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
@@ -145,11 +150,11 @@
                                                  (when-not all-users? [:= (db/qualify ViewLog :user_id) *current-user-id*])
                                                  [:in :model #{"dashboard" "table"}]
                                                  [:= :bm.id nil]]
-                                     :order-by  [[:model :desc] [:max_ts :desc]]
+                                     :order-by  [[:max_ts :desc] [:model :desc]]
                                      :limit     views-limit
                                      :left-join [[DashboardBookmark :bm]
                                                  [:and
-                                                  [:not [:= :model "table"]]
+                                                  [:= :model "dashboard"]
                                                   [:= :bm.user_id *current-user-id*]
                                                   [:= :model_id :bm.dashboard_id]]]})
         card-runs                 (->> (db/select [QueryExecution [:%min.executor_id :user_id] [(db/qualify QueryExecution :card_id) :model_id]
@@ -200,13 +205,9 @@
      (#{"official"} authority_level))))
 
 (defn- verified?
-  "Return true if the item is verified, false otherwise. Assumes that `:moderation_reviews` is hydrated.
-  Assumes that moderation reviews are ordered so that the most recent is the first. This is the case
-  from the hydration function for moderation_reviews."
-  [{:keys [moderation_reviews]}]
-  (boolean
-   (when moderation_reviews
-     (-> moderation_reviews first :status #{"verified"}))))
+  "Return true if the item is verified, false otherwise. Assumes that `:moderated_status` is hydrated."
+  [{:keys [moderated_status]}]
+  (= moderated_status "verified"))
 
 (defn- score-items
   [items]

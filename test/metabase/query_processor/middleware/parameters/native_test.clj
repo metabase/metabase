@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.models.card :refer [Card]]
-            [metabase.query-processor.middleware.parameters.native :as params.native]
+            [metabase.query-processor.middleware.parameters.native :as qp.native]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -29,4 +29,4 @@
             (is (schema= {:native   su/NonBlankString
                           :params   (s/eq ["G%"])
                           s/Keyword s/Any}
-                         (params.native/expand-inner query)))))))))
+                         (qp.native/expand-inner query)))))))))

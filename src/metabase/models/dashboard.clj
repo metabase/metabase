@@ -4,13 +4,13 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.automagic-dashboards.populate :as magic.populate]
+            [metabase.automagic-dashboards.populate :as populate]
             [metabase.events :as events]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.field-values :as field-values]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.params :as params]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse :refer [Pulse]]
@@ -21,7 +21,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :as i18n :refer [tru]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
@@ -64,11 +64,6 @@
 (models/defmodel Dashboard :report_dashboard)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(defn- assert-valid-parameters [{:keys [parameters]}]
-  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:parameters parameters}))))
-
 (defn- pre-delete [dashboard]
   (db/delete! 'Revision :model "Dashboard" :model_id (u/the-id dashboard)))
 
@@ -76,12 +71,12 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
-      (assert-valid-parameters dashboard)
+      (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (assert-valid-parameters dashboard)
+    (params/assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
@@ -134,7 +129,8 @@
 (u/strict-extend (class Dashboard)
   models/IModel
   (merge models/IModelDefaults
-         {:properties  (constantly {:timestamped? true})
+         {:properties  (constantly {:timestamped? true
+                                    :entity_id    true})
           :types       (constantly {:parameters :parameters-list, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
@@ -143,7 +139,7 @@
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection
-  i/IObjectPermissions
+  mi/IObjectPermissions
   perms/IObjectPermissionsForParentCollection)
 
 
@@ -346,11 +342,11 @@
 (defn save-transient-dashboard!
   "Save a denormalized description of `dashboard`."
   [dashboard parent-collection-id]
-  (let [dashboard  (ui18n/localized-strings->strings dashboard)
+  (let [dashboard  (i18n/localized-strings->strings dashboard)
         dashcards  (:ordered_cards dashboard)
-        collection (magic.populate/create-collection!
+        collection (populate/create-collection!
                     (ensure-unique-collection-name (:name dashboard) parent-collection-id)
-                    (rand-nth magic.populate/colors)
+                    (rand-nth (populate/colors))
                     "Automatically generated cards."
                     parent-collection-id)
         dashboard  (db/insert! Dashboard

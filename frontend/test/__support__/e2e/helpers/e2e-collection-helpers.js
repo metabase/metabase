@@ -16,3 +16,12 @@ export function openNewCollectionItemFlowFor(type) {
 export function getSidebarSectionTitle(name) {
   return cy.findAllByRole("heading", { name });
 }
+
+export function getCollectionIdFromSlug(slug, callback) {
+  cy.request("GET", "/api/collection").then(({ body }) => {
+    // We need its ID to continue nesting below it
+    const { id } = body.find(collection => collection.slug === slug);
+
+    callback && callback(id);
+  });
+}

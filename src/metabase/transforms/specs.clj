@@ -2,7 +2,7 @@
   (:require [medley.core :as m]
             [metabase.domain-entities.specs :refer [FieldType MBQL]]
             [metabase.mbql.normalize :as mbql.normalize]
-            [metabase.mbql.schema :as mbql.schema]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
             [metabase.util :as u]
             [metabase.util.schema :as su]
@@ -28,7 +28,7 @@
 
 (def ^:private Joins [{(s/required-key :source)    Source
                        (s/required-key :condition) MBQL
-                       (s/optional-key :strategy)  mbql.schema/JoinStrategy}])
+                       (s/optional-key :strategy)  mbql.s/JoinStrategy}])
 
 (def ^:private TransformName s/Str)
 
@@ -91,7 +91,7 @@
                                    breakout)))
     FieldType                (partial keyword "type")
     [DomainEntity]           u/one-or-many
-    mbql.schema/JoinStrategy keyword
+    mbql.s/JoinStrategy       keyword
     ;; Since `Aggregation` and `Expressions` are structurally the same, we can't use them directly
     {Dimension MBQL}         (comp (partial u/topological-sort extract-dimensions)
                                    stringify-keys)

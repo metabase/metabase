@@ -1,5 +1,5 @@
 (ns metabase.events.revision
-  (:require [clojure.core.async :as async]
+  (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.events :as events]
             [metabase.models.card :refer [Card]]
@@ -26,7 +26,7 @@
 
 (defonce ^:private ^{:doc "Channel for receiving event notifications we want to subscribe to for revision events."}
   revisions-channel
-  (async/chan))
+  (a/chan))
 
 
 ;;; ## ---------------------------------------- EVENT PROCESSING ----------------------------------------

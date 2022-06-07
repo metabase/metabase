@@ -7,10 +7,10 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
             [medley.core :as m]
-            [metabase.api.card :as card-api]
-            [metabase.api.pivots :as pivots]
+            [metabase.api.card :as api.card]
+            [metabase.api.pivots :as api.pivots]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.http-client :as http]
+            [metabase.http-client :as client]
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
@@ -21,10 +21,10 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
-            [metabase.query-processor.middleware.constraints :as constraints]
-            [metabase.server.middleware.util :as middleware.u]
+            [metabase.query-processor.middleware.constraints :as qp.constraints]
+            [metabase.server.middleware.util :as mw.util]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data.users :as test.users]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -33,7 +33,7 @@
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
 
-(comment card-api/keep-me)
+(comment api.card/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -43,6 +43,7 @@
   (-> (mt/run-mbql-query venues {:aggregation [[:count]]}) :data :cols first :base_type))
 
 (def card-defaults
+  "The default card params."
   {:archived            false
    :collection_id       nil
    :collection_position nil
@@ -51,8 +52,11 @@
    :description         nil
    :display             "scalar"
    :enable_embedding    false
+   :entity_id           nil
    :embedding_params    nil
    :made_public_by_id   nil
+   :parameters          []
+   :parameter_mappings  []
    :moderation_reviews  ()
    :public_uuid         nil
    :query_type          nil
@@ -186,8 +190,8 @@
 
 
 (deftest authentication-test
-  (is (= (get middleware.u/response-unauthentic :body) (http/client :get 401 "card")))
-  (is (= (get middleware.u/response-unauthentic :body) (http/client :put 401 "card/13"))))
+  (is (= (get mw.util/response-unauthentic :body) (client/client :get 401 "card")))
+  (is (= (get mw.util/response-unauthentic :body) (client/client :put 401 "card/13"))))
 
 (deftest model-id-requied-when-f-is-database-test
   (is (= {:errors {:model_id "model_id is a required parameter when filter mode is 'database'"}}
@@ -306,18 +310,25 @@
           (mt/with-model-cleanup [Card]
             (let [card (assoc (card-with-name-and-query (mt/random-name)
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
-                              :collection_id (u/the-id collection))]
+                              :collection_id      (u/the-id collection)
+                              :parameters         [{:id "abc123", :name "test", :type "date"}]
+                              :parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                                    :target [:dimension [:template-tags "category"]]}])]
               (is (= (merge
                       card-defaults
                       {:name                   (:name card)
                        :collection_id          true
                        :collection             true
                        :creator_id             (mt/user->id :rasta)
+                       :parameters             [{:id "abc123", :name "test", :type "date"}]
+                       :parameter_mappings     [{:parameter_id "abc123", :card_id "10",
+                                                 :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
                        :query_type             "query"
                        :visualization_settings {:global {:title nil}}
                        :database_id            true
                        :table_id               true
+                       :entity_id              true
                        :can_write              true
                        :dashboard_count        0
                        :result_metadata        true
@@ -337,12 +348,23 @@
                          (update :collection_id integer?)
                          (update :dataset_query map?)
                          (update :collection map?)
+                         (update :entity_id string?)
                          (update :result_metadata (partial every? map?))
                          (update :creator dissoc :is_qbnewb)
                          (update :last-edit-info (fn [edit-info]
                                                    (-> edit-info
                                                        (update :id boolean)
                                                        (update :timestamp boolean))))))))))))))
+
+(deftest create-card-validation-test
+  (testing "POST /api/card"
+   (is (= {:errors {:visualization_settings "value must be a map."}}
+          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
+
+   (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
+                                     "Each parameter must be a map with String :id key")}}
+          (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
+                                                             :parameters             "abc"})))))
 
 (deftest save-empty-card-test
   (testing "POST /api/card"
@@ -641,7 +663,7 @@
           (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
           (is (= (merge
                   card-defaults
-                  (select-keys card [:id :name :created_at :updated_at])
+                  (select-keys card [:id :name :entity_id :created_at :updated_at])
                   {:dashboard_count        0
                    :creator_id             (mt/user->id :rasta)
                    :creator                (merge
@@ -753,6 +775,50 @@
       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card)) {:description ""})
       (is (= ""
              (db/select-one-field :description Card :id (u/the-id card)))))))
+
+(deftest update-card-parameters-test
+  (testing "PUT /api/card/:id"
+    (mt/with-temp Card [card]
+      (testing "successfully update with valid parameters"
+        (is (partial= {:parameters [{:id   "random-id"
+                                     :type "number"}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters [{:id   "random-id"
+                                                           :type "number"}]})))))
+
+    (mt/with-temp Card [card {:parameters [{:id   "random-id"
+                                            :type "number"}]}]
+      (testing "nil parameters will no-op"
+        (is (partial= {:parameters [{:id   "random-id"
+                                     :type "number"}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters nil}))))
+      (testing "an empty list will remove parameters"
+        (is (partial= {:parameters []}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters []})))))))
+
+(deftest update-card-parameter-mappings-test
+  (testing "PUT /api/card/:id"
+    (mt/with-temp Card [card]
+      (testing "successfully update with valid parameter_mappings"
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                             :target ["dimension" ["template-tags" "category"]]}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                                                   :target ["dimension" ["template-tags" "category"]]}]})))))
+
+    (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                                    :target ["dimension" ["template-tags" "category"]]}]}]
+      (testing "nil parameters will no-op"
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                             :target ["dimension" ["template-tags" "category"]]}]}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameters nil}))))
+      (testing "an empty list will remove parameter_mappings"
+        (is (partial= {:parameter_mappings []}
+                      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                                            {:parameter_mappings []})))))))
 
 (deftest update-embedding-params-test
   (testing "PUT /api/card/:id"
@@ -1425,7 +1491,7 @@
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-          (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+          (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
@@ -1439,9 +1505,9 @@
 
 (defn- test-download-response-headers
   [url]
-  (-> (http/client-full-response (test-users/username->token :rasta)
-                                 :post 200 url
-                                 :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
+  (-> (client/client-full-response (test.users/username->token :rasta)
+                                   :post 200 url
+                                   :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
       :headers
       (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
       (update "Content-Disposition" #(some-> % (str/replace #"my_awesome_card_.+(\.\w+)"
@@ -1569,10 +1635,10 @@
 
 (deftest changed?-test
   (letfn [(changed? [before after]
-            (#'card-api/changed? card-api/card-compare-keys before after))]
+            (#'api.card/changed? api.card/card-compare-keys before after))]
    (testing "Ignores keyword/string"
      (is (false? (changed? {:dataset_query {:type :query}} {:dataset_query {:type "query"}}))))
-   (testing "Ignores properties not in `card-api/card-compare-keys"
+   (testing "Ignores properties not in `api.card/card-compare-keys"
      (is (false? (changed? {:collection_id 1
                             :collection_position 0}
                            {:collection_id 2
@@ -1886,10 +1952,10 @@
                  (mt/user-http-request :crowberto :get 200 (format "card/%s/related" (u/the-id card)))))))
 
 (deftest pivot-card-test
-  (mt/test-drivers (pivots/applicable-drivers)
+  (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "POST /api/card/pivot/:card-id/query"
-        (mt/with-temp Card [card (pivots/pivot-card)]
+        (mt/with-temp Card [card (api.pivots/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))
@@ -1980,7 +2046,10 @@
           to-native      (fn [q]
                            {:database (:database q)
                             :type     :native
-                            :native   (mt/compile q)})]
+                            :native   (mt/compile q)})
+          update-card!  (fn [card]
+                          (mt/user-http-request :rasta :put 202
+                                                (str "card/" (u/the-id card)) card))]
       (doseq [[query-type query modified-query] [["mbql"   query modified-query]
                                                  ["native" (to-native query) (to-native modified-query)]]]
         (testing (str "For: " query-type)
@@ -1994,19 +2063,16 @@
                                                   :dataset true))]
               (is (= ["ID" "NAME"] (map norm metadata)))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           (assoc card :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
-                                                             metadata)))
+                     (->> (update-card!
+                           (assoc card
+                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY") metadata)))
                           :result_metadata (map :display_name))))
               ;; simulate a user changing the query without rerunning the query
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           (assoc card
-                                  :dataset_query modified-query
-                                  :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
-                                                        metadata)))
+                     (->> (update-card! (assoc card
+                                               :dataset_query modified-query
+                                               :result_metadata (map #(assoc % :display_name "EDITED DISPLAY")
+                                                                     metadata)))
                           :result_metadata
                           (map (comp str/upper-case :display_name)))))
               (is (= ["EDITED DISPLAY" "EDITED DISPLAY" "PRICE"]
@@ -2014,7 +2080,17 @@
                           (db/select-one-field :result_metadata Card :id card-id))))
               (testing "Even if you only send the new query and not existing metadata"
                 (is (= ["EDITED DISPLAY" "EDITED DISPLAY"]
-                     (->> (mt/user-http-request
-                           :rasta :put 202 (str "card/" card-id)
-                           {:dataset_query query})
-                          :result_metadata (map :display_name))))))))))))
+                     (->> (update-card! {:id (u/the-id card) :dataset_query query}) :result_metadata (map :display_name)))))
+              (testing "Descriptions can be cleared (#20517)"
+                (is (= ["foo" "foo"]
+                       (->> (update-card! (update card
+                                                  :result_metadata (fn [m]
+                                                                     (map #(assoc % :description "foo") m))))
+                            :result_metadata
+                            (map :description))))
+                (is (= ["" ""]
+                       (->> (update-card! (update card
+                                                  :result_metadata (fn [m]
+                                                                     (map #(assoc % :description "") m))))
+                            :result_metadata
+                            (map :description))))))))))))

@@ -1,46 +1,47 @@
 (ns metabase.api.routes
   (:require [compojure.core :refer [context defroutes]]
             [compojure.route :as route]
-            [metabase.api.activity :as activity]
-            [metabase.api.alert :as alert]
-            [metabase.api.automagic-dashboards :as magic]
-            [metabase.api.bookmark :as bookmark]
-            [metabase.api.card :as card]
-            [metabase.api.collection :as collection]
-            [metabase.api.dashboard :as dashboard]
-            [metabase.api.database :as database]
-            [metabase.api.dataset :as dataset]
-            [metabase.api.email :as email]
-            [metabase.api.embed :as embed]
-            [metabase.api.field :as field]
-            [metabase.api.geojson :as geojson]
-            [metabase.api.ldap :as ldap]
-            [metabase.api.login-history :as login-history]
-            [metabase.api.metric :as metric]
-            [metabase.api.native-query-snippet :as native-query-snippet]
-            [metabase.api.notify :as notify]
-            [metabase.api.permissions :as permissions]
-            [metabase.api.premium-features :as premium-features]
-            [metabase.api.preview-embed :as preview-embed]
-            [metabase.api.public :as public]
-            [metabase.api.pulse :as pulse]
-            [metabase.api.revision :as revision]
+            [metabase.api.activity :as api.activity]
+            [metabase.api.alert :as api.alert]
+            [metabase.api.automagic-dashboards :as api.magic]
+            [metabase.api.bookmark :as api.bookmark]
+            [metabase.api.card :as api.card]
+            [metabase.api.collection :as api.collection]
+            [metabase.api.dashboard :as api.dashboard]
+            [metabase.api.database :as api.database]
+            [metabase.api.dataset :as api.dataset]
+            [metabase.api.email :as api.email]
+            [metabase.api.embed :as api.embed]
+            [metabase.api.field :as api.field]
+            [metabase.api.geojson :as api.geojson]
+            [metabase.api.ldap :as api.ldap]
+            [metabase.api.login-history :as api.login-history]
+            [metabase.api.metric :as api.metric]
+            [metabase.api.native-query-snippet :as api.native-query-snippet]
+            [metabase.api.notify :as api.notify]
+            [metabase.api.permissions :as api.permissions]
+            [metabase.api.persist :as api.persist]
+            [metabase.api.premium-features :as api.premium-features]
+            [metabase.api.preview-embed :as api.preview-embed]
+            [metabase.api.public :as api.public]
+            [metabase.api.pulse :as api.pulse]
+            [metabase.api.revision :as api.revision]
             [metabase.api.routes.common :refer [+apikey +auth +generic-exceptions +message-only-exceptions]]
-            [metabase.api.search :as search]
-            [metabase.api.segment :as segment]
-            [metabase.api.session :as session]
-            [metabase.api.setting :as setting]
-            [metabase.api.setup :as setup]
-            [metabase.api.slack :as slack]
-            [metabase.api.table :as table]
-            [metabase.api.task :as task]
-            [metabase.api.testing :as testing]
-            [metabase.api.tiles :as tiles]
-            [metabase.api.timeline :as timeline]
-            [metabase.api.timeline-event :as timeline-event]
-            [metabase.api.transform :as transform]
-            [metabase.api.user :as user]
-            [metabase.api.util :as util]
+            [metabase.api.search :as api.search]
+            [metabase.api.segment :as api.segment]
+            [metabase.api.session :as api.session]
+            [metabase.api.setting :as api.setting]
+            [metabase.api.setup :as api.setup]
+            [metabase.api.slack :as api.slack]
+            [metabase.api.table :as api.table]
+            [metabase.api.task :as api.task]
+            [metabase.api.testing :as api.testing]
+            [metabase.api.tiles :as api.tiles]
+            [metabase.api.timeline :as api.timeline]
+            [metabase.api.timeline-event :as api.timeline-event]
+            [metabase.api.transform :as api.transform]
+            [metabase.api.user :as api.user]
+            [metabase.api.util :as api.util]
             [metabase.config :as config]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -60,46 +61,47 @@
 
 (defroutes ^{:doc "Ring routes for API endpoints."} routes
   ee-routes
-  (context "/activity"             [] (+auth activity/routes))
-  (context "/alert"                [] (+auth alert/routes))
-  (context "/automagic-dashboards" [] (+auth magic/routes))
-  (context "/card"                 [] (+auth card/routes))
-  (context "/bookmark"             [] (+auth bookmark/routes))
-  (context "/collection"           [] (+auth collection/routes))
-  (context "/dashboard"            [] (+auth dashboard/routes))
-  (context "/database"             [] (+auth database/routes))
-  (context "/dataset"              [] (+auth dataset/routes))
-  (context "/email"                [] (+auth email/routes))
-  (context "/embed"                [] (+message-only-exceptions embed/routes))
-  (context "/field"                [] (+auth field/routes))
-  (context "/geojson"              [] geojson/routes)
-  (context "/ldap"                 [] (+auth ldap/routes))
-  (context "/login-history"        [] (+auth login-history/routes))
-  (context "/premium-features"     [] (+auth premium-features/routes))
-  (context "/metric"               [] (+auth metric/routes))
-  (context "/native-query-snippet" [] (+auth native-query-snippet/routes))
-  (context "/notify"               [] (+apikey notify/routes))
-  (context "/permissions"          [] (+auth permissions/routes))
-  (context "/preview_embed"        [] (+auth preview-embed/routes))
-  (context "/public"               [] (+generic-exceptions public/routes))
-  (context "/pulse"                [] (+auth pulse/routes))
-  (context "/revision"             [] (+auth revision/routes))
-  (context "/search"               [] (+auth search/routes))
-  (context "/segment"              [] (+auth segment/routes))
-  (context "/session"              [] session/routes)
-  (context "/setting"              [] (+auth setting/routes))
-  (context "/setup"                [] setup/routes)
-  (context "/slack"                [] (+auth slack/routes))
-  (context "/table"                [] (+auth table/routes))
-  (context "/task"                 [] (+auth task/routes))
+  (context "/activity"             [] (+auth api.activity/routes))
+  (context "/alert"                [] (+auth api.alert/routes))
+  (context "/automagic-dashboards" [] (+auth api.magic/routes))
+  (context "/card"                 [] (+auth api.card/routes))
+  (context "/bookmark"             [] (+auth api.bookmark/routes))
+  (context "/collection"           [] (+auth api.collection/routes))
+  (context "/dashboard"            [] (+auth api.dashboard/routes))
+  (context "/database"             [] (+auth api.database/routes))
+  (context "/dataset"              [] (+auth api.dataset/routes))
+  (context "/email"                [] (+auth api.email/routes))
+  (context "/embed"                [] (+message-only-exceptions api.embed/routes))
+  (context "/field"                [] (+auth api.field/routes))
+  (context "/geojson"              [] api.geojson/routes)
+  (context "/ldap"                 [] (+auth api.ldap/routes))
+  (context "/login-history"        [] (+auth api.login-history/routes))
+  (context "/premium-features"     [] (+auth api.premium-features/routes))
+  (context "/metric"               [] (+auth api.metric/routes))
+  (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
+  (context "/notify"               [] (+apikey api.notify/routes))
+  (context "/permissions"          [] (+auth api.permissions/routes))
+  (context "/persist"              [] (+auth api.persist/routes))
+  (context "/preview_embed"        [] (+auth api.preview-embed/routes))
+  (context "/public"               [] (+generic-exceptions api.public/routes))
+  (context "/pulse"                [] (+auth api.pulse/routes))
+  (context "/revision"             [] (+auth api.revision/routes))
+  (context "/search"               [] (+auth api.search/routes))
+  (context "/segment"              [] (+auth api.segment/routes))
+  (context "/session"              [] api.session/routes)
+  (context "/setting"              [] (+auth api.setting/routes))
+  (context "/setup"                [] api.setup/routes)
+  (context "/slack"                [] (+auth api.slack/routes))
+  (context "/table"                [] (+auth api.table/routes))
+  (context "/task"                 [] (+auth api.task/routes))
   (context "/testing"              [] (if (or (not config/is-prod?)
                                               (config/config-bool :mb-enable-test-endpoints))
-                                        testing/routes
+                                        api.testing/routes
                                         (fn [_ respond _] (respond nil))))
-  (context "/tiles"                [] (+auth tiles/routes))
-  (context "/timeline"             [] (+auth timeline/routes))
-  (context "/timeline-event"       [] (+auth timeline-event/routes))
-  (context "/transform"            [] (+auth transform/routes))
-  (context "/user"                 [] (+auth user/routes))
-  (context "/util"                 [] util/routes)
+  (context "/tiles"                [] (+auth api.tiles/routes))
+  (context "/timeline"             [] (+auth api.timeline/routes))
+  (context "/timeline-event"       [] (+auth api.timeline-event/routes))
+  (context "/transform"            [] (+auth api.transform/routes))
+  (context "/user"                 [] (+auth api.user/routes))
+  (context "/util"                 [] api.util/routes)
   (route/not-found (constantly {:status 404, :body (deferred-tru "API endpoint does not exist.")})))

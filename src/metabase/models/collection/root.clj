@@ -1,7 +1,7 @@
 (ns metabase.models.collection.root
-  (:require [metabase.models.interface :as i]
+  (:require [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.public-settings.premium-features :as settings.premium-features]
+            [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [potemkin.types :as p.types]
             [toucan.models :as models]))
@@ -20,7 +20,7 @@
   {:pre [(map? collection)]}
   ;; HACK Collections in the "snippets" namespace have no-op permissions unless EE enhancements are enabled
   (if (and (= (u/qualified-name (:namespace collection)) "snippets")
-           (not (settings.premium-features/enable-enhancements?)))
+           (not (premium-features/enable-enhancements?)))
     #{}
     #{((case read-or-write
          :read  perms/collection-read-path
@@ -32,12 +32,12 @@
    models/IModelDefaults
    {:types {:type :keyword}})
 
-  i/IObjectPermissions
+  mi/IObjectPermissions
   (merge
-   i/IObjectPermissionsDefaults
+   mi/IObjectPermissionsDefaults
    {:perms-objects-set has-perms?
-    :can-read?         (partial i/current-user-has-full-permissions? :read)
-    :can-write?        (partial i/current-user-has-full-permissions? :write)}))
+    :can-read?         (partial mi/current-user-has-full-permissions? :read)
+    :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
 
 (def ^RootCollection root-collection
   "Special placeholder object representing the Root Collection, which isn't really a real Collection."

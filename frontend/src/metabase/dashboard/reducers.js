@@ -30,7 +30,7 @@ import {
   HIDE_ADD_PARAMETER_POPOVER,
   SET_SIDEBAR,
   CLOSE_SIDEBAR,
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   SAVE_DASHBOARD_AND_CARDS,
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
@@ -284,7 +284,7 @@ const parameterValuesSearchCache = handleActions(
     [SAVE_DASHBOARD_AND_CARDS]: {
       next: () => ({}),
     },
-    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES]: {
+    [FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE]: {
       next: (state, { payload }) =>
         payload ? assoc(state, payload.cacheKey, payload.results) : state,
     },
@@ -298,22 +298,26 @@ const loadingDashCards = handleActions(
     [INITIALIZE]: {
       next: state => ({
         ...state,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       }),
     },
     [FETCH_DASHBOARD]: {
-      next: (state, { payload }) => ({
-        ...state,
-        dashcardIds: Object.values(payload.entities.dashcard || {})
+      next: (state, { payload }) => {
+        const cardIds = Object.values(payload.entities.dashcard || {})
           .filter(dc => !isVirtualDashCard(dc))
-          .map(dc => dc.id),
-        isLoadingComplete: false,
-      }),
+          .map(dc => dc.id);
+        return {
+          ...state,
+          dashcardIds: cardIds,
+          loadingIds: cardIds,
+          loadingStatus: "idle",
+        };
+      },
     },
     [FETCH_DASHBOARD_CARD_DATA]: {
       next: state => ({
         ...state,
-        loadingIds: state.dashcardIds,
+        loadingStatus: state.dashcardIds.length > 0 ? "running" : "idle",
         startTime:
           state.dashcardIds.length > 0 &&
           // check that performance is defined just in case
@@ -329,7 +333,7 @@ const loadingDashCards = handleActions(
           ...state,
           loadingIds,
           ...(loadingIds.length === 0
-            ? { startTime: null, isLoadingComplete: true }
+            ? { startTime: null, loadingStatus: "complete" }
             : {}),
         };
       },
@@ -340,16 +344,14 @@ const loadingDashCards = handleActions(
         return {
           ...state,
           loadingIds,
-          ...(loadingIds.length === 0
-            ? { startTime: null, isLoadingComplete: true }
-            : {}),
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
         };
       },
     },
     [RESET]: {
       next: state => ({
         ...state,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       }),
     },
   },
@@ -357,7 +359,7 @@ const loadingDashCards = handleActions(
     dashcardIds: [],
     loadingIds: [],
     startTime: null,
-    isLoadingComplete: false,
+    loadingStatus: "idle",
   },
 );
 

@@ -4,7 +4,7 @@
             [metabase.automagic-dashboards.core :refer [->field ->related-entity ->root automagic-analysis capitalize-first cell-title encode-base64-json metric-name source-name]]
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.automagic-dashboards.populate :as populate]
-            [metabase.mbql.normalize :as normalize]
+            [metabase.mbql.normalize :as mbql.normalize]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
@@ -45,7 +45,7 @@
   [{{existing-filter-clause :filter} :query, :as query}, new-filter-clauses]
   (let [clauses           (filter identity (cons existing-filter-clause new-filter-clauses))
         new-filter-clause (when (seq clauses)
-                            (normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
+                            (mbql.normalize/normalize-fragment [:query :filter] (cons :and clauses)))]
     (cond-> query
       (seq new-filter-clause) (assoc-in [:query :filter] new-filter-clause))))
 

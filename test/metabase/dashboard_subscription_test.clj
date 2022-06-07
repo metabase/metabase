@@ -1,9 +1,9 @@
 (ns metabase.dashboard-subscription-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Card Dashboard DashboardCard Pulse PulseCard PulseChannel PulseChannelRecipient User]]
-            [metabase.models.pulse :as models.pulse]
-            [metabase.pulse :as pulse]
-            [metabase.pulse.render.body :as render.body]
+            [metabase.models.pulse :as pulse]
+            metabase.pulse
+            [metabase.pulse.render.body :as body]
             [metabase.pulse.test-util :refer :all]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -89,7 +89,7 @@
                     (f {:dashboard-id dashboard-id,
                         :card-id card-id,
                         :pulse-id pulse-id}
-                       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))))
+                       (metabase.pulse/send-pulse! (pulse/retrieve-notification pulse-id))))
                   (thunk []
                     (if fixture
                       (fixture {:dashboard-id dashboard-id,
@@ -140,7 +140,7 @@
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id :card_id card-id-1}]
                     DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2}]
                     User [{user-id :id}]]
-      (let [result (@#'pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= (count result) 2))
         (is (schema= [{:card     (s/pred map?)
                        :dashcard (s/pred map?)
@@ -155,7 +155,7 @@
                     DashboardCard [dashcard-2 {:dashboard_id dashboard-id :card_id card-id-2 :row 0 :col 1}]
                     DashboardCard [dashcard-3 {:dashboard_id dashboard-id :card_id card-id-3 :row 0 :col 0}]
                     User [{user-id :id}]]
-      (let [result (@#'pulse/execute-dashboard {:creator_id user-id} dashboard)]
+      (let [result (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard)]
         (is (= [card-id-3 card-id-2 card-id-1]
                (map #(-> % :card :id) result))))))
   (testing "virtual (text) cards are returned as a viz settings map"
@@ -165,7 +165,7 @@
                     DashboardCard [dashcard-1 {:dashboard_id dashboard-id
                                                :visualization_settings {:virtual_card {}, :text "test"}}]
                     User [{user-id :id}]]
-      (is (= [{:virtual_card {}, :text "test"}] (@#'pulse/execute-dashboard {:creator_id user-id} dashboard))))))
+      (is (= [{:virtual_card {}, :text "test"}] (@#'metabase.pulse/execute-dashboard {:creator_id user-id} dashboard))))))
 
 (deftest basic-table-test
   (tests {:pulse {:skip_if_empty false} :display :table}
@@ -174,7 +174,7 @@
 
      :fixture
      (fn [_ thunk]
-       (with-redefs [render.body/attached-results-text (wrap-function @#'render.body/attached-results-text)]
+       (with-redefs [body/attached-results-text (wrap-function @#'body/attached-results-text)]
          (mt/with-temporary-setting-values [site-name "Metabase Test"]
            (thunk))))
 
@@ -236,10 +236,10 @@
                    (thunk->boolean pulse-results))))
           (testing "attached-results-text should be invoked exactly once"
             (is (= 1
-                   (count (input @#'render.body/attached-results-text)))))
+                   (count (input @#'body/attached-results-text)))))
           (testing "attached-results-text should return nil since it's a slack message"
             (is (= [nil]
-                   (output @#'render.body/attached-results-text))))))}}))
+                   (output @#'body/attached-results-text))))))}}))
 
 (deftest virtual-card-test
   (tests {:pulse {:skip_if_empty false}, :dashcard {:row 0, :col 0}}
@@ -345,7 +345,7 @@
                                        :row 1
                                        :col 1
                                        :visualization_settings {:text "abcdefghijklmnopqrstuvwxyz"}}]
-         (binding [pulse/*slack-mrkdwn-length-limit* 10]
+         (binding [metabase.pulse/*slack-mrkdwn-length-limit* 10]
            (thunk))))
 
      :assert
@@ -393,7 +393,7 @@
                                                                   :target       [:dimension [:field (mt/id :products :category) nil]]}]
                                             :card_id            mbql-card-id
                                             :dashboard_id       dashboard-id}]]
-            (let [[mbql-results] (map :result (@#'pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[mbql-results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[2 "Small Marble Shoes"        "Doohickey"]
                       [3 "Synergistic Granite Chair" "Doohickey"]]
                      (mt/rows mbql-results))))))
@@ -420,7 +420,7 @@
                                                                   :target       [:dimension [:template-tag "category"]]}]
                                             :card_id            sql-card-id
                                             :dashboard_id       dashboard-id}]]
-            (let [[results] (map :result (@#'pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
+            (let [[results] (map :result (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))]
               (is (= [[1  "Rustic Paper Wallet"   "Gizmo"]
                       [10 "Mediocre Wooden Table" "Gizmo"]]
                      (mt/rows results))))))))))

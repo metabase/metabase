@@ -33,7 +33,7 @@
   (testing "The PNG of a table should be cropped to the width of its content"
     (let [png (@#'png/render-to-png test-table-html-1 1200)]
       ;; Check that width is within a range, since actual rendered result can very slightly by environment
-      (is (< 170 (.getWidth png) 210))))
+      (is (< 140 (.getWidth png) 210))))
   (testing "The PNG of a table should not clip any of its content"
     (let [png (@#'png/render-to-png test-table-html-2 1200)]
       (is (< 320 (.getWidth png) 360)))))

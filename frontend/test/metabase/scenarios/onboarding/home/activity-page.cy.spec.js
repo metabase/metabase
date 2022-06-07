@@ -30,7 +30,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByPlaceholderText("Enter a number").type("5");
-      cy.findByText("Update filter").click();
+      cy.findByText("Add filter").click();
     });
     cy.findByText("Save").click();
     cy.get("[value='Products, Filtered by Rating']");

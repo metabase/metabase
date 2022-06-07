@@ -6,6 +6,8 @@ import {
   CLOSE_SIDEBAR,
   REMOVE_PARAMETER,
   SET_DASHBOARD_ATTRIBUTES,
+  FETCH_DASHBOARD_CARD_DATA,
+  FETCH_CARD_DATA,
 } from "./actions";
 
 describe("dashboard reducers", () => {
@@ -26,7 +28,7 @@ describe("dashboard reducers", () => {
         dashcardIds: [],
         loadingIds: [],
         startTime: null,
-        isLoadingComplete: false,
+        loadingStatus: "idle",
       },
       parameterValues: {},
       parameterValuesSearchCache: {},
@@ -214,6 +216,83 @@ describe("dashboard reducers", () => {
             isDirty: false,
           },
         },
+      });
+    });
+  });
+
+  describe("Should accurately describe loading state", () => {
+    //Can't check straight equality due to state.loadingDashCards.startTime being a time.
+    it("should change to running when loading cards", () => {
+      const dashcardIds = [1, 2, 3];
+      const loadingMatch = {
+        dashcardIds: dashcardIds,
+        loadingIds: dashcardIds,
+        loadingStatus: "running",
+        startTime: expect.any(Number),
+      };
+
+      expect(
+        reducer(
+          {
+            ...initState,
+            loadingDashCards: {
+              dashcardIds: dashcardIds,
+              loadingIds: dashcardIds,
+            },
+          },
+          {
+            type: FETCH_DASHBOARD_CARD_DATA,
+            payload: {},
+          },
+        ),
+      ).toMatchObject({
+        ...initState,
+        loadingDashCards: loadingMatch,
+      });
+    });
+
+    it("should stay idle with no cards to load", () => {
+      expect(
+        reducer(initState, {
+          type: FETCH_DASHBOARD_CARD_DATA,
+          payload: {},
+        }),
+      ).toEqual({
+        ...initState,
+        loadingDashCards: {
+          dashcardIds: [],
+          loadingIds: [],
+          loadingStatus: "idle",
+          startTime: null,
+        },
+      });
+    });
+
+    it("should be complete when loading finishes", () => {
+      expect(
+        reducer(
+          {
+            ...initState,
+            loadingDashCards: {
+              dashcardIds: [1, 2, 3],
+              loadingIds: [3],
+              loadingStatus: "running",
+            },
+          },
+          {
+            type: FETCH_CARD_DATA,
+            payload: { dashcard_id: 3, card_id: 1, result: {} },
+          },
+        ),
+      ).toEqual({
+        ...initState,
+        loadingDashCards: {
+          dashcardIds: [1, 2, 3],
+          loadingIds: [],
+          loadingStatus: "complete",
+          startTime: null,
+        },
+        dashcardData: { 3: { 1: {} } },
       });
     });
   });

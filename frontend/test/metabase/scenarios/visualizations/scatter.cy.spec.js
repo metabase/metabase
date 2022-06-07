@@ -85,6 +85,43 @@ describe("scenarios > visualizations > scatter", () => {
     cy.findByText("Visualization");
     cy.findAllByText("79").should("not.exist");
   });
+
+  it("should respect circle size in a visualization (metabase#22929)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "native",
+        native: {
+          query: `select 1 as size, 1 as x, 5 as y union all
+select 10 as size, 2 as x, 5 as y`,
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "scatter",
+      visualization_settings: {
+        "scatter.bubble": "SIZE",
+        "graph.dimensions": ["X"],
+        "graph.metrics": ["Y"],
+      },
+    });
+
+    cy.get("circle").each((circle, index) => {
+      cy.wrap(circle)
+        .invoke("attr", "r")
+        .then(r => {
+          const rFloat = +r;
+
+          expect(rFloat).to.be.greaterThan(0);
+
+          cy.wrap(r).as("radius" + index);
+        });
+    });
+
+    cy.get("@radius0").then(r0 => {
+      cy.get("@radius1").then(r1 => {
+        assert.notEqual(r0, r1);
+      });
+    });
+  });
 });
 
 function triggerPopoverForBubble(index = 13) {

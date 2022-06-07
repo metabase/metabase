@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.load-test
   (:refer-clojure :exclude [load])
-  (:require [clojure.data :as diff]
+  (:require [clojure.data :as data]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing use-fixtures]]
@@ -16,7 +16,7 @@
             [metabase.shared.models.visualization-settings-test :as mb.viz-test]
             [metabase.shared.util.log :as log]
             [metabase.test :as mt]
-            [metabase.test.data.users :as test-users]
+            [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -46,7 +46,7 @@
      (try
        ~@body
        (finally
-         (doseq [[model# ids#] (second (diff/diff snapshot# (world-snapshot)))]
+         (doseq [[model# ids#] (second (data/diff snapshot# (world-snapshot)))]
            (some->> ids#
                     not-empty
                     (vector :in)
@@ -299,7 +299,7 @@
                                                              table-id-categories
                                                              table-id-users
                                                              table-id-checkins])
-                          (dump dump-dir (:email (test-users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
+                          (dump dump-dir (:email (test.users/fetch-user :crowberto)) {:only-db-ids #{db-id}})
                           {:query-results (gather-orig-results [card-id
                                                                 card-arch-id
                                                                 card-id-root

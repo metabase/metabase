@@ -21,7 +21,7 @@
             [metabase.models.card :refer [Card]]
             [metabase.models.collection :as collection]
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse-card :refer [PulseCard]]
             [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
@@ -106,7 +106,7 @@
   an Alert cannot be put into a Collection."
   [notification read-or-write]
   (if (is-alert? notification)
-    (i/perms-objects-set (alert->card notification) read-or-write)
+    (mi/perms-objects-set (alert->card notification) read-or-write)
     (perms/perms-objects-set-for-parent-collection notification read-or-write)))
 
 (defn- can-write?
@@ -114,24 +114,25 @@
   subscriptions that they created, but not edit anyone else's subscriptions."
   [notification]
   (if (and (is-dashboard-subscription? notification)
-           (i/current-user-has-full-permissions? :read notification)
-           (not (i/current-user-has-full-permissions? :write notification)))
+           (mi/current-user-has-full-permissions? :read notification)
+           (not (mi/current-user-has-full-permissions? :write notification)))
     (= api/*current-user-id* (:creator_id notification))
-    (i/current-user-has-full-permissions? :write notification)))
+    (mi/current-user-has-full-permissions? :write notification)))
 
 (u/strict-extend (class Pulse)
   models/IModel
   (merge
    models/IModelDefaults
    {:hydration-keys (constantly [:pulse])
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :pre-insert     pre-insert
     :pre-update     pre-update
     :types          (constantly {:parameters :json})})
-  i/IObjectPermissions
+  mi/IObjectPermissions
   (merge
-   i/IObjectPermissionsDefaults
-   {:can-read?         (partial i/current-user-has-full-permissions? :read)
+   mi/IObjectPermissionsDefaults
+   {:can-read?         (partial mi/current-user-has-full-permissions? :read)
     :can-write?        can-write?
     :perms-objects-set perms-objects-set}))
 

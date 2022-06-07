@@ -4,7 +4,7 @@
             [metabase.automagic-dashboards.populate :as populate]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util.files :as files]
+            [metabase.util.files :as u.files]
             [metabase.util.i18n :as i18n :refer [deferred-trs LocalizedString]]
             [metabase.util.schema :as su]
             [metabase.util.yaml :as yaml]
@@ -313,7 +313,7 @@
       ds))))
 
 (def ^:private rules (delay
-                      (files/with-open-path-to-resource [path rules-dir]
+                      (u.files/with-open-path-to-resource [path rules-dir]
                         (into {} (load-rule-dir path)))))
 
 (defn get-rules

@@ -1,7 +1,8 @@
 (ns metabase.api.preview-embed-test
   (:require [clojure.test :refer :all]
             [metabase.api.embed-test :as embed-test]
-            [metabase.api.pivots :as pivots]
+            [metabase.api.pivots :as api.pivots]
+            [metabase.api.preview-embed :as api.preview-embed]
             [metabase.models.card :refer [Card]]
             [metabase.models.dashboard :refer [Dashboard]]
             [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -140,7 +141,25 @@
             (embed-test/test-query-results
              (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
                                                             "?venue_id=200")))))))))
-
+(deftest query-max-results-constraint-test
+  (testing "GET /api/preview_embed/card/:token/query"
+    (testing "Only 2000 results returned when there are many more"
+      (let [orders-row-count (count
+                              (mt/rows
+                               (mt/dataset sample-dataset
+                                 (mt/process-query
+                                  (mt/query orders)))))
+            expected-row-count 1]
+        (with-redefs [api.preview-embed/max-results expected-row-count]
+          (mt/dataset sample-dataset
+            (embed-test/with-embedding-enabled-and-new-secret-key
+              (let [sample-db-orders-question (mt/query orders)]
+                (embed-test/with-temp-card [card {:dataset_query sample-db-orders-question}]
+                  (let [limited (count
+                                 (mt/rows
+                                  (mt/user-http-request :crowberto :get 202 (card-query-url card))))]
+                    (is (= expected-row-count limited))
+                    (is (not= expected-row-count orders-row-count))))))))))))
 
 ;;; ------------------------------------ GET /api/preview_embed/dashboard/:token -------------------------------------
 
@@ -356,12 +375,12 @@
        "/query"))
 
 (deftest pivot-query-test
-  (mt/test-drivers (pivots/applicable-drivers)
+  (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "GET /api/preview_embed/pivot/card/:token/query"
         (testing "successful preview"
           (let [result (embed-test/with-embedding-enabled-and-new-secret-key
-                         (embed-test/with-temp-card [card (pivots/pivot-card)]
+                         (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                            (mt/user-http-request :crowberto :get 202 (pivot-card-query-url card))))
                 rows   (mt/rows result)]
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
@@ -372,20 +391,20 @@
         (testing "should fail if user is not an admin"
           (is (= "You don't have permissions to do that."
                  (embed-test/with-embedding-enabled-and-new-secret-key
-                   (embed-test/with-temp-card [card (pivots/pivot-card)]
+                   (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                      (mt/user-http-request :rasta :get 403 (pivot-card-query-url card)))))))
 
         (testing "should fail if embedding is disabled"
           (is (= "Embedding is not enabled."
                  (mt/with-temporary-setting-values [enable-embedding false]
                    (embed-test/with-new-secret-key
-                     (embed-test/with-temp-card [card (pivots/pivot-card)]
+                     (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                        (mt/user-http-request :crowberto :get 400 (pivot-card-query-url card))))))))
 
         (testing "should fail if embedding is enabled and the wrong key is used"
           (is (= "Message seems corrupt or manipulated."
                  (embed-test/with-embedding-enabled-and-new-secret-key
-                   (embed-test/with-temp-card [card (pivots/pivot-card)]
+                   (embed-test/with-temp-card [card (api.pivots/pivot-card)]
                      (mt/user-http-request :crowberto :get 400 (embed-test/with-new-secret-key (pivot-card-query-url card))))))))))))
 
 (defn- pivot-dashcard-url {:style/indent 1} [dashcard & [additional-token-params]]
@@ -396,12 +415,12 @@
        "/card/" (:card_id dashcard)))
 
 (deftest pivot-card-id-test
-  (mt/test-drivers (pivots/applicable-drivers)
+  (mt/test-drivers (api.pivots/applicable-drivers)
     (mt/dataset sample-dataset
       (testing "GET /api/preview_embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
         (embed-test/with-embedding-enabled-and-new-secret-key
           (embed-test/with-temp-dashcard [dashcard {:dash     {:parameters []}
-                                                    :card     (pivots/pivot-card)
+                                                    :card     (api.pivots/pivot-card)
                                                     :dashcard {:parameter_mappings []}}]
             (testing "successful preview"
               (let [result (mt/user-http-request :crowberto :get 202 (pivot-dashcard-url dashcard))

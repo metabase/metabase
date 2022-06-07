@@ -6,7 +6,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
-            [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
+            [metabase.query-processor.middleware.add-dimension-projections :as qp.add-dimension-projections]
             [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test :as mt]
@@ -75,7 +75,7 @@
                                       :limit       5})))]
         (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Category ID [internal remap]")
                 (qp.test/aggregate-col :count)
-                (#'add-dim-projections/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
+                (#'qp.add-dimension-projections/create-remapped-col "Category ID [internal remap]" (mt/format-name "category_id") :type/Text)]
                cols))
         (is (= [[2 8 "American"]
                 [3 2 "Artisan"]

@@ -1,11 +1,10 @@
-/* eslint "react/prop-types": "warn" */
+/* eslint-disable react/prop-types */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import Schemas from "metabase/entities/schemas";
 
-@Schemas.load({ id: (state, { schema }) => schema.id })
-class SchemaPane extends Component {
+class SchemaPaneInner extends Component {
   render() {
     const { schema, show } = this.props;
     const tables = schema.tables.sort((a, b) => a.name.localeCompare(b.name));
@@ -38,6 +37,10 @@ class SchemaPane extends Component {
     );
   }
 }
+
+const SchemaPane = Schemas.load({ id: (state, { schema }) => schema.id })(
+  SchemaPaneInner,
+);
 SchemaPane.propTypes = {
   show: PropTypes.func.isRequired,
   schema: PropTypes.object.isRequired,

@@ -134,6 +134,21 @@
   color: var(--color-brand);
 }
 
-.TableInteractive-cellWrapper--firstColumn {
+.TableInteractive-cellWrapper--firstColumn.padLeft {
   padding-left: 1.5em;
+}
+
+.TableInteractive-gutter {
+  background-color: var(--color-bg-white);
+}
+
+.TableInteractive-detailButton {
+  color: var(--color-brand);
+  transition: opacity 0.2s ease-in-out;
+  margin: 0 4px;
+  opacity: 0;
+}
+
+.show .TableInteractive-detailButton {
+  opacity: 1;
 }

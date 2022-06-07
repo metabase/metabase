@@ -30,7 +30,7 @@ export const DASHBOARD_DATE_FILTERS = {
   },
   "All Options": {
     value: {
-      timeBucket: "Years",
+      timeBucket: "years",
     },
     representativeResult: "37.65",
   },

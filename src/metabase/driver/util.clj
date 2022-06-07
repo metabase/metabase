@@ -9,9 +9,9 @@
             [metabase.driver :as driver]
             [metabase.models.setting :refer [defsetting]]
             [metabase.public-settings.premium-features :as premium-features]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-tru trs]]
             [toucan.db :as db])
   (:import java.io.ByteArrayInputStream
            [java.security.cert CertificateFactory X509Certificate]
@@ -19,6 +19,75 @@
            java.util.Base64
            javax.net.SocketFactory
            [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
+
+(def ^:private connection-error-messages
+  "Generic error messages that drivers should return in their implementation
+  of [[metabase.driver/humanize-connection-error-message]]."
+  {:cannot-connect-check-host-and-port
+   {:message [(deferred-tru "Hmm, we couldn''t connect to the database.")
+              " "
+              (deferred-tru "Make sure your Host and Port settings are correct")]
+    :errors  {:host (deferred-tru "check your host settings")
+              :port (deferred-tru "check your port settings")}}
+
+   :ssh-tunnel-auth-fail
+   {:message [(deferred-tru "We couldn''t connect to the SSH tunnel host.")
+              " "
+              (deferred-tru "Check the Username and Password.")]
+    :errors  {:tunnel-user (deferred-tru "check your username")
+              :tunnel-pass (deferred-tru "check your password")}}
+
+   :ssh-tunnel-connection-fail
+   {:message [(deferred-tru "We couldn''t connect to the SSH tunnel host.")
+              " "
+              (deferred-tru "Check the Host and Port.")]
+    :errors  {:tunnel-host (deferred-tru "check your host settings")
+              :tunnel-port (deferred-tru "check your port settings")}}
+
+   :database-name-incorrect
+   {:message (deferred-tru "Looks like the Database name is incorrect.")
+    :errors  {:dbname (deferred-tru "check your database name settings")}}
+
+   :invalid-hostname
+   {:message [(deferred-tru "It looks like your Host is invalid.")
+              " "
+              (deferred-tru "Please double-check it and try again.")]
+    :errors  {:host (deferred-tru "check your host settings")}}
+
+   :password-incorrect
+   {:message (deferred-tru "Looks like your Password is incorrect.")
+    :errors  {:password (deferred-tru "check your password")}}
+
+   :password-required
+   {:message (deferred-tru "Looks like you forgot to enter your Password.")
+    :errors  {:password (deferred-tru "check your password")}}
+
+   :username-incorrect
+   {:message (deferred-tru "Looks like your Username is incorrect.")
+    :errors  {:user (deferred-tru "check your username")}}
+
+   :username-or-password-incorrect
+   {:message (deferred-tru "Looks like the Username or Password is incorrect.")
+    :errors  {:user     (deferred-tru "check your username")
+              :password (deferred-tru "check your password")}}
+
+   :certificate-not-trusted
+   {:message (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")}
+
+   :requires-ssl
+   {:message (deferred-tru "Server appears to require SSL - please enable SSL below")
+    :errors  {:ssl (deferred-tru "please enable SSL")}}})
+
+(defn- force-tr [text-or-vector]
+  (if (vector? text-or-vector)
+    (apply str text-or-vector)
+    (str text-or-vector)))
+
+(defn- tr-connection-error-messages [error-type-kw]
+  (when-let [message (connection-error-messages error-type-kw)]
+    (cond-> message
+      (contains? message :message) (update :message force-tr)
+      (contains? message :errors)  (update :errors update-vals force-tr))))
 
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
@@ -36,6 +105,11 @@
                 3000
                 10000))
 
+(defn- connection-error? [^Throwable throwable]
+  (and (some? throwable)
+       (or (instance? java.net.ConnectException throwable)
+           (recur (.getCause throwable)))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -52,7 +126,19 @@
       ;; actually if we are going to `throw-exceptions` we'll rethrow the original but attempt to humanize the message
       ;; first
       (catch Throwable e
-        (throw (Exception. (str (driver/humanize-connection-error-message driver (.getMessage e))) e))))
+        (throw (if-let [humanized-message (some->> (.getMessage e)
+                                                   (driver/humanize-connection-error-message driver))]
+                 (let [error-data (cond
+                                    (keyword? humanized-message)
+                                    (tr-connection-error-messages humanized-message)
+
+                                    (connection-error? e)
+                                    (tr-connection-error-messages :cannot-connect-check-host-and-port)
+
+                                    :else
+                                    {:message humanized-message})]
+                   (ex-info (str (:message error-data)) error-data e))
+                 e))))
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
@@ -260,7 +346,7 @@
                                  (recur transitive-props next-acc)
                                  (-> "Cycle detected resolving dependent visible-if properties for driver {0}: {1}"
                                      (trs driver cyclic-props)
-                                     (ex-info {:type               error-type/driver
+                                     (ex-info {:type               qp.error-type/driver
                                                :driver             driver
                                                :cyclic-visible-ifs cyclic-props})
                                      throw)))
@@ -326,7 +412,7 @@
 
 (def official-drivers
   "The set of all official drivers"
-  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver"})
+  #{"bigquery-cloud-sdk" "druid" "googleanalytics" "h2" "mongo" "mysql" "oracle" "postgres" "presto" "presto-jdbc" "redshift" "snowflake" "sparksql" "sqlite" "sqlserver" "vertica"})
 
 (def partner-drivers
   "The set of other drivers in the partnership program"

@@ -80,15 +80,20 @@ export function setLocalization(translationsObject) {
 
 function updateMomentLocale(locale) {
   const momentLocale = mapToMomentLocale(locale);
-  if (momentLocale !== "en") {
-    require("moment/locale/" + momentLocale);
+  try {
+    if (momentLocale !== "en") {
+      require("moment/locale/" + momentLocale);
+    }
+    moment.locale(momentLocale);
+  } catch (e) {
+    console.warn(`Could not set moment locale to ${momentLocale}`);
+    moment.locale("en");
   }
-
-  moment.locale(momentLocale);
 }
 
 function mapToMomentLocale(locale = "") {
   switch (locale) {
+    case "zh":
     case "zh-Hans":
       return "zh-cn";
     default:

@@ -4,13 +4,11 @@ import React, { Component } from "react";
 import cx from "classnames";
 import styles from "./FunnelNormal.css";
 
-import Ellipsified from "metabase/components/Ellipsified";
+import Ellipsified from "metabase/core/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
-import { normal } from "metabase/lib/colors";
-
-const DEFAULT_COLORS = Object.values(normal);
+import { color } from "metabase/lib/colors";
 
 export default class FunnelNormal extends Component {
   render() {
@@ -217,7 +215,7 @@ const GraphSection = ({
       >
         <polygon
           opacity={1 - index * (0.9 / (infos.length + 1))}
-          fill={DEFAULT_COLORS[0]}
+          fill={color("brand")}
           points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
         />
       </svg>

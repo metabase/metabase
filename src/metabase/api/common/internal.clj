@@ -6,7 +6,7 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.config :as config]
             [metabase.util :as u]
-            [metabase.util.i18n :as ui18n :refer [tru]]
+            [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [schema.core :as s])
@@ -21,13 +21,20 @@
 
 (defn- endpoint-name
   "Generate a string like `GET /api/meta/db/:id` for a defendpoint route."
-  [method route]
-  (format "%s %s%s"
-          (name method)
-          (str/replace (.getName *ns*) #"^metabase\.api\." "/api/")
-          (if (vector? route)
-            (first route)
-            route)))
+  ([method route]
+   (endpoint-name *ns* method route))
+
+  ([endpoint-namespace method route]
+   (format "%s %s%s"
+           (name method)
+           (-> (.getName (the-ns endpoint-namespace))
+               (str/replace #"^metabase\.api\." "/api/")
+               ;; This is only correct for EE endpoints following the usual convention. Not all of them do. The right
+               ;; way to fix this is to move them -- see #22687
+               (str/replace #"^metabase-enterprise\.([^\.]+)\.api\." "/api/ee/$1/"))
+           (if (vector? route)
+             (first route)
+             route))))
 
 (defn- args-form-flatten
   "A version of `flatten` that will actually flatten a form such as:
@@ -62,7 +69,7 @@
           (log/warn
            (u/format-color 'red (str "We don't have a nice error message for schema: %s defined at %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-             (u/pprint-to-str schema) (u/add-period route-str)))))))
+                           (u/pprint-to-str schema) (u/add-period route-str)))))))
 
 (defn- param-name
   "Return the appropriate name for this `param-symb` based on its `schema`. Usually this is just the name of the
@@ -77,14 +84,14 @@
   `param-symb->schema` map passed in after the argslist."
   [param-symb->schema route-str]
   (when (seq param-symb->schema)
-    (str "\n\n##### PARAMS:\n\n"
+    (str "\n\n### PARAMS:\n\n"
          (str/join "\n\n" (for [[param-symb schema] param-symb->schema]
                             (format "*  **`%s`** %s" (param-name param-symb schema) (dox-for-schema schema route-str)))))))
 
 (defn- format-route-dox
   "Return a markdown-formatted string to be used as documentation for a `defendpoint` function."
   [route-str docstr param->schema]
-  (str (format "### `%s`" route-str)
+  (str (format "## `%s`" route-str)
        (when (seq docstr)
          (str "\n\n" (u/add-period docstr)))
        (format-route-schema-dox param->schema route-str)))
@@ -101,10 +108,9 @@
   [method route docstr args param->schema body]
   (format-route-dox (endpoint-name method route)
                     (str (u/add-period docstr) (when (contains-superuser-check? body)
-                                  "\n\nYou must be a superuser to do this."))
+                                                 "\n\nYou must be a superuser to do this."))
                     (merge (args-form-symbols args)
                            param->schema)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          AUTO-PARSING + ROUTE TYPING                                           |
@@ -144,7 +150,6 @@
           (when (re-find pattern (name arg))
             type))
         auto-parse-arg-name-patterns))
-
 
 ;;; ## TYPIFY-ROUTE
 
@@ -189,7 +194,6 @@
         route
         (apply vector route arg-types)))))
 
-
 ;;; ## ROUTE ARG AUTO PARSING
 
 (defn let-form-for-arg
@@ -213,7 +217,6 @@
     `(let [~@let-forms]
        ~@body)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                PARAM VALIDATION                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -224,17 +227,16 @@
   (try (s/validate schema value)
        (catch Throwable e
          (throw (ex-info (tru "Invalid field: {0}" field-name)
-                  {:status-code 400
-                   :errors      {(keyword field-name) (or (su/api-error-message schema)
-                                                          (:message (ex-data e))
-                                                          (.getMessage e))}})))))
+                         {:status-code 400
+                          :errors      {(keyword field-name) (or (su/api-error-message schema)
+                                                                 (:message (ex-data e))
+                                                                 (.getMessage e))}})))))
 
 (defn validate-params
   "Generate a series of `validate-param` calls for each param and schema pair in PARAM->SCHEMA."
   [param->schema]
   (for [[param schema] param->schema]
     `(validate-param '~param ~param ~schema)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      MISC. OTHER FNS USED BY DEFENDPOINT                                       |
@@ -279,9 +281,4 @@
   (wrap-response-if-needed [m]
     (if (and (:status m) (contains? m :body))
       m
-      {:status 200, :body m}))
-
-  ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
-  Boolean
-  (wrap-response-if-needed [_]
-    (throw (Exception. (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
+      {:status 200, :body m})))

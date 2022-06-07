@@ -5,7 +5,7 @@
   (:require [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
+            [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -79,7 +79,7 @@
    (when (= fields :all)
      {:fields (if source-query
                (source-metadata->fields join source-metadata)
-               (for [[_ id-or-name opts] (add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
+               (for [[_ id-or-name opts] (qp.add-implicit-clauses/sorted-implicit-fields-for-table source-table)]
                  [:field id-or-name (assoc opts :join-alias alias)]))})))
 
 (s/defn ^:private resolve-references :- Joins

@@ -7,7 +7,7 @@
             [metabase.api.common :as api]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
-            [metabase.models.interface :as i]
+            [metabase.models.interface :as mi]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
@@ -29,10 +29,10 @@
                                        :kind   :keyword
                                        :source :keyword})
           :properties     (constantly {:timestamped? true})})
-  i/IObjectPermissions
-  (merge i/IObjectPermissionsDefaults
-         {:can-read?         i/superuser?
-          :can-write?        i/superuser?}))
+  mi/IObjectPermissions
+  (merge mi/IObjectPermissionsDefaults
+         {:can-read?         mi/superuser?
+          :can-write?        mi/superuser?}))
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------
 
@@ -100,7 +100,7 @@
           (.write out v)))
       tmp-file)))
 
-(def ^:private uploaded-base-64-prefix "data:application/x-x509-ca-cert;base64,")
+(def ^:private uploaded-base-64-pattern #"^data:application/([^;]*);base64,")
 
 (defn db-details-prop->secret-map
   "Returns a map containing `:value` and `:source` for the given `conn-prop-nm`. `conn-prop-nm` is expected to be the
@@ -126,9 +126,14 @@
         id-kw      (sub-prop "-id")
         value      (cond
                      ;; ssl-root-certs will need their prefix removed, and to be base 64 decoded (#20319)
-                     (and (value-kw details) (= "ssl-root-cert" conn-prop-nm)
-                          (str/starts-with? (value-kw details) uploaded-base-64-prefix))
-                     (-> (value-kw details) (str/replace-first uploaded-base-64-prefix "") u/decode-base64)
+                     (and (value-kw details) (#{"ssl-client-cert" "ssl-root-cert"} conn-prop-nm)
+                          (re-find uploaded-base-64-pattern (value-kw details)))
+                     (-> (value-kw details) (str/replace-first uploaded-base-64-pattern "") u/decode-base64)
+
+                     (and (value-kw details) (#{"ssl-key"} conn-prop-nm)
+                          (re-find uploaded-base-64-pattern (value-kw details)))
+                     (.decode (java.util.Base64/getDecoder)
+                              (str/replace-first (value-kw details) uploaded-base-64-pattern ""))
 
                      ;; the -value suffix was specified; use that
                      (value-kw details)
@@ -245,7 +250,7 @@
                       (instance? (class Secret) secret-or-id)
                       secret-or-id
 
-                      true ; default; app DB look up from the ID in db-details
+                      :else ; default; app DB look up from the ID in db-details
                       (latest-for-id (get db-details (subprop "-id"))))
         src     (:source secret*)]
     ;; always populate the -source, -creator-id, and -created-at sub properties
@@ -258,11 +263,11 @@
       (= :file-path src) ; for file path sources only, populate the value
       (assoc (subprop "-value") (value->string secret*)))))
 
-(defn admin-expand-db-details-inferred-secret-values
-  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving admin
-  requests (ex: to edit an existing database or view its current details).  This is to populate certain values that
-  shouldn't be stored in the details blob itself, but which can be derived from the details->secret association itself.
-  Refer to the docstring for [[expand-inferred-secret-values]] for full details."
+(defn expand-db-details-inferred-secret-values
+  "Expand certain inferred secret sub-properties in the `database` `:details`, for the purpose of serving requests by
+  users with write permissions for the DB (ex: to edit an existing database or view its current details). This is to
+  populate certain values that shouldn't be stored in the details blob itself, but which can be derived from the
+  details->secret association itself. Refer to the docstring for [[expand-inferred-secret-values]] for full details."
   {:added "0.42.0"}
   [database]
   (update database :details (fn [details]

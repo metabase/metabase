@@ -27,7 +27,7 @@ export default createEntity({
       }
       const schemaNames = await listDatabaseSchemas({ dbId });
       return schemaNames.map(schemaName => ({
-        // NOTE: needs unqiue IDs for entities to work correctly
+        // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
         database: { id: dbId },
@@ -52,15 +52,23 @@ export default createEntity({
 
   reducer: (state = {}, { type, payload }) => {
     if (type === Questions.actionTypes.CREATE) {
-      const { question } = payload;
-      const schema = getCollectionVirtualSchemaId(question.collection);
-      if (!state[schema]) {
-        return state;
+      const { question, status, data } = payload;
+      if (question) {
+        const schema = getCollectionVirtualSchemaId(question.collection);
+        if (!state[schema]) {
+          return state;
+        }
+        const virtualQuestionId = getQuestionVirtualTableId(question);
+        return updateIn(state, [schema, "tables"], tables =>
+          addTableAvoidingDuplicates(tables, virtualQuestionId),
+        );
       }
-      const virtualQuestionId = getQuestionVirtualTableId(question);
-      return updateIn(state, [schema, "tables"], tables =>
-        addTableAvoidingDuplicates(tables, virtualQuestionId),
-      );
+      // IF there is no question
+      // AND if the request has failed,
+      // throw the error message to display
+      else if (status === 400 && data?.message) {
+        throw new Error(data.message);
+      }
     }
 
     if (type === Questions.actionTypes.UPDATE) {

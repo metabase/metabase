@@ -3,10 +3,10 @@
             [compojure.core :refer [GET]]
             [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
             [metabase.api.common :as api]
-            [metabase.api.table :as table-api]
+            [metabase.api.table :as api.table]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.card :refer [Card]]
-            [metabase.models.interface :as models.i]
+            [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group-membership :refer [PermissionsGroupMembership]]
             [metabase.models.table :as table :refer [Table]]
@@ -22,7 +22,7 @@
   [table-or-table-id user-or-user-id]
   (some->> (db/query {:select [:c.id :c.dataset_query]
                       :from [[GroupTableAccessPolicy :gtap]]
-                      :join [[PermissionsGroupMembership :pgm] [:= :gtap.group_id :pgm.group_id ]
+                      :join [[PermissionsGroupMembership :pgm] [:= :gtap.group_id :pgm.group_id]
                              [Card :c] [:= :c.id :gtap.card_id]]
                       :where [:and
                               [:= :gtap.table_id (u/the-id table-or-table-id)]
@@ -58,25 +58,27 @@
   excluded from what is show in the query builder. When the user has full permissions (or no permissions) this route
   doesn't add/change anything from the OSS version. See the docs on the OSS version of the endpoint for more
   information."
-  [id include_sensitive_fields include_hidden_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields    (s/maybe su/BooleanString)}
+  [id include_sensitive_fields include_hidden_fields include_editable_data_model]
+  {include_sensitive_fields    (s/maybe su/BooleanString)
+   include_hidden_fields       (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
   (let [table            (api/check-404 (Table id))
         segmented-perms? (only-segmented-perms? table)
         thunk            (fn []
                            (maybe-filter-fields
                             table
-                            (table-api/fetch-query-metadata
+                            (api.table/fetch-query-metadata
                              table
-                             include_sensitive_fields
-                             include_hidden_fields)))]
+                             {:include-sensitive-fields?    include_sensitive_fields
+                              :include-hidden-fields?       include_hidden_fields
+                              :include-editable-data-model? include_editable_data_model})))]
     ;; if the user has segmented perms, temporarily upgrade their perms to read perms for the Table so they can see
     ;; the metadata
     (if segmented-perms?
       (binding [api/*current-user-permissions-set* (atom
                                                     (set/union
                                                      @api/*current-user-permissions-set*
-                                                     (models.i/perms-objects-set table :read)))]
+                                                     (mi/perms-objects-set table :read)))]
         (thunk))
       (thunk))))
 

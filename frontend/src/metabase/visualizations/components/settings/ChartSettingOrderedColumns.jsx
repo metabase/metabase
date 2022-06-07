@@ -59,11 +59,9 @@ export default class ChartSettingOrderedColumns extends Component {
   };
 
   handleSortEnd = ({ oldIndex, newIndex }) => {
-    const enabledColumns = [...this.props.value].filter(columnSetting =>
-      findColumnForColumnSetting(this.props.columns, columnSetting),
-    );
-    enabledColumns.splice(newIndex, 0, enabledColumns.splice(oldIndex, 1)[0]);
-    this.props.onChange(enabledColumns);
+    const fields = [...this.props.value];
+    fields.splice(newIndex, 0, fields.splice(oldIndex, 1)[0]);
+    this.props.onChange(fields);
   };
 
   handleEdit = columnSetting => {
@@ -134,7 +132,7 @@ export default class ChartSettingOrderedColumns extends Component {
           </div>
         )}
         {disabledColumns.length > 0 || additionalFieldOptions.count > 0 ? (
-          <h4 className="mb2 mt4 pt4 border-top">{`More columns`}</h4>
+          <h4 className="mb2 mt4 pt4 border-top">{t`More columns`}</h4>
         ) : null}
         {disabledColumns.map((columnSetting, index) => (
           <ColumnItem

@@ -2,6 +2,30 @@
 
 In addition to specifying the host, port, database name and user credentials for the database connection, you have the option of securing that connection.
 
+
+## Schemas
+
+Here you can specify which schemas you want to sync and scan. Options are:
+
+- All
+- Only these...
+- All except...
+
+For the **Only these** and **All except** options, you can input a comma-separated list of values to tell Metabase which schemas you want to include (or exclude). For example:
+
+```
+foo,bar,baz
+```
+
+You can use the `*` wildcard to match multiple schemas.
+
+Let's say you have three schemas: foo, bar, and baz.
+
+- If you have **Only these...** set, and enter the string `b*`, you'll sync with bar and baz.
+- If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
+
+Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
+
 ## Use a secure connection (SSL)
 
 ### SSL Mode
@@ -58,5 +82,12 @@ This is a lightweight process that checks for updates to this database’s schem
 
 This enables Metabase to scan for additional field values during syncs allowing smarter behavior, like improved auto-binning on your bar charts.
 
+## Note on syncing records that include JSON 
+
+Postgres JSON fields don’t have schema, so Metabase can’t rely on table metadata to define which keys a JSON field has. To work around the lack of schema, Metabase will get the first ten thousand records and parse the JSON in those records to infer the JSON's "schema". The reason Metabase limits itself to ten thousand records is so that syncing metadata doesn't put unnecessary strain on your database.
+
+The problem is that if the keys in the JSON vary record to record, the first ten thousand rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first ten thousand row.
+
 [ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
+

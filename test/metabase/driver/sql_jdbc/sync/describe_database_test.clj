@@ -3,8 +3,8 @@
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql-jdbc.sync.describe-database :as describe-database]
-            [metabase.driver.sql-jdbc.sync.interface :as i]
+            [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+            [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
             [metabase.driver.util :as driver.u]
             [metabase.models :refer [Database Table]]
             [metabase.query-processor :as qp]
@@ -24,7 +24,7 @@
       (is (= []
              (mt/rows
                (qp/process-query
-                (let [[sql] (describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
+                (let [[sql] (sql-jdbc.describe-database/simple-select-probe-query (or driver/*driver* :h2) schema name)]
                   (mt/native-query {:query sql})))))))))
 
 (defn- sql-jdbc-drivers-with-default-describe-database-impl
@@ -40,9 +40,9 @@
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
     (with-open [conn (jdbc/get-connection spec)]
       ;; We have to mock this to make it work with all DBs
-      (with-redefs [describe-database/all-schemas (constantly #{"PUBLIC"})]
+      (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
         (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-               (->> (into [] (describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
+               (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
                     (map :name)
                     sort)))))))
 
@@ -50,7 +50,7 @@
   (let [spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
     (with-open [conn (jdbc/get-connection spec)]
       (is (= ["CATEGORIES" "CHECKINS" "USERS" "VENUES"]
-             (->> (into [] (describe-database/post-filtered-active-tables :h2 conn nil nil))
+             (->> (into [] (sql-jdbc.describe-database/post-filtered-active-tables :h2 conn nil nil))
                   (map :name)
                   sort))))))
 
@@ -59,7 +59,7 @@
                     {:name "VENUES", :schema "PUBLIC", :description nil}
                     {:name "CATEGORIES", :schema "PUBLIC", :description nil}
                     {:name "CHECKINS", :schema "PUBLIC", :description nil}}}
-         (describe-database/describe-database :h2 (mt/id)))))
+         (sql-jdbc.describe-database/describe-database :h2 (mt/id)))))
 
 (defn- describe-database-with-open-resultset-count
   "Just like `describe-database`, but instead of returning the database description returns the number of ResultSet
@@ -73,11 +73,11 @@
     (with-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
                                         (swap! resultsets conj rs)
                                         (apply orig-result-set-seq rs more))]
-      ;; taking advantage of the fact that `describe-database/describe-database` can accept JBDC connections instead of
-      ;; databases; by doing this we can keep the connection open and check whether resultsets are still open before
-      ;; they would normally get closed
+      ;; taking advantage of the fact that `sql-jdbc.describe-database/describe-database` can accept JBDC connections
+      ;; instead of databases; by doing this we can keep the connection open and check whether resultsets are still
+      ;; open before they would normally get closed
       (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
-        (describe-database/describe-database driver conn)
+        (sql-jdbc.describe-database/describe-database driver conn)
         (reduce + (for [^ResultSet rs @resultsets]
                     (if (.isClosed rs) 0 1)))))))
 
@@ -96,7 +96,7 @@
     (sync/sync-database! (mt/db))
     (is (= 1 (count-active-tables-in-db (mt/id))))
     ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
-    (with-redefs [i/have-select-privilege? (constantly false)]
+    (with-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
       (sync/sync-database! (mt/db))
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))

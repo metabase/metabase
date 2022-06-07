@@ -2,23 +2,16 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
-import { t } from "ttag";
+import _ from "underscore";
 
 import Databases from "metabase/entities/databases";
 
 import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
 import SaveStatus from "metabase/components/SaveStatus";
-import Toggle from "metabase/core/components/Toggle";
 import Icon from "metabase/components/Icon";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 
-@withRouter
-@Databases.loadList({
-  query: () => ({
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.databaseDataModelQueryProps,
-  }),
-})
-export default class MetadataHeader extends Component {
+class MetadataHeader extends Component {
   static propTypes = {
     databaseId: PropTypes.number,
     databases: PropTypes.array.isRequired,
@@ -76,14 +69,18 @@ export default class MetadataHeader extends Component {
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <SaveStatus />
-          <div className="mr1 text-medium">{t`Show original schema`}</div>
-          <Toggle
-            value={this.props.isShowingSchema}
-            onChange={this.props.toggleShowSchema}
-          />
           {this.renderTableSettingsButton()}
         </div>
       </div>
     );
   }
 }
+
+export default _.compose(
+  withRouter,
+  Databases.loadList({
+    query: {
+      ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    },
+  }),
+)(MetadataHeader);

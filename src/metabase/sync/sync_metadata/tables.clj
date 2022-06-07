@@ -3,10 +3,10 @@
   (:require [clojure.data :as data]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models.database :as db-model :refer [Database]]
+            [metabase.models.database :refer [Database]]
             [metabase.models.humanization :as humanization]
             [metabase.models.permissions :as perms]
-            [metabase.models.permissions-group :as group]
+            [metabase.models.permissions-group :as perms-group]
             [metabase.models.table :as table :refer [Table]]
             [metabase.sync.fetch-metadata :as fetch-metadata]
             [metabase.sync.interface :as i]
@@ -202,7 +202,7 @@
     ;; update native download perms for all groups if any tables were added or removed
     (when (or (seq new-tables) (seq old-tables))
       (sync-util/with-error-handling (format "Error updating native download perms for %s" (sync-util/name-for-logging database))
-        (doseq [{id :id} (group/non-admin-groups)]
+        (doseq [{id :id} (perms-group/non-admin-groups)]
           (perms/update-native-download-permissions! id (u/the-id database)))))
 
     {:updated-tables (+ (count new-tables) (count old-tables))

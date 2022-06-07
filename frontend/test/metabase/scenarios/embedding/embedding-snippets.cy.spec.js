@@ -1,4 +1,9 @@
-import { restore, popover, visitDashboard } from "__support__/e2e/cypress";
+import {
+  restore,
+  popover,
+  visitDashboard,
+  isEE,
+} from "__support__/e2e/cypress";
 
 import { JS_CODE, IFRAME_CODE } from "./embedding-snippets";
 
@@ -22,14 +27,13 @@ describe("scenarios > embedding > code snippets", () => {
     cy.get(".ace_content")
       .first()
       .invoke("text")
-      .should("match", JS_CODE);
+      .should("match", JS_CODE(isEE));
 
     cy.get(".ace_content")
       .last()
       .should("have.text", IFRAME_CODE);
 
-    cy.findAllByTestId("select-button")
-      .first()
+    cy.findAllByTestId("embed-backend-select-button")
       .should("contain", "Node.js")
       .click();
 
@@ -39,8 +43,7 @@ describe("scenarios > embedding > code snippets", () => {
       .and("contain", "Python")
       .and("contain", "Clojure");
 
-    cy.findAllByTestId("select-button")
-      .last()
+    cy.findAllByTestId("embed-frontend-select-button")
       .should("contain", "Mustache")
       .click();
 

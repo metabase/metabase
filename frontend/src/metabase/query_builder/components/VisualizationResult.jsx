@@ -33,6 +33,15 @@ export default class VisualizationResult extends Component {
     this.setState({ showCreateAlertModal: false });
   };
 
+  getObjectDetailData = series => {
+    return [
+      {
+        ...series[0],
+        card: { ...series[0].card, display: "object" },
+      },
+    ];
+  };
+
   render() {
     const {
       question,
@@ -93,30 +102,42 @@ export default class VisualizationResult extends Component {
         this.props,
         ...ALLOWED_VISUALIZATION_PROPS,
       );
+      const hasDrills = this.props.query.isEditable();
       return (
-        <Visualization
-          className={className}
-          rawSeries={rawSeries}
-          onChangeCardAndRun={navigateToNewCardInsideQB}
-          isEditing={true}
-          isQueryBuilder={true}
-          queryBuilderMode={queryBuilderMode}
-          showTitle={false}
-          metadata={question.metadata()}
-          timelineEvents={timelineEvents}
-          selectedTimelineEventIds={selectedTimelineEventIds}
-          handleVisualizationClick={this.props.handleVisualizationClick}
-          onOpenTimelines={this.props.onOpenTimelines}
-          onSelectTimelineEvents={this.props.selectTimelineEvents}
-          onDeselectTimelineEvents={this.props.deselectTimelineEvents}
-          onOpenChartSettings={this.props.onOpenChartSettings}
-          onUpdateWarnings={this.props.onUpdateWarnings}
-          onUpdateVisualizationSettings={
-            this.props.onUpdateVisualizationSettings
-          }
-          query={this.props.query}
-          {...vizSpecificProps}
-        />
+        <>
+          <Visualization
+            className={className}
+            rawSeries={rawSeries}
+            onChangeCardAndRun={
+              hasDrills ? navigateToNewCardInsideQB : undefined
+            }
+            isEditing={true}
+            isObjectDetail={false}
+            isQueryBuilder={true}
+            queryBuilderMode={queryBuilderMode}
+            showTitle={false}
+            metadata={question.metadata()}
+            timelineEvents={timelineEvents}
+            selectedTimelineEventIds={selectedTimelineEventIds}
+            handleVisualizationClick={this.props.handleVisualizationClick}
+            onOpenTimelines={this.props.onOpenTimelines}
+            onSelectTimelineEvents={this.props.selectTimelineEvents}
+            onDeselectTimelineEvents={this.props.deselectTimelineEvents}
+            onOpenChartSettings={this.props.onOpenChartSettings}
+            onUpdateWarnings={this.props.onUpdateWarnings}
+            onUpdateVisualizationSettings={
+              this.props.onUpdateVisualizationSettings
+            }
+            query={this.props.query}
+            {...vizSpecificProps}
+          />
+          {this.props.isObjectDetail && (
+            <Visualization
+              isObjectDetail={true}
+              rawSeries={this.getObjectDetailData(rawSeries)}
+            />
+          )}
+        </>
       );
     }
   }

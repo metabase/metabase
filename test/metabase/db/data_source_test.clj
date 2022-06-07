@@ -3,12 +3,12 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase.config :as config]
-   [metabase.connection-pool :as pool]
+   [metabase.connection-pool :as connection-pool]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.test :as mt]))
 
 (defn- ->DataSource [s properties]
-  (#'mdb.data-source/->DataSource s (some-> (not-empty properties) pool/map->properties)))
+  (#'mdb.data-source/->DataSource s (some-> (not-empty properties) connection-pool/map->properties)))
 
 (deftest broken-out-details-test
   (testing :postgres

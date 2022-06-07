@@ -12,8 +12,8 @@ const mapStateToProps = (state: State) => ({
 });
 
 export default _.compose(
-  Databases.loadList(),
-  RecentItems.loadList({ reload: true }),
-  PopularItems.loadList({ reload: true }),
+  Databases.loadList({ loadingAndErrorWrapper: false }),
+  RecentItems.loadList({ reload: true, loadingAndErrorWrapper: false }),
+  PopularItems.loadList({ reload: true, loadingAndErrorWrapper: false }),
   connect(mapStateToProps),
 )(HomeContent);

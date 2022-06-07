@@ -10,12 +10,13 @@ import { t } from "ttag";
 
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import {
-  getIsWhitelabeled,
+  getHasCustomBranding,
+  getHasCustomColors,
   getHasCustomLogo,
 } from "metabase-enterprise/settings/selectors";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ColorSchemeWidget from "./components/ColorSchemeWidget";
+import ColorSettingsWidget from "./components/ColorSettingsWidget";
 import LogoUpload from "./components/LogoUpload";
 import LogoIcon from "./components/LogoIcon";
 import {
@@ -27,7 +28,7 @@ if (hasPremiumFeature("whitelabel")) {
   PLUGIN_LANDING_PAGE.push(() => MetabaseSettings.get("landing-page"));
   PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
     whitelabel: {
-      name: "Whitelabel",
+      name: t`Appearance`,
       settings: [
         {
           key: "application-name",
@@ -35,9 +36,24 @@ if (hasPremiumFeature("whitelabel")) {
           type: "string",
         },
         {
+          key: "application-font",
+          display_name: t`Font`,
+          type: "select",
+          options: MetabaseSettings.get("available-fonts").map(font => ({
+            name: font,
+            value: font,
+          })),
+          defaultValue: "Lato",
+          onChanged: (oldFont, newFont) => {
+            if (oldFont !== newFont) {
+              window.location.reload();
+            }
+          },
+        },
+        {
           key: "application-colors",
           display_name: t`Color Palette`,
-          widget: ColorSchemeWidget,
+          widget: ColorSettingsWidget,
         },
         {
           key: "application-logo-url",
@@ -62,20 +78,16 @@ if (hasPremiumFeature("whitelabel")) {
   }));
 
   PLUGIN_APP_INIT_FUCTIONS.push(({ root }) => {
-    MetabaseSettings.on("application-colors", updateColors);
-    MetabaseSettings.on("application-colors", () => {
-      root.forceUpdate();
-    });
     updateColors();
   });
 
   enabledApplicationNameReplacement();
 
   PLUGIN_LOGO_ICON_COMPONENTS.push(LogoIcon);
+  PLUGIN_SELECTORS.canWhitelabel = () => true;
 }
 
 // these selectors control whitelabeling UI
-PLUGIN_SELECTORS.getShowBrandLogo = state => !getIsWhitelabeled(state);
-PLUGIN_SELECTORS.getShowBrandScene = state => !getIsWhitelabeled(state);
-PLUGIN_SELECTORS.getLogoBackgroundClass = state =>
-  getHasCustomLogo(state) ? "bg-brand" : "bg-white";
+PLUGIN_SELECTORS.getHasCustomLogo = getHasCustomLogo;
+PLUGIN_SELECTORS.getHasCustomColors = getHasCustomColors;
+PLUGIN_SELECTORS.getHasCustomBranding = getHasCustomBranding;
