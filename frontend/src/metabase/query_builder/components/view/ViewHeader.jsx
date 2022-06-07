@@ -403,8 +403,10 @@ function ViewTitleHeaderRightSide(props) {
   const isReadOnlyQuery = query.readOnly();
   const canEditQuery = !isReadOnlyQuery;
   const canRunAdhocQueries = !isReadOnlyQuery;
+  const canNest = query.canNest();
   const hasExploreResultsLink =
     isNative &&
+    canNest &&
     isSaved &&
     canRunAdhocQueries &&
     MetabaseSettings.get("enable-nested-queries");
