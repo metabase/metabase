@@ -17,6 +17,7 @@ import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/hooks/use-web-notification";
 import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 
+import Actions from "metabase/entities/actions";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
 
@@ -180,4 +181,5 @@ export default _.compose(
     titleIndex: 1,
   })),
   titleWithLoadingTime("loadingStartTime"),
+  Actions.loadList(),
 )(DashboardApp);
