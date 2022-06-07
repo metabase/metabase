@@ -104,6 +104,7 @@ describe("scenarios > filters > bulk filtering", () => {
     openFilterModal();
 
     modal().within(() => {
+      cy.findByText("Summaries").click();
       cy.findByLabelText("Count").click();
     });
 
