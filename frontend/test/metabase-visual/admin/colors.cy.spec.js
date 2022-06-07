@@ -1,6 +1,5 @@
 import {
   describeEE,
-  popover,
   restore,
   visitQuestionAdhoc,
 } from "__support__/e2e/cypress";
@@ -26,16 +25,16 @@ describeEE("visual tests > admin > colors", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.intercept("PUT", "/api/setting/application-colors").as("updateColors");
   });
 
   it("should update brand colors", () => {
-    cy.visit("/admin/settings/whitelabel");
-
-    const title = "User interface colors";
-    updateColor(title, "#509EE3", "#885AB1");
-    updateColor(title, "#88BF4D", "#ED6E6E");
-    updateColor(title, "#7172AD", "#F9CF48");
+    cy.request("PUT", "/api/setting/application-colors", {
+      value: {
+        brand: "#885AB1",
+        filter: "#F9CF48",
+        summarize: "#ED6E6E",
+      },
+    });
 
     visitQuestionAdhoc(questionDetails);
     cy.percySnapshot("chart");
@@ -47,21 +46,3 @@ describeEE("visual tests > admin > colors", () => {
     cy.percySnapshot("summarize");
   });
 });
-
-const section = title => {
-  return cy.findByText(title).parent();
-};
-
-const updateColor = (title, oldColor, newColor) => {
-  section(title).within(() => {
-    cy.findByLabelText(oldColor).click();
-  });
-
-  popover().within(() => {
-    cy.findByRole("textbox").clear();
-    cy.findByRole("textbox").type(newColor);
-    cy.findByRole("textbox").type("{esc}");
-  });
-
-  cy.wait("@updateColors");
-};
