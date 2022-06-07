@@ -111,6 +111,16 @@
   (let [defaults {:display_name (humanization/name->human-readable-name (:name field))}]
     (merge defaults field)))
 
+(defn- pre-update [{:keys [has_field_values exceeded_limit] :as field}]
+  (merge field
+         ;; exceeded_limit = `true` only makes sense when `has_field_values=:list`
+         ;; let's make sure it is not `true` for other types
+         (when (and (any? [has_field_values exceeded_limit])
+                    (not= (or has_field_values
+                              (db/select-one-field :has_field_values Field :id (:id field)))
+                          :list))
+           {:exceeded_limit false})))
+
 ;;; Field permissions
 ;; There are several API endpoints where large instances can return many thousands of Fields. Normally Fields require
 ;; a DB call to fetch information about their Table, because a Field's permissions set is the same as its parent
@@ -187,7 +197,8 @@
                                        :settings          :json
                                        :nfc_path          :json})
           :properties     (constantly {:timestamped? true})
-          :pre-insert     pre-insert})
+          :pre-insert     pre-insert
+          :pre-update     pre-update})
 
   mi/IObjectPermissions
   (merge mi/IObjectPermissionsDefaults

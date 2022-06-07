@@ -98,7 +98,10 @@
   (testing "(#2332) check that if field values are long we skip over them"
     (with-redefs [metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])]
       (is (= nil
-             (#'field-values/distinct-values {}))))))
+             (#'field-values/distinct-values {})))
+      (testing "still returns the values if we disable length check"
+        (is (= [(str/join (repeat 50000 "A"))]
+              (#'field-values/distinct-values {} false)))))))
 
 (deftest clear-field-values!-test
   (mt/with-temp* [Database    [{database-id :id}]
@@ -119,21 +122,20 @@
   (sync/sync-database! db)
   (find-values field-values-id))
 
-(deftest values-less-than-total-max-length?-test
-  (testing "values-less-than-total-max-length?"
-    (with-redefs [field-values/total-max-length 10]
-      (is (= true
-             (#'field-values/values-less-than-total-max-length? ["a" "b" "c"])))
-      (is (= false
-             (#'field-values/values-less-than-total-max-length? ["123" "4567" "8901"])))
-      (testing "Should only consume enough values to determine whether length is over limit"
-        (let [realized? (atom false)
-              vs        (lazy-cat ["123" "4567" "8901" "2345"] (do (reset! realized? true) ["Shouldn't get here"]))]
+(deftest values-exceed-total-max-length?-test
+  (with-redefs [field-values/total-max-length 10]
+    (is (= false
+           (#'field-values/values-exceed-total-max-length? ["a" "b" "c"])))
+    (is (= true
+           (#'field-values/values-exceed-total-max-length? ["123" "4567" "8901"])))
+    (testing "Should only consume enough values to determine whether length is over limit"
+      (let [realized? (atom false)
+            vs        (lazy-cat ["123" "4567" "8901" "2345"] (do (reset! realized? true) ["Shouldn't get here"]))]
+        (is (= true
+               (#'field-values/values-exceed-total-max-length? vs)))
+        (testing "Entire lazy seq shouldn't be realized"
           (is (= false
-                 (#'field-values/values-less-than-total-max-length? vs)))
-          (testing "Entire lazy seq shouldn't be realized"
-            (is (= false
-                   @realized?))))))))
+                 @realized?)))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"

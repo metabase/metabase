@@ -11846,6 +11846,21 @@ databaseChangeLog:
             tableName: report_card
 
 
+  - changeSet:
+      id: v44.00-029
+      author: qnkhuat
+      comment: Added 0.44.0 - Add exceeded_limit to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: exceeded_limit
+                  type: boolean
+                  remarks: Whether or not a field has values store in metabase_fieldvalues is exceeded the limits
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

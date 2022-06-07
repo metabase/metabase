@@ -46,7 +46,7 @@
                       (u/pprint-to-str results))
            (throw e)))))
 
-(def ^:private ^Integer absolute-max-distinct-values-limit
+(def ^Integer absolute-max-distinct-values-limit
   "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
   less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
   values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.

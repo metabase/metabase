@@ -1,6 +1,8 @@
 (ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
+            [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
             [metabase.models.table :refer [Table]]
@@ -52,51 +54,106 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
 
-(deftest auto-list-test
+(deftest auto-list-with-cardinality-threshold-test
   ;; A Field with 50 values should get marked as `auto-list` on initial sync, because it should be 'list', but was
   ;; marked automatically, as opposed to explicitly (`list`)
   (one-off-dbs/with-blueberries-db
     ;; insert 50 rows & sync
-    (one-off-dbs/insert-rows-and-sync! (range 50))
+    (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
     (testing "has_field_values should be auto-list"
       (is (= :auto-list
-             (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :num)))))
+             (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
 
     (testing "... and it should also have some FieldValues"
-      (is (= {:values                (range 50)
+      (is (= {:values                (one-off-dbs/range-str 50)
               :human_readable_values []}
              (into {} (db/select-one [FieldValues :values :human_readable_values]
-                        :field_id (mt/id :blueberries_consumed :num))))))
+                                     :field_id (mt/id :blueberries_consumed :str))))))
 
     (testing (str "if the number grows past the threshold & we sync again it should get unmarked as auto-list and set "
                   "back to `nil` (#3215)\n")
       ;; now insert enough bloobs to put us over the limit and re-sync.
-      (one-off-dbs/insert-rows-and-sync! (range 50 (+ 100 field-values/auto-list-cardinality-threshold)))
+      (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/auto-list-cardinality-threshold)))
       (testing "has_field_values should have been set to nil."
         (is (= nil
-               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :num)))))
+               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
 
       (testing "its FieldValues should also get deleted."
         (is (= nil
                (db/select-one [FieldValues :values :human_readable_values]
-                 :field_id (mt/id :blueberries_consumed :num))))))))
+                              :field_id (mt/id :blueberries_consumed :str))))))))
 
-(deftest list-test
-  (testing (str "If we had explicitly marked the Field as `list` (instead of `auto-list`), adding extra values "
-                "shouldn't change anything!")
+(deftest auto-list-with-max-length-threshold-test
+  (one-off-dbs/with-blueberries-db
+    ;; insert 50 rows & sync
+    (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
+    (testing "has_field_values should be auto-list"
+      (is (= :auto-list
+             (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
+
+    (testing "... and it should also have some FieldValues"
+      (is (= {:values                [(str/join (repeat 50 "A"))]
+              :human_readable_values []}
+             (into {} (db/select-one [FieldValues :values :human_readable_values]
+                                     :field_id (mt/id :blueberries_consumed :str))))))
+
+    (testing (str "If the total length of all values exceeded the threahshold, it should get unmarked as auto list "
+                  "and set back to `nil`")
+      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/total-max-length) "A"))])
+      (testing "has_field_values should have been set to nil."
+        (is (= nil
+               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :str)))))
+
+      (testing "its FieldValues should also get deleted."
+        (is (= nil
+               (db/select-one [FieldValues :values :human_readable_values]
+                              :field_id (mt/id :blueberries_consumed :str))))))))
+
+(deftest list-with-cardinality-threshold-test
+  (testing "If we had explicitly marked the Field as `list` (instead of `auto-list`)"
     (one-off-dbs/with-blueberries-db
       ;; insert 50 bloobs & sync
-      (one-off-dbs/insert-rows-and-sync! (range 50))
+      (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50))
       ;; change has_field_values to list
-      (db/update! Field (mt/id :blueberries_consumed :num) :has_field_values "list")
-      ;; insert more bloobs & re-sync
-      (one-off-dbs/insert-rows-and-sync! (range 50 (+ 100 field-values/auto-list-cardinality-threshold)))
-      (testing "has_field_values shouldn't change"
-        (is (= :list
-               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :num)))))
-      (testing (str "it should still have FieldValues, and have new ones for the new Values. It should have 200 values "
-                    "even though this is past the normal limit of 100 values!")
-        (is (= {:values                (range 200)
-                :human_readable_values []}
-               (into {} (db/select-one [FieldValues :values :human_readable_values]
-                          :field_id (mt/id :blueberries_consumed :num)))))))))
+      (db/update! Field (mt/id :blueberries_consumed :str) :has_field_values "list")
+      (testing "exceeded_limit should initially be false"
+        (is (= false
+               (db/select-one-field :exceeded_limit Field :id (mt/id :blueberries_consumed :str)))))
+
+      (testing "adding more values even if it's exceed our cardinality limit, "
+        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
+        (testing "has_field_values shouldn't change and exceeded_limit should be true"
+          (is (= {:has_field_values :list
+                  :exceeded_limit   true}
+                 (into {} (db/select-one [Field :has_field_values :exceeded_limit]
+                                         :id (mt/id :blueberries_consumed :str))))))
+        (testing (str "it should still have FieldValues but only has at most 5000 values,"
+                      "becauase it's the maximum number of values we query from DB.")
+          (is (= {:values                (take metadata-queries/absolute-max-distinct-values-limit
+                                               (one-off-dbs/range-str (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
+                  :human_readable_values []}
+                 (into {} (db/select-one [FieldValues :values :human_readable_values]
+                                         :field_id (mt/id :blueberries_consumed :str))))))))))
+
+(deftest list-with-max-length-threshold-test
+  (testing "If we had explicitly marked the Field as `list` (instead of `auto-list`) "
+    (one-off-dbs/with-blueberries-db
+      ;; insert a row with values contain 50 chars
+      (one-off-dbs/insert-rows-and-sync! [(str/join (repeat 50 "A"))])
+      ;; change has_field_values to list
+      (db/update! Field (mt/id :blueberries_consumed :str) :has_field_values "list")
+      (testing "exceeded_limit should initially be false"
+        (is (= false
+               (db/select-one-field :exceeded_limit Field :id (mt/id :blueberries_consumed :str)))))
+
+      (testing "insert a row with the value length exceeds our length limit\n"
+        (one-off-dbs/insert-rows-and-sync! [(str/join (repeat (+ 100 field-values/total-max-length) "A"))])
+        (testing "has_field_values shouldn't change and exceeded_limit should be true"
+          (is (= {:has_field_values :list
+                  :exceeded_limit   true}
+                 (into {} (db/select-one [Field :has_field_values :exceeded_limit]
+                                         :id (mt/id :blueberries_consumed :str))))))
+        (testing "It shouldn't have Field values"
+          (is (= nil
+                 (db/select-one [FieldValues :values :human_readable_values]
+                                :field_id (mt/id :blueberries_consumed :str)))))))))
