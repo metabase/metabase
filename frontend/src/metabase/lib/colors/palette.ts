@@ -8,7 +8,8 @@ export const ACCENT_COUNT = 8;
 /* eslint-disable no-color-literals */
 export const colors: ColorPalette = {
   brand: "#509EE3",
-  "brand-light": "#DDECFA",
+  summarize: "#88BF4D",
+  filter: "#7172AD",
   accent0: "#509EE3",
   accent1: "#88BF4D",
   accent2: "#A989C5",
@@ -34,7 +35,6 @@ export const colors: ColorPalette = {
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
   "bg-yellow": "#FFFCF2",
-  focus: "#CBE2F7",
   shadow: "rgba(0,0,0,0.08)",
   border: "#EEECEC",
 
@@ -51,34 +51,32 @@ const aliases: Record<string, (palette: ColorPalette) => string> = {
   dashboard: palette => color("brand", palette),
   nav: palette => color("bg-white", palette),
   content: palette => color("bg-light", palette),
-  summarize: palette => color("accent1", palette),
   database: palette => color("accent2", palette),
   pulse: palette => color("accent4", palette),
-  filter: palette => color("accent7", palette),
 
   "brand-light": palette => lighten(color("brand", palette), 0.532),
   focus: palette => lighten(color("brand", palette), 0.7),
 
-  "accent0-light": palette => lighten(color(`accent0`, palette), 0.3),
-  "accent1-light": palette => lighten(color(`accent1`, palette), 0.3),
-  "accent2-light": palette => lighten(color(`accent2`, palette), 0.3),
-  "accent3-light": palette => lighten(color(`accent3`, palette), 0.3),
-  "accent4-light": palette => lighten(color(`accent4`, palette), 0.3),
-  "accent5-light": palette => lighten(color(`accent5`, palette), 0.3),
-  "accent6-light": palette => lighten(color(`accent6`, palette), 0.3),
-  "accent7-light": palette => lighten(color(`accent7`, palette), 0.3),
+  "accent0-light": palette => tint(color(`accent0`, palette)),
+  "accent1-light": palette => tint(color(`accent1`, palette)),
+  "accent2-light": palette => tint(color(`accent2`, palette)),
+  "accent3-light": palette => tint(color(`accent3`, palette)),
+  "accent4-light": palette => tint(color(`accent4`, palette)),
+  "accent5-light": palette => tint(color(`accent5`, palette)),
+  "accent6-light": palette => tint(color(`accent6`, palette)),
+  "accent7-light": palette => tint(color(`accent7`, palette)),
 
-  "accent0-dark": palette => darken(color(`accent0`, palette), 0.3),
-  "accent1-dark": palette => darken(color(`accent1`, palette), 0.3),
-  "accent2-dark": palette => darken(color(`accent2`, palette), 0.3),
-  "accent3-dark": palette => darken(color(`accent3`, palette), 0.3),
-  "accent4-dark": palette => darken(color(`accent4`, palette), 0.3),
-  "accent5-dark": palette => darken(color(`accent5`, palette), 0.3),
-  "accent6-dark": palette => darken(color(`accent6`, palette), 0.3),
-  "accent7-dark": palette => darken(color(`accent7`, palette), 0.3),
+  "accent0-dark": palette => shade(color(`accent0`, palette)),
+  "accent1-dark": palette => shade(color(`accent1`, palette)),
+  "accent2-dark": palette => shade(color(`accent2`, palette)),
+  "accent3-dark": palette => shade(color(`accent3`, palette)),
+  "accent4-dark": palette => shade(color(`accent4`, palette)),
+  "accent5-dark": palette => shade(color(`accent5`, palette)),
+  "accent6-dark": palette => shade(color(`accent6`, palette)),
+  "accent7-dark": palette => shade(color(`accent7`, palette)),
 };
 
-export function color(color: string, palette = colors) {
+export const color = (color: string, palette = colors) => {
   if (color in palette) {
     return palette[color];
   }
@@ -88,7 +86,7 @@ export function color(color: string, palette = colors) {
   }
 
   return color;
-}
+};
 
 export const alpha = (c: string, a: number) => {
   return Color(color(c))
@@ -106,4 +104,14 @@ export const darken = (c: string, f: number = 0.25) => {
   return Color(color(c))
     .darken(f)
     .string();
+};
+
+export const tint = (c: string, f: number = 0.125) => {
+  const value = Color(color(c));
+  return value.lightness(value.lightness() + f * 100).string();
+};
+
+export const shade = (c: string, f: number = 0.125) => {
+  const value = Color(color(c));
+  return value.lightness(value.lightness() - f * 100).string();
 };
