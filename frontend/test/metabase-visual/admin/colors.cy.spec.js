@@ -27,7 +27,7 @@ describeEE("visual tests > admin > colors", () => {
     cy.signInAsAdmin();
   });
 
-  it("should update brand colors", () => {
+  it("should use custom brand colors", () => {
     cy.request("PUT", "/api/setting/application-colors", {
       value: {
         brand: "#885AB1",
