@@ -165,3 +165,10 @@
                                   :driver     driver
                                   :raw-hsql   raw-hsql
                                   :create-sql create-hsql}))))}))
+
+;; TODO -- will need to parse the values in case they're not integers or strings.
+#_(metabase.driver.sql.query-processor/->honeysql :postgres
+                                                  [:value
+                                                   "232333d9-1434-4b1e-973d-4536d1dc8411"
+                                                   {:base_type :type/UUID
+                                                    :database_type "uuid"}])
