@@ -53,4 +53,23 @@ describeEE("visual tests > admin > colors", () => {
     cy.findByText("Summarize").click();
     cy.percySnapshot("summarize");
   });
+
+  it("should use custom chart colors", () => {
+    cy.request("PUT", "/api/setting/application-colors", {
+      value: {
+        accent0: "#885AB1",
+        accent1: "#F9CF48",
+        accent2: "#ED6E6E",
+      },
+    });
+
+    visitQuestionAdhoc(questionDetails);
+    cy.percySnapshot("chart");
+
+    cy.findByText("Filter").click();
+    cy.percySnapshot("filters");
+
+    cy.findByText("Summarize").click();
+    cy.percySnapshot("summarize");
+  });
 });
