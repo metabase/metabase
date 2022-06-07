@@ -235,7 +235,6 @@ class Dashboard extends Component {
       <EditModeParametersList
         parameters={parameters}
         editingParameter={editingParameter}
-        setParameterValue={setParameterValue}
         setParameterIndex={setParameterIndex}
         setEditingParameter={setEditingParameter}
       />
@@ -245,6 +244,7 @@ class Dashboard extends Component {
         dashboard={dashboard}
         isFullscreen={isFullscreen}
         isNightMode={shouldRenderAsNightMode}
+        setParameterValue={setParameterValue}
       />
     );
 

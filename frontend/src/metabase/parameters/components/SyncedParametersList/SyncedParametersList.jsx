@@ -7,7 +7,6 @@ import { useSyncedQueryString } from "metabase/hooks/use-synced-query-string";
 
 const propTypes = {
   parameters: PropTypes.array.isRequired,
-  editingParameter: PropTypes.object,
   dashboard: PropTypes.object,
 
   className: PropTypes.string,
@@ -15,17 +14,13 @@ const propTypes = {
 
   isFullscreen: PropTypes.bool,
   isNightMode: PropTypes.bool,
-  isEditing: PropTypes.bool,
   commitImmediately: PropTypes.bool,
 
-  setParameterValue: PropTypes.func.isRequired,
-  setParameterIndex: PropTypes.func,
-  setEditingParameter: PropTypes.func,
+  setParameterValue: PropTypes.func,
 };
 
 export function SyncedParametersList({
   parameters,
-  editingParameter,
   dashboard,
 
   className,
@@ -33,12 +28,9 @@ export function SyncedParametersList({
 
   isFullscreen,
   isNightMode,
-  isEditing,
   commitImmediately,
 
   setParameterValue,
-  setParameterIndex,
-  setEditingParameter,
 }) {
   useSyncedQueryString(
     () =>
@@ -55,15 +47,11 @@ export function SyncedParametersList({
       className={className}
       parameters={parameters}
       dashboard={dashboard}
-      editingParameter={editingParameter}
       isFullscreen={isFullscreen}
       isNightMode={isNightMode}
       hideParameters={hideParameters}
-      isEditing={isEditing}
       commitImmediately={commitImmediately}
       setParameterValue={setParameterValue}
-      setParameterIndex={setParameterIndex}
-      setEditingParameter={setEditingParameter}
     />
   );
 }
