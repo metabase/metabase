@@ -31,6 +31,7 @@
          new-database-position :database-position
          new-database-name     :name
          new-db-required       :database-required} field-metadata
+        new-db-required                            (boolean new-db-required)
         new-database-type                          (or new-database-type "NULL")
         new-semantic-type                          (common/semantic-type field-metadata)
 
