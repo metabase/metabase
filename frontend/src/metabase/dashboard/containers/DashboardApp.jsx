@@ -20,6 +20,7 @@ import { useOnUnmount } from "metabase/hooks/use-on-unmount";
 import Actions from "metabase/entities/actions";
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { getIsNavbarOpen, setErrorPage } from "metabase/redux/app";
+import MetabaseSettings from "metabase/lib/settings";
 
 import {
   getIsEditing,
@@ -174,12 +175,14 @@ const DashboardApp = props => {
 };
 
 export default _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-  favicon(({ pageFavicon }) => pageFavicon),
-  title(({ dashboard, documentTitle }) => ({
-    title: documentTitle || dashboard?.name,
-    titleIndex: 1,
-  })),
-  titleWithLoadingTime("loadingStartTime"),
-  Actions.loadList(),
+  ...[
+    connect(mapStateToProps, mapDispatchToProps),
+    favicon(({ pageFavicon }) => pageFavicon),
+    title(({ dashboard, documentTitle }) => ({
+      title: documentTitle || dashboard?.name,
+      titleIndex: 1,
+    })),
+    titleWithLoadingTime("loadingStartTime"),
+    MetabaseSettings.get("experimental-enable-actions") && Actions.loadList(),
+  ].filter(Boolean),
 )(DashboardApp);
