@@ -21,7 +21,9 @@ describeEE("scenarios > admin > people", () => {
 
   describe("group managers", () => {
     it("can manage groups from the group page", () => {
-      cy.findByText("Groups").click();
+      cy.get(".AdminList").within(() => {
+        cy.findByTextEnsureVisible("Groups").click();
+      });
 
       // Edit group name
       cy.icon("ellipsis")
