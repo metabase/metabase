@@ -23,16 +23,16 @@ export const TabButton = styled(Button)<TabButtonProps>`
   padding-right: 0;
   margin-left: ${space(2)};
   margin-right: ${space(2)};
-  border-bottom: ${({ primaryColor = defaultColor, selected }) =>
+  border-bottom: ${({ primaryColor = color("brand"), selected }) =>
     selected ? `2px solid ${primaryColor}` : "2px solid transparent"};
 
-  color: ${({ primaryColor = defaultColor, selected }) =>
+  color: ${({ primaryColor = color("brand"), selected }) =>
     selected ? primaryColor : color("text-medium")};
 
   &:hover {
     background: none;
-    color: ${({ primaryColor = defaultColor }) => primaryColor};
-    border-color: ${({ primaryColor = defaultColor }) => primaryColor};
+    color: ${({ primaryColor = color("brand") }) => primaryColor};
+    border-color: ${({ primaryColor = color("brand") }) => primaryColor};
   }
 `;
 
@@ -46,5 +46,3 @@ export const BackButton = styled(TabButton)`
     color: ${({ primaryColor }) => primaryColor};
   }
 `;
-
-const defaultColor = color("brand");

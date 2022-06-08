@@ -29,9 +29,8 @@ describe("scenarios > dashboard", () => {
   });
 
   it("should create new dashboard and navigate to it from the nav bar and from the root collection (metabase#20638)", () => {
-    // Create dashboard
     cy.visit("/");
-    cy.icon("add").click();
+    cy.findByText("New").click();
     cy.findByText("Dashboard").click();
 
     createDashboardUsingUI("Dash A", "Desc A");

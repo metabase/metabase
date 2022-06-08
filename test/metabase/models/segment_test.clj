@@ -32,7 +32,8 @@
   (mt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
-                  Segment  [{segement-id-1 :id} {:table_id table-id-1, :name "Segment 1", :description nil}]
+                  Segment  [{segement-id-1 :id
+                             :as segment-1}     {:table_id table-id-1, :name "Segment 1", :description nil}]
                   Segment  [{segment-id-2 :id}  {:table_id table-id-2}]
                   Segment  [{segment-id3 :id}   {:table_id table-id-1, :archived true}]]
     (is (= [{:creator_id              (mt/user->id :rasta)
@@ -43,7 +44,8 @@
              :caveats                 nil
              :points_of_interest      nil
              :archived                false
-             :definition              nil}]
+             :definition              nil
+             :entity_id               (:entity_id segment-1)}]
            (for [segment (u/prog1 (segment/retrieve-segments table-id-1)
                            (assert (= 1 (count <>))))]
              (-> (dissoc (into {} segment) :id :table_id :created_at :updated_at)
@@ -62,6 +64,7 @@
             :show_in_getting_started false
             :caveats                 nil
             :points_of_interest      nil
+            :entity_id               (:entity_id segment)
             :definition              {:filter [:> [:field 4 nil] "2014-10-19"]}
             :archived                false}
            (into {} (-> (#'segment/serialize-segment Segment (:id segment) segment)

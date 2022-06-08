@@ -59,6 +59,7 @@ import {
   getParameterValues,
   getDashboardParameterValuesSearchCache,
   getLoadingDashCards,
+  getDashboardParameterValuesCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -136,8 +137,8 @@ export const SHOW_ADD_PARAMETER_POPOVER =
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 
-export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
-  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -294,6 +295,26 @@ export const addTextDashCardToDashboard = function({ dashId }) {
     card: virtualTextCard,
     visualization_settings: {
       virtual_card: virtualTextCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
+export const addActionsDashCardToDashboard = ({ dashId }) => {
+  const virtualActionsCard = {
+    ...createCard(),
+    display: "actions",
+    archived: false,
+  };
+  const dashcardOverrides = {
+    card: virtualActionsCard,
+    sizeX: 4,
+    sizeY: 1,
+    visualization_settings: {
+      virtual_card: virtualActionsCard,
     },
   };
   return addDashCardToDashboard({
@@ -1098,8 +1119,8 @@ const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   );
 };
 
-export const fetchDashboardParameterValues = createThunkAction(
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+export const fetchDashboardParameterValuesWithCache = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   ({ dashboardId, parameter, parameters, query }) => async (
     dispatch,
     getState,
@@ -1138,3 +1159,14 @@ export const fetchDashboardParameterValues = createThunkAction(
     };
   },
 );
+
+export const fetchDashboardParameterValues = args => async (
+  dispatch,
+  getState,
+) => {
+  await dispatch(fetchDashboardParameterValuesWithCache(args));
+  const dashboardParameterValuesCache = getDashboardParameterValuesCache(
+    getState(),
+  );
+  return dashboardParameterValuesCache.get(args) || [];
+};

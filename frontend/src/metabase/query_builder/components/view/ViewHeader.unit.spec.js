@@ -362,6 +362,13 @@ describe("ViewHeader", () => {
           fireEvent.click(screen.getByText(question.displayName()));
           expect(onOpenQuestionDetails).toHaveBeenCalled();
         });
+
+        it("shows bookmark and action buttons", () => {
+          setup({ question });
+          expect(
+            screen.queryByTestId("question-action-buttons-container"),
+          ).toBeInTheDocument();
+        });
       });
     });
   });
@@ -385,6 +392,13 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     expect(
       screen.queryByText(originalQuestion.displayName()),
     ).toBeInTheDocument();
+  });
+
+  it("does not render bookmark and action buttons", () => {
+    setupAdHoc();
+    expect(
+      screen.queryByTestId("question-action-buttons-container"),
+    ).not.toBeInTheDocument();
   });
 
   describe("filters", () => {

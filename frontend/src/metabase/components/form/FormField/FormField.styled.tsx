@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
 
 export const FieldRow = styled.div`
   display: flex;
@@ -34,7 +33,7 @@ export const InfoIcon = styled(Icon)`
   color: ${color("bg-dark")};
 
   &:hover {
-    color: ${color("brand")};
+    color: ${() => color("brand")};
   }
 `;
 

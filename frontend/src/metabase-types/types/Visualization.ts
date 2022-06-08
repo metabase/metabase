@@ -1,5 +1,6 @@
 import { DatasetData, Column, Row, Value } from "metabase-types/types/Dataset";
-import { Card, VisualizationSettings } from "metabase-types/types/Card";
+import { Card } from "metabase-types/types/Card";
+import { VisualizationSettings } from "metabase-types/api/card";
 import { ReduxAction } from "metabase-types/types/redux";
 
 // import Question from "metabase-lib/lib/Question";
@@ -34,12 +35,12 @@ export type ClickObject = {
   event?: MouseEvent;
   element?: HTMLElement;
   seriesIndex?: number;
-  settings?: { [key: string]: any };
+  settings?: Record<string, any>;
   origin?: {
     row: Row;
     cols: Column[];
   };
-  extraData?: { [key: string]: any };
+  extraData?: Record<string, any>;
 };
 
 export type ClickAction = {
@@ -58,6 +59,8 @@ export type ClickAction = {
 export type ClickActionProps = {
   question: Question;
   clicked?: ClickObject;
+  settings?: VisualizationSettings;
+  extraData?: Record<string, any>;
 };
 
 export type OnChangeCardAndRun = ({
@@ -113,6 +116,7 @@ export type VisualizationProps = {
   onHoverChange: (hoverObject?: HoverObject) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   visualizationIsClickable: (clickObject?: ClickObject) => boolean;
+  getExtraDataForClick: (clickObject?: ClickObject) => unknown;
   onChangeCardAndRun: OnChangeCardAndRun;
 
   onUpdateVisualizationSettings: (settings: Record<string, any>) => void;

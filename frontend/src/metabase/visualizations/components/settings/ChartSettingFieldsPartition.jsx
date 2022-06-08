@@ -7,7 +7,7 @@ import _ from "underscore";
 import { assocIn } from "icepick";
 
 import styled from "@emotion/styled";
-import colors, { lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Label from "metabase/components/type/Label";
 import Grabber from "metabase/components/Grabber";
@@ -29,9 +29,9 @@ import {
 
 const DragWrapper = styled.div`
   padding: 12px 14px;
-  box-shadow: 0 2px 3px ${lighten(colors["text-dark"], 1.5)};
+  box-shadow: 0 2px 3px ${lighten("text-dark", 1.5)};
   &:hover {
-    box-shadow: 0 2px 5px ${lighten(colors["text-dark"], 1.3)};
+    box-shadow: 0 2px 5px ${lighten("text-dark", 1.3)};
     transition: all 300ms linear;
   }
 `;

@@ -1,15 +1,12 @@
 import { DatabaseId } from "./Database";
 import { StructuredQuery, NativeQuery } from "./Query";
 import { Parameter, ParameterQueryObject } from "./Parameter";
+import { VisualizationSettings } from "metabase-types/api/card";
 
 export type CardId = number;
 
-export type VisualizationSettings = {
-  [key: string]: any;
-};
-
-export type UnsavedCard = {
-  dataset_query: DatasetQuery;
+export type UnsavedCard<Query = DatasetQuery> = {
+  dataset_query: Query;
   display: string;
   visualization_settings: VisualizationSettings;
   parameters?: Array<Parameter>;
@@ -18,16 +15,16 @@ export type UnsavedCard = {
   original_card_id?: CardId;
 };
 
-export type SavedCard = UnsavedCard & {
+export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   id: CardId;
-  name?: string;
+  name: string;
   description?: string;
   dataset?: boolean;
   can_write: boolean;
   public_uuid: string;
 };
 
-export type Card = SavedCard | UnsavedCard;
+export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;
 
 export type StructuredDatasetQuery = {
   type: "query";

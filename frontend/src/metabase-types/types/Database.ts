@@ -16,9 +16,7 @@ export type DatabaseFeature =
   | "case-sensitivity-string-filter-options"
   | "binning";
 
-export type DatabaseDetails = {
-  [key: string]: any;
-};
+export type DatabaseDetails = Record<string, any>;
 
 export type DatabaseSettings = {
   [key: string]: any;

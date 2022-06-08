@@ -324,3 +324,71 @@
       (let [{:keys [action_id] :as qa-rows} (db/select-one QueryAction :card_id card-id)]
         (is (empty? qa-rows) "Updating a card to have :is_write false should create a QueryAction")
         (is (empty? (db/select Action :id action_id)))))))
+
+;;; ------------------------------------------ Parameters tests ------------------------------------------
+
+(deftest validate-parameters-test
+  (testing "Should validate Card :parameters when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameters must be a sequence of maps with String :id key"
+           (mt/with-temp Card [_ {:parameters {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameters [{:id "valid-id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameters []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameters must be a sequence of maps with String :id key"
+             (db/update! Card id :parameters [{:id 100}])))
+        (is (some? (db/update! Card id :parameters [{:id "new-valid-id"}])))))))
+
+(deftest normalize-parameters-test
+  (testing ":parameters should get normalized when coming out of the DB"
+    (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
+                               [:field-id 1000]              [:field 1000 nil]}]
+      (testing (format "target = %s" (pr-str target))
+        (mt/with-temp Card [{card-id :id} {:parameters [{:name   "Category Name"
+                                                         :slug   "category_name"
+                                                         :id     "_CATEGORY_NAME_"
+                                                         :type   "category"
+                                                         :target target}]}]
+          (is (= [{:name   "Category Name"
+                   :slug   "category_name"
+                   :id     "_CATEGORY_NAME_"
+                   :type   :category
+                   :target expected}]
+                 (db/select-one-field :parameters Card :id card-id))))))))
+
+(deftest validate-parameter-mappings-test
+  (testing "Should validate Card :parameter_mappings when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameter_mappings must be a sequence of maps with String :parameter_id key"
+           (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameter_mappings []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameter_mappings must be a sequence of maps with String :parameter_id key"
+             (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
+
+        (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"}])))))))
+
+(deftest normalize-parameter-mappings-test
+  (testing ":parameter_mappings should get normalized when coming out of the DB"
+    (mt/with-temp Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                             :card_id      1
+                                                             :target       [:dimension [:field-id 1]]}]}]
+      (is (= [{:parameter_id "22486e00",
+               :card_id      1,
+               :target       [:dimension [:field 1 nil]]}]
+             (db/select-one-field :parameter_mappings Card :id card-id))))))

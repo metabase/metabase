@@ -1,4 +1,5 @@
-import { Card, CardId, VisualizationSettings } from "./Card";
+import { Card, CardId } from "./Card";
+import { VisualizationSettings } from "metabase-types/api/card";
 import { Parameter, ParameterMapping } from "./Parameter";
 
 export type DashboardId = number;
@@ -33,14 +34,14 @@ export type DashboardWithCards = {
 
 export type DashCardId = number;
 
-export type DashCard = {
+export type DashCard<CardType = Card> = {
   id: DashCardId;
 
   card_id: CardId;
   dashboard_id: DashboardId;
 
-  card: Card;
-  series: Array<Card>;
+  card: CardType;
+  series: Array<CardType>;
 
   // incomplete
   parameter_mappings: Array<ParameterMapping>;

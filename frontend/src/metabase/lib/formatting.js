@@ -771,7 +771,7 @@ export function formatValueRaw(value, options = {}) {
       getDataFromClicked(options.clicked),
     );
   } else if (
-    (isURL(column) && options.view_as !== null) ||
+    (isURL(column) && options.view_as == null) ||
     options.view_as === "link"
   ) {
     return formatUrl(value, options);
@@ -789,11 +789,13 @@ export function formatValueRaw(value, options = {}) {
   ) {
     return formatDateTimeWithUnit(value, "minute", options);
   } else if (typeof value === "string") {
-    if (column && column.semantic_type != null) {
-      return value;
-    } else {
-      return formatStringFallback(value, options);
+    if (options.view_as === "image") {
+      return formatImage(value, options);
     }
+    if (column?.semantic_type) {
+      return value;
+    }
+    return formatStringFallback(value, options);
   } else if (typeof value === "number" && isCoordinate(column)) {
     const range = rangeForValue(value, column);
     if (range && !options.noRange) {
