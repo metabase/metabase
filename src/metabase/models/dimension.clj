@@ -16,4 +16,5 @@
   models/IModel
   (merge models/IModelDefaults
          {:types      (constantly {:type :keyword})
-          :properties (constantly {:timestamped? true})}))
+          :properties (constantly {:timestamped? true
+                                   :entity_id    true})}))

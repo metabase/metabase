@@ -1162,7 +1162,7 @@ class StructuredQueryInner extends AtomicQuery {
       }
     }
 
-    if (this.isRaw()) {
+    if (this.isRaw() && this.sourceQuery()) {
       query = query.clearFields();
     }
 
@@ -1468,11 +1468,6 @@ class StructuredQueryInner extends AtomicQuery {
     return this._updateQuery(query => ({
       "source-query": query,
     }));
-  }
-
-  canNest() {
-    const db = this.database();
-    return db && db.hasFeature("nested-queries");
   }
 
   /**

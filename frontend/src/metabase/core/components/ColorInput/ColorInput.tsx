@@ -51,7 +51,7 @@ const ColorInput = forwardRef(function ColorInput(
     (event: ChangeEvent<HTMLInputElement>) => {
       const newText = event.target.value;
       setInputText(newText);
-      onChange?.(getColorHex(newText));
+      onChange?.(getColorHex(newText) ?? getColorHex(`#${newText}`));
     },
     [onChange],
   );

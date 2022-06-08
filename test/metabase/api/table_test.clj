@@ -592,7 +592,7 @@
         (select-keys [:id :table_id :name :values :dimensions])
         (update :dimensions (fn [dim]
                               (if (map? dim)
-                                (dissoc dim :id :created_at :updated_at)
+                                (dissoc dim :id :entity_id :created_at :updated_at)
                                 dim))))))
 
 (defn- category-id-semantic-type
@@ -611,7 +611,8 @@
                  :name       "CATEGORY_ID"
                  :dimensions {:name                    "Category ID [internal remap]"
                               :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil, :type "internal"}}
+                              :human_readable_field_id nil
+                              :type                    "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"
@@ -628,7 +629,8 @@
                  :name       "CATEGORY_ID"
                  :dimensions {:name                    "Category ID [internal remap]"
                               :field_id                (mt/id :venues :category_id)
-                              :human_readable_field_id nil, :type "internal"}}
+                              :human_readable_field_id nil
+                              :type                    "internal"}}
                 {:id         (mt/id :venues :price)
                  :table_id   (mt/id :venues)
                  :name       "PRICE"

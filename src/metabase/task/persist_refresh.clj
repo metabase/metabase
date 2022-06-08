@@ -297,7 +297,7 @@
      (u/format-color 'green
                      "Scheduling persistence refreshes for database %d: trigger: %s"
                      (u/the-id database) (.. ^Trigger tggr getKey getName)))
-    (persisted-info/ready-unpersisted-models! (u/the-id database))
+    (persisted-info/ready-database! (u/the-id database))
     (try (task/add-trigger! tggr)
          (catch ObjectAlreadyExistsException _e
            (log/info

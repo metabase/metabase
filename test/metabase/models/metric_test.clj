@@ -14,6 +14,7 @@
    :caveats                 nil
    :points_of_interest      nil
    :archived                false
+   :entity_id               true
    :definition              nil})
 
 (defn- user-details
@@ -24,13 +25,15 @@
   (mt/with-temp* [Database [{database-id :id}]
                   Table    [{table-id-1 :id}    {:db_id database-id}]
                   Table    [{table-id-2 :id}    {:db_id database-id}]
-                  Metric   [{segement-id-1 :id} {:table_id table-id-1, :name "Metric 1", :description nil}]
+                  Metric   [{segement-id-1 :id
+                             :as segment-1}     {:table_id table-id-1, :name "Metric 1", :description nil}]
                   Metric   [{metric-id-2 :id}   {:table_id table-id-2}]
                   Metric   [{metric-id3 :id}    {:table_id table-id-1, :archived true}]]
     (is (= [(merge
              metric-defaults
              {:creator_id (mt/user->id :rasta)
               :creator    (user-details :rasta)
+              :entity_id  (:entity_id segment-1)
               :name       "Metric 1"})]
            (for [metric (u/prog1 (metric/retrieve-metrics table-id-1)
                                  (assert (= 1 (count <>))))]
@@ -70,6 +73,7 @@
       (is (= (merge metric-defaults
                     {:id          true
                      :table_id    true
+                     :entity_id   (:entity_id metric)
                      :creator_id  (mt/user->id :rasta)
                      :name        "Toucans in the rainforest"
                      :description "Lookin' for a blueberry"

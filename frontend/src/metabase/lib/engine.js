@@ -53,6 +53,8 @@ export function getEngineLogo(engine) {
       return `${path}/bigquery.svg`;
     case "presto-jdbc":
       return `${path}/presto.svg`;
+    case "starburst":
+      return `${path}/starburst.svg`;
   }
 }
 

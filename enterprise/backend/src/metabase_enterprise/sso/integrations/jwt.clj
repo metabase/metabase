@@ -19,12 +19,15 @@
   [first-name last-name email user-attributes]
   (when-not (sso-settings/jwt-configured?)
     (throw (IllegalArgumentException. (str (tru "Can't create new JWT user when JWT is not configured")))))
-  (or (sso-utils/fetch-and-update-login-attributes! email user-attributes)
-      (sso-utils/create-new-sso-user! {:first_name       first-name
-                                       :last_name        last-name
-                                       :email            email
-                                       :sso_source       "jwt"
-                                       :login_attributes user-attributes})))
+  (let [user {:first_name       first-name
+              :last_name        last-name
+              :email            email
+              :sso_source       "jwt"
+              :login_attributes user-attributes}]
+    (or (sso-utils/fetch-and-update-login-attributes! user)
+        (sso-utils/create-new-sso-user! (merge user
+                                               (when-not first-name {:first_name (trs "Unknown")})
+                                               (when-not last-name {:last_name (trs "Unknown")}))))))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email     (comp keyword sso-settings/jwt-attribute-email))
 (def ^:private ^{:arglists '([])} jwt-attribute-firstname (comp keyword sso-settings/jwt-attribute-firstname))
@@ -80,8 +83,8 @@
                                            e))))
           login-attrs  (jwt-data->login-attributes jwt-data)
           email        (get jwt-data (jwt-attribute-email))
-          first-name   (get jwt-data (jwt-attribute-firstname) (trs "Unknown"))
-          last-name    (get jwt-data (jwt-attribute-lastname) (trs "Unknown"))
+          first-name   (get jwt-data (jwt-attribute-firstname))
+          last-name    (get jwt-data (jwt-attribute-lastname))
           user         (fetch-or-create-user! first-name last-name email login-attrs)
           session      (api.session/create-session! :sso user (request.u/device-info request))]
       (sync-groups! user jwt-data)
