@@ -322,12 +322,7 @@
                         :status     :completed}
                        (dissoc cached-result :data))
                     "Results should be cached")
-                ;; remove metadata checksums because they can be different between runs when using an encryption key
-                (is (= (-> original-result
-                           (m/dissoc-in [:data :results_metadata :checksum]))
-                       (-> cached-result
-                           (dissoc :cached :updated_at)
-                           (m/dissoc-in [:data :results_metadata :checksum])))
+                (is (= original-result (dissoc cached-result :cached :updated_at))
                     "Cached result should be in the same format as the uncached result, except for added keys"))))))))
   (testing "Cached results don't impact average execution time"
     (let [query                               (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
