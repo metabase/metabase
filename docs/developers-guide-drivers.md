@@ -37,6 +37,7 @@ To qualify as a partner driver, the driver must:
 Current partner drivers:
 
 - [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
+- [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
 
 Partner drivers are available to Cloud customers out-of-the-box.
 
