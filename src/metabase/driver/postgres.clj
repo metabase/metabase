@@ -51,10 +51,6 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns]
-  [_driver _feature _db]
-  true)
-
 (defmethod driver/database-supports? [:postgres :persist-models]
   [_driver _feat _db]
   true)
