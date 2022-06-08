@@ -174,19 +174,21 @@
           parameter-types    (card-parameters card)]
       (doseq [request-parameter request-parameters
               :let              [parameter-id   (:id request-parameter)
-                                 parameter-name (infer-parameter-name request-parameter)
-                                 ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net
-                                 ;; in case request parameters are malformed.
-                                 type-lookup-key (or parameter-id parameter-name)]]
-        (let [matching-widget-type (or (get parameter-types type-lookup-key)
-                                       (get template-tag-types type-lookup-key)
-                                       (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter or template tag with the ID {1}."
-                                                            card-id
-                                                            (pr-str type-lookup-key))
-                                                       {:type               qp.error-type/invalid-parameter
-                                                        :invalid-parameter  request-parameter
-                                                        :allowed-parameters (keys (merge parameter-types
-                                                                                         template-tag-types))})))]
+                                 parameter-name (infer-parameter-name request-parameter)]]
+        (let [matching-widget-type (or
+                                    ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net
+                                    ;; in case request parameters are malformed.
+                                    (get parameter-types parameter-id)
+                                    (get template-tag-types parameter-name)
+                                    (get template-tag-types parameter-name)
+                                    (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter or template tag with the ID {1} or name {2}."
+                                                         card-id
+                                                         (pr-str parameter-id)
+                                                         (pr-str parameter-name))
+                                                    {:type               qp.error-type/invalid-parameter
+                                                     :invalid-parameter  request-parameter
+                                                     :allowed-parameters (keys (merge parameter-types
+                                                                                      template-tag-types))})))]
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 

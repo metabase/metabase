@@ -115,13 +115,13 @@
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\""
+           #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\" or name \"fake\""
            (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
                                                          :name  "fake"
                                                          :type  :date/single
                                                          :value "2016-01-01"}])))
       (testing "As an API request"
-        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\"."
+        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\" or name \"fake\""
                       :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
                       :allowed-parameters (s/eq ["_DATE_", "date"])
                       s/Keyword           s/Any}
