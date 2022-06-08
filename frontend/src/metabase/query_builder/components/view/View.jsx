@@ -228,6 +228,7 @@ class View extends React.Component {
       isShowingDataReference,
       isShowingSnippetSidebar,
       isShowingTimelineSidebar,
+      isShowingQuestionInfoSidebar,
       toggleTemplateTagsEditor,
       toggleDataReference,
       toggleSnippetSidebar,
@@ -236,6 +237,8 @@ class View extends React.Component {
       selectTimelineEvents,
       deselectTimelineEvents,
       onCloseTimelines,
+      onSave,
+      question,
     } = this.props;
 
     if (isShowingTemplateTagsEditor) {
@@ -263,6 +266,10 @@ class View extends React.Component {
           onClose={onCloseTimelines}
         />
       );
+    }
+
+    if (isShowingQuestionInfoSidebar) {
+      return <QuestionInfoSidebar question={question} onSave={onSave} />;
     }
 
     return null;

@@ -71,3 +71,9 @@ export const openQuestionActions = () => {
 export const closeQuestionActions = () => {
   cy.findByTestId("qb-header").click();
 };
+
+export const questionInfoButton = () => {
+  return cy.findByTestId("question-action-buttons-container").within(() => {
+    return cy.icon("info");
+  });
+};

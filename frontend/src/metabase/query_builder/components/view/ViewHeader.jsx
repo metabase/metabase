@@ -171,6 +171,7 @@ SavedQuestionLeftSide.propTypes = {
   onOpenQuestionDetails: PropTypes.func.isRequired,
   onCloseQuestionDetails: PropTypes.func.isRequired,
   onOpenQuestionHistory: PropTypes.func.isRequired,
+  onOpenQuestionInfo: PropTypes.func.isRequired,
 };
 
 function SavedQuestionLeftSide(props) {
@@ -181,7 +182,7 @@ function SavedQuestionLeftSide(props) {
     isShowingQuestionDetailsSidebar,
     onOpenQuestionDetails,
     onCloseQuestionDetails,
-    onOpenQuestionHistory,
+    onOpenQuestionInfo,
   } = props;
 
   const hasLastEditInfo = question.lastEditInfo() != null;
@@ -211,7 +212,7 @@ function SavedQuestionLeftSide(props) {
         {hasLastEditInfo && isAdditionalInfoVisible && (
           <StyledLastEditInfoLabel
             item={question.card()}
-            onClick={onOpenQuestionHistory}
+            onClick={onOpenQuestionInfo}
           />
         )}
       </ViewHeaderMainLeftContentContainer>
