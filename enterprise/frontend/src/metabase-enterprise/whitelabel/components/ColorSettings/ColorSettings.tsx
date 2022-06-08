@@ -7,6 +7,7 @@ import {
   BrandColorSection,
   ChartColorSection,
   SectionContent,
+  SettingDescription,
   SettingRoot,
   SettingTitle,
 } from "./ColorSettings.styled";
@@ -24,7 +25,7 @@ const ColorSettings = ({
 }: ColorSettingsProps): JSX.Element => {
   const [colors, setColors] = useState(initialColors ?? {});
 
-  const colorFamily = useMemo(() => {
+  const colorPalette = useMemo(() => {
     return { ...originalColors, ...colors };
   }, [colors, originalColors]);
 
@@ -42,19 +43,22 @@ const ColorSettings = ({
         <SettingTitle>{t`User interface colors`}</SettingTitle>
         <BrandColorSettings
           colors={colors}
-          colorFamily={colorFamily}
+          colorPalette={colorPalette}
           onChange={handleChange}
         />
       </BrandColorSection>
       <ChartColorSection>
-        <SettingTitle>{t`Chart colors`}</SettingTitle>
+        <SettingTitle hasDescription>{t`Chart colors`}</SettingTitle>
+        <SettingDescription>
+          {t`You can choose up to 24 hex values. We’ll auto-generate what you leave blank.`}
+        </SettingDescription>
         <SectionContent>
           <ChartColorSettings
             colors={colors}
-            colorFamily={colorFamily}
+            colorPalette={colorPalette}
             onChange={handleChange}
           />
-          <ChartColorPreview />
+          <ChartColorPreview colorPalette={colorPalette} />
         </SectionContent>
       </ChartColorSection>
     </SettingRoot>

@@ -264,7 +264,7 @@ export function ObjectDetailFn({
   const canUpdate = isEditing && typeof onSubmit === "function" && table;
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: { [key: string]: () => void } = {
+    const capturedKeys: Record<string, () => void> = {
       ArrowUp: viewPreviousObjectDetail,
       ArrowDown: viewNextObjectDetail,
       Escape: closeObjectDetail,

@@ -20,7 +20,4 @@ const DateSingleWidget = ({ value, ...props }: DateSingleWidgetProps) => {
   );
 };
 
-DateSingleWidget.format = (value: string) =>
-  value ? moment(value).format("MMMM D, YYYY") : "";
-
 export default DateSingleWidget;

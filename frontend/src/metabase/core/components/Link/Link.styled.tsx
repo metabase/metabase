@@ -17,7 +17,7 @@ export const LinkRoot = styled(Link, {
   transition: opacity 0.3s linear;
 
   &:focus {
-    outline: 2px solid ${colors("focus")};
+    outline: 2px solid ${() => colors("focus")};
   }
 
   &:focus:not(:focus-visible) {

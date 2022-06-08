@@ -21,7 +21,8 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { color, getColorsForValues } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
+import { getColorsForValues } from "metabase/lib/colors/charts";
 
 import cx from "classnames";
 

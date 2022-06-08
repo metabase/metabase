@@ -7,6 +7,7 @@ import {
   visitQuestion,
   startNewQuestion,
   visualize,
+  openQuestionActions,
 } from "__support__/e2e/cypress";
 
 describe("scenarios > question > saved", () => {
@@ -104,8 +105,10 @@ describe("scenarios > question > saved", () => {
     visitQuestion(1);
     cy.wait("@query");
 
-    cy.findByTestId("saved-question-header-button").click();
-    cy.icon("segment").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.icon("segment").click();
+    });
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");

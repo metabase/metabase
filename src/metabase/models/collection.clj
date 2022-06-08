@@ -882,6 +882,7 @@
          {:hydration-keys (constantly [:collection])
           :types          (constantly {:namespace       :keyword
                                        :authority_level :keyword})
+          :properties     (constantly {:entity_id true})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

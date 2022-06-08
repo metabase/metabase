@@ -1,12 +1,9 @@
 import { DatabaseId } from "./Database";
 import { StructuredQuery, NativeQuery } from "./Query";
 import { Parameter, ParameterQueryObject } from "./Parameter";
+import { VisualizationSettings } from "metabase-types/api/card";
 
 export type CardId = number;
-
-export type VisualizationSettings = {
-  [key: string]: any;
-};
 
 export type UnsavedCard<Query = DatasetQuery> = {
   dataset_query: Query;
