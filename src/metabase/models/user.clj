@@ -7,7 +7,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -142,7 +142,7 @@
           :post-select    post-select
           :types          (constantly {:login_attributes :json-no-keywordization
                                        :settings         :encrypted-json})})
-  serdes.utils/IdentityHashable
+  serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:email])})
 
 (defn group-ids

@@ -8,7 +8,7 @@
             [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
             [metabase.models.dashboard-card-series :refer [DashboardCardSeries]]
             [metabase.models.interface-test :as i.test]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.util :as u]
             [toucan.db :as db]))
@@ -270,5 +270,5 @@
                                              :dashboard_id           (:id dash)
                                              :visualization_settings {}}]]
       (is (= "c926aed0"
-             (serdes.utils/raw-hash [(serdes.utils/identity-hash card) (serdes.utils/identity-hash dash) {}])
-             (serdes.utils/identity-hash dashcard))))))
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash card) (serdes.hash/identity-hash dash) {}])
+             (serdes.hash/identity-hash dashcard))))))

@@ -2,7 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :as table :refer [Table]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -73,7 +73,7 @@
   (testing "Table hashes are composed of the schema name, table name and the database's identity-hash"
     (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
                     Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]]
-      (let [db-hash (serdes.utils/identity-hash db)]
+      (let [db-hash (serdes.hash/identity-hash db)]
         (is (= "0395fe49"
-               (serdes.utils/raw-hash ["PUBLIC" "widget" db-hash])
-               (serdes.utils/identity-hash table)))))))
+               (serdes.hash/raw-hash ["PUBLIC" "widget" db-hash])
+               (serdes.hash/identity-hash table)))))))

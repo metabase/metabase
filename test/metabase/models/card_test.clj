@@ -3,7 +3,7 @@
             [clojure.test :refer :all]
             [metabase.models :refer [Card Collection Dashboard DashboardCard]]
             [metabase.models.card :as card]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
@@ -366,5 +366,5 @@
     (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
                     Card        [card  {:name "the card" :collection_id (:id coll)}]]
       (is (= "ead6cc05"
-             (serdes.utils/raw-hash ["the card" (serdes.utils/identity-hash coll)])
-             (serdes.utils/identity-hash card))))))
+             (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash card))))))

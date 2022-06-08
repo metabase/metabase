@@ -4,7 +4,7 @@
   (:require [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.revision :as revision]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]
@@ -46,8 +46,8 @@
     :can-write?        mi/superuser?
     :can-create?       mi/superuser?})
 
-  serdes.utils/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :table)])})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

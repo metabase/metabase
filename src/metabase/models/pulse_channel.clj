@@ -4,7 +4,7 @@
             [medley.core :as m]
             [metabase.models.interface :as mi]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user :refer [User]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -195,8 +195,8 @@
    {:can-read?  (constantly true)
     :can-write? mi/superuser?})
 
-  serdes.utils/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.utils/hydrated-hash :pulse) :channel_type :details])})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) :channel_type :details])})
 
 (defn will-delete-recipient
   "This function is called by [[metabase.models.pulse-channel-recipient/pre-delete]] when a `PulseChannelRecipient` is

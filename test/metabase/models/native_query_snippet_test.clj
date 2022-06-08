@@ -1,7 +1,7 @@
 (ns metabase.models.native-query-snippet-test
   (:require [clojure.test :refer :all]
             [metabase.models :refer [Collection NativeQuerySnippet]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -63,5 +63,5 @@
     (mt/with-temp* [Collection         [coll    {:name "field-db" :namespace :snippets :location "/"}]
                     NativeQuerySnippet [snippet {:name "my snippet" :collection_id (:id coll)}]]
       (is (= "0e4562b1"
-             (serdes.utils/raw-hash ["my snippet" (serdes.utils/identity-hash coll)])
-             (serdes.utils/identity-hash snippet))))))
+             (serdes.hash/raw-hash ["my snippet" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash snippet))))))

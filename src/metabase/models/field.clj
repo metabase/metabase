@@ -9,7 +9,7 @@
             [metabase.models.humanization :as humanization]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [trs tru]]
@@ -196,8 +196,8 @@
           :can-read?         (partial mi/current-user-has-partial-permissions? :read)
           :can-write?        (partial mi/current-user-has-full-permissions? :write)})
 
-  serdes.utils/IdentityHashable
-  {:identity-hash-fields (constantly [:name (serdes.utils/hydrated-hash :table)])})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :table)])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

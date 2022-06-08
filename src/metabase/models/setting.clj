@@ -81,7 +81,7 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.api.common :as api]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -142,7 +142,7 @@
          {:types       (constantly {:value :encrypted-text})
           :primary-key (constantly :key)})
 
-  serdes.utils/IdentityHashable
+  serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:key])})
 
 (declare get-value-of-type)

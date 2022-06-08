@@ -11,7 +11,7 @@
             [metabase.models.metric :refer [Metric retrieve-metrics]]
             [metabase.models.permissions :as perms :refer [Permissions]]
             [metabase.models.segment :refer [retrieve-segments Segment]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -78,8 +78,8 @@
           :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set})
 
-  serdes.utils/IdentityHashable
-  {:identity-hash-fields (constantly [:schema :name (serdes.utils/hydrated-hash :db)])})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:schema :name (serdes.hash/hydrated-hash :db)])})
 
 
 ;;; ------------------------------------------------ Field ordering -------------------------------------------------

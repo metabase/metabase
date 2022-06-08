@@ -6,7 +6,7 @@
             [metabase.models.dashboard-card :refer [DashboardCard]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer :all]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [toucan.util.test :as tt]))
 
@@ -33,5 +33,5 @@
                     Pulse       [pulse      {:name "my pulse" :collection_id (:id coll2)}]
                     PulseCard   [pulse-card {:card_id (:id card) :pulse_id (:id pulse)}]]
       (is (= "cd532201"
-             (serdes.utils/raw-hash [(serdes.utils/identity-hash pulse) (serdes.utils/identity-hash card)])
-             (serdes.utils/identity-hash pulse-card))))))
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) (serdes.hash/identity-hash card)])
+             (serdes.hash/identity-hash pulse-card))))))

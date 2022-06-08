@@ -4,7 +4,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.dependency :as dependency :refer [Dependency]]
             [metabase.models.metric :refer [Metric]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
@@ -110,6 +110,6 @@
                                         :created_at         :%now}]]
       (is (= "cd893624"
              ; Note the extra vector here - dependencies have one complex hash extractor that returns a list of results.
-             (serdes.utils/raw-hash [["Collection" (serdes.utils/identity-hash coll)
-                                      "Metric"     (serdes.utils/identity-hash metric)]])
-             (serdes.utils/identity-hash dep))))))
+             (serdes.hash/raw-hash [["Collection" (serdes.hash/identity-hash coll)
+                                     "Metric"     (serdes.hash/identity-hash metric)]])
+             (serdes.hash/identity-hash dep))))))

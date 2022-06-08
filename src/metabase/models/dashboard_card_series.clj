@@ -1,5 +1,5 @@
 (ns metabase.models.dashboard-card-series
-  (:require [metabase.models.serialization.utils :as serdes.utils]
+  (:require [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.models :as models]))
@@ -10,6 +10,6 @@
   (db/select-one 'DashboardCard :id dashboardcard_id))
 
 (u/strict-extend (class DashboardCardSeries)
-  serdes.utils/IdentityHashable
-  {:identity-hash-fields (constantly [(comp serdes.utils/identity-hash dashboard-card)
-                                      (serdes.utils/hydrated-hash :card)])})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(comp serdes.hash/identity-hash dashboard-card)
+                                      (serdes.hash/hydrated-hash :card)])})

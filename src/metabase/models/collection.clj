@@ -14,7 +14,7 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -882,7 +882,7 @@
                       (hydrate :parent_id)
                       :parent_id)]
    (if parent-id
-     (serdes.utils/identity-hash (Collection parent-id))
+     (serdes.hash/identity-hash (Collection parent-id))
      "ROOT")))
 
 (u/strict-extend (class Collection)
@@ -902,7 +902,7 @@
           :can-write?        (partial mi/current-user-has-full-permissions? :write)
           :perms-objects-set perms-objects-set})
 
-  serdes.utils/IdentityHashable
+  serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
 
 

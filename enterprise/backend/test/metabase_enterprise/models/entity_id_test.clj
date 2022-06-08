@@ -84,4 +84,4 @@
   (doseq [model (->> (extenders IModel)
                      (remove entities-not-exported))]
     (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
-      (is (extends? metabase.models.serialization.utils/IdentityHashable model)))))
+      (is (extends? metabase.models.serialization.hash/IdentityHashable model)))))

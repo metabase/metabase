@@ -1,5 +1,5 @@
 (ns metabase.models.pulse-card
-  (:require [metabase.models.serialization.utils :as serdes.utils]
+  (:require [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -9,8 +9,8 @@
 (models/defmodel PulseCard :pulse_card)
 
 (u/strict-extend (class PulseCard)
-  serdes.utils/IdentityHashable
-  {:identity-hash-fields (constantly [(serdes.utils/hydrated-hash :pulse) (serdes.utils/hydrated-hash :card)])})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [(serdes.hash/hydrated-hash :pulse) (serdes.hash/hydrated-hash :card)])})
 
 (defn next-position-for
   "Return the next available `pulse_card.position` for the given `pulse`"

@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.segment :as segment :refer [Segment]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -132,5 +132,5 @@
                     Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
                     Segment  [segment {:name "big customers" :table_id (:id table)}]]
       (is (= "a40066a4"
-             (serdes.utils/raw-hash ["big customers" (serdes.utils/identity-hash table)])
-             (serdes.utils/identity-hash segment))))))
+             (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table)])
+             (serdes.hash/identity-hash segment))))))

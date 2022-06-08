@@ -3,7 +3,7 @@
   example, a Card might use a Segment; a Dependency object will be used to track this dependency so appropriate
   actions can take place or be prevented when something changes."
   (:require [clojure.set :as set]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.util :as u]
             [potemkin.types :as p.types]
             [toucan.db :as db]
@@ -23,11 +23,11 @@
 (models/defmodel Dependency :dependency)
 
 (defn- dependency-hash [{:keys [model model_id dependent_on_model dependent_on_id]}]
-  [model              (serdes.utils/identity-hash (db/select-one (symbol model)              :id model_id))
-   dependent_on_model (serdes.utils/identity-hash (db/select-one (symbol dependent_on_model) :id dependent_on_id))])
+  [model              (serdes.hash/identity-hash (db/select-one (symbol model)              :id model_id))
+   dependent_on_model (serdes.hash/identity-hash (db/select-one (symbol dependent_on_model) :id dependent_on_id))])
 
 (u/strict-extend (class Dependency)
-  serdes.utils/IdentityHashable
+  serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [dependency-hash])})
 
 (defn retrieve-dependencies

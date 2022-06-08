@@ -5,7 +5,7 @@
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -450,5 +450,5 @@
                                          :channel_type :email
                                          :details      {:emails ["cam@test.com"]}}]]
       (is (= "ab5e6ff0"
-             (serdes.utils/raw-hash [(serdes.utils/identity-hash pulse) :email {:emails ["cam@test.com"]}])
-             (serdes.utils/identity-hash chan))))))
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]}])
+             (serdes.hash/identity-hash chan))))))

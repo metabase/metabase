@@ -3,7 +3,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]))
 
@@ -15,5 +15,5 @@
                     Field     [field2 {:name "human" :table_id (:id table)}]
                     Dimension [dim    {:field_id (:id field1) :human_readable_field_id (:id field2)}]]
       (is (= "d579f125"
-             (serdes.utils/raw-hash [(serdes.utils/identity-hash field1) (serdes.utils/identity-hash field2)])
-             (serdes.utils/identity-hash dim))))))
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash field1) (serdes.hash/identity-hash field2)])
+             (serdes.hash/identity-hash dim))))))

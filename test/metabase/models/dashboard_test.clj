@@ -12,7 +12,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
-            [metabase.models.serialization.utils :as serdes.utils]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :as user]
             [metabase.test :as mt]
@@ -314,5 +314,5 @@
     (mt/with-temp* [Collection [c1   {:name "top level" :location "/"}]
                     Dashboard  [dash {:name "my dashboard" :collection_id (:id c1)}]]
       (is (= "38c0adf9"
-             (serdes.utils/raw-hash ["my dashboard" (serdes.utils/identity-hash c1)])
-             (serdes.utils/identity-hash dash))))))
+             (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1)])
+             (serdes.hash/identity-hash dash))))))
