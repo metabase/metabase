@@ -1227,7 +1227,9 @@ workflows:
             - be-deps
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+                - release-**
           <<: *Matrix
 
       - build-uberjar-frontend:
@@ -1248,7 +1250,9 @@ workflows:
             - checkout
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+                - release-**
 
       - fe-tests-cypress:
           matrix:
@@ -1308,4 +1312,6 @@ workflows:
             - checkout
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+                - release-**
