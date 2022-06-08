@@ -177,9 +177,10 @@
                                  parameter-name (infer-parameter-name request-parameter)]]
         (let [matching-widget-type (or
                                     ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net
-                                    ;; in case request parameters are malformed.
+                                    ;; in case request parameters are malformed. Only need to do this for parameters
+                                    ;; targeting template tags since card parameters should always be targeted by ID.
                                     (get parameter-types parameter-id)
-                                    (get template-tag-types parameter-name)
+                                    (get template-tag-types parameter-id)
                                     (get template-tag-types parameter-name)
                                     (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter or template tag with the ID {1} or name {2}."
                                                          card-id

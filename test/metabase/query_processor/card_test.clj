@@ -110,7 +110,7 @@
   (is (= nil
          (#'qp.card/infer-parameter-name {:target [:field 1000 nil]}))))
 
-(deftest validate-card-parameters-test
+(deftest validate-card-template-tag-test
   (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
@@ -154,10 +154,37 @@
                   (is (= nil
                          (validate disallowed-type))))))))))
 
-    (testing "Happy path -- API request should succeed if parameter is valid"
+    (testing "Happy path -- API request should succeed if parameter correlates to a template tag by ID"
       (is (= [1000]
              (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                                  {:parameters [{:id    "_DATE_"
-                                                                :name  "date"
+                                                                :type  :date/single
+                                                                :value "2016-01-01"}]})))))
+
+    (testing "Happy path -- API request should succeed if parameter correlates to a template tag by name"
+      (is (= [1000]
+             (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                 {:parameters [{:name  "date"
+                                                                :type  :date/single
+                                                                :value "2016-01-01"}]})))))))
+
+(deftest validate-card-parameters-test
+  (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})
+                                     :parameters [{:id   "_DATE_"
+                                                   :type :date/single
+                                                   :name "Date"
+                                                   :slug "DATE"}]}]
+    (testing "API request should fail if parameter targets card parameter by name (only supported for template tags
+             for backwards compatibility)"
+      (is (= [1000]
+             (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                 {:parameters [{:id    "Date"
+                                                                :type  :date/single
+                                                                :value "2016-01-01"}]})))))
+
+    (testing "Happy path -- API request should succeed if parameter correlates to a card parameter by ID"
+      (is (= [1000]
+             (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                 {:parameters [{:id    "_DATE_"
                                                                 :type  :date/single
                                                                 :value "2016-01-01"}]})))))))
