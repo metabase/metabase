@@ -208,6 +208,7 @@
                                                          :database {:engine  "my-fake-driver"
                                                                     :name    (mt/random-name)
                                                                     :details {}})))))))))
+(def ^:dynamic ^:private *expected-status* 400)
 
 (defn- setup! [f & args]
   (let [body {:token (setup/create-token!)
@@ -217,7 +218,7 @@
                       :email      (mt/random-email)
                       :password   "anythingUP12!!"}}
         body (apply f body args)]
-    (do-with-setup* body #(client/client :post 400 "setup" body))))
+    (do-with-setup* body #(client/client :post *expected-status* "setup" body))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"
@@ -243,13 +244,14 @@
                      (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
-      (testing "first name"
-        (is (= {:errors {:first_name "value must be a non-blank string."}}
-               (setup! m/dissoc-in [:user :first_name]))))
+      (binding [*expected-status* 200]
+        (testing "first name may be nil"
+          (is (= true (contains? (setup! m/dissoc-in [:user :first_name]) :id)))
+          (is (= true (contains? (setup! assoc-in [:user :first_name] nil) :id))))
 
-      (testing "last name"
-        (is (= {:errors {:last_name "value must be a non-blank string."}}
-               (setup! m/dissoc-in [:user :last_name]))))
+        (testing "last name may be nil"
+          (is (= true (contains? (setup! m/dissoc-in [:user :last_name]) :id)))
+          (is (= true (contains? (setup! assoc-in [:user :last_name] nil) :id)))))
 
       (testing "email"
         (testing "missing"
