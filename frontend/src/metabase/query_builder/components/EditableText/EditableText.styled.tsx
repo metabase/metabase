@@ -26,7 +26,7 @@ export const Root = styled.div`
   }
 `;
 
-export const BorderedInput = styled.textarea`
+export const StyledTextArea = styled.textarea`
   resize: none;
   overflow: hidden;
   cursor: pointer;

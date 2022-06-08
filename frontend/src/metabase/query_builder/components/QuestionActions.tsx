@@ -22,7 +22,6 @@ import Question from "metabase-lib/lib/Question";
 import {
   QuestionActionsContainer,
   PopoverContainer,
-  PopoverButton,
   BookmarkButton,
   AnimationStates,
 } from "./QuestionActions.styled";
@@ -143,25 +142,25 @@ const QuestionActions = ({
             <div>
               <PLUGIN_MODERATION.QuestionModerationButton
                 question={question}
-                VerifyButton={PopoverButton}
+                VerifyButton={Button}
                 verifyButtonProps={buttonProps}
               />
             </div>
             {isDataset && (
               <div>
-                <PopoverButton
+                <Button
                   icon="notebook"
                   onClick={handleEditQuery}
                   data-testid={ADD_TO_DASH_TESTID}
                   {...buttonProps}
                 >
                   {t`Edit query definition`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {isDataset && (
               <div>
-                <PopoverButton
+                <Button
                   icon="label"
                   onClick={handleEditMetadata}
                   data-testid={ADD_TO_DASH_TESTID}
@@ -169,7 +168,7 @@ const QuestionActions = ({
                 >
                   {t`Edit metadata`}
                   <DatasetMetadataStrengthIndicator dataset={question} />
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canPersistDataset && (
@@ -183,74 +182,74 @@ const QuestionActions = ({
             )}
             {!isDataset && (
               <div>
-                <PopoverButton
+                <Button
                   icon="dashboard"
                   onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
                   data-testid={ADD_TO_DASH_TESTID}
                   {...buttonProps}
                 >
                   {t`Add to dashboard`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="move"
                   onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
                   data-testid={MOVE_TESTID}
                   {...buttonProps}
                 >
                   {t`Move`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {!isDataset && canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="model"
                   onClick={handleTurnToModel}
                   data-testid={TURN_INTO_DATASET_TESTID}
                   {...buttonProps}
                 >
                   {t`Turn into a model`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {isDataset && canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="model_framed"
                   onClick={turnDatasetIntoQuestion}
                   data-testid=""
                   {...buttonProps}
                 >
                   {t`Turn back to saved question`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="segment"
                   onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
                   data-testid={CLONE_TESTID}
                   {...buttonProps}
                 >
                   {t`Duplicate`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="archive"
                   onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
                   data-testid={ARCHIVE_TESTID}
                   {...buttonProps}
                 >
                   {t`Archive`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
           </PopoverContainer>

@@ -2,7 +2,7 @@ import React from "react";
 
 import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
-import { EditableText } from "../../EditableText/EditableText";
+import EditableText from "../../EditableText";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 import Question from "metabase-lib/lib/Question";
 import { Card } from "metabase-types/types/Card";

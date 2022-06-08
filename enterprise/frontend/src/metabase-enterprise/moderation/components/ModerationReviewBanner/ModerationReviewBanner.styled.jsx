@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Button from "metabase/core/components/Button";
-import Icon from "metabase/components/Icon";
 
 export const Container = styled.div`
   padding: 1rem 0.5rem;
@@ -40,5 +39,3 @@ export const IconButton = styled(Button)`
     color: ${color("danger")};
   }
 `;
-
-export const StatusIcon = styled(Icon)``;

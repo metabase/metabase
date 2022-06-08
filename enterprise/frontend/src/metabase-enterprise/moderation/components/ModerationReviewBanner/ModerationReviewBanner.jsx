@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { connect } from "react-redux";
 
+import Icon from "metabase/components/Icon";
+
 import { color, alpha } from "metabase/lib/colors";
 import { getUser } from "metabase/selectors/user";
 import { getRelativeTimeAbbreviated } from "metabase/lib/time";
@@ -16,7 +18,6 @@ import {
   Container,
   Text,
   Time,
-  StatusIcon,
   TextContainer,
 } from "./ModerationReviewBanner.styled";
 
@@ -62,11 +63,7 @@ export function ModerationReviewBanner({
 
   return (
     <Container backgroundColor={alpha(iconColor, 0.2)} className={className}>
-      <StatusIcon
-        name={iconName}
-        color={color(iconColor)}
-        size={ICON_BUTTON_SIZE}
-      />
+      <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
       <TextContainer>
         <Text>{bannerText}</Text>
         <Time dateTime={moderationReview.created_at}>

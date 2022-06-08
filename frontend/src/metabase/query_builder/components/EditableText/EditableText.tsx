@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { Root, BorderedInput } from "./EditableText.styled";
+import { Root, StyledTextArea } from "./EditableText.styled";
 
 import { KEY_ESCAPE } from "metabase/lib/keyboard";
 
@@ -9,18 +9,16 @@ interface Props {
   onChange?: (val: string) => void;
 }
 
-export const EditableText = ({ value, onChange }: Props) => {
+const EditableText = ({ value, onChange }: Props) => {
   const [memo, setMemo] = useState(value);
 
-  const handleChange = (e: React.ChangeEvent) => {
-    const target = e.target as HTMLInputElement;
-    setMemo(target.value);
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMemo(e.target.value);
   };
 
-  const handleBlur = (e: React.ChangeEvent) => {
+  const handleBlur = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     if (onChange) {
-      const target = e.target as HTMLInputElement;
-      onChange(target.value);
+      onChange(e.target.value);
     }
   };
 
@@ -32,7 +30,7 @@ export const EditableText = ({ value, onChange }: Props) => {
 
   return (
     <Root data-replicated-value={memo}>
-      <BorderedInput
+      <StyledTextArea
         placeholder="Description"
         value={memo}
         onChange={handleChange}
@@ -42,3 +40,5 @@ export const EditableText = ({ value, onChange }: Props) => {
     </Root>
   );
 };
+
+export default EditableText;

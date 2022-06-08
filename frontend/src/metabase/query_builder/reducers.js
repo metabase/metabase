@@ -106,6 +106,7 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartTypeSidebar: false,
   isShowingQuestionDetailsSidebar: false,
   isShowingTimelineSidebar: false,
+  isShowingQuestionInfoSidebar: false,
 };
 
 // this is used to close other sidebar when one is updated
@@ -308,23 +309,11 @@ export const uiControls = handleActions(
         questionDetailsTimelineDrawerState: undefined,
         queryBuilderMode: "view",
       }),
-    [onCloseQuestionInfo]: (
-      state,
-      { payload: { closeOtherSidebars } = {} } = {},
-    ) => {
-      if (closeOtherSidebars) {
-        return {
-          ...state,
-          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-          questionDetailsTimelineDrawerState: undefined,
-        };
-      }
-      return {
-        ...state,
-        isShowingQuestionInfoSidebar: false,
-        questionDetailsTimelineDrawerState: undefined,
-      };
-    },
+    [onCloseQuestionInfo]: state => ({
+      ...state,
+      isShowingQuestionInfoSidebar: false,
+      questionDetailsTimelineDrawerState: undefined,
+    }),
     [onOpenQuestionHistory]: state =>
       setUIControls(state, {
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,

@@ -111,7 +111,7 @@ export function QuestionActivityTimeline({
 
   return (
     <div>
-      <Header>History</Header>
+      <Header>{t`History`}</Header>
       <Timeline items={events} data-testid="saved-question-history-list" />
     </div>
   );

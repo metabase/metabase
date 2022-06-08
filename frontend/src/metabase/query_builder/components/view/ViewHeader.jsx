@@ -458,7 +458,7 @@ function ViewTitleHeaderRightSide(props) {
     if (isShowingQuestionInfoSidebar) {
       onCloseQuestionInfo();
     } else {
-      onOpenQuestionInfo({ closeOtherSidebars: true });
+      onOpenQuestionInfo();
     }
   }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 

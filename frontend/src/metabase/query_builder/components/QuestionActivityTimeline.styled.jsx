@@ -14,10 +14,6 @@ export const Timeline = styled(DefaultTimeline)`
     display: flex;
     justify-content: space-between;
   }
-
-  ${DefaultTimeline.ItemIcon} {
-    // color: ${color("text-dark")};
-  }
 `;
 
 export const RevertButton = styled(Button)`
