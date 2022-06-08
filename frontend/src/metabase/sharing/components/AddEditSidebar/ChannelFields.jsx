@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Radio from "metabase/core/components/Radio/index.ts";
+import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import TextInput from "metabase/components/TextInput";
 
@@ -42,7 +42,8 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
           {field.type === "select" ? (
             <>
               <Radio
-                variant="bubble"
+                variant="normal"
+                showButtons={true}
                 value={channelType}
                 options={channelTypeOptions}
                 onChange={handleChannelTypeChange}
