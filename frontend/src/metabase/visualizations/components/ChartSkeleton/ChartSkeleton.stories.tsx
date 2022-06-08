@@ -19,3 +19,13 @@ export const Default = Template.bind({});
 Default.args = {
   display: "line",
 };
+
+export const Row = Template.bind({});
+Row.args = {
+  display: "row",
+};
+
+export const Table = Template.bind({});
+Table.args = {
+  display: "table",
+};
