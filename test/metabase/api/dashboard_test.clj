@@ -1457,6 +1457,14 @@
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :get 403 url)))))))))))
 
+(deftest chain-filter-not-found-test
+  (mt/with-temp Dashboard [{dashboard-id :id}]
+   (testing "GET /api/dashboard/:id/params/:param-key/values returns 400 if param not found"
+     (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/values" dashboard-id)))
+
+   (testing "GET /api/dashboard/:id/params/:param-key/search/:query returns 400 if param not found"
+     (mt/user-http-request :rasta :get 400 (format "dashboard/%d/params/non-existing-param/search/bar" dashboard-id)))))
+
 (deftest chain-filter-invalid-parameters-test
   (testing "GET /api/dashboard/:id/params/:param-key/values"
     (testing "If some Dashboard parameters do not have valid Field IDs, we should ignore them"

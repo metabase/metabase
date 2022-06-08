@@ -8,6 +8,7 @@ export interface ColorPillRootProps {
 
 export const ColorPillRoot = styled.div<ColorPillRootProps>`
   display: inline-block;
+  flex: 0 0 auto;
   padding: 0.1875rem;
   border-width: 0.0625rem;
   border-color: ${props =>

@@ -163,3 +163,53 @@ export const FIELD_FILTER_PARAMETER_TYPES = [
   "category",
   "location",
 ];
+
+type FilterMap = {
+  [name: string]: {
+    name: string;
+    mapping: any[];
+  };
+};
+
+export const DATE_MBQL_FILTER_MAPPING: FilterMap = {
+  today: {
+    name: t`Today`,
+    mapping: ["=", null, ["relative-datetime", "current"]],
+  },
+  yesterday: {
+    name: t`Yesterday`,
+    mapping: ["=", null, ["relative-datetime", -1, "day"]],
+  },
+  past7days: {
+    name: t`Past 7 Days`,
+    mapping: ["time-interval", null, -7, "day"],
+  },
+  past30days: {
+    name: t`Past 30 Days`,
+    mapping: ["time-interval", null, -30, "day"],
+  },
+  lastweek: {
+    name: t`Last Week`,
+    mapping: ["time-interval", null, "last", "week"],
+  },
+  lastmonth: {
+    name: t`Last Month`,
+    mapping: ["time-interval", null, "last", "month"],
+  },
+  lastyear: {
+    name: t`Last Year`,
+    mapping: ["time-interval", null, "last", "year"],
+  },
+  thisweek: {
+    name: t`This Week`,
+    mapping: ["time-interval", null, "current", "week"],
+  },
+  thismonth: {
+    name: t`This Month`,
+    mapping: ["time-interval", null, "current", "month"],
+  },
+  thisyear: {
+    name: t`This Year`,
+    mapping: ["time-interval", null, "current", "year"],
+  },
+};

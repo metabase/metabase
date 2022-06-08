@@ -276,6 +276,15 @@
 
 ;;; ----------------------------------------- Tests for exotic column types ------------------------------------------
 
+(deftest json-query-support-test
+  (let [default-db        {:details {}}
+        json-unfold-db    {:details {:json-unfolding true}}
+        no-json-unfold-db {:details {:json-unfolding false}}]
+    (testing "JSON database support options behave as they're supposed to"
+      (is (= true (driver/database-supports? :postgres :nested-field-columns default-db)))
+      (is (= true (driver/database-supports? :postgres :nested-field-columns json-unfold-db)))
+      (is (= false (driver/database-supports? :postgres :nested-field-columns no-json-unfold-db))))))
+
 (deftest ^:parallel json-query-test
   (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
@@ -403,6 +412,29 @@
                    :postgres
                    database
                    {:schema "bobdobbs" :name "describe_json_table"}))))))))
+
+(deftest describe-funky-name-table-nested-field-columns-test
+  (mt/test-driver :postgres
+    (testing "sync goes and still works with funky schema and table names, including caps and special chars (#23026, #23027)"
+      (drop-if-exists-and-create-db! "describe-json-funky-names-test")
+      (let [details (mt/dbdef->connection-details :postgres :db {:database-name "describe-json-funky-names-test"
+                                                                 :json-unfolding true})
+            spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+          (jdbc/execute! spec [(str "CREATE SCHEMA \"AAAH_#\";"
+                                    "CREATE TABLE \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json JSONB NOT NULL);"
+                                    "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")]))
+        (mt/with-temp Database [database {:engine :postgres, :details details}]
+          (is (= #{{:name "trivial_json → a",
+                    :database-type "integer",
+                    :base-type :type/Integer,
+                    :database-position 0,
+                    :visibility-type :normal,
+                    :nfc-path [:trivial_json "a"]}}
+                 (sql-jdbc.sync/describe-nested-field-columns
+                   :postgres
+                   database
+                   {:schema "AAAH_#" :name "dESCribe_json_table_%"}))))))))
 
 (deftest describe-big-nested-field-columns-test
   (mt/test-driver :postgres
