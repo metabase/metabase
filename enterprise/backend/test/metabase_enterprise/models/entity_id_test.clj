@@ -35,6 +35,8 @@
   - exported as a child of something else (eg. timeline_event under timeline)
   so they don't need a generated entity_id."
   #{metabase.db.data_migrations.DataMigrationsInstance
+    metabase.models.action.Action
+    metabase.models.action.QueryAction
     metabase.models.activity.ActivityInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
     metabase.models.bookmark.BookmarkOrderingInstance
@@ -45,6 +47,10 @@
     metabase.models.collection_permission_graph_revision.CollectionPermissionGraphRevisionInstance
     metabase.models.dashboard_card_series.DashboardCardSeriesInstance
     metabase.models.dependency_test.MockInstance
+    metabase.models.emitter.CardEmitter
+    metabase.models.emitter.DashboardEmitter
+    metabase.models.emitter.Emitter
+    metabase.models.emitter.EmitterAction
     metabase.models.field_values.FieldValuesInstance
     metabase.models.login_history.LoginHistoryInstance
     metabase.models.metric_important_field.MetricImportantFieldInstance
