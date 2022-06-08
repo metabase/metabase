@@ -11636,6 +11636,161 @@ databaseChangeLog:
             tableName: persisted_info
             columnName: creator_id
             columnDataType: int
+
+  # v44.00-002 through -011 add entity_id columns to several internal entities.
+  # These are fixed-width string fields populated with a random 21-character
+  # NanoID value, and used by the serialization system to de-duplicate entities
+  # in a portable way. See the serialization design doc in the design repo.
+  - changeSet:
+      id: v44.00-002
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: metric
+  - changeSet:
+      id: v44.00-003
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: segment
+  - changeSet:
+      id: v44.00-004
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: collection
+  - changeSet:
+      id: v44.00-005
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboard
+  - changeSet:
+      id: v44.00-006
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: dimension
+  - changeSet:
+      id: v44.00-007
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: pulse
+  - changeSet:
+      id: v44.00-008
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_card
+  - changeSet:
+      id: v44.00-009
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: native_query_snippet
+  - changeSet:
+      id: v44.00-010
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: timeline
+  - changeSet:
+      id: v44.00-011
+      author: braden
+      comment: Added 0.44.0 - add entity_id column to all internal entities
+      changes:
+        - addColumn:
+            columns:
+            - column:
+                remarks: Random NanoID tag for unique identity.
+                name: entity_id
+                type: char(21)
+                constraints:
+                  nullable: true
+                  unique: true
+            tableName: report_dashboardcard
   - changeSet:
       id: v44.00-012
       author: snoe
@@ -11877,161 +12032,6 @@ databaseChangeLog:
                   constraints:
                     nullable: false
             tableName: report_card
-
-  # v44.00-002 through -011 add entity_id columns to several internal entities.
-  # These are fixed-width string fields populated with a random 21-character
-  # NanoID value, and used by the serialization system to de-duplicate entities
-  # in a portable way. See the serialization design doc in the design repo.
-  - changeSet:
-      id: v44.00-002
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: metric
-  - changeSet:
-      id: v44.00-003
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: segment
-  - changeSet:
-      id: v44.00-004
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: collection
-  - changeSet:
-      id: v44.00-005
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: report_dashboard
-  - changeSet:
-      id: v44.00-006
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: dimension
-  - changeSet:
-      id: v44.00-007
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: pulse
-  - changeSet:
-      id: v44.00-008
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: report_card
-  - changeSet:
-      id: v44.00-009
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: native_query_snippet
-  - changeSet:
-      id: v44.00-010
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: timeline
-  - changeSet:
-      id: v44.00-011
-      author: braden
-      comment: Added 0.44.0 - add entity_id column to all internal entities
-      changes:
-        - addColumn:
-            columns:
-            - column:
-                remarks: Random NanoID tag for unique identity.
-                name: entity_id
-                type: char(21)
-                constraints:
-                  nullable: true
-                  unique: true
-            tableName: report_dashboardcard
   - changeSet:
       id: v44.00-023
       author: qnkhuat
