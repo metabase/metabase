@@ -7,7 +7,13 @@ const RowSkeleton = (): JSX.Element => {
   return (
     <SkeletonRoot>
       {ROWS.map((width, index) => (
-        <SkeletonRow key={index} style={{ width: `${width}%` }} />
+        <SkeletonRow
+          key={index}
+          style={{
+            width: `${width}%`,
+            height: `${80 / ROWS.length}%`,
+          }}
+        />
       ))}
     </SkeletonRoot>
   );

@@ -15,11 +15,7 @@ export const fadingKeyframes = keyframes`
 `;
 
 export const positionStyles = css`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  height: 100%;
 `;
 
 export const animationStyles = css`

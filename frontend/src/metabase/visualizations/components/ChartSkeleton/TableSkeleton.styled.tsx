@@ -6,10 +6,15 @@ export const SkeletonRoot = styled.div`
   ${positionStyles};
   ${animationStyles};
   display: flex;
+  justify-content: space-between;
+`;
+
+export const SkeletonColumn = styled.div`
+  display: flex;
   flex-direction: column;
   justify-content: space-between;
 `;
 
-export const SkeletonRow = styled.div`
+export const SkeletonCell = styled.div`
   background-color: ${color("bg-medium")};
 `;
