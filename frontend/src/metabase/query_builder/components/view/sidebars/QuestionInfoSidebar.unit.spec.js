@@ -6,7 +6,7 @@ import {
   metadata,
 } from "__support__/sample_database_fixture";
 import Question from "metabase-lib/lib/Question";
-import QuestionDetailsSidebarPanel from "./QuestionDetailsSidebarPanel";
+import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
 const BASE_QUESTION = {
   id: 1,
@@ -48,29 +48,14 @@ function getDataset(card) {
 }
 
 function setup({ question } = {}) {
-  const onOpenModal = jest.fn();
+  const onSave = jest.fn();
 
-  const settingsState = {
-    values: { "enable-nested-queries": true },
-  };
-
-  renderWithProviders(
-    <QuestionDetailsSidebarPanel
-      question={question}
-      onOpenModal={onOpenModal}
-    />,
+  return renderWithProviders(
+    <QuestionInfoSidebar question={question} onSave={onSave} />,
     {
       withSampleDatabase: true,
-      storeInitialState: {
-        settings: settingsState,
-      },
-      reducers: {
-        settings: () => settingsState,
-      },
     },
   );
-
-  return { onOpenModal };
 }
 
 describe("QuestionDetailsSidebarPanel", () => {
@@ -84,7 +69,7 @@ describe("QuestionDetailsSidebarPanel", () => {
       describe(type, () => {
         it("displays description", () => {
           setup({ question: getObject({ description: "Foo bar" }) });
-          expect(screen.queryByText("Foo bar")).not.toBeInTheDocument();
+          expect(screen.queryByText("Foo bar")).toBeInTheDocument();
         });
       });
     });

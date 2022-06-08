@@ -4,13 +4,15 @@ import { Root, StyledTextArea } from "./EditableText.styled";
 
 import { KEY_ESCAPE } from "metabase/lib/keyboard";
 
+type text = string | null | undefined;
+
 interface Props {
-  value: string;
+  value: text;
   onChange?: (val: string) => void;
 }
 
 const EditableText = ({ value, onChange }: Props) => {
-  const [memo, setMemo] = useState(value);
+  const [memo, setMemo] = useState<text>(value);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setMemo(e.target.value);
@@ -32,7 +34,7 @@ const EditableText = ({ value, onChange }: Props) => {
     <Root data-replicated-value={memo}>
       <StyledTextArea
         placeholder="Description"
-        value={memo}
+        value={memo || undefined}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}

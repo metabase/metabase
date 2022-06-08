@@ -89,6 +89,7 @@ export function QuestionActivityTimeline({
                 onlyIcon
                 borderless
                 onClick={() => revertToRevision(revision)}
+                data-testid="question-revert-button"
               />
             </Tooltip>
           </>

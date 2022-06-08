@@ -1,7 +1,7 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
-import { EditableText } from "./EditableText";
+import EditableText from "./EditableText";
 
 export default {
   title: "Query Builder/EditableText",
