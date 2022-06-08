@@ -32,4 +32,3 @@
     :post-insert post-insert
     :pre-update  pre-update
     :properties  (constantly {:created-at-timestamped? true})}))
-
