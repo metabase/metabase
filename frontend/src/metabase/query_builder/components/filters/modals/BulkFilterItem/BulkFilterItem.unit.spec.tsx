@@ -53,9 +53,24 @@ const floatField = new Field({
   metadata,
 });
 
+const fkField = new Field({
+  database_type: "test",
+  semantic_type: "type/FK",
+  table_id: 8,
+  name: "fk_num",
+  has_field_values: "list",
+  dimensions: {},
+  dimension_options: [],
+  effective_type: "type/Integer",
+  id: 137,
+  base_type: "type/Integer",
+  metadata,
+});
+
 metadata.fields[booleanField.id] = booleanField;
 metadata.fields[intField.id] = intField;
 metadata.fields[floatField.id] = floatField;
+metadata.fields[fkField.id] = fkField;
 
 const card = {
   dataset_query: {
@@ -74,6 +89,7 @@ const query = question.query();
 const booleanDimension = booleanField.dimension();
 const floatDimension = floatField.dimension();
 const intDimension = intField.dimension();
+const fkDimension = fkField.dimension();
 
 describe("BulkFilterItem", () => {
   it("renders a boolean picker for a boolean filter", () => {
@@ -99,7 +115,7 @@ describe("BulkFilterItem", () => {
     expect(screen.getByLabelText("false")).not.toBeChecked();
   });
 
-  it("renders a bulk filter select for integer field type", () => {
+  it("renders a range picker for integer field type", () => {
     const testFilter = new Filter(
       ["=", ["field", intField.id, null], 99],
       null,
@@ -119,13 +135,11 @@ describe("BulkFilterItem", () => {
     );
 
     expect(screen.queryByText("true")).toBeNull();
-    expect(screen.getByTestId("select-button")).toHaveAttribute(
-      "aria-label",
-      "int_num",
-    );
+    const rangeInput = screen.getByLabelText("int_num");
+    expect(isNumberRangeFilter(rangeInput)).toBe(true);
   });
 
-  it("renders a bulk filter select for float field type", () => {
+  it("renders a range picker for float field type", () => {
     const testFilter = new Filter(
       ["=", ["field", floatField.id, null], 99],
       null,
@@ -144,9 +158,37 @@ describe("BulkFilterItem", () => {
       />,
     );
     expect(screen.queryByText("true")).toBeNull();
+    const rangeInput = screen.getByLabelText("float_num");
+    expect(isNumberRangeFilter(rangeInput)).toBe(true);
+  });
+
+  it("renders a generic filter select for foreign key field types", () => {
+    const testFilter = new Filter(
+      ["=", ["field", floatField.id, null], 99],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+
+    render(
+      <BulkFilterItem
+        query={query}
+        filter={testFilter}
+        dimension={fkDimension}
+        onAddFilter={changeSpy}
+        onChangeFilter={changeSpy}
+        onRemoveFilter={changeSpy}
+      />,
+    );
     expect(screen.getByTestId("select-button")).toHaveAttribute(
       "aria-label",
-      "float_num",
+      "fk_num",
     );
   });
 });
+
+const isNumberRangeFilter = el => {
+  const inputs = el.querySelectorAll("input");
+  const rangeInputs = el.querySelectorAll("input[type=range]");
+  return inputs.length === 4 && rangeInputs.length === 2;
+};

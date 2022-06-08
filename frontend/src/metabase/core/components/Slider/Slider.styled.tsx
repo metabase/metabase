@@ -1,9 +1,12 @@
 import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
 
 export const SliderContainer = styled.div`
   position: relative;
   display: flex;
+  width: 100%;
+  margin: 0 ${space(1)};
 `;
 
 const thumbStyles = `
@@ -45,15 +48,38 @@ export const SliderTrack = styled.span`
   border-radius: 0.2rem;
 `;
 
-interface ActiveTrackProps {
-  left: number;
-  width: number;
-}
-
-export const ActiveTrack = styled.span<ActiveTrackProps>`
+export const ActiveTrack = styled.span`
   position: absolute;
-  left: ${props => props.left}%;
-  width: ${props => props.width}%;
   background-color: ${color("brand")};
   height: 0.2rem;
+`;
+
+export const SliderTooltip = styled.div`
+  position: absolute;
+  top: -3rem;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-align: center;
+  padding: ${space(0.5)} ${space(1)};
+  background: ${color("black")};
+  color: ${color("white")};
+  display: block;
+  border-radius: ${space(1)};
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+
+  &:before {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-top: 10px solid ${color("black")};
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    margin-top: -1px;
+  }
 `;

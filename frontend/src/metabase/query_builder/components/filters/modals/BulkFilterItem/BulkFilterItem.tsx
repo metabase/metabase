@@ -6,7 +6,10 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { isBoolean } from "metabase/lib/schema_metadata";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
+import RangePicker from "metabase/query_builder/components/filters/pickers/RangePicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
+
+import { BASE_FIELD_FILTERS, SEMANTIC_FIELD_FILTERS } from "./constants";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -25,9 +28,18 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldType = useMemo(() => dimension.field().base_type ?? "", [
-    dimension,
-  ]);
+  const fieldType = useMemo(() => {
+    const semanticType = dimension.field().semantic_type ?? "";
+    const baseType = dimension.field().base_type ?? "";
+
+    if (SEMANTIC_FIELD_FILTERS.includes(semanticType)) {
+      return semanticType;
+    }
+
+    if (BASE_FIELD_FILTERS.includes(baseType)) {
+      return baseType;
+    }
+  }, [dimension]);
 
   const newFilter = useMemo(() => getNewFilter(query, dimension), [
     query,
@@ -52,6 +64,15 @@ export const BulkFilterItem = ({
       return (
         <BooleanPickerCheckbox
           filter={filter ?? newFilter}
+          onFilterChange={handleChange}
+        />
+      );
+    case "type/Float":
+    case "type/Integer":
+      return (
+        <RangePicker
+          filter={filter ?? newFilter}
+          field={dimension.field()}
           onFilterChange={handleChange}
         />
       );

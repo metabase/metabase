@@ -76,57 +76,21 @@ describe("scenarios > filters > bulk filtering", () => {
     });
   });
 
-  it("should add a filter for a raw query", () => {
-    visitQuestionAdhoc(rawQuestionDetails);
-    openFilterModal();
-
-    modal().within(() => {
-      cy.findByLabelText("Quantity").click();
-    });
-
-    popover().within(() => {
-      cy.findByPlaceholderText("Search the list").type("21");
-      cy.findByText("20").click();
-      cy.button("Add filter").click();
-    });
-
-    modal().within(() => {
-      cy.button("Apply").click();
-      cy.wait("@dataset");
-    });
-
-    cy.findByText("Quantity is equal to 20").should("be.visible");
-    cy.findByText("Showing 4 rows").should("be.visible");
-  });
-
   it("should add a filter for an aggregated query", () => {
     visitQuestionAdhoc(aggregatedQuestionDetails);
     openFilterModal();
 
     modal().within(() => {
       cy.findByText("Summaries").click();
-      cy.findByLabelText("Count").click();
-    });
+      cy.findByLabelText("Count")
+        .findByPlaceholderText("min")
+        .type("500");
 
-    popover().within(() => {
-      cy.findByText("Equal to").click();
-    });
-
-    popover()
-      .eq(1)
-      .within(() => cy.findByText("Greater than").click());
-
-    popover().within(() => {
-      cy.findByPlaceholderText("Enter a number").type("500");
-      cy.button("Add filter").click();
-    });
-
-    modal().within(() => {
       cy.button("Apply").click();
       cy.wait("@dataset");
     });
 
-    cy.findByText("Count is greater than 500").should("be.visible");
+    cy.findByText("Count is greater than or equal to 500").should("be.visible");
     cy.findByText("Showing 21 rows").should("be.visible");
   });
 
@@ -158,27 +122,18 @@ describe("scenarios > filters > bulk filtering", () => {
     openFilterModal();
 
     modal().within(() => {
-      cy.findByText("is less than 30").click();
-    });
-
-    popover().within(() => {
-      cy.findByRole("textbox")
-        .click()
-        .type("30")
+      cy.findAllByDisplayValue("30")
+        .eq(1) // get the text input, not the range input
         .clear()
         .type("25");
 
-      cy.button("Update filter").click();
-    });
-
-    modal().within(() => {
       cy.button("Apply").click();
       cy.wait("@dataset");
     });
 
     cy.findByText("Quantity is greater than 20").should("be.visible");
-    cy.findByText("Quantity is less than 25").should("be.visible");
-    cy.findByText("Showing 17 rows").should("be.visible");
+    cy.findByText("Quantity is less than or equal to 25").should("be.visible");
+    cy.findByText("Showing 19 rows").should("be.visible");
   });
 
   it("should remove an existing filter", () => {
@@ -186,7 +141,8 @@ describe("scenarios > filters > bulk filtering", () => {
     openFilterModal();
 
     modal().within(() => {
-      cy.findByText("is less than 30")
+      cy.findAllByDisplayValue("30")
+        .eq(1) // get the text input, not the range input
         .parent()
         .within(() => cy.icon("close").click());
 
@@ -345,6 +301,86 @@ describe("scenarios > filters > bulk filtering", () => {
       });
 
       cy.findByText("Showing 4 rows").should("be.visible");
+    });
+  });
+
+  describe("number filters", () => {
+    it("should add an = filter", () => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByLabelText("Quantity")
+          .findByPlaceholderText("min")
+          .type("20");
+
+        cy.findByLabelText("Quantity")
+          .findByPlaceholderText("max")
+          .type("20");
+
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Quantity is equal to 20").should("be.visible");
+      cy.findByText("Showing 4 rows").should("be.visible");
+    });
+
+    it("should add a >= filter", () => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByLabelText("Total")
+          .findByPlaceholderText("min")
+          .type("150");
+
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Total is greater than or equal to 150").should(
+        "be.visible",
+      );
+      cy.findByText("Showing 256 rows").should("be.visible");
+    });
+
+    it("should add a <= filter", () => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByLabelText("Total")
+          .findByPlaceholderText("max")
+          .type("20");
+
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Total is less than or equal to 20").should("be.visible");
+      cy.findByText("Showing 52 rows").should("be.visible");
+    });
+
+    it("should add a between filter with decimals", () => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByLabelText("Total")
+          .findByPlaceholderText("min")
+          .type("20.50");
+
+        cy.findByLabelText("Total")
+          .findByPlaceholderText("max")
+          .type("30.09");
+
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Total between 20.5 30.09").should("be.visible");
+      cy.findByText("Showing 611 rows").should("be.visible");
     });
   });
 });
