@@ -305,12 +305,17 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
+(defn- tree-search [identifier query]
+  (-> (filter #(some? (query %)) (tree-seq (comp not record?) identity identifier))
+      first
+      query))
+
 (defmethod sql.qp/json-query :postgres
   [_ identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          unwrapped-identifier (:form identifier)
+          unwrapped-identifier (tree-search identifier :form)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
