@@ -144,7 +144,8 @@
                         :fields #{{:name "created_at"
                                    :database-type "TIMESTAMP"
                                    :base-type :type/DateTime
-                                   :database-position 0}}}
+                                   :database-position 0
+                                   :database-required true}}}
                        (driver/describe-table driver db (Table (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
