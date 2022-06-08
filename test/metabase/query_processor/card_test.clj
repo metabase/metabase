@@ -74,33 +74,33 @@
                                :default      "1"}}
               :query         "SELECT *\nFROM ORDERS\nWHERE id = {{id}}"}})
 
-(deftest card-template-tag-parameters-test
+(deftest card-template-tags-test
   (testing "Card with a Field filter parameter"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (field-filter-query)}]
-      (is (= {"date" :date/all-options}
-             (#'qp.card/card-template-tag-parameters card-id)))))
+    (mt/with-temp Card [card {:dataset_query (field-filter-query)}]
+      (is (= {"date" :date/all-options, "_DATE_" :date/all-options}
+             (#'qp.card/card-template-tags card)))))
   (testing "Card with a non-Field-filter parameter"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (non-field-filter-query)}]
-      (is (= {"id" :number}
-             (#'qp.card/card-template-tag-parameters card-id)))))
+    (mt/with-temp Card [card {:dataset_query (non-field-filter-query)}]
+      (is (= {"id" :number, "_ID_" :number}
+             (#'qp.card/card-template-tags card)))))
   (testing "Should ignore native query snippets and source card IDs"
-    (mt/with-temp Card [{card-id :id} {:dataset_query (assoc (non-field-filter-query)
-                                                             "abcdef"
-                                                             {:id           "abcdef"
-                                                              :name         "#1234"
-                                                              :display-name "#1234"
-                                                              :type         :card
-                                                              :card-id      1234}
+    (mt/with-temp Card [card {:dataset_query (assoc (non-field-filter-query)
+                                                    "abcdef"
+                                                    {:id           "abcdef"
+                                                     :name         "#1234"
+                                                     :display-name "#1234"
+                                                     :type         :card
+                                                     :card-id      1234}
 
-                                                             "xyz"
-                                                             {:id           "xyz"
-                                                              :name         "snippet: My Snippet"
-                                                              :display-name "Snippet: My Snippet"
-                                                              :type         :snippet
-                                                              :snippet-name "My Snippet"
-                                                              :snippet-id   1})}]
-      (is (= {"id" :number}
-             (#'qp.card/card-template-tag-parameters card-id))))))
+                                                    "xyz"
+                                                    {:id           "xyz"
+                                                     :name         "snippet: My Snippet"
+                                                     :display-name "Snippet: My Snippet"
+                                                     :type         :snippet
+                                                     :snippet-name "My Snippet"
+                                                     :snippet-id   1})}]
+      (is (= {"id" :number, "_ID_" :number}
+             (#'qp.card/card-template-tags card))))))
 
 (deftest infer-parameter-name-test
   (is (= "my_param"
@@ -115,15 +115,15 @@
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\""
+           #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\""
            (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
                                                          :name  "fake"
                                                          :type  :date/single
                                                          :value "2016-01-01"}])))
       (testing "As an API request"
-        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag named \"fake\".+"
+        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\"."
                       :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
-                      :allowed-parameters (s/eq ["date"])
+                      :allowed-parameters (s/eq ["_DATE_", "date"])
                       s/Keyword           s/Any}
                      (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                            {:parameters [{:id    "_FAKE_"
