@@ -903,10 +903,13 @@ class StructuredQueryInner extends AtomicQuery {
 
     // special logic to only show aggregation dimensions for post-aggregation dimensions
     if (queries.length > 1) {
-      // set the section title to `Metrics`
-      sections[0].name = t`Metrics`;
+      const summarySection = {
+        name: t`Summaries`,
+        icon: "sum",
+        items: [],
+      };
       // only include aggregation dimensions
-      sections[0].items = sections[0].items.filter(item => {
+      summarySection.items = sections[0].items.filter(item => {
         if (item.dimension) {
           const sourceDimension = queries[0].dimensionForSourceQuery(
             item.dimension,
@@ -919,6 +922,8 @@ class StructuredQueryInner extends AtomicQuery {
 
         return true;
       });
+      sections.shift();
+      sections.push(summarySection);
     }
 
     return sections;
