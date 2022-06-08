@@ -15,6 +15,15 @@ export const SkeletonColumn = styled.div`
   justify-content: space-between;
 `;
 
-export const SkeletonCell = styled.div`
+export interface SkeletonCellProps {
+  isRounded?: boolean;
+}
+
+export const SkeletonCell = styled.div<SkeletonCellProps>`
   background-color: ${color("bg-medium")};
+
+  &:first-of-type {
+    width: 60%;
+    border-radius: 10rem;
+  }
 `;

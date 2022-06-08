@@ -1,7 +1,9 @@
 import React from "react";
+import { percentage } from "./utils";
 import { SkeletonRoot, SkeletonRow } from "./RowSkeleton.styled";
 
-const ROWS = [34, 78, 60, 93, 19];
+const ROWS = [0.34, 0.78, 0.6, 0.93, 0.19];
+const DENSITY = 0.8;
 
 const RowSkeleton = (): JSX.Element => {
   return (
@@ -10,8 +12,8 @@ const RowSkeleton = (): JSX.Element => {
         <SkeletonRow
           key={index}
           style={{
-            width: `${width}%`,
-            height: `${80 / ROWS.length}%`,
+            width: percentage(width),
+            height: percentage(DENSITY / ROWS.length),
           }}
         />
       ))}
