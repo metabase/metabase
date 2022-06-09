@@ -1,3 +1,7 @@
+---
+title: Activity
+---
+
 # Activity
 
   - [GET /api/activity/](#get-apiactivity)

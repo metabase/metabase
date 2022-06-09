@@ -1,3 +1,7 @@
+---
+title: Email
+---
+
 # Email
 
 /api/email endpoints.

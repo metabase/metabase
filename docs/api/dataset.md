@@ -1,3 +1,7 @@
+---
+title: Dataset
+---
+
 # Dataset
 
 /api/dataset endpoints.

@@ -1,3 +1,7 @@
+---
+title: Configuring the Metabase Application Database
+---
+
 # Configuring the Metabase Application Database
 
 The application database is where Metabase stores information about users, saved questions, dashboards, and any other

@@ -1,3 +1,7 @@
+---
+title: Embed
+---
+
 # Embed
 
 Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.

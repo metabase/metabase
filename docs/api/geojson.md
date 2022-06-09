@@ -1,3 +1,7 @@
+---
+title: GeoJSON
+---
+
 # GeoJSON
 
   - [GET /api/geojson/](#get-apigeojson)

@@ -1,3 +1,7 @@
+---
+title: Search
+---
+
 # Search
 
   - [GET /api/search/](#get-apisearch)

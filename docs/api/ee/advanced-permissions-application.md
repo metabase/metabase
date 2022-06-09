@@ -1,3 +1,7 @@
+---
+title: Advanced permissions application
+---
+
 # Advanced permissions application
 
 `/advanced-permisisons/application` Routes.

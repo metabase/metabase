@@ -1,3 +1,7 @@
+---
+title: Collection
+---
+
 # Collection
 
 `/api/collection` endpoints. By default, these endpoints operate on Collections in the 'default' namespace, which is

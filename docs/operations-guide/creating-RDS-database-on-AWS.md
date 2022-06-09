@@ -1,3 +1,7 @@
+---
+title: - [Configuring RDS for Metabase (the recommended guide)](configuring-rds-for-metabase-the-recommended-guide)
+---
+
 - [Configuring RDS for Metabase (the recommended guide)](#configuring-rds-for-metabase-the-recommended-guide)
   - [Step 1](#step-1)
   - [Step 2](#step-2)

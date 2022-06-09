@@ -1,3 +1,7 @@
+---
+title: Pulse
+---
+
 # Pulse
 
 /api/pulse endpoints.

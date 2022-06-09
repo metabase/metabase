@@ -1,3 +1,7 @@
+---
+title: Notify
+---
+
 # Notify
 
 /api/notify/* endpoints which receive inbound etl server notifications.

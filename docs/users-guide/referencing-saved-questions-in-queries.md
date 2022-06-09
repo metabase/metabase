@@ -1,3 +1,7 @@
+---
+title: Referencing models and saved questions in SQL queries
+---
+
 ## Referencing models and saved questions in SQL queries
 
 With SQL databases, we can use a [model][model] or an existing question as the basis for a new query, or as a common table expression [CTE][CTE].

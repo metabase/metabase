@@ -1,3 +1,7 @@
+---
+title: **Covered in this guide:**
+---
+
 **Covered in this guide:**
 
 - [Running Metabase on AWS Elastic Beanstalk](#running-metabase-on-aws-elastic-beanstalk)

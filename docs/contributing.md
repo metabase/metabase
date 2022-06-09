@@ -1,3 +1,7 @@
+---
+title: Thank you
+---
+
 ## Thank you
 
 First off, thanks for your interest in Metabase and for wanting to contribute!

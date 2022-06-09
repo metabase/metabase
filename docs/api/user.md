@@ -1,3 +1,7 @@
+---
+title: User
+---
+
 # User
 
 /api/user endpoints.

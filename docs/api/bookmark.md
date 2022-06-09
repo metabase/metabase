@@ -1,3 +1,7 @@
+---
+title: Bookmark
+---
+
 # Bookmark
 
 Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,

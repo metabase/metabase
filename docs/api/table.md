@@ -1,3 +1,7 @@
+---
+title: Table
+---
+
 # Table
 
 /api/table endpoints.

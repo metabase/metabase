@@ -1,3 +1,7 @@
+---
+title: Slack
+---
+
 # Slack
 
 /api/slack endpoints.

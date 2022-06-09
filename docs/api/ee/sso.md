@@ -1,3 +1,7 @@
+---
+title: SSO
+---
+
 # SSO
 
 `/auth/sso` Routes.

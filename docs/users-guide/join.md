@@ -1,3 +1,7 @@
+---
+title: Joining data
+---
+
 # Joining data
 
 ![Joining](./images/notebook/join-step.png)

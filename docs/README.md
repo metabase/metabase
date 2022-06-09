@@ -1,3 +1,7 @@
+---
+title: Getting started
+---
+
 ## Getting started
 
 - [Getting started](/learn/getting-started/getting-started)

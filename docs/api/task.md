@@ -1,3 +1,7 @@
+---
+title: Task
+---
+
 # Task
 
 /api/task endpoints.

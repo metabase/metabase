@@ -1,3 +1,7 @@
+---
+title: Automagic dashboards
+---
+
 # Automagic dashboards
 
   - [GET /api/automagic-dashboards/:entity/:entity-id-or-query](#get-apiautomagic-dashboardsentityentity-id-or-query)

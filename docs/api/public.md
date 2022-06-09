@@ -1,3 +1,7 @@
+---
+title: Public
+---
+
 # Public
 
 Metabase API endpoints for viewing publicly-accessible Cards and Dashboards.

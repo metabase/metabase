@@ -1,3 +1,7 @@
+---
+title: The Data Model page: editing metadata
+---
+
 # The Data Model page: editing metadata
 
 Metabase allows you to annotate the data in your database. Annotations can give Metabase a better understanding of what the data actually means, which allows Metabase to make more intelligent decisions when processing and displaying that data.

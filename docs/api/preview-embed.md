@@ -1,3 +1,7 @@
+---
+title: Preview embed
+---
+
 # Preview embed
 
 Endpoints for previewing how Cards and Dashboards will look when embedding them.

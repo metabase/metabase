@@ -1,3 +1,7 @@
+---
+title: Alert
+---
+
 # Alert
 
 /api/alert endpoints.

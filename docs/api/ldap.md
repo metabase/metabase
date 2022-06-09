@@ -1,3 +1,7 @@
+---
+title: LDAP
+---
+
 # LDAP
 
 /api/ldap endpoints.

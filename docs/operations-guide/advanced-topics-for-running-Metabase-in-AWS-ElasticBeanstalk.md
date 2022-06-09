@@ -1,3 +1,7 @@
+---
+title: - [Logging](logging)
+---
+
 - [Logging](#logging)
   - [Network Access log](#network-access-log)
   - [Application Logs](#application-logs)

@@ -1,3 +1,7 @@
+---
+title: Tiles
+---
+
 # Tiles
 
 `/api/tiles` endpoints.

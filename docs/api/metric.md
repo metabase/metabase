@@ -1,3 +1,7 @@
+---
+title: Metric
+---
+
 # Metric
 
 /api/metric endpoints.

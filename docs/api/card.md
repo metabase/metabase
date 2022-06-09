@@ -1,3 +1,7 @@
+---
+title: Card
+---
+
 # Card
 
 /api/card endpoints.

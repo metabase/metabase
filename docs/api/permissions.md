@@ -1,3 +1,7 @@
+---
+title: Permissions
+---
+
 # Permissions
 
 /api/permissions endpoints.

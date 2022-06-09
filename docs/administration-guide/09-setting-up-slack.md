@@ -1,3 +1,7 @@
+---
+title: Setting up Slack
+---
+
 # Setting up Slack
 
 If you want to have your [Dashboard subscriptions][dashboard-subscriptions] sent to Slack channels (or people on Slack), an admin must first integrate your Metabase with Slack.

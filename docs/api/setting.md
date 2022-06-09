@@ -1,3 +1,7 @@
+---
+title: Setting
+---
+
 # Setting
 
 /api/setting endpoints.

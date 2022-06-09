@@ -1,3 +1,7 @@
+---
+title: Setup
+---
+
 # Setup
 
   - [GET /api/setup/admin_checklist](#get-apisetupadmin_checklist)

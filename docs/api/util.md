@@ -1,3 +1,7 @@
+---
+title: Util
+---
+
 # Util
 
 Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
