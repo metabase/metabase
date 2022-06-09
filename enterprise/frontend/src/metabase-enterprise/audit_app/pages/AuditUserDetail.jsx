@@ -18,7 +18,6 @@ const AuditUserDetail = ({ params, ...props }) => {
         <EntityName
           entityType="users"
           entityId={userId}
-          // https://user-images.githubusercontent.com/1937582/172786020-b4186a5f-3998-46dc-86c2-3efda56aa630.png
           property="common_name"
         />
       }

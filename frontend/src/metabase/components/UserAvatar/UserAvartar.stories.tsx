@@ -40,3 +40,13 @@ OnlyEmail.args = {
     common_name: "john.w@hightable.org",
   },
 };
+
+export const shortEmail = Template.bind({});
+shortEmail.args = {
+  user: {
+    first_name: null,
+    last_name: null,
+    email: "j@hightable.org",
+    common_name: "j@hightable.org",
+  },
+};

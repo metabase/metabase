@@ -126,7 +126,6 @@ const getCreatorMessage = (event: TimelineEvent) => {
   const createdAt = formatDateTimeWithUnit(event.created_at, "day", options);
 
   if (event.creator) {
-    // https://user-images.githubusercontent.com/1937582/172173003-ce406bfe-5b6c-41e5-a867-596af31bb522.png
     return t`${event.creator.common_name} added this on ${createdAt}`;
   } else {
     return t`Added on ${createdAt}`;

@@ -24,7 +24,6 @@ class UserSuccessModal extends React.Component {
     const { onClose, user, temporaryPassword } = this.props;
     return (
       <ModalContent
-        // https://user-images.githubusercontent.com/1937582/172612281-9cfd67a5-b228-4176-a64b-5ee3e2369179.png
         title={t`${user.common_name} has been added`}
         footer={<Button primary onClick={() => onClose()}>{t`Done`}</Button>}
         onClose={onClose}

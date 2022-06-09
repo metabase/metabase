@@ -7,7 +7,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
-import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar";
 import { ErrorMessage } from "./RecipientPicker.styled";
 
 export default class RecipientPicker extends Component {
@@ -60,14 +60,7 @@ export default class RecipientPicker extends Component {
         <div className="bordered rounded" style={{ padding: "2px" }}>
           <TokenField
             value={recipients}
-            options={
-              users
-                ? // `label` here isn't really used because we specify `filterOption`.
-                  // Normally, `options` will be filtered by its `label` if we don't provide
-                  // `filterOption` to <TokenField />.
-                  users.map(user => ({ value: user }))
-                : []
-            }
+            options={users ? users.map(user => ({ value: user })) : []}
             onChange={this.handleOnChange}
             placeholder={
               recipients.length === 0
@@ -76,19 +69,15 @@ export default class RecipientPicker extends Component {
             }
             autoFocus={autoFocus && recipients.length === 0}
             multi
-            // https://user-images.githubusercontent.com/1937582/172163846-86636488-9cb7-4b8f-9609-594b42384f4a.png
             valueRenderer={value => value.common_name}
             optionRenderer={option => (
               <div className="flex align-center">
                 <span className="text-white">
                   <UserAvatar user={option.value} />
                 </span>
-                {/* https://user-images.githubusercontent.com/1937582/172163846-86636488-9cb7-4b8f-9609-594b42384f4a.png */}
                 <span className="ml1">{option.value.common_name}</span>
               </div>
             )}
-            // Just a note, but I think logic that filter options by either common_name or email might already work.
-            // But making this close to what we have in UserPicker would be better because that one is more readable.
             filterOption={filterOption}
             validateValue={value => recipientIsValid(value)}
             parseFreeformValue={inputValue => {

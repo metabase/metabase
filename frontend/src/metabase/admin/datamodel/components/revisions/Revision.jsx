@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import RevisionDiff from "./RevisionDiff";
 import { t } from "ttag";
-import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar";
 
 import moment from "moment";
 
@@ -46,7 +46,6 @@ export default class Revision extends Component {
     if (user.id === currentUser.id) {
       return t`You`;
     } else {
-      // https://user-images.githubusercontent.com/1937582/172178353-3c17e2a1-bd69-4d97-8014-6c4e7723749e.png
       return user.common_name;
     }
   }

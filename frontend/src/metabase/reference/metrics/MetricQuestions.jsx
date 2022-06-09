@@ -94,7 +94,6 @@ class MetricQuestions extends Component {
                             name={entity.display_name || entity.name}
                             description={t`Created ${moment(
                               entity.created_at,
-                              // https://user-images.githubusercontent.com/1937582/172170632-bf9f7a1a-928e-41c0-87c8-94aea30a3d75.png
                             ).fromNow()} by ${entity.creator.common_name}`}
                             url={Urls.question(entity)}
                             icon={visualizations.get(entity.display).iconName}

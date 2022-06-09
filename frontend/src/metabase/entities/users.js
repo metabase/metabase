@@ -29,8 +29,6 @@ const Users = createEntity({
 
   path: "/api/user",
 
-  // I should delete this to encourage `common_name` usage instead.
-
   actionTypes: {
     DEACTIVATE,
     REACTIVATE,

@@ -20,7 +20,7 @@ import ModalContent from "metabase/components/ModalContent";
 import Alert from "metabase/components/Alert";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
@@ -181,7 +181,6 @@ function GroupRow({
           <span className="text-white">
             <UserAvatar
               background={color}
-              // This is the avatar for a group name, so it didn't render any user info.
               user={{ first_name: getGroupNameLocalized(group) }}
             />
           </span>

@@ -24,9 +24,6 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
     : null;
 
   const options = useMemo(() => {
-    // `label` here isn't really used because we specify `filterOption`.
-    // Normally, `options` will be filtered by its `label` if we don't provide
-    // `filterOption` to <TokenField />.
     return users.map(user => ({ value: user }));
   }, [users]);
 
@@ -35,7 +32,6 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
   }, []);
 
   const valueRenderer = useCallback(value => {
-    // https://user-images.githubusercontent.com/1937582/172158045-802e7600-531d-4dd8-86f9-b4bd4dc936aa.png
     return value.common_name;
   }, []);
 
@@ -43,14 +39,12 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
     return (
       <UserPickerOption>
         <UserPickerAvatar user={option.value} />
-        {/* https://user-images.githubusercontent.com/1937582/172158045-802e7600-531d-4dd8-86f9-b4bd4dc936aa.png */}
         <UserPickerText>{option.value.common_name}</UserPickerText>
       </UserPickerOption>
     );
   }, []);
 
   const filterOption = useCallback((option, text) => {
-    // Just a note, but I think logic that filter options by either common_name or email might already work.
     return (
       includesIgnoreCase(option.value.common_name, text) ||
       includesIgnoreCase(option.value.email, text)

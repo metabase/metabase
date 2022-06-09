@@ -29,7 +29,6 @@ function initial(name) {
 }
 
 function userInitials(user) {
-  // https://user-images.githubusercontent.com/1937582/171615363-40bb26ca-6d81-4d0f-b144-2d679d2ede77.png
   if (user) {
     return nameInitials(user) || emailInitials(user);
   }
@@ -42,7 +41,8 @@ function nameInitials(user) {
 }
 
 function emailInitials(user) {
-  return user.email.slice(0, 2).toUpperCase();
+  const emailUsername = user.email.split("@")[0];
+  return emailUsername.slice(0, 2).toUpperCase();
 }
 
 const UserAvatar = ({ user, ...props }) => (

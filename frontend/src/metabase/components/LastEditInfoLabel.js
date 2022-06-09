@@ -33,7 +33,6 @@ LastEditInfoLabel.propTypes = {
 };
 
 function formatEditorName(lastEditInfo) {
-  //  https://user-images.githubusercontent.com/1937582/172189537-0eb7f620-559d-4537-8467-5e1ea5bab78a.png
   const name = [lastEditInfo.first_name, lastEditInfo.last_name]
     .join(" ")
     .trim();

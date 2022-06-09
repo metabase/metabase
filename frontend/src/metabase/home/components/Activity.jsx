@@ -82,7 +82,6 @@ export default class Activity extends Component {
     if (user && currentUser && user.id === currentUser.id) {
       return t`You`;
     } else if (user) {
-      // https://user-images.githubusercontent.com/1937582/172191586-f1bdd238-0b3f-44ab-9135-260c55227f4c.png
       return user.common_name;
     } else {
       return t`Metabase`;

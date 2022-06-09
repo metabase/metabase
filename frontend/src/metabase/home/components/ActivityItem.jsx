@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
-import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar";
 import { color } from "metabase/lib/colors";
 
 export default class ActivityItem extends Component {

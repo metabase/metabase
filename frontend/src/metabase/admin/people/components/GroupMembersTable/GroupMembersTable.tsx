@@ -176,7 +176,6 @@ const UserRow = ({
 
   return (
     <tr>
-      {/* https://user-images.githubusercontent.com/1937582/172185172-c5f84af3-48a9-46a7-8583-747d854fba5e.png */}
       <td className="text-bold">{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell

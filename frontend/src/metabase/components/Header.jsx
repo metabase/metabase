@@ -143,10 +143,6 @@ class Header extends Component {
       );
     }
 
-    // I'm quite certain this can be removed because we never show attribution
-    // https://github.com/metabase/metabase/blob/e0dc20a689430a0cc439c1899be383f3eb4d48bb/frontend/src/metabase/css/components/header.css#L11
-    // https://github.com/metabase/metabase/pull/2136/files#diff-70dba2e3e8a73fb80938e1c5e8414d87d5bac4bff80b00708420999b726b9f95R11-R15
-
     const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (

@@ -63,7 +63,6 @@ const UserCollectionList = ({ collectionsById }) => (
                               color={color("text-medium")}
                               size={18}
                             />
-                            {/* https://user-images.githubusercontent.com/1937582/172162117-78f4768e-3ace-4be1-9a80-b4cffdd88e60.png */}
                             <h3>{user.common_name}</h3>
                           </CardContent>
                         </Card>

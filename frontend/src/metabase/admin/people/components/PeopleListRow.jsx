@@ -11,7 +11,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/components/Tooltip";
-import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS } from "metabase/plugins";
 import MembershipSelect from "./MembershipSelect";
@@ -47,7 +47,6 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        {/* https://user-images.githubusercontent.com/1937582/171615511-aae65719-6701-46ab-8dcd-54f83f7e0450.png */}
         <span className="ml2 text-bold">{getName(user)}</span>
       </td>
       <td>

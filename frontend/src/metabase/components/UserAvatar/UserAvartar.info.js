@@ -1,5 +1,5 @@
 import React from "react";
-import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar";
 
 export const component = UserAvatar;
 export const category = "display";

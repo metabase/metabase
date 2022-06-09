@@ -89,8 +89,6 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
       {({ Form, FormField, FormFooter }: FormProps) => (
         <Form>
           <UserFormGroup>
-            {/* XXX: There's nothing to do here. We just need to modify `entities/users/form.js` and we'll be all good. */}
-            {/* https://user-images.githubusercontent.com/1937582/172606484-6a1a2ae2-9657-4cb3-b96d-bc71a8eb30ee.png */}
             <FormField name="first_name" />
             <FormField name="last_name" />
           </UserFormGroup>
@@ -108,9 +106,7 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
 const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
   const namePart = user?.first_name ? `, ${user.first_name}` : "";
   return isStepCompleted
-    ? // This might be the second place that we don't to fallback to an email.
-      // https://user-images.githubusercontent.com/1937582/172606914-8f4995da-6a7b-48b6-8481-536e2aca69c7.png
-      t`Hi${namePart}. Nice to meet you!`
+    ? t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;
 };
 
