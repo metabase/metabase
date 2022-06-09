@@ -10,7 +10,6 @@ const sharedStyle = css`
   grid-area: 1 / 1 / 2 / 2;
   font-size: 14px;
   line-height: 20px;
-  font-family: sans-serif;
   min-height: 0px;
 `;
 

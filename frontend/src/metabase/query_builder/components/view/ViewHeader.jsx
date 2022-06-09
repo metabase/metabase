@@ -168,10 +168,8 @@ SavedQuestionLeftSide.propTypes = {
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionDetails: PropTypes.func.isRequired,
-  onCloseQuestionDetails: PropTypes.func.isRequired,
-  onOpenQuestionHistory: PropTypes.func.isRequired,
   onOpenQuestionInfo: PropTypes.func.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
 };
 
 function SavedQuestionLeftSide(props) {
@@ -180,24 +178,15 @@ function SavedQuestionLeftSide(props) {
     isObjectDetail,
     isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
     onOpenQuestionInfo,
+    onOpenModal,
   } = props;
 
   const hasLastEditInfo = question.lastEditInfo() != null;
 
   const onHeaderClick = useCallback(() => {
-    if (isShowingQuestionDetailsSidebar) {
-      onCloseQuestionDetails();
-    } else {
-      onOpenQuestionDetails({ closeOtherSidebars: true });
-    }
-  }, [
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  ]);
+    onOpenModal(MODAL_TYPES.EDIT);
+  }, [onOpenModal]);
 
   return (
     <div>
@@ -287,8 +276,7 @@ DatasetLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionDetails: PropTypes.func.isRequired,
-  onCloseQuestionDetails: PropTypes.func.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
 };
 
 function DatasetLeftSide(props) {
@@ -296,21 +284,12 @@ function DatasetLeftSide(props) {
     question,
     isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
+    onOpenModal,
   } = props;
 
   const onHeaderClick = useCallback(() => {
-    if (isShowingQuestionDetailsSidebar) {
-      onCloseQuestionDetails();
-    } else {
-      onOpenQuestionDetails({ closeOtherSidebars: true });
-    }
-  }, [
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  ]);
+    onOpenModal(MODAL_TYPES.EDIT);
+  }, [onOpenModal]);
 
   return (
     <div>
