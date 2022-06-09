@@ -1,5 +1,5 @@
 import React from "react";
-import { SkeletonRoot } from "./RowSkeleton.styled";
+import { SkeletonRoot } from "./BarSkeleton.styled";
 
 const BarSkeleton = (): JSX.Element => {
   return (
