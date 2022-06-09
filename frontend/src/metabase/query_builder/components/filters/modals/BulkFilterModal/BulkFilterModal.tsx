@@ -66,7 +66,7 @@ const BulkFilterModal = ({
   }, [query]);
 
   const handleApplyQuery = useCallback(() => {
-    query.update(undefined, { run: true });
+    query.clean().update(undefined, { run: true });
     onClose?.();
   }, [query, onClose]);
 
@@ -171,11 +171,7 @@ const BulkFilterModalSectionList = ({
     <TabContent value={tab} onChange={setTab}>
       <ModalTabList>
         {sections.map((section, index) => (
-          <Tab
-            key={index}
-            value={index}
-            icon={index > 0 ? section.icon : undefined}
-          >
+          <Tab key={index} value={index} icon={section.icon}>
             {section.name}
           </Tab>
         ))}

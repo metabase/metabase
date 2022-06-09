@@ -56,7 +56,7 @@ export const ToggleRoot = styled.input<ToggleRootProps>`
   }
 
   &:focus {
-    outline: 2px solid ${color("focus")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   &:focus:not(:focus-visible) {

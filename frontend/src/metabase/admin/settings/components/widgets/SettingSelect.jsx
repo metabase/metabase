@@ -9,7 +9,7 @@ const SettingSelect = ({
   disabled,
 }) => (
   <Select
-    className="full-width"
+    className="SettingsInput"
     placeholder={placeholder}
     value={value}
     defaultValue={defaultValue}

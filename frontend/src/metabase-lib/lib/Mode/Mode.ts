@@ -1,5 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
 import Question from "metabase-lib/lib/Question";
 import { getMode } from "metabase/modes/lib/modes";
 import {
@@ -7,6 +5,7 @@ import {
   ClickObject,
   QueryMode,
 } from "metabase-types/types/Visualization";
+
 export default class Mode {
   _question: Question;
   _queryMode: QueryMode;
@@ -16,15 +15,14 @@ export default class Mode {
     this._queryMode = queryMode;
   }
 
-  static forQuestion(question: Question): Mode | null | undefined {
+  static forQuestion(question: Question): Mode | null {
     // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
     const queryMode = getMode(question);
-
     if (queryMode) {
       return new Mode(question, queryMode);
-    } else {
-      return null;
     }
+
+    return null;
   }
 
   queryMode() {
@@ -36,9 +34,9 @@ export default class Mode {
   }
 
   actionsForClick(
-    clicked: ClickObject | null | undefined,
-    settings,
-    extraData,
+    clicked: ClickObject | undefined,
+    settings: Record<string, any>,
+    extraData: Record<string, any>,
   ): ClickAction[] {
     return this._queryMode.drills().flatMap(actionCreator =>
       actionCreator({

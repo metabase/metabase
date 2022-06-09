@@ -67,7 +67,6 @@
                                                            org.flatland/ordered
                                                            org.yaml/snakeyaml]}
   io.github.resilience4j/resilience4j-retry {:mvn/version "1.7.1"}              ; Support for retrying operations
-  javax.xml.bind/jaxb-api                   {:mvn/version "2.4.0-b180830.0359"} ; add the `javax.xml.bind` classes which we're still using but were removed in Java 11
   joda-time/joda-time                       {:mvn/version "2.10.13"}
   kixi/stats                                {:mvn/version "0.4.4"               ; Various statistic measures implemented as transducers
                                              :exclusions  [org.clojure/data.avl]}

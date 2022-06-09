@@ -10,7 +10,8 @@ import StructuredQuery, {
 import Dimension from "metabase-lib/lib/Dimension";
 import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { BulkFilterSelect, SegmentFilterSelect } from "../BulkFilterSelect";
+import { BulkFilterItem } from "../BulkFilterItem";
+import { SegmentFilterSelect } from "../BulkFilterSelect";
 import {
   ListRoot,
   ListRow,
@@ -100,7 +101,7 @@ const BulkFilterListItem = ({
       </ListRowLabel>
       <ListRowContent>
         {options.map((filter, index) => (
-          <BulkFilterSelect
+          <BulkFilterItem
             key={index}
             query={query}
             filter={filter}
@@ -111,7 +112,7 @@ const BulkFilterListItem = ({
           />
         ))}
         {!options.length && (
-          <BulkFilterSelect
+          <BulkFilterItem
             query={query}
             dimension={dimension}
             onAddFilter={onAddFilter}
