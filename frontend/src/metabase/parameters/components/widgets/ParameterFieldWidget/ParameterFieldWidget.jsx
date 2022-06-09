@@ -47,8 +47,8 @@ export default function ParameterFieldWidget({
   const disableSearch = operator && isFuzzyOperator(operator);
 
   const isValid =
-    unsavedValue.length === numFields &&
-    unsavedValue.every(value => value != null);
+    unsavedValue.every(value => value != null) &&
+    (multi || unsavedValue.length === numFields);
 
   return (
     <WidgetRoot>
