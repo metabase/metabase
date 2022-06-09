@@ -7,7 +7,12 @@ import _ from "underscore";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { isOnlyMappedToFields } from "metabase/parameters/utils/fields";
-import { isDateParameter } from "metabase/parameters/utils/parameter-type";
+import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import {
+  isDateParameter,
+  isNumberParameter,
+} from "metabase/parameters/utils/parameter-type";
+import { getNumberParameterArity } from "metabase/parameters/utils/operators";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
@@ -20,6 +25,7 @@ import Tooltip from "metabase/components/Tooltip";
 import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
+import NumberWidget from "metabase/parameters/components/widgets/NumberWidget";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
@@ -230,10 +236,24 @@ function Widget({
     );
   }
 
-  const DateWidget = DATE_WIDGETS[parameter.type];
-  if (DateWidget) {
+  if (isDateParameter(parameter)) {
+    const DateWidget = DATE_WIDGETS[parameter.type];
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
+    );
+  } else if (isNumberParameter(parameter)) {
+    const arity = getNumberParameterArity(parameter);
+    return (
+      <NumberWidget
+        value={value}
+        setValue={value => {
+          setValue(value);
+          onPopoverClose();
+        }}
+        arity={arity}
+        infixText={typeof arity === "number" && arity > 1 ? t`and` : undefined}
+        autoFocus
+      />
     );
   } else if (isOnlyMappedToFields(parameter)) {
     return (
@@ -277,6 +297,8 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
+  } else if (isNumberParameter(parameter)) {
+    return NumberWidget;
   } else if (isOnlyMappedToFields(parameter)) {
     return ParameterFieldWidget;
   } else {
