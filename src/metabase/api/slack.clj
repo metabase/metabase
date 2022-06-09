@@ -27,6 +27,11 @@
       (slack/clear-channel-cache!)
       (throw (ex-info (tru "Invalid Slack token.")
                       {:errors {:slack-app-token (tru "invalid token")}})))
+    (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
+      (when (and processed-files-channel (not (slack/channel-exists? processed-files-channel)))
+        (throw (ex-info (tru "Slack channel not found.")
+                        {:errors {:slack-files-channel (tru "channel not found")}})))
+      (slack/slack-files-channel! processed-files-channel))
     (slack/slack-app-token! slack-app-token)
     (if slack-app-token
       (do (slack/slack-token-valid?! true)
@@ -36,11 +41,6 @@
           (slack/refresh-channels-and-usernames-when-needed!))
       ;; clear user/conversation cache when token is newly empty
       (slack/clear-channel-cache!))
-    (let [processed-files-channel (slack/process-files-channel-name slack-files-channel)]
-      (when (and processed-files-channel (not (slack/channel-exists? processed-files-channel)))
-        (throw (ex-info (tru "Slack channel not found.")
-                        {:errors {:slack-files-channel (tru "channel not found")}})))
-      (slack/slack-files-channel! processed-files-channel))
     {:ok true}
     (catch clojure.lang.ExceptionInfo info
       {:status 400, :body (ex-data info)})))
