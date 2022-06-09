@@ -425,13 +425,13 @@
                                                          (saml/str->base64 default-redirect-uri))]
               (is (successful-login? (client-full-response :post 302 "/auth/sso" req-options)))
               (is (= [{:email        "newuser@metabase.com"
-                       :first_name   "Unknown"
+                       :first_name   nil
                        :is_qbnewb    true
                        :is_superuser false
                        :id           true
-                       :last_name    "Unknown"
+                       :last_name    nil
                        :date_joined  true
-                       :common_name  "Unknown Unknown"}]
+                       :common_name  "newuser@metabase.com"}]
                      (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login))))))
             ;; login with the same user, but now givenname and surname attributes exist

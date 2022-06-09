@@ -10,7 +10,7 @@
             [metabase.integrations.common :as integrations.common]
             [metabase.server.middleware.session :as mw.session]
             [metabase.server.request.util :as request.u]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [tru]]
             [ring.util.response :as response])
   (:import java.net.URLEncoder))
 
