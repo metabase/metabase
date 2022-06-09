@@ -240,7 +240,10 @@ function Widget({
         placeholder={placeholder}
         value={value}
         fields={parameter.fields}
-        setValue={setValue}
+        setValue={value => {
+          setValue(value);
+          onPopoverClose();
+        }}
         isEditing={isEditing}
         focusChanged={onFocusChanged}
       />
