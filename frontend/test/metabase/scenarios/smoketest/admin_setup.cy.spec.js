@@ -7,7 +7,6 @@ import {
   visualize,
   navigationSidebar,
   startNewQuestion,
-  openNavigationSidebar,
   visitQuestion,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
@@ -549,7 +548,6 @@ describe("smoketest > admin_setup", () => {
 
       // Check column names and visiblity
 
-      openNavigationSidebar();
       browse().click();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Test Table").click();

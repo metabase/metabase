@@ -37,6 +37,7 @@ const ARCHIVE_TESTID = "archive-button";
 
 interface Props {
   isBookmarked: boolean;
+  isShowingQuestionInfoSidebar: boolean;
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: Question;
@@ -57,6 +58,7 @@ const buttonProps = {
 
 const QuestionActions = ({
   isBookmarked,
+  isShowingQuestionInfoSidebar,
   handleBookmark,
   onOpenModal,
   question,
@@ -73,6 +75,8 @@ const QuestionActions = ({
   };
   const bookmarkButtonColor = isBookmarked ? color("brand") : "";
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
+
+  const infoButtonColor = isShowingQuestionInfoSidebar ? color("brand") : "";
 
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
@@ -123,6 +127,7 @@ const QuestionActions = ({
           icon="info"
           iconSize={ICON_SIZE}
           onClick={onInfoClick}
+          color={infoButtonColor}
         />
       </Tooltip>
 

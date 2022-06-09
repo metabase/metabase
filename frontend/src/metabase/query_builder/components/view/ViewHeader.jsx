@@ -544,6 +544,7 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {isSaved && (
         <QuestionActions
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           isBookmarked={isBookmarked}
           handleBookmark={toggleBookmark}
           onOpenModal={onOpenModal}
