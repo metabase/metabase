@@ -9,7 +9,7 @@ export default {
 
 const Template: ComponentStory<typeof ChartSkeleton> = args => {
   return (
-    <div style={{ height: 152 }}>
+    <div style={{ height: 182 }}>
       <ChartSkeleton {...args} />
     </div>
   );
