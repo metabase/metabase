@@ -1352,8 +1352,7 @@
 (defmacro with-chain-filter-fixtures [[binding dashboard-values] & body]
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
 
-(defn- add-query-params
-  [url query-params]
+(defn- add-query-params [url query-params]
   (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
                                          (codec/form-encode {k v})))]
     (cond-> url

@@ -1860,35 +1860,20 @@
                           {:name "Category ID"
                            :slug "category_id"
                            :id   "_CATEGORY_ID_"
-                           :type "category"}
-                          {:name "Price"
-                           :slug "price"
-                           :id   "_PRICE_"
-                           :type "category"}
-                          {:name "ID"
-                           :slug "id"
-                           :id   "_ID_"
                            :type "category"}]
              :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                    :card_id      (:id card)
                                    :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
                                   {:parameter_id "_CATEGORY_ID_"
                                    :card_id      (:id card)
-                                   :target       [:dimension (mt/$ids venues $category_id)]}
-                                  {:parameter_id "_PRICE_"
-                                   :card_id      (:id card)
-                                   :target       [:dimension (mt/$ids venues $price)]}
-                                  {:parameter_id "_ID_"
-                                   :card_id      (:id card)
-                                   :target       [:dimension (mt/$ids venues $id)]}]}
+                                   :target       [:dimension (mt/$ids venues $category_id)]}]}
             ;; native query with parameters are template tags
             {:database_id (mt/id)
              :query_type :native
              :dataset_query {:database (mt/id)
                              :type     :native
                              :native
-                             {:query         (str "SELECT * FROM VENUES WHERE"
-                                                  "{{category}} and {{price}} and {{category_id}} and {{id}} and price = {{price_number}};")
+                             {:query         (str "SELECT * FROM VENUES WHERE {{category}} and {{category_id}};")
                               :template-tags {"category"      {:id           "c7fcf1fa"
                                                                :name         "category"
                                                                :display-name "Category"
@@ -1900,19 +1885,8 @@
                                                                :display-name "Category"
                                                                :type         :dimension
                                                                :dimension    [:field (mt/$ids venues $category_id) nil]
-                                                               :widget-type  :number/=}
-                                              "price"         {:id           "b879a8cd"
-                                                               :name         "price"
-                                                               :display-name "Price"
-                                                               :type         :dimension
-                                                               :dimension    [:field (mt/$ids venues $price) nil]
-                                                               :widget-type  :number/=}
-                                              "id"            {:id           "f321d3ab"
-                                                               :name         "id"
-                                                               :display-name "id"
-                                                               :type         :dimension
-                                                               :dimension    [:field (mt/$ids venues $id) nil]
                                                                :widget-type  :number/=}}}}
+
              :parameters [{:name "Category_name"
                            :slug "category_name"
                            :id   "_CATEGORY_NAME_"
@@ -1920,35 +1894,18 @@
                           {:name "Category ID"
                            :slug "category_id"
                            :id   "_CATEGORY_ID_"
-                           :type "category"}
-                          {:name "Price"
-                           :slug "price"
-                           :id   "_PRICE_"
-                           :type "category"}
-                          {:name "id"
-                           :slug "id"
-                           :id   "_ID_"
                            :type "category"}]
              :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
                                    :card_id      (:id card)
                                    :target       [:template-tag {:id "c7fcf1fa"}]}
                                   {:parameter_id "_CATEGORY_ID_"
                                    :card_id      (:id card)
-                                   :target       [:template-tag {:id "a3cd3f3b"}]}
-                                  {:parameter_id "_PRICE_"
-                                   :card_id      (:id card)
-                                   :target       [:template-tag {:id "b879a8cd"}]}
-                                  {:parameter_id "_PRICE_NUMBER_"
-                                   :card_id      (:id card)
-                                   :target       [:template-tag {:id "e2ca38c9"}]}]})]
+                                   :target       [:template-tag {:id "a3cd3f3b"}]}]})]
       (db/update! Card (:id card)
                   (merge card-defaults card-values)))
     (f {:card       card
         :param-keys {:category-name "_CATEGORY_NAME_"
-                     :category-id   "_CATEGORY_ID_"
-                     :price         "_PRICE_"
-                     :id            "_ID_"}})))
-
+                     :category-id   "_CATEGORY_ID_"}})))
 
 (defmacro ^:private with-chain-filter-fixtures
   "Create a query and its parameters."
