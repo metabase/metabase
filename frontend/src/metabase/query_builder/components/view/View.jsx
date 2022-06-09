@@ -29,7 +29,6 @@ import ChartSettingsSidebar from "./sidebars/ChartSettingsSidebar";
 import ChartTypeSidebar from "./sidebars/ChartTypeSidebar";
 import SummarizeSidebar from "./sidebars/SummarizeSidebar/SummarizeSidebar";
 import FilterSidebar from "./sidebars/FilterSidebar";
-import QuestionDetailsSidebar from "./sidebars/QuestionDetailsSidebar";
 import { QuestionInfoSidebar } from "./sidebars/QuestionInfoSidebar";
 import TimelineSidebar from "./sidebars/TimelineSidebar";
 
@@ -123,15 +122,10 @@ class View extends React.Component {
 
   getLeftSidebar = () => {
     const {
-      question,
       isShowingChartSettingsSidebar,
       isShowingChartTypeSidebar,
-      isShowingQuestionDetailsSidebar,
-      onOpenModal,
       onCloseChartSettings,
       onCloseChartType,
-      isBookmarked,
-      toggleBookmark,
     } = this.props;
 
     if (isShowingChartSettingsSidebar) {
@@ -142,17 +136,6 @@ class View extends React.Component {
 
     if (isShowingChartTypeSidebar) {
       return <ChartTypeSidebar {...this.props} onClose={onCloseChartType} />;
-    }
-
-    if (isShowingQuestionDetailsSidebar) {
-      return (
-        <QuestionDetailsSidebar
-          question={question}
-          onOpenModal={onOpenModal}
-          isBookmarked={isBookmarked}
-          toggleBookmark={toggleBookmark}
-        />
-      );
     }
 
     return null;

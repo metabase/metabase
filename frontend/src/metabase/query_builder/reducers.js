@@ -51,12 +51,8 @@ import {
   onOpenChartType,
   onCloseChartType,
   onCloseSidebars,
-  onOpenQuestionDetails,
-  onCloseQuestionDetails,
   onOpenQuestionInfo,
   onCloseQuestionInfo,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
   onOpenTimelines,
   onCloseTimelines,
   SHOW_TIMELINES,
@@ -79,7 +75,6 @@ const DEFAULT_UI_CONTROLS = {
   isShowingFilterSidebar: false,
   isShowingChartTypeSidebar: false,
   isShowingChartSettingsSidebar: false,
-  isShowingQuestionDetailsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
   initialChartSetting: null,
@@ -104,7 +99,6 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingFilterSidebar: false,
   isShowingChartSettingsSidebar: false,
   isShowingChartTypeSidebar: false,
-  isShowingQuestionDetailsSidebar: false,
   isShowingTimelineSidebar: false,
   isShowingQuestionInfoSidebar: false,
 };
@@ -114,7 +108,6 @@ const CLOSED_NATIVE_EDITOR_SIDEBARS = {
   isShowingTemplateTagsEditor: false,
   isShowingSnippetSidebar: false,
   isShowingDataReference: false,
-  isShowingQuestionDetailsSidebar: false,
   isShowingTimelineSidebar: false,
 };
 
@@ -278,54 +271,15 @@ export const uiControls = handleActions(
       ...state,
       ...UI_CONTROLS_SIDEBAR_DEFAULTS,
     }),
-    [onOpenQuestionDetails]: state =>
-      setUIControls(state, {
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingQuestionDetailsSidebar: true,
-        questionDetailsTimelineDrawerState: undefined,
-        queryBuilderMode: "view",
-      }),
-    [onCloseQuestionDetails]: (
-      state,
-      { payload: { closeOtherSidebars } = {} } = {},
-    ) => {
-      if (closeOtherSidebars) {
-        return {
-          ...state,
-          ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-          questionDetailsTimelineDrawerState: undefined,
-        };
-      }
-      return {
-        ...state,
-        isShowingQuestionDetailsSidebar: false,
-        questionDetailsTimelineDrawerState: undefined,
-      };
-    },
     [onOpenQuestionInfo]: state =>
       setUIControls(state, {
         ...UI_CONTROLS_SIDEBAR_DEFAULTS,
         isShowingQuestionInfoSidebar: true,
-        questionDetailsTimelineDrawerState: undefined,
         queryBuilderMode: "view",
       }),
     [onCloseQuestionInfo]: state => ({
       ...state,
       isShowingQuestionInfoSidebar: false,
-      questionDetailsTimelineDrawerState: undefined,
-    }),
-    [onOpenQuestionHistory]: state =>
-      setUIControls(state, {
-        ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-        isShowingQuestionDetailsSidebar: true,
-        questionDetailsTimelineDrawerState: "open",
-        queryBuilderMode: "view",
-      }),
-    [onCloseQuestionHistory]: state => ({
-      ...state,
-      ...UI_CONTROLS_SIDEBAR_DEFAULTS,
-      isShowingQuestionDetailsSidebar: true,
-      questionDetailsTimelineDrawerState: "closed",
     }),
     [onOpenTimelines]: state => ({
       ...state,

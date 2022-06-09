@@ -8,11 +8,7 @@ import Tooltip from "metabase/components/Tooltip";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
-import {
-  revertToRevision,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
-} from "metabase/query_builder/actions";
+import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
 
 import Revision from "metabase/entities/revisions";
@@ -31,8 +27,6 @@ const mapStateToProps = (state, props) => ({
 
 const mapDispatchToProps = {
   revertToRevision,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
 };
 
 export default _.compose(
