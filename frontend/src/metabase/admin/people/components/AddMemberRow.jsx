@@ -152,7 +152,6 @@ function AddMemberAutocompleteSuggestion({ user, color, selected, onClick }) {
       onClick={onClick}
     >
       <span className="inline-block mr2">
-        {/* XXX: What should we display in an avatar when there's no name? */}
         <UserAvatar background={color} user={user} />
       </span>
       <span className={cx("h3", { "text-white": selected })}>

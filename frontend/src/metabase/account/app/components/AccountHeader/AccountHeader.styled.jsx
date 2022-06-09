@@ -6,7 +6,7 @@ import {
   breakpointMinSmall,
   space,
 } from "metabase/styled-components/theme";
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
 
 export const AccountHeaderRoot = styled.div`
   display: flex;

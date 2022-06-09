@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 import RevisionDiff from "./RevisionDiff";
 import { t } from "ttag";
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
 
 import moment from "moment";
 
@@ -67,7 +67,6 @@ export default class Revision extends Component {
       <li className="flex flex-row">
         <div className="flex flex-column align-center mr2">
           <div className="text-white">
-            {/* XXX: What should we display in an avatar when there's no name? */}
             <UserAvatar user={revision.user} background={userColor} />
           </div>
           <div

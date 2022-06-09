@@ -20,7 +20,7 @@ import ModalContent from "metabase/components/ModalContent";
 import Alert from "metabase/components/Alert";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
 
 import AdminContentTable from "metabase/components/AdminContentTable";
 import AdminPaneLayout from "metabase/components/AdminPaneLayout";
@@ -179,7 +179,6 @@ function GroupRow({
           className="link no-decoration flex align-center"
         >
           <span className="text-white">
-            {/* XXX: What should we display in an avatar when there's no name? */}
             <UserAvatar
               background={color}
               // This is the avatar for a group name, so it didn't render any user info.

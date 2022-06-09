@@ -7,7 +7,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import TokenField from "metabase/components/TokenField";
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
 import { ErrorMessage } from "./RecipientPicker.styled";
 
 export default class RecipientPicker extends Component {
@@ -81,7 +81,6 @@ export default class RecipientPicker extends Component {
             optionRenderer={option => (
               <div className="flex align-center">
                 <span className="text-white">
-                  {/* XXX: What should we display in an avatar when there's no name ? */}
                   <UserAvatar user={option.value} />
                 </span>
                 {/* https://user-images.githubusercontent.com/1937582/172163846-86636488-9cb7-4b8f-9609-594b42384f4a.png */}

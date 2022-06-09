@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
-import UserAvatar from "metabase/components/UserAvatar";
+import UserAvatar from "metabase/components/UserAvatar/UserAvatar";
 import { color } from "metabase/lib/colors";
 
 export default class ActivityItem extends Component {
@@ -19,7 +19,6 @@ export default class ActivityItem extends Component {
       <div className="ml1 flex align-center mr2">
         <span>
           {item.user ? (
-            //  XXX: What should we display in an avatar when there's no name?
             <UserAvatar user={item.user} bg={userColors} />
           ) : (
             <IconBorder style={{ color: color("text-light") }}>

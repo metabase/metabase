@@ -29,8 +29,20 @@ function initial(name) {
 }
 
 function userInitials(user) {
-  // XXX: Question: what to use for an initial name when common name is null? https://user-images.githubusercontent.com/1937582/171615363-40bb26ca-6d81-4d0f-b144-2d679d2ede77.png
-  return user ? initial(user.first_name) + initial(user.last_name) : null;
+  // https://user-images.githubusercontent.com/1937582/171615363-40bb26ca-6d81-4d0f-b144-2d679d2ede77.png
+  if (user) {
+    return nameInitials(user) || emailInitials(user);
+  }
+
+  return null;
+}
+
+function nameInitials(user) {
+  return initial(user.first_name) + initial(user.last_name);
+}
+
+function emailInitials(user) {
+  return user.email.slice(0, 2).toUpperCase();
 }
 
 const UserAvatar = ({ user, ...props }) => (

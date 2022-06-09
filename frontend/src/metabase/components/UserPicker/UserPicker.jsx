@@ -42,7 +42,6 @@ const UserPicker = ({ value, validateValue, users, canAddItems, onChange }) => {
   const optionRenderer = useCallback(option => {
     return (
       <UserPickerOption>
-        {/* XXX: What should we display in an avatar when there's no name? */}
         <UserPickerAvatar user={option.value} />
         {/* https://user-images.githubusercontent.com/1937582/172158045-802e7600-531d-4dd8-86f9-b4bd4dc936aa.png */}
         <UserPickerText>{option.value.common_name}</UserPickerText>
