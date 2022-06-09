@@ -1,5 +1,5 @@
 ---
-title: GeoJSON
+title: "GeoJSON"
 ---
 
 # GeoJSON

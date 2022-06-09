@@ -1,5 +1,6 @@
 ---
-title: Table
+title: "Table"
+summary: "/api/table endpoints."
 ---
 
 # Table

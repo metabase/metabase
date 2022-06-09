@@ -1,5 +1,6 @@
 ---
-title: User
+title: "User"
+summary: "/api/user endpoints."
 ---
 
 # User

@@ -1,5 +1,5 @@
 ---
-title: Automagic dashboards
+title: "Automagic dashboards"
 ---
 
 # Automagic dashboards

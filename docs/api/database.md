@@ -1,5 +1,6 @@
 ---
-title: Database
+title: "Database"
+summary: "/api/database endpoints."
 ---
 
 # Database
@@ -324,6 +325,8 @@ Update a `Database`.
 *  **`auto_run_queries`** value may be nil, or if non-nil, value must be a boolean.
 
 *  **`name`** value may be nil, or if non-nil, value must be a non-blank string.
+
+*  **`settings`** value may be nil, or if non-nil, value must be a map.
 
 *  **`caveats`** value may be nil, or if non-nil, value must be a string.
 

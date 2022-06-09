@@ -1,5 +1,6 @@
 ---
-title: LDAP
+title: "LDAP"
+summary: "/api/ldap endpoints."
 ---
 
 # LDAP

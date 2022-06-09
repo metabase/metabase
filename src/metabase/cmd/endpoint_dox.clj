@@ -60,6 +60,20 @@
       (capitalize-initialisms initialisms)
       (str/replace "SSO SSO" "SSO")))
 
+(defn- format-description
+  "Used to grab namespace description, if it exists."
+  [ep-data]
+  (u/add-period (:doc (meta (:ns (first ep-data))))))
+
+(defn- endpoint-page-frontmatter
+  "Formats frontmatter, which includes title and summary, if any."
+  [ep ep-data]
+  (let [desc (format-description ep-data)]
+    (str "---\ntitle: \""
+         ep "\""
+         (if-not (str/blank? desc) (str "\nsummary: \"" desc "\""))
+         "\n---\n\n")))
+
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
   [ep-title]
@@ -70,7 +84,7 @@
 (defn- endpoint-page-description
   "If there is a namespace docstring, include the docstring with a paragraph break."
   [ep-data]
-  (let [desc (u/add-period (:doc (meta (:ns (first ep-data)))))]
+  (let [desc (format-description ep-data)]
     (if (str/blank? desc)
       desc
       (str desc "\n\n"))))
@@ -158,6 +172,7 @@
   followed by the endpoint and their parameter descriptions."
   [ep ep-data]
   (apply str
+         (endpoint-page-frontmatter ep ep-data)
          (endpoint-page-title ep)
          (endpoint-page-description ep-data)
          (route-toc ep-data)

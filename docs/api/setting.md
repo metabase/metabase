@@ -1,5 +1,6 @@
 ---
-title: Setting
+title: "Setting"
+summary: "/api/setting endpoints."
 ---
 
 # Setting

@@ -1,5 +1,5 @@
 ---
-title: Activity
+title: "Activity"
 ---
 
 # Activity

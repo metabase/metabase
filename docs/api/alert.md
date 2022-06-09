@@ -1,5 +1,6 @@
 ---
-title: Alert
+title: "Alert"
+summary: "/api/alert endpoints."
 ---
 
 # Alert

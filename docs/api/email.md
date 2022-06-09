@@ -1,5 +1,6 @@
 ---
-title: Email
+title: "Email"
+summary: "/api/email endpoints."
 ---
 
 # Email

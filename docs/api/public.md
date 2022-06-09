@@ -1,5 +1,6 @@
 ---
-title: Public
+title: "Public"
+summary: "Metabase API endpoints for viewing publicly-accessible Cards and Dashboards."
 ---
 
 # Public

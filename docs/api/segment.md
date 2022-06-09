@@ -1,5 +1,6 @@
 ---
-title: Segment
+title: "Segment"
+summary: "/api/segment endpoints."
 ---
 
 # Segment

@@ -1,5 +1,5 @@
 ---
-title: Sandbox table
+title: "Sandbox table"
 ---
 
 # Sandbox table

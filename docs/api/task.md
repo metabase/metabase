@@ -1,5 +1,6 @@
 ---
-title: Task
+title: "Task"
+summary: "/api/task endpoints."
 ---
 
 # Task

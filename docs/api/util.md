@@ -1,5 +1,7 @@
 ---
-title: Util
+title: "Util"
+summary: "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
+  page tasks."
 ---
 
 # Util

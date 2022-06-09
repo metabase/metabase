@@ -1,5 +1,5 @@
 ---
-title: Login history
+title: "Login history"
 ---
 
 # Login history

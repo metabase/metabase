@@ -1,5 +1,6 @@
 ---
-title: Card
+title: "Card"
+summary: "/api/card endpoints."
 ---
 
 # Card
@@ -102,6 +103,8 @@ Create a new `Card`.
 
 *  **`visualization_settings`** value must be a map.
 
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
+
 *  **`description`** value may be nil, or if non-nil, value must be a non-blank string.
 
 *  **`collection_position`** value may be nil, or if non-nil, value must be an integer greater than zero.
@@ -115,6 +118,8 @@ Create a new `Card`.
 *  **`cache_ttl`** value may be nil, or if non-nil, value must be an integer greater than zero.
 
 *  **`dataset_query`** 
+
+*  **`parameter_mappings`** value may be nil, or if non-nil, value must be an array. Each parameter mapping must be a String :parameter_id key
 
 *  **`display`** value must be a non-blank string.
 
@@ -231,6 +236,8 @@ Update a `Card`.
 ### PARAMS:
 
 *  **`visualization_settings`** value may be nil, or if non-nil, value must be a map.
+
+*  **`parameters`** value may be nil, or if non-nil, value must be an array. Each parameter must be a map with String :id key
 
 *  **`dataset`** value may be nil, or if non-nil, value must be a boolean.
 

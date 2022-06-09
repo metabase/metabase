@@ -1,5 +1,6 @@
 ---
-title: Metric
+title: "Metric"
+summary: "/api/metric endpoints."
 ---
 
 # Metric

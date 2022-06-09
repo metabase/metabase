@@ -1,5 +1,6 @@
 ---
-title: Tiles
+title: "Tiles"
+summary: "`/api/tiles` endpoints."
 ---
 
 # Tiles
