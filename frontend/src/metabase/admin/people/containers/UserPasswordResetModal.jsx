@@ -48,10 +48,10 @@ class UserPasswordResetModal extends React.Component {
             ml="auto"
             onClick={async () => {
               if (emailConfigured) {
-                await user.passwordResetEmail();
+                await user.resetPasswordEmail();
                 onClose();
               } else {
-                await user.passwordResetManual();
+                await user.resetPasswordManual();
               }
             }}
             danger

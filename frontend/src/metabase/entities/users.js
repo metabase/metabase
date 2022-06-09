@@ -76,7 +76,7 @@ const Users = createEntity({
       await UserApi.send_invite({ id });
       return { type: RESEND_INVITE };
     },
-    passwordResetEmail: async ({ email }) => {
+    resetPasswordEmail: async ({ email }) => {
       MetabaseAnalytics.trackStructEvent(
         "People Admin",
         "Trigger User Password Reset",
@@ -84,7 +84,7 @@ const Users = createEntity({
       await SessionApi.forgot_password({ email });
       return { type: PASSWORD_RESET_EMAIL };
     },
-    passwordResetManual: async (
+    resetPasswordManual: async (
       { id },
       password = MetabaseUtils.generatePassword(),
     ) => {
