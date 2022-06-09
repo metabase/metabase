@@ -715,6 +715,21 @@ describe("QB Actions > initializeQB", () => {
       expect(redirectSpy).toHaveBeenCalledTimes(1);
     });
 
+    it("constructs a card based on provided 'db' param", async () => {
+      const card = Question.create({
+        databaseId: SAMPLE_DATABASE?.id,
+      }).card();
+      const expectedCard = { ...card, name: null, collection_id: undefined };
+
+      const { result } = await setupBlank({ db: SAMPLE_DATABASE?.id });
+      const question = new Question(result.card, metadata);
+      const query = question.query() as StructuredQuery;
+
+      expect(result.card).toEqual(expectedCard);
+      expect(query.sourceTableId()).toBe(null);
+      expect(result.originalCard).toBeUndefined();
+    });
+
     it("constructs a card based on provided 'db' and 'table' params", async () => {
       const expectedCard = {
         ...ORDERS.question().card(),
@@ -735,6 +750,12 @@ describe("QB Actions > initializeQB", () => {
       const [filter] = query.filters();
 
       expect(filter.raw()).toEqual(["segment", SEGMENT_ID]);
+    });
+
+    it("opens summarization sidebar if metric is applied", async () => {
+      const METRIC_ID = 777;
+      const { result } = await setupOrdersTable({ metric: METRIC_ID });
+      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
     });
 
     it("applies 'metric' param correctly", async () => {
