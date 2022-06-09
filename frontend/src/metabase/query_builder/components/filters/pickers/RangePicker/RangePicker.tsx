@@ -106,6 +106,7 @@ function RangePicker({
           step={step}
           value={values}
           onChange={updateFilter}
+          showMinMaxTooltips={false}
         />
         <RangeInput
           placeholder={t`max`}

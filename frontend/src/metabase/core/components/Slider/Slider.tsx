@@ -27,6 +27,7 @@ export interface SliderProps extends NumericInputAttributes {
   min?: number;
   max?: number;
   step?: number;
+  showMinMaxTooltips?: boolean;
 }
 
 const Slider = ({
@@ -35,6 +36,7 @@ const Slider = ({
   min: parentMin = 0,
   max: parentMax = 100,
   step = 1,
+  showMinMaxTooltips = true,
 }: SliderProps) => {
   const [isHovering, setIsHovering] = useState(false);
   const [value, setValue] = useState([
@@ -46,6 +48,14 @@ const Slider = ({
   const [min, max] = useMemo(() => {
     return [_.min([...value, parentMin]), _.max([...value, parentMax])];
   }, [value, parentMin, parentMax]);
+
+  const [showMinTooltip, showMaxTooltip] = useMemo(() => {
+    if (showMinMaxTooltips) {
+      return [true, true];
+    }
+
+    return [value[0] !== min, value[1] !== max];
+  }, [showMinMaxTooltips, value, min, max]);
 
   useEffect(() => {
     setValue([parentValue[0] ?? min, parentValue[1] ?? max]);
@@ -94,7 +104,7 @@ const Slider = ({
         data-testid="min-slider-tooltip"
         style={{
           left: getTooltipPosition(beforeRange),
-          opacity: isHovering ? 1 : 0,
+          opacity: showMinTooltip && isHovering ? 1 : 0,
         }}
       >
         {hasDecimal(step) ? minValue.toFixed(2) : minValue}
@@ -114,7 +124,7 @@ const Slider = ({
         data-testid="max-slider-tooltip"
         style={{
           left: getTooltipPosition(beforeRange + rangeWidth),
-          opacity: isHovering ? 1 : 0,
+          opacity: showMaxTooltip && isHovering ? 1 : 0,
         }}
       >
         {hasDecimal(step) ? maxValue.toFixed(2) : maxValue}
