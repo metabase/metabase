@@ -1,3 +1,5 @@
+import { ngettext, msgid } from "ttag";
+
 import { formatValue } from "metabase/lib/formatting";
 
 import { getParameterType, isFieldFilterParameter } from "./parameter-type";
@@ -25,6 +27,12 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
 }
 
 export function formatParameterValue(value: any, parameter: UiParameter) {
+  if (Array.isArray(value) && value.length > 1) {
+    return renderNumberOfSelections(value.length);
+  }
+
+  value = Array.isArray(value) ? value[0] : value;
+
   const type = getParameterType(parameter);
   if (type === "date") {
     return formatDateValue(value, parameter);
@@ -53,4 +61,12 @@ export function formatParameterValue(value: any, parameter: UiParameter) {
 
   // infer type information from parameter type
   return formatWithInferredType(value, parameter);
+}
+
+function renderNumberOfSelections(numberOfSelections: number) {
+  return ngettext(
+    msgid`${numberOfSelections} selection`,
+    `${numberOfSelections} selections`,
+    numberOfSelections,
+  );
 }
