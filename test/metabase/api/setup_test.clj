@@ -45,6 +45,8 @@
       (thunk))
     (finally
       (db/delete! User :email (get-in request-body [:user :email]))
+      (when-let [invited (get-in request-body [:invite :name])]
+        (db/delete! User :email invited))
       (when-let [db-name (get-in request-body [:database :name])]
         (db/delete! Database :name db-name)))))
 
@@ -244,14 +246,15 @@
                      (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
-      (binding [*expected-status* 200]
-        (testing "first name may be nil"
-          (is (= true (contains? (setup! m/dissoc-in [:user :first_name]) :id)))
-          (is (= true (contains? (setup! assoc-in [:user :first_name] nil) :id))))
+      (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
+        (binding [*expected-status* 200]
+          (testing "first name may be nil"
+            (is (= true (boolean (:id (setup! m/dissoc-in [:user :first_name])))))
+            (is (= true (boolean (:id (setup! assoc-in [:user :first_name] nil))))))
 
-        (testing "last name may be nil"
-          (is (= true (contains? (setup! m/dissoc-in [:user :last_name]) :id)))
-          (is (= true (contains? (setup! assoc-in [:user :last_name] nil) :id)))))
+          (testing "last name may be nil"
+            (is (= true (boolean (:id (setup! m/dissoc-in [:user :last_name])))))
+            (is (= true (boolean (:id (setup! assoc-in [:user :last_name] nil))))))))
 
       (testing "email"
         (testing "missing"
@@ -308,8 +311,9 @@
           ;; In the non-test context, this is 'set' iff there is one or more users, and doesn't have to be toggled
           (reset! has-user-setup true)
           (is (setup/has-user-setup))
-          (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
-            (is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
+          ;; use do-with-setup* to delete the random user that was created
+          (do-with-setup* body
+            #(is (= "The /api/setup route can only be used to create the first user, however a user currently exists."
                    (client/client :post 403 "setup" (assoc-in body [:user :email] (mt/random-email)))))))))))
 
 (deftest transaction-test
