@@ -377,14 +377,6 @@
 (deftest create-user-validate-input-test
   (testing "POST /api/user"
     (testing "Test input validations"
-      (is (= {:errors {:first_name "value must be a non-blank string."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {})))
-
-      (is (= {:errors {:last_name "value must be a non-blank string."}}
-             (mt/user-http-request :crowberto :post 400 "user"
-                                   {:first_name "whatever"})))
-
       (is (= {:errors {:email "value must be a valid email address."}}
              (mt/user-http-request :crowberto :post 400 "user"
                                    {:first_name "whatever"
