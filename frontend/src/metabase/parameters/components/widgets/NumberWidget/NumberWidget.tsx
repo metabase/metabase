@@ -5,7 +5,11 @@ import cx from "classnames";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
-import { WidgetRoot, Footer, UpdateButton } from "./NumberWidget.styled";
+import {
+  WidgetRoot,
+  Footer,
+  UpdateButton,
+} from "metabase/parameters/components/widgets//Widget.styled";
 
 type NumberWidgetProps = {
   value: number[];
