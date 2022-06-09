@@ -146,21 +146,17 @@ function ListCell({
   }, [clicked, extraData, onVisualizationClick]);
 
   const type: CellType = useMemo(() => {
-    const isListItemImage =
-      columnIndex === 0 && columnSettings.view_as === "image";
+    const isPrimarySlot = columnIndex < 3;
+    const isListItemImage = isPrimarySlot && columnSettings.view_as === "image";
     if (isListItemImage) {
       return "image";
     }
-
-    const firstColumn = cols[0];
-    const firstColumnSettings = settings.column(firstColumn);
-    const hasItemImage = firstColumnSettings.view_as === "image";
-    const isItemTitle =
-      (columnIndex === 0 && columnSettings.view_as !== "image") ||
-      (columnIndex === 1 && hasItemImage);
-
-    return isItemTitle ? "title" : "info";
-  }, [cols, columnIndex, columnSettings, settings]);
+    const isPK = cols[columnIndex].semantic_type === "type/PK";
+    if (isPrimarySlot && isPK) {
+      return "pk";
+    }
+    return isPrimarySlot ? "primary" : "secondary";
+  }, [cols, columnIndex, columnSettings]);
 
   const classNames = cx("fullscreen-normal-text fullscreen-night-text", {
     link: isClickable,
