@@ -1,6 +1,8 @@
 ---
-title: - [Configuring RDS for Metabase (the recommended guide)](configuring-rds-for-metabase-the-recommended-guide)
+title: "Configuring RDS for Metabase"
 ---
+
+# Configuring RDS for Metabase
 
 - [Configuring RDS for Metabase (the recommended guide)](#configuring-rds-for-metabase-the-recommended-guide)
   - [Step 1](#step-1)
@@ -11,8 +13,6 @@ title: - [Configuring RDS for Metabase (the recommended guide)](configuring-rds-
   - [Step 1](#step-1-1)
   - [Step 2](#step-2-1)
   - [Step 3](#step-3-1)
-
-# Configuring RDS for Metabase (the recommended guide)
 
 If you want to move from using Metabase just for testing to something that is ready for the big time, you need to use a production-grade database like PostgreSQL or MySQL/MariaDB. Here's a [high level architecture diagram](images/Metabase-AWS-SI.png) of Metabase deployed with a dedicated application database.
 
