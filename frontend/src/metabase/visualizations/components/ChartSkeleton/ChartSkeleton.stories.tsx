@@ -17,15 +17,6 @@ const Template: ComponentStory<typeof ChartSkeleton> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
+  name: "Question",
   display: "line",
-};
-
-export const Row = Template.bind({});
-Row.args = {
-  display: "row",
-};
-
-export const Table = Template.bind({});
-Table.args = {
-  display: "table",
 };

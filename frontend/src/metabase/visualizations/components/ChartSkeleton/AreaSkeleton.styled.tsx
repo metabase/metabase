@@ -3,8 +3,14 @@ import { color } from "metabase/lib/colors";
 import { animationStyles } from "./ChartSkeleton.styled";
 
 export const SkeletonRoot = styled.div`
-  ${animationStyles};
+  display: flex;
+  flex-direction: column;
   height: 100%;
+`;
+
+export const SkeletonContent = styled.div`
+  ${animationStyles};
+  flex: 1 1 0;
   padding-top: 2.375rem;
   padding-bottom: 0.125rem;
   border-bottom: 1px solid ${color("bg-medium")};
