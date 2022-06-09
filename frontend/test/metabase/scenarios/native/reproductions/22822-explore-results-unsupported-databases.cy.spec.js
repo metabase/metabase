@@ -11,7 +11,7 @@ const questionDetails = {
   },
 };
 
-describe.skip("issue 22822", () => {
+describe("issue 22822", () => {
   beforeEach(() => {
     restore("mongo-4");
     cy.signInAsAdmin();

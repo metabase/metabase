@@ -1,6 +1,7 @@
 (ns metabase.api.slack-test
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
+            [java-time :as t]
             [metabase.config :as config]
             [metabase.integrations.slack :as slack]
             [metabase.test :as mt]))
@@ -50,11 +51,17 @@
 
     (testing "The Slack app token or files channel settings are cleared if no value is sent in the request"
       (mt/with-temporary-setting-values [slack-app-token "fake-token"
-                                         slack-files-channel "fake-channel"]
+                                         slack-files-channel "fake-channel"
+                                         slack/slack-cached-channels-and-usernames ["fake_channel"]
+                                         slack/slack-channels-and-usernames-last-updated (t/zoned-date-time)]
         (mt/user-http-request :crowberto :put 200 "slack/settings" {})
         (is (= nil (slack/slack-app-token)))
         ;; The files channel is reset to its default value
-        (is (= "metabase_files" (slack/slack-files-channel)))))
+        (is (= "metabase_files" (slack/slack-files-channel)))
+        ;; The cache is empty, and its last-updated value is reset to its default value
+        (is (= [] (slack/slack-cached-channels-and-usernames)))
+        (is (= @#'slack/zoned-time-epoch (slack/slack-channels-and-usernames-last-updated)))))
+
 
     (testing "A non-admin cannot modify the Slack app token or files channel settings"
       (mt/user-http-request :rasta :put 403 "slack/settings"

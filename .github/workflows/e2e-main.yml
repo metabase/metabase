@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "master"
+      - 'release-**'
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -127,13 +128,22 @@ jobs:
         jar xf target/uberjar/metabase.jar version.properties
         mv version.properties resources/
 
-    - name: Run Cypress tests on ${{ matrix.folder }}
+    - name: Run Cypress tests on ${{ matrix.folder }} - Master Branch
+      if: ${{ github.ref == 'refs/heads/master' }}
       run: |
         yarn run test-cypress-run \
           --folder ${{ matrix.folder }} \
           --record --key ${{ secrets.CURRENTS_KEY }} \
           --group ${{ matrix.folder }}-${{ matrix.edition }} \
           --ci-build-id "${{ github.run_id }}-${{ github.run_attempt }}"
+      env:
+        TERM: xterm
+
+    - name: Run Cypress tests on ${{ matrix.folder }}
+      if: ${{ github.ref != 'refs/heads/master' }}
+      run: |
+        yarn run test-cypress-run \
+          --folder ${{ matrix.folder }}
       env:
         TERM: xterm
 

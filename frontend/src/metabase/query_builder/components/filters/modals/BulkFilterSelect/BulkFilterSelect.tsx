@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo } from "react";
-import { xor } from "lodash";
 
 import StructuredQuery, {
   SegmentOption,
@@ -7,7 +6,10 @@ import StructuredQuery, {
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
+import { isBoolean } from "metabase/lib/schema_metadata";
+
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
+
 import {
   SelectFilterButton,
   SelectFilterPopover,
@@ -18,18 +20,16 @@ export interface BulkFilterSelectProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
-  onAddFilter: (filter: Filter) => void;
-  onChangeFilter: (filter: Filter, newFilter: Filter) => void;
-  onRemoveFilter: (filter: Filter) => void;
+  handleChange: (newFilter: Filter) => void;
+  handleClear: () => void;
 }
 
 export const BulkFilterSelect = ({
   query,
   filter,
   dimension,
-  onAddFilter,
-  onChangeFilter,
-  onRemoveFilter,
+  handleChange,
+  handleClear,
 }: BulkFilterSelectProps): JSX.Element => {
   const name = useMemo(() => {
     return filter?.displayName({ includeDimension: false });
@@ -38,23 +38,6 @@ export const BulkFilterSelect = ({
   const newFilter = useMemo(() => {
     return getNewFilter(query, dimension);
   }, [query, dimension]);
-
-  const handleChange = useCallback(
-    (newFilter: Filter) => {
-      if (filter) {
-        onChangeFilter(filter, newFilter);
-      } else {
-        onAddFilter(newFilter);
-      }
-    },
-    [filter, onAddFilter, onChangeFilter],
-  );
-
-  const handleClear = useCallback(() => {
-    if (filter) {
-      onRemoveFilter(filter);
-    }
-  }, [filter, onRemoveFilter]);
 
   return (
     <TippyPopoverWithTrigger
@@ -65,7 +48,7 @@ export const BulkFilterSelect = ({
           highlighted
           aria-label={dimension.displayName()}
           onClick={onClick}
-          onClear={filter ? handleClear : undefined}
+          onClear={handleClear}
         >
           {name}
         </SelectFilterButton>
@@ -88,7 +71,12 @@ export const BulkFilterSelect = ({
 
 const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   const filter = new Filter([], null, dimension.query() ?? query);
-  return filter.setDimension(dimension.mbql(), { useDefaultOperator: true });
+
+  const isBooleanField = isBoolean(dimension.field());
+
+  return filter.setDimension(dimension.mbql(), {
+    useDefaultOperator: !isBooleanField,
+  });
 };
 
 export interface SegmentFilterSelectProps {

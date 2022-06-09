@@ -33,7 +33,7 @@ export const TableTitle = styled.div`
 
 export const TableBody = styled.div`
   flex: 1 1 0;
-  padding: 3rem 2rem;
+  padding: 3rem 1.5rem;
   min-height: 24rem;
   border: 1px solid ${color("border")};
   border-top: none;
