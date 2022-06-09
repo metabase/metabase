@@ -6,8 +6,25 @@ import Radio from "metabase/core/components/Radio";
 import Select, { Option } from "metabase/core/components/Select";
 import TextInput from "metabase/components/TextInput";
 
-function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
-  const [channelType, setChannelType] = useState("public");
+function treatChannelName(name) {
+  if (name === "") {
+    return name;
+  }
+
+  if (name.charAt(0) === "#") {
+    return name;
+  }
+
+  return "#" + name;
+}
+
+function ChannelFields({
+  channel,
+  channelSpec,
+  channelType,
+  onChannelPropertyChange,
+  setChannelType,
+}) {
   const [privateChannelText, setPrivateChannelText] = useState("");
 
   const channelTypeOptions = [
@@ -15,12 +32,13 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
     { name: t`A private channel`, value: "private" },
   ];
 
-  const handlePrivateChannelTextChange = (field, value) => {
-    setPrivateChannelText(value);
+  const handlePrivateChannelTextChange = (field, channelName) => {
+    const treatedChannelName = treatChannelName(channelName);
+    setPrivateChannelText(treatedChannelName);
 
     onChannelPropertyChange("details", {
       ...channel.details,
-      [field.name]: value,
+      [field.name]: treatedChannelName,
     });
   };
 
@@ -75,7 +93,7 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
                 <TextInput
                   className="pt2"
                   value={privateChannelText}
-                  placeholder={t`Fill name of private channel`}
+                  placeholder={t`Channel name...`}
                   autoFocus
                   aria-autocomplete="list"
                   onChange={value =>
@@ -94,7 +112,9 @@ function ChannelFields({ channel, channelSpec, onChannelPropertyChange }) {
 ChannelFields.propTypes = {
   channel: PropTypes.object.isRequired,
   channelSpec: PropTypes.object.isRequired,
+  channelType: PropTypes.string,
   onChannelPropertyChange: PropTypes.func.isRequired,
+  setChannelType: PropTypes.func,
 };
 
 export default ChannelFields;

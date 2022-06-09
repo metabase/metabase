@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import _ from "underscore";
@@ -38,6 +38,8 @@ function _AddEditSlackSidebar({
   handleArchive,
   setPulseParameters,
 }) {
+  const [channelType, setChannelType] = useState("public");
+
   const isValid = dashboardPulseIsValid(pulse, formInput.channels);
 
   return (
@@ -57,6 +59,8 @@ function _AddEditSlackSidebar({
             channel={channel}
             channelSpec={channelSpec}
             onChannelPropertyChange={onChannelPropertyChange}
+            channelType={channelType}
+            setChannelType={setChannelType}
           />
         )}
         <SchedulePicker
@@ -87,6 +91,14 @@ function _AddEditSlackSidebar({
             disabled={!isValid}
           />
         </div>
+
+        {channelType === "private" && (
+          <div className="py1">
+            {t`You can double-check you got the channel name right by sending this
+          to your channel now.`}
+          </div>
+        )}
+
         {PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component ? (
           <PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE.Component
             className="py3 mt2 border-top"
