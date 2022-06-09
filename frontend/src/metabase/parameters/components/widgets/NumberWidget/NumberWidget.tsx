@@ -21,7 +21,6 @@ type NumberWidgetProps = {
   arity?: "n" | number;
   infixText?: string;
   autoFocus?: boolean;
-  valueRenderer?: (value: any) => React.ReactNode;
 };
 
 const OPTIONS: any[] = [];
@@ -34,7 +33,6 @@ function NumberWidget({
   arity = 1,
   infixText,
   autoFocus,
-  valueRenderer,
 }: NumberWidgetProps) {
   const [unsavedValue, setUnsavedValue] = useState<(number | undefined)[]>(
     value,
@@ -57,7 +55,6 @@ function NumberWidget({
           value={unsavedValue}
           options={OPTIONS}
           updateOnInputChange
-          valueRenderer={valueRenderer}
           parseFreeformValue={parseNumberValue}
           onChange={newValue => {
             setUnsavedValue(newValue);
