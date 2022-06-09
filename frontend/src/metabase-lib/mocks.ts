@@ -72,15 +72,11 @@ export function getAdHocQuestion(card?: Partial<StructuredUnsavedCard>) {
 export function getCleanStructuredQuestion(
   card?: Partial<StructuredUnsavedCard>,
 ) {
-  const question = getAdHocQuestion(card);
-
-  const query = (question.query() as StructuredQuery).setSourceTableId(
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    undefined,
-  );
-
-  return question.setQuery(query);
+  let question = getAdHocQuestion(card);
+  if (question.query() instanceof StructuredQuery) {
+    question = question.setQuery({});
+  }
+  return question;
 }
 
 export function getUnsavedNativeQuestion(card?: Partial<NativeUnsavedCard>) {
