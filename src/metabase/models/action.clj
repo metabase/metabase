@@ -10,11 +10,10 @@
 (u/strict-extend (class Action)
   models/IModel
   (merge models/IModelDefaults
-         {:types          (constantly {:type :keyword})
-          :properties     (constantly {:timestamped? true})}))
+         {:types      (constantly {:type :keyword})
+          :properties (constantly {:timestamped? true})}))
 
-(u/strict-extend
-  (class QueryAction)
+(u/strict-extend (class QueryAction)
   models/IModel
   (merge models/IModelDefaults
          ;; This is ok as long as we're 1:1
@@ -24,7 +23,8 @@
   "Hydrates Action from Emitter"
   {:batched-hydrate :action}
   [emitters]
-  (let [actions (->> {:select [:emitter_action.emitter_id
+  (let [actions (->> {:select [:action.id
+                               :emitter_action.emitter_id
                                :query_action.card_id
                                :action.type]
                       :from [[Action :action]]

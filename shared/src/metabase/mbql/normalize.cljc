@@ -251,8 +251,11 @@
                  (assoc :name tag-name))])))
    template-tags))
 
-(defn- normalize-query-parameter [{:keys [type target], :as param}]
+(defn normalize-query-parameter
+  "Normalize a parameter in the query `:parameters` list."
+  [{:keys [type target id], :as param}]
   (cond-> param
+    id     (update :id mbql.u/qualified-name)
     ;; some things that get ran thru here, like dashcard param targets, do not have :type
     type   (update :type maybe-normalize-token)
     target (update :target #(normalize-tokens % :ignore-path))))
