@@ -1,4 +1,5 @@
 import React from "react";
+import AreaSkeleton from "./AreaSkeleton";
 import BarSkeleton from "./BarSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
@@ -11,6 +12,8 @@ export interface ChartSkeletonProps {
 
 const ChartSkeleton = ({ display }: ChartSkeletonProps): JSX.Element => {
   switch (display) {
+    case "area":
+      return <AreaSkeleton />;
     case "bar":
       return <BarSkeleton />;
     case "row":
