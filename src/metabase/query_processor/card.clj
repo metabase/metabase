@@ -85,9 +85,13 @@
 
     {\"paramter_id\" :parameter-id ...}
 
-  This allows the expected type of a request parameter targeting a field on an MBQL query to be quickly looked up by ID."
+  This allows the expected type of a request parameter targeting a field on an MBQL query to be quickly looked up by ID.
+  Excludes parameters that do not have IDs."
   [{parameters :parameters}]
-  (into {} (map (juxt :id :type) parameters)))
+  (into {} (comp
+            (map (juxt :id :type))
+            (remove (comp nil? first)))
+          parameters))
 
 (defn- card-template-tags
   "Template tags that have been specified for the query in the provided Card, if any, returned as a map in
@@ -175,21 +179,30 @@
       (doseq [request-parameter request-parameters
               :let              [parameter-id   (:id request-parameter)
                                  parameter-name (infer-parameter-name request-parameter)]]
-        (let [matching-widget-type (or
-                                    ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net
-                                    ;; in case request parameters are malformed. Only need to do this for parameters
-                                    ;; targeting template tags since card parameters should always be targeted by ID.
-                                    (get parameter-types parameter-id)
-                                    (get template-tag-types parameter-id)
-                                    (get template-tag-types parameter-name)
-                                    (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter or template tag with the ID {1} or name {2}."
-                                                         card-id
-                                                         (pr-str parameter-id)
-                                                         (pr-str parameter-name))
-                                                    {:type               qp.error-type/invalid-parameter
-                                                     :invalid-parameter  request-parameter
-                                                     :allowed-parameters (keys (merge parameter-types
-                                                                                      template-tag-types))})))]
+        (let [matching-widget-type
+              (if (seq parameter-types)
+                ;; If (non-template tag) parameters are defined on the card, request parameters should target them by
+                ;; ID, rather than targeting template tags directly (even if they also exist)
+                (or (get parameter-types parameter-id)
+                    (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter with the ID {1}."
+                                         card-id
+                                         (pr-str parameter-id))
+                                    {:type               qp.error-type/invalid-parameter
+                                     :invalid-parameter  request-parameter
+                                     :allowed-parameters (keys parameter-types)})))
+                (or
+                 ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net in case request
+                 ;; parameters are malformed. Only need to do this for parameters targeting template tags since card
+                 ;; parameters should always be targeted by ID.
+                 (get template-tag-types parameter-id)
+                 (get template-tag-types parameter-name)
+                 (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag with the ID {1} or name {2}."
+                                      card-id
+                                      (pr-str parameter-id)
+                                      (pr-str parameter-name))
+                                 {:type               qp.error-type/invalid-parameter
+                                  :invalid-parameter  request-parameter
+                                  :allowed-parameters (keys template-tag-types)}))))]
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 

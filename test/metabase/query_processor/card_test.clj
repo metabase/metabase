@@ -115,13 +115,13 @@
     (testing "Should disallow parameters that aren't actually part of the Card"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\" or name \"fake\""
+           #"Invalid parameter: Card [\d,]+ does not have a template tag with the ID \"_FAKE_\" or name \"fake\""
            (#'qp.card/validate-card-parameters card-id [{:id    "_FAKE_"
                                                          :name  "fake"
                                                          :type  :date/single
                                                          :value "2016-01-01"}])))
       (testing "As an API request"
-        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter or template tag with the ID \"_FAKE_\" or name \"fake\""
+        (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag with the ID \"_FAKE_\" or name \"fake\""
                       :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
                       :allowed-parameters (s/eq ["_DATE_", "date"])
                       s/Keyword           s/Any}
@@ -174,15 +174,28 @@
                                                    :type :date/single
                                                    :name "Date"
                                                    :slug "DATE"}]}]
-    (testing "API request should fail if parameter targets card parameter by name (only supported for template tags
-             for backwards compatibility)"
-      (is (= [1000]
-             (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
-                                                 {:parameters [{:id    "Date"
-                                                                :type  :date/single
-                                                                :value "2016-01-01"}]})))))
+    (testing "API request should fail if request parameter does not contain ID"
+      (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter with the ID nil."
+                    :invalid-parameter  (s/eq {:name "date", :type "date/single", :value "2016-01-01"})
+                    :allowed-parameters (s/eq ["_DATE_"])
+                    s/Keyword           s/Any}
+                   (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                         {:parameters [{:name  "date"
+                                                        :type  :date/single
+                                                        :value "2016-01-01"}]}))))
 
-    (testing "Happy path -- API request should succeed if parameter correlates to a card parameter by ID"
+    (testing "API request should fail if request parameter ID does not exist on the card"
+      (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter with the ID \"_FAKE_\"."
+                    :invalid-parameter  (s/eq {:name "date", :id "_FAKE_" :type "date/single", :value "2016-01-01"})
+                    :allowed-parameters (s/eq ["_DATE_"])
+                    s/Keyword           s/Any}
+                   (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                         {:parameters [{:id    "_FAKE_"
+                                                        :name  "date"
+                                                        :type  :date/single
+                                                        :value "2016-01-01"}]}))))
+
+    (testing "Happy path -- API request should succeed if request parameter correlates to a card parameter by ID"
       (is (= [1000]
              (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                                  {:parameters [{:id    "_DATE_"
