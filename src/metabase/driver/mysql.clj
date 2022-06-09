@@ -128,7 +128,7 @@
     #"Must specify port after ':' in connection string"
     (driver.common/connection-error-messages :invalid-hostname)
 
-    #".*"                               ; default
+    ;; else
     message))
 
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
