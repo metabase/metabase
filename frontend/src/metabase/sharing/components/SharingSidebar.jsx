@@ -9,7 +9,7 @@ import PulsesListSidebar from "metabase/sharing/components/PulsesListSidebar";
 import {
   AddEditSlackSidebar,
   AddEditEmailSidebar,
-} from "metabase/sharing/components/AddEditSidebar";
+} from "metabase/sharing/components/AddEditSidebar/AddEditSidebar";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Sidebar from "metabase/dashboard/components/Sidebar";
 import Pulses from "metabase/entities/pulses";
