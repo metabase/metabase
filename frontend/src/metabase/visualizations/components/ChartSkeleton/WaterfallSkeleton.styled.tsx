@@ -1,16 +1,10 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { animationStyles, positionStyles } from "./ChartSkeleton.styled";
+import { animationStyles } from "./ChartSkeleton.styled";
 
-export const SkeletonRoot = styled.div`
-  ${positionStyles};
+export const SkeletonRoot = styled.svg`
   ${animationStyles};
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-`;
-
-export const SkeletonColumn = styled.div`
-  position: relative;
-  background-color: ${color("bg-medium")};
+  color: ${color("bg-medium")};
+  width: 100%;
+  height: 100%;
 `;

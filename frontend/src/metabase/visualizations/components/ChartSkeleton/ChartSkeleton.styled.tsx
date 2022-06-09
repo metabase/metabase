@@ -14,10 +14,6 @@ export const fadingKeyframes = keyframes`
   }
 `;
 
-export const positionStyles = css`
-  height: 100%;
-`;
-
 export const animationStyles = css`
   animation: ${fadingKeyframes} 1.5s infinite;
 `;
