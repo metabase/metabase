@@ -14,6 +14,10 @@ export function sidebar() {
   return cy.get("main aside");
 }
 
+export function rightSidebar() {
+  return cy.findAllByTestId("sidebar-right");
+}
+
 export function navigationSidebar() {
   return cy.get("#root aside").first();
 }

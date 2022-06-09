@@ -99,7 +99,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.icon("verified").should("not.exist");
 
-      cy.findByTestId("saved-question-header-button").click();
+      questionInfoButton().click();
       cy.findByText("Bobby Tables verified this").should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
