@@ -1,6 +1,11 @@
 import React, { HTMLAttributes } from "react";
 import AreaSkeleton from "./AreaSkeleton";
 import BarSkeleton from "./BarSkeleton";
+import LineSkeleton from "./LineSkeleton";
+import RowSkeleton from "./RowSkeleton";
+import ScatterSkeleton from "./ScatterSkeleton";
+import TableSkeleton from "./TableSkeleton";
+import WaterfallSkeleton from "./WaterfallSkeleton";
 
 export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string;
@@ -16,8 +21,18 @@ const ChartSkeleton = ({
       return <AreaSkeleton {...props} />;
     case "bar":
       return <BarSkeleton {...props} />;
+    case "line":
+      return <LineSkeleton {...props} />;
+    case "row":
+      return <RowSkeleton {...props} />;
+    case "scatter":
+      return <ScatterSkeleton {...props} />;
+    case "table":
+      return <TableSkeleton {...props} />;
+    case "waterfall":
+      return <WaterfallSkeleton {...props} />;
     default:
-      return <AreaSkeleton {...props} />;
+      return <LineSkeleton {...props} />;
   }
 };
 
