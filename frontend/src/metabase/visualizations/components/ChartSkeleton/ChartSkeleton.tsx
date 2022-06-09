@@ -1,17 +1,23 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import AreaSkeleton from "./AreaSkeleton";
+import BarSkeleton from "./BarSkeleton";
 
-export interface ChartSkeletonProps {
+export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string;
   display?: string;
 }
 
-const ChartSkeleton = ({ name, display }: ChartSkeletonProps): JSX.Element => {
+const ChartSkeleton = ({
+  display,
+  ...props
+}: ChartSkeletonProps): JSX.Element => {
   switch (display) {
     case "area":
-      return <AreaSkeleton name={name} />;
+      return <AreaSkeleton {...props} />;
+    case "bar":
+      return <BarSkeleton {...props} />;
     default:
-      return <AreaSkeleton name={name} />;
+      return <AreaSkeleton {...props} />;
   }
 };
 

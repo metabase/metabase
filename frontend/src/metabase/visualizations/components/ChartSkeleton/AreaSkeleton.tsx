@@ -1,14 +1,14 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import SkeletonCaption from "./SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./AreaSkeleton.styled";
 
-export interface AreaSkeletonProps {
+export interface AreaSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string;
 }
 
-const AreaSkeleton = ({ name }: AreaSkeletonProps): JSX.Element => {
+const AreaSkeleton = ({ name, ...props }: AreaSkeletonProps): JSX.Element => {
   return (
-    <SkeletonRoot>
+    <SkeletonRoot {...props}>
       {name && <SkeletonCaption name={name} />}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"

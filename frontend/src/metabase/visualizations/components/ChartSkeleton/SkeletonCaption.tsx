@@ -1,5 +1,5 @@
 import React from "react";
-import { SkeletonTitle } from "./SkeletonCaption.styled";
+import { SkeletonRoot, SkeletonTitle } from "./SkeletonCaption.styled";
 
 export interface SkeletonCaptionProps {
   name?: string;
@@ -7,9 +7,9 @@ export interface SkeletonCaptionProps {
 
 const SkeletonCaption = ({ name }: SkeletonCaptionProps): JSX.Element => {
   return (
-    <div>
+    <SkeletonRoot>
       <SkeletonTitle>{name}</SkeletonTitle>
-    </div>
+    </SkeletonRoot>
   );
 };
 

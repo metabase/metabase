@@ -1,9 +1,15 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
+import SkeletonCaption from "./SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./BarSkeleton.styled";
 
-const BarSkeleton = (): JSX.Element => {
+export interface BarSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+  name?: string;
+}
+
+const BarSkeleton = ({ name, ...props }: BarSkeletonProps): JSX.Element => {
   return (
-    <SkeletonRoot>
+    <SkeletonRoot {...props}>
+      {name && <SkeletonCaption name={name} />}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 372 117"
