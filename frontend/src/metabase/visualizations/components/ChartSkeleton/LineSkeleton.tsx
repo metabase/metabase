@@ -1,21 +1,23 @@
 import React from "react";
 import { SkeletonRoot, SkeletonImage } from "./AreaSkeleton.styled";
 
-const AreaSkeleton = (): JSX.Element => {
+const LineSkeleton = (): JSX.Element => {
   return (
     <SkeletonRoot>
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 371 113"
+        fill="none"
         preserveAspectRatio="none"
       >
         <path
-          d="M15.254 97.568 0 107.524V113h371V59.736L345.455 0l-48.453 59.736-15.317-15.432-15.191 15.432-24.227-30.864-43.517 40.82-20.19-15.93-30.847 15.93-30.169-15.93-46.658 46.793-15.254-9.458L33.2 107.524l-17.946-9.956Z"
-          fill="currentColor"
+          d="m1 111 15.336-10 18.043 10 22.553-16.5 15.336 9.5 46.91-47 30.331 16 31.013-16 20.299 16 43.752-41 24.358 31 15.273-15.5L299.603 63l48.714-60L374 63"
+          stroke="currentColor"
+          strokeWidth="3"
         />
       </SkeletonImage>
     </SkeletonRoot>
   );
 };
 
-export default AreaSkeleton;
+export default LineSkeleton;

@@ -1,6 +1,7 @@
 import React from "react";
 import AreaSkeleton from "./AreaSkeleton";
 import BarSkeleton from "./BarSkeleton";
+import LineSkeleton from "./LineSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
 import TableSkeleton from "./TableSkeleton";
@@ -16,6 +17,8 @@ const ChartSkeleton = ({ display }: ChartSkeletonProps): JSX.Element => {
       return <AreaSkeleton />;
     case "bar":
       return <BarSkeleton />;
+    case "line":
+      return <LineSkeleton />;
     case "row":
       return <RowSkeleton />;
     case "scatter":
@@ -25,7 +28,7 @@ const ChartSkeleton = ({ display }: ChartSkeletonProps): JSX.Element => {
     case "waterfall":
       return <WaterfallSkeleton />;
     default:
-      return <RowSkeleton />;
+      return <LineSkeleton />;
   }
 };
 
