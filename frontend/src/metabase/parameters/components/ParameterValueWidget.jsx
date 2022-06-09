@@ -7,7 +7,7 @@ import _ from "underscore";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { isOnlyMappedToFields } from "metabase/parameters/utils/fields";
-import { formatParameterValue } from "metabase/parameters/utils/formatting";
+import { isDateParameter } from "metabase/parameters/utils/parameter-type";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
@@ -19,6 +19,7 @@ import DateAllOptionsWidget from "metabase/components/DateAllOptionsWidget";
 import Tooltip from "metabase/components/Tooltip";
 import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
+import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
@@ -139,7 +140,9 @@ class ParameterValueWidget extends Component {
       );
     } else {
       const placeholderText = isEditing
-        ? t`Select a default value…`
+        ? isDateParameter(parameter)
+          ? t`Select a default value…`
+          : t`Enter a default value…`
         : placeholder || t`Select…`;
 
       return (
@@ -165,9 +168,11 @@ class ParameterValueWidget extends Component {
                   />
                 )}
                 <div className="mr1 text-nowrap">
-                  {hasValue
-                    ? formatParameterValue(value, parameter)
-                    : placeholderText}
+                  <FormattedParameterValue
+                    parameter={parameter}
+                    value={value}
+                    placeholder={placeholderText}
+                  />
                 </div>
                 <WidgetStatusIcon
                   isFullscreen={isFullscreen}

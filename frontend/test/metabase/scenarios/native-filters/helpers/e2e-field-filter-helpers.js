@@ -121,7 +121,7 @@ export function mapTo({ table, field } = {}) {
  */
 export function openEntryForm(isFilterRequired) {
   const selector = isFilterRequired
-    ? cy.findByText("Enter a default value...")
+    ? cy.findByText("Enter a default value…")
     : filterWidget();
 
   selector.click();
@@ -161,7 +161,7 @@ function addSimpleNumberFilter(value) {
  * @param {string} value
  */
 function enterDefaultValue(value) {
-  cy.findByPlaceholderText("Enter a default value...").type(`${value}{enter}`);
+  cy.findByPlaceholderText("Enter a default value…").type(`${value}{enter}`);
   cy.button("Add filter").click();
 }
 
@@ -170,7 +170,7 @@ function enterDefaultValue(value) {
  * @param {string} result
  */
 export function pickDefaultValue(searchTerm, result) {
-  cy.findByPlaceholderText("Enter a default value...").type(searchTerm);
+  cy.findByPlaceholderText("Enter a default value…").type(searchTerm);
   popover()
     .findByText(result)
     .click();

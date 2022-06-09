@@ -26,7 +26,7 @@ function formatWithInferredType(value: any, parameter: UiParameter) {
   });
 }
 
-export function formatParameterValue(value: any, parameter: UiParameter) {
+export function formatParameterValue(value: unknown, parameter: UiParameter) {
   if (Array.isArray(value) && value.length > 1) {
     return renderNumberOfSelections(value.length);
   }
@@ -35,7 +35,7 @@ export function formatParameterValue(value: any, parameter: UiParameter) {
 
   const type = getParameterType(parameter);
   if (type === "date") {
-    return formatDateValue(value, parameter);
+    return formatDateValue(String(value), parameter);
   }
 
   if (isFieldFilterParameter(parameter)) {
@@ -63,7 +63,7 @@ export function formatParameterValue(value: any, parameter: UiParameter) {
   return formatWithInferredType(value, parameter);
 }
 
-function renderNumberOfSelections(numberOfSelections: number) {
+export function renderNumberOfSelections(numberOfSelections: number) {
   return ngettext(
     msgid`${numberOfSelections} selection`,
     `${numberOfSelections} selections`,

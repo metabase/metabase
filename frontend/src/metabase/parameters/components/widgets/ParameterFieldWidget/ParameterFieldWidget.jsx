@@ -24,11 +24,10 @@ const propTypes = {
   isEditing: PropTypes.bool.isRequired,
   parameter: PropTypes.object.isRequired,
   parameters: PropTypes.array.isRequired,
-  parentFocusChanged: PropTypes.bool,
   placeholder: PropTypes.string.isRequired,
   setValue: PropTypes.func.isRequired,
   value: PropTypes.string,
-  target: PropTypes.instanceOf(Element).isRequired,
+  dashboard: PropTypes.object,
 };
 
 export default function ParameterFieldWidget({
@@ -39,12 +38,14 @@ export default function ParameterFieldWidget({
   parameter,
   parameters,
   placeholder = t`Enter a value...`,
+  dashboard,
 }) {
   const [unsavedValue, setUnsavedValue] = useState(() => normalizeValue(value));
   const operator = deriveFieldOperatorFromParameter(parameter);
   const { numFields = 1, multi = false, verboseName } = operator || {};
   const isEqualsOp = isEqualsOperator(operator);
   const disableSearch = operator && isFuzzyOperator(operator);
+  const hasValue = Array.isArray(value) ? value.length > 0 : value != null;
 
   const isValid =
     unsavedValue.every(value => value != null) &&
@@ -73,10 +74,9 @@ export default function ParameterFieldWidget({
               value={value}
               parameter={parameter}
               parameters={parameters}
+              dashboard={dashboard}
               onChange={onValueChange}
-              placeholder={
-                isEditing ? t`Enter a default value...` : placeholder
-              }
+              placeholder={isEditing ? t`Enter a default value…` : undefined}
               fields={fields}
               autoFocus={index === 0}
               multi={multi}
@@ -97,7 +97,9 @@ export default function ParameterFieldWidget({
           onClick={() => {
             setValue(unsavedValue);
           }}
-        >{t`Update filter`}</UpdateButton>
+        >
+          {hasValue ? t`Update filter` : t`Add filter`}
+        </UpdateButton>
       </Footer>
     </WidgetRoot>
   );

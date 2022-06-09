@@ -356,10 +356,7 @@ function dedupeValues(valuesList) {
 }
 
 const LoadingState = () => (
-  <div
-    className="flex layout-centered align-center border-bottom"
-    style={{ minHeight: 82 }}
-  >
+  <div className="flex layout-centered align-center" style={{ minHeight: 82 }}>
     <LoadingSpinner size={32} />
   </div>
 );
@@ -386,7 +383,7 @@ const EveryOptionState = () => (
 );
 
 const OptionsMessage = ({ message }) => (
-  <div className="flex layout-centered p4 border-bottom">{message}</div>
+  <div className="flex layout-centered p4">{message}</div>
 );
 
 OptionsMessage.propTypes = optionsMessagePropTypes;
