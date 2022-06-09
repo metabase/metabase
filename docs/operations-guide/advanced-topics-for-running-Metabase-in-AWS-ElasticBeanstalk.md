@@ -1,6 +1,8 @@
 ---
-title: - [Logging](logging)
+title: Advanced topics for running Metabase on Elastic Beanstalk
 ---
+
+# Advanced topics for running Metabase on Elastic Beanstalk
 
 - [Logging](#logging)
   - [Network Access log](#network-access-log)
@@ -11,7 +13,6 @@ title: - [Logging](logging)
   - [Setup DNS CNAME (using AWS)](#setup-dns-cname-using-aws)
   - [Modify Metabase to enforce HTTPS](#modify-metabase-to-enforce-https)
 
-# Logging
 ## Network Access log
 
 If you need a log of all the IP addresses and URLs that were accessed during a specific period, you can configure the Load Balancer to send those logs to S3. This is useful for analyzing the traffic to your Metabase instance.
