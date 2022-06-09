@@ -14,10 +14,8 @@ import {
 type NumberWidgetProps = {
   value: number[];
   setValue: (value: any) => void;
-  onClose: () => void;
   className?: string;
   commitImmediately?: boolean;
-  focusChanged?: (hasFocus: boolean) => void;
   arity?: "n" | number;
   infixText?: string;
   autoFocus?: boolean;
@@ -28,7 +26,6 @@ const OPTIONS: any[] = [];
 function NumberWidget({
   value,
   setValue,
-  onClose,
   className,
   arity = 1,
   infixText,
@@ -43,27 +40,26 @@ function NumberWidget({
 
   const onClick = () => {
     setValue(unsavedValue);
-    onClose();
   };
 
   return (
-    <WidgetRoot>
+    <WidgetRoot className={className}>
       {arity === "n" ? (
         <TokenField
-          className={cx(className, "py1")}
+          multi
+          updateOnInputChange
+          className="py1"
           autoFocus={autoFocus}
           value={unsavedValue}
-          options={OPTIONS}
-          updateOnInputChange
           parseFreeformValue={parseNumberValue}
           onChange={newValue => {
             setUnsavedValue(newValue);
           }}
-          multi
+          options={OPTIONS}
         />
       ) : (
         times(arity, i => (
-          <React.Fragment key={i}>
+          <div className="inline-block" key={i}>
             <NumericInput
               className={cx(className, "py1")}
               autoFocus={autoFocus && i === 0}
@@ -79,7 +75,7 @@ function NumberWidget({
             {infixText && i !== arity - 1 && (
               <span className="px1">{infixText}</span>
             )}
-          </React.Fragment>
+          </div>
         ))
       )}
       <Footer>

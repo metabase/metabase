@@ -15,24 +15,12 @@ const Template: ComponentStory<typeof NumberWidget> = args => {
     updateArgs({ value: v });
   };
 
-  const handleClose = () => {
-    // do nothing
-  };
-
-  return (
-    <NumberWidget
-      {...args}
-      value={value}
-      setValue={handleSetValue}
-      onClose={handleClose}
-    />
-  );
+  return <NumberWidget {...args} value={value} setValue={handleSetValue} />;
 };
 
 export const Default = Template.bind({});
 Default.args = {
   value: [1],
-  arity: 1,
 };
 
 export const TwoArgs = Template.bind({});
@@ -42,8 +30,17 @@ TwoArgs.args = {
   infixText: "and",
 };
 
+export const ThreeArgs = Template.bind({});
+ThreeArgs.args = {
+  value: [1, 2],
+  arity: 3,
+  infixText: "foo",
+  autoFocus: true,
+};
+
 export const NArgs = Template.bind({});
 NArgs.args = {
-  value: [1, 2],
+  value: [1, 2, 3, 4, 5, 6],
   arity: "n",
+  autoFocus: true,
 };
