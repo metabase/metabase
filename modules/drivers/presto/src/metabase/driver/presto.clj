@@ -256,5 +256,4 @@
     #"^java.net.UnknownHostException.*$"
     :invalid-hostname
 
-    #".*"                               ; default
     message))
