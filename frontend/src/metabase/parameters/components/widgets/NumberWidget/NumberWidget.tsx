@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { t } from "ttag";
 import { times } from "lodash";
-import cx from "classnames";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
@@ -19,6 +18,7 @@ type NumberWidgetProps = {
   arity?: "n" | number;
   infixText?: string;
   autoFocus?: boolean;
+  placeholder?: string;
 };
 
 const OPTIONS: any[] = [];
@@ -30,6 +30,7 @@ function NumberWidget({
   arity = 1,
   infixText,
   autoFocus,
+  placeholder = t`Enter a number`,
 }: NumberWidgetProps) {
   const [unsavedValue, setUnsavedValue] = useState<(number | undefined)[]>(() =>
     normalize(value),
@@ -55,6 +56,7 @@ function NumberWidget({
             setUnsavedValue(newValue);
           }}
           options={OPTIONS}
+          placeholder={placeholder}
         />
       ) : (
         times(arity, i => (
@@ -70,6 +72,7 @@ function NumberWidget({
                   return newUnsavedValue;
                 });
               }}
+              placeholder={placeholder}
             />
             {infixText && i !== arity - 1 && (
               <span className="px1">{infixText}</span>
