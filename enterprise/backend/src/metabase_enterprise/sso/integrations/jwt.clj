@@ -25,9 +25,7 @@
               :sso_source       "jwt"
               :login_attributes user-attributes}]
     (or (sso-utils/fetch-and-update-login-attributes! user)
-        (sso-utils/create-new-sso-user! (merge user
-                                               (when-not first-name {:first_name (trs "Unknown")})
-                                               (when-not last-name {:last_name (trs "Unknown")}))))))
+        (sso-utils/create-new-sso-user! user))))
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email     (comp keyword sso-settings/jwt-attribute-email))
 (def ^:private ^{:arglists '([])} jwt-attribute-firstname (comp keyword sso-settings/jwt-attribute-firstname))

@@ -68,13 +68,15 @@
         last_name       (or last_name prev_last_name)]
     (when (or (not= first_name prev_first_name)
               (not= last_name prev_last_name))
-      [first_name last_name])))
+      [(when-not (= first_name :explicitly-nil) first_name)
+       (when-not (= last_name :explicitly-nil) last_name)])))
 
 (defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
-  (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
+  (when-let [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
-      (let [new-collection-name (collection/format-personal-collection-name first_name last_name :site)]
+      (let [{email :email} user-before-update
+            new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
           (db/update! Collection (:id collection) :name new-collection-name))))))
 
@@ -234,9 +236,9 @@
 (api/defendpoint POST "/"
   "Create a new `User`, return a 400 if the email address is already taken"
   [:as {{:keys [first_name last_name email user_group_memberships login_attributes] :as body} :body}]
-  {first_name              su/NonBlankString
-   last_name               su/NonBlankString
-   email                   su/Email
+  {first_name             (s/maybe su/NonBlankString)
+   last_name              (s/maybe su/NonBlankString)
+   email                  su/Email
    user_group_memberships (s/maybe [user/UserGroupMembership])
    login_attributes       (s/maybe user/LoginAttributes)}
   (api/check-superuser)
@@ -299,17 +301,19 @@
     (api/checkp (not (db/exists? User, :%lower.email (if email (u/lower-case-en email) email), :id [:not= id]))
                 "email" (tru "Email address already associated to another user."))
     (db/transaction
-     ;; only user or self can update user info
+     ;; only superuser or self can update user info
      ;; implicitly prevent group manager from updating users' info
      (when (or (= id api/*current-user-id*)
                api/*is-superuser?*)
        (api/check-500
         (db/update! User id (u/select-keys-when body
-                                                :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
-                                                :non-nil (set (concat [:first_name :last_name :email]
+                                                :present (into #{:first_name :last_name :locale} (when api/*is-superuser?* [:login_attributes]))
+                                                :non-nil (set (concat [:email]
                                                                       (when api/*is-superuser?*
                                                                         [:is_superuser]))))))
-       (maybe-update-user-personal-collection-name! user-before-update first_name last_name))
+       (let [first_name (if (and (nil? first_name) (contains? body :first_name)) :explicitly-nil first_name)
+             last_name  (if (and (nil? last_name) (contains? body :last_name)) :explicitly-nil last_name)]
+         (maybe-update-user-personal-collection-name! user-before-update first_name last_name)))
      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (hydrate :user_group_memberships)))
