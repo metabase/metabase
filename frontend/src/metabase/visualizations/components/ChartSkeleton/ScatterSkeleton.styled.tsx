@@ -9,6 +9,8 @@ export const SkeletonRoot = styled.div`
   flex-direction: column;
   justify-content: space-between;
   position: relative;
+  border-left: 1px solid ${color("bg-medium")};
+  border-bottom: 1px solid ${color("bg-medium")};
 `;
 
 export const SkeletonCircle = styled.div`
