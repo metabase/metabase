@@ -42,13 +42,14 @@ const PeopleListRow = ({
     <tr key={user.id}>
       <td className="flex align-center">
         <span className="text-white inline-block">
+          {/* XXX: What should we display in an avatar when there's no name? */}
           <UserAvatar
             bg={user.is_superuser ? color("accent2") : color("brand")}
             user={user}
           />
         </span>{" "}
-        {/* XXX: Question: There would be no name in the column, how should we show this? https://user-images.githubusercontent.com/1937582/171615511-aae65719-6701-46ab-8dcd-54f83f7e0450.png */}
-        <span className="ml2 text-bold">{user.common_name}</span>
+        {/* https://user-images.githubusercontent.com/1937582/171615511-aae65719-6701-46ab-8dcd-54f83f7e0450.png */}
+        <span className="ml2 text-bold">{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (
@@ -127,5 +128,20 @@ const PeopleListRow = ({
     </tr>
   );
 };
+
+/**
+ *
+ * @param {import("metabase-types/api").User} user
+ * @returns {string}
+ */
+function getName(user) {
+  const name = [user.first_name, user.last_name].join(" ").trim();
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}
 
 export default PeopleListRow;

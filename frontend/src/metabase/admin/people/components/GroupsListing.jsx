@@ -179,6 +179,7 @@ function GroupRow({
           className="link no-decoration flex align-center"
         >
           <span className="text-white">
+            {/* XXX: What should we display in an avatar when there's no name? */}
             <UserAvatar
               background={color}
               // This is the avatar for a group name, so it didn't render any user info.

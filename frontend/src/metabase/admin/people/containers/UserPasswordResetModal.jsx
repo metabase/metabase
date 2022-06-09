@@ -24,9 +24,8 @@ class UserPasswordResetModal extends React.Component {
     const { user, emailConfigured, temporaryPassword, onClose } = this.props;
     return temporaryPassword ? (
       <ModalContent
-        // XXX: Q: Should we use common name and fallback to email here?
         // https://user-images.githubusercontent.com/1937582/172186905-457af1d1-1a29-4ae2-b902-615d24916f8a.png
-        title={t`${user.first_name}'s password has been reset`}
+        title={t`${user.common_name}'s password has been reset`}
         footer={<Button primary onClick={onClose}>{t`Done`}</Button>}
         onClose={onClose}
       >
@@ -36,9 +35,8 @@ class UserPasswordResetModal extends React.Component {
       </ModalContent>
     ) : (
       <ModalContent
-        // XXX: use common_name to standardize user display name.
         // https://user-images.githubusercontent.com/1937582/172612045-fee0d33f-652f-4327-9aa7-329dea893da7.png
-        title={t`Reset ${user.getName()}'s password?`}
+        title={t`Reset ${user.common_name}'s password?`}
         onClose={onClose}
       >
         <p>{t`Are you sure you want to do this?`}</p>

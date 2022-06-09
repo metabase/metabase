@@ -37,6 +37,7 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
   return (
     <AccountHeaderRoot>
       <HeaderSection>
+        {/* XXX: What should we display in an avatar when there's no name? */}
         <HeaderAvatar user={user} />
         <HeaderTitle>{t`Account settings`}</HeaderTitle>
       </HeaderSection>

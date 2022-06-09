@@ -46,9 +46,8 @@ export default class Revision extends Component {
     if (user.id === currentUser.id) {
       return t`You`;
     } else {
-      // XXX: Change to common name and fallback to email.
       // https://user-images.githubusercontent.com/1937582/172178353-3c17e2a1-bd69-4d97-8014-6c4e7723749e.png
-      return user.first_name;
+      return user.common_name;
     }
   }
 
@@ -68,6 +67,7 @@ export default class Revision extends Component {
       <li className="flex flex-row">
         <div className="flex flex-column align-center mr2">
           <div className="text-white">
+            {/* XXX: What should we display in an avatar when there's no name? */}
             <UserAvatar user={revision.user} background={userColor} />
           </div>
           <div

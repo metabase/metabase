@@ -62,10 +62,10 @@ export default class RecipientPicker extends Component {
             value={recipients}
             options={
               users
-                ? // XXX: `label` here isn't really used because we specify `filterOption`.
+                ? // `label` here isn't really used because we specify `filterOption`.
                   // Normally, `options` will be filtered by its `label` if we don't provide
                   // `filterOption` to <TokenField />.
-                  users.map(user => ({ label: user.common_name, value: user }))
+                  users.map(user => ({ value: user }))
                 : []
             }
             onChange={this.handleOnChange}
@@ -76,31 +76,21 @@ export default class RecipientPicker extends Component {
             }
             autoFocus={autoFocus && recipients.length === 0}
             multi
-            // XXX: Should render the same value as when showing the user options.
             // https://user-images.githubusercontent.com/1937582/172163846-86636488-9cb7-4b8f-9609-594b42384f4a.png
-            valueRenderer={value => value.common_name || value.email}
+            valueRenderer={value => value.common_name}
             optionRenderer={option => (
               <div className="flex align-center">
                 <span className="text-white">
+                  {/* XXX: What should we display in an avatar when there's no name ? */}
                   <UserAvatar user={option.value} />
                 </span>
-                {/* XXX: Should render the same value as when users are selected */}
                 {/* https://user-images.githubusercontent.com/1937582/172163846-86636488-9cb7-4b8f-9609-594b42384f4a.png */}
                 <span className="ml1">{option.value.common_name}</span>
               </div>
             )}
-            filterOption={(option, filterString) =>
-              // XXX: Just a note, but I think logic that filter options by either common_name or email might already work.
-              // But making this close to what we have in UserPicker would be better because that one is more readable.
-
-              // case insensitive search of name or email
-              ~option.value.common_name
-                .toLowerCase()
-                .indexOf(filterString.toLowerCase()) ||
-              ~option.value.email
-                .toLowerCase()
-                .indexOf(filterString.toLowerCase())
-            }
+            // Just a note, but I think logic that filter options by either common_name or email might already work.
+            // But making this close to what we have in UserPicker would be better because that one is more readable.
+            filterOption={filterOption}
             validateValue={value => recipientIsValid(value)}
             parseFreeformValue={inputValue => {
               if (MetabaseUtils.isEmail(inputValue)) {
@@ -117,3 +107,14 @@ export default class RecipientPicker extends Component {
     );
   }
 }
+
+const filterOption = (option, text) => {
+  return (
+    includesIgnoreCase(option.value.common_name, text) ||
+    includesIgnoreCase(option.value.email, text)
+  );
+};
+
+const includesIgnoreCase = (sourceText, searchText) => {
+  return sourceText.toLowerCase().includes(searchText.toLowerCase());
+};

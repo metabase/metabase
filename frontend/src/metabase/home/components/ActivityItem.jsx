@@ -19,6 +19,7 @@ export default class ActivityItem extends Component {
       <div className="ml1 flex align-center mr2">
         <span>
           {item.user ? (
+            //  XXX: What should we display in an avatar when there's no name?
             <UserAvatar user={item.user} bg={userColors} />
           ) : (
             <IconBorder style={{ color: color("text-light") }}>

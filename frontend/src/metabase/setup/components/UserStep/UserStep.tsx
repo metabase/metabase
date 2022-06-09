@@ -106,10 +106,11 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
 };
 
 const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
+  const namePart = user?.first_name ? `, ${user.first_name}` : "";
   return isStepCompleted
-    ? // XXX: This might be the second place that we don't to fallback to an email.
+    ? // This might be the second place that we don't to fallback to an email.
       // https://user-images.githubusercontent.com/1937582/172606914-8f4995da-6a7b-48b6-8481-536e2aca69c7.png
-      t`Hi, ${user?.first_name}. Nice to meet you!`
+      t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;
 };
 

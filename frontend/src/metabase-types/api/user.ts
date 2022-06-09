@@ -2,7 +2,9 @@ export type UserId = number;
 
 export interface BaseUser {
   id: UserId;
+  // XXX: Make this optional
   first_name: string;
+  // XXX: Make this optional
   last_name: string;
   common_name: string;
   email: string;

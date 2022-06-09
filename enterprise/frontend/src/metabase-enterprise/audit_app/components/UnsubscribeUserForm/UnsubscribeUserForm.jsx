@@ -26,7 +26,7 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
 
   return (
     <ModalContent
-      // XXX: Fallback to email.
+      // https://user-images.githubusercontent.com/1937582/172784844-4e254372-f849-4d46-8b20-0da54e31b26b.png
       title={t`Unsubscribe ${user.common_name} from all subscriptions and alerts?`}
       footer={[
         error ? <FormMessage key="message" formError={error} /> : null,
@@ -40,7 +40,7 @@ const UnsubscribeUserForm = ({ user, onUnsubscribe, onClose }) => {
       onClose={onClose}
     >
       <ModalMessage>
-        {/* XXX: Fallback to email. */}
+        {/* https://user-images.githubusercontent.com/1937582/172784844-4e254372-f849-4d46-8b20-0da54e31b26b.png */}
         {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
       </ModalMessage>
       <ModalMessage>

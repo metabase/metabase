@@ -99,7 +99,7 @@ const getCreatorMessage = (item, user) => {
   if (user.id === item.creator?.id) {
     creatorString += t`Created by you`;
   } else if (item.creator?.common_name) {
-    // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/171614571-a0afd068-dd22-4690-9372-5c7e5125f9e0.png
+    // https://user-images.githubusercontent.com/1937582/171614571-a0afd068-dd22-4690-9372-5c7e5125f9e0.png
     creatorString += t`Created by ${item.creator.common_name}`;
   } else {
     creatorString += t`Created`;

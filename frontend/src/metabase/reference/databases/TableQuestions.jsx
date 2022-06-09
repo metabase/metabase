@@ -90,7 +90,7 @@ class TableQuestions extends Component {
                             name={entity.display_name || entity.name}
                             description={t`Created ${moment(
                               entity.created_at,
-                              // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/172164896-4831b57c-9fca-4acb-84c0-600cfb54651a.png
+                              // https://user-images.githubusercontent.com/1937582/172164896-4831b57c-9fca-4acb-84c0-600cfb54651a.png
                             ).fromNow()} by ${entity.creator.common_name}`}
                             url={Urls.question(entity)}
                             icon={visualizations.get(entity.display).iconName}

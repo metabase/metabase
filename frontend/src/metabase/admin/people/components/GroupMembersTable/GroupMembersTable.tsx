@@ -176,10 +176,8 @@ const UserRow = ({
 
   return (
     <tr>
-      {/* XXX: Change to common name */}
-      {/* XXX: Q: What if common name is null? */}
       {/* https://user-images.githubusercontent.com/1937582/172185172-c5f84af3-48a9-46a7-8583-747d854fba5e.png */}
-      <td className="text-bold">{user.first_name + " " + user.last_name}</td>
+      <td className="text-bold">{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -199,3 +197,13 @@ const UserRow = ({
     </tr>
   );
 };
+
+function getName(user: IUser): string {
+  const name = [user.first_name, user.last_name].join(" ").trim();
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}

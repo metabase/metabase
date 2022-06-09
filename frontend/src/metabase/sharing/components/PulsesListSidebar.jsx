@@ -136,9 +136,9 @@ function buildRecipientText(pulse) {
   }
 
   const [firstRecipient, ...otherRecipients] = recipients;
-  // XXX: Already have email fallback, so this should be good.
+  // Already have email fallback, so this should be good.
   // https://user-images.githubusercontent.com/1937582/172171670-f56679d0-f4d6-44b6-b00c-c2e314f89589.png
-  const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
+  const firstRecipientText = firstRecipient.common_name;
   return _.isEmpty(otherRecipients)
     ? firstRecipientText
     : `${firstRecipientText} ${ngettext(

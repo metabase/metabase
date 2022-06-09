@@ -202,7 +202,7 @@ function getRevisionUsername(revision, currentUser) {
   const revisionUser = revision.user;
   return revisionUser.id === currentUser?.id
     ? t`You`
-    : // XXX: Fallback to email. https://user-images.githubusercontent.com/1937582/172162608-8c2f08a5-599d-4add-9d86-c7f4542be7f0.png
+    : // https://user-images.githubusercontent.com/1937582/172162608-8c2f08a5-599d-4add-9d86-c7f4542be7f0.png
       revisionUser.common_name;
 }
 
