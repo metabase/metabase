@@ -24,7 +24,7 @@
     (when (and slack-app-token
                (not config/is-test?)
                (not (slack/valid-token? slack-app-token)))
-      (slack/slack-cached-channels-and-usernames! [])
+      (slack/clear-channel-cache!)
       (throw (ex-info (tru "Invalid Slack token.")
                       {:errors {:slack-app-token (tru "invalid token")}})))
     (slack/slack-app-token! slack-app-token)
