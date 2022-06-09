@@ -22,13 +22,13 @@ const DENSITY = 0.8;
 const WaterfallSkeleton = (): JSX.Element => {
   return (
     <SkeletonRoot>
-      {COLUMNS.map(([margin, height], index) => (
+      {COLUMNS.map(([bottom, height], index) => (
         <SkeletonColumn
           key={index}
           style={{
             width: percentage(DENSITY / COLUMNS.length),
             height: percentage(height),
-            bottom: percentage(margin),
+            bottom: percentage(bottom),
           }}
         />
       ))}
