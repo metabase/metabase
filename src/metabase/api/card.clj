@@ -761,38 +761,28 @@
                   :when field-id]
               field-id)))
 
-(defn- chain-filter-constraints [card constraint-param-key->value]
-  (into {} (for [[param-key value] constraint-param-key->value
-                 field-id          (param-key->field-ids card param-key)]
-             [field-id value])))
-
 (s/defn chain-filter
   "C H A I N filters!
 
     ;; show me categories
-    (chain-filter (Card 62) \"ee876336\" {})
-    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+    (chain-filter (Card 62) \"ee876336\")
+    ;; -> (\"African\" \"American\" \"Artisan\" ...)"
+  ([card param-key]
+   (chain-filter card param-key nil))
 
-    ;; show me categories that have expensive restaurants
-    (chain-filter (Card 62) \"ee876336\" {\"6f10a41f\" 4})
-    ;; -> (\"Japanese\" \"Steakhouse\")"
-  ([card param-key constraint-param-key->value]
-   (chain-filter card param-key constraint-param-key->value nil))
-
-  ([card param-key constraint-param-key->value query]
+  ([card param-key query]
    (when-not (seq (filter #(= (:id %) param-key) (:parameters card)))
      (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
                      {:status-code 400})))
-   (let [field-ids   (param-key->field-ids card param-key)
-         constraints (chain-filter-constraints card constraint-param-key->value)]
+   (let [field-ids (param-key->field-ids card param-key)]
      (when (empty? field-ids)
        (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                        {:param-key param-key
                         :status-code 400})))
      (try
          (let [results (distinct (mapcat (if (seq query)
-                                           #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                           #(chain-filter/chain-filter % constraints :limit result-limit))
+                                           #(chain-filter/chain-filter-search % {} query :limit result-limit)
+                                           #(chain-filter/chain-filter % {} :limit result-limit))
                                          field-ids))]
            ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
            (if (sequential? (first results))
@@ -804,27 +794,24 @@
              (throw e)))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
-  "Fetch possible values of the parameter whose ID is `:param-key`. Optionally restrict these values by passing query
-  parameters like `other-parameter=value` e.g.
+  "Fetch possible values of the parameter whose ID is `:param-key`.
 
-    ;; fetch values for Card 1 parameter 'abc' that are possible when parameter 'def' is set to 100
-    GET /api/card/1/params/abc/values?def=100"
-  [id param-key :as {:keys [query-params]}]
+    ;; fetch values for Card 1 parameter 'abc' that are possible
+    GET /api/card/1/params/abc/values"
+  [id param-key]
   (let [card (api/read-check Card id)]
-    (chain-filter card param-key query-params)))
+    (chain-filter card param-key)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
-  "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
-  these values by passing query parameters like `other-parameter=value` e.g.
+  "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
 
-    ;; fetch values for Card 1 parameter 'abc' that contain 'Cam' and are possible when parameter 'def' is set
-    ;; to 100
-     GET /api/card/1/params/abc/search/Cam?def=100
+    ;; fetch values for Card 1 parameter 'abc' that contain 'Cam'
+     GET /api/card/1/params/abc/search/Cam
 
   Currently limited to first 1000 results."
-  [id param-key query :as {:keys [query-params]}]
+  [id param-key query]
   (let [card (api/read-check Card id)]
-    (chain-filter card param-key query-params query)))
+    (chain-filter card param-key query)))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

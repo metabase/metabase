@@ -1352,8 +1352,15 @@
 (defmacro with-chain-filter-fixtures [[binding dashboard-values] & body]
   `(do-with-chain-filter-fixtures ~dashboard-values (fn [~binding] ~@body)))
 
+(defn- add-query-params
+  [url query-params]
+  (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
+                                         (codec/form-encode {k v})))]
+    (cond-> url
+      (seq query-params-str) (str "?" query-params-str))))
+
 (defn chain-filter-values-url [dashboard-or-id param-key & query-params]
-  (api.card-test/add-query-params (format "dashboard/%d/params/%s/values" (u/the-id dashboard-or-id) (name param-key))
+  (add-query-params (format "dashboard/%d/params/%s/values" (u/the-id dashboard-or-id) (name param-key))
                     query-params))
 
 (defmacro let-url
@@ -1367,8 +1374,8 @@
 
 (defn chain-filter-search-url [dashboard-or-id param-key query & query-params]
   {:pre [(some? param-key)]}
-  (api.card-test/add-query-params (str (format "dashboard/%d/params/%s/search/" (u/the-id dashboard-or-id) (name param-key))
-                                       query)
+  (add-query-params (str (format "dashboard/%d/params/%s/search/" (u/the-id dashboard-or-id) (name param-key))
+                         query)
                     query-params))
 
 (deftest chain-filter-test

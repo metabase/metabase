@@ -28,7 +28,6 @@
             [metabase.test.data.users :as test.users]
             [metabase.util :as u]
             [metabase.util.schema :as su]
-            [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.hydrate :refer [hydrate]])
@@ -1957,22 +1956,12 @@
   [query-type [binding card-values] & body]
   `(do-with-chain-filter-fixtures ~query-type ~card-values (fn [~binding] ~@body)))
 
-(defn add-query-params
-  "Encode query-params to an url."
-  [url query-params]
-  (let [query-params-str (str/join "&" (for [[k v] (partition 2 query-params)]
-                                         (codec/form-encode {k v})))]
-    (cond-> url
-      (seq query-params-str) (str "?" query-params-str))))
+(defn- chain-filter-values-url [card-or-id param-key]
+  (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-key)))
 
-(defn- chain-filter-values-url [card-or-id param-key & query-params]
-  (add-query-params (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-key))
-                    query-params))
-
-(defn- chain-filter-search-url [card-or-id param-key query & query-params]
-  (add-query-params (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-key))
-                         query)
-                    query-params))
+(defn- chain-filter-search-url [card-or-id param-key query]
+  (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-key))
+       query))
 
 (deftest chain-filter-test
   (testing "GET /api/card/:id/params/:param-key/values"
@@ -1982,22 +1971,8 @@
           (testing "Show me names of categories"
             (is (= ["African" "American" "Artisan"]
                    (take 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
-                                                                  card
-                                                                  (:category-name param-keys)))))))
-          (let [url (chain-filter-values-url card (:category-name param-keys)
-                                             (:price param-keys) 4)]
-            (testing "\nShow me names of categories that have expensive venues (price = 4)"
-              (is (= ["Japanese" "Steakhouse"]
-                     (take 3 (mt/user-http-request :rasta :get 200 url))))))
-          ;; this is the format the frontend passes multiple values in (pass the parameter multiple times), and our
-          ;; middleware does the right thing and converts the values to a vector
-          (let [url (chain-filter-values-url card (:category-name param-keys)
-                                             (:price param-keys) 3
-                                             (:price param-keys) 4)]
-            (testing "\nmultiple values"
-              (testing "Show me names of categories that have (somewhat) expensive venues (price = 3 *or* 4)"
-                (is (= ["American" "Asian" "BBQ"]
-                       (take 3 (mt/user-http-request :rasta :get 200 url))))))))
+                                                                   card
+                                                                   (:category-name param-keys))))))))
 
         (testing "Should require perms for the Card"
           (mt/with-non-admin-groups-no-root-collection-perms
@@ -2005,8 +1980,8 @@
               (with-chain-filter-fixtures query-type [{:keys [card param-keys]} {:collection_id (:id collection)}]
                 (is (= "You don't have permissions to do that."
                        (mt/user-http-request :rasta :get 403 (chain-filter-values-url
-                                                              card
-                                                              (:category-name param-keys)))))))))
+                                                               card
+                                                               (:category-name param-keys)))))))))
 
         (testing "should check perms for the Fields in question"
           (mt/with-temp-copy-of-db
@@ -2014,8 +1989,8 @@
               (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
               (is (= "You don't have permissions to do that."
                      (mt/user-http-request :rasta :get 403 (chain-filter-values-url
-                                                            card
-                                                            (:category-name param-keys))))))))))))
+                                                             card
+                                                             (:category-name param-keys))))))))))))
 
 (deftest chain-filter-search-test
   (testing "GET /api/card/:id/params/:param-key/search/:query"
@@ -2028,7 +2003,7 @@
                 (is (= ["Bar" "Gay Bar" "Juice Bar"]
                        (take 3 (mt/user-http-request :rasta :get 200 url)))))))
 
-          (let [url (chain-filter-search-url card (:category-name param-keys) "house" (:price param-keys) 4)]
+          (let [url (chain-filter-search-url card (:category-name param-keys) "house")]
             (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
               (is (= ["Steakhouse"]
                      (take 3 (mt/user-http-request :rasta :get 200 url))))))
@@ -2051,36 +2026,6 @@
                     (is (= "You don't have permissions to do that."
                            (mt/user-http-request :rasta :get 403 url)))))))))))))
 
-(deftest chain-filter-invalid-parameters-test
-  (testing "GET /api/card/:id/params/:param-key/values"
-    (testing "With query question"
-      (testing "If some Card parameters do not have valid Field IDs, we should ignore them"
-        (with-chain-filter-fixtures :query [{:keys [card]}]
-          (db/update! Card (:id card)
-                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                            :card_id      (:id card)
-                                            :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
-                                           {:parameter_id "_PRICE_"
-                                            :card_id      (:id card)}])
-          (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
-            (let [url (chain-filter-values-url card "_CATEGORY_NAME_" "_PRICE_" 4)]
-              (is (= ["African" "American" "Artisan"]
-                     (take 3 (mt/user-http-request :rasta :get 200 url)))))))))
-
-    (testing "With native question"
-      (testing "If some Card parameters do not have valid Field IDs, we should ignore them"
-        (with-chain-filter-fixtures :native [{:keys [card]}]
-          (db/update! Card (:id card)
-                      :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
-                                            :card_id      (:id card)
-                                            :target       [:template-tag {:id "c7fcf1fa"}]}
-                                           {:parameter_id "_PRICE_"
-                                            :card_id      (:id card)}])
-          (testing "Since the _PRICE_ param is not mapped to a valid Field, it should get ignored"
-            (let [url (chain-filter-values-url card "_CATEGORY_NAME_" "_PRICE_" 4)]
-              (is (= ["African" "American" "Artisan"]
-                     (take 3 (mt/user-http-request :rasta :get 200 url)))))))))))
-
 (deftest chain-filter-human-readable-values-remapping-test
   (testing "Chain filtering for Fields that have Human-Readable values\n"
     (doseq [query-type [:native :query]]
@@ -2088,14 +2033,15 @@
         (chain-filter-test/with-human-readable-values-remapping
           (with-chain-filter-fixtures query-type [{:keys [card]}]
             (testing "GET /api/card/:id/params/:param-key/values"
-              (let [url (chain-filter-values-url card "_CATEGORY_ID_" "_PRICE_" 4)]
-                (is (= [[40 "Japanese"]
-                        [67 "Steakhouse"]]
-                       (mt/user-http-request :rasta :get 200 url)))))
+              (let [url (chain-filter-values-url card "_CATEGORY_ID_")]
+                (is (= [[2 "American"]
+                        [3 "Artisan"]]
+                       (take 2 (mt/user-http-request :rasta :get 200 url))))))
+
             (testing "GET /api/card/:id/params/:param-key/search/:query"
-              (let [url (chain-filter-search-url card "_CATEGORY_ID_" "house" "_PRICE_" 4)]
+              (let [url (chain-filter-search-url card "_CATEGORY_ID_" "house")]
                 (is (= [[67 "Steakhouse"]]
-                       (mt/user-http-request :rasta :get 200 url)))))))))))
+                       (take 1 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
