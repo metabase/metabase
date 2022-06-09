@@ -116,7 +116,6 @@
     #"^Wrong user name or password .*$"
     (driver.common/connection-error-messages :username-or-password-incorrect)
 
-    #".*"                               ; default
     message))
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")

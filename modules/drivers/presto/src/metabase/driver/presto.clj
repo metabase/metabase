@@ -257,5 +257,4 @@
     #"^java.net.UnknownHostException.*$"
     (driver.common/connection-error-messages :invalid-hostname)
 
-    #".*"                               ; default
     message))
