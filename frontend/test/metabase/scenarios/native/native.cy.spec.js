@@ -12,6 +12,7 @@ import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
+    cy.intercept("POST", "api/dataset").as("dataset");
     restore();
     cy.signInAsNormalUser();
   });
@@ -75,6 +76,16 @@ describe("scenarios > question > native", () => {
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("18,760");
+  });
+
+  it("should handle template tags", () => {
+    openNativeEditor().type("select * from PRODUCTS where RATING > {{Stars}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.get("input[placeholder*='Stars']").type("3");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+    cy.contains("Showing 168 rows");
   });
 
   it("can save a question with no rows", () => {
