@@ -218,9 +218,9 @@
 
   (testing "superusers should come back as `:is-superuser?`"
     (try
-      (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :crowberto)}]
-        (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
-               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
+      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :crowberto)})
+      (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
+             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
@@ -231,77 +231,77 @@
                                user    [group-1 group-2]]
         (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
           :is_group_manager true)
-        (mt/with-temp Session [_session {:id      (str test-uuid)
-                                         :user_id (:id user)}]
-          (testing "is `false` if advanced-permisison is disabled"
-            (premium-features-test/with-premium-features #{}
-              (is (= false
-                     (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
+        (db/insert! Session {:id      (str test-uuid)
+                             :user_id (:id user)})
+        (testing "is `false` if advanced-permisison is disabled"
+          (premium-features-test/with-premium-features #{}
+            (is (= false
+                   (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))
 
-          (testing "is `true` if advanced-permisison is enabled"
-            ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
-            ;; `enable-advanced-permissions?` will still return false
-            (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
-              (is (= true
-                     (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil))))))))
+        (testing "is `true` if advanced-permisison is enabled"
+          ;; a trick to run this test in OSS because even if advanced-permisison is enabled but EE ns is not evailable
+          ;; `enable-advanced-permissions?` will still return false
+          (with-redefs [premium-features/enable-advanced-permissions? (fn [& _args] true)]
+            (is (= true
+                   (:is-group-manager? (#'mw.session/current-user-info-for-session (str test-uuid) nil)))))))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "full-app-embed sessions shouldn't come back if we don't explicitly specifiy the anti-csrf token"
     (try
-      (mt/with-temp Session [session {:id              (str test-uuid)
-                                      :user_id         (mt/user->id :lucky)
-                                      :anti_csrf_token test-anti-csrf-token}]
-        (is (= nil
-               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
+      (db/insert! Session {:id              (str test-uuid)
+                           :user_id         (mt/user->id :lucky)
+                           :anti_csrf_token test-anti-csrf-token})
+      (is (= nil
+             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
         (db/delete! Session :id (str test-uuid))))
 
     (testing "...but if we do specifiy the token, they should come back"
       (try
-        (mt/with-temp Session [session {:id              (str test-uuid)
-                                        :user_id         (mt/user->id :lucky)
-                                        :anti_csrf_token test-anti-csrf-token}]
-          (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
-                 (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
+        (db/insert! Session {:id              (str test-uuid)
+                             :user_id         (mt/user->id :lucky)
+                             :anti_csrf_token test-anti-csrf-token})
+        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+               (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
         (finally
           (db/delete! Session :id (str test-uuid))))
 
       (testing "(unless the token is wrong)"
         (try
-          (mt/with-temp Session [session {:id              (str test-uuid)
-                                          :user_id         (mt/user->id :lucky)
-                                          :anti_csrf_token test-anti-csrf-token}]
-            (is (= nil
-                   (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token))))))
+          (db/insert! Session {:id              (str test-uuid)
+                               :user_id         (mt/user->id :lucky)
+                               :anti_csrf_token test-anti-csrf-token})
+          (is (= nil
+                 (#'mw.session/current-user-info-for-session (str test-uuid) (str/join (reverse test-anti-csrf-token)))))
           (finally
             (db/delete! Session :id (str test-uuid)))))))
 
   (testing "if we specify an anti-csrf token we shouldn't get back a session without that token"
     (try
-      (mt/with-temp Session [session {:id      (str test-uuid)
-                                      :user_id (mt/user->id :lucky)}]
-        (is (= nil
-               (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token))))
+      (db/insert! Session {:id      (str test-uuid)
+                           :user_id (mt/user->id :lucky)})
+      (is (= nil
+             (#'mw.session/current-user-info-for-session (str test-uuid) test-anti-csrf-token)))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch expired sessions"
     (try
-      (mt/with-temp Session [session {:id      (str test-uuid)
-                                      :user_id (mt/user->id :lucky)}]
-        ;; use low-level `execute!` because updating is normally disallowed for Sessions
-        (db/execute! {:update Session, :set {:created_at (java.sql.Date. 0)}, :where [:= :id (str test-uuid)]})
-        (is (= nil
-               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
+      (db/insert! Session {:id      (str test-uuid)
+                           :user_id (mt/user->id :lucky)})
+      ;; use low-level `execute!` because updating is normally disallowed for Sessions
+      (db/execute! {:update Session, :set {:created_at (java.sql.Date. 0)}, :where [:= :id (str test-uuid)]})
+      (is (= nil
+             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
         (db/delete! Session :id (str test-uuid)))))
 
   (testing "shouldn't fetch sessions for inactive users"
     (try
-      (mt/with-temp Session [session {:id (str test-uuid), :user_id (mt/user->id :trashbird)}]
-        (is (= nil
-               (#'mw.session/current-user-info-for-session (str test-uuid) nil))))
+      (db/insert! Session {:id (str test-uuid), :user_id (mt/user->id :trashbird)})
+      (is (= nil
+             (#'mw.session/current-user-info-for-session (str test-uuid) nil)))
       (finally
         (db/delete! Session :id (str test-uuid))))))
 
