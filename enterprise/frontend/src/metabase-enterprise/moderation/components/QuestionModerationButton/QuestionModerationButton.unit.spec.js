@@ -80,15 +80,15 @@ function setup({ question } = {}) {
 describe("ModerationReviewButton", () => {
   describe("It should render correct text based on review status", () => {
     it("verified", () => {
-      const { container } = setup({ question: getVerifiedDataset() });
+      setup({ question: getVerifiedDataset() });
       expect(screen.getByText("Remove verification")).toBeTruthy();
-      expect(container.getByLabelText(CLOSE_ICON_LABEL)).toBeTruthy();
+      expect(screen.getByLabelText(CLOSE_ICON_LABEL)).toBeTruthy();
     });
 
     it("not verified", () => {
-      const { container } = setup({ question: getUnverifiedDataset() });
+      setup({ question: getUnverifiedDataset() });
       expect(screen.getByText("Verify this model")).toBeTruthy();
-      expect(container.getByLabelText(VERIFIED_ICON_LABEL)).toBeTruthy();
+      expect(screen.getByLabelText(VERIFIED_ICON_LABEL)).toBeTruthy();
     });
   });
 });
