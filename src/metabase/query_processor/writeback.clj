@@ -102,7 +102,6 @@
                     {:status-code 400, :emitter emitter})))
   (log/tracef "Executing emitter\n\n%s" (u/pprint-to-str emitter))
   (try
-    ;; TODO handle parameter mappings in the QueryAction
     (log/tracef "Mapping parameters\n\n%s\nwith mappings\n\n%s"
                 (u/pprint-to-str parameters)
                 (u/pprint-to-str (:parameter_mappings emitter)))
@@ -114,4 +113,9 @@
       (api.actions/do-check-actions-enabled
        database-id
        (fn [_driver]
-         (execute-write-query! query))))))
+         (execute-write-query! query))))
+    (catch Throwable e
+      (throw (ex-info (tru "Error executing QueryEmitter: {0}" (ex-message e))
+                      {:emitter    emitter
+                       :parameters parameters}
+                      e)))))

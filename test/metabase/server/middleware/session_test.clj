@@ -226,12 +226,11 @@
 
   (testing "If user is a group manager of at least one group, `:is-group-manager?` "
     (try
-      (mt/with-user-in-groups
-        [group-1 {:name "New Group 1"}
-         group-2 {:name "New Group 2"}
-         user    [group-1 group-2]]
+      (mt/with-user-in-groups [group-1 {:name "New Group 1"}
+                               group-2 {:name "New Group 2"}
+                               user    [group-1 group-2]]
         (db/update-where! PermissionsGroupMembership {:user_id (:id user), :group_id (:id group-2)}
-                          :is_group_manager true)
+          :is_group_manager true)
         (mt/with-temp Session [_session {:id      (str test-uuid)
                                          :user_id (:id user)}]
           (testing "is `false` if advanced-permisison is disabled"

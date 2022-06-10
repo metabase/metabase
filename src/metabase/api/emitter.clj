@@ -52,8 +52,7 @@
                                                  [CardEmitter :card_emitter]
                                                  [:= :card_emitter.emitter_id :emitter.id]
                                                  [DashboardEmitter :dashboard_emitter]
-                                                 [:= :dashboard_emitter.emitter_id :emitter.id]
-                                                 ]
+                                                 [:= :dashboard_emitter.emitter_id :emitter.id]]
                                      :where     [:= :id emitter-id]})
                           (db/do-post-select Emitter)
                           first)]

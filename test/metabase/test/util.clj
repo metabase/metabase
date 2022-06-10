@@ -1126,7 +1126,7 @@
     (with-user-in-groups [new-group {:name \"My New Group\"}
                           user      [new-group]]
       ...)"
-  {:arglists '([[group-binding-and-definition-pairs* user-binding groups-to-put-user-in?] & body]), :style/indent :defn}
+  {:arglists '([[group-binding-and-definition-pairs* user-binding groups-to-put-user-in?] & body]), :style/indent 1}
   [[& bindings] & body]
   (if (> (count bindings) 2)
     (let [[group-binding group-definition & more] bindings]
