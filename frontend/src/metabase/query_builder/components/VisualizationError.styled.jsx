@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
-import Link from "metabase/core/components/Link";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const QueryError = styled.div`
   display: flex;
@@ -25,10 +25,9 @@ export const QueryErrorMessage = styled.div`
   min-height: 0;
 `;
 
-export const QueryLink = styled(Link)`
+export const QueryLink = styled(ExternalLink)`
   display: block;
   margin-top: ${space(1)};
-  &:hover {
-    text-decoration: underline;
-  }
+  text-decoration: underline;
+  color: ${color("text-medium")};
 `;

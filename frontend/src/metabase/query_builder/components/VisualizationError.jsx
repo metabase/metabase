@@ -150,10 +150,7 @@ class VisualizationError extends Component {
             </svg>
           </QueryErrorIcon>
           <QueryErrorMessage>{processedError}</QueryErrorMessage>
-          <QueryLink
-            target="_blank"
-            href="https://www.metabase.com/learn/debugging-sql/sql-syntax.html"
-          >{t`Learn how to debug SQL errors`}</QueryLink>
+          <QueryLink href="https://www.metabase.com/learn/debugging-sql/sql-syntax.html">{t`Learn how to debug SQL errors`}</QueryLink>
         </QueryError>
       );
     } else {
