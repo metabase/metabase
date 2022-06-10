@@ -323,7 +323,7 @@
                                                             :max-value 54.0,
                                                             :bin-width 0.75}}]]
             (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
-                   (hsql/format (sql.qp/->honeysql :postgres field-clause))))))))))
+                   (hsql/format (sql.qp/->honeysql :postgres field-clause)))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres
