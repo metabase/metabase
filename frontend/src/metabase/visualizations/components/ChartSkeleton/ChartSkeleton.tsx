@@ -4,6 +4,7 @@ import BarSkeleton from "./BarSkeleton";
 import EmptySkeleton from "./EmptySkeleton";
 import FunnelSkeleton from "./FunnelSkeleton";
 import LineSkeleton from "./LineSkeleton";
+import MapSkeleton from "./MapSkeleton";
 import PieSkeleton from "./PieSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScalarSkeleton from "./ScalarSkeleton";
@@ -23,6 +24,10 @@ const ChartSkeleton = ({
   display,
   ...props
 }: ChartSkeletonProps): JSX.Element => {
+  if (!display) {
+    return <EmptySkeleton {...props} />;
+  }
+
   switch (display) {
     case "area":
       return <AreaSkeleton {...props} />;
@@ -32,24 +37,26 @@ const ChartSkeleton = ({
       return <FunnelSkeleton {...props} />;
     case "line":
       return <LineSkeleton {...props} />;
+    case "map":
+      return <MapSkeleton {...props} />;
+    case "object":
+    case "pivot":
+    case "table":
+      return <TableSkeleton {...props} />;
     case "pie":
       return <PieSkeleton {...props} />;
-    case "pivot":
-      return <TableSkeleton {...props} />;
     case "row":
       return <RowSkeleton {...props} />;
     case "scalar":
       return <ScalarSkeleton {...props} />;
     case "scatter":
       return <ScatterSkeleton {...props} />;
-    case "table":
-      return <TableSkeleton {...props} />;
     case "smartscalar":
       return <SmartScalarSkeleton {...props} />;
     case "waterfall":
       return <WaterfallSkeleton {...props} />;
     default:
-      return <EmptySkeleton {...props} />;
+      return <TableSkeleton {...props} />;
   }
 };
 
