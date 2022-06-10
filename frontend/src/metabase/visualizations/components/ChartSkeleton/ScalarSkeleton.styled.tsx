@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { containerStyles, imageStyles } from "./ChartSkeleton.styled";
+import { containerStyles, animationStyles } from "./ChartSkeleton.styled";
 
 export const SkeletonRoot = styled.div`
   ${containerStyles};
@@ -8,7 +8,7 @@ export const SkeletonRoot = styled.div`
 `;
 
 export const SkeletonImage = styled.svg`
-  ${imageStyles};
+  ${animationStyles};
   height: 2rem;
   margin-bottom: 1rem;
 `;

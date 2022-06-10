@@ -17,9 +17,7 @@ const ScalarSkeleton = ({
       <SkeletonImage xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 32">
         <rect width="103" height="32" rx="16" fill="currentColor" />
       </SkeletonImage>
-      {displayName && (
-        <SkeletonCaption name={displayName} description={description} />
-      )}
+      <SkeletonCaption name={displayName} description={description} />
     </SkeletonRoot>
   );
 };

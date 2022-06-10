@@ -21,7 +21,7 @@ export const containerStyles = css`
   height: 100%;
 `;
 
-export const imageStyles = css`
+export const animationStyles = css`
   color: ${color("bg-medium")};
   animation: ${fadingKeyframes} 1.5s infinite;
 `;

@@ -14,9 +14,7 @@ const RowSkeleton = ({
 }: RowSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {displayName && (
-        <SkeletonCaption name={displayName} description={description} />
-      )}
+      <SkeletonCaption name={displayName} description={description} />
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 346 130"

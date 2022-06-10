@@ -4,10 +4,11 @@ import {
   SkeletonRoot,
   SkeletonTitle,
   SkeletonDescription,
+  SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
 
 export interface SkeletonCaptionProps {
-  name: string;
+  name?: string | null;
   description?: string | null;
 }
 
@@ -17,7 +18,7 @@ const SkeletonCaption = ({
 }: SkeletonCaptionProps): JSX.Element => {
   return (
     <SkeletonRoot>
-      <SkeletonTitle>{name}</SkeletonTitle>
+      {name ? <SkeletonTitle>{name}</SkeletonTitle> : <SkeletonPlaceholder />}
       {description && (
         <Tooltip tooltip={description} maxWidth="22em">
           <SkeletonDescription name="info" />

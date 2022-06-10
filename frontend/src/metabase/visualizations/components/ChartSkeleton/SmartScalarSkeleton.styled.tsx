@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
-import { containerStyles, imageStyles } from "./ChartSkeleton.styled";
+import { containerStyles, animationStyles } from "./ChartSkeleton.styled";
 
 export const SkeletonRoot = styled.div`
   ${containerStyles};
@@ -9,13 +9,13 @@ export const SkeletonRoot = styled.div`
 `;
 
 export const SkeletonTopImage = styled.svg`
-  ${imageStyles};
+  ${animationStyles};
   height: 2rem;
   margin-bottom: 1.25rem;
 `;
 
 export const SkeletonBottomImage = styled.svg`
-  ${imageStyles};
+  ${animationStyles};
   height: 0.5rem;
   margin-top: 1rem;
 `;

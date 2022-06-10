@@ -1,11 +1,11 @@
 import styled from "@emotion/styled";
-import { containerStyles, imageStyles } from "./ChartSkeleton.styled";
+import { containerStyles, animationStyles } from "./ChartSkeleton.styled";
 
 export const SkeletonRoot = styled.div`
   ${containerStyles};
 `;
 
 export const SkeletonImage = styled.svg`
-  ${imageStyles};
+  ${animationStyles};
   flex: 1 1 0;
 `;
