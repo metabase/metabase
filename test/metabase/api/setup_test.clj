@@ -249,8 +249,8 @@
       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
         (binding [*expected-status* 200]
           (testing "first name may be nil"
-            (is (= true (boolean (:id (setup! m/dissoc-in [:user :first_name])))))
-            (is (= true (boolean (:id (setup! assoc-in [:user :first_name] nil))))))
+            (is (:id (setup! m/dissoc-in [:user :first_name])))
+            (is (:id (setup! assoc-in [:user :first_name] nil))))
 
           (testing "last name may be nil"
             (is (= (:id (setup! m/dissoc-in [:user :last_name])))
