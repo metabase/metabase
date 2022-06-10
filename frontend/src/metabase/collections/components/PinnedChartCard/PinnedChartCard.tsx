@@ -46,9 +46,9 @@ const PinnedChartCard = ({
         {({ question, rawSeries, loading, error, errorIcon }) =>
           loading ? (
             <CardSkeleton
-              display={question.display()}
-              displayName={question.displayName()}
-              description={question.description()}
+              display={question?.display()}
+              displayName={question?.displayName()}
+              description={question?.description()}
             />
           ) : (
             <Visualization

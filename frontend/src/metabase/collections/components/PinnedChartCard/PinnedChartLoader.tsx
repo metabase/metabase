@@ -15,14 +15,15 @@ export interface PinnedChartLoaderProps {
 }
 
 export interface PinnedChartChildrenProps {
-  question: Question;
-  rawSeries: any;
   loading: boolean;
+  question?: Question;
+  rawSeries?: any;
   error?: string;
   errorIcon?: string;
 }
 
 export interface QuestionLoaderProps {
+  loading: boolean;
   question: any;
 }
 
@@ -50,8 +51,12 @@ const PinnedChartLoader = ({
   const questionRef = useRef<Question>();
 
   return (
-    <Questions.Loader id={id}>
-      {({ question: card }: QuestionLoaderProps) => {
+    <Questions.Loader id={id} loadingAndErrorWrapper={false}>
+      {({ loading, question: card }: QuestionLoaderProps) => {
+        if (loading) {
+          return children({ loading: true });
+        }
+
         const question = questionRef.current ?? new Question(card, metadata);
         questionRef.current = question;
 

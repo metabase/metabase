@@ -16,7 +16,7 @@ export const SkeletonTitle = styled(Ellipsified)`
 
 export const SkeletonPlaceholder = styled.div`
   ${animationStyles};
-  max-width: 8rem;
+  width: 40%;
   height: 1.0625rem;
   border-radius: 1rem;
   background-color: ${color("bg-medium")};
