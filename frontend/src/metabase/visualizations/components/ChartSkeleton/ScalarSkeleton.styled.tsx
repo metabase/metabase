@@ -3,10 +3,12 @@ import { containerStyles, imageStyles } from "./ChartSkeleton.styled";
 
 export const SkeletonRoot = styled.div`
   ${containerStyles};
+  justify-content: center;
+  align-items: center;
 `;
 
 export const SkeletonImage = styled.svg`
   ${imageStyles};
-  flex: 1 1 0;
-  margin-top: 1.5rem;
+  height: 2rem;
+  margin-bottom: 1rem;
 `;

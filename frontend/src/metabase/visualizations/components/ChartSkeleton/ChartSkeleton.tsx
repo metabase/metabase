@@ -5,9 +5,10 @@ import FunnelSkeleton from "./FunnelSkeleton";
 import LineSkeleton from "./LineSkeleton";
 import PieSkeleton from "./PieSkeleton";
 import RowSkeleton from "./RowSkeleton";
+import ScalarSkeleton from "./ScalarSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
-import TableSkeleton from "./TableSkeleton";
 import SmartScalarSkeleton from "./SmartScalarSkeleton";
+import TableSkeleton from "./TableSkeleton";
 import WaterfallSkeleton from "./WaterfallSkeleton";
 
 export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
@@ -30,12 +31,15 @@ const ChartSkeleton = ({
       return <LineSkeleton {...props} />;
     case "pie":
       return <PieSkeleton {...props} />;
+    case "pivot":
+      return <TableSkeleton {...props} />;
     case "row":
       return <RowSkeleton {...props} />;
+    case "scalar":
+      return <ScalarSkeleton {...props} />;
     case "scatter":
       return <ScatterSkeleton {...props} />;
     case "table":
-    case "pivot":
       return <TableSkeleton {...props} />;
     case "smartscalar":
       return <SmartScalarSkeleton {...props} />;
