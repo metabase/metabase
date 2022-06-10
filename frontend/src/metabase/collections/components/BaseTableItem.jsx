@@ -67,10 +67,7 @@ export function BaseTableItem({
 
     // We don't keep last edit info for pulses
     // TODO Remove ternary when Pulses are gone (metabase#16519-1)
-    const name = [lastEditInfo.first_name, lastEditInfo.last_name]
-      .join(" ")
-      .trim();
-    const lastEditedBy = lastEditInfo ? name || lastEditInfo.email : "";
+    const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
       : "";
@@ -176,6 +173,17 @@ export function BaseTableItem({
       {renderRow()}
     </ItemDragSource>
   );
+}
+
+function getLastEditedBy(lastEditInfo) {
+  if (!lastEditInfo) {
+    return "";
+  }
+
+  const name = [lastEditInfo.first_name, lastEditInfo.last_name]
+    .join(" ")
+    .trim();
+  return name || lastEditInfo.email;
 }
 
 export default BaseTableItem;
