@@ -1,5 +1,5 @@
 import _ from "underscore";
-import { updateIn } from "icepick";
+import { assoc, updateIn } from "icepick";
 
 import { createAction } from "redux-actions";
 
@@ -16,6 +16,12 @@ import {
 
 import { updateQuestion } from "./core";
 import { SET_UI_CONTROLS } from "./ui";
+
+import {
+  getTemplateTagsForParameters,
+  getTemplateTagParameters,
+  getTemplateTagParameter,
+} from "metabase/parameters/utils/cards";
 
 export const TOGGLE_DATA_REFERENCE = "metabase/qb/TOGGLE_DATA_REFERENCE";
 export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE, () => {
@@ -124,7 +130,7 @@ export const setTemplateTag = createThunkAction(
       }
 
       // we need to preserve the order of the keys to avoid UI jumps
-      return updateIn(
+      const updatedTagsCard = updateIn(
         updatedCard,
         ["dataset_query", "native", "template-tags"],
         tags => {
@@ -137,6 +143,30 @@ export const setTemplateTag = createThunkAction(
           return { ...tags, [name]: newTag };
         },
       );
+
+      const { parameters } = updatedTagsCard;
+      if (parameters && Array.isArray(parameters)) {
+        if (parameters.length === 0) {
+          // reconstruct from the existing template tags
+          const tags = getTemplateTagsForParameters(updatedTagsCard);
+          const newParameters = getTemplateTagParameters(tags);
+          return assoc(updatedTagsCard, "parameters", newParameters);
+        } else {
+          // update an existing parameter
+          const index = parameters.findIndex(p => p.id === templateTag.id);
+          if (index < 0) {
+            console.warn(`Can't find parameter with id=${templateTag.id}!`);
+          } else {
+            parameters[index] = getTemplateTagParameter(templateTag);
+          }
+        }
+      } else {
+        const tags = getTemplateTagsForParameters(updatedTagsCard);
+        const newParameters = getTemplateTagParameters(tags);
+        return assoc(updatedTagsCard, "parameters", newParameters);
+      }
+
+      return updatedTagsCard;
     };
   },
 );

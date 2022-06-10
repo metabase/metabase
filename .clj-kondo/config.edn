@@ -332,6 +332,7 @@
                                         metabase.util.i18n                                              i18n
                                         metabase.util.i18n.impl                                         i18n.impl
                                         metabase.util.password                                          u.password
+                                        metabase.util.schema                                            su
                                         metabase.util.ui-logic                                          ui-logic
                                         metabase.util.urls                                              urls
                                         metabuild-common.core                                           u

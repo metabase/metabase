@@ -37,7 +37,8 @@
   (merge
    models/IModelDefaults
    {:types      (constantly {:definition :metric-segment-definition})
-    :properties (constantly {:timestamped? true})
+    :properties (constantly {:timestamped? true
+                             :entity_id    true})
     :pre-update pre-update
     :pre-delete pre-delete})
   mi/IObjectPermissions

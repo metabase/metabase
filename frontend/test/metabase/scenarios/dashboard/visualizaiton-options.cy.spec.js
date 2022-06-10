@@ -31,7 +31,8 @@ describe("scenarios > dashboard > visualization options", () => {
     });
 
     // The table preview should get updated immediately, reflecting the changes in columns ordering.
-    cy.get(".Modal .cellData")
+    cy.get(".Modal")
+      .findAllByTestId("column-header")
       .first()
       .contains("User ID");
   });

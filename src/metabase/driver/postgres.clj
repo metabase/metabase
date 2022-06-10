@@ -39,7 +39,11 @@
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ _] true)
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
+  (let [json-setting (get-in database [:details :json-unfolding])
+        ;; If not set at all, default to true, actually
+        setting-nil? (nil? json-setting)]
+    (or json-setting setting-nil?)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -89,7 +93,6 @@
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
       (str (str/capitalize message) \.))
 
-    #".*" ; default
     message))
 
 (defmethod driver.common/current-db-time-date-formatters :postgres
@@ -161,6 +164,12 @@
      :visible-if   {"ssl-use-client-auth" true}}
     driver.common/ssh-tunnel-preferences
     driver.common/advanced-options-start
+    {:name         "json-unfolding"
+     :display-name (trs "Unfold JSON Columns")
+     :type         :boolean
+     :visible-if   {"advanced-options" true}
+     :description  (trs "We unfold JSON columns into component fields. This is on by default but you can turn it off if performance is slow.")
+     :default      true}
     (assoc driver.common/additional-options
            :placeholder "prepareThreshold=0")
     driver.common/default-advanced-options]

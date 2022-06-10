@@ -35,6 +35,7 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { State } from "metabase-types/store";
 
 import {
   getObjectName,
@@ -52,7 +53,7 @@ import {
   ErrorWrapper,
 } from "./ObjectDetail.styled";
 
-const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 
@@ -203,7 +204,7 @@ export function ObjectDetailFn({
   );
 
   const onKeyDown = (event: KeyboardEvent) => {
-    const capturedKeys: { [key: string]: () => void } = {
+    const capturedKeys: Record<string, () => void> = {
       ArrowUp: viewPreviousObjectDetail,
       ArrowDown: viewNextObjectDetail,
       Escape: closeObjectDetail,

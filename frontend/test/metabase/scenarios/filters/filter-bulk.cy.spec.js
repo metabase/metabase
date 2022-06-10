@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   filter,
+  setupBooleanQuery,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -56,6 +57,25 @@ describe("scenarios > filters > bulk filtering", () => {
     cy.signInAsAdmin();
   });
 
+  it("should sort database fields by relevance", () => {
+    visitQuestionAdhoc(rawQuestionDetails);
+    openFilterModal();
+
+    modal().within(() => {
+      cy.findAllByTestId("dimension-filter-label")
+        .eq(0)
+        .should("have.text", "Created At");
+
+      cy.findAllByTestId("dimension-filter-label")
+        .eq(1)
+        .should("have.text", "Discount");
+
+      cy.findAllByTestId("dimension-filter-label")
+        .last()
+        .should("include.text", "ID");
+    });
+  });
+
   it("should add a filter for a raw query", () => {
     visitQuestionAdhoc(rawQuestionDetails);
     openFilterModal();
@@ -84,6 +104,7 @@ describe("scenarios > filters > bulk filtering", () => {
     openFilterModal();
 
     modal().within(() => {
+      cy.findByText("Summaries").click();
       cy.findByLabelText("Count").click();
     });
 
@@ -267,6 +288,63 @@ describe("scenarios > filters > bulk filtering", () => {
             cy.findByText(SEGMENT_2_NAME).should("not.exist");
           });
       });
+    });
+  });
+
+  describe("boolean filters", () => {
+    beforeEach(() => {
+      setupBooleanQuery();
+      openFilterModal();
+    });
+
+    it("should apply a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+    });
+
+    it("should change a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("false").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 1 row").should("be.visible");
+    });
+
+    it("should remove a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 4 rows").should("be.visible");
     });
   });
 });

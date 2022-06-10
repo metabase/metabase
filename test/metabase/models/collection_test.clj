@@ -33,7 +33,7 @@
                :archived          false
                :location          "/"
                :personal_owner_id nil})
-             (mt/derecordize (dissoc collection :id)))))))
+             (mt/derecordize (dissoc collection :id :entity_id)))))))
 
 (deftest color-validation-test
   (testing "Collection colors should be validated when inserted into the DB"
@@ -73,6 +73,16 @@
       (is (some? c1))
       (is (some? c2))
       (is (= (:slug c1) (:slug c2))))))
+
+(deftest entity-ids-test
+  (testing "entity IDs are generated"
+    (mt/with-temp Collection [collection]
+      (is (some? (:entity_id collection)))))
+
+  (testing "entity IDs are unique"
+    (mt/with-temp* [Collection [c1 {:name "My Favorite Cards"}]
+                    Collection [c2 {:name "my_favorite Cards"}]]
+      (is (not= (:entity_id c1) (:entity_id c2))))))
 
 (deftest archive-cards-test
   (testing "check that archiving a Collection archives its Cards as well"

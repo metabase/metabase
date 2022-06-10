@@ -61,3 +61,13 @@ export function browse() {
 export function filterWidget() {
   return cy.get("fieldset");
 }
+
+export const openQuestionActions = () => {
+  cy.findByTestId("question-action-buttons-container").within(() => {
+    cy.icon("ellipsis").click();
+  });
+};
+
+export const closeQuestionActions = () => {
+  cy.findByTestId("qb-header").click();
+};

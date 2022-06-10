@@ -14,8 +14,8 @@ on:
 
 jobs:
   percy:
-    timeout-minutes: 30
-    runs-on: buildjet-4vcpu-ubuntu-2004
+    timeout-minutes: 45
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment

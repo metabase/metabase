@@ -93,6 +93,20 @@ describe("user > settings", () => {
     cy.findByText("Sign in to Metabase");
   });
 
+  it("should validate common passwords (metabase#23259)", () => {
+    cy.visit("/account/password");
+    cy.findByLabelText("Create a password")
+      .as("passwordInput")
+      .type("qwerty123")
+      .blur();
+
+    cy.contains("password is too common");
+
+    cy.get("@passwordInput").clear();
+
+    cy.contains("password is too common").should("not.exist");
+  });
+
   it("should be able to change a language (metabase#22192)", () => {
     cy.intercept("PUT", "/api/user/*").as("updateUserSettings");
 

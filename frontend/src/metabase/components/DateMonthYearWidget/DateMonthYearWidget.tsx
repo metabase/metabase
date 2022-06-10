@@ -41,11 +41,6 @@ class DateMonthYearWidget extends React.Component<Props, State> {
     }
   }
 
-  static format = (value: string) => {
-    const m = moment(value, "YYYY-MM");
-    return m.isValid() ? m.format("MMMM, YYYY") : "";
-  };
-
   componentWillUnmount() {
     const { month, year } = this.state;
     if (month != null && year != null) {

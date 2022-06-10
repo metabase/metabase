@@ -32,7 +32,7 @@ export const InputField = styled.input<InputProps>`
   text-align: inherit;
 
   &:focus {
-    border-color: ${color("brand")};
+    border-color: ${() => color("brand")};
     transition: border 300ms ease-in-out;
   }
 

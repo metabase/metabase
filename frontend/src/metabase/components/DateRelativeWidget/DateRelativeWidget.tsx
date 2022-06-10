@@ -3,6 +3,8 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
+import { DATE_MBQL_FILTER_MAPPING } from "metabase/parameters/constants";
+
 type Shortcut = {
   name: string;
   operator: string | string[];
@@ -151,57 +153,6 @@ export class PredefinedRelativeDatePicker extends React.Component<
   }
 }
 
-type FilterMap = {
-  [name: string]: {
-    name: string;
-    mapping: any[];
-  };
-};
-
-// HACK: easiest way to get working with RelativeDatePicker
-const FILTERS: FilterMap = {
-  today: {
-    name: t`Today`,
-    mapping: ["=", null, ["relative-datetime", "current"]],
-  },
-  yesterday: {
-    name: t`Yesterday`,
-    mapping: ["=", null, ["relative-datetime", -1, "day"]],
-  },
-  past7days: {
-    name: t`Past 7 Days`,
-    mapping: ["time-interval", null, -7, "day"],
-  },
-  past30days: {
-    name: t`Past 30 Days`,
-    mapping: ["time-interval", null, -30, "day"],
-  },
-  lastweek: {
-    name: t`Last Week`,
-    mapping: ["time-interval", null, "last", "week"],
-  },
-  lastmonth: {
-    name: t`Last Month`,
-    mapping: ["time-interval", null, "last", "month"],
-  },
-  lastyear: {
-    name: t`Last Year`,
-    mapping: ["time-interval", null, "last", "year"],
-  },
-  thisweek: {
-    name: t`This Week`,
-    mapping: ["time-interval", null, "current", "week"],
-  },
-  thismonth: {
-    name: t`This Month`,
-    mapping: ["time-interval", null, "current", "month"],
-  },
-  thisyear: {
-    name: t`This Year`,
-    mapping: ["time-interval", null, "current", "year"],
-  },
-};
-
 type DateRelativeWidgetProps = {
   value: string;
   setValue: (v?: string) => void;
@@ -213,17 +164,22 @@ class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
     super(props);
   }
 
-  static format = (value: string) =>
-    FILTERS[value] ? FILTERS[value].name : "";
-
   render() {
     const { value, setValue, onClose } = this.props;
     return (
       <div className="px1" style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker
-          filter={FILTERS[value] ? FILTERS[value].mapping : [null, null]}
+          filter={
+            DATE_MBQL_FILTER_MAPPING[value]
+              ? DATE_MBQL_FILTER_MAPPING[value].mapping
+              : [null, null]
+          }
           onFilterChange={filter => {
-            setValue(_.findKey(FILTERS, f => _.isEqual(f.mapping, filter)));
+            setValue(
+              _.findKey(DATE_MBQL_FILTER_MAPPING, f =>
+                _.isEqual(f.mapping, filter),
+              ),
+            );
             onClose();
           }}
         />

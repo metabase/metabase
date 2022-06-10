@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import colors, { darken } from "metabase/lib/colors";
+import { color, darken } from "metabase/lib/colors";
 
 export const LegendRoot = styled.div`
   display: flex;
@@ -9,11 +9,11 @@ export const LegendRoot = styled.div`
 
 export const LegendLink = styled.div`
   cursor: pointer;
-  color: ${colors["brand"]};
+  color: ${color("brand")};
   font-weight: bold;
 
   &:hover {
-    color: ${darken(colors["brand"])};
+    color: ${darken("brand")};
   }
 `;
 

@@ -13,10 +13,7 @@ export const QueryError = styled.div`
 
 export const QueryErrorIcon = styled.div`
   color: ${color("error")};
-  padding: ${space(3)};
-  margin-bottom: ${space(3)};
-  border: 0.25rem solid ${color("accent3")};
-  border-radius: 50%;
+  margin-bottom: ${space(2)};
 `;
 
 export const QueryErrorMessage = styled.div`

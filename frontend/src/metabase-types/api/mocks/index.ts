@@ -4,6 +4,7 @@ export * from "./collection";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./models";
 export * from "./timeline";
 export * from "./settings";
 export * from "./user";
