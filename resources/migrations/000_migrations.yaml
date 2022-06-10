@@ -12115,33 +12115,19 @@ databaseChangeLog:
                   type: ${text.type}
                   remarks: An optional description for this action
               - column:
-                  name: method
+                  name: template
                   type: ${text.type}
-                  remarks: The http method to request
+                  remarks: A template that defines method,url,body,headers required to make an api call
                   constraints:
                     nullable: false
               - column:
-                  name: url_template
+                  name: response_handle
                   type: ${text.type}
-                  remarks: A templated url to request
-                  constraints:
-                    nullable: false
+                  remarks: A program to take an api response and transform to an appropriate response for emitters
               - column:
-                  name: header_template
+                  name: error_handle
                   type: ${text.type}
-                  remarks: A templated json map to use as request headers
-              - column:
-                  name: request_body_template
-                  type: ${text.type}
-                  remarks: A templated request body to send
-              - column:
-                  name: template_tags
-                  type: ${text.type}
-                  remarks: A serialized json object describing the tags used in the template fields
-              - column:
-                  name: response_path
-                  type: ${text.type}
-                  remarks: A json array describing a return value location to pull from response
+                  remarks: A program to take an api response to determine if an error occurred
   - changeSet:
       id: v44.00-032
       author: snoe
