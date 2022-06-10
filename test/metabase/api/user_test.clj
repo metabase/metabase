@@ -564,7 +564,7 @@
                                          :last_name    "Ron"
                                          :email        "blueronny@metabase.com"
                                          :is_superuser true}]
-        (letfn [(change-user-via-api [m]
+        (letfn [(change-user-via-api! [m]
                   (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
                       (hydrate :personal_collection_id :personal_collection_name)
                       (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
