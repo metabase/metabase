@@ -188,6 +188,7 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
+;; TODO -- maybe renaming this to `adoto` or `doto<>` or something would be a little clearer.
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.

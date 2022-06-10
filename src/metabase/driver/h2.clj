@@ -30,7 +30,8 @@
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
                               :percentile-aggregations false
-                              :actions                 true}]
+                              :actions                 true
+                              :actions/custom          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))

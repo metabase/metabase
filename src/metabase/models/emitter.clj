@@ -1,23 +1,37 @@
 (ns metabase.models.emitter
-  (:require [medley.core :as m]
-            [metabase.models.card :refer [Card]]
-            [metabase.models.dashboard :refer [Dashboard]]
-            [metabase.util :as u]
-            [toucan.db :as db]
-            [toucan.models :as models]))
+  (:require
+   [medley.core :as m]
+   [metabase.mbql.normalize :as mbql.normalize]
+   [metabase.models.card :refer [Card]]
+   [metabase.models.dashboard :refer [Dashboard]]
+   [metabase.models.interface :as mi]
+   [metabase.util :as u]
+   [toucan.db :as db]
+   [toucan.models :as models]))
 
 (models/defmodel CardEmitter :card_emitter)
 (models/defmodel DashboardEmitter :dashboard_emitter)
 (models/defmodel Emitter :emitter)
 (models/defmodel EmitterAction :emitter_action)
 
+(defn- normalize-parameter-mappings
+  [parameter-mappings]
+  (into {}
+        (map (fn [[param-id target]]
+               [param-id (:target (mbql.normalize/normalize-query-parameter {:target target}))]))
+        parameter-mappings))
+
+(models/add-type! ::parameter-mappings
+  :in  (comp mi/json-in normalize-parameter-mappings)
+  :out (comp (mi/catch-normalization-exceptions normalize-parameter-mappings) mi/json-out-with-keywordization))
+
 (u/strict-extend
-  (class Emitter)
-  models/IModel
-  (merge models/IModelDefaults
-         {:types          (constantly {:parameter_mappings :json
-                                       :options            :json})
-          :properties     (constantly {:timestamped? true})}))
+    (class Emitter)
+    models/IModel
+    (merge models/IModelDefaults
+           {:types          (constantly {:parameter_mappings ::parameter-mappings
+                                         :options            :json})
+            :properties     (constantly {:timestamped? true})}))
 
 (u/strict-extend
   (class EmitterAction)
@@ -27,14 +41,15 @@
          {:primary-key (constantly :emitter_id)}))
 
 (defn- pre-insert
-  [emitter]
+  [{action-id :action_id, :as emitter}]
+  {:pre [(integer? action-id)]}
   (let [base-emitter (db/insert! Emitter (select-keys emitter [:parameter_mappings :options]))]
     (db/insert! EmitterAction (-> emitter
                                   (select-keys [:action_id])
                                   (assoc :emitter_id (:id base-emitter))))
     (-> emitter
         (select-keys [:dashboard_id :card_id])
-        (assoc :emitter_id (:id base-emitter)))))
+        (assoc :emitter_id (u/the-id base-emitter)))))
 
 (defn- pre-update
   [emitter]
@@ -51,23 +66,21 @@
   (db/delete! Emitter :id (:emitter_id emitter))
   emitter)
 
-(u/strict-extend
-  (class DashboardEmitter)
-  models/IModel
+(def ^:private Emitter-subtype-IModel-impl
+  "[[models/IModel]] impl for `DashboardEmitter` and `CardEmitter`"
   (merge models/IModelDefaults
-         {:primary-key (constantly :emitter_id) ;; This is ok as long as we're 1:1
+         {:primary-key (constantly :emitter_id) ; This is ok as long as we're 1:1
           :pre-delete pre-delete
           :pre-update pre-update
           :pre-insert pre-insert}))
 
-(u/strict-extend
-  (class CardEmitter)
+(u/strict-extend (class DashboardEmitter)
   models/IModel
-  (merge models/IModelDefaults
-         {:primary-key (constantly :emitter_id) ;; This is ok as long as we're 1:1
-          :pre-delete pre-delete
-          :pre-update pre-update
-          :pre-insert pre-insert}))
+  Emitter-subtype-IModel-impl)
+
+(u/strict-extend (class CardEmitter)
+  models/IModel
+  Emitter-subtype-IModel-impl)
 
 (defn emitters
   "Hydrate emitters onto a list of dashboards or cards."

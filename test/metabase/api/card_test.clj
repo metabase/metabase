@@ -732,16 +732,16 @@
   (testing "GET /api/card/:id"
     (testing "Fetch card with an emitter"
       (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      CardEmitter [emitter {:action_id (db/select-field :action_id QueryAction :card_id (u/the-id write-card))
-                                            :card_id (u/the-id read-card)}]]
+                      Card [write-card {:is_write true :name "Test Write Card"}]]
+        (db/insert! CardEmitter {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
+                                 :card_id (u/the-id read-card)})
         (testing "admin sees emitters"
           (is (partial=
-                {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
-                (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
+               {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
+               (mt/user-http-request :crowberto :get 200 (format "card/%d" (u/the-id read-card))))))
         (testing "non-admin does not see emitters"
           (is (nil?
-                (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
+               (:emitters (mt/user-http-request :rasta :get 200 (format "card/%d" (u/the-id read-card)))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |

@@ -59,10 +59,11 @@
   [_driver _feat db]
   (-> db :options :persist-models-enabled))
 
-(defmethod driver/database-supports? [:postgres :actions]
-  [driver _feat _db]
-  ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
-  (= driver :postgres))
+(doseq [feature [:actions :actions/custom]]
+  (defmethod driver/database-supports? [:postgres feature]
+    [driver _feat _db]
+    ;; only supported for Postgres for right now. Not supported for child drivers like Redshift or whatever.
+    (= driver :postgres)))
 
 (defn- ->timestamp [honeysql-form]
   (hx/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "date"} honeysql-form))
