@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import ActionMenu from "metabase/collections/components/ActionMenu";
-import ChartSkeleton from "metabase/visualizations/components/ChartSkeleton";
+import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
 
 export const CardActionMenu = styled(ActionMenu)`
