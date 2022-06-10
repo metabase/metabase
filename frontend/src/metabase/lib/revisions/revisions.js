@@ -247,12 +247,7 @@ export function getRevisionEventsForTimeline(
       // like "John added a description"
       if (isChangeEvent && isMultipleFieldsChange) {
         event.title = (
-          <RevisionTitle
-            username={username}
-            message={t`edited this`}
-            event={event}
-            revertFn={revertFn}
-          />
+          <RevisionTitle username={username} message={t`edited this`} />
         );
         event.description = (
           <RevisionBatchedDescription
@@ -261,14 +256,7 @@ export function getRevisionEventsForTimeline(
           />
         );
       } else {
-        event.title = (
-          <RevisionTitle
-            username={username}
-            message={changes}
-            event={event}
-            revertFn={revertFn}
-          />
-        );
+        event.title = <RevisionTitle username={username} message={changes} />;
       }
 
       return event;

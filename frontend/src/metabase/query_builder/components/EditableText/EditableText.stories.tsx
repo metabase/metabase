@@ -9,14 +9,16 @@ export default {
 };
 
 const Template: ComponentStory<typeof EditableText> = args => {
-  const [{ value }, updateArgs] = useArgs();
-  const handleChange = (value: string) => updateArgs({ value });
+  const [{ initialValue }, updateArgs] = useArgs();
+  const handleChange = (value: string) => updateArgs({ initialValue: value });
 
-  return <EditableText value={value} onChange={handleChange} />;
+  console.log(initialValue);
+
+  return <EditableText initialValue={initialValue} onChange={handleChange} />;
 };
 
 export const Default = Template.bind({});
 Default.args = {
-  value:
+  initialValue:
     "Users with their LTV, Source, and State. Number of new saved questions the last 12 weeks by the method used to create it: GUI or SQL",
 };

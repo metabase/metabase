@@ -3,6 +3,8 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 import { getRelativeTime } from "metabase/lib/time";
 
+import Button from "metabase/core/components/Button";
+
 import {
   TimelineContainer,
   TimelineItem,
@@ -27,6 +29,7 @@ Timeline.propTypes = {
     }),
   ),
   renderFooter: PropTypes.func,
+  revertFn: PropTypes.func,
   "data-testid": PropTypes.string,
 };
 
@@ -34,6 +37,7 @@ function Timeline({
   className,
   items = [],
   renderFooter,
+  revertFn,
   "data-testid": dataTestId,
 }) {
   const iconSize = 16;
@@ -64,6 +68,8 @@ function Timeline({
           description,
           timestamp,
           formattedTimestamp,
+          isRevertable,
+          revision,
         } = item;
         const key = item.key == null ? index : item.key;
         const isNotLastEvent = index !== sortedFormattedItems.length - 1;
@@ -78,7 +84,18 @@ function Timeline({
             {isNotLastEvent && <Border borderShift={halfIconSize} />}
             <ItemIcon {...iconProps} size={iconSize} />
             <ItemBody>
-              <ItemHeader>{title}</ItemHeader>
+              <ItemHeader>
+                {title}
+                {isRevertable && revertFn && (
+                  <Button
+                    icon="revert"
+                    onlyIcon
+                    borderless
+                    onClick={() => revertFn(revision)}
+                    data-testid="question-revert-button"
+                  />
+                )}
+              </ItemHeader>
               <Timestamp datetime={timestamp}>{formattedTimestamp}</Timestamp>
               <div>{description}</div>
               {_.isFunction(renderFooter) && (

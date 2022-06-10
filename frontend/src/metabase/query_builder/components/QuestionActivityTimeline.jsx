@@ -84,7 +84,11 @@ export function QuestionActivityTimeline({
   return (
     <div>
       <Header>{t`History`}</Header>
-      <Timeline items={events} data-testid="saved-question-history-list" />
+      <Timeline
+        items={events}
+        data-testid="saved-question-history-list"
+        revertFn={revertToRevision}
+      />
     </div>
   );
 }

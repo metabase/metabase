@@ -2,12 +2,9 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import styled from "@emotion/styled";
 import { t } from "ttag";
-import Tooltip from "metabase/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { capitalize } from "metabase/lib/formatting";
 import RawEntityLink from "metabase/entities/containers/EntityLink";
-
-import { RevertButton, RevisionTitleContainer } from "./components.styled";
 
 export const EntityLink = styled(RawEntityLink)`
   color: ${color("brand")};
@@ -30,23 +27,8 @@ const revisionTitlePropTypes = {
   revertFn: PropTypes.func,
 };
 
-export function RevisionTitle({ username, message, event, revertFn }) {
-  return (
-    <RevisionTitleContainer>
-      <span>{[username, " ", message]}</span>
-      {event.isRevertable && (
-        <Tooltip tooltip={t`Revert`} placement="bottom">
-          <RevertButton
-            icon="revert"
-            onlyIcon
-            borderless
-            onClick={() => revertFn(event.revision)}
-            data-testid="question-revert-button"
-          />
-        </Tooltip>
-      )}
-    </RevisionTitleContainer>
-  );
+export function RevisionTitle({ username, message }) {
+  return <span>{[username, " ", message]}</span>;
 }
 
 RevisionTitle.propTypes = revisionTitlePropTypes;
