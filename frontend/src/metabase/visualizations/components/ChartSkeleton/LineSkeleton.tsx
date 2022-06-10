@@ -3,13 +3,16 @@ import SkeletonCaption from "./SkeletonCaption";
 import { SkeletonRoot, SkeletonImage } from "./AreaSkeleton.styled";
 
 export interface LineSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string;
+  displayName?: string | null;
 }
 
-const LineSkeleton = ({ name, ...props }: LineSkeletonProps): JSX.Element => {
+const LineSkeleton = ({
+  displayName,
+  ...props
+}: LineSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {name && <SkeletonCaption name={name} />}
+      {displayName && <SkeletonCaption name={displayName} />}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 371 113"

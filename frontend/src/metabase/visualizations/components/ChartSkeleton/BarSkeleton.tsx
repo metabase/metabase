@@ -3,13 +3,16 @@ import SkeletonCaption from "./SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./BarSkeleton.styled";
 
 export interface BarSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string;
+  displayName?: string | null;
 }
 
-const BarSkeleton = ({ name, ...props }: BarSkeletonProps): JSX.Element => {
+const BarSkeleton = ({
+  displayName,
+  ...props
+}: BarSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {name && <SkeletonCaption name={name} />}
+      {displayName && <SkeletonCaption name={displayName} />}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 372 117"

@@ -8,8 +8,8 @@ import TableSkeleton from "./TableSkeleton";
 import WaterfallSkeleton from "./WaterfallSkeleton";
 
 export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  name?: string;
-  display?: string;
+  display?: string | null;
+  displayName?: string | null;
 }
 
 const ChartSkeleton = ({
