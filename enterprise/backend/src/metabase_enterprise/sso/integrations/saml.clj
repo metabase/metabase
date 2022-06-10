@@ -184,8 +184,8 @@
           saml-response (xml-string->saml-response xml-string)
           attrs         (saml-response->attributes saml-response)
           email         (get attrs (sso-settings/saml-attribute-email))
-          first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
-          last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
+          first-name    (get attrs (sso-settings/saml-attribute-firstname))
+          last-name     (get attrs (sso-settings/saml-attribute-lastname))
           groups        (get attrs (sso-settings/saml-attribute-group))
           session       (fetch-or-create-user!
                           {:first-name      first-name
