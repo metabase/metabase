@@ -4,6 +4,7 @@ import Ellipsified from "metabase/core/components/Ellipsified";
 
 export const SkeletonRoot = styled.div`
   display: flex;
+  margin-bottom: 1rem;
 `;
 
 export const SkeletonTitle = styled(Ellipsified)`
