@@ -1,6 +1,7 @@
 import React, { HTMLAttributes } from "react";
 import AreaSkeleton from "./AreaSkeleton";
 import BarSkeleton from "./BarSkeleton";
+import FunnelSkeleton from "./FunnelSkeleton";
 import LineSkeleton from "./LineSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
@@ -21,6 +22,8 @@ const ChartSkeleton = ({
       return <AreaSkeleton {...props} />;
     case "bar":
       return <BarSkeleton {...props} />;
+    case "funnel":
+      return <FunnelSkeleton {...props} />;
     case "line":
       return <LineSkeleton {...props} />;
     case "row":
