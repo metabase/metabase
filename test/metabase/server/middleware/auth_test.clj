@@ -38,11 +38,13 @@
 (deftest wrap-current-user-info-test
   (testing "Valid requests should add `metabase-user-id` to requests with valid session info"
     (let [session-id (random-session-id)]
-      (tt/with-temp Session [_ {:id      session-id
-                                :user_id (test.users/user->id :rasta)}]
+      (try
+        (db/insert! Session {:id      session-id
+                             :user_id (test.users/user->id :rasta)})
         (is (= (test.users/user->id :rasta)
                (-> (auth-enforced-handler (request-with-session-id session-id))
-                   :metabase-user-id))))))
+                   :metabase-user-id)))
+        (finally (db/delete! Session :id session-id)))))
 
   (testing "Invalid requests should return unauthed response"
     (testing "when no session ID is sent with request"
@@ -57,7 +59,7 @@
         (tt/with-temp Session [_ {:id      session-id
                                   :user_id (test.users/user->id :rasta)}]
           (db/update-where! Session {:id session-id}
-            :created_at (t/instant 0))
+                            :created_at (t/instant 0))
           (is (= mw.util/response-unauthentic
                  (auth-enforced-handler (request-with-session-id session-id)))))))
 

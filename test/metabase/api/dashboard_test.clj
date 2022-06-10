@@ -345,7 +345,7 @@
     (testing "Fetch dashboard with an emitter"
       (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
                       Card [write-card {:is_write true :name "Test Write Card"}]
-                      DashboardEmitter [emitter {:action_id (db/select-field :action_id QueryAction :card_id (u/the-id write-card))
+                      DashboardEmitter [emitter {:action_id    (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
                                                  :dashboard_id (u/the-id dashboard)}]]
         (testing "admin sees emitters"
           (is (partial=

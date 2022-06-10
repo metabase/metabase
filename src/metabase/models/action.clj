@@ -23,16 +23,17 @@
   "Hydrates Action from Emitter"
   {:batched-hydrate :action}
   [emitters]
-  (let [actions (->> {:select [:action.id
-                               :emitter_action.emitter_id
-                               :query_action.card_id
-                               :action.type]
-                      :from [[Action :action]]
-                      ;; Will need to change if we stop being 1:1
-                      :join [:emitter_action [:= :emitter_action.action_id :action.id]
-                             [QueryAction :query_action] [:= :query_action.action_id :action.id]]
-                      :where [:in :emitter_action.emitter_id (map :id emitters)]}
-                     (db/query)
-                     (db/do-post-select Action)
-                     (m/index-by :id))]
-    (map #(assoc % :action (get actions (:action_id %))) emitters)))
+  (let [actions (when (seq emitters)
+                  (->> {:select [:emitter_action.emitter_id
+                                 :query_action.card_id
+                                 :action.type]
+                        :from   [[Action :action]]
+                        ;; Will need to change if we stop being 1:1
+                        :join   [:emitter_action             [:= :emitter_action.action_id :action.id]
+                                 [QueryAction :query_action] [:= :query_action.action_id :action.id]]
+                        :where  [:in :emitter_action.emitter_id (map u/the-id emitters)]}
+                       db/query
+                       (db/do-post-select Action)
+                       (m/index-by :emitter_id)))]
+    (for [{emitter-id :id, :as emitter} emitters]
+      (assoc emitter :action (get actions emitter-id)))))

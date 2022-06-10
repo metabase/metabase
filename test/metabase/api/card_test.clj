@@ -733,7 +733,7 @@
     (testing "Fetch card with an emitter"
       (mt/with-temp* [Card [read-card {:name "Test Read Card"}]
                       Card [write-card {:is_write true :name "Test Write Card"}]
-                      CardEmitter [emitter {:action_id (db/select-field :action_id QueryAction :card_id (u/the-id write-card))
+                      CardEmitter [emitter {:action_id (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
                                             :card_id (u/the-id read-card)}]]
         (testing "admin sees emitters"
           (is (partial=

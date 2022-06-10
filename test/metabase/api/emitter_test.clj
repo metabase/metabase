@@ -3,7 +3,7 @@
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.models
-    :refer [Action Card CardEmitter Database Emitter QueryAction EmitterAction]]
+    :refer [Action Card CardEmitter Database Emitter EmitterAction QueryAction]]
    [metabase.test :as mt]
    [toucan.db :as db]))
 
