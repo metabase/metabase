@@ -1,6 +1,7 @@
 import React, { HTMLAttributes } from "react";
 import AreaSkeleton from "./AreaSkeleton";
 import BarSkeleton from "./BarSkeleton";
+import EmptySkeleton from "./EmptySkeleton";
 import FunnelSkeleton from "./FunnelSkeleton";
 import LineSkeleton from "./LineSkeleton";
 import PieSkeleton from "./PieSkeleton";
@@ -48,7 +49,7 @@ const ChartSkeleton = ({
     case "waterfall":
       return <WaterfallSkeleton {...props} />;
     default:
-      return <LineSkeleton {...props} />;
+      return <EmptySkeleton {...props} />;
   }
 };
 
