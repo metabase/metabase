@@ -963,7 +963,7 @@
   (let [{first-name :first_name
          last-name  :last_name
          email      :email} (db/select-one ['User :first_name :last_name :email]
-                         :id (u/the-id user-or-id))]
+                              :id (u/the-id user-or-id))]
     (format-personal-collection-name first-name last-name email user-or-site)))
 
 (defn personal-collection-with-ui-details
