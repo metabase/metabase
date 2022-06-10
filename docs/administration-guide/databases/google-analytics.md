@@ -2,7 +2,7 @@
 title: Working with Google Analytics in Metabase
 ---
 
-## Working with Google Analytics in Metabase
+# Working with Google Analytics in Metabase
 
 This page provides information on how to create and manage a connection to a [Google Analytics][google-analytics] dataset.
 
