@@ -61,19 +61,15 @@
       (f user-or-id new-user-group-memberships)
       (maybe-set-user-permissions-groups! user-or-id (map :id new-user-group-memberships)))))
 
-(defn- updated-user-name [user-before-update first_name last_name]
-  (let [prev_first_name (:first_name user-before-update)
-        prev_last_name  (:last_name user-before-update)
-        first_name      (or first_name prev_first_name)
-        last_name       (or last_name prev_last_name)]
-    (when (or (not= first_name prev_first_name)
-              (not= last_name prev_last_name))
-      [(when-not (= first_name :explicitly-nil) first_name)
-       (when-not (= last_name :explicitly-nil) last_name)])))
+(defn- updated-user-name [user-before-update changes]
+  (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
+        new (merge previous current)]
+    (when (not= previous new)
+      (vals new))))
 
-(defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
+(defn- maybe-update-user-personal-collection-name! [user-before-update changes]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
-  (when-let [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
+  (when-some [[first_name last_name] (updated-user-name user-before-update changes)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
@@ -311,9 +307,7 @@
                                          api/*is-superuser?* (conj :login_attributes))
                               :non-nil (cond-> #{:email}
                                          api/*is-superuser?* (conj :is_superuser)))))
-       (let [first_name (if (and (nil? first_name) (contains? body :first_name)) :explicitly-nil first_name)
-             last_name  (if (and (nil? last_name) (contains? body :last_name)) :explicitly-nil last_name)]
-         (maybe-update-user-personal-collection-name! user-before-update first_name last_name)))
+       (maybe-update-user-personal-collection-name! user-before-update body))
      (maybe-set-user-group-memberships! id user_group_memberships is_superuser)))
   (-> (fetch-user :id id)
       (hydrate :user_group_memberships)))

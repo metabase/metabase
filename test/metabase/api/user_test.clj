@@ -1,6 +1,7 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
   (:require [clojure.test :refer :all]
+            [metabase.api.user :as api.user]
             [metabase.http-client :as client]
             [metabase.models :refer [Card Collection Dashboard LoginHistory
                                      PermissionsGroup PermissionsGroupMembership User]]
@@ -556,6 +557,34 @@
                                           :login_attributes {:test "value"}})
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
+
+(deftest updated-user-name-test
+  (testing "Test that `metabase.api.user/updated-user-name` works as intended."
+    (let [names     {:first_name "Test" :last_name "User"}
+          nonames   {:first_name nil :last_name nil}
+          firstname {:first_name "Test" :last_name nil}
+          lastname  {:first_name nil :last_name "User"}]
+      ;; starting with names
+      (is (nil? (#'api.user/updated-user-name names {})))
+      (is (nil? (#'api.user/updated-user-name names {:first_name "Test"})))
+      (is (nil? (#'api.user/updated-user-name names {:last_name "User"})))
+      (is (nil? (#'api.user/updated-user-name names {:first_name "Test" :last_name "User"})))
+      (is (= ["T" "U"] (#'api.user/updated-user-name names {:first_name "T" :last_name "U"})))
+      (is (= ["Test" "U"] (#'api.user/updated-user-name names {:last_name "U"})))
+      (is (= ["T" "User"] (#'api.user/updated-user-name names {:first_name "T"})))
+      ;; starting with 'nil' names
+      (is (nil? (#'api.user/updated-user-name nonames {})))
+      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil})))
+      (is (nil? (#'api.user/updated-user-name nonames {:last_name nil})))
+      (is (nil? (#'api.user/updated-user-name nonames {:first_name nil :last_name nil})))
+      (is (= ["T" "U"] (#'api.user/updated-user-name nonames {:first_name "T" :last_name "U"})))
+      (is (= [nil "U"] (#'api.user/updated-user-name nonames {:last_name "U"})))
+      (is (= ["T" nil] (#'api.user/updated-user-name nonames {:first_name "T"})))
+      ;; starting with one name nil
+      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test" :last_name nil})))
+      (is (nil? (#'api.user/updated-user-name firstname {:first_name "Test"})))
+      (is (nil? (#'api.user/updated-user-name lastname {:first_name nil :last_name "User"})))
+      (is (nil? (#'api.user/updated-user-name lastname {:last_name "User"}))))))
 
 (deftest update-first-name-last-name-test
   (testing "PUT /api/user/:id"
