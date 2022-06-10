@@ -43,7 +43,6 @@
 }
 
 .TableInteractive .TableInteractive-cellWrapper {
-  /* padding: 0 0.75em; */
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -97,13 +96,6 @@
   background-color: color-mod(var(--color-brand));
   color: white !important;
 }
-
-/*
-.TableInteractive .TableInteractive-cellWrapper.tether-enabled {
-  background-color: var(--color-brand);
-  color: white !important;
-}
-*/
 
 .TableInteractive-cellWrapper:hover {
   background-color: color-mod(var(--color-brand) alpha(-90%));

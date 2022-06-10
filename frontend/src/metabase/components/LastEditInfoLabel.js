@@ -32,19 +32,20 @@ LastEditInfoLabel.propTypes = {
   className: PropTypes.string,
 };
 
-function formatEditorName(firstName, lastName) {
-  const lastNameFirstLetter = lastName.charAt(0);
-  return `${firstName} ${lastNameFirstLetter}.`;
+function formatEditorName(lastEditInfo) {
+  const name = [lastEditInfo.first_name, lastEditInfo.last_name]
+    .join(" ")
+    .trim();
+
+  return name || lastEditInfo.email;
 }
 
 function LastEditInfoLabel({ item, user, onClick, className }) {
-  const { first_name, last_name, id: editorId, timestamp } = item[
-    "last-edit-info"
-  ];
+  const lastEditInfo = item["last-edit-info"];
+  const { id: editorId, timestamp } = lastEditInfo;
   const time = moment(timestamp).fromNow();
 
-  const editor =
-    editorId === user.id ? t`you` : formatEditorName(first_name, last_name);
+  const editor = editorId === user.id ? t`you` : formatEditorName(lastEditInfo);
 
   return (
     <Tooltip tooltip={<DateTime value={timestamp} />}>

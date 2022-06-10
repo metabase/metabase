@@ -33,10 +33,14 @@ import { getScrollBarSize } from "metabase/lib/dom";
 import { zoomInRow } from "metabase/query_builder/actions";
 
 import ExplicitSize from "metabase/components/ExplicitSize";
-import MiniBar from "./MiniBar";
+import MiniBar from "../MiniBar";
 
 import Ellipsified from "metabase/core/components/Ellipsified";
 import DimensionInfoPopover from "metabase/components/MetadataInfo/DimensionInfoPopover";
+import { ExpandButton } from "./TableInteractive.styled";
+
+// approximately 120 chars
+const TRUNCATE_WIDTH = 780;
 
 const HEADER_HEIGHT = 36;
 const ROW_HEIGHT = 36;
@@ -74,6 +78,7 @@ class TableInteractive extends Component {
     super(props);
 
     this.state = {
+      columnIsExpanded: [],
       columnWidths: [],
       contentWidths: null,
       showDetailShortcut: true,
@@ -215,6 +220,7 @@ class TableInteractive extends Component {
     this.setState({
       columnWidths: [],
       contentWidths: null,
+      columnIsExpanded: [],
     });
     this.columnHasResized = {};
   }
@@ -497,6 +503,8 @@ class TableInteractive extends Component {
       column.name,
     );
 
+    const isCollapsed = this.isColumnWidthTruncated(columnIndex);
+
     return (
       <div
         key={key}
@@ -508,18 +516,21 @@ class TableInteractive extends Component {
           transition: dragColIndex != null ? "left 200ms" : null,
           backgroundColor,
         }}
-        className={cx("TableInteractive-cellWrapper text-dark", {
-          "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
-          padLeft: columnIndex === 0 && !showDetailShortcut,
-          "TableInteractive-cellWrapper--lastColumn":
-            columnIndex === cols.length - 1,
-          "TableInteractive-emptyCell": value == null,
-          "cursor-pointer": isClickable,
-          "justify-end": isColumnRightAligned(column),
-          "Table-ID": value != null && isID(column),
-          "Table-FK": value != null && isFK(column),
-          link: isClickable && isID(column),
-        })}
+        className={cx(
+          "TableInteractive-cellWrapper text-dark hover-parent hover--visibility",
+          {
+            "TableInteractive-cellWrapper--firstColumn": columnIndex === 0,
+            padLeft: columnIndex === 0 && !showDetailShortcut,
+            "TableInteractive-cellWrapper--lastColumn":
+              columnIndex === cols.length - 1,
+            "TableInteractive-emptyCell": value == null,
+            "cursor-pointer": isClickable,
+            "justify-end": isColumnRightAligned(column),
+            "Table-ID": value != null && isID(column),
+            "Table-FK": value != null && isFK(column),
+            link: isClickable && isID(column),
+          },
+        )}
         onClick={
           isClickable
             ? e => {
@@ -544,8 +555,25 @@ class TableInteractive extends Component {
         tabIndex="0"
       >
         {this.props.renderTableCellWrapper(cellData)}
+        {isCollapsed && (
+          <ExpandButton
+            data-testid="expand-column"
+            className="hover-child"
+            small
+            borderless
+            iconSize={10}
+            icon="ellipsis"
+            onlyIcon
+            onClick={e => this.handleExpandButtonClick(e, columnIndex)}
+          />
+        )}
       </div>
     );
+  };
+
+  handleExpandButtonClick = (e, columnIndex) => {
+    e.stopPropagation();
+    this.handleExpandColumn(columnIndex);
   };
 
   getDragColNewIndex(data) {
@@ -823,14 +851,43 @@ class TableInteractive extends Component {
     return this.getColumnWidth({ index: dataIndex });
   };
 
-  getColumnWidth = ({ index }) => {
+  _getColumnFullWidth = index => {
     const { settings } = this.props;
     const { columnWidths } = this.state;
     const columnWidthsSetting = settings["table.column_widths"] || [];
 
-    return (
-      columnWidthsSetting[index] || columnWidths[index] || MIN_COLUMN_WIDTH
+    const explicitWidth = columnWidthsSetting[index];
+    const calculatedWidth = columnWidths[index] || MIN_COLUMN_WIDTH;
+
+    return explicitWidth || calculatedWidth;
+  };
+
+  handleExpandColumn = index =>
+    this.setState(
+      prevState => {
+        const columnIsExpanded = prevState.columnIsExpanded.slice();
+        columnIsExpanded[index] = true;
+        return { columnIsExpanded };
+      },
+      () => this.recomputeGridSize(),
     );
+
+  isColumnWidthTruncated = index => {
+    const { columnIsExpanded } = this.state;
+
+    return (
+      !columnIsExpanded[index] &&
+      this._getColumnFullWidth(index) > TRUNCATE_WIDTH
+    );
+  };
+
+  getColumnWidth = ({ index }) => {
+    const { columnIsExpanded } = this.state;
+    const fullWidth = this._getColumnFullWidth(index);
+
+    return columnIsExpanded[index]
+      ? fullWidth
+      : Math.min(fullWidth, TRUNCATE_WIDTH);
   };
 
   handleHoverRow = (event, rowIndex) => {
