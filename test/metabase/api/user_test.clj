@@ -560,7 +560,7 @@
 
 (deftest updated-user-name-test
   (testing "Test that `metabase.api.user/updated-user-name` works as intended."
-    (let [names     {:first_name "Test" :last_name "User"}
+    (let [names     {:first_name "Test" :last_name "User"} ;; in a real user map, `:first_name` and `:last_name` will always be present
           nonames   {:first_name nil :last_name nil}
           firstname {:first_name "Test" :last_name nil}
           lastname  {:first_name nil :last_name "User"}]
