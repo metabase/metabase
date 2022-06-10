@@ -4,15 +4,19 @@ import { SkeletonRoot, SkeletonImage } from "./LineSkeleton.styled";
 
 export interface LineSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   displayName?: string | null;
+  description?: string | null;
 }
 
 const LineSkeleton = ({
   displayName,
+  description,
   ...props
 }: LineSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {displayName && <SkeletonCaption name={displayName} />}
+      {displayName && (
+        <SkeletonCaption name={displayName} description={description} />
+      )}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 371 113"

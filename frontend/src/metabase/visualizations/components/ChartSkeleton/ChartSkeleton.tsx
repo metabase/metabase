@@ -14,6 +14,7 @@ import WaterfallSkeleton from "./WaterfallSkeleton";
 export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   display?: string | null;
   displayName?: string | null;
+  description?: string | null;
 }
 
 const ChartSkeleton = ({

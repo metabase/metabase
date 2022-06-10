@@ -48,6 +48,7 @@ const PinnedChartCard = ({
             <CardSkeleton
               display={question.display()}
               displayName={question.displayName()}
+              description={question.description()}
             />
           ) : (
             <Visualization

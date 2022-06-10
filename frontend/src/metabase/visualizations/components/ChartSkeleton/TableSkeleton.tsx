@@ -4,15 +4,19 @@ import { SkeletonRoot, SkeletonImage } from "./TableSkeleton.styled";
 
 export interface TableSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   displayName?: string | null;
+  description?: string | null;
 }
 
 const TableSkeleton = ({
   displayName,
+  description,
   ...props
 }: TableSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {displayName && <SkeletonCaption name={displayName} />}
+      {displayName && (
+        <SkeletonCaption name={displayName} description={description} />
+      )}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 369 144"

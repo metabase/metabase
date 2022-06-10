@@ -4,15 +4,19 @@ import { SkeletonImage, SkeletonRoot } from "./FunnelSkeleton.styled";
 
 export interface AreaSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   displayName?: string | null;
+  description?: string | null;
 }
 
 const AreaSkeleton = ({
   displayName,
+  description,
   ...props
 }: AreaSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {displayName && <SkeletonCaption name={displayName} />}
+      {displayName && (
+        <SkeletonCaption name={displayName} description={description} />
+      )}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 370 104"

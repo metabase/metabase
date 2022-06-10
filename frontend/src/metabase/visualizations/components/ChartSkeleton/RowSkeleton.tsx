@@ -4,15 +4,19 @@ import SkeletonCaption from "./SkeletonCaption";
 
 export interface RowSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   displayName?: string | null;
+  description?: string | null;
 }
 
 const RowSkeleton = ({
   displayName,
+  description,
   ...props
 }: RowSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      {displayName && <SkeletonCaption name={displayName} />}
+      {displayName && (
+        <SkeletonCaption name={displayName} description={description} />
+      )}
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 346 130"
