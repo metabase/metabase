@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import ChartSkeleton from "metabase/visualizations/components/ChartSkeleton";
+import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
 
 export const CardActionMenu = styled(ActionMenu)`
   position: absolute;
@@ -31,6 +32,10 @@ export const CardRoot = styled(Link)`
       visibility: visible;
     }
 
+    ${LegendLabel} {
+      color: ${color("brand")};
+    }
+
     ${ChartSkeleton.Title} {
       color: ${color("brand")};
     }
@@ -38,5 +43,10 @@ export const CardRoot = styled(Link)`
     ${ChartSkeleton.Description} {
       visibility: visible;
     }
+  }
+
+  .leaflet-container,
+  .leaflet-container * {
+    pointer-events: none !important;
   }
 `;
