@@ -160,6 +160,10 @@ export const setTemplateTag = createThunkAction(
             parameters[index] = getTemplateTagParameter(templateTag);
           }
         }
+      } else {
+        const tags = getTemplateTagsForParameters(updatedTagsCard);
+        const newParameters = getTemplateTagParameters(tags);
+        return assoc(updatedTagsCard, "parameters", newParameters);
       }
 
       return updatedTagsCard;
