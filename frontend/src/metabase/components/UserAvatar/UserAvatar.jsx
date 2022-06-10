@@ -29,7 +29,20 @@ function initial(name) {
 }
 
 function userInitials(user) {
-  return user ? initial(user.first_name) + initial(user.last_name) : null;
+  if (user) {
+    return nameInitials(user) || emailInitials(user);
+  }
+
+  return null;
+}
+
+function nameInitials(user) {
+  return initial(user.first_name) + initial(user.last_name);
+}
+
+function emailInitials(user) {
+  const emailUsername = user.email.split("@")[0];
+  return emailUsername.slice(0, 2).toUpperCase();
 }
 
 const UserAvatar = ({ user, ...props }) => (

@@ -173,7 +173,7 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       cy.findByText(`Reset ${FULL_NAME}'s password?`);
       clickButton("Reset password");
-      cy.findByText(`${first_name}'s password has been reset`);
+      cy.findByText(`${FULL_NAME}'s password has been reset`);
       cy.findByText(/^temporary password$/i);
       clickButton("Done");
     });
@@ -189,7 +189,7 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Reset password").click();
       cy.findByText(`Reset ${FULL_NAME}'s password?`);
       clickButton("Reset password");
-      cy.findByText(`${first_name}'s password has been reset`).should(
+      cy.findByText(`${FULL_NAME}'s password has been reset`).should(
         "not.exist",
       );
       cy.findByText(/^temporary password$/i).should("not.exist");

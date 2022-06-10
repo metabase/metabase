@@ -47,7 +47,7 @@ const PeopleListRow = ({
             user={user}
           />
         </span>{" "}
-        <span className="ml2 text-bold">{user.common_name}</span>
+        <span className="ml2 text-bold">{getName(user)}</span>
       </td>
       <td>
         {user.google_auth ? (
@@ -126,5 +126,20 @@ const PeopleListRow = ({
     </tr>
   );
 };
+
+/**
+ *
+ * @param {import("metabase-types/api").User} user
+ * @returns {string}
+ */
+function getName(user) {
+  const name = [user.first_name, user.last_name].join(" ").trim();
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}
 
 export default PeopleListRow;

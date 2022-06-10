@@ -51,7 +51,7 @@ describe("metabase > scenarios > home > activity-page", () => {
     cy.visit("/activity");
 
     cy.findAllByText("joined!").should("have.length", 2);
-    cy.findAllByText("Robert").should("have.length", 2);
+    cy.findAllByText("Robert Tableton").should("have.length", 2);
     cy.findByText("Products, Filtered by Rating");
   });
 
