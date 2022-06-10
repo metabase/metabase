@@ -17,8 +17,7 @@ const ACTIONS_VIZ_DEFINITION = {
   hidden: true,
   supportPreviewing: false,
 
-  minSize: { width: 1, height: 1 },
-  maxSize: { width: 1, height: 1 },
+  minSize: { width: 2, height: 1 },
 
   checkRenderable: () => true,
   isSensible: () => false,
