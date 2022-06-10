@@ -7,6 +7,7 @@ import PieSkeleton from "./PieSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
 import TableSkeleton from "./TableSkeleton";
+import SmartScalarSkeleton from "./SmartScalarSkeleton";
 import WaterfallSkeleton from "./WaterfallSkeleton";
 
 export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
@@ -36,6 +37,8 @@ const ChartSkeleton = ({
     case "table":
     case "pivot":
       return <TableSkeleton {...props} />;
+    case "smartscalar":
+      return <SmartScalarSkeleton {...props} />;
     case "waterfall":
       return <WaterfallSkeleton {...props} />;
     default:
