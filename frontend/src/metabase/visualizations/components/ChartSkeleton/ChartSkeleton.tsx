@@ -3,6 +3,7 @@ import AreaSkeleton from "./AreaSkeleton";
 import BarSkeleton from "./BarSkeleton";
 import FunnelSkeleton from "./FunnelSkeleton";
 import LineSkeleton from "./LineSkeleton";
+import PieSkeleton from "./PieSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
 import TableSkeleton from "./TableSkeleton";
@@ -26,6 +27,8 @@ const ChartSkeleton = ({
       return <FunnelSkeleton {...props} />;
     case "line":
       return <LineSkeleton {...props} />;
+    case "pie":
+      return <PieSkeleton {...props} />;
     case "row":
       return <RowSkeleton {...props} />;
     case "scatter":
