@@ -344,16 +344,16 @@
   (testing "GET /api/dashboard/:id"
     (testing "Fetch dashboard with an emitter"
       (mt/with-temp* [Dashboard [dashboard {:name "Test Dashboard"}]
-                      Card [write-card {:is_write true :name "Test Write Card"}]
-                      DashboardEmitter [emitter {:action_id    (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
-                                                 :dashboard_id (u/the-id dashboard)}]]
+                      Card [write-card {:is_write true :name "Test Write Card"}]]
+        (db/insert! DashboardEmitter {:action_id    (u/the-id (db/select-one-field :action_id QueryAction :card_id (u/the-id write-card)))
+                                      :dashboard_id (u/the-id dashboard)})
         (testing "admin sees emitters"
           (is (partial=
-                {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
-                (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
+               {:emitters [{:action {:type "row" :card {:name "Test Write Card"}}}]}
+               (dashboard-response (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (u/the-id dashboard)))))))
         (testing "non-admin does not see emitters"
           (is (nil?
-                (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
+               (:emitters (dashboard-response (mt/user-http-request :rasta :get 200 (format "dashboard/%d" (u/the-id dashboard))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             PUT /api/dashboard/:id                                             |
