@@ -9,16 +9,17 @@ export default {
 
 const Template: ComponentStory<typeof ChartSkeleton> = args => {
   return (
-    <div style={{ height: 182 }}>
+    <div style={{ padding: 8, height: 250, backgroundColor: "white" }}>
       <ChartSkeleton {...args} />
     </div>
   );
 };
 
-export const Default = Template.bind({
+export const Default = Template.bind({});
+Default.args = {
   display: "table",
   description: "Description",
-});
+};
 
 export const Empty = Template.bind({
   display: null,
@@ -99,5 +100,5 @@ Table.args = {
 export const Waterfall = Template.bind({});
 Waterfall.args = {
   display: "waterfall",
-  displayName: "waterfall",
+  displayName: "Waterfall",
 };
