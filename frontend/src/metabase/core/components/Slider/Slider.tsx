@@ -14,6 +14,8 @@ import {
   SliderTooltip,
   SliderTrack,
   ActiveTrack,
+  TooltipContainer,
+  THUMB_SIZE,
 } from "./Slider.styled";
 
 export type NumericInputAttributes = Omit<
@@ -37,6 +39,9 @@ const Slider = ({
   step = 1,
 }: SliderProps) => {
   const [isHovering, setIsHovering] = useState(false);
+
+  // we continuously track the component's internal value,
+  // but only update the parent value via onChange when the user has finished dragging
   const [value, setValue] = useState([
     parentValue[0] ?? parentMin,
     parentValue[1] ?? parentMax,
@@ -47,17 +52,28 @@ const Slider = ({
     return [_.min([...value, parentMin]), _.max([...value, parentMax])];
   }, [value, parentMin, parentMax]);
 
+  // if we get a new parent value, update our internal value
   useEffect(() => {
     setValue([parentValue[0] ?? min, parentValue[1] ?? max]);
   }, [parentValue, min, max]);
 
+  // calculate min and max separately from current values to display the correct tooltips
+  const [minValue, maxValue] = useMemo(
+    () =>
+      value.every(n => !isNaN(n))
+        ? [Math.min(...value), Math.max(...value)]
+        : value,
+    [value],
+  );
+
+  // calculate width percentages for the track and tooltip
   const [beforeRange, rangeWidth] = useMemo(() => {
     const totalRange = max - min;
     return [
-      ((Math.min(...value) - min) / totalRange) * 100,
-      (Math.abs(value[1] - value[0]) / totalRange) * 100,
+      ((minValue - min) / totalRange) * 100,
+      ((maxValue - minValue) / totalRange) * 100,
     ];
-  }, [value, min, max]);
+  }, [minValue, maxValue, min, max]);
 
   const handleInput = useCallback(
     (event: ChangeEvent<HTMLInputElement>, valueIndex: number) => {
@@ -69,62 +85,62 @@ const Slider = ({
   );
 
   const handleChange = useCallback(() => {
-    const sortedValues = value[1] < value[0] ? [...value].sort() : value;
-    onChange(sortedValues);
-  }, [value, onChange]);
-
-  const [minValue, maxValue] = useMemo(
-    () =>
-      value.every(n => !isNaN(n))
-        ? [Math.min(...value), Math.max(...value)]
-        : value,
-    [value],
-  );
+    onChange([minValue, maxValue]);
+  }, [minValue, maxValue, onChange]);
 
   return (
     <SliderContainer
       onMouseEnter={() => setIsHovering(true)}
+      onTouchStart={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      onTouchEnd={() => setIsHovering(false)}
     >
       <SliderTrack />
-      <ActiveTrack
-        style={{ left: `${beforeRange}%`, width: `${rangeWidth}%` }}
-      />
-      <SliderTooltip
-        data-testid="min-slider-tooltip"
-        style={{
-          left: getTooltipPosition(beforeRange),
-          opacity: isHovering ? 1 : 0,
-        }}
-      >
-        {hasDecimal(step) ? minValue.toFixed(2) : minValue}
-      </SliderTooltip>
+      <TooltipContainer>
+        <ActiveTrack
+          style={{
+            left: getTooltipPosition(beforeRange),
+            width: `${rangeWidth}%`,
+          }}
+        />
+        <SliderTooltip
+          data-testid="min-slider-tooltip"
+          style={{
+            left: getTooltipPosition(beforeRange),
+            opacity: isHovering ? 1 : 0,
+          }}
+        >
+          {hasDecimal(step) ? minValue.toFixed(2) : minValue}
+        </SliderTooltip>
+        <SliderTooltip
+          data-testid="max-slider-tooltip"
+          style={{
+            left: getTooltipPosition(beforeRange + rangeWidth),
+            opacity: isHovering ? 1 : 0,
+          }}
+        >
+          {hasDecimal(step) ? maxValue.toFixed(2) : maxValue}
+        </SliderTooltip>
+      </TooltipContainer>
       <SliderInput
         type="range"
         aria-label="min"
         value={value[0]}
         onChange={e => handleInput(e, 0)}
         onMouseUp={handleChange}
+        onTouchEnd={handleChange}
         onKeyUp={handleChange}
         min={min}
         max={max}
         step={step}
       />
-      <SliderTooltip
-        data-testid="max-slider-tooltip"
-        style={{
-          left: getTooltipPosition(beforeRange + rangeWidth),
-          opacity: isHovering ? 1 : 0,
-        }}
-      >
-        {hasDecimal(step) ? maxValue.toFixed(2) : maxValue}
-      </SliderTooltip>
       <SliderInput
         type="range"
         aria-label="max"
         value={value[1]}
         onChange={e => handleInput(e, 1)}
         onMouseUp={handleChange}
+        onTouchEnd={handleChange}
         onKeyUp={handleChange}
         min={min}
         max={max}
@@ -135,7 +151,7 @@ const Slider = ({
 };
 
 const getTooltipPosition = (basePosition: number) =>
-  `calc(${basePosition}% + ${11 - basePosition * 0.18}px)`;
+  `calc(${basePosition}% + (${THUMB_SIZE} / 2) + 2px)`;
 
 const hasDecimal = (value: number) => !isNaN(value) && value % 1 !== 0;
 

@@ -2,19 +2,22 @@ import styled from "@emotion/styled";
 import { color, alpha } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
+export const THUMB_SIZE = "1.2rem";
+
 export const SliderContainer = styled.div`
   position: relative;
   display: flex;
   width: 100%;
-  margin: 0 ${space(1)};
+  margin-right: calc(${THUMB_SIZE} / 2);
 `;
 
 const thumbStyles = `
   -webkit-appearance: none;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: ${THUMB_SIZE};
+  height: ${THUMB_SIZE};
   border-radius: 50%;
   border: 2px solid ${color("brand")};
+  box-sizing: border-box;
   background-color: ${color("white")};
   cursor: pointer;
   box-shadow: 0 0 2px 1px ${color("brand")};
@@ -42,7 +45,8 @@ export const SliderInput = styled.input`
 `;
 
 export const SliderTrack = styled.span`
-  width: 100%;
+  width: calc(100% - ${THUMB_SIZE});
+  margin-left: calc(${THUMB_SIZE} / 2);
   background-color: ${alpha("brand", 0.5)};
   height: 0.2rem;
   border-radius: 0.2rem;
@@ -82,4 +86,8 @@ export const SliderTooltip = styled.div`
     margin-left: -5px;
     margin-top: -1px;
   }
+`;
+export const TooltipContainer = styled.div`
+  position: absolute;
+  width: calc(100% - ${THUMB_SIZE});
 `;
