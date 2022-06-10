@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 
 import { t } from "ttag";
+import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 
@@ -114,17 +115,19 @@ export default class FilterPopover extends Component<Props, State> {
     );
   };
 
-  handleCommitFilter = (filter: Filter | null, query: StructuredQuery) => {
-    if (filter && !(filter instanceof Filter)) {
-      filter = new Filter(filter, null, query);
-    }
-    if (filter && filter.isValid() && this.props.onChangeFilter) {
-      this.props.onChangeFilter(filter);
-      if (this.props.onClose) {
-        this.props.onClose();
+  handleCommitFilter = _.once(
+    (filter: Filter | null, query: StructuredQuery) => {
+      if (filter && !(filter instanceof Filter)) {
+        filter = new Filter(filter, null, query);
       }
-    }
-  };
+      if (filter && filter.isValid() && this.props.onChangeFilter) {
+        this.props.onChangeFilter(filter);
+        if (this.props.onClose) {
+          this.props.onClose();
+        }
+      }
+    },
+  );
 
   handleDimensionChange = (dimension: FieldDimension) => {
     let filter = this.state.filter;
