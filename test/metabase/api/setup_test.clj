@@ -253,8 +253,8 @@
             (is (:id (setup! assoc-in [:user :first_name] nil))))
 
           (testing "last name may be nil"
-            (is (= (:id (setup! m/dissoc-in [:user :last_name])))
-            (is (= (:id (setup! assoc-in [:user :last_name] nil))))))
+            (is (:id (setup! m/dissoc-in [:user :last_name])))
+            (is (:id (setup! assoc-in [:user :last_name] nil))))))
 
       (testing "email"
         (testing "missing"
