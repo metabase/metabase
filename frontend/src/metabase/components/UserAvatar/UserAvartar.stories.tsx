@@ -14,20 +14,20 @@ const Template: ComponentStory<typeof UserAvatar> = args => (
 export const Default = Template.bind({});
 Default.args = {
   user: {
-    first_name: "John",
-    last_name: "Wick",
-    email: "john.w@hightable.org",
-    common_name: "John Wick",
+    first_name: "Testy",
+    last_name: "Tableton",
+    email: "user@metabase.test",
+    common_name: "Testy Tableton",
   },
 };
 
 export const SingleName = Template.bind({});
 SingleName.args = {
   user: {
-    first_name: "John",
+    first_name: "Testy",
     last_name: null,
-    email: "john.w@hightable.org",
-    common_name: "John",
+    email: "user@metabase.test",
+    common_name: "Testy",
   },
 };
 
@@ -36,17 +36,17 @@ OnlyEmail.args = {
   user: {
     first_name: null,
     last_name: null,
-    email: "john.w@hightable.org",
-    common_name: "john.w@hightable.org",
+    email: "user@metabase.test",
+    common_name: "user@metabase.test",
   },
 };
 
-export const shortEmail = Template.bind({});
-shortEmail.args = {
+export const ShortEmail = Template.bind({});
+ShortEmail.args = {
   user: {
     first_name: null,
     last_name: null,
-    email: "j@hightable.org",
-    common_name: "j@hightable.org",
+    email: "u@metabase.test",
+    common_name: "u@metabase.test",
   },
 };

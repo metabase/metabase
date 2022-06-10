@@ -38,11 +38,11 @@ const HomeGreeting = ({
 const getMessage = (name: string): string => {
   const namePart = name ? `, ${name}` : "";
   const options = [
-    t`Hey there` + namePart,
-    t`How's it going` + namePart + "?",
-    t`Howdy` + namePart,
-    t`Greetings` + namePart,
-    t`Good to see you` + namePart,
+    t`Hey there${namePart}`,
+    t`How's it going${namePart}?`,
+    t`Howdy${namePart}`,
+    t`Greetings${namePart}`,
+    t`Good to see you${namePart}`,
   ];
 
   return _.sample(options) ?? "";
