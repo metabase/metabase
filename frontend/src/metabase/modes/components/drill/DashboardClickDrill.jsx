@@ -14,6 +14,7 @@ import {
   formatSourceForTarget,
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
+import * as Urls from "metabase/lib/urls";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -53,6 +54,7 @@ export default ({ question, clicked }) => {
   } else if (type === "link") {
     if (linkType === "url") {
       behavior = {
+        ignoreSiteUrl: true,
         url: () =>
           renderLinkURLForClick(clickBehavior.linkTemplate || "", data),
       };
@@ -78,8 +80,9 @@ export default ({ question, clicked }) => {
           clickBehavior,
         });
 
-        const urlSearchParams = querystring.stringify(queryParams);
-        const url = `/dashboard/${targetId}?${urlSearchParams}`;
+        const path = Urls.dashboard({ id: targetId });
+        const url = `${path}?${querystring.stringify(queryParams)}`;
+
         behavior = { url: () => url };
       }
     } else if (linkType === "question" && extraData && extraData.questions) {
