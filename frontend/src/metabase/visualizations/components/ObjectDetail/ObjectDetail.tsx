@@ -33,12 +33,13 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { State } from "metabase-types/store";
 
 import { getObjectName, getIdValue, getSingleResultsRow } from "./utils";
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 
-const mapStateToProps = (state: unknown, { data }: ObjectDetailProps) => {
+const mapStateToProps = (state: State, { data }: ObjectDetailProps) => {
   let zoomedRowID = getZoomedObjectId(state);
   const isZooming = zoomedRowID != null;
 

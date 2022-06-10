@@ -125,7 +125,7 @@ describe("scenarios > question > object details", () => {
     cy.findByText("Searsboro").click();
   });
 
-  it.skip("should work with non-numeric IDs (metabse#22768)", () => {
+  it("should work with non-numeric IDs (metabse#22768)", () => {
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: null,
     });
