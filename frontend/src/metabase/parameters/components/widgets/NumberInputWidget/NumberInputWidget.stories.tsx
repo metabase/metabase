@@ -1,21 +1,23 @@
 import React from "react";
 import { ComponentStory } from "@storybook/react";
 import { useArgs } from "@storybook/client-api";
-import NumberWidget from "./NumberWidget";
+import NumberInputWidget from "./NumberInputWidget";
 
 export default {
-  title: "Parameters/NumberWidget",
-  component: NumberWidget,
+  title: "Parameters/NumberInputWidget",
+  component: NumberInputWidget,
 };
 
-const Template: ComponentStory<typeof NumberWidget> = args => {
+const Template: ComponentStory<typeof NumberInputWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
   const handleSetValue = (v: string) => {
     updateArgs({ value: v });
   };
 
-  return <NumberWidget {...args} value={value} setValue={handleSetValue} />;
+  return (
+    <NumberInputWidget {...args} value={value} setValue={handleSetValue} />
+  );
 };
 
 export const Default = Template.bind({});

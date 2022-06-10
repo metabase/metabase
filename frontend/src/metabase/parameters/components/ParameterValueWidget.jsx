@@ -7,7 +7,6 @@ import _ from "underscore";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { isOnlyMappedToFields } from "metabase/parameters/utils/fields";
-import { formatParameterValue } from "metabase/parameters/utils/formatting";
 import {
   isDateParameter,
   isNumberParameter,
@@ -25,7 +24,7 @@ import Tooltip from "metabase/components/Tooltip";
 import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import NumberWidget from "metabase/parameters/components/widgets/NumberWidget";
+import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
@@ -244,7 +243,7 @@ function Widget({
   } else if (isNumberParameter(parameter)) {
     const arity = getNumberParameterArity(parameter);
     return (
-      <NumberWidget
+      <NumberInputWidget
         value={value}
         setValue={value => {
           setValue(value);
@@ -298,7 +297,7 @@ function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
   } else if (isNumberParameter(parameter)) {
-    return NumberWidget;
+    return NumberInputWidget;
   } else if (isOnlyMappedToFields(parameter)) {
     return ParameterFieldWidget;
   } else {

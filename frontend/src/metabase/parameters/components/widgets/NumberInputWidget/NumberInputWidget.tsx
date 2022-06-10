@@ -8,7 +8,7 @@ import {
   WidgetRoot,
   Footer,
   UpdateButton,
-} from "metabase/parameters/components/widgets//Widget.styled";
+} from "metabase/parameters/components/widgets/Widget.styled";
 
 type NumberWidgetProps = {
   value: number | number[] | undefined;
