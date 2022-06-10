@@ -1,4 +1,5 @@
 import { css, keyframes } from "@emotion/react";
+import { color } from "metabase/lib/colors";
 
 export const fadingKeyframes = keyframes`
   0% {
@@ -14,6 +15,13 @@ export const fadingKeyframes = keyframes`
   }
 `;
 
-export const animationStyles = css`
+export const containerStyles = css`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+`;
+
+export const imageStyles = css`
+  color: ${color("bg-medium")};
   animation: ${fadingKeyframes} 1.5s infinite;
 `;

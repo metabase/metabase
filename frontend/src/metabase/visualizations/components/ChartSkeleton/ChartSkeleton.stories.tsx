@@ -17,6 +17,6 @@ const Template: ComponentStory<typeof ChartSkeleton> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  name: "Question",
   display: "line",
+  displayName: "Question",
 };
