@@ -64,7 +64,7 @@
 (defn- updated-user-name [user-before-update changes]
   (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
         updated-names (merge previous current)]
-    (when (not= previous new)
+    (when (not= previous updated-names)
       updated-names)))
 
 (defn- maybe-update-user-personal-collection-name! [user-before-update changes]
