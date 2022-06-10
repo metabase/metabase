@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -32,7 +33,8 @@
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
-           [java.util Date UUID]))
+           [java.util Date UUID]
+           [metabase.util.honeysql_extensions Identifier]))
 
 (comment
   ddl.postgres/keep-me)
@@ -305,17 +307,11 @@
     (pretty [_]
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
-(defn- tree-search [identifier query]
-  (-> (filter #(some? (query %)) (tree-seq (comp not record?) identity identifier))
-      first
-      query))
-
 (defmethod sql.qp/json-query :postgres
-  [_ identifier nfc-field]
+  [_ unwrapped-identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          unwrapped-identifier (tree-search identifier :form)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
@@ -326,11 +322,10 @@
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
-  (let [stored-field (when (integer? id-or-name)
-                       (qp.store/field id-or-name))
+  (let [stored-field  (when (integer? id-or-name)
+                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)
-        _nfc-path     (:nfc_path stored-field)]
+        identifier    (parent-method driver clause)]
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
@@ -338,7 +333,10 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (sql.qp/json-query :postgres identifier stored-field))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :postgres % stored-field)
+                          %)
+                       identifier))
 
       :else
       identifier)))
