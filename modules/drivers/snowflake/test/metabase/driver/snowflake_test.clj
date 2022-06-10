@@ -102,11 +102,13 @@
                          :database-type     "NUMBER"
                          :base-type         :type/Number
                          :pk?               true
-                         :database-position 0}
+                         :database-position 0
+                         :database-required false}
                         {:name              "name"
                          :database-type     "VARCHAR"
                          :base-type         :type/Text
-                         :database-position 1}}}
+                         :database-position 1
+                         :database-required true}}}
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
