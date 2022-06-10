@@ -1,6 +1,6 @@
 import React, { HTMLAttributes } from "react";
 import SkeletonCaption from "./SkeletonCaption";
-import { SkeletonRoot, SkeletonImage } from "./AreaSkeleton.styled";
+import { SkeletonRoot, SkeletonImage } from "./LineSkeleton.styled";
 
 export interface LineSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   displayName?: string | null;
