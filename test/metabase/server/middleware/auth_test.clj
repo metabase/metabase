@@ -9,8 +9,7 @@
             [metabase.test.data.users :as test.users]
             [metabase.test.fixtures :as fixtures]
             [ring.mock.request :as ring.mock]
-            [toucan.db :as db]
-            [toucan.util.test :as tt])
+            [toucan.db :as db])
   (:import java.util.UUID))
 
 (use-fixtures :once (fixtures/initialize :db :test-users :web-server))
