@@ -21,6 +21,17 @@
 (defn- lucky-collection-children-location []
   (collection/children-location (collection/user->personal-collection (mt/user->id :lucky))))
 
+(deftest format-personal-collection-name-test
+  (testing "test that the Personal collection name formatting outputs correct strings"
+    (is (= "Meta Base's Personal Collection"
+           (collection/format-personal-collection-name "Meta" "Base" "MetaBase@metabase.com" :site)))
+    (is (= "Meta's Personal Collection"
+           (collection/format-personal-collection-name "Meta" nil "MetaBase@metabase.com" :site)))
+    (is (= "Base's Personal Collection"
+           (collection/format-personal-collection-name nil "Base" "MetaBase@metabase.com" :site)))
+    (is (= "MetaBase@metabase.com's Personal Collection"
+           (collection/format-personal-collection-name nil nil "MetaBase@metabase.com" :site)))))
+
 (deftest create-collection-test
   (testing "test that we can create a new Collection with valid inputs"
     (mt/with-temp Collection [collection {:name "My Favorite Cards", :color "#ABCDEF"}]

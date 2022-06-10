@@ -557,6 +557,54 @@
                    (dissoc :user_group_memberships)
                    mt/boolean-ids-and-timestamps)))))))
 
+(deftest update-first-name-last-name-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we can update a user's first and last names"
+      (mt/with-temp User [{user-id :id} {:first_name   "Blue Ape"
+                                         :last_name    "Ron"
+                                         :email        "blueronny@metabase.com"
+                                         :is_superuser true}]
+        (letfn [(change-user-via-api [m]
+                  (-> (mt/user-http-request :crowberto :put 200 (str "user/" user-id) m)
+                      (hydrate :personal_collection_id :personal_collection_name)
+                      (dissoc :user_group_memberships :personal_collection_id :email :is_superuser)
+                      (#(apply (partial dissoc %) (keys @user-defaults)))
+                      mt/boolean-ids-and-timestamps))]
+          (testing "Name keys ommitted does not update the user"
+            (is (= {:first_name               "Blue Ape"
+                    :last_name                "Ron"
+                    :common_name              "Blue Ape Ron"
+                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+                   (change-user-via-api {}))))
+          (testing "Name keys having the same values does not update the user"
+            (is (= {:first_name               "Blue Ape"
+                    :last_name                "Ron"
+                    :common_name              "Blue Ape Ron"
+                    :personal_collection_name "Blue Ape Ron's Personal Collection"}
+                   (change-user-via-api {:first_name "Blue Ape"
+                                         :last_name "Ron"}))))
+          (testing "Name keys explicitly set to `nil` updates the user"
+            (is (= {:first_name               nil
+                    :last_name                nil
+                    :common_name              "blueronny@metabase.com"
+                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+                   (change-user-via-api {:first_name nil
+                                         :last_name nil}))))
+          (testing "Changing only one name key updates only that key for the user"
+            (is (= {:first_name               nil
+                    :last_name                "Apron"
+                    :common_name              "Apron"
+                    :personal_collection_name "Apron's Personal Collection"}
+                   (change-user-via-api {:first_name nil
+                                         :last_name "Apron"}))))
+          (testing "Changing only one name key updates only that key for the user"
+            (is (= {:first_name               "Blue"
+                    :last_name                nil
+                    :common_name              "Blue"
+                    :personal_collection_name "Blue's Personal Collection"}
+                   (change-user-via-api {:first_name "Blue"
+                                         :last_name nil})))))))))
+
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
     (testing "test that updating a user's email to an existing inactive user's email fails"
