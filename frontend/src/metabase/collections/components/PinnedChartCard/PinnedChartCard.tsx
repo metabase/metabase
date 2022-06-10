@@ -54,6 +54,8 @@ const PinnedChartCard = ({
               rawSeries={rawSeries}
               error={error}
               errorIcon={errorIcon}
+              showTitle
+              isDashboard
             />
           )
         }
