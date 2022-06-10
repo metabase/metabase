@@ -14,7 +14,7 @@ export const CardActionMenu = styled(ActionMenu)`
 `;
 
 export const CardSkeleton = styled(ChartSkeleton)`
-  padding: 1rem;
+  padding: 0.5rem 1rem;
 `;
 
 export const CardRoot = styled(Link)`
