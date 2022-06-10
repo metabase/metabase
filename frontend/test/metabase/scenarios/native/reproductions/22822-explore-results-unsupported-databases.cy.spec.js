@@ -6,7 +6,7 @@ const questionDetails = {
   name: "22822",
   database: MONGO_DB_ID,
   native: {
-    query: '[{"$limit": 2}]',
+    query: '[{"$sort": {"id": 1}}, {"$limit": 2}]',
     collection: "products",
   },
 };
