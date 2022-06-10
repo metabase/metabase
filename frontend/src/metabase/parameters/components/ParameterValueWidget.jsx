@@ -240,21 +240,25 @@ function Widget({
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
-  } else if (isNumberParameter(parameter)) {
-    const arity = getNumberParameterArity(parameter);
-    return (
-      <NumberInputWidget
-        value={value}
-        setValue={value => {
-          setValue(value);
-          onPopoverClose();
-        }}
-        arity={arity}
-        infixText={typeof arity === "number" && arity > 1 ? t`and` : undefined}
-        autoFocus
-      />
-    );
   } else if (isOnlyMappedToFields(parameter)) {
+    if (isNumberParameter(parameter)) {
+      const arity = getNumberParameterArity(parameter);
+      return (
+        <NumberInputWidget
+          value={value}
+          setValue={value => {
+            setValue(value);
+            onPopoverClose();
+          }}
+          arity={arity}
+          infixText={
+            typeof arity === "number" && arity > 1 ? t`and` : undefined
+          }
+          autoFocus
+        />
+      );
+    }
+
     return (
       <ParameterFieldWidget
         target={target}
@@ -296,9 +300,10 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (isNumberParameter(parameter)) {
-    return NumberInputWidget;
   } else if (isOnlyMappedToFields(parameter)) {
+    if (isNumberParameter(parameter)) {
+      return NumberInputWidget;
+    }
     return ParameterFieldWidget;
   } else {
     return TextWidget;
