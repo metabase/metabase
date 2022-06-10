@@ -65,11 +65,11 @@
   (let [[previous current] (map #(select-keys % [:first_name :last_name]) [user-before-update changes])
         new (merge previous current)]
     (when (not= previous new)
-      (vals new))))
+      new)))
 
 (defn- maybe-update-user-personal-collection-name! [user-before-update changes]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
-  (when-some [[first_name last_name] (updated-user-name user-before-update changes)]
+  (when-some [{:keys [first_name last_name]} (updated-user-name user-before-update changes)]
     (when-some [collection (collection/user->existing-personal-collection (u/the-id user-before-update))]
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
