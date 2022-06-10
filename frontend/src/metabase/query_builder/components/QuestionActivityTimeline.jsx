@@ -4,8 +4,6 @@ import { t } from "ttag";
 import { connect } from "react-redux";
 import _ from "underscore";
 
-import Tooltip from "metabase/components/Tooltip";
-
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
 import { revertToRevision } from "metabase/query_builder/actions";
@@ -13,11 +11,7 @@ import { getUser } from "metabase/selectors/user";
 
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
-import {
-  Timeline,
-  RevertButton,
-  Header,
-} from "./QuestionActivityTimeline.styled";
+import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
@@ -68,31 +62,14 @@ export function QuestionActivityTimeline({
       usersById,
       currentUser,
     );
-    const revisionEvents = getRevisionEventsForTimeline(revisions, {
-      currentUser,
-      canWrite,
-    }).map(revisionEvent => {
-      if (revisionEvent.isRevertable) {
-        const { title, revision } = revisionEvent;
-        const newTitle = (
-          <>
-            {title}
-            <Tooltip tooltip={t`Revert`} placement="bottom">
-              <RevertButton
-                icon="revert"
-                onlyIcon
-                borderless
-                onClick={() => revertToRevision(revision)}
-                data-testid="question-revert-button"
-              />
-            </Tooltip>
-          </>
-        );
-        return { ...revisionEvent, title: newTitle };
-      } else {
-        return revisionEvent;
-      }
-    });
+    const revisionEvents = getRevisionEventsForTimeline(
+      revisions,
+      {
+        currentUser,
+        canWrite,
+      },
+      revertToRevision,
+    );
 
     return [...revisionEvents, ...moderationEvents];
   }, [

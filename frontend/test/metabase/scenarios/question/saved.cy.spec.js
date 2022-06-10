@@ -125,7 +125,6 @@ describe("scenarios > question > saved", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
     visitQuestion(1);
-    //cy.findByTestId("saved-question-header-button").click();
     questionInfoButton().click();
 
     rightSidebar().within(() => {

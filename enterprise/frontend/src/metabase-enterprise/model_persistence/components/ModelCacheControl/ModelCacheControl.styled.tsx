@@ -6,9 +6,9 @@ export const SpinnerContainer = styled.div`
   justify-content: flex;
   align-items: center;
   padding: 0.75rem 1rem;
-  border: 1px solid rgba(0, 0, 0, 0);
+  border: 1px solid transparent;
 
-  ${LoadingSpinner.SpinnerRoot} {
+  ${LoadingSpinner.Root} {
     height: 18px;
   }
 `;

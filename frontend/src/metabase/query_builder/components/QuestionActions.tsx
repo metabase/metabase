@@ -73,10 +73,12 @@ const QuestionActions = ({
     handleBookmark();
     setAnimation(isBookmarked ? "shrink" : "expand");
   };
-  const bookmarkButtonColor = isBookmarked ? color("brand") : "";
+  const bookmarkButtonColor = isBookmarked ? color("brand") : undefined;
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
 
-  const infoButtonColor = isShowingQuestionInfoSidebar ? color("brand") : "";
+  const infoButtonColor = isShowingQuestionInfoSidebar
+    ? color("brand")
+    : undefined;
 
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();

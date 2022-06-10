@@ -34,7 +34,6 @@ describe("scenarios > models > revision history", () => {
 
   it("should allow reverting to a saved question state", () => {
     cy.visit("/model/3");
-    // openDetailsSidebar();
     openQuestionActions();
     assertIsModel();
     closeQuestionActions();

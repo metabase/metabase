@@ -21,7 +21,7 @@ import {
   TextContainer,
 } from "./ModerationReviewBanner.styled";
 
-const ICON_BUTTON_SIZE = 20;
+const ICON_BUTTON_SIZE = 16;
 
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),

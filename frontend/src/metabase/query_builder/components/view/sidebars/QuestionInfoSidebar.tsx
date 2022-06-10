@@ -17,6 +17,7 @@ interface Props {
 export const QuestionInfoSidebar = ({ question, onSave }: Props) => {
   const description = question.description();
   const isDataset = question.isDataset();
+  const isPersisted = isDataset && question.isPersisted();
 
   const handleSave = (description: string) => {
     if (question.description() !== description) {
@@ -30,11 +31,11 @@ export const QuestionInfoSidebar = ({ question, onSave }: Props) => {
   return (
     <Root>
       <ContentSection>
-        <EditableText value={description} onChange={handleSave} />
+        <EditableText initialValue={description} onChange={handleSave} />
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
       </ContentSection>
 
-      {isDataset && question.isPersisted() && (
+      {isPersisted && (
         <ContentSection extraPadding>
           <PLUGIN_MODEL_PERSISTENCE.ModelCacheManagementSection
             model={question}

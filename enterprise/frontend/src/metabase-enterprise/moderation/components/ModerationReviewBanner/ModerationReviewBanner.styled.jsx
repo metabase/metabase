@@ -18,15 +18,16 @@ export const TextContainer = styled.div`
 `;
 
 export const Text = styled.span`
-  font-size: 14px;
-  line-height: 17px;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  margin-bottom: 0.25rem;
   font-weight: 700;
-  margin-bottom: 4px;
 `;
 
 export const Time = styled.time`
   color: ${color("text-medium")};
-  font-size: 12px;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
 `;
 
 export const IconButton = styled(Button)`

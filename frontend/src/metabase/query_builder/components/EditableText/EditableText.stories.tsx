@@ -12,7 +12,7 @@ const Template: ComponentStory<typeof EditableText> = args => {
   const [{ value }, updateArgs] = useArgs();
   const handleChange = (value: string) => updateArgs({ value });
 
-  return <EditableText {...args} onChange={handleChange} />;
+  return <EditableText value={value} onChange={handleChange} />;
 };
 
 export const Default = Template.bind({});

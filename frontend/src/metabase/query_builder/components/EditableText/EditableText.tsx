@@ -1,21 +1,21 @@
 import React, { useState } from "react";
 
-import { Root, StyledTextArea } from "./EditableText.styled";
+import { EditableTextRoot, EditableTextArea } from "./EditableText.styled";
 
 import { KEY_ESCAPE } from "metabase/lib/keyboard";
 
-type text = string | null | undefined;
+type TEXT = string | null | undefined;
 
-interface Props {
-  value: text;
+interface EditableTextProps {
+  initialValue: TEXT;
   onChange?: (val: string) => void;
 }
 
-const EditableText = ({ value, onChange }: Props) => {
-  const [memo, setMemo] = useState<text>(value);
+const EditableText = ({ initialValue, onChange }: EditableTextProps) => {
+  const [value, setValue] = useState<TEXT>(initialValue);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setMemo(e.target.value);
+    setValue(e.target.value);
   };
 
   const handleBlur = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -26,20 +26,20 @@ const EditableText = ({ value, onChange }: Props) => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === KEY_ESCAPE) {
-      setMemo(value);
+      setValue(initialValue);
     }
   };
 
   return (
-    <Root data-replicated-value={memo}>
-      <StyledTextArea
+    <EditableTextRoot data-replicated-value={value}>
+      <EditableTextArea
         placeholder="Description"
-        value={memo || undefined}
+        value={value || undefined}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
       />
-    </Root>
+    </EditableTextRoot>
   );
 };
 

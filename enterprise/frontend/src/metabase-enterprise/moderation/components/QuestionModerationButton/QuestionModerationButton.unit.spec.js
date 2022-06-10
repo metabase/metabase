@@ -8,8 +8,8 @@ import {
 import Question from "metabase-lib/lib/Question";
 import QuestionModerationButton from "./QuestionModerationButton";
 
-const VERIFIED_ICON_SELECTOR = ".Icon-verified";
-const CLOSE_ICON_SELECTOR = ".Icon-close";
+const VERIFIED_ICON_LABEL = "verified icon";
+const CLOSE_ICON_LABEL = "close icon";
 
 const BASE_QUESTION = {
   id: 1,
@@ -82,13 +82,13 @@ describe("ModerationReviewButton", () => {
     it("verified", () => {
       const { container } = setup({ question: getVerifiedDataset() });
       expect(screen.getByText("Remove verification")).toBeTruthy();
-      expect(container.querySelector(CLOSE_ICON_SELECTOR)).toBeTruthy();
+      expect(container.getByLabelText(CLOSE_ICON_LABEL)).toBeTruthy();
     });
 
     it("not verified", () => {
       const { container } = setup({ question: getUnverifiedDataset() });
       expect(screen.getByText("Verify this model")).toBeTruthy();
-      expect(container.querySelector(VERIFIED_ICON_SELECTOR)).toBeTruthy();
+      expect(container.getByLabelText(VERIFIED_ICON_LABEL)).toBeTruthy();
     });
   });
 });

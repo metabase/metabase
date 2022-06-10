@@ -19,10 +19,11 @@ export const ContentSection = styled.div<ContentSectionProps>`
   ${props => (props.extraPadding ? "padding: 2rem 0;" : "padding: 1rem 0;")}
   border-bottom: 1px solid ${color("border")};
 
-  &:last-child {
+  &:last-of-type {
     border-bottom: none;
+  }
 
-  &:first-child {
+  &:first-of-type {
     padding-top: 0;
   }
 `;
