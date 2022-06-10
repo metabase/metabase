@@ -82,8 +82,8 @@
       (is (= {} (#'sql-jdbc.describe-table/row->types arr-row)))
       (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row)))))
   (testing "JSON row->types handles bigint OK (#21752)"
-    (let [int-row   {:zlob {"blob" 1234234234235234435323453432534543523323}}
-          float-row {:zlob {"blob" 1234234234235234435323453432534543523323.22M}}]
+    (let [int-row   {:zlob {"blob" 123N}}
+          float-row {:zlob {"blob" 1234.02M}}]
       (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/row->types int-row)))
       (is (= {[:zlob "blob"] java.math.BigDecimal} (#'sql-jdbc.describe-table/row->types float-row))))))
 
