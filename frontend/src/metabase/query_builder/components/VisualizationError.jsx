@@ -14,6 +14,7 @@ import {
   QueryError,
   QueryErrorIcon,
   QueryErrorMessage,
+  QueryLink,
 } from "./VisualizationError.styled";
 
 const EmailAdmin = () => {
@@ -148,6 +149,7 @@ class VisualizationError extends Component {
             <Icon name="warning" size="40" />
           </QueryErrorIcon>
           <QueryErrorMessage>{processedError}</QueryErrorMessage>
+          <QueryLink href="https://www.metabase.com/learn/debugging-sql/sql-syntax.html">{t`Learn how to debug SQL errors`}</QueryLink>
         </QueryError>
       );
     } else {
