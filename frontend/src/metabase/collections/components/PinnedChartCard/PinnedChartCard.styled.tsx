@@ -30,5 +30,13 @@ export const CardRoot = styled(Link)`
     ${CardActionMenu} {
       visibility: visible;
     }
+
+    ${ChartSkeleton.Title} {
+      color: ${color("brand")};
+    }
+
+    ${ChartSkeleton.Description} {
+      visibility: visible;
+    }
   }
 `;

@@ -3,7 +3,7 @@ import Tooltip from "metabase/components/Tooltip";
 import {
   SkeletonRoot,
   SkeletonTitle,
-  SkeletonIcon,
+  SkeletonDescription,
 } from "./SkeletonCaption.styled";
 
 export interface SkeletonCaptionProps {
@@ -20,11 +20,14 @@ const SkeletonCaption = ({
       <SkeletonTitle>{name}</SkeletonTitle>
       {description && (
         <Tooltip tooltip={description} maxWidth="22em">
-          <SkeletonIcon name="info" />
+          <SkeletonDescription name="info" />
         </Tooltip>
       )}
     </SkeletonRoot>
   );
 };
 
-export default SkeletonCaption;
+export default Object.assign(SkeletonCaption, {
+  Title: SkeletonTitle,
+  Description: SkeletonDescription,
+});

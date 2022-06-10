@@ -7,6 +7,7 @@ import PieSkeleton from "./PieSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScalarSkeleton from "./ScalarSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
+import SkeletonCaption from "./SkeletonCaption";
 import SmartScalarSkeleton from "./SmartScalarSkeleton";
 import TableSkeleton from "./TableSkeleton";
 import WaterfallSkeleton from "./WaterfallSkeleton";
@@ -51,4 +52,7 @@ const ChartSkeleton = ({
   }
 };
 
-export default ChartSkeleton;
+export default Object.assign(ChartSkeleton, {
+  Title: SkeletonCaption.Title,
+  Description: SkeletonCaption.Description,
+});

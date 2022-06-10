@@ -13,7 +13,8 @@ export const SkeletonTitle = styled(Ellipsified)`
   overflow: hidden;
 `;
 
-export const SkeletonIcon = styled(Icon)`
+export const SkeletonDescription = styled(Icon)`
   color: ${color("text-medium")};
   margin-left: 0.5rem;
+  visibility: hidden;
 `;
