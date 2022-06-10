@@ -173,36 +173,36 @@
   with `parameters` defined on the Card with `card-id`, or template tags on the query."
   [card-id :- su/IntGreaterThanZero request-parameters :- mbql.s/ParameterList]
   (when-not *allow-arbitrary-mbql-parameters*
-    (let [card               (api/check-404 (db/select-one [Card :dataset_query :parameters] :id card-id))
-          template-tag-types (card-template-tags card)
-          parameter-types    (card-parameters card)]
+    (let [card                   (api/check-404 (db/select-one [Card :dataset_query :parameters] :id card-id))
+          types-on-template-tags (card-template-tags card)
+          types-on-parameters    (card-parameters card)]
       (doseq [request-parameter request-parameters
               :let              [parameter-id   (:id request-parameter)
                                  parameter-name (infer-parameter-name request-parameter)]]
         (let [matching-widget-type
-              (if (seq parameter-types)
+              (if (seq types-on-parameters)
                 ;; If (non-template tag) parameters are defined on the card, request parameters should target them by
                 ;; ID, rather than targeting template tags directly (even if they also exist)
-                (or (get parameter-types parameter-id)
+                (or (get types-on-parameters parameter-id)
                     (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter with the ID {1}."
                                          card-id
                                          (pr-str parameter-id))
                                     {:type               qp.error-type/invalid-parameter
                                      :invalid-parameter  request-parameter
-                                     :allowed-parameters (keys parameter-types)})))
+                                     :allowed-parameters (keys types-on-parameters)})))
                 (or
                  ;; Use ID preferentially, but fallback to name if ID is not present, as a safety net in case request
                  ;; parameters are malformed. Only need to do this for parameters targeting template tags since card
                  ;; parameters should always be targeted by ID.
-                 (get template-tag-types parameter-id)
-                 (get template-tag-types parameter-name)
+                 (get types-on-template-tags parameter-id)
+                 (get types-on-template-tags parameter-name)
                  (throw (ex-info (tru "Invalid parameter: Card {0} does not have a template tag with the ID {1} or name {2}."
                                       card-id
                                       (pr-str parameter-id)
                                       (pr-str parameter-name))
                                  {:type               qp.error-type/invalid-parameter
                                   :invalid-parameter  request-parameter
-                                  :allowed-parameters (keys template-tag-types)}))))]
+                                  :allowed-parameters (keys types-on-template-tags)}))))]
           ;; now make sure the type agrees as well
           (check-allowed-parameter-value-type parameter-name matching-widget-type (:type request-parameter)))))))
 
