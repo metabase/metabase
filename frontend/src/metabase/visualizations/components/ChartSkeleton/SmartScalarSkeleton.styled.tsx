@@ -10,7 +10,16 @@ export const SkeletonRoot = styled.div`
   height: 100%;
 `;
 
-export const SkeletonImage = styled.svg`
+export const SkeletonTopImage = styled.svg`
   ${animationStyles};
   color: ${color("bg-medium")};
+  height: 2rem;
+  margin-bottom: 1.25rem;
+`;
+
+export const SkeletonBottomImage = styled.svg`
+  ${animationStyles};
+  color: ${color("bg-medium")};
+  height: 0.5rem;
+  margin-top: 1rem;
 `;
