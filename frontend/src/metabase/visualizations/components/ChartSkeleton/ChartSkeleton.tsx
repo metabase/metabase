@@ -28,6 +28,7 @@ const ChartSkeleton = ({
     case "scatter":
       return <ScatterSkeleton {...props} />;
     case "table":
+    case "pivot":
       return <TableSkeleton {...props} />;
     case "waterfall":
       return <WaterfallSkeleton {...props} />;
