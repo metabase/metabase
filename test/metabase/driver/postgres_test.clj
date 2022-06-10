@@ -287,7 +287,7 @@
       (is (= false (driver/database-supports? :postgres :nested-field-columns no-json-unfold-db))))))
 
 (deftest ^:parallel json-query-test
-  (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
+  (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
