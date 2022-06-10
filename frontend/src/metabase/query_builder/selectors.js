@@ -423,7 +423,7 @@ const getZoomedObjectRowIndex = createSelector(
     if (!PKRowIndexMap) {
       return;
     }
-    return PKRowIndexMap[objectId] || PKRowIndexMap[parseInt(objectId)];
+    return PKRowIndexMap[objectId] ?? PKRowIndexMap[parseInt(objectId)];
   },
 );
 
