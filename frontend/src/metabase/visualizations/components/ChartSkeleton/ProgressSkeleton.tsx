@@ -2,26 +2,34 @@ import React, { HTMLAttributes } from "react";
 import SkeletonCaption from "./SkeletonCaption";
 import { SkeletonImage, SkeletonRoot } from "./FunnelSkeleton.styled";
 
-export interface FunnelSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+export interface ProgressSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   displayName?: string | null;
   description?: string | null;
 }
 
-const FunnelSkeleton = ({
+const ProgressSkeleton = ({
   displayName,
   description,
   ...props
-}: FunnelSkeletonProps): JSX.Element => {
+}: ProgressSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
       <SkeletonCaption name={displayName} description={description} />
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="0 0 370 104"
+        viewBox="0 0 404 57"
         preserveAspectRatio="xMidYMid"
       >
+        <rect
+          opacity=".32"
+          y="12"
+          width="404"
+          height="45"
+          rx="4"
+          fill="currentColor"
+        />
         <path
-          d="m0 0 123 24v56L0 104V0ZM124 24l122 16v32l-122 8V24ZM247 40l123 8v15l-123 9V40Z"
+          d="M0 16a4 4 0 0 1 4-4h298v45H4a4 4 0 0 1-4-4V16ZM302 .485h8.485L302 8.971 293.515.485H302Z"
           fill="currentColor"
         />
       </SkeletonImage>
@@ -29,4 +37,4 @@ const FunnelSkeleton = ({
   );
 };
 
-export default FunnelSkeleton;
+export default ProgressSkeleton;

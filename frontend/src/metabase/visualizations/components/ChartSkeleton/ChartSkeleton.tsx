@@ -6,6 +6,7 @@ import FunnelSkeleton from "./FunnelSkeleton";
 import LineSkeleton from "./LineSkeleton";
 import MapSkeleton from "./MapSkeleton";
 import PieSkeleton from "./PieSkeleton";
+import ProgressSkeleton from "./ProgressSkeleton";
 import RowSkeleton from "./RowSkeleton";
 import ScalarSkeleton from "./ScalarSkeleton";
 import ScatterSkeleton from "./ScatterSkeleton";
@@ -45,6 +46,8 @@ const ChartSkeleton = ({
       return <TableSkeleton {...props} />;
     case "pie":
       return <PieSkeleton {...props} />;
+    case "progress":
+      return <ProgressSkeleton {...props} />;
     case "row":
       return <RowSkeleton {...props} />;
     case "scalar":
