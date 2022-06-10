@@ -40,6 +40,15 @@
     s
     (str s ".")))
 
+(defn capitalize-first-char
+  "Like string/capitalize, only it ignores the rest of the string
+  to retain case-sensitive capitalization, e.g., PostgreSQL."
+  [s]
+  (if (< (count s) 2)
+    (str/upper-case s)
+    (str (str/upper-case (subs s 0 1))
+         (subs s 1))))
+
 (defn lower-case-en
   "Locale-agnostic version of `clojure.string/lower-case`.
   `clojure.string/lower-case` uses the default locale in conversions, turning

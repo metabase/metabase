@@ -1,8 +1,11 @@
 ---
 title: "Persist"
+summary: "API endpoints for Persist."
 ---
 
 # Persist
+
+API endpoints for Persist.
 
   - [GET /api/persist/](#get-apipersist)
   - [GET /api/persist/:persisted-info-id](#get-apipersistpersisted-info-id)
