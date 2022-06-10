@@ -296,8 +296,10 @@
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
+   clojure.lang.BigInt             :type/BigInteger
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.math.BigDecimal            :type/Decimal
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
    java.time.LocalDateTime         :type/DateTime
@@ -311,8 +313,10 @@
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
    :type/Integer    "integer"
+   :type/BigInteger "bigint"
    :type/Float      "double precision"
    :type/Number     "double precision"
+   :type/Decimal    "decimal"
    :type/Boolean    "boolean"
    :type/DateTime   "timestamp"
    :type/Array      "text"

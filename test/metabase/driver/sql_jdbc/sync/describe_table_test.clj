@@ -80,7 +80,12 @@
     (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
           obj-row   {:zlob {"blob" 1323}}]
       (is (= {} (#'describe-table/row->types arr-row)))
-      (is (= {[:zlob "blob"] java.lang.Long} (#'describe-table/row->types obj-row))))))
+      (is (= {[:zlob "blob"] java.lang.Long} (#'describe-table/row->types obj-row))))
+  (testing "JSON row->types handles bigint OK (#21752)"
+    (let [int-row   {:zlob {"blob" 123N}}
+          float-row {:zlob {"blob" 1234.02M}}]
+      (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'describe-table/row->types int-row)))
+      (is (= {[:zlob "blob"] java.math.BigDecimal} (#'describe-table/row->types float-row)))))))
 
 (deftest dont-parse-long-json-xform-test
   (testing "obnoxiously long json should not even get parsed (#22636)"
