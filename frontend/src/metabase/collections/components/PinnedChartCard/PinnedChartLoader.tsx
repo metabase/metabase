@@ -101,6 +101,8 @@ const getErrorIcon = (error?: QuestionError, result?: QuestionResult) => {
 
   if (!errorResponse) {
     return undefined;
+  } else if (errorResponse.status === 403) {
+    return "lock";
   } else {
     return "warning";
   }
