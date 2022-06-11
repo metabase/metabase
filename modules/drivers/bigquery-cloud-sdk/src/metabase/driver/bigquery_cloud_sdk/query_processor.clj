@@ -217,6 +217,20 @@
   [x]
   (:bigquery-cloud-sdk/temporal-type (meta x)))
 
+(def ^:private temporal-type->supported-units
+  {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
+   :datetime  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year}
+   :date      #{:day :week :month :quarter :year}
+   :time      #{:microsecond :millisecond :second :minute :hour}})
+
+(defmethod temporal-type :+
+  [[_ f [_interval _amount unit]]]
+  (when-let [field-type (temporal-type f)]
+    (if (and (= :timestamp field-type)
+             (not (contains? (temporal-type->supported-units :timestamp) unit)))
+      :datetime
+      field-type)))
+
 (defn- with-temporal-type {:style/indent 0} [x new-type]
   (if (= (temporal-type x) new-type)
     x
@@ -297,12 +311,6 @@
 (defmethod ->temporal-type [:temporal-type :absolute-datetime]
   [target-type [_ t unit]]
   [:absolute-datetime (->temporal-type target-type t) unit])
-
-(def ^:private temporal-type->supported-units
-  {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
-   :datetime  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year}
-   :date      #{:day :week :month :quarter :year}
-   :time      #{:microsecond :millisecond :second :minute :hour}})
 
 (defmethod ->temporal-type [:temporal-type :relative-datetime]
   [target-type [_ _ unit :as clause]]

@@ -109,6 +109,27 @@
                    {:aggregation [[:count]]
                     :filter      [:between [:datetime-field $date :day] "2015-04-01" "2015-05-01"]}))))))))
 
+(deftest between-temporal-arithmetic-test
+  (testing "Should be able to use temporal arithmetic expressions in a `:between` filter (#22531)"
+    ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
+    ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
+    ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME)
+    (mt/with-clock #t "2022-06-10T16:12-08:00[US/Pacific]"
+      (mt/test-drivers (conj (mt/normal-drivers-with-feature :expressions) :mongo)
+        (mt/dataset attempted-murders
+          (doseq [offset-unit [:year :day]
+                  interval-unit [:year :day]]
+            (let [query (mt/mbql-query attempts
+                          {:aggregation [[:count]]
+                           :filter      [:between [:+ !default.datetime_tz [:interval 3 offset-unit]]
+                                         [:relative-datetime -7 interval-unit]
+                                         [:relative-datetime 0 interval-unit]]})
+                  expected-count (get {[:day :year] 20} [offset-unit interval-unit] 0)]
+              (mt/with-native-query-testing-context query
+                (let [[[result]] (mt/formatted-rows [int]
+                                   (qp/process-query query))]
+                  (is (= expected-count result)))))))))))
+
 (deftest or-test
   (mt/test-drivers (mt/normal-drivers)
     (testing ":or, :<=, :="
