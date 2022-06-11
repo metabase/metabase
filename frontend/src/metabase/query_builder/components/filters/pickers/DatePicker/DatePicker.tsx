@@ -234,6 +234,7 @@ type Props = {
   hideTimeSelectors?: boolean;
   hideEmptinessOperators?: boolean;
   disableOperatorSelection?: boolean;
+  disableChangingDimension?: boolean;
 
   primaryColor?: string;
   minWidth?: number | null;
@@ -251,6 +252,7 @@ const DatePicker: React.FC<Props> = props => {
     onFilterChange,
     isSidebar,
     disableOperatorSelection,
+    disableChangingDimension,
     primaryColor,
     onCommit,
     children,
@@ -265,8 +267,9 @@ const DatePicker: React.FC<Props> = props => {
   const Widget = operator && operator.widget;
 
   const enableBackButton =
-    (!showShortcuts && !disableOperatorSelection) ||
-    (showShortcuts && props.onBack);
+    !disableChangingDimension &&
+    ((!showShortcuts && !disableOperatorSelection) ||
+      (showShortcuts && props.onBack));
   const onBack = () => {
     if (!operator || showShortcuts) {
       props.onBack?.();
@@ -279,7 +282,7 @@ const DatePicker: React.FC<Props> = props => {
     <div className={cx(className)}>
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
-          className={"p2"}
+          className="p2"
           primaryColor={primaryColor}
           onFilterChange={filter => {
             setShowShortcuts(false);
@@ -296,6 +299,7 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onBack={onBack}
               operators={operators}
+              primaryColor={primaryColor}
               onFilterChange={onFilterChange}
             />
           ) : null}

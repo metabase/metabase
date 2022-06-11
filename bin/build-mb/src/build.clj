@@ -5,6 +5,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [clojure.tools.build.api :as b]
             [environ.core :as env]
             [flatland.ordered.map :as ordered-map]
             [i18n.create-artifacts :as i18n]
@@ -48,15 +49,13 @@
   [edition]
   {:pre [(#{:oss :ee} edition)]}
   (u/step "Generate backend license information from jar files"
-    (let [[classpath]               (u/sh {:dir    u/project-root-directory
-                                           :quiet? true}
-                                          "clojure" (str "-A" edition) "-Spath")
+    (let [basis                     (b/create-basis {:project (u/filename u/project-root-directory "deps.edn")})
           output-filename           (u/filename u/project-root-directory
                                                 "resources"
                                                 "license-backend-third-party.txt")
-          {:keys [without-license]} (license/generate {:classpath       classpath
+          {:keys [without-license]} (license/generate {:basis           basis
                                                        :backfill        (edn/read-string
-                                                                          (slurp (io/resource "overrides.edn")))
+                                                                         (slurp (io/resource "overrides.edn")))
                                                        :output-filename output-filename
                                                        :report?         false})]
       (when (seq without-license)

@@ -3,22 +3,29 @@ import {
   popover,
   modal,
   describeEE,
-  describeOSS,
+  isOSS,
   assertPermissionTable,
   modifyPermission,
   selectSidebarItem,
   assertSidebarItems,
   isPermissionDisabled,
   visitQuestion,
+  visitDashboard,
 } from "__support__/e2e/cypress";
+
+import { SAMPLE_DB_ID, USER_GROUPS } from "__support__/e2e/cypress_data";
+
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
 
 const DATA_ACCESS_PERMISSION_INDEX = 0;
 const NATIVE_QUERIES_PERMISSION_INDEX = 1;
 
-describeOSS("scenarios > admin > permissions", () => {
+describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
   beforeEach(() => {
+    cy.onlyOn(isOSS);
+
     restore();
     cy.signInAsAdmin();
   });
@@ -503,34 +510,6 @@ describeOSS("scenarios > admin > permissions", () => {
       });
     });
   });
-
-  // TODO: uncomment when starts returning an error
-  it.skip("block permission block access to questions that use blocked sources", () => {
-    cy.signInAsNormalUser();
-
-    visitQuestion(1);
-    cy.findAllByText("Orders");
-
-    cy.signInAsAdmin();
-
-    cy.visit("/admin/permissions/data/database/1");
-
-    ["All Users", "collection", "data", "nosql", "readonly"].forEach(group =>
-      modifyPermission(group, DATA_ACCESS_PERMISSION_INDEX, "Block"),
-    );
-
-    cy.findByText("Save changes").click();
-
-    modal().within(() => {
-      cy.button("Yes").click();
-    });
-
-    cy.signInAsNormalUser();
-
-    visitQuestion(1);
-
-    cy.findAllByText("Orders").should("not.exist");
-  });
 });
 
 describeEE("scenarios > admin > permissions", () => {
@@ -622,5 +601,37 @@ describeEE("scenarios > admin > permissions", () => {
       isPermissionDisabled(DATA_ACCESS_PERMISSION_INDEX, "Block", false);
       isPermissionDisabled(NATIVE_QUERIES_PERMISSION_INDEX, "No", true);
     });
+  });
+
+  it("Visualization and Settings query builder buttons are not visible for questions that use blocked data sources", () => {
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+        },
+      },
+    });
+
+    cy.signIn("nodata");
+    visitQuestion(1);
+
+    cy.findByText("There was a problem with your question");
+    cy.findByText("Settings").should("not.exist");
+    cy.findByText("Visualization").should("not.exist");
+  });
+
+  it("shows permission error for cards that use blocked data sources", () => {
+    cy.updatePermissionsGraph({
+      [ALL_USERS_GROUP]: {
+        [SAMPLE_DB_ID]: {
+          data: { schemas: "block" },
+        },
+      },
+    });
+
+    cy.signIn("nodata");
+    visitDashboard(1);
+
+    cy.findByText("Sorry, you don't have permission to see this card.");
   });
 });

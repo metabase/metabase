@@ -51,9 +51,7 @@
                                   ["'self'"
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
-                                   "https://apis.google.com"
-                                   "https://*.googleapis.com"
-                                   "*.gstatic.com"
+                                   "https://accounts.google.com"
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
@@ -69,13 +67,16 @@
                                  ;; TODO - double check that we actually need this for Google Auth
                                  "https://accounts.google.com"]
                   :style-src    ["'self'"
-                                 "'unsafe-inline'"]
+                                 "'unsafe-inline'"
+                                 "https://accounts.google.com"]
                   :font-src     ["'self'"
                                  (when config/is-dev?
                                    "localhost:8080")]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"
+                                 ;; Google Identity Services
+                                 "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
                                  ;; Google analytics

@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [honeysql.format :as hformat]
             [java-time :as t]
             [metabase.config :as config]
             [metabase.db.spec :as mdb.spec]
@@ -14,9 +15,13 @@
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+            [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.models.field :as field]
+            [metabase.query-processor.store :as qp.store]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.util.add-alias-info :as add]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [deferred-tru trs]])
@@ -30,9 +35,10 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _] true)
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
-
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -117,18 +123,18 @@
   [_ message]
   (condp re-matches message
     #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
-    (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
+    :cannot-connect-check-host-and-port
 
     #"^Unknown database .*$"
-    (driver.common/connection-error-messages :database-name-incorrect)
+    :database-name-incorrect
 
     #"Access denied for user.*$"
-    (driver.common/connection-error-messages :username-or-password-incorrect)
+    :username-or-password-incorrect
 
     #"Must specify port after ':' in connection string"
-    (driver.common/connection-error-messages :invalid-hostname)
+    :invalid-hostname
 
-    #".*"                               ; default
+    ;; else
     message))
 
 (defmethod sql-jdbc.sync/db-default-timezone :mysql
@@ -168,6 +174,18 @@
   [_]
   :sunday)
 
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
+
+(defmethod sql-jdbc.sync/describe-nested-field-columns :mysql
+  [driver database table]
+  (let [spec   (sql-jdbc.conn/db->pooled-connection-spec database)
+        fields (sql-jdbc.describe-table/describe-nested-field-columns driver spec table)]
+    (if (> (count fields) max-nested-field-columns)
+      #{}
+      fields)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
@@ -204,6 +222,31 @@
 (defmethod sql.qp/->honeysql [:mysql :length]
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/json-query :mysql
+  [_ identifier stored-field]
+  (letfn [(handle-name [x] (str "\"" (if (number? x) (str x) (name x)) "\""))]
+    (let [nfc-path             (:nfc_path stored-field)
+          unwrapped-identifier (:form identifier)
+          parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier stored-field)
+          jsonpath-query       (format "$.%s" (str/join "." (map handle-name (rest nfc-path))))]
+      (reify
+        hformat/ToSql
+        (to-sql [_]
+          (hformat/to-params-default jsonpath-query "nfc_path")
+          (format "JSON_EXTRACT(%s, ?)" (hformat/to-sql parent-identifier)))))))
+
+(defmethod sql.qp/->honeysql [:mysql :field]
+  [driver [_ id-or-name opts :as clause]]
+  (let [stored-field (when (integer? id-or-name)
+                       (qp.store/field id-or-name))
+        parent-method (get-method sql.qp/->honeysql [:sql :field])
+        identifier    (parent-method driver clause)]
+    (if (field/json-field? stored-field)
+      (if (::sql.qp/forced-alias opts)
+        (keyword (::add/source-alias opts))
+        (sql.qp/json-query :mysql identifier stored-field))
+      identifier)))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -306,6 +349,13 @@
     :YEAR       :type/Date}
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
+
+(defmethod sql-jdbc.sync/column->semantic-type :mysql
+  [_ database-type _]
+  ;; More types to be added when we start caring about them
+  (case database-type
+    "JSON"  :type/SerializedJSON
+    nil))
 
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."

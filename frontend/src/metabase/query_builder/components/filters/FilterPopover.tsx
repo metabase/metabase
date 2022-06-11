@@ -19,7 +19,7 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { FieldDimension } from "metabase-lib/lib/Dimension";
 import { isStartingFrom } from "metabase/lib/query_time";
-import Button from "metabase/core/components/Button";
+import { Button } from "./FilterPopover.styled";
 import DatePicker from "./pickers/DatePicker/DatePicker";
 import TimePicker from "./pickers/TimePicker";
 
@@ -38,6 +38,7 @@ type Props = {
   onChangeFilter: (filter: Filter) => void;
 
   onClose?: () => void;
+  commitOnBlur?: boolean;
 
   noCommitButton?: boolean;
   showFieldPicker?: boolean;
@@ -60,6 +61,7 @@ export default class FilterPopover extends Component<Props, State> {
     style: {},
     showFieldPicker: true,
     showCustom: true,
+    commitOnBlur: false,
   };
 
   constructor(props: Props) {
@@ -82,6 +84,10 @@ export default class FilterPopover extends Component<Props, State> {
         filter: filter.setQuery(nextProps.query),
       });
     }
+  }
+
+  componentWillUnmount() {
+    this.props.commitOnBlur && this.handleCommit();
   }
 
   setFilter(filter: Filter, hideShortcuts = true) {
@@ -258,12 +264,12 @@ export default class FilterPopover extends Component<Props, State> {
               onBack={onBack}
               onCommit={this.handleCommit}
               onFilterChange={this.handleFilterChange}
+              disableChangingDimension={!showFieldPicker}
             >
               {!isSidebar ? (
                 <Button
                   data-ui-tag="add-filter"
-                  purple
-                  style={{ backgroundColor: primaryColor }}
+                  primaryColor={primaryColor}
                   disabled={!filter.isValid()}
                   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                   // @ts-ignore

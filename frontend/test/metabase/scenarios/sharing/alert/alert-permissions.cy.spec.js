@@ -67,7 +67,7 @@ describe("scenarios > alert > alert permissions", () => {
       visitQuestion(2);
       cy.icon("bell").click();
 
-      cy.findByText("You're receiving Bobby's alerts");
+      cy.findByText("You're receiving Bobby Tables's alerts");
       cy.findByText("Set up your own alert");
     });
 

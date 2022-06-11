@@ -71,8 +71,7 @@ Object.values(SECTIONS).map((section, index) => {
 const getGALabelForAction = action =>
   action ? `${action.section || ""}:${action.name || ""}` : null;
 
-@connect()
-export default class ChartClickActions extends Component {
+class ChartClickActions extends Component {
   state = {
     popoverAction: null,
   };
@@ -260,6 +259,8 @@ export default class ChartClickActions extends Component {
     );
   }
 }
+
+export default connect()(ChartClickActions);
 
 export const ChartClickAction = ({ action, isLastItem, handleClickAction }) => {
   // This is where all the different action button styles get applied.

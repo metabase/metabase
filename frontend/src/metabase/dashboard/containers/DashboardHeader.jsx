@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
 
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
@@ -36,9 +37,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-@Bookmark.loadList()
-@connect(mapStateToProps, mapDispatchToProps)
-export default class DashboardHeader extends Component {
+class DashboardHeader extends Component {
   constructor(props) {
     super(props);
 
@@ -57,6 +56,7 @@ export default class DashboardHeader extends Component {
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
+    isAdditionalInfoVisible: PropTypes.bool,
 
     refreshPeriod: PropTypes.number,
     setRefreshElapsedHook: PropTypes.func.isRequired,
@@ -252,7 +252,7 @@ export default class DashboardHeader extends Component {
         <Tooltip key="revision-history" tooltip={t`Revision history`}>
           <Link
             to={location.pathname + "/history"}
-            data-metabase-event={"Dashboard;Revisions"}
+            data-metabase-event="Dashboard;Revisions"
           >
             {t`Revision history`}
           </Link>
@@ -286,7 +286,7 @@ export default class DashboardHeader extends Component {
           <Link
             className={extraButtonClassNames}
             to={location.pathname + "/details"}
-            data-metabase-event={"Dashboard;EditDetails"}
+            data-metabase-event="Dashboard;EditDetails"
           >
             {t`Edit dashboard details`}
           </Link>,
@@ -306,7 +306,7 @@ export default class DashboardHeader extends Component {
         <Link
           className={extraButtonClassNames}
           to={location.pathname + "/history"}
-          data-metabase-event={"Dashboard;EditDetails"}
+          data-metabase-event="Dashboard;EditDetails"
         >
           {t`Revision history`}
         </Link>,
@@ -316,7 +316,7 @@ export default class DashboardHeader extends Component {
         <Link
           className={extraButtonClassNames}
           to={location.pathname + "/copy"}
-          data-metabase-event={"Dashboard;Copy"}
+          data-metabase-event="Dashboard;Copy"
         >
           {t`Duplicate`}
         </Link>,
@@ -327,7 +327,7 @@ export default class DashboardHeader extends Component {
           <Link
             className={extraButtonClassNames}
             to={location.pathname + "/move"}
-            data-metabase-event={"Dashboard;Move"}
+            data-metabase-event="Dashboard;Move"
           >
             {t`Move`}
           </Link>,
@@ -339,7 +339,7 @@ export default class DashboardHeader extends Component {
           <Link
             className={extraButtonClassNames}
             to={location.pathname + "/archive"}
-            data-metabase-event={"Dashboard;Archive"}
+            data-metabase-event="Dashboard;Archive"
           >
             {t`Archive`}
           </Link>,
@@ -374,7 +374,16 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    const { dashboard, location, onChangeLocation } = this.props;
+    const {
+      dashboard,
+      location,
+      isEditing,
+      isFullscreen,
+      isAdditionalInfoVisible,
+      onChangeLocation,
+    } = this.props;
+
+    const hasLastEditInfo = dashboard["last-edit-info"] != null;
 
     return (
       <Header
@@ -382,9 +391,10 @@ export default class DashboardHeader extends Component {
         objectType="dashboard"
         analyticsContext="Dashboard"
         item={dashboard}
-        isEditing={this.props.isEditing}
-        hasBadge={!this.props.isEditing && !this.props.isFullscreen}
-        isEditingInfo={this.props.isEditing}
+        isEditing={isEditing}
+        isBadgeVisible={!isEditing && !isFullscreen && isAdditionalInfoVisible}
+        isLastEditInfoVisible={hasLastEditInfo && isAdditionalInfoVisible}
+        isEditingInfo={isEditing}
         headerButtons={this.getHeaderButtons()}
         editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You're editing this dashboard.`}
@@ -397,3 +407,8 @@ export default class DashboardHeader extends Component {
     );
   }
 }
+
+export default _.compose(
+  Bookmark.loadList(),
+  connect(mapStateToProps, mapDispatchToProps),
+)(DashboardHeader);

@@ -31,7 +31,8 @@
   (merge
    models/IModelDefaults
    {:types          (constantly {:definition :metric-segment-definition})
-    :properties     (constantly {:timestamped? true})
+    :properties     (constantly {:timestamped? true
+                                 :entity_id    true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})
   mi/IObjectPermissions

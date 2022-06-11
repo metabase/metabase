@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
+import _ from "underscore";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 
@@ -28,14 +29,8 @@ const getQuestions = createSelector(
 );
 
 // TODO: rework this so we don't have to load all cards up front
-@Questions.loadList({ query: { f: "all" } })
-@connect(
-  (state, ownProps) => ({
-    questions: getQuestions(state, ownProps),
-  }),
-  { loadMetadataForQueries },
-)
-export default class AddSeriesModal extends Component {
+
+class AddSeriesModal extends Component {
   constructor(props, context) {
     super(props, context);
 
@@ -210,7 +205,7 @@ export default class AddSeriesModal extends Component {
               {t`Done`}
             </button>
             <button
-              data-metabase-event={"Dashboard;Edit Series Modal;cancel"}
+              data-metabase-event="Dashboard;Edit Series Modal;cancel"
               className="Button ml2"
               onClick={this.props.onClose}
             >
@@ -243,3 +238,13 @@ export default class AddSeriesModal extends Component {
     );
   }
 }
+
+export default _.compose(
+  Questions.loadList({ query: { f: "all" } }),
+  connect(
+    (state, ownProps) => ({
+      questions: getQuestions(state, ownProps),
+    }),
+    { loadMetadataForQueries },
+  ),
+)(AddSeriesModal);

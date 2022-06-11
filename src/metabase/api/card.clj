@@ -12,6 +12,7 @@
             [metabase.api.dataset :as api.dataset]
             [metabase.api.timeline :as api.timeline]
             [metabase.async.util :as async.u]
+            [metabase.driver :as driver]
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
@@ -21,6 +22,7 @@
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
+            [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
             [metabase.models.query.permissions :as query-perms]
@@ -34,6 +36,7 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
             [metabase.sync.analyze.query-results :as qr]
+            [metabase.task.persist-refresh :as task.persist-refresh]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [metabase.util.i18n :refer [trs tru]]
@@ -151,16 +154,18 @@
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
-  (u/prog1 (-> (Card id)
-               (hydrate :creator
-                        :dashboard_count
-                        :can_write
-                        :average_query_time
-                        :last_query_start
-                        :collection [:moderation_reviews :moderator_details])
-               api/read-check
-               (last-edit/with-last-edit-info :card))
-    (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
+  (let [card (-> (Card id)
+                 (hydrate :creator
+                          :bookmarked
+                          :dashboard_count
+                          :can_write
+                          :average_query_time
+                          :last_query_start
+                          :collection [:moderation_reviews :moderator_details])
+                 api/read-check
+                 (last-edit/with-last-edit-info :card))]
+    (u/prog1 (cond-> card (:dataset card) (hydrate :persisted))
+      (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*)))))
 
 (api/defendpoint GET "/:id/timelines"
   "Get the timelines for card with ID. Looks up the collection the card is in and uses that."
@@ -265,14 +270,16 @@
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
   thrown. Closing this channel before it finishes will cancel the Card creation."
-  [{:keys [dataset_query result_metadata dataset], :as card-data}]
+  [{:keys [dataset_query result_metadata dataset parameters parameter_mappings], :as card-data}]
   ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required by
   ;; `api/maybe-reconcile-collection-position!`
-  (let [data-keys            [:dataset_query :description :display :name
-                              :visualization_settings :collection_id :collection_position :cache_ttl]
+  (let [data-keys            [:dataset_query :description :display :name :visualization_settings
+                              :parameters :parameter_mappings :collection_id :collection_position :cache_ttl]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*
-                                    :dataset (boolean (:dataset card-data)))
+                                    :dataset (boolean (:dataset card-data))
+                                    :parameters (or parameters [])
+                                    :parameter_mappings (or parameter_mappings []))
         result-metadata-chan (result-metadata-async {:query dataset_query
                                                      :metadata result_metadata
                                                      :dataset? dataset})
@@ -293,8 +300,10 @@
 (api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
-                result_metadata visualization_settings cache_ttl], :as body} :body}]
+                parameters parameter_mappings result_metadata visualization_settings cache_ttl], :as body} :body}]
   {name                   su/NonBlankString
+   parameters             (s/maybe [su/Parameter])
+   parameter_mappings     (s/maybe [su/ParameterMapping])
    description            (s/maybe su/NonBlankString)
    display                su/NonBlankString
    visualization_settings su/Map
@@ -497,7 +506,7 @@
         (u/select-keys-when card-updates
           :present #{:collection_id :collection_position :description :cache_ttl :dataset}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                     :embedding_params :result_metadata})))
+                     :parameters :parameter_mappings :embedding_params :result_metadata})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
       (delete-alerts-if-needed! card-before-update card)
@@ -511,15 +520,17 @@
                    :average_query_time
                    :last_query_start
                    :collection [:moderation_reviews :moderator_details])
+          (cond-> (:dataset card) (hydrate :persisted))
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
-                   collection_position enable_embedding embedding_params result_metadata
+                   collection_position enable_embedding embedding_params result_metadata parameters
                    cache_ttl dataset]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
+   parameters             (s/maybe [su/Parameter])
    dataset_query          (s/maybe su/Map)
    dataset                (s/maybe s/Bool)
    display                (s/maybe su/NonBlankString)
@@ -754,5 +765,49 @@
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
+
+(api/defendpoint POST "/:card-id/persist"
+  "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this
+  query in place of the model's query."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/let-404 [{:keys [dataset database_id] :as card} (Card card-id)]
+    (let [database (Database database_id)]
+      (api/write-check database)
+      (when-not (driver/database-supports? (:engine database)
+                                           :persist-models database)
+        (throw (ex-info (tru "Database does not support persisting")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not (driver/database-supports? (:engine database)
+                                           :persist-models-enabled database)
+        (throw (ex-info (tru "Persisting models not enabled for database")
+                        {:status-code 400
+                         :database    (:name database)})))
+      (when-not dataset
+        (throw (ex-info (tru "Card is not a model") {:status-code 400})))
+      (when-let [persisted-info (persisted-info/turn-on-model! api/*current-user-id* card)]
+        (task.persist-refresh/schedule-refresh-for-individual! persisted-info))
+      api/generic-204-no-content)))
+
+(api/defendpoint POST "/:card-id/refresh"
+  "Refresh the persisted model caching `card-id`."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/let-404 [persisted-info (db/select-one PersistedInfo :card_id card-id)]
+    (api/write-check (Database (:database_id persisted-info)))
+    (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
+    api/generic-204-no-content))
+
+(api/defendpoint POST "/:card-id/unpersist"
+  "Unpersist this model. Deletes the persisted table backing the model and all queries after this will use the card's
+  query rather than the saved version of the query."
+  [card-id]
+  {card-id su/IntGreaterThanZero}
+  (api/let-404 [_card (Card card-id)]
+    (api/let-404 [persisted-info (PersistedInfo :card_id card-id)]
+      (api/write-check (Database (:database_id persisted-info)))
+      (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off")
+      api/generic-204-no-content)))
 
 (api/define-routes)

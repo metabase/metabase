@@ -90,7 +90,7 @@
       ;; We should send an email if `slack-token-valid?` is `true` or `nil` (i.e. a pre-existing bot integration is
       ;; being used)
       (when (slack-token-valid?) (messages/send-slack-token-error-emails!))
-      (slack-token-valid? false))
+      (slack-token-valid?! false))
     (if invalid-token?
       (log/warn (u/pprint-to-str 'red (trs "🔒 Your Slack authorization token is invalid or has been revoked. Please update your integration in Admin Settings -> Slack.")))
       (log/warn (u/pprint-to-str 'red error)))
@@ -219,6 +219,12 @@
    (slack-channels-and-usernames-last-updated)
    (t/minutes 10)))
 
+(defn clear-channel-cache!
+  "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
+  []
+  (slack-channels-and-usernames-last-updated! zoned-time-epoch)
+  (slack-cached-channels-and-usernames! []))
+
 (defn refresh-channels-and-usernames!
   "Refreshes users and conversations in slack-cache. finds both in parallel, sets
   [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
@@ -227,8 +233,8 @@
     (log/info "Refreshing slack channels and usernames.")
     (let [users (future (vec (users-list)))
           conversations (future (vec (conversations-list)))]
-      (slack-cached-channels-and-usernames (concat @conversations @users))
-      (slack-channels-and-usernames-last-updated (t/zoned-date-time)))))
+      (slack-cached-channels-and-usernames! (concat @conversations @users))
+      (slack-channels-and-usernames-last-updated! (t/zoned-date-time)))))
 
 (defn refresh-channels-and-usernames-when-needed!
   "Refreshes users and conversations in slack-cache on a per-instance lock."

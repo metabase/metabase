@@ -10,6 +10,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
+            [metabase.util.fonts :as u.fonts]
             [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
             [metabase.util.password :as u.password]
             [toucan.db :as db])
@@ -53,6 +54,12 @@
   :visibility :public
   :type       :timestamp
   :default    nil)
+
+(defsetting startup-time-millis
+  (deferred-tru "The startup time in milliseconds")
+  :visibility :public
+  :type       :double
+  :default    0.0)
 
 (defsetting site-name
   (deferred-tru "The name used for this instance of Metabase.")
@@ -106,14 +113,14 @@
       (throw (ex-info (tru "Invalid site URL: {0}" (pr-str s)) {:url (pr-str s)})))
     s))
 
-(declare redirect-all-requests-to-https)
+(declare redirect-all-requests-to-https!)
 
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (str (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
-       " "
-       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
+  (deferred-tru
+   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+        "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
@@ -125,13 +132,13 @@
                   https?    (some-> new-value (str/starts-with?  "https:"))]
               ;; if the site URL isn't HTTPS then disable force HTTPS redirects if set
               (when-not https?
-                (redirect-all-requests-to-https false))
+                (redirect-all-requests-to-https! false))
               (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
-       " "
-       (deferred-tru "Users can individually override this default language from their own account settings."))
+  (deferred-tru
+    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
+         "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -200,6 +207,24 @@
   :type    :boolean
   :default false)
 
+(defsetting persisted-models-enabled
+  (deferred-tru "Allow persisting models into the source database.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated)
+
+(defsetting persisted-model-refresh-interval-hours
+  (deferred-tru "Hour interval to refresh persisted models.")
+  :type       :integer
+  :default    6
+  :visibility :admin)
+
+(defsetting persisted-model-refresh-anchor-time
+  (deferred-tru "Anchor time to begin refreshing persisted models.")
+  :type       :string
+  :default    "00:00"
+  :visibility :admin)
+
 (def ^:private ^:const global-max-caching-kb
   "Although depending on the database, we can support much larger cached values (1GB for PG, 2GB for H2 and 4GB for
   MySQL) we are not curretly setup to deal with data of that size. The datatypes we are using will hold this data in
@@ -239,9 +264,10 @@
   :default 60.0)
 
 (defsetting query-caching-ttl-ratio
-  (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
-       " "
-       (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
+  (deferred-tru
+   (str "To determine how long each saved question''s cached result should stick around, we take the query''s average "
+        "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
+        "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
 
@@ -256,10 +282,25 @@
   :default    "Metabase")
 
 (defsetting application-colors
-  (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru
+   (str "These are the primary colors used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
   :default    {})
+
+(defsetting application-font
+  (deferred-tru
+   (str "This is the primary font used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
+  :visibility :public
+  :type       :string
+  :default    "Lato"
+  :setter (fn [new-value]
+              (when new-value
+                (when-not (u.fonts/available-font? new-value)
+                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+              (setting/set-value-of-type! :string :application-font new-value)))
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -298,12 +339,16 @@
                     true))))
 
 (defsetting breakout-bins-num
-  (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
+  (deferred-tru
+    (str "When using the default binning strategy and a number of bins is not provided, "
+         "this number will be used as the default."))
   :type :integer
   :default 8)
 
 (defsetting breakout-bin-width
-  (deferred-tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
+  (deferred-tru
+   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+        "this number will be used as the default bin width (in degrees)."))
   :type :double
   :default 10.0)
 
@@ -320,19 +365,25 @@
   :visibility :authenticated)
 
 (defsetting show-homepage-data
-  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display data on the homepage. "
+        "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-xrays
-  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-pin-message
-  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
@@ -351,6 +402,12 @@
            (not (enable-public-sharing)))
     (assoc object :public_uuid nil)
     object))
+
+(defsetting available-fonts
+  "Available fonts"
+  :visibility :public
+  :setter     :none
+  :getter     u.fonts/available-fonts)
 
 (defsetting available-locales
   "Available i18n locales"
@@ -461,9 +518,9 @@
                   (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
-  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
-       " "
-       (deferred-tru "Defaults to false if any non-default database has already finished syncing for this instance."))
+  (deferred-tru
+    (str "Whether an introductory modal should be shown after the next database connection is added. "
+         "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :getter     (fn []

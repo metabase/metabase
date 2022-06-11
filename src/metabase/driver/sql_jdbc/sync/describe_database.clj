@@ -29,6 +29,8 @@
 (defmethod sql-jdbc.sync.interface/filtered-syncable-schemas :sql-jdbc
   [driver _ metadata schema-inclusion-patterns schema-exclusion-patterns]
   (eduction (remove (set (sql-jdbc.sync.interface/excluded-schemas driver)))
+            ;; remove the persisted_model schemas
+            (remove (fn [schema] (re-find #"^metabase_cache.*" schema)))
             (filter (partial driver.s/include-schema? schema-inclusion-patterns schema-exclusion-patterns))
             (all-schemas metadata)))
 

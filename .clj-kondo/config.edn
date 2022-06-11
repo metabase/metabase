@@ -15,7 +15,6 @@
                       (clojure.core.logic/fresh)
                       (clojure.core.logic/matcha)
                       (clojure.core.logic/run)
-                      (metabase.test/with-temporary-setting-values)
                       (clojure.test/is [query= sql= partial=])
                       (toucan.util.test/with-temp*)
                       (metabase.test/with-temp*)
@@ -23,10 +22,19 @@
                       (taoensso.nippy/extend-thaw)
                       (metabase.driver.druid.query-processor-test/druid-query-returning-rows)
                       (clojure.tools.macro/macrolet)]}
-           :refer-all {:exclude [clojure.test
+           :refer-all {:level   :warning
+                       :exclude [clojure.test
                                  monger.operators]}
-           :unexpected-recur {:level :off}
-           :unused-referred-var {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :unexpected-recur             {:level :off}
+           :unused-referred-var          {:exclude {compojure.core [GET DELETE POST PUT]}}
+           :missing-else-branch          {:level :warning}
+           :misplaced-docstring          {:level :warning}
+           :non-arg-vec-return-type-hint {:level :warning}
+           :missing-body-in-when         {:level :warning}
+           :missing-docstring            {:level :warning}
+           ;; TODO (braden): This is useful, but it doesn't grok eg. enterprise/backend/src
+           :namespace-name-mismatch      {:level :off}
+           :use                          {:level :warning}
            :deprecated-var {:exclude {metabase.query-processor.util/normalize-token
                                       {:namespaces ["metabase.*"]}
                                       metabase.db.data-migrations/data-migrations
@@ -324,6 +332,7 @@
                                         metabase.util.i18n                                              i18n
                                         metabase.util.i18n.impl                                         i18n.impl
                                         metabase.util.password                                          u.password
+                                        metabase.util.schema                                            su
                                         metabase.util.ui-logic                                          ui-logic
                                         metabase.util.urls                                              urls
                                         metabuild-common.core                                           u
@@ -352,9 +361,11 @@
            metabase.db.liquibase/with-liquibase clojure.core/let
            metabase.models.setting.multi-setting/define-multi-setting clojure.core/def
            metabase.integrations.ldap/with-ldap-connection clojure.core/fn
+           metabase.test/are+ clojure.test/are
            metabase.test/defdataset clojure.core/def
            metabase.test/with-temp-file clojure.core/let
            metabase.test/with-open-channels clojure.core/let
+           metabase.test/with-user-in-groups clojure.core/let
            metabase.test.data.interface/defdataset clojure.core/def
            metabase.test.data.interface/defdataset-edn clojure.core/def
            metabase.driver.mongo.util/with-mongo-connection clojure.core/let
@@ -372,25 +383,35 @@
            honeysql.helpers/defhelper clj-kondo.lint-as/def-catch-all
            clojure.core.logic/defne clj-kondo.lint-as/def-catch-all
            monger.operators/defoperator clojure.core/def}
- :hooks   {:analyze-call {metabase.test.data/dataset        hooks.metabase.test.data/dataset
-                          metabase.test/dataset             hooks.metabase.test.data/dataset
-                          metabase.test.data/$ids           hooks.metabase.test.data/$ids
-                          metabase.test/$ids                hooks.metabase.test.data/$ids
-                          metabase.test.data/mbql-query     hooks.metabase.test.data/$ids
-                          metabase.test/mbql-query          hooks.metabase.test.data/$ids
-                          metabase.test/data-query          hooks.metabase.test.data/$ids
-                          metabase.test/query hooks.metabase.test.data/$ids
-                          metabase.test/run-mbql-query      hooks.metabase.test.data/$ids
-                          metabase.test.data/run-mbql-query      hooks.metabase.test.data/$ids
-                          metabase.api.common/defendpoint   hooks.metabase.api.common/defendpoint
-                          metabase.api.common/defendpoint-async hooks.metabase.api.common/defendpoint
+ :hooks
+ {:analyze-call
+  {metabase.api.common/defendpoint                            hooks.metabase.api.common/defendpoint
+   metabase.api.common/defendpoint-async                      hooks.metabase.api.common/defendpoint
+   metabase.models.setting/defsetting                         hooks.metabase.models.setting/defsetting
+   metabase.models.setting.multi-setting/define-multi-setting hooks.metabase.models.setting/defsetting
+   metabase.test/$ids                                         hooks.metabase.test.data/$ids
+   metabase.test/data-query                                   hooks.metabase.test.data/$ids
+   metabase.test/dataset                                      hooks.metabase.test.data/dataset
+   metabase.test/mbql-query                                   hooks.metabase.test.data/$ids
+   metabase.test/query                                        hooks.metabase.test.data/$ids
+   metabase.test/run-mbql-query                               hooks.metabase.test.data/$ids
+   metabase.test/with-temp                                    hooks.toucan.util.test/with-temp
+   metabase.test/with-temporary-setting-values                hooks.metabase.test.util/with-temporary-setting-values
+   metabase.test.data/$ids                                    hooks.metabase.test.data/$ids
+   metabase.test.data/dataset                                 hooks.metabase.test.data/dataset
+   metabase.test.data/mbql-query                              hooks.metabase.test.data/$ids
+   metabase.test.data/run-mbql-query                          hooks.metabase.test.data/$ids
+   metabase.test.util/with-temporary-setting-values           hooks.metabase.test.util/with-temporary-setting-values}
 
-                          metabase.test/with-temp hooks.toucan.util.test/with-temp}
-           :macroexpand {metabase.query-processor.streaming/streaming-response
-                         metabase.query-processor.streaming/streaming-response
-                         metabase.api.common/define-routes macros.metabase.api.common/define-routes
-                         toucan.models/defmodel toucan.models/defmodel
-                         clojurewerkz.quartzite.jobs/build macros.quartz/build-job
-                         clojurewerkz.quartzite.triggers/build macros.quartz/build-trigger
-                         clojurewerkz.quartzite.schedule.cron/schedule macros.quartz/schedule}}
- :config-in-comment {:linters {:unresolved-symbol {:level :off}}}}
+  :macroexpand
+  {metabase.query-processor.streaming/streaming-response macros.metabase.query-processor.streaming/streaming-response
+   metabase.api.common/define-routes                     macros.metabase.api.common/define-routes
+
+   toucan.models/defmodel                          macros.toucan.models/defmodel
+   clojurewerkz.quartzite.jobs/build               macros.quartz/build-job
+   clojurewerkz.quartzite.triggers/build           macros.quartz/build-trigger
+   clojurewerkz.quartzite.schedule.cron/schedule   macros.quartz/schedule
+   clojurewerkz.quartzite.schedule.simple/schedule macros.quartz/simple-schedule}}
+
+ :config-in-comment
+ {:linters {:unresolved-symbol {:level :off}}}}

@@ -1,7 +1,12 @@
 import styled from "@emotion/styled";
+import { css } from "@emotion/react";
 
 import { color } from "metabase/lib/colors";
-import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
+import {
+  breakpointMaxSmall,
+  breakpointMaxLarge,
+  space,
+} from "metabase/styled-components/theme";
 
 export const Variation = styled.div`
   color: ${props => props.color};
@@ -17,10 +22,19 @@ export const PreviousValueContainer = styled.div`
   align-items: center;
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   margin-top: ${space(0)};
 
   ${breakpointMaxSmall} {
     flex-direction: column;
+  }
+
+  ${breakpointMaxLarge} {
+    ${props =>
+      props.gridSize?.width <= 3 &&
+      css`
+        flex-direction: column;
+      `}
   }
 `;
 
@@ -41,5 +55,13 @@ export const PreviousValueSeparator = styled.span`
 
   ${breakpointMaxSmall} {
     display: none;
+  }
+
+  ${breakpointMaxLarge} {
+    ${props =>
+      props.gridSize?.width <= 3 &&
+      css`
+        display: none;
+      `}
   }
 `;

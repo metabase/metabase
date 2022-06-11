@@ -1,3 +1,4 @@
+import _ from "underscore";
 import { createAction } from "redux-actions";
 import {
   combineReducers,
@@ -29,6 +30,8 @@ export const ADD_SAMPLE_DATABASE_FAILED =
 export const ADDING_SAMPLE_DATABASE =
   "metabase/admin/databases/ADDING_SAMPLE_DATABASE";
 export const DELETE_DATABASE = "metabase/admin/databases/DELETE_DATABASE";
+export const PERSIST_DATABASE = "metabase/admin/databases/PERSIST_DATABASE";
+export const UNPERSIST_DATABASE = "metabase/admin/databases/UNPERSIST_DATABASE";
 export const SYNC_DATABASE_SCHEMA =
   "metabase/admin/databases/SYNC_DATABASE_SCHEMA";
 export const RESCAN_DATABASE_FIELDS =
@@ -40,8 +43,6 @@ export const UPDATE_DATABASE_STARTED =
   "metabase/admin/databases/UPDATE_DATABASE_STARTED";
 export const UPDATE_DATABASE_FAILED =
   "metabase/admin/databases/UPDATE_DATABASE_FAILED";
-export const SET_DATABASE_CREATION_STEP =
-  "metabase/admin/databases/SET_DATABASE_CREATION_STEP";
 export const CREATE_DATABASE = "metabase/admin/databases/CREATE_DATABASE";
 export const CREATE_DATABASE_STARTED =
   "metabase/admin/databases/CREATE_DATABASE_STARTED";
@@ -283,6 +284,20 @@ export const discardSavedFieldValues = createThunkAction(
   },
 );
 
+export const persistDatabase = createThunkAction(
+  PERSIST_DATABASE,
+  databaseId => async () => {
+    await MetabaseApi.db_persist({ dbId: databaseId });
+  },
+);
+
+export const unpersistDatabase = createThunkAction(
+  UNPERSIST_DATABASE,
+  databaseId => async () => {
+    await MetabaseApi.db_unpersist({ dbId: databaseId });
+  },
+);
+
 export const closeSyncingModal = createThunkAction(
   CLOSE_SYNCING_MODAL,
   function() {
@@ -303,8 +318,24 @@ const editingDatabase = handleActions(
     [UPDATE_DATABASE]: (state, { payload }) => payload.database || state,
     [DELETE_DATABASE]: (state, { payload }) => null,
     [SELECT_ENGINE]: (state, { payload }) => ({ ...state, engine: payload }),
-    [SET_DATABASE_CREATION_STEP]: (state, { payload: { database } }) =>
-      database,
+    [PERSIST_DATABASE]: (state, { error }) => {
+      if (error) {
+        return state;
+      }
+      return {
+        ...state,
+        features: [...state.features, "persist-models-enabled"],
+      };
+    },
+    [UNPERSIST_DATABASE]: (state, { error }) => {
+      if (error) {
+        return state;
+      }
+      return {
+        ...state,
+        features: _.without(state.features, "persist-models-enabled"),
+      };
+    },
   },
   null,
 );
@@ -336,14 +367,6 @@ const deletionError = handleActions(
   null,
 );
 
-const databaseCreationStep = handleActions(
-  {
-    [RESET]: () => DB_EDIT_FORM_CONNECTION_TAB,
-    [SET_DATABASE_CREATION_STEP]: (state, { payload: { step } }) => step,
-  },
-  DB_EDIT_FORM_CONNECTION_TAB,
-);
-
 const sampleDatabase = handleActions(
   {
     [ADDING_SAMPLE_DATABASE]: () => ({ loading: true }),
@@ -359,7 +382,6 @@ export default combineReducers({
   editingDatabase,
   initializeError,
   deletionError,
-  databaseCreationStep,
   deletes,
   sampleDatabase,
 });

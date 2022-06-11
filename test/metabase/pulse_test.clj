@@ -3,6 +3,8 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.email :as email]
+            [metabase.integrations.slack :as slack]
             [metabase.models :refer [Card Collection Pulse PulseCard PulseChannel PulseChannelRecipient]]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
@@ -14,6 +16,7 @@
             [metabase.pulse.util :as pu]
             [metabase.query-processor.middleware.constraints :as qp.constraints]
             [metabase.test :as mt]
+            [metabase.test.util :as tu]
             [metabase.util :as u]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -328,8 +331,8 @@
 
       :fixture
       (fn [_ thunk]
-        (with-redefs [qp.constraints/default-query-constraints {:max-results           10000
-                                                                :max-results-bare-rows 30}]
+        (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results           10000
+                                                                            :max-results-bare-rows 30})]
           (thunk)))
 
       :assert
@@ -809,3 +812,118 @@
              clojure.lang.ExceptionInfo
              #"You do not have permissions to view Card [\d,]+."
              (send-pulse-created-by-user!* :rasta)))))))
+
+(defn- get-retry-metrics []
+  (-> @@#'metabase.pulse/retry-state :retry .getMetrics bean))
+
+(defn- pos-metrics [m]
+  (into {}
+        (map (fn [field]
+               (let [d (m field)]
+                 (when (pos? d)
+                   [field d]))))
+        [:numberOfFailedCallsWithRetryAttempt
+         :numberOfFailedCallsWithoutRetryAttempt
+         :numberOfSuccessfulCallsWithRetryAttempt
+         :numberOfSuccessfulCallsWithoutRetryAttempt]))
+
+(defn- reset-retry []
+  (let [old (get-retry-metrics)]
+    (#'metabase.pulse/reconfigure-retrying nil nil)
+    old))
+
+(def ^:private fake-email-notification
+  {:subject      "test-message"
+   :recipients   ["whoever@example.com"]
+   :message-type :text
+   :message      "test message body"})
+
+(deftest email-notification-retry-test
+  (testing "send email succeeds w/o retry"
+    (with-redefs [email/send-email! mt/fake-inbox-email-fn]
+      (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                         email-smtp-port 587]
+        (mt/reset-inbox!)
+        (reset-retry)
+        (#'metabase.pulse/send-notifications! [fake-email-notification])
+        (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+               (pos-metrics (reset-retry))))
+        (is (= 1 (count @mt/inbox))))))
+  (testing "send email succeeds hiding SMTP host not set error"
+    (with-redefs [email/send-email! (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))]
+      (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                         email-smtp-port 587]
+        (mt/reset-inbox!)
+        (reset-retry)
+        (#'metabase.pulse/send-notifications! [fake-email-notification])
+        (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+               (pos-metrics (reset-retry))))
+        (is (= 0 (count @mt/inbox))))))
+  (testing "send email fails b/c retry limit"
+    (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)]
+      (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                         email-smtp-port 587]
+        (mt/reset-inbox!)
+        (reset-retry)
+        (#'metabase.pulse/send-notifications! [fake-email-notification])
+        (is (= {:numberOfFailedCallsWithRetryAttempt 1}
+               (pos-metrics (reset-retry))))
+        (is (= 0 (count @mt/inbox))))))
+  (testing "send email succeeds w/ retry"
+    (let [retry-config (#'metabase.pulse/retry-configuration)]
+      (try
+        (with-redefs [email/send-email! (tu/works-after 1 mt/fake-inbox-email-fn)
+                      metabase.pulse/retry-configuration (constantly (assoc retry-config
+                                                                            :max-attempts 2
+                                                                            :initial-interval-millis 1))]
+          (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
+                                             email-smtp-port 587]
+            (mt/reset-inbox!)
+            (reset-retry)
+            (#'metabase.pulse/send-notifications! [fake-email-notification])
+            (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                   (pos-metrics (reset-retry))))
+            (is (= 1 (count @mt/inbox)))))
+        (finally
+          (reset-retry))))))
+
+(def ^:private fake-slack-notification
+  {:channel-id  "test-channel"
+   :message     "test message body"
+   :attachments []})
+
+(deftest slack-notification-retry-test
+  (testing "post slack message succeeds w/o retry"
+    (with-redefs [slack/post-chat-message! (constantly nil)]
+      (reset-retry)
+      (#'metabase.pulse/send-notifications! [fake-slack-notification])
+      (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+             (pos-metrics (reset-retry))))))
+  (testing "post slack message succeeds hiding token error"
+    (with-redefs [slack/post-chat-message!
+                  (fn [& _]
+                    (throw (ex-info "Invalid token"
+                                    {:errors {:slack-token "Invalid token"}})))]
+      (reset-retry)
+      (#'metabase.pulse/send-notifications! [fake-slack-notification])
+      (is (= {:numberOfSuccessfulCallsWithoutRetryAttempt 1}
+             (pos-metrics (reset-retry))))))
+  (testing "post slack message fails b/c retry limit"
+    (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))]
+      (reset-retry)
+      (#'metabase.pulse/send-notifications! [fake-slack-notification])
+      (is (= {:numberOfFailedCallsWithRetryAttempt 1}
+             (pos-metrics (reset-retry))))))
+  (testing "post slack message succeeds with retry"
+    (let [retry-config (#'metabase.pulse/retry-configuration)]
+      (try
+        (with-redefs [slack/post-chat-message! (tu/works-after 1 (constantly nil))
+                      metabase.pulse/retry-configuration (constantly (assoc retry-config
+                                                                            :max-attempts 2
+                                                                            :initial-interval-millis 1))]
+          (reset-retry)
+          (#'metabase.pulse/send-notifications! [fake-slack-notification])
+          (is (= {:numberOfSuccessfulCallsWithRetryAttempt 1}
+                 (pos-metrics (reset-retry)))))
+        (finally
+          (reset-retry))))))

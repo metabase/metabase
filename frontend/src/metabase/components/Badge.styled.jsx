@@ -9,9 +9,11 @@ import { shouldForwardNonTransientProp } from "metabase/lib/styling/emotion";
 
 const propTypes = {
   to: PropTypes.oneOfType([PropTypes.string, PropTypes.bool]),
+  activeColor: PropTypes.string,
+  inactiveColor: PropTypes.string,
 };
 
-function RawMaybeLink({ to, ...props }) {
+function RawMaybeLink({ to, activeColor, inactiveColor, ...props }) {
   return to ? <Link to={to} {...props} /> : <span {...props} />;
 }
 

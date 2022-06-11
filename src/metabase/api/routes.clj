@@ -20,6 +20,7 @@
             [metabase.api.native-query-snippet :as api.native-query-snippet]
             [metabase.api.notify :as api.notify]
             [metabase.api.permissions :as api.permissions]
+            [metabase.api.persist :as api.persist]
             [metabase.api.premium-features :as api.premium-features]
             [metabase.api.preview-embed :as api.preview-embed]
             [metabase.api.public :as api.public]
@@ -80,6 +81,7 @@
   (context "/native-query-snippet" [] (+auth api.native-query-snippet/routes))
   (context "/notify"               [] (+apikey api.notify/routes))
   (context "/permissions"          [] (+auth api.permissions/routes))
+  (context "/persist"              [] (+auth api.persist/routes))
   (context "/preview_embed"        [] (+auth api.preview-embed/routes))
   (context "/public"               [] (+generic-exceptions api.public/routes))
   (context "/pulse"                [] (+auth api.pulse/routes))

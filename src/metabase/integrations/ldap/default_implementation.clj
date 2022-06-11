@@ -49,7 +49,7 @@
   "Retrieve groups for a supplied DN."
   [ldap-connection         :- LDAPConnectionPool
    dn                      :- su/NonBlankString
-   uid                     :- su/NonBlankString
+   uid                     :- (s/maybe su/NonBlankString)
    {:keys [group-base]}    :- i/LDAPSettings
    group-membership-filter :- su/NonBlankString]
   (when group-base

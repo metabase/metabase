@@ -51,7 +51,8 @@
   models/IModel
   (merge
    models/IModelDefaults
-   {:properties (constantly {:timestamped? true})})
+   {:properties (constantly {:timestamped? true
+                             :entity_id    true})})
 
   mi/IObjectPermissions
   perms/IObjectPermissionsForParentCollection)

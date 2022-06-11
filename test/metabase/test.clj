@@ -369,7 +369,7 @@
       expr)))))
 
 (defmacro are+
-  "Like `clojure.test/are` but includes a message for easier test failure debugging. (Also this is somewhat more
+  "Like [[clojure.test/are]] but includes a message for easier test failure debugging. (Also this is somewhat more
   efficient since it generates far less code ­ it uses `doseq` rather than repeating the entire test each time.)"
   {:style/indent 2}
   [argv expr & args]

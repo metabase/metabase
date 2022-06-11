@@ -53,16 +53,32 @@
   (s/named (s/maybe (s/cond-pre params/SingleValue MultipleValues su/Map))
            "Valid param value(s)"))
 
-(s/defn ^:private params-with-target
-  "Return `params` with a matching `target`. `target` is something like:
+(s/defn ^:private tag-targets
+  "Given a template tag, returns a set of `target` structures that can be used to target the tag.
+  Potential targets look something like:
 
-     [:dimension [:template-tag <param-name>]] ; for FieldFilters (Field Filters)
-     [:variable  [:template-tag <param-name>]] ; for other types of params"
-  [params :- (s/maybe [mbql.s/Parameter]) target :- mbql.s/ParameterTarget]
-  (seq (for [param params
-             :when (= (:target param) target)]
-         param)))
+     [:dimension [:template-tag {:id <param-id>}]
+     [:dimension [:template-tag <param-name>]]     ; for Field Filters
 
+     [:variable  [:template-tag {:id <param-id>}]]
+     [:variable  [:template-tag <param-name>]]     ; for other types of params
+
+  Targeting template tags by ID is preferable (as of version 44) but targeting by name is supported for backwards
+  compatibility."
+  [tag :- mbql.s/TemplateTag]
+  (let [target-type (case (:type tag)
+                      :dimension :dimension
+                      :variable)]
+    #{[target-type [:template-tag (:name tag)]]
+      [target-type [:template-tag {:id (:id tag)}]]}))
+
+(s/defn ^:private tag-params
+  "Return params from the provided `params` list targeting the provided `tag`."
+  [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
+  (let [targets (tag-targets tag)]
+    (seq (for [param params
+               :when (contains? targets (:target param))]
+           param))))
 
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
 
@@ -79,7 +95,7 @@
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
   [tag :- mbql.s/TemplateTag params :- (s/maybe [mbql.s/Parameter])]
-  (let [matching-params  (params-with-target params [:dimension [:template-tag (:name tag)]])
+  (let [matching-params  (tag-params tag params)
         normalize-params (fn [params]
                            ;; remove `:target` which is no longer needed after this point.
                            (let [params (map #(dissoc % :target) params)]
@@ -162,9 +178,9 @@
 
 (s/defn ^:private param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
-  [{tag-name :name, :as tag} :- mbql.s/TemplateTag
-   params                    :- (s/maybe [mbql.s/Parameter])]
-  (let [matching-param (when-let [matching-params (not-empty (params-with-target params [:variable [:template-tag tag-name]]))]
+  [tag    :- mbql.s/TemplateTag
+   params :- (s/maybe [mbql.s/Parameter])]
+  (let [matching-param (when-let [matching-params (not-empty (tag-params tag params))]
                          ;; double-check and make sure we didn't end up with multiple mappings or something crazy like that.
                          (when (> (count matching-params) 1)
                            (throw (ex-info (tru "Error: multiple values specified for parameter; non-Field Filter parameters can only have one value.")
@@ -291,7 +307,7 @@
 
    (sequential? value)
    (params/map->MultipleValues {:values (for [v value]
-                                     (parse-value-for-type param-type v))})
+                                         (parse-value-for-type param-type v))})
 
    ;; Field Filters with "special" base types
    (and (= param-type :dimension)

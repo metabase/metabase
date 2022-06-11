@@ -1,4 +1,4 @@
-import { GroupsPermissions } from "metabase-types/api";
+import { Group, GroupsPermissions } from "metabase-types/api";
 import { EntityId, PermissionSubject } from "metabase/admin/permissions/types";
 import { buildDataModelPermission } from "./data-model-permission";
 import { buildDetailsPermission } from "./details-permission";
@@ -10,6 +10,7 @@ export const getFeatureLevelDataPermissions = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   dataAccessPermissionValue: string,
+  defaultGroup: Group,
   permissionSubject: PermissionSubject,
 ) => {
   const downloadPermission = buildDownloadPermission(
@@ -18,6 +19,7 @@ export const getFeatureLevelDataPermissions = (
     isAdmin,
     permissions,
     dataAccessPermissionValue,
+    defaultGroup,
     permissionSubject,
   );
 
@@ -26,6 +28,7 @@ export const getFeatureLevelDataPermissions = (
     groupId,
     isAdmin,
     permissions,
+    defaultGroup,
     permissionSubject,
   );
 
@@ -34,6 +37,7 @@ export const getFeatureLevelDataPermissions = (
     groupId,
     isAdmin,
     permissions,
+    defaultGroup,
     permissionSubject,
   );
 

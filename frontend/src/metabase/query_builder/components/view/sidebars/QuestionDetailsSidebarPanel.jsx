@@ -5,15 +5,12 @@ import QuestionActionButtons from "metabase/query_builder/components/QuestionAct
 import { ClampedDescription } from "metabase/query_builder/components/ClampedDescription";
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import {
   Container,
-  BorderedSectionContainer,
   SidebarPaddedContent,
-  ModerationSectionContainer,
 } from "./QuestionDetailsSidebarPanel.styled";
-import DatasetManagementSection from "./DatasetManagementSection";
 
 QuestionDetailsSidebarPanel.propTypes = {
   question: PropTypes.object.isRequired,
@@ -38,9 +35,6 @@ function QuestionDetailsSidebarPanel({
       }
     : undefined;
 
-  const hasSecondarySection =
-    (isDataset && canWrite) || (!isDataset && PLUGIN_MODERATION.isEnabled());
-
   return (
     <Container>
       <SidebarPaddedContent>
@@ -56,19 +50,10 @@ function QuestionDetailsSidebarPanel({
           description={description}
           onEdit={onDescriptionEdit}
         />
-        {hasSecondarySection && (
-          <BorderedSectionContainer>
-            {isDataset && canWrite && (
-              <DatasetManagementSection dataset={question} />
-            )}
-            {!isDataset && (
-              <ModerationSectionContainer>
-                <PLUGIN_MODERATION.QuestionModerationSection
-                  question={question}
-                />
-              </ModerationSectionContainer>
-            )}
-          </BorderedSectionContainer>
+        {isDataset && question.isPersisted() && (
+          <PLUGIN_MODEL_PERSISTENCE.ModelCacheManagementSection
+            model={question}
+          />
         )}
       </SidebarPaddedContent>
       <QuestionActivityTimeline question={question} />

@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - master
-      - "release-**"
     paths-ignore:
       - "docs/**"
       - "**.md"
@@ -14,31 +13,9 @@ on:
       - "!frontend/test/metabase-visual/**"
 
 jobs:
-  build:
-    runs-on: buildjet-2vcpu-ubuntu-2004
-    timeout-minutes: 25
-    strategy:
-      matrix:
-        edition: [oss]
-    env:
-      MB_EDITION: ${{ matrix.edition }}
-      INTERACTIVE: false
-    steps:
-      - uses: actions/checkout@v3
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
-      - run: ./bin/build
-
-      - name: Prepare uberjar artifact
-        uses: ./.github/actions/prepare-uberjar-artifact
-
   percy:
-    timeout-minutes: 30
-    runs-on: buildjet-4vcpu-ubuntu-2004
-    needs: build
+    timeout-minutes: 45
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
@@ -47,11 +24,7 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Prepare cypress environment
         uses: ./.github/actions/prepare-cypress
-
-      - uses: actions/download-artifact@v2
-        name: Retrieve uberjar artifact
-        with:
-          name: metabase-oss-uberjar
+      - run: ./bin/build
       - name: Get the version info
         run: |
           jar xf target/uberjar/metabase.jar version.properties

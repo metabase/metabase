@@ -273,7 +273,7 @@
       (set-parameter driver stmt (inc i) param))
     params)))
 
-(defsetting ^:private sql-jdbc-fetch-size
+(defsetting sql-jdbc-fetch-size
   "Fetch size for result sets. We want to ensure that the jdbc ResultSet objects are not realizing the entire results
   in memory."
   :default 500

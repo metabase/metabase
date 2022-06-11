@@ -12,6 +12,8 @@ import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 
 describe("scenarios > question > native", () => {
   beforeEach(() => {
+    cy.intercept("POST", "api/dataset").as("dataset");
+    cy.intercept("POST", "api/card").as("card");
     restore();
     cy.signInAsNormalUser();
   });
@@ -75,6 +77,46 @@ describe("scenarios > question > native", () => {
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("18,760");
+  });
+
+  it("should handle template tags", () => {
+    openNativeEditor().type("select * from PRODUCTS where RATING > {{Stars}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.get("input[placeholder*='Stars']").type("3");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+    cy.contains("Showing 168 rows");
+  });
+
+  it("should modify parameters accordingly when tags are modified", () => {
+    openNativeEditor().type("select * from PRODUCTS where CATEGORY = {{cat}}", {
+      parseSpecialCharSequences: false,
+    });
+    cy.findByTestId("sidebar-right")
+      .findByText("Required?")
+      .parent()
+      .find("input")
+      .click();
+    cy.get("input[placeholder*='Enter a default value']").type("Gizmo");
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.wait("@dataset");
+
+    cy.contains("Save").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").type("Products on Category");
+      cy.findByText("Save").click();
+
+      cy.wait("@card").should(xhr => {
+        const requestBody = xhr.request?.body;
+        expect(requestBody?.parameters?.length).to.equal(1);
+        const parameter = requestBody.parameters[0];
+        expect(parameter.default).to.equal("Gizmo");
+      });
+    });
+
+    cy.findByText("Not now").click();
   });
 
   it("can save a question with no rows", () => {

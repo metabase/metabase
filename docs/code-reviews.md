@@ -38,13 +38,13 @@ If someone slaps a strong :-1: on your PR, be especially patient. Dig into why t
 * If you cut a major branch without discussing design, or talking through implications with other engineers whose work might be impacted, you should expect a :-1:, and not be hung up on reworking controversial sections. 
 * Any PR that has a :-1: CANNOT be merged until it is resolved. 
 * The owner of the PR and the person casting a :-1: should resolve the differences in approach.
-* In the event that there is an impasse, @salsakran casts a tie-breaking vote. This should be very very rare. 
+* If there's an impasse, @salsakran casts a tie-breaking vote. Impasses should be rare. 
 
 Note that these :+1:, :+0:, and :-1:’s should be explicitly stated in a comment, and not a reaction on the main description of the PR on github. A change from :-1: to :+1: should also be stated explicitly on a comment.
 
 ## Timing:
 * PRs for high priority issues should be code reviewed as soon as they are available. 
 * PRs for issues in a milestone can wait a few days.
-* In the event that there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer. 
-* In the event of a :-1: + no clear resolution, both the creator of the PR and the :-1: voter should plan on spending an hour over the next day or two to discuss the issue, and plan on how to resolve it. 
+* If there are no :+1:'s on a PR, it is the responsibility of the PR creator to follow up with others and get their code reviewed. To re-iterate, a PR needs to be :+1:’d to be merged, and if it has not been reviewed, it is on the opener of the PR to round up a reviewer. 
+* If there's a :-1: + no clear resolution, both the creator of the PR and the :-1: voter should plan on spending an hour over the next day or two to discuss the issue, and plan on how to resolve it. 
 * In the event of no movement on a PR with a :-1: after a week, @salsakran will chime in.

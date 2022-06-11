@@ -84,8 +84,7 @@
   "Return the number of recipients for email `PulseChannel`s. Includes both User recipients (represented by
   `PulseChannelRecipient` rows) and plain email recipients (stored directly in the `PulseChannel` `:details`). Returns
   `nil` for Slack channels."
-  [{channel-id        :channel_id
-    subscription-type :subscription_type
+  [{subscription-type :subscription_type
     channel-details   :channel_details
     num-recipients    :num_user_recipients}]
   (let [details (json/parse-string channel-details true)]

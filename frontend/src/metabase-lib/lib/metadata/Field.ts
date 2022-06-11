@@ -2,7 +2,7 @@
 // @ts-nocheck
 import _ from "underscore";
 import moment from "moment";
-import { memoize, createLookupByProperty } from "metabase-lib/lib/utils";
+import { createLookupByProperty, memoizeClass } from "metabase-lib/lib/utils";
 import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
@@ -30,6 +30,7 @@ import {
   getIconForField,
   getFilterOperators,
 } from "metabase/lib/schema_metadata";
+import { Field as FieldRef } from "metabase-types/types/Query";
 import { FieldDimension } from "../Dimension";
 import Table from "./Table";
 import Base from "./Base";
@@ -41,10 +42,22 @@ import Base from "./Base";
  * Wrapper class for field metadata objects. Belongs to a Table.
  */
 
-export default class Field extends Base {
+class FieldInner extends Base {
+  id: number | FieldRef;
   name: string;
   semantic_type: string | null;
+  fingerprint: any;
+  base_type: string | null;
   table?: Table;
+  target?: Field;
+
+  getId() {
+    if (Array.isArray(this.id)) {
+      return this.id[1];
+    }
+
+    return this.id;
+  }
 
   parent() {
     return this.metadata ? this.metadata.field(this.parent_id) : null;
@@ -243,12 +256,10 @@ export default class Field extends Base {
   }
 
   // FILTERS
-  @memoize
   filterOperators(selected) {
     return getFilterOperators(this, this.table, selected);
   }
 
-  @memoize
   filterOperatorsLookup() {
     return createLookupByProperty(this.filterOperators(), "name");
   }
@@ -268,7 +279,6 @@ export default class Field extends Base {
   }
 
   // AGGREGATIONS
-  @memoize
   aggregationOperators() {
     return this.table
       ? this.table
@@ -281,7 +291,6 @@ export default class Field extends Base {
       : null;
   }
 
-  @memoize
   aggregationOperatorsLookup() {
     return createLookupByProperty(this.aggregationOperators(), "short");
   }
@@ -442,3 +451,10 @@ export default class Field extends Base {
     this.metadata = metadata;
   }
 }
+
+export default class Field extends memoizeClass<FieldInner>(
+  "filterOperators",
+  "filterOperatorsLookup",
+  "aggregationOperators",
+  "aggregationOperatorsLookup",
+)(FieldInner) {}

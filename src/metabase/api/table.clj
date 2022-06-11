@@ -42,27 +42,29 @@
 
 (api/defendpoint GET "/:id"
   "Get `Table` with ID."
-  [id]
-  (u/prog1 (-> (api/read-check Table id)
-               (hydrate :db :pk_field))
-           (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*))))
+  [id include_editable_data_model]
+  (let [api-perm-check-fn (if (Boolean/parseBoolean include_editable_data_model)
+                            api/write-check
+                            api/read-check)]
+    (u/prog1 (-> (api-perm-check-fn Table id)
+                 (hydrate :db :pk_field))
+             (events/publish-event! :table-read (assoc <> :actor_id api/*current-user-id*)))))
 
 (defn- update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
-  [{:keys [id] :as existing-table} {:keys [visibility_type] :as body}]
+  [{:keys [id] :as existing-table} body]
   (api/check-500
    (db/update! Table id
-               (assoc (u/select-keys-when body
-                        :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
-                        :present [:description :caveats :points_of_interest])
-                      :visibility_type visibility_type)))
+               (u/select-keys-when body
+                 :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                 :present [:description :caveats :points_of_interest :visibility_type])))
   (let [updated-table        (Table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
-        (table/update-field-positions! updated-table)
-        (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
+       (table/update-field-positions! updated-table)
+       (hydrate updated-table [:fields [:target :has_field_values] :dimensions :has_field_values]))
       updated-table)))
 
 (defn- sync-unhidden-tables
@@ -85,7 +87,7 @@
     (api/check-404 (= (count existing-tables) (count ids)))
     (run! api/write-check existing-tables)
     (let [updated-tables (db/transaction (mapv #(update-table!* % body) existing-tables))
-          newly-unhidden (when (nil? visibility_type)
+          newly-unhidden (when (and (contains? body :visibility_type) (nil? visibility_type))
                            (into [] (filter (comp some? :visibility_type)) existing-tables))]
       (sync-unhidden-tables newly-unhidden)
       updated-tables)))
@@ -269,10 +271,12 @@
                 field)))))
 
 (defn fetch-query-metadata
-  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?` and
-  `include-hidden-fields?` can be either booleans or boolean strings."
-  [table include-sensitive-fields? include-hidden-fields?]
-  (api/read-check table)
+  "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
+  `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
+  [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model?]}]
+  (if (Boolean/parseBoolean include-editable-data-model?)
+    (api/write-check table)
+    (api/read-check table))
   (let [driver                    (driver.u/database->driver (:db_id table))
         include-sensitive-fields? (cond-> include-sensitive-fields? (string? include-sensitive-fields?) Boolean/parseBoolean)
         include-hidden-fields?    (cond-> include-hidden-fields? (string? include-hidden-fields?) Boolean/parseBoolean)]
@@ -294,11 +298,17 @@
   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
+  Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
+  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+
   These options are provided for use in the Admin Edit Metadata page."
-  [id include_sensitive_fields include_hidden_fields]
+  [id include_sensitive_fields include_hidden_fields include_editable_data_model]
   {include_sensitive_fields (s/maybe su/BooleanString)
-   include_hidden_fields (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) include_sensitive_fields include_hidden_fields))
+   include_hidden_fields (s/maybe su/BooleanString)
+   include_editable_data_model (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) {:include-sensitive-fields?    include_sensitive_fields
+                                    :include-hidden-fields?       include_hidden_fields
+                                    :include-editable-data-model? include_editable_data_model}))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'

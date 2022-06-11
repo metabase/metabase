@@ -41,7 +41,7 @@ export function Relationships({
   return (
     <ObjectRelationships>
       <div className="text-bold text-medium">
-        {jt`This ${(
+        {jt`${(
           <span className="text-dark" key={objectName}>
             {objectName}
           </span>

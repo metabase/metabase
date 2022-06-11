@@ -199,7 +199,7 @@ const MONGO_EXAMPLES = {
 
 const TagExample = ({ datasetQuery, setDatasetQuery }) => (
   <div>
-    <h5>Example:</h5>
+    <h5>{t`Example:`}</h5>
     <p>
       <Code>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
@@ -299,7 +299,7 @@ const TagEditorHelp = ({
         <ExternalLink
           href={MetabaseSettings.docsUrl("users-guide/13-sql-parameters")}
           target="_blank"
-          data-metabase-event={"QueryBuilder;Template Tag Documentation Click"}
+          data-metabase-event="QueryBuilder;Template Tag Documentation Click"
         >{t`Read the full documentation`}</ExternalLink>
       </p>
     </div>

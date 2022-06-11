@@ -20,11 +20,12 @@ import Collections, {
 } from "metabase/entities/collections";
 import { openNavbar, closeNavbar } from "metabase/redux/app";
 import { logout } from "metabase/auth/actions";
+import { getUserIsAdmin, getUser } from "metabase/selectors/user";
 import {
   getHasOwnDatabase,
   getHasDataAccess,
 } from "metabase/new_query/selectors";
-import { getUser } from "metabase/selectors/user";
+
 import {
   nonPersonalOrArchivedCollection,
   currentUserPersonalCollections,
@@ -47,6 +48,7 @@ type NavbarModal = "MODAL_NEW_COLLECTION" | null;
 function mapStateToProps(state: State) {
   return {
     currentUser: getUser(state),
+    isAdmin: getUserIsAdmin(state),
     hasDataAccess: getHasDataAccess(state),
     hasOwnDatabase: getHasOwnDatabase(state),
     bookmarks: getOrderedBookmarks(state),
@@ -68,6 +70,7 @@ interface CollectionTreeItem extends Collection {
 
 type Props = {
   isOpen: boolean;
+  isAdmin: boolean;
   currentUser: User;
   bookmarks: BookmarksType;
   collections: Collection[];
@@ -90,6 +93,7 @@ type Props = {
 
 function MainNavbarContainer({
   bookmarks,
+  isAdmin,
   isOpen,
   currentUser,
   hasOwnDatabase,
@@ -211,6 +215,7 @@ function MainNavbarContainer({
             <MainNavbarView
               {...props}
               bookmarks={bookmarks}
+              isAdmin={isAdmin}
               isOpen={isOpen}
               currentUser={currentUser}
               collections={collectionTree}

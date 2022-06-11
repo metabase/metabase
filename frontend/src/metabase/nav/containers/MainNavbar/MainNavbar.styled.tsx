@@ -30,7 +30,7 @@ export const Sidebar = styled.aside<{ isOpen: boolean }>`
   flex-shrink: 0;
   align-items: center;
   padding: 0.5rem 0;
-  background-color: ${color("nav")};
+  background-color: ${color("white")};
 
   overflow: auto;
   overflow-x: hidden;
@@ -136,6 +136,10 @@ export const LoadingTitle = styled.h2`
 export const ProfileLinkContainer = styled.div<{ isOpen: boolean }>`
   position: fixed;
   bottom: 0;
+  // Height is hard-set so it remains
+  // the same as the ArchiveBarContent
+  // in ArchiveApp
+  height: 49px;
   left: 0;
   padding: ${space(0)};
   width: ${props => (props.isOpen ? NAV_SIDEBAR_WIDTH : 0)};

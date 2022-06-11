@@ -8,6 +8,7 @@ import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/core/components/Button";
 import Radio from "metabase/core/components/Radio";
+import { SectionContainer } from "./ChartSettings.styled";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
@@ -242,15 +243,17 @@ class ChartSettings extends Component {
     };
 
     const sectionPicker = (
-      <Radio
-        value={currentSection}
-        onChange={this.handleShowSection}
-        options={sectionNames}
-        optionNameFn={v => v}
-        optionValueFn={v => v}
-        optionKeyFn={v => v}
-        variant="bubble"
-      />
+      <SectionContainer>
+        <Radio
+          value={currentSection}
+          onChange={this.handleShowSection}
+          options={sectionNames}
+          optionNameFn={v => v}
+          optionValueFn={v => v}
+          optionKeyFn={v => v}
+          variant="bubble"
+        />
+      </SectionContainer>
     );
 
     const widgetList = visibleWidgets.map(widget => (
@@ -297,14 +300,14 @@ class ChartSettings extends Component {
           <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
-          <div className="full-height relative scroll-y scroll-show py4">
+          <div className="full-height relative scroll-y scroll-show pt3 pb4">
             {widgetList}
           </div>
         ) : (
           <div className="Grid flex-full">
             <div
               className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4"
-              data-testid={"chartsettings-sidebar"}
+              data-testid="chartsettings-sidebar"
             >
               {widgetList}
             </div>

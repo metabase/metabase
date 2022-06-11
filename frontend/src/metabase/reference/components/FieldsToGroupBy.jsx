@@ -21,8 +21,7 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class FieldsToGroupBy extends Component {
+class FieldsToGroupBy extends Component {
   render() {
     const {
       fields,
@@ -73,3 +72,5 @@ export default class FieldsToGroupBy extends Component {
     );
   }
 }
+
+export default connect(mapStateToProps, mapDispatchToProps)(FieldsToGroupBy);

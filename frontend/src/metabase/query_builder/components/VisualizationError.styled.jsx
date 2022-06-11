@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
+import ExternalLink from "metabase/core/components/ExternalLink";
 
 export const QueryError = styled.div`
   display: flex;
@@ -12,14 +13,18 @@ export const QueryError = styled.div`
 
 export const QueryErrorIcon = styled.div`
   color: ${color("error")};
-  padding: ${space(3)};
-  margin-bottom: ${space(3)};
-  border: 0.25rem solid ${color("accent3")};
-  border-radius: 50%;
+  margin-bottom: ${space(2)};
 `;
 
 export const QueryErrorMessage = styled.div`
   color: ${color("error")};
   max-width: 31.25rem;
   min-height: 0;
+`;
+
+export const QueryLink = styled(ExternalLink)`
+  display: block;
+  margin-top: ${space(1)};
+  text-decoration: underline;
+  color: ${color("text-medium")};
 `;

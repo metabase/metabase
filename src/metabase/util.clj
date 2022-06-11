@@ -15,15 +15,15 @@
             [metabase.config :as config]
             [metabase.shared.util :as shared.u]
             [metabase.util.i18n :refer [trs tru]]
+            [nano-id.core :refer [nano-id]]
             [potemkin :as p]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
   (:import [java.math MathContext RoundingMode]
            [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
-           (java.util Locale PriorityQueue)
+           [java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue]
            java.util.concurrent.TimeoutException
-           javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 (comment shared.u/keep-me)
@@ -188,27 +188,6 @@
       (.isReachable host-addr host-up-timeout))
     (catch Throwable _ false)))
 
-(defn ^:deprecated rpartial
-  "Like `partial`, but applies additional args *before* `bound-args`.
-   Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
-
-    ((partial - 5) 8)  -> (- 5 8) -> -3
-    ((rpartial - 5) 8) -> (- 8 5) -> 3
-
-  DEPRECATED: just use `#()` function literals instead. No need to be needlessly confusing."
-  [f & bound-args]
-  (fn [& args]
-    (apply f (concat args bound-args))))
-
-(defmacro pdoseq
-  "(Almost) just like `doseq` but runs in parallel. Doesn't support advanced binding forms like `:let` or `:when` and
-  only supports a single binding </3"
-  {:style/indent 1}
-  [[binding collection] & body]
-  `(dorun (pmap (fn [~binding]
-                  ~@body)
-                ~collection)))
-
 (defmacro prog1
   "Execute `first-form`, then any other expressions in `body`, presumably for side-effects; return the result of
   `first-form`.
@@ -339,7 +318,7 @@
   [reff timeout-ms]
   (let [result (deref reff timeout-ms ::timeout)]
     (when (= result ::timeout)
-      (when (instance? java.util.concurrent.Future reff)
+      (when (future? reff)
         (future-cancel reff))
       (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
@@ -347,16 +326,10 @@
 (defn do-with-timeout
   "Impl for `with-timeout` macro."
   [timeout-ms f]
-  (let [result (deref-with-timeout
-                (future
-                  (try
-                    (f)
-                    (catch Throwable e
-                      e)))
-                timeout-ms)]
-    (if (instance? Throwable result)
-      (throw result)
-      result)))
+  (try
+    (deref-with-timeout (future-call f) timeout-ms)
+    (catch java.util.concurrent.ExecutionException e
+      (throw (.getCause e)))))
 
 (defmacro with-timeout
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
@@ -487,7 +460,10 @@
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
 
-   Consider using the `auto-retry` macro instead of calling this function directly."
+   Consider using the `auto-retry` macro instead of calling this function directly.
+
+   For implementing more fine grained retry policies like exponential backoff,
+   consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries f]
   (if (<= num-retries 0)
@@ -505,7 +481,10 @@
   until it succeeds.
 
   You can disable auto-retries for a specific ExceptionInfo by including `{:metabase.util/no-auto-retry? true}` in its
-  data (or the data of one of its causes.)"
+  data (or the data of one of its causes.)
+
+  For implementing more fine grained retry policies like exponential backoff,
+  consider using the `metabase.util.retry` namespace."
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
@@ -599,15 +578,28 @@
                    (str/replace s #"\s" "")
                    (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
 
+(def ^Base64$Decoder base64-decoder
+  "A shared Base64 decoder instance."
+  (Base64/getDecoder))
+
+(defn decode-base64-to-bytes
+  "Decodes a Base64 string into bytes."
+  ^bytes [^String string]
+  (.decode base64-decoder string))
+
 (defn decode-base64
-  "Decodes a Base64 string to a UTF-8 string"
+  "Decodes the Base64 string `input` to a UTF-8 string."
   [input]
-  (new java.lang.String (DatatypeConverter/parseBase64Binary input) "UTF-8"))
+  (new java.lang.String (decode-base64-to-bytes input) "UTF-8"))
+
+(def ^Base64$Encoder base64-encoder
+  "A shared Base64 encoder instance."
+  (Base64/getEncoder))
 
 (defn encode-base64
-  "Encodes a string to a Base64 string"
-  [^String input]
-  (DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
+  "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
+  ^String [^String input]
+  (.encodeToString base64-encoder (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."
@@ -646,7 +638,7 @@
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
 
-(defn update-when
+(defn update-if-exists
   "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
   cruft."
   [m k f & args]
@@ -654,7 +646,7 @@
     (apply update m k f args)
     m))
 
-(defn update-in-when
+(defn update-in-if-exists
   "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
   cruft."
   [m ks f & args]
@@ -977,3 +969,8 @@
   [email-address domain]
   {:pre [(email? email-address)]}
   (= (email->domain email-address) domain))
+
+(defn generate-nano-id
+  "Generates a random NanoID string. Usually these are used for the entity_id field of various models."
+  []
+  (nano-id))

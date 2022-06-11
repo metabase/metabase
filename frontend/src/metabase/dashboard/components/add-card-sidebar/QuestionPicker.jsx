@@ -8,6 +8,7 @@ import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
+import { getCrumbs } from "metabase/lib/collections";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
@@ -47,21 +48,7 @@ function QuestionPicker({
   );
 
   const collection = collectionsById[currentCollectionId];
-
-  const getCrumbs = collection => {
-    if (collection && collection.path) {
-      return [
-        ...collection.path.map(id => [
-          collectionsById[id].name,
-          () => setCurrentCollectionId(id),
-        ]),
-        [collection.name],
-      ];
-    }
-
-    return [];
-  };
-  const crumbs = getCrumbs(collection);
+  const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
 
   const handleSearchTextChange = value => setSearchText(value);
 

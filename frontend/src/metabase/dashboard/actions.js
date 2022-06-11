@@ -29,7 +29,6 @@ import {
   getParameterValuesBySlug,
   getParameterValuesByIdFromQueryParams,
 } from "metabase/parameters/utils/parameter-values";
-import * as Urls from "metabase/lib/urls";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 
 import Utils from "metabase/lib/utils";
@@ -60,6 +59,7 @@ import {
   getParameterValues,
   getDashboardParameterValuesSearchCache,
   getLoadingDashCards,
+  getDashboardParameterValuesCache,
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
@@ -137,8 +137,8 @@ export const SHOW_ADD_PARAMETER_POPOVER =
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 
-export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES =
-  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES";
+export const FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE =
+  "metabase/dashboard/FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE";
 
 export const SET_SIDEBAR = "metabase/dashboard/SET_SIDEBAR";
 export const CLOSE_SIDEBAR = "metabase/dashboard/CLOSE_SIDEBAR";
@@ -1062,14 +1062,22 @@ export const navigateToNewCardFromDashboard = createThunkAction(
       dashcard,
     );
 
-    // when the query is for a specific object (ie `=` filter on PK column)
-    // it does not make sense to apply parameter filters
-    // because we'll be navigating to the details view of a specific row on a table
-    const url = question.isObjectDetail()
-      ? Urls.serializedQuestion(question.card())
-      : question.getUrlWithParameters(parametersMappedToCard, parameterValues, {
-          objectId,
-        });
+    // When drilling from a native model, the drill can return a new question
+    // querying a table for which we don't have any metadata for
+    // When building a question URL, it'll usually clean the query and
+    // strip clauses referencing fields from tables without metadata
+    const previousQuestion = new Question(previousCard, metadata);
+    const isDrillingFromNativeModel =
+      previousQuestion.isDataset() && previousQuestion.isNative();
+
+    const url = question.getUrlWithParameters(
+      parametersMappedToCard,
+      parameterValues,
+      {
+        clean: !isDrillingFromNativeModel,
+        objectId,
+      },
+    );
 
     dispatch(openUrl(url));
   },
@@ -1078,16 +1086,21 @@ export const navigateToNewCardFromDashboard = createThunkAction(
 const loadMetadataForDashboard = dashCards => (dispatch, getState) => {
   const metadata = getMetadata(getState());
 
-  const queries = dashCards
+  const questions = dashCards
     .filter(dc => !isVirtualDashCard(dc) && dc.card.dataset_query) // exclude text cards and queries without perms
     .flatMap(dc => [dc.card].concat(dc.series || []))
-    .map(card => new Question(card, metadata).query());
+    .map(card => new Question(card, metadata));
 
-  return dispatch(loadMetadataForQueries(queries));
+  return dispatch(
+    loadMetadataForQueries(
+      questions.map(question => question.query()),
+      questions.map(question => question.dependentMetadata()),
+    ),
+  );
 };
 
-export const fetchDashboardParameterValues = createThunkAction(
-  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES,
+export const fetchDashboardParameterValuesWithCache = createThunkAction(
+  FETCH_DASHBOARD_PARAMETER_FIELD_VALUES_WITH_CACHE,
   ({ dashboardId, parameter, parameters, query }) => async (
     dispatch,
     getState,
@@ -1126,3 +1139,14 @@ export const fetchDashboardParameterValues = createThunkAction(
     };
   },
 );
+
+export const fetchDashboardParameterValues = args => async (
+  dispatch,
+  getState,
+) => {
+  await dispatch(fetchDashboardParameterValuesWithCache(args));
+  const dashboardParameterValuesCache = getDashboardParameterValuesCache(
+    getState(),
+  );
+  return dashboardParameterValuesCache.get(args) || [];
+};

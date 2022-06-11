@@ -21,6 +21,10 @@ export const AppBarRoot = styled.header`
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
   z-index: 4;
+
+  @media print {
+    display: none;
+  }
 `;
 
 export const LogoLink = styled(Link)`
@@ -30,8 +34,7 @@ export const LogoLink = styled(Link)`
   justify-content: center;
   border-radius: 6px;
   left: 0;
-  padding: ${space(1)};
-  padding-left: ${space(2)};
+  padding: ${space(1)} ${space(2)};
   margin-left: ${space(2)};
   position: absolute;
   transition: opacity 0.3s;
@@ -58,6 +61,7 @@ export const SidebarButtonContainer = styled.div`
 `;
 
 export interface LeftContainerProps {
+  isLogoActive: boolean;
   isSearchActive: boolean;
 }
 
@@ -70,12 +74,12 @@ export const LeftContainer = styled.div<LeftContainerProps>`
 
   &:hover {
     ${LogoLink} {
-      opacity: 0;
-      pointer-events: none;
+      opacity: ${props => (props.isLogoActive ? 1 : 0)};
+      pointer-events: ${props => (props.isLogoActive ? "" : "none")};
     }
 
     ${SidebarButtonContainer} {
-      opacity: 1;
+      opacity: ${props => (props.isLogoActive ? 0 : 1)};
     }
   }
 
@@ -141,4 +145,25 @@ export const SearchBarContent = styled.div`
     position: relative;
     width: 460px;
   }
+`;
+
+interface PathBreadcrumbsContainerProps {
+  isVisible: boolean;
+}
+
+export const PathBreadcrumbsContainer = styled.div<
+  PathBreadcrumbsContainerProps
+>`
+  position: absolute;
+  top: 0px;
+  left: 100px;
+  height: ${APP_BAR_HEIGHT};
+  display: flex;
+  visibility: ${props => (props.isVisible ? "visible" : "hidden")};
+  opacity: ${props => (props.isVisible ? 1 : 0)};
+
+  ${props =>
+    !props.isVisible
+      ? `transition: opacity 0.5s, visibility 0s 0.5s;`
+      : `transition: opacity 0.5s;`}
 `;

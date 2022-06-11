@@ -13,6 +13,8 @@ import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import { deserializeCardFromUrl } from "metabase/lib/card";
 
+import { TYPE as SEMANTIC_TYPE } from "cljs/metabase.types";
+
 const card = {
   display: "table",
   visualization_settings: {},
@@ -915,7 +917,7 @@ describe("Question", () => {
   });
 
   describe("Question.prototype.getResultMetadata", () => {
-    it("shoud return the `result_metadata` property off the underlying card", () => {
+    it("should return the `result_metadata` property off the underlying card", () => {
       const question = new Question(
         { ...card, result_metadata: [1, 2, 3] },
         metadata,
@@ -929,6 +931,50 @@ describe("Question", () => {
         metadata,
       );
       expect(question.getResultMetadata()).toEqual([]);
+    });
+  });
+
+  describe("Question.prototype.dependentMetadata", () => {
+    it("should return model FK field targets", () => {
+      const question = new Question(
+        {
+          ...card,
+          dataset: true,
+          result_metadata: [
+            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
+          ],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([{ type: "field", id: 5 }]);
+    });
+
+    it("should return skip with with FK target field which are not FKs semantically", () => {
+      const question = new Question(
+        {
+          ...card,
+          dataset: true,
+          result_metadata: [{ fk_target_field_id: 5 }],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([]);
+    });
+
+    it("should return nothing for regular questions", () => {
+      const question = new Question(
+        {
+          ...card,
+          result_metadata: [
+            { semantic_type: SEMANTIC_TYPE.FK, fk_target_field_id: 5 },
+          ],
+        },
+        metadata,
+      );
+
+      expect(question.dependentMetadata()).toEqual([]);
     });
   });
 
@@ -1091,10 +1137,10 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.convertParametersToFilters", () => {
+  describe("Question.prototype.convertParametersToMbql", () => {
     it("should do nothing to a native question", () => {
       const question = new Question(native_orders_count_card, metadata);
-      expect(question.convertParametersToFilters()).toBe(question);
+      expect(question.convertParametersToMbql()).toBe(question);
     });
 
     it("should convert a question with parameters into a new question with filters", () => {
@@ -1119,7 +1165,7 @@ describe("Question", () => {
           foo_id: "abc",
         });
 
-      const questionWithFilters = question.convertParametersToFilters();
+      const questionWithFilters = question.convertParametersToMbql();
 
       expect(questionWithFilters.card().dataset_query.query.filter).toEqual([
         "starts-with",

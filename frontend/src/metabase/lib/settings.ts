@@ -66,6 +66,7 @@ export type SettingName =
   | "enable-enhancements?"
   | "enable-public-sharing"
   | "enable-xrays"
+  | "persisted-models-enabled"
   | "engines"
   | "ga-code"
   | "ga-enabled"
@@ -77,6 +78,7 @@ export type SettingName =
   | "ldap-configured?"
   | "map-tile-server-url"
   | "password-complexity"
+  | "persisted-model-refresh-interval-hours"
   | "premium-features"
   | "search-typeahead-enabled"
   | "setup-token"
@@ -92,7 +94,9 @@ export type SettingName =
   | "deprecation-notice-version"
   | "show-database-syncing-modal"
   | "premium-embedding-token"
-  | "metabase-store-managed";
+  | "metabase-store-managed"
+  | "application-font"
+  | "available-fonts";
 
 type SettingsMap = Record<SettingName, any>; // provides access to Metabase application settings
 
@@ -267,6 +271,10 @@ class Settings {
 
   upgradeUrl() {
     return "https://www.metabase.com/upgrade/";
+  }
+
+  migrateToCloudGuideUrl() {
+    return "https://www.metabase.com/cloud/docs/migrate/guide";
   }
 
   newVersionAvailable() {
