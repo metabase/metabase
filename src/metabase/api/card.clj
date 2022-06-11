@@ -709,7 +709,7 @@
 
 ;;; ------------------------------------------------ Parameters -------------------------------------------------
 (def ^:const result-limit
-  "How many results to return when chain filtering."
+  "How many results to return when getting values for a parameter."
   1000)
 
 (defn- field-clause->field-id
@@ -750,35 +750,40 @@
     :template-tag (template-tag-target->field-id card target-args)
     nil))
 
-(defn- param-key->field-ids
+(defn- param-id->field-ids
  "Get Field ID(s) associated with a parameter in a Card.
 
-    (param-key->field-ids (Card 62) \"ee876336\")
+    (param-id->field-ids (Card 62) \"ee876336\")
     ;; -> #{276}"
-  [{:keys [parameter_mappings] :as card} param-key]
+  [{:keys [parameter_mappings] :as card} param-id]
   (into #{} (for [{:keys [target parameter_id]} parameter_mappings
-                  :when (= parameter_id param-key)
+                  :when (= parameter_id param-id)
                   :let [field-id (target->field-id card target)]
                   :when field-id]
               field-id)))
 
-(s/defn chain-filter
-  "C H A I N filters!
+(s/defn param-values
+  "Given a `param-id`, returns a of possible values that it could choose from.
 
     ;; show me categories
     (chain-filter (Card 62) \"ee876336\")
-    ;; -> (\"African\" \"American\" \"Artisan\" ...)"
-  ([card param-key]
-   (chain-filter card param-key nil))
+    ;; -> (\"African\" \"American\" \"Artisan\" ...)
 
-  ([card param-key query]
-   (when-not (seq (filter #(= (:id %) param-key) (:parameters card)))
-     (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-key))
+    ;; show me categories that contains \"Ameri\"
+    (chain-filter (Card 62) \"ee876336\"  \"Ameri\")
+    ;; -> (\"American\")
+  "
+  ([card param-id]
+   (param-values card param-id nil))
+
+  ([card param-id query]
+   (when-not (seq (filter #(= (:id %) param-id) (:parameters card)))
+     (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-id))
                      {:status-code 400})))
-   (let [field-ids (param-key->field-ids card param-key)]
+   (let [field-ids (param-id->field-ids card param-id)]
      (when (empty? field-ids)
-       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                       {:param-key param-key
+       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-id))
+                       {:param-id    param-id
                         :status-code 400})))
      (try
          (let [results (distinct (mapcat (if (seq query)
@@ -795,16 +800,16 @@
              (throw e)))))))
 
 (api/defendpoint GET "/:id/params/:param-key/values"
-  "Fetch possible values of the parameter whose ID is `:param-key`.
+  "Fetch possible values of the parameter whose ID is `:param-id`.
 
     ;; fetch values for Card 1 parameter 'abc' that are possible
     GET /api/card/1/params/abc/values"
   [id param-key]
   (let [card (api/read-check Card id)]
-    (chain-filter card param-key)))
+    (param-values card param-key)))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
-  "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`.
+  "Fetch possible values of the parameter whose ID is `:param-id` that contain `:query`.
 
     ;; fetch values for Card 1 parameter 'abc' that contain 'Cam'
      GET /api/card/1/params/abc/search/Cam
@@ -812,7 +817,7 @@
   Currently limited to first 1000 results."
   [id param-key query]
   (let [card (api/read-check Card id)]
-    (chain-filter card param-key query)))
+    (param-values card param-key query)))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

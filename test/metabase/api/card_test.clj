@@ -1843,7 +1843,7 @@
 ;;; |                                           PARAMETER VALUES ENDPOINTS                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- do-with-chain-filter-fixtures
+(defn- do-with-param-values-fixtures
   [query-type card-values f]
   {:pre [(#{:native :query} query-type)]}
   (mt/with-temp* [Card [card]]
@@ -1904,63 +1904,63 @@
       (db/update! Card (:id card)
                   (merge card-defaults card-values)))
     (f {:card       card
-        :param-keys {:category-name "_CATEGORY_NAME_"
-                     :category-id   "_CATEGORY_ID_"}})))
+        :param-ids {:category-name "_CATEGORY_NAME_"
+                    :category-id   "_CATEGORY_ID_"}})))
 
-(defmacro ^:private with-chain-filter-fixtures
+(defmacro ^:private with-param-values-fixtures
   "Create a query and its parameters."
   {:style/indent 2}
   [query-type [binding card-values] & body]
-  `(do-with-chain-filter-fixtures ~query-type ~card-values (fn [~binding] ~@body)))
+  `(do-with-param-values-fixtures ~query-type ~card-values (fn [~binding] ~@body)))
 
-(defn- chain-filter-values-url [card-or-id param-key]
-  (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-key)))
+(defn- param-values-values-url [card-or-id param-id]
+  (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-id)))
 
-(defn- chain-filter-search-url [card-or-id param-key query]
-  (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-key))
+(defn- param-values-search-url [card-or-id param-id query]
+  (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-id))
        query))
 
-(deftest chain-filter-test
-  (testing "GET /api/card/:id/params/:param-key/values"
+(deftest param-values-test
+  (testing "GET /api/card/:id/params/:param-id/values"
     (doseq [query-type [:query :native]]
       (testing (format "With %s question" (name query-type))
-        (with-chain-filter-fixtures query-type [{:keys [card param-keys]}]
+        (with-param-values-fixtures query-type [{:keys [card param-ids]}]
           (testing "Show me names of categories"
             (is (= ["African" "American" "Artisan"]
-                   (take 3 (mt/user-http-request :rasta :get 200 (chain-filter-values-url
+                   (take 3 (mt/user-http-request :rasta :get 200 (param-values-values-url
                                                                    card
-                                                                   (:category-name param-keys))))))))
+                                                                   (:category-name param-ids))))))))
 
         (testing "Should require perms for the Card"
           (mt/with-non-admin-groups-no-root-collection-perms
             (mt/with-temp Collection [collection]
-              (with-chain-filter-fixtures query-type [{:keys [card param-keys]} {:collection_id (:id collection)}]
+              (with-param-values-fixtures query-type [{:keys [card param-ids]} {:collection_id (:id collection)}]
                 (is (= "You don't have permissions to do that."
-                       (mt/user-http-request :rasta :get 403 (chain-filter-values-url
+                       (mt/user-http-request :rasta :get 403 (param-values-values-url
                                                                card
-                                                               (:category-name param-keys)))))))))
+                                                               (:category-name param-ids)))))))))
 
         (testing "should check perms for the Fields in question"
           (mt/with-temp-copy-of-db
-            (with-chain-filter-fixtures query-type [{:keys [card param-keys]}]
+            (with-param-values-fixtures query-type [{:keys [card param-ids]}]
               (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
               (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :get 403 (chain-filter-values-url
+                     (mt/user-http-request :rasta :get 403 (param-values-values-url
                                                              card
-                                                             (:category-name param-keys))))))))))))
+                                                             (:category-name param-ids))))))))))))
 
-(deftest chain-filter-search-test
-  (testing "GET /api/card/:id/params/:param-key/search/:query"
+(deftest param-values-search-test
+  (testing "GET /api/card/:id/params/:param-id/search/:query"
     (doseq [query-type [:native :query]]
       (testing (format "With %s question" (name query-type))
-        (with-chain-filter-fixtures :query [{:keys [card param-keys]}]
-          (let [url (chain-filter-search-url card (:category-name param-keys) "bar")]
+        (with-param-values-fixtures :query [{:keys [card param-ids]}]
+          (let [url (param-values-search-url card (:category-name param-ids) "bar")]
             (testing (str "\n" url)
               (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
                 (is (= ["Bar" "Gay Bar" "Juice Bar"]
                        (take 3 (mt/user-http-request :rasta :get 200 url)))))))
 
-          (let [url (chain-filter-search-url card (:category-name param-keys) "house")]
+          (let [url (param-values-search-url card (:category-name param-ids) "house")]
             (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
               (is (= ["Steakhouse"]
                      (take 3 (mt/user-http-request :rasta :get 200 url))))))
@@ -1970,33 +1970,33 @@
                            ""
                            "   "
                            "\n"]]
-              (let [url (chain-filter-search-url card (:category-name param-keys) query)]
+              (let [url (param-values-search-url card (:category-name param-ids) query)]
                 (is (= "API endpoint does not exist."
                        (mt/user-http-request :rasta :get 404 url)))))))
 
         (testing "Should require perms for the card"
           (mt/with-non-admin-groups-no-root-collection-perms
             (mt/with-temp Collection [collection]
-              (with-chain-filter-fixtures :query [{:keys [card param-keys]} {:collection_id (:id collection)}]
-                (let [url (chain-filter-search-url card (:category-name param-keys) "s")]
+              (with-param-values-fixtures :query [{:keys [card param-ids]} {:collection_id (:id collection)}]
+                (let [url (param-values-search-url card (:category-name param-ids) "s")]
                   (testing (str "\n url")
                     (is (= "You don't have permissions to do that."
                            (mt/user-http-request :rasta :get 403 url)))))))))))))
 
-(deftest chain-filter-human-readable-values-remapping-test
+(deftest param-values-human-readable-values-remapping-test
   (testing "Chain filtering for Fields that have Human-Readable values\n"
     (doseq [query-type [:native :query]]
       (testing (format "With %s question" (name query-type))
         (chain-filter-test/with-human-readable-values-remapping
-          (with-chain-filter-fixtures query-type [{:keys [card]}]
-            (testing "GET /api/card/:id/params/:param-key/values"
-              (let [url (chain-filter-values-url card "_CATEGORY_ID_")]
+          (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+            (testing "GET /api/card/:id/params/:param-id/values"
+              (let [url (param-values-values-url card (:category-id param-ids))]
                 (is (= [[2 "American"]
                         [3 "Artisan"]]
                        (take 2 (mt/user-http-request :rasta :get 200 url))))))
 
-            (testing "GET /api/card/:id/params/:param-key/search/:query"
-              (let [url (chain-filter-search-url card "_CATEGORY_ID_" "house")]
+            (testing "GET /api/card/:id/params/:param-id/search/:query"
+              (let [url (param-values-search-url card (:category-id param-ids) "house")]
                 (is (= [[67 "Steakhouse"]]
                        (take 1 (mt/user-http-request :rasta :get 200 url))))))))))))
 
