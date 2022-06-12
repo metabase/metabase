@@ -1984,7 +1984,7 @@
                            (mt/user-http-request :rasta :get 403 url)))))))))))))
 
 (deftest param-values-human-readable-values-remapping-test
-  (testing "Chain filtering for Fields that have Human-Readable values\n"
+  (testing "Get param values for Fields that have Human-Readable values\n"
     (doseq [query-type [:native :query]]
       (testing (format "With %s question" (name query-type))
         (chain-filter-test/with-human-readable-values-remapping

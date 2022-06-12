@@ -766,11 +766,11 @@
   "Given a `param-id`, returns a of possible values that it could choose from.
 
     ;; show me categories
-    (chain-filter (Card 62) \"ee876336\")
+    (param-values (Card 62) \"ee876336\")
     ;; -> (\"African\" \"American\" \"Artisan\" ...)
 
     ;; show me categories that contains \"Ameri\"
-    (chain-filter (Card 62) \"ee876336\"  \"Ameri\")
+    (param-values (Card 62) \"ee876336\"  \"Ameri\")
     ;; -> (\"American\")
   "
   ([card param-id]
