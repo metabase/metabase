@@ -4,22 +4,22 @@ While tables are useful for looking up information or finding specific numbers, 
 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
-- [Numbers](#numbers)
-- [Trend](#trends)
-- [Progress bar](#progress-bars)
-- [Gauge](#gauges)
-- [Table](#tables)
-- [Pivot table](#pivot-table)
-- [Line chart](#line-bar-and-area-charts)
-- [Bar chart](#line-bar-and-area-charts)
-- [Combo chart](#line-plus-bar-charts)
-- [Waterfall chart](#waterfall-charts)
-- [Row chart](#row-charts)
-- [Area chart](#line-bar-and-area-charts)
-- [Scatterplot or bubble chart](#scatterplots-and-bubble-charts)
-- [Pie/donut chart](#pie-or-donut-charts)
-- [Funnel](#funnel)
-- [Map](#maps)
+- [Numbers](visualizations/numbers.md)
+- [Trend](visualizations/trend.md)
+- [Progress bar](visualizations/progress-bar.md)
+- [Gauge](visualizations/gauge.md)
+- [Table](visualizations/table.md)
+- [Pivot table](visualizations/pivot-table.md)
+- [Line chart](visualizations/line-bar-and-area-charts.md)
+- [Bar chart](visualizations/line-bar-and-area-charts.md)
+- [Combo chart](visualizations/combo-chart.md)
+- [Waterfall chart](visualizations/waterfall-chart.md)
+- [Row chart](visualizations/line-bar-and-area-charts.md)
+- [Area chart](visualizations/line-bar-and-area-charts.md)
+- [Scatterplot or bubble chart](visualizations/scatterplot-or-bubble-chart.md)
+- [Pie/donut chart](visualizations/pie-or-donut-chart.md)
+- [Funnel](visualizations/funnel.md)
+- [Map](visualizations/map.md)
 
 To change how the answer to your question is displayed, click on the **Visualization** button in the bottom-left of the screen to open the visualization sidebar.
 
