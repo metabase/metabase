@@ -32,7 +32,7 @@
 - [Pivot Table](visualizations/pivot-table.md)
 - [Line, Bar, and Area Charts](visualizations/line-bar-and-area-charts.md)
 - [Combo Chart](visualizations/combo-chart.md)
-- [Row Chart](visualizations/row-chart.md)
+- [Row Chart](visualizations/line-bar-and-area-charts.md)
 - [Waterfall Chart](visualizations/waterfall-chart.md)
 - [Scatterplot or Bubble Chart](visualizations/scatterplot-or-bubble-chart.md)
 - [Pie/Donut Chart](visualizations/pie-or-donut-chart.md)
