@@ -23,6 +23,7 @@
 - [Events and timelines](events-and-timelines.md)
 
 ## Visualizing Results
+- [Visualizing results](05-visualizing-results.md)
 - [Numbers](visualizations/numbers.md)
 - [Trend](visualizations/trend.md)
 - [Progress Bar](visualizations/progress-bar.md)
