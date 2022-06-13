@@ -92,10 +92,15 @@
                   (some->> table-name (driver/escape-entity-name-for-metadata driver))
                   nil)
     (fn [^ResultSet rs]
+      ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
       #(let [default (.getString rs "COLUMN_DEF")
-             nullable? (.getBoolean rs "NULLABLE")
+             no-default? (contains? #{nil "NULL" "null"} default)
+             nullable (.getInt rs "NULLABLE")
+             not-nullable? (= 0 nullable)
+             auto-increment (.getString rs "IS_AUTOINCREMENT")
+             no-auto-increment? (= "NO" auto-increment)
              column-name (.getString rs "COLUMN_NAME")
-             required? (and nullable? (not default))]
+             required? (and no-default? not-nullable? no-auto-increment?)]
          (merge
            {:name              column-name
             :database-type     (.getString rs "TYPE_NAME")
