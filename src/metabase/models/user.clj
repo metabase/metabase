@@ -107,8 +107,8 @@
   (let [common-name (if (or first_name last_name)
                       (str/trim (str first_name " " last_name))
                       email)]
-    (merge user
-           (when common-name {:common_name common-name}))))
+    (cond-> user
+      common-name (assoc :common_name common-name))))
 
 (defn- post-select [user]
   (add-common-name user))
