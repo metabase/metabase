@@ -81,9 +81,7 @@
                   :sso_source       "saml"
                   :login_attributes user-attributes}]
     (when-let [user (or (sso-utils/fetch-and-update-login-attributes! new-user)
-                        (sso-utils/create-new-sso-user! (merge new-user
-                                                               (when-not first-name {:first_name (trs "Unknown")})
-                                                               (when-not last-name {:last_name (trs "Unknown")}))))]
+                        (sso-utils/create-new-sso-user! new-user))]
       (sync-groups! user group-names)
       (api.session/create-session! :sso user device-info))))
 
@@ -186,8 +184,8 @@
           saml-response (xml-string->saml-response xml-string)
           attrs         (saml-response->attributes saml-response)
           email         (get attrs (sso-settings/saml-attribute-email))
-          first-name    (get attrs (sso-settings/saml-attribute-firstname) "Unknown")
-          last-name     (get attrs (sso-settings/saml-attribute-lastname) "Unknown")
+          first-name    (get attrs (sso-settings/saml-attribute-firstname))
+          last-name     (get attrs (sso-settings/saml-attribute-lastname))
           groups        (get attrs (sso-settings/saml-attribute-group))
           session       (fetch-or-create-user!
                           {:first-name      first-name

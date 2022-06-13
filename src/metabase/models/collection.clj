@@ -959,18 +959,24 @@
 
   Practically, use `user-or-site` = `:site` when insert or update the name in database,
   and `:user` when we need the name for displaying purposes"
-  [first-name last-name user-or-site]
+  [first-name last-name email user-or-site]
   {:pre [(#{:user :site} user-or-site)]}
   (if (= :user user-or-site)
-    (tru "{0} {1}''s Personal Collection" first-name last-name)
-    (trs "{0} {1}''s Personal Collection" first-name last-name)))
+    (cond
+      (and first-name last-name) (tru "{0} {1}''s Personal Collection" first-name last-name)
+      :else                      (tru "{0}''s Personal Collection" (or first-name last-name email)))
+    (cond
+      (and first-name last-name) (trs "{0} {1}''s Personal Collection" first-name last-name)
+      :else                      (trs "{0}''s Personal Collection" (or first-name last-name email)))))
 
 (s/defn user->personal-collection-name :- su/NonBlankString
   "Come up with a nice name for the Personal Collection for `user-or-id`."
   [user-or-id user-or-site]
-  (let [{first-name :first_name, last-name :last_name} (db/select-one ['User :first_name :last_name]
-                                                         :id (u/the-id user-or-id))]
-    (format-personal-collection-name first-name last-name user-or-site)))
+  (let [{first-name :first_name
+         last-name  :last_name
+         email      :email} (db/select-one ['User :first_name :last_name :email]
+                              :id (u/the-id user-or-id))]
+    (format-personal-collection-name first-name last-name email user-or-site)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
