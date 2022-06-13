@@ -1,6 +1,7 @@
 ---
 title: "Card"
-summary: "/api/card endpoints."
+summary: |
+  /api/card endpoints.
 ---
 
 # Card

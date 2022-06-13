@@ -1,6 +1,7 @@
 ---
 title: "Sandbox GTAP"
-summary: "`/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies)."
+summary: |
+  `/api/mt/gtap` endpoints, for CRUD operations and the like on GTAPs (Group Table Access Policies).
 ---
 
 # Sandbox GTAP

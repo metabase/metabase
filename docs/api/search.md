@@ -1,6 +1,7 @@
 ---
 title: "Search"
-summary: "API endpoints for Search."
+summary: |
+  API endpoints for Search.
 ---
 
 # Search

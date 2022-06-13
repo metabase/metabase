@@ -1,6 +1,7 @@
 ---
 title: "Database"
-summary: "/api/database endpoints."
+summary: |
+  /api/database endpoints.
 ---
 
 # Database

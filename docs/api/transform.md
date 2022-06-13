@@ -1,6 +1,7 @@
 ---
 title: "Transform"
-summary: "API endpoints for Transform."
+summary: |
+  API endpoints for Transform.
 ---
 
 # Transform

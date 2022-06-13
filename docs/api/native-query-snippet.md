@@ -1,6 +1,7 @@
 ---
 title: "Native query snippet"
-summary: "Native query snippet (/api/native-query-snippet) endpoints."
+summary: |
+  Native query snippet (/api/native-query-snippet) endpoints.
 ---
 
 # Native query snippet

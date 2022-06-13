@@ -1,6 +1,7 @@
 ---
 title: "Automagic dashboards"
-summary: "API endpoints for Automagic dashboards."
+summary: |
+  API endpoints for Automagic dashboards.
 ---
 
 # Automagic dashboards

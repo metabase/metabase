@@ -1,6 +1,7 @@
 ---
 title: "Setup"
-summary: "API endpoints for Setup."
+summary: |
+  API endpoints for Setup.
 ---
 
 # Setup

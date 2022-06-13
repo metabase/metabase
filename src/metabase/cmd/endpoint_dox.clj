@@ -51,7 +51,20 @@
       (capitalize-initialisms initialisms)
       (str/replace "SSO SSO" "SSO")))
 
-(defn- format-description
+(defn- handle-quotes
+  "Used for formatting YAML string punctuation for frontmatter descriptions."
+  [s]
+  (-> s
+      (str/replace #"\"" "'")
+      str/split-lines
+      (#(str/join "\n  " %))))
+
+(defn- format-frontmatter
+  "Formats description for YAML frontmatter."
+  [desc]
+  (str "|\n  " (handle-quotes desc)))
+
+(defn- get-description
   "Used to grab namespace description, if it exists."
   [ep ep-data]
   (let [desc (-> ep-data
@@ -62,17 +75,17 @@
                  u/add-period)]
     (if (str/blank? desc)
       (u/add-period (str "API endpoints for " ep))
-      (str (str/replace desc "\"" "'")))))
+      desc)))
 
 (defn- endpoint-page-frontmatter
   "Formats frontmatter, which includes title and summary, if any."
   [ep ep-data]
-  (let [desc (format-description ep ep-data)]
+  (let [desc (format-frontmatter (get-description ep ep-data))]
     (str "---\ntitle: \""
          ep "\""
-         "\nsummary: \""
+         "\nsummary: "
          desc
-         "\"\n---\n\n")))
+         "\n---\n\n")))
 
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
@@ -84,7 +97,7 @@
 (defn- endpoint-page-description
   "If there is a namespace docstring, include the docstring with a paragraph break."
   [ep ep-data]
-  (let [desc (format-description ep ep-data)]
+  (let [desc (get-description ep ep-data)]
     (if (str/blank? desc)
       desc
       (str desc "\n\n"))))
