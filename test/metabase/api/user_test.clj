@@ -611,28 +611,35 @@
                     :common_name              "Blue Ape Ron"
                     :personal_collection_name "Blue Ape Ron's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue Ape"
-                                         :last_name "Ron"}))))
+                                          :last_name  "Ron"}))))
           (testing "Name keys explicitly set to `nil` updates the user"
             (is (= {:first_name               nil
                     :last_name                nil
                     :common_name              "blueronny@metabase.com"
                     :personal_collection_name "blueronny@metabase.com's Personal Collection"}
                    (change-user-via-api! {:first_name nil
-                                         :last_name nil}))))
-          (testing "Changing only one name key updates only that key for the user"
+                                          :last_name  nil}))))
+          (testing "Nil keys compare correctly with nil names and cause no change."
+            (is (= {:first_name               nil
+                    :last_name                nil
+                    :common_name              "blueronny@metabase.com"
+                    :personal_collection_name "blueronny@metabase.com's Personal Collection"}
+                   (change-user-via-api! {:first_name nil
+                                          :last_name  nil}))))
+          (testing "First/last_name keys are sent but one is unchanged, updates only the altered key for the user"
             (is (= {:first_name               nil
                     :last_name                "Apron"
                     :common_name              "Apron"
                     :personal_collection_name "Apron's Personal Collection"}
                    (change-user-via-api! {:first_name nil
-                                         :last_name "Apron"}))))
-          (testing "Changing only one name key updates only that key for the user"
+                                          :last_name  "Apron"}))))
+          (testing "Both new name keys update the user"
             (is (= {:first_name               "Blue"
                     :last_name                nil
                     :common_name              "Blue"
                     :personal_collection_name "Blue's Personal Collection"}
                    (change-user-via-api! {:first_name "Blue"
-                                         :last_name nil})))))))))
+                                          :last_name  nil})))))))))
 
 (deftest update-email-check-if-already-used-test
   (testing "PUT /api/user/:id"
