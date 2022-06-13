@@ -4,7 +4,7 @@ import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
 export const SkeletonIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: ${color("text-medium")};
   width: 1.5rem;
   height: 1.5rem;
   margin-bottom: 1rem;
