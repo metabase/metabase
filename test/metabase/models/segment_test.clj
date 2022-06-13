@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.segment :as segment :refer [Segment]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -124,3 +125,12 @@
             {:name        "A"
              :description "Unchanged"
              :definition  {:filter [:and [:> [:field 4 nil] "2014-10-19"]]}})))))
+
+(deftest identity-hash-test
+  (testing "Segment hashes are composed of the segment name and table identity-hash"
+    (mt/with-temp* [Database [db      {:name "field-db" :engine :h2}]
+                    Table    [table   {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Segment  [segment {:name "big customers" :table_id (:id table)}]]
+      (is (= "a40066a4"
+             (serdes.hash/raw-hash ["big customers" (serdes.hash/identity-hash table)])
+             (serdes.hash/identity-hash segment))))))

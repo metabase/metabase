@@ -7,6 +7,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -140,7 +141,9 @@
           :pre-update     pre-update
           :post-select    post-select
           :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})}))
+                                       :settings         :encrypted-json})})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:email])})
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."

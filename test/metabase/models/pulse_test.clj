@@ -7,6 +7,7 @@
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :as pulse]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.test :as mt]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
             [metabase.util :as u]
@@ -452,3 +453,11 @@
       (binding [api/*current-user-id* (:creator_id subscription)]
         (is (not (mi/can-read? subscription)))
         (is (not (mi/can-write? subscription)))))))
+
+(deftest identity-hash-test
+  (testing "Pulse hashes are composed of the name and the collection hash"
+    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
+                    Pulse       [pulse {:name "my pulse" :collection_id (:id coll)}]]
+      (is (= "6432d0a9"
+             (serdes.hash/raw-hash ["my pulse" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash pulse))))))

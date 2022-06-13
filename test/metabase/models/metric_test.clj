@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase.models.database :refer [Database]]
             [metabase.models.metric :as metric :refer [Metric]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -163,3 +164,12 @@
           12
           {:definition {:aggregation nil
                         :filter      nil}}))))
+
+(deftest identity-hash-test
+  (testing "Metric hashes are composed of the metric name and table identity-hash"
+    (mt/with-temp* [Database [db    {:name "field-db" :engine :h2}]
+                    Table    [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Metric   [metric {:name "measurement" :table_id (:id table)}]]
+      (is (= "8fb4650a"
+             (serdes.hash/raw-hash ["measurement" (serdes.hash/identity-hash table)])
+             (serdes.hash/identity-hash metric))))))
