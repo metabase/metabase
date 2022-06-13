@@ -1271,8 +1271,6 @@ workflows:
                   "native",
                   "native-filters",
                   "onboarding",
-                  "organization",
-                  "permissions",
                   "smoketest",
                   "visualizations",
                 ]
