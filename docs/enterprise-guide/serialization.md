@@ -1,5 +1,5 @@
 ---
-title: Serialization: copying contents of one Metabase instance to another
+title: "Serialization: copying contents of one Metabase instance to another"
 ---
 
 ## Serialization: copying contents of one Metabase instance to another

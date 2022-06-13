@@ -59,7 +59,7 @@
       str/split-lines
       (#(str/join "\n  " %))))
 
-(defn- format-frontmatter
+(defn- format-frontmatter-description
   "Formats description for YAML frontmatter."
   [desc]
   (str "|\n  " (handle-quotes desc)))
@@ -80,12 +80,9 @@
 (defn- endpoint-page-frontmatter
   "Formats frontmatter, which includes title and summary, if any."
   [ep ep-data]
-  (let [desc (format-frontmatter (get-description ep ep-data))]
-    (str "---\ntitle: \""
-         ep "\""
-         "\nsummary: "
-         desc
-         "\n---\n\n")))
+  (let [desc (format-frontmatter-description (get-description ep ep-data))]
+    (str "---\ntitle: \"" ep "\""
+         "\nsummary: " desc "\n---\n\n")))
 
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
