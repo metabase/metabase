@@ -102,45 +102,54 @@
             (not (isa? (keyword base-type) :type/Temporal))
             (#{:list :auto-list} (keyword has-field-values)))))))
 
-(defn- values-exceed-total-max-length?
-  "`true` if the combined length of all the values in [[distinct-values]] is greater than the threshold for what we'll allow in a
-  FieldValues entry. Does some logging as well."
-  [distinct-values]
-  ;; only consume enough values to determine whether the total length is > `total-max-length` -- if it is, we can stop
-  (let [total-length (reduce
-                      (fn [total-length v]
-                        (let [new-total (+ total-length (count (str v)))]
-                          (if (>= new-total total-max-length)
-                            (reduced new-total)
-                            new-total)))
-                      0
-                      distinct-values)]
-    (u/prog1 (> total-length total-max-length)
-      (log/debug (trs "Field values total length is > {0}." total-max-length)
-                 (if <>
-                   (trs "FieldValues are NOT allowed for this Field.")
-                   (trs "FieldValues are allowed for this Field."))))))
+
+(defn take-by-length
+  "Returns a transducer that takes a collection and returns a collection where the total length of all items in list is less than `max-length`."
+  [max-length]
+  (fn [rf]
+    (let [current-length (volatile! 0)]
+      (fn
+        ([] (rf))
+        ([result]
+         (rf result))
+        ([result input]
+         (vswap! current-length + (count (str input)))
+         (if (< @current-length max-length)
+           (rf result input)
+           (reduced result)))))))
 
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[total-max-length]] threshold. If the values are
-  past the threshold, this returns `nil`.
-  Set check-length? = true to skip the check.
+  past the threshold, this returns a subset of possible values values where the total length of all items is less than [[total-max-length]].
+
+  It also returns a `has_more_values` flag, this flag = `true` when the returned values list is a subset of all possible values.
+
+  ;; (distinct-values (Field 1))
+  ;; ->  {:values          [1, 2, 3]
+          :has_more_values false}
 
   (This function provides the values that normally get saved as a Field's
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
-  ([field]
-   (distinct-values field true))
-  ([field check-length?]
-   (classloader/require 'metabase.db.metadata-queries)
-   (try
-     (let [values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)]
-       (if (and check-length? (values-exceed-total-max-length? values))
-         nil
-         values))
+  [field]
+  (classloader/require 'metabase.db.metadata-queries)
+  (try
+    (let [distinct-values ((resolve 'metabase.db.metadata-queries/field-distinct-values) field)
+          values          (into [] (take-by-length total-max-length) distinct-values)]
+      {:values          values
+       ;; has_more_values=true means the list of values we return is a subset of all possible values.
+       ;; has_more_values=true when:
+       ;; 1. the number of distinct values of this field exceeded [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]]
+       ;;    -> thus the list we stored in [[FieldValues]] is just a subset of all possible values
+       ;; 2. the total legnth of all values exceeded [[total-max-length]]
+       ;;    -> in this case we only returns a sublist
+       :has_more_values (or (> (count distinct-values)
+                               (count values))
+                            (= (count distinct-values)
+                               @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit)))})
     (catch Throwable e
       (log/error e (trs "Error fetching field values"))
-      nil))))
+      nil)))
 
 (defn- fixup-human-readable-values
   "Field values and human readable values are lists that are zipped together. If the field values have changes, the
@@ -157,25 +166,9 @@
    created/updated/deleted as a result of this call."
   [field & [human-readable-values]]
   (classloader/require 'metabase.db.metadata-queries)
-  (let [field-values          (FieldValues :field_id (u/the-id field))
-        field-name            (or (:name field) (:id field))
-        full-values           (distinct-values field false)
-        values-exceed-length? (values-exceed-total-max-length? full-values)
-        values                (when-not values-exceed-length?
-                                full-values)]
-    ;; exceeded_limit=true for a field with `has_field_values=:list` means that the list of values we cached in [[FieldValues]]
-    ;; for that field are is all possible values. This is used by UI to decide which field it needs to call the search API
-    ;; when user find values.
-    ;; exceeded_limit=true when:
-    ;; 1. the number of distinct values of this field exceeded [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]]
-    ;;    -> thus the list we stored in [[FieldValues]] is just a subset of all possible values
-    ;; 2. the total legnth of all values exceeded [[total-max-length]]
-    ;;    -> in this case we don't store FieldValues at all
-    (when (and (= (:has_field_values field) :list)
-               (or values-exceed-length?
-                   (>= (count values)
-                      @(resolve 'metabase.db.metadata-queries/absolute-max-distinct-values-limit))))
-      (db/update! 'Field (u/the-id field) :exceeded_limit true))
+  (let [field-values                     (FieldValues :field_id (u/the-id field))
+        {:keys [values has_more_values]} (distinct-values field)
+        field-name                       (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over the [[auto-list-cardinality-threshold]] or
       ;; the accumulated length of all values exceeded the [[total-max-length]] threshold
@@ -187,9 +180,9 @@
       ;; It would be nicer if we could do this in analysis where it gets marked `:auto-list` in the first place, but
       ;; Fingerprints don't get updated regularly enough that we could detect the sudden increase in cardinality in a
       ;; way that could make this work. Thus, we are stuck doing it here :(
-      (and (or values-exceed-length?
-               (> (count values) auto-list-cardinality-threshold))
-           (= :auto-list (keyword (:has_field_values field))))
+      (and (= :auto-list (keyword (:has_field_values field)))
+           (or has_more_values
+               (> (count values) auto-list-cardinality-threshold)))
       (do
         (log/info (trs "Field {0} was previously automatically set to show a list widget, but now has {1} values."
                        field-name (count values))
@@ -197,7 +190,8 @@
         (db/update! 'Field (u/the-id field) :has_field_values nil)
         (db/delete! FieldValues :field_id (u/the-id field)))
 
-      (= (:values field-values) values)
+      (and (= (:values field-values) values)
+           (= (:has_more_values field-values) has_more_values))
       (log/debug (trs "FieldValues for Field {0} remain unchanged. Skipping..." field-name))
 
       ;; if the FieldValues object already exists then update values in it
@@ -205,6 +199,7 @@
       (do
         (log/debug (trs "Storing updated FieldValues for Field {0}..." field-name))
         (db/update-non-nil-keys! FieldValues (u/the-id field-values)
+          :has_more_values       has_more_values
           :values                values
           :human_readable_values (fixup-human-readable-values field-values values))
         ::fv-updated)
@@ -215,6 +210,7 @@
         (log/debug (trs "Storing FieldValues for Field {0}..." field-name))
         (db/insert! FieldValues
           :field_id              (u/the-id field)
+          :has_more_values       has_more_values
           :values                values
           :human_readable_values human-readable-values)
         ::fv-created)

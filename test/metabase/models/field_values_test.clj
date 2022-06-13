@@ -92,16 +92,16 @@
 
 (deftest distinct-values-test
   (with-redefs [metadata-queries/field-distinct-values (constantly [1 2 3 4])]
-    (is (= [1 2 3 4]
+    (is (= {:values          [1 2 3 4]
+            :has_more_values false}
            (#'field-values/distinct-values {}))))
 
-  (testing "(#2332) check that if field values are long we skip over them"
-    (with-redefs [metadata-queries/field-distinct-values (constantly [(str/join (repeat 50000 "A"))])]
-      (is (= nil
-             (#'field-values/distinct-values {})))
-      (testing "still returns the values if we disable length check"
-        (is (= [(str/join (repeat 50000 "A"))]
-              (#'field-values/distinct-values {} false)))))))
+  (testing "(#2332) check that if field values are long we only store a subset of it"
+    (with-redefs [metadata-queries/field-distinct-values (constantly ["AAAA" (str/join (repeat 50000 "A"))])]
+      (testing "The total length of stored values must less than our max-length-limit"
+        (is (= {:values          ["AAAA"]
+                :has_more_values true}
+              (#'field-values/distinct-values {})))))))
 
 (deftest clear-field-values!-test
   (mt/with-temp* [Database    [{database-id :id}]
@@ -121,21 +121,6 @@
 (defn- sync-and-find-values [db field-values-id]
   (sync/sync-database! db)
   (find-values field-values-id))
-
-(deftest values-exceed-total-max-length?-test
-  (with-redefs [field-values/total-max-length 10]
-    (is (= false
-           (#'field-values/values-exceed-total-max-length? ["a" "b" "c"])))
-    (is (= true
-           (#'field-values/values-exceed-total-max-length? ["123" "4567" "8901"])))
-    (testing "Should only consume enough values to determine whether length is over limit"
-      (let [realized? (atom false)
-            vs        (lazy-cat ["123" "4567" "8901" "2345"] (do (reset! realized? true) ["Shouldn't get here"]))]
-        (is (= true
-               (#'field-values/values-exceed-total-max-length? vs)))
-        (testing "Entire lazy seq shouldn't be realized"
-          (is (= false
-                 @realized?)))))))
 
 (deftest normalize-human-readable-values-test
   (testing "If FieldValues were saved as a map, normalize them to a sequence on the way out"
