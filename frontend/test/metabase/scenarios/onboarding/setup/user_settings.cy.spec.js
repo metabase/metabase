@@ -92,18 +92,29 @@ describe("user > settings", () => {
     cy.findByText("Sign in to Metabase");
   });
 
-  it("should validate common passwords (metabase#23259)", () => {
+  it("should validate form values (metabase#23259)", () => {
+    cy.signInAsNormalUser();
     cy.visit("/account/password");
+
+    // Validate common passwords
     cy.findByLabelText("Create a password")
       .as("passwordInput")
       .type("qwerty123")
       .blur();
 
     cy.contains("password is too common");
-
     cy.get("@passwordInput").clear();
 
-    cy.contains("password is too common").should("not.exist");
+    // Validate invalid current password
+    cy.findByLabelText("Current password")
+      .as("currentPassword")
+      .type("invalid");
+
+    cy.get("@passwordInput").type("new_password1");
+    cy.findByLabelText("Confirm your password").type("new_password1");
+
+    cy.button("Save").click();
+    cy.contains("Invalid password");
   });
 
   describe("when user is authenticated via ldap", () => {
