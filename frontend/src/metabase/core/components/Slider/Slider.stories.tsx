@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { ComponentStory } from "@storybook/react";
 import Slider from "./Slider";
 
@@ -9,7 +9,7 @@ export default {
 };
 
 const Template: ComponentStory<typeof Slider> = args => {
-  const [value] = useState<(number | undefined)[]>([0, 100]);
+  const value = [10, 40];
   return (
     <div className="pt4">
       <Slider {...args} value={value} onChange={args.onChange} />

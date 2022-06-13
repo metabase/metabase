@@ -4,6 +4,8 @@ import { space } from "metabase/styled-components/theme";
 
 export const THUMB_SIZE = "1.2rem";
 
+const activeThumbStyle = `box-shadow: 0 0 4px 1px ${color("brand")}`;
+
 export const SliderContainer = styled.div`
   position: relative;
   display: flex;
@@ -23,7 +25,7 @@ const thumbStyles = `
   box-shadow: 0 0 2px 1px ${color("brand")};
   pointer-events: all;
   &:active {
-    box-shadow: 0 0 4px 1px ${color("brand")};
+    ${activeThumbStyle}
   }
 `;
 
@@ -41,6 +43,14 @@ export const SliderInput = styled.input`
   }
   &::-moz-range-thumb {
     ${thumbStyles}
+  }
+  &:focus {
+    &::-webkit-slider-thumb {
+      ${activeThumbStyle}
+    }
+    &::-moz-range-thumb {
+      ${activeThumbStyle}
+    }
   }
 `;
 
