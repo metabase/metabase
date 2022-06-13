@@ -1,21 +1,18 @@
-# Triggers Percy job on push to master and release branches to create baseline screenshots
-name: Percy
+# Triggers Percy job on pull requests that contain "visual" label
+name: Percy visual tests
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - "**unit.spec.js"
-      - "frontend/test/**"
-      - "!frontend/test/metabase-visual/**"
+  pull_request:
+    types: [synchronize, labeled]
 
 jobs:
   percy:
-    timeout-minutes: 45
-    runs-on: ubuntu-20.04
+    if: contains(github.event.pull_request.labels.*.name, 'visual')
+    timeout-minutes: 30
+    runs-on: buildjet-4vcpu-ubuntu-2004
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v3
       - name: Prepare front-end environment
@@ -35,4 +32,3 @@ jobs:
         run: yarn run test-visual-run
         env:
           PERCY_TOKEN: ${{ secrets.PERCY_TOKEN }}
-        if: env.PERCY_TOKEN != null
