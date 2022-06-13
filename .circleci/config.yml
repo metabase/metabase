@@ -1266,7 +1266,6 @@ workflows:
               folder:
                 [
                   "admin",
-                  "collections",
                   "filters",
                   "native",
                   "native-filters",
