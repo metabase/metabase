@@ -1,5 +1,5 @@
 ---
-title: About the Information we collect:
+title: About the Information we collect
 ---
 
 # About the Information we collect:
