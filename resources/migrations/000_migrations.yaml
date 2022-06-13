@@ -11856,7 +11856,7 @@ databaseChangeLog:
               - column:
                   name: has_more_values
                   type: boolean
-                  remarks: `true` if the stored values list is a subset of all possible values
+                  remarks: true if the stored values list is a subset of all possible values
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
