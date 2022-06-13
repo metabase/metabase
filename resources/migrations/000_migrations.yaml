@@ -12091,8 +12091,8 @@ databaseChangeLog:
       comment: Added 0.44.0 - writeback
       changes:
         - createTable:
-            tableName: api_action
-            remarks: An api call type of action
+            tableName: http_action
+            remarks: An http api call type of action
             columns:
               - column:
                   name: action_id
@@ -12102,7 +12102,7 @@ databaseChangeLog:
                     nullable: false
                     referencedTableName: action
                     referencedColumnNames: id
-                    foreignKeyName: fk_api_action_ref_action_id
+                    foreignKeyName: fk_http_action_ref_action_id
                     deleteCascade: true
               - column:
                   name: name
@@ -12134,9 +12134,9 @@ databaseChangeLog:
       comment: Added 0.44.0 - writeback
       changes:
         - addPrimaryKey:
-            tableName: api_action
+            tableName: http_action
             columnNames: action_id
-            constraintName: pk_api_action
+            constraintName: pk_http_action
 
 
 
