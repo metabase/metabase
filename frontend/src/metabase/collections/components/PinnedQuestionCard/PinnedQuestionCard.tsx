@@ -1,4 +1,5 @@
 import React from "react";
+import { t } from "ttag";
 import { Item } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -68,7 +69,7 @@ const PinnedQuestionCard = ({
       ) : (
         <CardStaticSkeleton
           name={item.name}
-          description={item.description}
+          description={item.description ?? t`A question`}
           icon={item.getIcon()}
         />
       )}

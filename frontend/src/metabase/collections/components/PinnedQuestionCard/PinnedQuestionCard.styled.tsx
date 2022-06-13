@@ -16,7 +16,7 @@ export const CardActionMenu = styled(ActionMenu)`
 `;
 
 export const CardStaticSkeleton = styled(StaticSkeleton)`
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.5rem;
 `;
 
 export const CardPreviewSkeleton = styled(ChartSkeleton)`
@@ -30,7 +30,7 @@ export interface CardRootProps {
 export const CardRoot = styled(Link)<CardRootProps>`
   position: relative;
   display: block;
-  height: ${props => (props.isPreview ? "15.625rem" : "8rem")};
+  height: ${props => props.isPreview && "15.625rem"};
   padding: 0.5rem 0;
   border: 1px solid ${color("border")};
   border-radius: 0.375rem;

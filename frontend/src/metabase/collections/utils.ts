@@ -16,7 +16,6 @@ export type Item = {
   setCollection?: boolean;
   model: string;
   can_preview?: boolean;
-  has_required_parameters?: boolean;
 };
 
 export function nonPersonalOrArchivedCollection(

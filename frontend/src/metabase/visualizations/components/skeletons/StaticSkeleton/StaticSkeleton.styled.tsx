@@ -12,12 +12,13 @@ export const SkeletonTitle = styled(Ellipsified)`
 
 export const SkeletonDescription = styled(Ellipsified)`
   color: ${color("text-medium")};
-  margin-top: 0.25rem;
+  line-height: 1.5rem;
 `;
 
 export const SkeletonIcon = styled(Icon)`
   color: ${color("text-medium")};
   width: 1.5rem;
   height: 1.5rem;
+  margin-top: 0.5rem;
   margin-bottom: 1rem;
 `;
