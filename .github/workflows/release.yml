@@ -14,6 +14,9 @@ jobs:
     - name: Download Uberjar for ${{ github.ref_name }}
       run: |
         JAR_DOWNLOAD_URL=https://downloads.metabase.com/${{ github.ref_name }}/metabase.jar
+        if [[ ${{ github.ref_name }} == v1* ]]; then
+          JAR_DOWNLOAD_URL=https://downloads.metabase.com/enterprise/${{ github.ref_name }}/metabase.jar
+        fi
         echo $JAR_DOWNLOAD_URL > url.txt
         echo "----- Downloading Uberjar from $JAR_DOWNLOAD_URL -----"
         curl -OL $JAR_DOWNLOAD_URL
@@ -101,6 +104,17 @@ jobs:
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       timeout-minutes: 3
 
+    - name: Determine the target Docker Hub repository
+      run: |
+        if [[ ${{ github.ref_name }} == v1* ]]; then
+          echo "Metabase EE: image is going to be pushed to ${{ github.repository_owner }}/metabase-enterprise"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase-enterprise" >> $GITHUB_ENV
+        else
+          echo "Metabase OSS: image is going to be pushed to ${{ github.repository_owner }}/metabase"
+          echo "DOCKERHUB_REPO=${{ github.repository_owner }}/metabase" >> $GITHUB_ENV
+        fi
+
+
     - name: Login to Docker Hub
       uses: docker/login-action@v1
       with:
@@ -108,5 +122,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: Retag and push container image to Docker Hub
       run: |
-        docker tag localhost:5000/local-metabase:${{ github.ref_name }} metabase/metabase:${{ github.ref_name }}
-        docker push metabase/metabase:${{ github.ref_name }}
+        echo "Pushing ${{ github.ref_name }} to ${{ env.DOCKERHUB_REPO }} ..."
+        docker tag localhost:5000/local-metabase:${{ github.ref_name }} ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
+        docker push ${{ env.DOCKERHUB_REPO }}:${{ github.ref_name }}
+        echo "Finished!"
