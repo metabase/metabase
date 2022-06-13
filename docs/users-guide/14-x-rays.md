@@ -1,3 +1,7 @@
+---
+title: X-rays
+---
+
 ## X-rays
 
 X-rays are a fast and easy way to get automatic insights and explorations of your data.
@@ -65,4 +69,3 @@ The X-ray suggestions that appear on the homepage of Metabase will be hidden if 
 ### Need help?
 
 If you still have questions about X-rays or comparisons, you can head over to our [discussion forum](https://discourse.metabase.com/). See you there!
-

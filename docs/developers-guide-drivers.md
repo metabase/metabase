@@ -1,3 +1,7 @@
+---
+title: Partner and community drivers
+---
+
 # Partner and community drivers
 
 In addition to our [Officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), many people build and maintain drivers for database integrations.

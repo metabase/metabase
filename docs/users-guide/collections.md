@@ -1,3 +1,7 @@
+---
+title: Collections
+---
+
 # Collections
 
  After your team has been using Metabase for a while, you’ll probably end up with lots of saved questions.

@@ -1,3 +1,7 @@
+---
+title: Interactive dashboards
+---
+
 ## Interactive dashboards
 
 You can customize what happens when people click on questions in your dashboard.

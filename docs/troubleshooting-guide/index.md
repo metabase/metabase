@@ -1,3 +1,7 @@
+---
+title: What are you having trouble with?
+---
+
 # What are you having trouble with?
 
 This page collects resources for getting you unstuck.

@@ -1,3 +1,7 @@
+---
+title: Data sandboxes
+---
+
 # Data sandboxes
 
 {% include plans-blockquote.html feature="Data sandboxes" %}

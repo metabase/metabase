@@ -1,3 +1,9 @@
+---
+title: "Session"
+summary: |
+  /api/session endpoints.
+---
+
 # Session
 
 /api/session endpoints.

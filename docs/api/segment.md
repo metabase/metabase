@@ -1,3 +1,9 @@
+---
+title: "Segment"
+summary: |
+  /api/segment endpoints.
+---
+
 # Segment
 
 /api/segment endpoints.

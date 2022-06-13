@@ -1,3 +1,7 @@
+---
+title: Visual Tests
+---
+
 # Visual Tests
 
 We use [Percy](https://percy.io/) via Github actions to run visual regression tests. Percy provides pull-request-based workflow, handles diff review and approval flow conveniently. In addition to that, It integrates with Cypress, which allows us to use all power of our custom helpers and commands. We run

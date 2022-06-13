@@ -1,3 +1,11 @@
+---
+title: "Advanced permissions application"
+summary: |
+  `/advanced-permisisons/application` Routes.
+    Implements the Permissions routes needed for application permission - a class of permissions that control access to features
+    like access Setting pages, access monitoring tools ... etc.
+---
+
 # Advanced permissions application
 
 `/advanced-permisisons/application` Routes.

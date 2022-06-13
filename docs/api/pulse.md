@@ -1,3 +1,9 @@
+---
+title: "Pulse"
+summary: |
+  /api/pulse endpoints.
+---
+
 # Pulse
 
 /api/pulse endpoints.

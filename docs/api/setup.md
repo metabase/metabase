@@ -1,4 +1,12 @@
+---
+title: "Setup"
+summary: |
+  API endpoints for Setup.
+---
+
 # Setup
+
+API endpoints for Setup.
 
   - [GET /api/setup/admin_checklist](#get-apisetupadmin_checklist)
   - [GET /api/setup/user_defaults](#get-apisetupuser_defaults)

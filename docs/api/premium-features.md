@@ -1,4 +1,12 @@
+---
+title: "Premium features"
+summary: |
+  API endpoints for Premium features.
+---
+
 # Premium features
+
+API endpoints for Premium features.
 
   - [GET /api/premium-features/token/status](#get-apipremium-featurestokenstatus)
 

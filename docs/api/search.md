@@ -1,4 +1,12 @@
+---
+title: "Search"
+summary: |
+  API endpoints for Search.
+---
+
 # Search
+
+API endpoints for Search.
 
   - [GET /api/search/](#get-apisearch)
   - [GET /api/search/models](#get-apisearchmodels)

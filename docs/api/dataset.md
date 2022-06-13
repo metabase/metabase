@@ -1,3 +1,9 @@
+---
+title: "Dataset"
+summary: |
+  /api/dataset endpoints.
+---
+
 # Dataset
 
 /api/dataset endpoints.

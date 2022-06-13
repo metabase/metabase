@@ -1,3 +1,17 @@
+---
+title: "Preview embed"
+summary: |
+  Endpoints for previewing how Cards and Dashboards will look when embedding them.
+     These endpoints are basically identical in functionality to the ones in `/api/embed`, but:
+  
+     1.  Require admin access
+     2.  Ignore the values of `:enabled_embedding` for Cards/Dashboards
+     3.  Ignore the `:embed_params` whitelist for Card/Dashboards, instead using a field called `:_embedding_params` in
+         the JWT token itself.
+  
+     Refer to the documentation for those endpoints for further details.
+---
+
 # Preview embed
 
 Endpoints for previewing how Cards and Dashboards will look when embedding them.

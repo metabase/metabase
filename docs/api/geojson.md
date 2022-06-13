@@ -1,4 +1,12 @@
+---
+title: "GeoJSON"
+summary: |
+  API endpoints for GeoJSON.
+---
+
 # GeoJSON
+
+API endpoints for GeoJSON.
 
   - [GET /api/geojson/](#get-apigeojson)
   - [GET /api/geojson/:key](#get-apigeojsonkey)

@@ -1,3 +1,7 @@
+---
+title: Working with Google Analytics in Metabase
+---
+
 ## Working with Google Analytics in Metabase
 
 This page provides information on how to create and manage a connection to a [Google Analytics][google-analytics] dataset.
@@ -104,4 +108,4 @@ If you're having trouble, see the guides under [Troubleshooting data sources][tr
 [google-oauth-scopes]: https://developers.google.com/identity/protocols/oauth2/scopes
 [google-service-accounts]: https://cloud.google.com/iam/docs/service-accounts
 [sync-docs]: ../../administration-guide/01-managing-databases.html#choose-when-metabase-syncs-and-scans
-[troubleshooting-data-sources]: .../troubleshooting-guide/index.html#data-sources
+[troubleshooting-data-sources]: ../../troubleshooting-guide/index.html#data-sources

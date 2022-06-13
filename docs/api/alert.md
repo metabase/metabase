@@ -1,3 +1,9 @@
+---
+title: "Alert"
+summary: |
+  /api/alert endpoints.
+---
+
 # Alert
 
 /api/alert endpoints.

@@ -1,3 +1,23 @@
+---
+title: "Embed"
+summary: |
+  Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.
+     The endpoints are the same as the ones in `api/public/`, and differ only in the way they are authorized.
+  
+     To use these endpoints:
+  
+      1.  Set the `embedding-secret-key` Setting to a hexadecimal-encoded 32-byte sequence (i.e., a 64-character string).
+          You can use `/api/util/random_token` to get a cryptographically-secure value for this.
+      2.  Sign/base-64 encode a JSON Web Token using the secret key and pass it as the relevant part of the URL path
+          to the various endpoints here.
+  
+     Tokens can have the following fields:
+  
+        {:resource {:question  <card-id>
+                    :dashboard <dashboard-id>}
+         :params   <params>}.
+---
+
 # Embed
 
 Various endpoints that use [JSON web tokens](https://jwt.io/introduction/) to fetch Cards and Dashboards.

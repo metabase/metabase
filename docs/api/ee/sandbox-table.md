@@ -1,4 +1,12 @@
+---
+title: "Sandbox table"
+summary: |
+  API endpoints for Sandbox table.
+---
+
 # Sandbox table
+
+API endpoints for Sandbox table.
 
   - [GET /api/ee/sandbox/table/:id/query_metadata](#get-apieesandboxtableidquery_metadata)
 

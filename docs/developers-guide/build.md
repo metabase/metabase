@@ -1,3 +1,7 @@
+---
+title: Building Metabase
+---
+
 # Building Metabase
 
 This doc will show you how you can build and run Metabase on your own computer so you can play around with it or test features in development. You can also run development branches of Metabase [using a pre-built Docker image](dev-branch-docker.md).
@@ -140,4 +144,3 @@ The entire Metabase application is compiled and assembled into a single .jar fil
     ./bin/build
 
 After running the build script simply look in `target/uberjar` for the output .jar file and you are ready to go.
-
