@@ -1,3 +1,7 @@
+---
+title: Visualizing results
+---
+
 # Visualizing results
 
 While tables are useful for looking up information or finding specific numbers, it's usually easier to see trends and make sense of data using charts.

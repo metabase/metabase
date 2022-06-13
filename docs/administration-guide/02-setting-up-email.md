@@ -1,3 +1,6 @@
+---
+title: Setting up Email
+---
 
 ## Setting up Email
 

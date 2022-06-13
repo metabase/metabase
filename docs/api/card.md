@@ -1,3 +1,8 @@
+---
+title: "Card"
+summary: "/api/card endpoints."
+---
+
 # Card
 
 /api/card endpoints.

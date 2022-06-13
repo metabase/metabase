@@ -1,3 +1,7 @@
+---
+title: People can't log in to Metabase
+---
+
 # People can't log in to Metabase
 
 ## Do you know how your logins are managed?

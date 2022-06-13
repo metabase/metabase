@@ -1,3 +1,7 @@
+---
+title: Custom Maps
+---
+
 ## Custom Maps
 
 By default, Metabase uses OpenStreetMaps for map visualizations, but there are a few customization options.

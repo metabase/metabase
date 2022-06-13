@@ -1,3 +1,7 @@
+---
+title: SQL snippets
+---
+
 ## SQL snippets
 
 ![Highlight and save as snippet](./images/sql-snippets/highlight_and_save_as_snippet.gif)

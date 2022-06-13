@@ -1,3 +1,7 @@
+---
+title: Development environment
+---
+
 # Development environment
 
 The Metabase application has two basic components:

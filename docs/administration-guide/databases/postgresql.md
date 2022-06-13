@@ -1,3 +1,7 @@
+---
+title: Connecting to a PostgreSQL database
+---
+
 # Connecting to a PostgreSQL database
 
 In addition to specifying the host, port, database name and user credentials for the database connection, you have the option of securing that connection.
@@ -90,4 +94,3 @@ The problem is that if the keys in the JSON vary record to record, the first ten
 
 [ssl-modes]: https://jdbc.postgresql.org/documentation/head/ssl-client.html
 [ssh-tunnel]: ../ssh-tunnel-for-database-connections.html
-

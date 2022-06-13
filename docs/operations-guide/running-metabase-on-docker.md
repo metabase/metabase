@@ -1,3 +1,7 @@
+---
+title: Running Metabase on Docker
+---
+
 # Running Metabase on Docker
 
 Metabase provides an official Docker image via Dockerhub that can be used for deployments on any system that is running Docker.

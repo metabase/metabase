@@ -1,3 +1,8 @@
+---
+title: "Dashboard"
+summary: "/api/dashboard endpoints."
+---
+
 # Dashboard
 
 /api/dashboard endpoints.
