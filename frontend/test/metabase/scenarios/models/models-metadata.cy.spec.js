@@ -1,16 +1,14 @@
 import {
   restore,
-  sidebar,
+  rightSidebar,
   visualize,
   visitDashboard,
   popover,
   openQuestionActions,
+  questionInfoButton,
 } from "__support__/e2e/cypress";
 
-import {
-  openDetailsSidebar,
-  startQuestionFromModel,
-} from "./helpers/e2e-models-helpers";
+import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
 import {
   openColumnOptions,
@@ -160,11 +158,11 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Tax ($)");
 
     cy.reload();
-    openDetailsSidebar();
+    questionInfoButton().click();
 
-    sidebar().within(() => {
-      cy.findByText("History").click();
-      cy.findAllByText("Revert")
+    rightSidebar().within(() => {
+      cy.findByText("History");
+      cy.findAllByTestId("question-revert-button")
         .first()
         .click();
     });

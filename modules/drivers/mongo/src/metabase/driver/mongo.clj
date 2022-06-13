@@ -55,7 +55,8 @@
                   :ok))
        1.0)))
 
-(defmethod driver/humanize-connection-error-message :mongo
+(defmethod driver/humanize-connection-error-message
+  :mongo
   [_ message]
   (condp re-matches message
     #"^Timed out after \d+ ms while waiting for a server .*$"
@@ -85,7 +86,6 @@
     #"java.security.InvalidKeyException: invalid key format"
     :invalid-key-format
 
-    #".*"                               ; default
     message))
 
 

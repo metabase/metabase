@@ -6,32 +6,21 @@ import _ from "underscore";
 
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getRevisionEventsForTimeline } from "metabase/lib/revisions";
-import {
-  revertToRevision,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
-} from "metabase/query_builder/actions";
+import { revertToRevision } from "metabase/query_builder/actions";
 import { getUser } from "metabase/selectors/user";
-import { getQuestionDetailsTimelineDrawerState } from "metabase/query_builder/selectors";
 
 import Revision from "metabase/entities/revisions";
 import User from "metabase/entities/users";
-import DrawerSection, {
-  STATES as DRAWER_STATES,
-} from "metabase/components/DrawerSection/DrawerSection";
-import { Timeline, RevertButton } from "./QuestionActivityTimeline.styled";
+import { Timeline, Header } from "./QuestionActivityTimeline.styled";
 
 const { getModerationTimelineEvents } = PLUGIN_MODERATION;
 
 const mapStateToProps = (state, props) => ({
   currentUser: getUser(state),
-  drawerState: getQuestionDetailsTimelineDrawerState(state, props),
 });
 
 const mapDispatchToProps = {
   revertToRevision,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
 };
 
 export default _.compose(
@@ -48,34 +37,12 @@ export default _.compose(
   connect(mapStateToProps, mapDispatchToProps),
 )(QuestionActivityTimeline);
 
-RevisionEventFooter.propTypes = {
-  revision: PropTypes.object.isRequired,
-  onRevisionClick: PropTypes.func.isRequired,
-};
-
-function RevisionEventFooter({ revision, onRevisionClick }) {
-  return (
-    <div>
-      <RevertButton
-        actionFn={() => onRevisionClick(revision)}
-        normalText={t`Revert`}
-        activeText={t`Reverting…`}
-        failedText={t`Revert failed`}
-        successText={t`Reverted`}
-      />
-    </div>
-  );
-}
-
 QuestionActivityTimeline.propTypes = {
   question: PropTypes.object.isRequired,
   revisions: PropTypes.array,
   users: PropTypes.array,
   currentUser: PropTypes.object.isRequired,
   revertToRevision: PropTypes.func.isRequired,
-  drawerState: PropTypes.oneOf([DRAWER_STATES.open, DRAWER_STATES.closed]),
-  onOpenQuestionHistory: PropTypes.func.isRequired,
-  onCloseQuestionHistory: PropTypes.func.isRequired,
 };
 
 export function QuestionActivityTimeline({
@@ -84,9 +51,6 @@ export function QuestionActivityTimeline({
   users,
   currentUser,
   revertToRevision,
-  drawerState,
-  onOpenQuestionHistory,
-  onCloseQuestionHistory,
 }) {
   const usersById = useMemo(() => _.indexBy(users, "id"), [users]);
   const canWrite = question.canWrite();
@@ -98,42 +62,33 @@ export function QuestionActivityTimeline({
       usersById,
       currentUser,
     );
-    const revisionEvents = getRevisionEventsForTimeline(revisions, {
-      currentUser,
-      canWrite,
-    });
-    return [...revisionEvents, ...moderationEvents];
-  }, [canWrite, moderationReviews, revisions, usersById, currentUser]);
+    const revisionEvents = getRevisionEventsForTimeline(
+      revisions,
+      {
+        currentUser,
+        canWrite,
+      },
+      revertToRevision,
+    );
 
-  const onDrawerStateChange = state => {
-    if (state === DRAWER_STATES.open) {
-      onOpenQuestionHistory();
-    } else {
-      onCloseQuestionHistory();
-    }
-  };
+    return [...revisionEvents, ...moderationEvents];
+  }, [
+    canWrite,
+    moderationReviews,
+    revisions,
+    usersById,
+    currentUser,
+    revertToRevision,
+  ]);
 
   return (
-    <DrawerSection
-      header={t`History`}
-      state={drawerState}
-      onStateChange={onDrawerStateChange}
-    >
+    <div>
+      <Header>{t`History`}</Header>
       <Timeline
         items={events}
         data-testid="saved-question-history-list"
-        renderFooter={item => {
-          const { isRevertable, revision } = item;
-          if (isRevertable) {
-            return (
-              <RevisionEventFooter
-                revision={revision}
-                onRevisionClick={revertToRevision}
-              />
-            );
-          }
-        }}
+        revertFn={revertToRevision}
       />
-    </DrawerSection>
+    </div>
   );
 }

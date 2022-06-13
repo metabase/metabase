@@ -35,6 +35,7 @@ import {
   getCanZoomNextRow,
 } from "metabase/query_builder/selectors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { State } from "metabase-types/store";
 
 import WritebackForm from "metabase/writeback/containers/WritebackForm";
 import { getWritebackEnabled } from "metabase/writeback/selectors";

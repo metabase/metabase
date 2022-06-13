@@ -176,7 +176,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{user.first_name + " " + user.last_name}</td>
+      <td className="text-bold">{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -196,3 +196,13 @@ const UserRow = ({
     </tr>
   );
 };
+
+function getName(user: IUser): string {
+  const name = [user.first_name, user.last_name].join(" ").trim();
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}

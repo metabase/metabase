@@ -219,6 +219,12 @@
    (slack-channels-and-usernames-last-updated)
    (t/minutes 10)))
 
+(defn clear-channel-cache!
+  "Clear the Slack channels cache, and reset its last-updated timestamp to its default value (the Unix epoch)."
+  []
+  (slack-channels-and-usernames-last-updated! zoned-time-epoch)
+  (slack-cached-channels-and-usernames! []))
+
 (defn refresh-channels-and-usernames!
   "Refreshes users and conversations in slack-cache. finds both in parallel, sets
   [[slack-cached-channels-and-usernames]], and resets the [[slack-channels-and-usernames-last-updated]] time."
