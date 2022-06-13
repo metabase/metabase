@@ -14,6 +14,7 @@
             [metabase.models :refer [Card CardBookmark Collection Dashboard Database ModerationReview Pulse PulseCard
                                      PulseChannel PulseChannelRecipient Table Timeline TimelineEvent ViewLog]]
             [metabase.models.moderation-review :as moderation-review]
+            [metabase.models.params.chain-filter-test :as chain-filter-test]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.revision :as revision :refer [Revision]]
@@ -1837,6 +1838,167 @@
                                                                :model "card" :archived "false")))
                   (name->position (:data (mt/user-http-request :crowberto :get 200 (format "collection/%s/items" coll-id-2)
                                                                :model "card" :archived "false"))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           PARAMETER VALUES ENDPOINTS                                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- do-with-param-values-fixtures
+  [query-type card-values f]
+  {:pre [(#{:native :query} query-type)]}
+  (mt/with-temp* [Card [card]]
+    (let [card-defaults
+          (if (= query-type :query)
+            ;; notebook query with parameters are fields
+            {:database_id   (mt/id)
+             :table_id      (mt/id :venues)
+             :dataset_query (mt/mbql-query venues)
+             :parameters [{:name "Category Name"
+                           :slug "category_name"
+                           :id   "_CATEGORY_NAME_"
+                           :type "category"}
+                          {:name "Category ID"
+                           :slug "category_id"
+                           :id   "_CATEGORY_ID_"
+                           :type "category"}]
+             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                   :card_id      (:id card)
+                                   :target       [:dimension (mt/$ids venues $category_id->categories.name)]}
+                                  {:parameter_id "_CATEGORY_ID_"
+                                   :card_id      (:id card)
+                                   :target       [:dimension (mt/$ids venues $category_id)]}]}
+            ;; native query with parameters are template tags
+            {:database_id (mt/id)
+             :query_type :native
+             :dataset_query {:database (mt/id)
+                             :type     :native
+                             :native
+                             {:query         (str "SELECT * FROM VENUES WHERE {{category}} and {{category_id}};")
+                              :template-tags {"category"      {:id           "c7fcf1fa"
+                                                               :name         "category"
+                                                               :display-name "Category"
+                                                               :type         :dimension
+                                                               :dimension    [:field (mt/$ids venues $category_id->categories.name) nil]
+                                                               :widget-type  :string/=}
+                                              "category_id"   {:id           "a3cd3f3b"
+                                                               :name         "category_id"
+                                                               :display-name "Category"
+                                                               :type         :dimension
+                                                               :dimension    [:field (mt/$ids venues $category_id) nil]
+                                                               :widget-type  :number/=}}}}
+
+             :parameters [{:name "Category_name"
+                           :slug "category_name"
+                           :id   "_CATEGORY_NAME_"
+                           :type "category"}
+                          {:name "Category ID"
+                           :slug "category_id"
+                           :id   "_CATEGORY_ID_"
+                           :type "category"}]
+             :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                   :card_id      (:id card)
+                                   :target       [:template-tag {:id "c7fcf1fa"}]}
+                                  {:parameter_id "_CATEGORY_ID_"
+                                   :card_id      (:id card)
+                                   :target       [:template-tag {:id "a3cd3f3b"}]}]})]
+      (db/update! Card (:id card)
+                  (merge card-defaults card-values)))
+    (f {:card       card
+        :param-ids {:category-name "_CATEGORY_NAME_"
+                    :category-id   "_CATEGORY_ID_"}})))
+
+(defmacro ^:private with-param-values-fixtures
+  "Create a query and its parameters."
+  {:style/indent 2}
+  [query-type [binding card-values] & body]
+  `(do-with-param-values-fixtures ~query-type ~card-values (fn [~binding] ~@body)))
+
+(defn- param-values-values-url [card-or-id param-id]
+  (format "card/%d/params/%s/values" (u/the-id card-or-id) (name param-id)))
+
+(defn- param-values-search-url [card-or-id param-id query]
+  (str (format "card/%d/params/%s/search/" (u/the-id card-or-id) (name param-id))
+       query))
+
+(deftest param-values-test
+  (testing "GET /api/card/:id/params/:param-id/values"
+    (doseq [query-type [:query :native]]
+      (testing (format "With %s question" (name query-type))
+        (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+          (testing "Show me names of categories"
+            (is (= ["African" "American" "Artisan"]
+                   (take 3 (mt/user-http-request :rasta :get 200 (param-values-values-url
+                                                                   card
+                                                                   (:category-name param-ids))))))))
+
+        (testing "Should require perms for the Card"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp Collection [collection]
+              (with-param-values-fixtures query-type [{:keys [card param-ids]} {:collection_id (:id collection)}]
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :get 403 (param-values-values-url
+                                                               card
+                                                               (:category-name param-ids)))))))))
+
+        (testing "should check perms for the Fields in question"
+          (mt/with-temp-copy-of-db
+            (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+              (perms/revoke-data-perms! (perms-group/all-users) (mt/id))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :get 403 (param-values-values-url
+                                                             card
+                                                             (:category-name param-ids))))))))))))
+
+(deftest param-values-search-test
+  (testing "GET /api/card/:id/params/:param-id/search/:query"
+    (doseq [query-type [:native :query]]
+      (testing (format "With %s question" (name query-type))
+        (with-param-values-fixtures :query [{:keys [card param-ids]}]
+          (let [url (param-values-search-url card (:category-name param-ids) "bar")]
+            (testing (str "\n" url)
+              (testing "\nShow me names of categories that include 'bar' (case-insensitive)"
+                (is (= ["Bar" "Gay Bar" "Juice Bar"]
+                       (take 3 (mt/user-http-request :rasta :get 200 url)))))))
+
+          (let [url (param-values-search-url card (:category-name param-ids) "house")]
+            (testing "\nShow me names of categories that include 'house' that have expensive venues (price = 4)"
+              (is (= ["Steakhouse"]
+                     (take 3 (mt/user-http-request :rasta :get 200 url))))))
+
+          (testing "Should require a non-empty query"
+            (doseq [query [nil
+                           ""
+                           "   "
+                           "\n"]]
+              (let [url (param-values-search-url card (:category-name param-ids) query)]
+                (is (= "API endpoint does not exist."
+                       (mt/user-http-request :rasta :get 404 url)))))))
+
+        (testing "Should require perms for the card"
+          (mt/with-non-admin-groups-no-root-collection-perms
+            (mt/with-temp Collection [collection]
+              (with-param-values-fixtures :query [{:keys [card param-ids]} {:collection_id (:id collection)}]
+                (let [url (param-values-search-url card (:category-name param-ids) "s")]
+                  (testing (str "\n url")
+                    (is (= "You don't have permissions to do that."
+                           (mt/user-http-request :rasta :get 403 url)))))))))))))
+
+(deftest param-values-human-readable-values-remapping-test
+  (testing "Get param values for Fields that have Human-Readable values\n"
+    (doseq [query-type [:native :query]]
+      (testing (format "With %s question" (name query-type))
+        (chain-filter-test/with-human-readable-values-remapping
+          (with-param-values-fixtures query-type [{:keys [card param-ids]}]
+            (testing "GET /api/card/:id/params/:param-id/values"
+              (let [url (param-values-values-url card (:category-id param-ids))]
+                (is (= [[2 "American"]
+                        [3 "Artisan"]]
+                       (take 2 (mt/user-http-request :rasta :get 200 url))))))
+
+            (testing "GET /api/card/:id/params/:param-id/search/:query"
+              (let [url (param-values-search-url card (:category-id param-ids) "house")]
+                (is (= [[67 "Steakhouse"]]
+                       (take 1 (mt/user-http-request :rasta :get 200 url))))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
