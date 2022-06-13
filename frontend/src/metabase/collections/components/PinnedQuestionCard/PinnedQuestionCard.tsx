@@ -7,7 +7,8 @@ import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,
   CardRoot,
-  CardSkeleton,
+  CardPreviewSkeleton,
+  CardStaticSkeleton,
 } from "./PinnedQuestionCard.styled";
 
 export interface PinnedQuestionCardProps {
@@ -31,8 +32,10 @@ const PinnedQuestionCard = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
+  const isPreview = item.can_preview && item.has_required_parameters;
+
   return (
-    <CardRoot to={item.getUrl()}>
+    <CardRoot to={item.getUrl()} isPreview={isPreview}>
       <CardActionMenu
         item={item}
         collection={collection}
@@ -42,25 +45,33 @@ const PinnedQuestionCard = ({
         createBookmark={onCreateBookmark}
         deleteBookmark={onDeleteBookmark}
       />
-      <PinnedQuestionLoader id={item.id} metadata={metadata}>
-        {({ question, rawSeries, loading, error, errorIcon }) =>
-          loading ? (
-            <CardSkeleton
-              display={question?.display()}
-              displayName={question?.displayName()}
-              description={question?.description()}
-            />
-          ) : (
-            <Visualization
-              rawSeries={rawSeries}
-              error={error}
-              errorIcon={errorIcon}
-              showTitle
-              isDashboard
-            />
-          )
-        }
-      </PinnedQuestionLoader>
+      {isPreview ? (
+        <PinnedQuestionLoader id={item.id} metadata={metadata}>
+          {({ question, rawSeries, loading, error, errorIcon }) =>
+            loading ? (
+              <CardPreviewSkeleton
+                name={question?.displayName()}
+                display={question?.display()}
+                description={question?.description()}
+              />
+            ) : (
+              <Visualization
+                rawSeries={rawSeries}
+                error={error}
+                errorIcon={errorIcon}
+                showTitle
+                isDashboard
+              />
+            )
+          }
+        </PinnedQuestionLoader>
+      ) : (
+        <CardStaticSkeleton
+          name={item.name}
+          description={item.description}
+          icon={item.getIcon()}
+        />
+      )}
     </CardRoot>
   );
 };

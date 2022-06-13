@@ -3,6 +3,7 @@ import { color } from "metabase/lib/colors";
 import Link from "metabase/core/components/Link";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
+import StaticSkeleton from "metabase/visualizations/components/skeletons/StaticSkeleton";
 import { LegendLabel } from "metabase/visualizations/components/legend/LegendCaption.styled";
 
 export const CardActionMenu = styled(ActionMenu)`
@@ -14,14 +15,22 @@ export const CardActionMenu = styled(ActionMenu)`
   visibility: hidden;
 `;
 
-export const CardSkeleton = styled(ChartSkeleton)`
+export const CardStaticSkeleton = styled(StaticSkeleton)`
   padding: 0.5rem 1rem;
 `;
 
-export const CardRoot = styled(Link)`
+export const CardPreviewSkeleton = styled(ChartSkeleton)`
+  padding: 0.5rem 1rem;
+`;
+
+export interface CardRootProps {
+  isPreview?: boolean;
+}
+
+export const CardRoot = styled(Link)<CardRootProps>`
   position: relative;
   display: block;
-  height: 15.625rem;
+  height: ${props => (props.isPreview ? "15.625rem" : "8rem")};
   padding: 0.5rem 0;
   border: 1px solid ${color("border")};
   border-radius: 0.375rem;

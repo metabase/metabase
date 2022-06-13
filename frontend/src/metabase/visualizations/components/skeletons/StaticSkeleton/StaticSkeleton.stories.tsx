@@ -17,13 +17,13 @@ const Template: ComponentStory<typeof StaticSkeleton> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  displayName: "Question",
+  name: "Question",
   icon: { name: "bar" },
 };
 
 export const WithDescription = Template.bind({});
 Default.args = {
-  displayName: "Question",
+  name: "Question",
   description: "This is the question’s description",
   icon: { name: "bar" },
 };

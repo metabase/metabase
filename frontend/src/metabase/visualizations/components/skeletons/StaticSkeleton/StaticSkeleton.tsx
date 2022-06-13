@@ -6,8 +6,8 @@ import {
 } from "./StaticSkeleton.styled";
 
 export interface StaticSkeletonProps {
-  displayName?: string;
-  description?: string;
+  name?: string | null;
+  description?: string | null;
   icon?: StaticSkeletonIconProps;
 }
 
@@ -16,14 +16,14 @@ export interface StaticSkeletonIconProps {
 }
 
 const StaticSkeleton = ({
-  displayName,
+  name,
   description,
   icon,
 }: StaticSkeletonProps): JSX.Element => {
   return (
     <div>
       {icon && <SkeletonIcon {...icon} />}
-      <SkeletonTitle>{displayName}</SkeletonTitle>
+      <SkeletonTitle>{name}</SkeletonTitle>
       {description && <SkeletonDescription>{description}</SkeletonDescription>}
     </div>
   );
