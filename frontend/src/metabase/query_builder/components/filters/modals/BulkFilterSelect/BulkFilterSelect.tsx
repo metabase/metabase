@@ -9,7 +9,6 @@ import Dimension from "metabase-lib/lib/Dimension";
 import { isBoolean } from "metabase/lib/schema_metadata";
 
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
-import { InlineFilterSelect, INLINE_FIELD_TYPES } from "../InlineFilterSelect";
 
 import {
   SelectFilterButton,
@@ -21,18 +20,16 @@ export interface BulkFilterSelectProps {
   query: StructuredQuery;
   filter?: Filter;
   dimension: Dimension;
-  onAddFilter: (filter: Filter) => void;
-  onChangeFilter: (filter: Filter, newFilter: Filter) => void;
-  onRemoveFilter: (filter: Filter) => void;
+  handleChange: (newFilter: Filter) => void;
+  handleClear: () => void;
 }
 
 export const BulkFilterSelect = ({
   query,
   filter,
   dimension,
-  onAddFilter,
-  onChangeFilter,
-  onRemoveFilter,
+  handleChange,
+  handleClear,
 }: BulkFilterSelectProps): JSX.Element => {
   const name = useMemo(() => {
     return filter?.displayName({ includeDimension: false });
@@ -41,37 +38,6 @@ export const BulkFilterSelect = ({
   const newFilter = useMemo(() => {
     return getNewFilter(query, dimension);
   }, [query, dimension]);
-
-  const handleChange = useCallback(
-    (newFilter: Filter) => {
-      if (filter) {
-        onChangeFilter(filter, newFilter);
-      } else {
-        onAddFilter(newFilter);
-      }
-    },
-    [filter, onAddFilter, onChangeFilter],
-  );
-
-  const handleClear = useCallback(() => {
-    if (filter) {
-      onRemoveFilter(filter);
-    }
-  }, [filter, onRemoveFilter]);
-
-  const fieldType = useMemo(() => dimension.field().base_type ?? "", [
-    dimension,
-  ]);
-
-  if (INLINE_FIELD_TYPES.includes(fieldType)) {
-    return (
-      <InlineFilterSelect
-        fieldType={fieldType}
-        filter={filter ?? newFilter}
-        handleChange={handleChange}
-      />
-    );
-  }
 
   return (
     <TippyPopoverWithTrigger
@@ -82,7 +48,7 @@ export const BulkFilterSelect = ({
           highlighted
           aria-label={dimension.displayName()}
           onClick={onClick}
-          onClear={filter ? handleClear : undefined}
+          onClear={handleClear}
         >
           {name}
         </SelectFilterButton>

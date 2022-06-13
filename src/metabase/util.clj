@@ -22,9 +22,8 @@
   (:import [java.math MathContext RoundingMode]
            [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
-           (java.util Locale PriorityQueue)
+           [java.util Base64 Base64$Decoder Base64$Encoder Locale PriorityQueue]
            java.util.concurrent.TimeoutException
-           javax.xml.bind.DatatypeConverter
            [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 (comment shared.u/keep-me)
@@ -579,15 +578,28 @@
                    (str/replace s #"\s" "")
                    (re-matches #"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$" s)))))
 
+(def ^Base64$Decoder base64-decoder
+  "A shared Base64 decoder instance."
+  (Base64/getDecoder))
+
+(defn decode-base64-to-bytes
+  "Decodes a Base64 string into bytes."
+  ^bytes [^String string]
+  (.decode base64-decoder string))
+
 (defn decode-base64
-  "Decodes a Base64 string to a UTF-8 string"
+  "Decodes the Base64 string `input` to a UTF-8 string."
   [input]
-  (new java.lang.String (DatatypeConverter/parseBase64Binary input) "UTF-8"))
+  (new java.lang.String (decode-base64-to-bytes input) "UTF-8"))
+
+(def ^Base64$Encoder base64-encoder
+  "A shared Base64 encoder instance."
+  (Base64/getEncoder))
 
 (defn encode-base64
-  "Encodes a string to a Base64 string"
-  [^String input]
-  (DatatypeConverter/printBase64Binary (.getBytes input "UTF-8")))
+  "Encodes the UTF-8 encoding of the string `input` to a Base64 string."
+  ^String [^String input]
+  (.encodeToString base64-encoder (.getBytes input "UTF-8")))
 
 (def ^{:arglists '([n])} safe-inc
   "Increment `n` if it is non-`nil`, otherwise return `1` (e.g. as if incrementing `0`)."

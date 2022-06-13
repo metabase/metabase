@@ -82,7 +82,7 @@ export default class Activity extends Component {
     if (user && currentUser && user.id === currentUser.id) {
       return t`You`;
     } else if (user) {
-      return user.first_name;
+      return user.common_name;
     } else {
       return t`Metabase`;
     }

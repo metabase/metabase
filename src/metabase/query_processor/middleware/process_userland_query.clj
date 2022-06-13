@@ -29,7 +29,8 @@
 (defn- save-query-execution!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (query/save-query-and-update-average-execution-time! query query-hash running-time)
+  (when-not (:cache_hit query-execution)
+    (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn (trs "Cannot save QueryExecution, missing :context"))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
@@ -89,8 +90,7 @@
                                              :actor_id     (:executor_id execution-info)
                                              :cached       (:cached acc)
                                              :ignore_cache (get-in execution-info [:json_query :middleware :ignore-cached-results?])}))
-       (when-not (:cached acc)
-         (save-successful-query-execution! (:cached acc) execution-info @row-count))
+       (save-successful-query-execution! (:cached acc) execution-info @row-count)
        (rf (if (map? acc)
              (success-response execution-info acc)
              acc)))

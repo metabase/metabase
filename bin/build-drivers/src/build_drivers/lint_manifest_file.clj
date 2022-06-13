@@ -23,7 +23,7 @@
 (s/def ::contact-info (spell/keys :req-un [::name]
                                   :opt-un [::address]))
 
-(def ^:private property-types #{"string" "textFile" "boolean" "secret" "info" "schema-filters"})
+(def ^:private property-types #{"string" "text" "textFile" "boolean" "secret" "info" "schema-filters"})
 
 (s/def ::display-name string?)
 (s/def ::default any?)
