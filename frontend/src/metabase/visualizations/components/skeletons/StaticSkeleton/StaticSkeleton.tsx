@@ -2,7 +2,6 @@ import React from "react";
 import {
   SkeletonDescription,
   SkeletonIcon,
-  SkeletonRoot,
   SkeletonTitle,
 } from "./StaticSkeleton.styled";
 
@@ -22,11 +21,11 @@ const StaticSkeleton = ({
   icon,
 }: StaticSkeletonProps): JSX.Element => {
   return (
-    <SkeletonRoot>
+    <div>
       {icon && <SkeletonIcon {...icon} />}
       <SkeletonTitle>{name}</SkeletonTitle>
       {description && <SkeletonDescription>{description}</SkeletonDescription>}
-    </SkeletonRoot>
+    </div>
   );
 };
 
