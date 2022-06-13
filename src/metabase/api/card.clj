@@ -566,6 +566,7 @@
                    :average_query_time
                    :last_query_start
                    :collection [:moderation_reviews :moderator_details])
+          (cond-> (:dataset card) (hydrate :persisted))
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"

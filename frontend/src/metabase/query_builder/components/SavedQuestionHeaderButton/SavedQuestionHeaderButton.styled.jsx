@@ -14,8 +14,4 @@ export const HeaderButton = styled(Button)`
   .Icon:not(.Icon-chevrondown) {
     color: ${props => color(props.leftIconColor)};
   }
-
-  .Icon-chevrondown {
-    height: 13px;
-  }
 `;

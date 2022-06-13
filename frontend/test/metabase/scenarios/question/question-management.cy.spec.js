@@ -4,6 +4,7 @@ import {
   saveDashboard,
   popover,
   openQuestionActions,
+  questionInfoButton,
 } from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
@@ -31,12 +32,11 @@ describe("managing question from the question's details sidebar", () => {
 
               cy.signIn(user);
               visitQuestion(1);
-              cy.findByTestId("saved-question-header-button").click();
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
               // cy.skipOn(user === "nodata");
-              cy.findByTestId("edit-details-button").click();
+              cy.findByTestId("saved-question-header-button").click();
               cy.findByLabelText("Name")
                 .click()
                 .type("1");
@@ -48,21 +48,14 @@ describe("managing question from the question's details sidebar", () => {
             it("should be able to edit a question's description", () => {
               // cy.skipOn(user === "nodata");
 
-              cy.findByRole("button", {
-                name: "Add a description",
-              }).click();
+              questionInfoButton().click();
 
-              cy.findByLabelText("Description")
-                .click()
-                .type("foo", { delay: 0 });
+              cy.findByPlaceholderText("Description").type("foo", { delay: 0 });
 
-              clickButton("Save");
+              cy.findByPlaceholderText("Description").blur();
               assertOnRequest("updateQuestion");
 
               cy.findByText("foo");
-              cy.findByRole("button", { name: "Add a description" }).should(
-                "not.exist",
-              );
             });
 
             it("should be able to move the question (metabase#11719-2)", () => {
@@ -111,8 +104,6 @@ describe("managing question from the question's details sidebar", () => {
             beforeEach(() => {
               cy.signIn(user);
               visitQuestion(1);
-
-              cy.findByTestId("saved-question-header-button").click();
             });
 
             it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {

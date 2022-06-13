@@ -143,15 +143,6 @@ class Header extends Component {
       );
     }
 
-    let attribution;
-    if (this.props.item && this.props.item.creator) {
-      attribution = (
-        <div className="Header-attribution">
-          {t`Asked by ${this.props.item.creator.common_name}`}
-        </div>
-      );
-    }
-
     const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
@@ -179,7 +170,6 @@ class Header extends Component {
         >
           <HeaderContent>
             <HeaderCaption>{titleAndDescription}</HeaderCaption>
-            {attribution}
             <HeaderBadges>
               {isBadgeVisible && (
                 <>
