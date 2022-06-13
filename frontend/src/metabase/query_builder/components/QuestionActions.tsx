@@ -26,7 +26,8 @@ import {
   AnimationStates,
 } from "./QuestionActions.styled";
 
-const ICON_SIZE = 18;
+const MENU_ICON_SIZE = 14;
+const HEADER_ICON_SIZE = 16;
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -51,7 +52,7 @@ interface Props {
 }
 
 const buttonProps = {
-  iconSize: ICON_SIZE,
+  iconSize: MENU_ICON_SIZE,
   borderless: true,
   color: color("text-dark"),
 };
@@ -118,7 +119,7 @@ const QuestionActions = ({
           isBookmarked={isBookmarked}
           onlyIcon
           icon="bookmark"
-          iconSize={ICON_SIZE}
+          iconSize={HEADER_ICON_SIZE}
           onClick={handleClickBookmark}
           color={bookmarkButtonColor}
         />
@@ -127,7 +128,7 @@ const QuestionActions = ({
         <Button
           onlyIcon
           icon="info"
-          iconSize={ICON_SIZE}
+          iconSize={HEADER_ICON_SIZE}
           onClick={onInfoClick}
           color={infoButtonColor}
         />
@@ -136,12 +137,13 @@ const QuestionActions = ({
       <TippyPopoverWithTrigger
         key="extra-actions-menu"
         placement="bottom-end"
-        renderTrigger={({ onClick }) => (
+        renderTrigger={({ onClick, visible }) => (
           <Button
             onClick={onClick}
             onlyIcon
             icon="ellipsis"
-            iconSize={ICON_SIZE}
+            iconSize={HEADER_ICON_SIZE}
+            color={visible ? color("brand") : undefined}
           />
         )}
         popoverContent={
