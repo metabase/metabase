@@ -1,6 +1,6 @@
 export default class Action {
   perform() {
-    console.warn("");
+    console.warn("Action.perform()");
   }
   toString() {
     return "Action";
