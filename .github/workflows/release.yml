@@ -41,6 +41,7 @@ jobs:
       with:
         java-package: jre
         java-version: 11
+        distribution: 'temurin'
     - uses: actions/download-artifact@v2
       name: Retrieve previously downloaded Uberjar
       with:
