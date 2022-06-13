@@ -214,7 +214,7 @@
   {:arglists '([expected-status? f & args])}
   [& args]
   (let [[expected-status args] (u/optional integer? args)
-        [f args]               ((juxt first rest) args)
+        [f & args]             args
         body                   {:token (setup/create-token!)
                                 :prefs {:site_name "Metabase Test"}
                                 :user  {:first_name (mt/random-name)
