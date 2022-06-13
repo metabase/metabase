@@ -1,4 +1,4 @@
-export function normalizeValue(value) {
+export function normalizeValue(value: unknown) {
   if (Array.isArray(value)) {
     return value;
   }
