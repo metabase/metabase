@@ -37,15 +37,6 @@
       (reduce (fn [n m] (str/replace n m (str/upper-case m))) name matches)
       name)))
 
-(defn ^:private capitalize-first-char
-  "Like string/capitalize, only it ignores the rest of the string
-  to retain case-sensitive capitalization, e.g., initialisms."
-  [s]
-  (if (< (count s) 2)
-    (str/upper-case s)
-    (str (str/upper-case (subs s 0 1))
-         (subs s 1))))
-
 (defn- endpoint-ns-name
   "Creates a name for endpoints in a namespace, like all the endpoints for Alerts.
   Handles some edge cases for enterprise endpoints."
@@ -55,10 +46,33 @@
       name
       handle-enterprise-ns
       last
-      capitalize-first-char
+      u/capitalize-first-char
       (str/replace #"(.api.|-)" " ")
       (capitalize-initialisms initialisms)
       (str/replace "SSO SSO" "SSO")))
+
+(defn- format-description
+  "Used to grab namespace description, if it exists."
+  [ep ep-data]
+  (let [desc (-> ep-data
+                 first
+                 :ns
+                 meta
+                 :doc
+                 u/add-period)]
+    (if (str/blank? desc)
+      (u/add-period (str "API endpoints for " ep))
+      (str (str/replace desc "\"" "'")))))
+
+(defn- endpoint-page-frontmatter
+  "Formats frontmatter, which includes title and summary, if any."
+  [ep ep-data]
+  (let [desc (format-description ep ep-data)]
+    (str "---\ntitle: \""
+         ep "\""
+         "\nsummary: \""
+         desc
+         "\"\n---\n\n")))
 
 (defn- endpoint-page-title
   "Creates a page title for a set of endpoints, e.g., `# Card`."
@@ -69,8 +83,8 @@
 
 (defn- endpoint-page-description
   "If there is a namespace docstring, include the docstring with a paragraph break."
-  [ep-data]
-  (let [desc (u/add-period (:doc (meta (:ns (first ep-data)))))]
+  [ep ep-data]
+  (let [desc (format-description ep ep-data)]
     (if (str/blank? desc)
       desc
       (str desc "\n\n"))))
@@ -158,8 +172,9 @@
   followed by the endpoint and their parameter descriptions."
   [ep ep-data]
   (apply str
+         (endpoint-page-frontmatter ep ep-data)
          (endpoint-page-title ep)
-         (endpoint-page-description ep-data)
+         (endpoint-page-description ep ep-data)
          (route-toc ep-data)
          (endpoint-docs ep-data)
          (endpoint-footer ep-data)))
