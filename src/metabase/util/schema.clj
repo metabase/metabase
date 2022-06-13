@@ -327,6 +327,18 @@
                                                     false)))
     (deferred-tru "value must be a valid JSON string.")))
 
+(def Parameter
+  "Schema for a valid Parameter."
+  (with-api-error-message {:id       NonBlankString
+                           s/Keyword s/Any}
+    (deferred-tru "parameter must be a map with String :id key")))
+
+(def ParameterMapping
+  "Schema for a valid Parameter Mapping"
+  (with-api-error-message {:parameter_id       NonBlankString
+                           s/Keyword s/Any}
+    (deferred-tru "parameter mapping must be a String :parameter_id key")))
+
 (def EmbeddingParams
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
@@ -336,3 +348,8 @@
   "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
   (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
     (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
+
+(def NanoIdString
+  "Schema for a 21-character NanoID string, like \"FReCLx5hSWTBU7kjCWfuu\"."
+  (with-api-error-message #"^[A-Za-z0-9_\-]{21}$"
+    (deferred-tru "String must be a valid 21-character NanoID string.")))

@@ -1,1 +1,1 @@
-export type CellType = "image" | "title" | "info";
+export type CellType = "image" | "pk" | "primary" | "secondary";

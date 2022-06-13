@@ -1,4 +1,11 @@
-import { restore, visitQuestion, saveDashboard } from "__support__/e2e/cypress";
+import {
+  restore,
+  visitQuestion,
+  saveDashboard,
+  popover,
+  openQuestionActions,
+  questionInfoButton,
+} from "__support__/e2e/cypress";
 
 import { onlyOn } from "@cypress/skip-test";
 
@@ -25,12 +32,11 @@ describe("managing question from the question's details sidebar", () => {
 
               cy.signIn(user);
               visitQuestion(1);
-              cy.findByTestId("saved-question-header-button").click();
             });
 
             it("should be able to edit question details (metabase#11719-1)", () => {
               // cy.skipOn(user === "nodata");
-              cy.findByTestId("edit-details-button").click();
+              cy.findByTestId("saved-question-header-button").click();
               cy.findByLabelText("Name")
                 .click()
                 .type("1");
@@ -42,25 +48,19 @@ describe("managing question from the question's details sidebar", () => {
             it("should be able to edit a question's description", () => {
               // cy.skipOn(user === "nodata");
 
-              cy.findByRole("button", {
-                name: "Add a description",
-              }).click();
+              questionInfoButton().click();
 
-              cy.findByLabelText("Description")
-                .click()
-                .type("foo", { delay: 0 });
+              cy.findByPlaceholderText("Description").type("foo", { delay: 0 });
 
-              clickButton("Save");
+              cy.findByPlaceholderText("Description").blur();
               assertOnRequest("updateQuestion");
 
               cy.findByText("foo");
-              cy.findByRole("button", { name: "Add a description" }).should(
-                "not.exist",
-              );
             });
 
             it("should be able to move the question (metabase#11719-2)", () => {
               // cy.skipOn(user === "nodata");
+              openQuestionActions();
               cy.findByTestId("move-button").click();
               cy.findByText("My personal collection").click();
               clickButton("Move");
@@ -72,6 +72,7 @@ describe("managing question from the question's details sidebar", () => {
               cy.intercept("GET", "/api/collection/root/items**").as(
                 "getItems",
               );
+              openQuestionActions();
               cy.findByTestId("archive-button").click();
               clickButton("Archive");
               assertOnRequest("updateQuestion");
@@ -82,6 +83,7 @@ describe("managing question from the question's details sidebar", () => {
             });
 
             it("should be able to add question to dashboard", () => {
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal")
@@ -102,11 +104,10 @@ describe("managing question from the question's details sidebar", () => {
             beforeEach(() => {
               cy.signIn(user);
               visitQuestion(1);
-
-              cy.findByTestId("saved-question-header-button").click();
             });
 
             it("should not be offered to add question to dashboard inside a collection they have `read` access to", () => {
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal").within(() => {
@@ -122,6 +123,7 @@ describe("managing question from the question's details sidebar", () => {
             it("should offer personal collection as a save destination for a new dashboard", () => {
               const { first_name, last_name } = USERS[user];
               const personalCollection = `${first_name} ${last_name}'s Personal Collection`;
+              openQuestionActions();
               cy.findByTestId("add-to-dashboard-button").click();
 
               cy.get(".Modal").within(() => {
@@ -141,9 +143,13 @@ describe("managing question from the question's details sidebar", () => {
                 "not.exist",
               );
 
-              cy.findByTestId("move-button").should("not.exist");
-              cy.findByTestId("clone-button").should("not.exist");
-              cy.findByTestId("archive-button").should("not.exist");
+              openQuestionActions();
+
+              popover().within(() => {
+                cy.findByTestId("move-button").should("not.exist");
+                cy.findByTestId("clone-button").should("not.exist");
+                cy.findByTestId("archive-button").should("not.exist");
+              });
 
               cy.findByText("Revert").should("not.exist");
             });

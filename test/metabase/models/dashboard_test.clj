@@ -282,13 +282,13 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with String :id keys"
+           #":parameters must be a sequence of maps with String :id key"
            (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
     (testing "updating"
       (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with String :id keys"
+             #":parameters must be a sequence of maps with String :id key"
              (db/update! Dashboard id :parameters [{:id 100}])))))))
 
 (deftest normalize-parameters-test

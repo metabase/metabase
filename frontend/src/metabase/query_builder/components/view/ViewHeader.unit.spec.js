@@ -102,8 +102,6 @@ function setup({
   const callbacks = {
     runQuestionQuery: jest.fn(),
     setQueryBuilderMode: jest.fn(),
-    onOpenQuestionDetails: jest.fn(),
-    onCloseQuestionDetails: jest.fn(),
     onOpenModal: jest.fn(),
     onAddFilter: jest.fn(),
     onCloseFilter: jest.fn(),
@@ -358,9 +356,16 @@ describe("ViewHeader", () => {
         });
 
         it("opens details sidebar on question name click", () => {
-          const { onOpenQuestionDetails } = setup({ question });
+          const { onOpenModal } = setup({ question });
           fireEvent.click(screen.getByText(question.displayName()));
-          expect(onOpenQuestionDetails).toHaveBeenCalled();
+          expect(onOpenModal).toHaveBeenCalled();
+        });
+
+        it("shows bookmark and action buttons", () => {
+          setup({ question });
+          expect(
+            screen.queryByTestId("question-action-buttons-container"),
+          ).toBeInTheDocument();
         });
       });
     });
@@ -369,12 +374,12 @@ describe("ViewHeader", () => {
 
 describe("ViewHeader | Ad-hoc GUI question", () => {
   it("does not open details sidebar on table name click", () => {
-    const { question, onOpenQuestionDetails } = setupAdHoc();
+    const { question, onOpenModal } = setupAdHoc();
     const tableName = question.table().displayName();
 
     fireEvent.click(screen.getByText(tableName));
 
-    expect(onOpenQuestionDetails).not.toHaveBeenCalled();
+    expect(onOpenModal).not.toHaveBeenCalled();
   });
 
   it("displays original question name if a question is started from one", () => {
@@ -385,6 +390,13 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
     expect(
       screen.queryByText(originalQuestion.displayName()),
     ).toBeInTheDocument();
+  });
+
+  it("does not render bookmark and action buttons", () => {
+    setupAdHoc();
+    expect(
+      screen.queryByTestId("question-action-buttons-container"),
+    ).not.toBeInTheDocument();
   });
 
   describe("filters", () => {

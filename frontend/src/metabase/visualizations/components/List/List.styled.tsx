@@ -80,5 +80,7 @@ export const ListRow = styled.tr`
     border-radius: ${LIST_ROW_BORDER_RADIUS};
 
     box-shadow: 4px 5px 10px 3px ${color("shadow")};
+
+    pointer-events: none;
   }
 `;

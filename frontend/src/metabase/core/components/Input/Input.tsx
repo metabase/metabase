@@ -84,4 +84,7 @@ const Input = forwardRef(function Input(
   );
 });
 
-export default Input;
+export default Object.assign(Input, {
+  Root: InputRoot,
+  Field: InputField,
+});

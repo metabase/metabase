@@ -48,7 +48,7 @@ function CategoryRadioPicker({
   const { fieldInstance } = formField;
 
   useOnMount(() => {
-    if (fieldInstance.id) {
+    if (typeof fieldInstance.id === "number") {
       fetchFieldValues({ id: fieldInstance.id });
     }
   });

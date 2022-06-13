@@ -20,7 +20,7 @@ import List from "metabase/visualizations/components/List/List";
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
-import { VisualizationSettings } from "metabase-types/types/Card";
+import { VisualizationSettings } from "metabase-types/api/card";
 import { Column, DatasetData } from "metabase-types/types/Dataset";
 import { Series, VisualizationProps } from "metabase-types/types/Visualization";
 import { Field, FieldLiteral } from "metabase-types/types/Query";

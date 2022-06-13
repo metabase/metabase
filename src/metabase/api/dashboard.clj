@@ -69,7 +69,7 @@
   "Create a new Dashboard."
   [:as {{:keys [name description parameters cache_ttl collection_id collection_position], :as _dashboard} :body}]
   {name                su/NonBlankString
-   parameters          [su/Map]
+   parameters          (s/maybe [su/Parameter])
    description         (s/maybe s/Str)
    cache_ttl           (s/maybe su/IntGreaterThanZero)
    collection_id       (s/maybe su/IntGreaterThanZero)
@@ -276,7 +276,7 @@
    show_in_getting_started (s/maybe s/Bool)
    enable_embedding        (s/maybe s/Bool)
    embedding_params        (s/maybe su/EmbeddingParams)
-   parameters              (s/maybe [su/Map])
+   parameters              (s/maybe [su/Parameter])
    position                (s/maybe su/IntGreaterThanZero)
    archived                (s/maybe s/Bool)
    collection_id           (s/maybe su/IntGreaterThanZero)
@@ -591,12 +591,14 @@
    (let [dashboard (hydrate dashboard :resolved-params)]
      (when-not (get (:resolved-params dashboard) param-key)
        (throw (ex-info (tru "Dashboard does not have a parameter with the ID {0}" (pr-str param-key))
-                       {:resolved-params (keys (:resolved-params dashboard))})))
+                       {:resolved-params (keys (:resolved-params dashboard))
+                        :status-code     400})))
      (let [constraints (chain-filter-constraints dashboard constraint-param-key->value)
            field-ids   (param-key->field-ids dashboard param-key)]
        (when (empty? field-ids)
          (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
-                         {:param (get (:resolved-params dashboard) param-key)})))
+                         {:param       (get (:resolved-params dashboard) param-key)
+                          :status-code 400})))
        ;; TODO - we should combine these all into a single UNION ALL query against the data warehouse instead of doing a
        ;; separate query for each Field (for parameters that are mapped to more than one Field)
        (try

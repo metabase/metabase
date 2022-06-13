@@ -13,9 +13,12 @@ import {
   visitQuestion,
   visitDashboard,
   startNewQuestion,
+  openQuestionActions,
+  closeQuestionActions,
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 import {
   turnIntoModel,
@@ -26,7 +29,6 @@ import {
   saveQuestionBasedOnModel,
   assertIsQuestion,
   openDetailsSidebar,
-  getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -43,6 +45,7 @@ describe("scenarios > models", () => {
     visitQuestion(1);
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -92,6 +95,7 @@ describe("scenarios > models", () => {
     );
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
 
     filter();
@@ -150,6 +154,7 @@ describe("scenarios > models", () => {
     cy.findByText("Undo").click();
 
     cy.get(".LineAreaBarChart");
+    openQuestionActions();
     assertIsQuestion();
   });
 
@@ -158,15 +163,20 @@ describe("scenarios > models", () => {
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
     cy.visit("/model/1");
 
-    openDetailsSidebar();
-    cy.findByText("Turn back into a saved question").click();
+    openQuestionActions();
+    popover().within(() => {
+      cy.findByText("Turn back to saved question").click();
+    });
+
     cy.wait("@cardUpdate");
 
     cy.findByText("This is a question now.");
+    openQuestionActions();
     assertIsQuestion();
 
     cy.findByText("Undo").click();
     cy.wait("@cardUpdate");
+    openQuestionActions();
     assertIsModel();
   });
 
@@ -180,7 +190,7 @@ describe("scenarios > models", () => {
     // Important - do not use visitQuestion(1) here!
     cy.visit("/question/1");
     cy.wait("@dataset");
-    openDetailsSidebar();
+    openQuestionActions();
     assertIsModel();
     cy.url().should("include", "/model");
   });
@@ -367,9 +377,6 @@ describe("scenarios > models", () => {
       cy.wait("@dataset");
 
       openDetailsSidebar();
-      getDetailsSidebarActions().within(() => {
-        cy.icon("pencil").click();
-      });
       modal().within(() => {
         cy.findByLabelText("Name")
           .clear()
@@ -380,6 +387,8 @@ describe("scenarios > models", () => {
         cy.button("Save").click();
       });
       cy.wait("@updateCard");
+
+      questionInfoButton().click();
 
       cy.findByText("M1");
       cy.findByText("foo");
@@ -484,8 +493,8 @@ describe("scenarios > models", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
-    getDetailsSidebarActions().within(() => {
+    openQuestionActions();
+    popover().within(() => {
       cy.icon("model").click();
     });
     modal().within(() => {
@@ -493,7 +502,9 @@ describe("scenarios > models", () => {
       cy.button("Turn this into a model").should("not.exist");
       cy.icon("close").click();
     });
+    openQuestionActions();
     assertIsQuestion();
+    closeQuestionActions();
 
     cy.findByText(/Open editor/i).click();
     cy.get(".ace_content").type(
@@ -509,6 +520,7 @@ describe("scenarios > models", () => {
       .click();
 
     turnIntoModel();
+    openQuestionActions();
     assertIsModel();
   });
 

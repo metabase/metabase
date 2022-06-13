@@ -60,6 +60,7 @@ jobs:
         edition: [ee]
         folder:
           - "binning"
+          - "collections"
           - "custom-column"
           - "dashboard"
           - "dashboard-filters"
@@ -67,6 +68,8 @@ jobs:
           - "embedding"
           - "joins"
           - "models"
+          - "organization"
+          - "permissions"
           - "question"
           - "sharing"
         include:

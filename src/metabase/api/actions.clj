@@ -1,7 +1,9 @@
 (ns metabase.api.actions
+  ;; TODO -- should probably rename this to `/api/action` for consistency since other API endpoints aren't plural
   "`/api/actions/` endpoints."
   (:require [cheshire.core :as json]
             [compojure.core :as compojure :refer [POST]]
+            [medley.core :as m]
             [metabase.actions :as actions]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
@@ -46,7 +48,6 @@
   {database (s/maybe s/Int)}
   (when database
     (do-check-actions-enabled database nil))
-  (api/check-superuser)
   (let [cards+actions (db/query {:select    [:card.*
                                              [:db.settings :db_settings]
                                              [:a.id :a_id]
@@ -70,7 +71,9 @@
                :type a_type
                :created-at a_created_at
                :updated-at a_updated_at
-               :card (dissoc card+action :a_id :a_type :a_created_at :a_updated_at :db_settings)}))
+               :card (-> card+action
+                         (dissoc :a_id :a_type :a_created_at :a_updated_at :db_settings)
+                         (m/update-existing :dataset_query json/parse-string))}))
           cards+actions)))
 
 (api/defendpoint POST "/table/:action"
@@ -103,4 +106,4 @@
      (fn [driver]
        (actions/row-action! (keyword action) driver query)))))
 
-(api/define-routes actions/+check-actions-enabled)
+(api/define-routes actions/+check-actions-enabled api/+check-superuser)
