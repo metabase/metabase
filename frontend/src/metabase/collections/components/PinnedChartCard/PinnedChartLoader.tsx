@@ -72,7 +72,7 @@ const PinnedChartLoader = ({
               children({
                 question,
                 rawSeries,
-                loading: loading || !results,
+                loading: loading || results == null,
                 error: getError(error, result),
                 errorIcon: getErrorIcon(error, result),
               })
