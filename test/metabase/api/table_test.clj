@@ -169,7 +169,7 @@
                                      :has_field_values         "list"
                                      :position                 1
                                      :database_position        1
-                                     :database_required        true)
+                                     :database_required        false)
                               (assoc (field-details (Field (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -183,7 +183,7 @@
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
-                                     :database_required        true)
+                                     :database_required        false)
                               (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
                                      :semantic_type     "type/Category"
                                      :table_id         (mt/id :users)
@@ -196,7 +196,7 @@
                                      :has_field_values "list"
                                      :position          3
                                      :database_position 3
-                                     :database_required true)]
+                                     :database_required false)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
           "Make sure that getting the User table *does* include info about the password field, but not actual values themselves"))))
@@ -232,7 +232,7 @@
                                      :has_field_values "list"
                                      :position          1
                                      :database_position 1
-                                     :database_required true)
+                                     :database_required false)
                               (assoc (field-details (Field (mt/id :users :last_login)))
                                      :table_id                 (mt/id :users)
                                      :name                     "LAST_LOGIN"
@@ -245,7 +245,7 @@
                                      :has_field_values         "none"
                                      :position                 2
                                      :database_position        2
-                                     :database_required        true)]
+                                     :database_required        false)]
                :id           (mt/id :users)})
              (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :users))))
           "Make sure that getting the User table does *not* include password info"))))
@@ -458,7 +458,7 @@
                               :has_field_values         "list"
                               :database_position        1
                               :position                 1
-                              :database_required        true})]
+                              :database_required        false})]
              :id           (mt/id :categories)})
            (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata" (mt/id :categories)))))))
 

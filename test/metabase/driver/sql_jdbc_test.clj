@@ -28,27 +28,27 @@
                      :database-type     "VARCHAR"
                      :base-type         :type/Text
                      :database-position 1
-                     :database-required true}
+                     :database-required false}
                     {:name              "CATEGORY_ID"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
                      :database-position 2
-                     :database-required true}
+                     :database-required false}
                     {:name              "LATITUDE"
                      :database-type     "DOUBLE"
                      :base-type         :type/Float
                      :database-position 3
-                     :database-required true}
+                     :database-required false}
                     {:name              "LONGITUDE"
                      :database-type     "DOUBLE"
                      :base-type         :type/Float
                      :database-position 4
-                     :database-required true}
+                     :database-required false}
                     {:name              "PRICE"
                      :database-type     "INTEGER"
                      :base-type         :type/Integer
                      :database-position 5
-                     :database-required true}}}
+                     :database-required false}}}
          (driver/describe-table :h2 (mt/db) (Table (mt/id :venues))))))
 
 (deftest describe-table-fks-test
