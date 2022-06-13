@@ -1,3 +1,7 @@
+---
+title: Troubleshooting SQL questions
+---
+
 # Troubleshooting SQL questions
 
 ## [I'm getting a SQL syntax error][debugging-sql-syntax]

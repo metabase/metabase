@@ -1,3 +1,7 @@
+---
+title: I can't see my tables
+---
+
 # I can't see my tables
 
 You have connected Metabase to a database, but:

@@ -1,3 +1,7 @@
+---
+title: Troubleshooting sandbox access to rows and columns
+---
+
 # Troubleshooting sandbox access to rows and columns
 
 [Sandboxing data][sandboxing-your-data] gives some people access to only a subset of the data. (The term comes from the practice of putting children in a sandbox to play safely.) To implement sandboxing, Metabase runs a query that filters rows and/or selects a subset of columns from a table based on [the person's permissions][permissions]; the person's query then runs on the initial query's result (i.e., it runs on the sandboxed data).

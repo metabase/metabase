@@ -1,3 +1,7 @@
+---
+title: Accessibility in Metabase
+---
+
 # Accessibility in Metabase 
 
 Metabase is not yet fully compliant with [the US federal government's Section 508 standard][508-accessibility]. Some specific areas where Metabase we still have work to do include:

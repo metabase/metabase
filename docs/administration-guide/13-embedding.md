@@ -1,3 +1,7 @@
+---
+title: Embedding Metabase in other applications
+---
+
 # Embedding Metabase in other applications
 
 Metabase includes a powerful application embedding feature that allows you to embed your saved questions or dashboards in your own web applications. You can even pass parameters to these embeds to customize them for different users.

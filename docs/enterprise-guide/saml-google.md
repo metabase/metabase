@@ -1,3 +1,7 @@
+---
+title: Setting up SAML with Google
+---
+
 # Setting up SAML with Google
 
 {% include plans-blockquote.html feature="Google SAML authentication" %}

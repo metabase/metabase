@@ -1,3 +1,7 @@
+---
+title: Metabase isn't sending email
+---
+
 # Metabase isn't sending email
 
 You have told Metabase to send email notifications, but:

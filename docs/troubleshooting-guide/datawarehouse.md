@@ -1,3 +1,7 @@
+---
+title: Connecting to databases
+---
+
 # Connecting to databases
 
 <div class='doc-toc' markdown=1>

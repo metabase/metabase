@@ -1,3 +1,7 @@
+---
+title: Using or migrating from an H2 application database
+---
+
 # Using or migrating from an H2 application database
 
 You have installed Metabase, but:
