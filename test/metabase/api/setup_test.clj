@@ -210,17 +210,19 @@
                                                          :database {:engine  "my-fake-driver"
                                                                     :name    (mt/random-name)
                                                                     :details {}})))))))))
-(def ^:dynamic ^:private *expected-status* 400)
-
-(defn- setup! [f & args]
-  (let [body {:token (setup/create-token!)
-              :prefs {:site_name "Metabase Test"}
-              :user  {:first_name (mt/random-name)
-                      :last_name  (mt/random-name)
-                      :email      (mt/random-email)
-                      :password   "anythingUP12!!"}}
-        body (apply f body args)]
-    (do-with-setup* body #(client/client :post *expected-status* "setup" body))))
+(defn- setup!
+  {:arglists '([expected-status? f & args])}
+  [& args]
+  (let [[expected-status args] (u/optional integer? args)
+        [f args]               (u/optional function? args)
+        body                   {:token (setup/create-token!)
+                                :prefs {:site_name "Metabase Test"}
+                                :user  {:first_name (mt/random-name)
+                                        :last_name  (mt/random-name)
+                                        :email      (mt/random-email)
+                                        :password   "anythingUP12!!"}}
+        body                   (apply f body args)]
+    (do-with-setup* body #(client/client :post (or expected-status 400) "setup" body))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"
@@ -247,14 +249,13 @@
 
     (testing "user"
       (with-redefs [api.setup/*allow-api-setup-after-first-user-is-created* true]
-        (binding [*expected-status* 200]
-          (testing "first name may be nil"
-            (is (:id (setup! m/dissoc-in [:user :first_name])))
-            (is (:id (setup! assoc-in [:user :first_name] nil))))
+        (testing "first name may be nil"
+          (is (:id (setup! 200 m/dissoc-in [:user :first_name])))
+          (is (:id (setup! 200 assoc-in [:user :first_name] nil))))
 
-          (testing "last name may be nil"
-            (is (:id (setup! m/dissoc-in [:user :last_name])))
-            (is (:id (setup! assoc-in [:user :last_name] nil))))))
+        (testing "last name may be nil"
+          (is (:id (setup! 200 m/dissoc-in [:user :last_name])))
+          (is (:id (setup! 200 assoc-in [:user :last_name] nil)))))
 
       (testing "email"
         (testing "missing"
