@@ -34,18 +34,21 @@
 
 (t/deftest coercion-possibilities-test
   (t/is (= {:type/Text    #{::Coerce-Int-To-Str}
-            :type/Instant #{:Coercion/UNIXMicroSeconds->DateTime
+            :type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
+                            :Coercion/UNIXMicroSeconds->DateTime
                             :Coercion/UNIXMilliSeconds->DateTime
                             :Coercion/UNIXSeconds->DateTime}}
            (types/coercion-possibilities :type/Integer)))
-  (t/is (= {:type/Instant #{:Coercion/UNIXMicroSeconds->DateTime
+  (t/is (= {:type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
+                            :Coercion/UNIXMicroSeconds->DateTime
                             :Coercion/UNIXMilliSeconds->DateTime
                             :Coercion/UNIXSeconds->DateTime}}
            (types/coercion-possibilities :type/Decimal)))
 
   (t/testing "Should work for for subtypes of a the coercion base type(s)"
     (t/is (= {:type/Text    #{::Coerce-Int-To-Str}
-              :type/Instant #{:Coercion/UNIXMicroSeconds->DateTime
+              :type/Instant #{:Coercion/UNIXNanoSeconds->DateTime
+                              :Coercion/UNIXMicroSeconds->DateTime
                               :Coercion/UNIXMilliSeconds->DateTime
                               :Coercion/UNIXSeconds->DateTime
                               ::Coerce-BigInteger-To-Instant}}
