@@ -71,6 +71,7 @@ function PinnedItemOverview({
                     metadata={metadata}
                     collection={collection}
                     bookmarks={bookmarks}
+                    isPreview={true}
                     onCopy={onCopy}
                     onMove={onMove}
                     onCreateBookmark={createBookmark}

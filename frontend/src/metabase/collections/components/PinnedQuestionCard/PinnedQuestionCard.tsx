@@ -16,6 +16,7 @@ export interface PinnedQuestionCardProps {
   collection: Collection;
   metadata: Metadata;
   bookmarks?: Bookmark[];
+  isPreview?: boolean;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
   onCreateBookmark?: (id: string, model: string) => void;
@@ -27,13 +28,12 @@ const PinnedQuestionCard = ({
   collection,
   metadata,
   bookmarks,
+  isPreview,
   onCopy,
   onMove,
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
-  const isPreview = item.can_preview && item.has_required_parameters;
-
   return (
     <CardRoot to={item.getUrl()} isPreview={isPreview}>
       <CardActionMenu
