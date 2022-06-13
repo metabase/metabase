@@ -144,6 +144,10 @@ jobs:
       env:
         TERM: xterm
 
+    - name: Percy Test Sanity Check
+      if: matrix.edition == 'ee'
+      run: yarn run test-visual-run
+
     - name: Upload Cypress recording upon failure
       uses: actions/upload-artifact@v2
       if: failure()
