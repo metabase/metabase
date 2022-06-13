@@ -6,9 +6,3 @@ export default class Action {
     return "Action";
   }
 }
-
-export class ActionClick {
-  toString() {
-    return "ActionClick";
-  }
-}
