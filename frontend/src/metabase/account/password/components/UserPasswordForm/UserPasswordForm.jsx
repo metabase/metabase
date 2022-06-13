@@ -28,13 +28,9 @@ const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
     [user, updatePassword],
   );
 
-  const form = user.is_superuser
-    ? User.forms.password_reset
-    : User.forms.password;
-
   return (
     <User.Form
-      form={form}
+      form={User.forms.password}
       submitTitle={t`Save`}
       asyncValidate={handleAsyncValidate}
       asyncBlurFields={["password"]}
