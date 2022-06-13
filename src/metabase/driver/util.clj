@@ -24,23 +24,26 @@
   "Generic error messages that drivers should return in their implementation
   of [[metabase.driver/humanize-connection-error-message]]."
   {:cannot-connect-check-host-and-port
-   {:message [(deferred-tru "Hmm, we couldn''t connect to the database.")
-              " "
-              (deferred-tru "Make sure your Host and Port settings are correct")]
+   {:message (deferred-tru
+              (str "Hmm, we couldn''t connect to the database."
+                   " "
+                   "Make sure your Host and Port settings are correct"))
     :errors  {:host (deferred-tru "check your host settings")
               :port (deferred-tru "check your port settings")}}
 
    :ssh-tunnel-auth-fail
-   {:message [(deferred-tru "We couldn''t connect to the SSH tunnel host.")
-              " "
-              (deferred-tru "Check the Username and Password.")]
+   {:message (deferred-tru
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Username and Password."))
     :errors  {:tunnel-user (deferred-tru "check your username")
               :tunnel-pass (deferred-tru "check your password")}}
 
    :ssh-tunnel-connection-fail
-   {:message [(deferred-tru "We couldn''t connect to the SSH tunnel host.")
-              " "
-              (deferred-tru "Check the Host and Port.")]
+   {:message (deferred-tru
+              (str "We couldn''t connect to the SSH tunnel host."
+                   " "
+                   "Check the Host and Port."))
     :errors  {:tunnel-host (deferred-tru "check your host settings")
               :tunnel-port (deferred-tru "check your port settings")}}
 
@@ -49,9 +52,10 @@
     :errors  {:dbname (deferred-tru "check your database name settings")}}
 
    :invalid-hostname
-   {:message [(deferred-tru "It looks like your Host is invalid.")
-              " "
-              (deferred-tru "Please double-check it and try again.")]
+   {:message (deferred-tru
+               (str "It looks like your Host is invalid."
+                    " "
+                    "Please double-check it and try again."))
     :errors  {:host (deferred-tru "check your host settings")}}
 
    :password-incorrect
@@ -84,16 +88,11 @@
    {:message (deferred-tru "Server appears to require SSL - please enable SSL below")
     :errors  {:ssl (deferred-tru "please enable SSL")}}})
 
-(defn- force-tr [text-or-vector]
-  (if (vector? text-or-vector)
-    (apply str text-or-vector)
-    (str text-or-vector)))
-
 (defn- tr-connection-error-messages [error-type-kw]
   (when-let [message (connection-error-messages error-type-kw)]
     (cond-> message
-      (contains? message :message) (update :message force-tr)
-      (contains? message :errors)  (update :errors update-vals force-tr))))
+      (contains? message :message) (update :message str)
+      (contains? message :errors)  (update :errors update-vals str))))
 
 (comment mdb.connection/keep-me) ; used for [[memoize/ttl]]
 
