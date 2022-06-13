@@ -1,5 +1,5 @@
 ---
-title: Getting started
+title: Metabase documentation
 ---
 
 ## Getting started
