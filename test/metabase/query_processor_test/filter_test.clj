@@ -124,7 +124,10 @@
                            :filter      [:between [:+ !default.datetime_tz [:interval 3 offset-unit]]
                                          [:relative-datetime -7 interval-unit]
                                          [:relative-datetime 0 interval-unit]]})
-                  expected-count (get {[:day :year] 20} [offset-unit interval-unit] 0)]
+                  expected-count (get {[:day :year] 20}
+                                      [offset-unit interval-unit]
+                                      (when (not= :mongo driver/*driver*)
+                                        0))]
               (mt/with-native-query-testing-context query
                 (let [[[result]] (mt/formatted-rows [int]
                                    (qp/process-query query))]

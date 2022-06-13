@@ -286,10 +286,11 @@
         :year            (bucket :year)))))
 
 (defmethod ->rvalue :relative-datetime
-  [[_ amount unit]]
+  [[_ amount unit & [offset-amount offset-unit]]]
   (let [t (-> (t/zoned-date-time)
               (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
-                                                       "UTC"))))]
+                                                       "UTC")))
+              (cond-> offset-amount (u.date/add offset-unit offset-amount)))]
     ($date-from-string
      (t/offset-date-time
       (if (= unit :default)
@@ -386,10 +387,16 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-filter :between
-  [[_ field min-val max-val]]
-  (compile-filter [:and
-                   [:>= field min-val]
-                   [:<= field max-val]]))
+  [[_ field min-val max-val :as expr]]
+  (if (= :+ (first field))
+    ;; filter with offset
+    (let [[_ field [_ amount unit]] field]
+      (compile-filter [:and
+                       [:>= field (conj min-val (- amount) unit)]
+                       [:<= field (conj max-val (- amount) unit)]]))
+    (compile-filter [:and
+                     [:>= field min-val]
+                     [:<= field max-val]])))
 
 (defn- str-match-pattern [options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)
