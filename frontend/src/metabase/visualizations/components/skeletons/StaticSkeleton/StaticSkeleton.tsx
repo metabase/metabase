@@ -1,8 +1,9 @@
 import React from "react";
 import {
-  SkeletonIcon,
-  SkeletonTitle,
   SkeletonDescription,
+  SkeletonIcon,
+  SkeletonRoot,
+  SkeletonTitle,
 } from "./StaticSkeleton.styled";
 
 export interface StaticSkeletonProps {
@@ -21,11 +22,11 @@ const StaticSkeleton = ({
   icon,
 }: StaticSkeletonProps): JSX.Element => {
   return (
-    <div>
+    <SkeletonRoot>
       {icon && <SkeletonIcon {...icon} />}
       <SkeletonTitle>{name}</SkeletonTitle>
       {description && <SkeletonDescription>{description}</SkeletonDescription>}
-    </div>
+    </SkeletonRoot>
   );
 };
 

@@ -3,11 +3,8 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
 
-export const SkeletonIcon = styled(Icon)`
-  color: ${color("text-medium")};
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-bottom: 1rem;
+export const SkeletonRoot = styled.div`
+  position: relative;
 `;
 
 export const SkeletonTitle = styled(Ellipsified)`
@@ -20,4 +17,11 @@ export const SkeletonTitle = styled(Ellipsified)`
 export const SkeletonDescription = styled(Ellipsified)`
   color: ${color("text-medium")};
   margin-top: 0.25rem;
+`;
+
+export const SkeletonIcon = styled(Icon)`
+  color: ${color("text-medium")};
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-bottom: 1rem;
 `;
