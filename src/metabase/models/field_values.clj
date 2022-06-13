@@ -121,8 +121,7 @@
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[total-max-length]] threshold. If the values are
   past the threshold, this returns a subset of possible values values where the total length of all items is less than [[total-max-length]].
-
-  It also returns a `has_more_values` flag, this flag = `true` when the returned values list is a subset of all possible values.
+  It also returns a `has_more_values` flag, `has_more_values` = `true` when the returned values list is a subset of all possible values.
 
   ;; (distinct-values (Field 1))
   ;; ->  {:values          [1, 2, 3]
