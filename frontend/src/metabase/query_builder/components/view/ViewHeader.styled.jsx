@@ -8,6 +8,7 @@ import { color, alpha } from "metabase/lib/colors";
 import { breakpointMaxSmall, space } from "metabase/styled-components/theme";
 import ViewSection, { ViewSubHeading, ViewHeading } from "./ViewSection";
 import QuestionDataSource from "./QuestionDataSource";
+import SavedQuestionHeaderButton from "../SavedQuestionHeaderButton/SavedQuestionHeaderButton";
 
 export const ViewHeaderContainer = styled(ViewSection)`
   border-bottom: 1px solid ${color("border")};
@@ -123,11 +124,36 @@ export const StyledLastEditInfoLabel = styled(LastEditInfoLabel)`
 `;
 
 export const StyledQuestionDataSource = styled(QuestionDataSource)`
-  margin-bottom: 0.5rem;
   padding-right: 1rem;
 
   ${breakpointMaxSmall} {
     margin-left: 0;
     padding-right: 0;
+  }
+`;
+
+export const SavedQuestionLeftSideRoot = styled.div`
+  ${SavedQuestionHeaderButton.Root} {
+    transition: all 400ms ease 4s;
+    position: relative;
+    top: 10px;
+  }
+
+  ${ViewHeaderLeftSubHeading} {
+    opacity: 0;
+    transition: all 400ms ease 4s;
+  }
+
+  &:hover,
+  &:focus-within {
+    ${SavedQuestionHeaderButton.Root} {
+      top: 0px;
+      transition: all 400ms ease 0s;
+    }
+
+    ${ViewHeaderLeftSubHeading} {
+      opacity: 1;
+      transition: all 400ms ease 0s;
+    }
   }
 `;

@@ -2,7 +2,7 @@ import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import { css } from "@emotion/react";
 
-const sharedStyle = css`
+export const SharedStyles = css`
   border: 1px solid transparent;
   border-radius: 0.25rem;
   padding: 0.5rem;
@@ -15,13 +15,13 @@ const sharedStyle = css`
 
 export const EditableTextRoot = styled.div`
   display: grid;
-  max-width: 300px;
+  max-width: 500px;
 
   &::after {
     content: attr(data-replicated-value) " ";
     white-space: pre-wrap;
     visibility: hidden;
-    ${sharedStyle}
+    ${SharedStyles}
   }
 `;
 
@@ -39,5 +39,5 @@ export const EditableTextArea = styled.textarea`
     cursor: text;
   }
 
-  ${sharedStyle}
+  ${SharedStyles}
 `;

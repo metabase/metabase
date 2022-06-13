@@ -45,6 +45,7 @@ import {
   ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
+  SavedQuestionLeftSideRoot,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -129,9 +130,7 @@ export function ViewTitleHeader(props) {
         style={style}
         data-testid="qb-header"
       >
-        {isDataset ? (
-          <DatasetLeftSide {...props} />
-        ) : isSaved ? (
+        {isSaved ? (
           <SavedQuestionLeftSide {...props} />
         ) : (
           <AhHocQuestionLeftSide
@@ -168,7 +167,7 @@ SavedQuestionLeftSide.propTypes = {
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionInfo: PropTypes.func.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
+  onSave: PropTypes.func,
 };
 
 function SavedQuestionLeftSide(props) {
@@ -178,31 +177,33 @@ function SavedQuestionLeftSide(props) {
     isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
     onOpenQuestionInfo,
-    onOpenModal,
+    onSave,
   } = props;
 
   const hasLastEditInfo = question.lastEditInfo() != null;
 
-  const onHeaderClick = useCallback(() => {
-    onOpenModal(MODAL_TYPES.EDIT);
-  }, [onOpenModal]);
+  const onHeaderChange = useCallback(
+    name => {
+      if (name !== question.displayName()) {
+        onSave({
+          ...question.card(),
+          name,
+        });
+      }
+    },
+    [question, onSave],
+  );
 
   return (
-    <div>
+    <SavedQuestionLeftSideRoot>
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton
             question={question}
             isActive={isShowingQuestionDetailsSidebar}
-            onClick={onHeaderClick}
+            onSave={onHeaderChange}
           />
         </SavedQuestionHeaderButtonContainer>
-        {hasLastEditInfo && isAdditionalInfoVisible && (
-          <StyledLastEditInfoLabel
-            item={question.card()}
-            onClick={onOpenQuestionInfo}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
@@ -213,9 +214,15 @@ function SavedQuestionLeftSide(props) {
               subHead
             />
           )}
+          {hasLastEditInfo && isAdditionalInfoVisible && (
+            <StyledLastEditInfoLabel
+              item={question.card()}
+              onClick={onOpenQuestionInfo}
+            />
+          )}
         </ViewHeaderLeftSubHeading>
       )}
-    </div>
+    </SavedQuestionLeftSideRoot>
   );
 }
 
@@ -279,12 +286,7 @@ DatasetLeftSide.propTypes = {
 };
 
 function DatasetLeftSide(props) {
-  const {
-    question,
-    isAdditionalInfoVisible,
-    isShowingQuestionDetailsSidebar,
-    onOpenModal,
-  } = props;
+  const { question, isShowingQuestionDetailsSidebar, onOpenModal } = props;
 
   const onHeaderClick = useCallback(() => {
     onOpenModal(MODAL_TYPES.EDIT);
@@ -294,26 +296,13 @@ function DatasetLeftSide(props) {
     <div>
       <ViewHeaderMainLeftContentContainer>
         <AdHocViewHeading>
-          <HeadBreadcrumbs
-            divider="/"
-            parts={[
-              ...(isAdditionalInfoVisible
-                ? [
-                    <DatasetCollectionBadge
-                      key="collection"
-                      dataset={question}
-                    />,
-                  ]
-                : []),
-              <DatasetHeaderButtonContainer key="dataset-header-button">
-                <SavedQuestionHeaderButton
-                  question={question}
-                  isActive={isShowingQuestionDetailsSidebar}
-                  onClick={onHeaderClick}
-                />
-              </DatasetHeaderButtonContainer>,
-            ]}
-          />
+          <DatasetHeaderButtonContainer key="dataset-header-button">
+            <SavedQuestionHeaderButton
+              question={question}
+              isActive={isShowingQuestionDetailsSidebar}
+              onClick={onHeaderClick}
+            />
+          </DatasetHeaderButtonContainer>
         </AdHocViewHeading>
       </ViewHeaderMainLeftContentContainer>
     </div>

@@ -1,17 +1,23 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
-import Button from "metabase/core/components/Button";
+import EditableText from "../EditableText/EditableText";
+import Icon from "metabase/components/Icon";
 
-export const HeaderButton = styled(Button)`
-  font-size: 1.25rem;
-  border: none;
-  padding: 0.25rem 0.25rem;
-  color: ${props => (props.isActive ? color("brand") : "unset")};
-  background-color: ${props => (props.isActive ? color("bg-light") : "unset")};
-  text-align: left;
-
-  .Icon:not(.Icon-chevrondown) {
-    color: ${props => color(props.leftIconColor)};
+export const Root = styled.div`
+  ${EditableText.Root}::after, ${EditableText.TextArea} {
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.5rem;
+    padding: 0.25rem;
   }
+
+  ${EditableText.Root}::after {
+    content: attr(data-replicated-value);
+  }
+  display: flex;
+  align-items: center;
+`;
+
+export const StyledIcon = styled(Icon)`
+  padding-left: 0.25rem;
 `;

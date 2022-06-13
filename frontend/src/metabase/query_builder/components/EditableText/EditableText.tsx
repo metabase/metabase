@@ -1,18 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
-import { EditableTextRoot, EditableTextArea } from "./EditableText.styled";
+import {
+  EditableTextRoot,
+  EditableTextArea,
+  SharedStyles,
+} from "./EditableText.styled";
 
-import { KEY_ESCAPE } from "metabase/lib/keyboard";
+import { KEY_ESCAPE, KEY_ENTER } from "metabase/lib/keyboard";
 
 type TEXT = string | null | undefined;
 
 interface EditableTextProps {
   initialValue: TEXT;
-  onChange?: (val: string) => void;
+  onChange?: (val: TEXT) => void;
+  submitOnEnter?: boolean;
 }
 
-const EditableText = ({ initialValue, onChange }: EditableTextProps) => {
+const EditableText = ({
+  initialValue,
+  onChange,
+  submitOnEnter,
+}: EditableTextProps) => {
   const [value, setValue] = useState<TEXT>(initialValue);
+  const textArea = useRef<HTMLTextAreaElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
@@ -28,6 +38,10 @@ const EditableText = ({ initialValue, onChange }: EditableTextProps) => {
     if (e.key === KEY_ESCAPE) {
       setValue(initialValue);
     }
+    if (e.key === KEY_ENTER && submitOnEnter) {
+      textArea.current?.blur();
+      e.preventDefault();
+    }
   };
 
   return (
@@ -38,9 +52,16 @@ const EditableText = ({ initialValue, onChange }: EditableTextProps) => {
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        rows={1}
+        cols={1}
+        ref={textArea}
       />
     </EditableTextRoot>
   );
 };
 
-export default EditableText;
+export default Object.assign(EditableText, {
+  SharedStyles,
+  Root: EditableTextRoot,
+  TextArea: EditableTextArea,
+});
