@@ -2,11 +2,16 @@ import React, { useMemo, useCallback } from "react";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
+import Field from "metabase-lib/lib/metadata/Field";
+
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { isBoolean } from "metabase/lib/schema_metadata";
+import Fields from "metabase/entities/fields";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
+import { InlineCategoryPicker } from "../InlineCategoryPicker";
+import { SEMANTIC_FIELD_FILTERS, BASE_FIELD_FILTERS } from "./constants";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -25,9 +30,18 @@ export const BulkFilterItem = ({
   onChangeFilter,
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
-  const fieldType = useMemo(() => dimension.field().base_type ?? "", [
-    dimension,
-  ]);
+  const fieldType = useMemo(() => {
+    const semanticType = dimension.field().semantic_type ?? "";
+    const baseType = dimension.field().base_type ?? "";
+
+    if (BASE_FIELD_FILTERS.includes(baseType)) {
+      return baseType;
+    }
+
+    if (SEMANTIC_FIELD_FILTERS.includes(semanticType)) {
+      return semanticType;
+    }
+  }, [dimension]);
 
   const newFilter = useMemo(() => getNewFilter(query, dimension), [
     query,
@@ -36,6 +50,7 @@ export const BulkFilterItem = ({
 
   const handleChange = useCallback(
     (newFilter: Filter) => {
+      console.log("new", newFilter);
       filter ? onChangeFilter(filter, newFilter) : onAddFilter(newFilter);
     },
     [filter, onAddFilter, onChangeFilter],
@@ -53,6 +68,17 @@ export const BulkFilterItem = ({
         <BooleanPickerCheckbox
           filter={filter ?? newFilter}
           onFilterChange={handleChange}
+        />
+      );
+    case "type/Category":
+      return (
+        <InlineCategoryPicker
+          query={query}
+          filter={filter}
+          newFilter={newFilter}
+          dimension={dimension}
+          handleChange={handleChange}
+          handleClear={handleClear}
         />
       );
     default:
