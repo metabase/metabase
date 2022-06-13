@@ -1,5 +1,14 @@
 export default class Action {
-  // eslint-disable-next-line @typescript-eslint/no-empty-function
-  perform() {}
+  perform() {
+    console.warn("");
+  }
+  toString() {
+    return "Action";
+  }
 }
-export class ActionClick {}
+
+export class ActionClick {
+  toString() {
+    return "ActionClick";
+  }
+}
