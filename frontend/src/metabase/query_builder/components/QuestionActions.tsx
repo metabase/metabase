@@ -183,7 +183,6 @@ const QuestionActions = ({
             {canPersistDataset && (
               <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
                 model={question}
-                size={ICON_SIZE}
                 onChange={onModelPersistenceChange}
                 data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
                 {...buttonProps}
