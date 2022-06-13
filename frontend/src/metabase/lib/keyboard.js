@@ -11,3 +11,5 @@ export const KEYCODE_DOWN = 40;
 
 export const KEY_COMMA = ",";
 export const KEYCODE_FORWARD_SLASH = 191;
+
+export const KEY_ESCAPE = "Escape";

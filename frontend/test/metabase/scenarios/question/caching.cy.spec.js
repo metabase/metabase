@@ -53,5 +53,4 @@ describeEE("scenarios > question > caching", () => {
 
 function openEditingModalForm() {
   cy.findByTestId("saved-question-header-button").click();
-  cy.findByTestId("edit-details-button").click();
 }
