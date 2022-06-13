@@ -145,7 +145,8 @@ jobs:
         TERM: xterm
 
     - name: Percy Test Sanity Check
-      if: matrix.edition == 'ee'
+      # The name of the folder does not matter. This "hack" makes sure that we only run visual tests once.
+      if: matrix.edition == 'ee' && matrix.folder == 'binning'
       run: yarn run test-visual-run
 
     - name: Upload Cypress recording upon failure
