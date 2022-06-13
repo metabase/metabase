@@ -3,6 +3,7 @@
   "`/api/actions/` endpoints."
   (:require [cheshire.core :as json]
             [compojure.core :as compojure :refer [POST]]
+            [medley.core :as m]
             [metabase.actions :as actions]
             [metabase.api.common :as api]
             [metabase.driver :as driver]
@@ -70,7 +71,9 @@
                :type a_type
                :created-at a_created_at
                :updated-at a_updated_at
-               :card (dissoc card+action :a_id :a_type :a_created_at :a_updated_at :db_settings)}))
+               :card (-> card+action
+                         (dissoc :a_id :a_type :a_created_at :a_updated_at :db_settings)
+                         (m/update-existing :dataset_query json/parse-string))}))
           cards+actions)))
 
 (api/defendpoint POST "/table/:action"
