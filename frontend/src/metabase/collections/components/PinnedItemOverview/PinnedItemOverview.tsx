@@ -6,7 +6,7 @@ import { BookmarksType, Collection } from "metabase-types/api";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
-import CollectionCardVisualization from "metabase/collections/components/CollectionCardVisualization";
+import PinnedChartCard from "metabase/collections/components/PinnedChartCard";
 import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItemSortDropTarget";
 import { Item, isRootCollection } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
@@ -66,15 +66,15 @@ function PinnedItemOverview({
               />
               <ItemDragSource item={item} collection={collection}>
                 <div>
-                  <CollectionCardVisualization
-                    bookmarks={bookmarks}
-                    createBookmark={createBookmark}
-                    deleteBookmark={deleteBookmark}
+                  <PinnedChartCard
                     item={item}
-                    collection={collection}
                     metadata={metadata}
+                    collection={collection}
+                    bookmarks={bookmarks}
                     onCopy={onCopy}
                     onMove={onMove}
+                    onCreateBookmark={createBookmark}
+                    onDeleteBookmark={deleteBookmark}
                   />
                 </div>
               </ItemDragSource>
