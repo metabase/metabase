@@ -3,14 +3,14 @@ import { Item } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { Bookmark, Collection } from "metabase-types/api";
-import PinnedChartLoader from "./PinnedChartLoader";
+import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,
   CardRoot,
   CardSkeleton,
-} from "./PinnedChartCard.styled";
+} from "./PinnedQuestionCard.styled";
 
-export interface PinnedChartCardProps {
+export interface PinnedQuestionCardProps {
   item: Item;
   collection: Collection;
   metadata: Metadata;
@@ -21,7 +21,7 @@ export interface PinnedChartCardProps {
   onDeleteBookmark?: (id: string, model: string) => void;
 }
 
-const PinnedChartCard = ({
+const PinnedQuestionCard = ({
   item,
   collection,
   metadata,
@@ -30,7 +30,7 @@ const PinnedChartCard = ({
   onMove,
   onCreateBookmark,
   onDeleteBookmark,
-}: PinnedChartCardProps): JSX.Element => {
+}: PinnedQuestionCardProps): JSX.Element => {
   return (
     <CardRoot to={item.getUrl()}>
       <CardActionMenu
@@ -42,7 +42,7 @@ const PinnedChartCard = ({
         createBookmark={onCreateBookmark}
         deleteBookmark={onDeleteBookmark}
       />
-      <PinnedChartLoader id={item.id} metadata={metadata}>
+      <PinnedQuestionLoader id={item.id} metadata={metadata}>
         {({ question, rawSeries, loading, error, errorIcon }) =>
           loading ? (
             <CardSkeleton
@@ -60,9 +60,9 @@ const PinnedChartCard = ({
             />
           )
         }
-      </PinnedChartLoader>
+      </PinnedQuestionLoader>
     </CardRoot>
   );
 };
 
-export default PinnedChartCard;
+export default PinnedQuestionCard;
