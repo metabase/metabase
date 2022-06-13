@@ -4,18 +4,19 @@ import _ from "underscore";
 import { Collection, CollectionId } from "metabase-types/api";
 
 export type Item = {
+  id: number;
+  model: string;
   name: string;
   description: string | null;
+  copy?: boolean;
   collection_position?: number | null;
-  id: number;
+  collection_preview?: boolean;
   getIcon: () => { name: string };
   getUrl: () => string;
   setArchived: (isArchived: boolean) => void;
   setPinned: (isPinned: boolean) => void;
-  copy?: boolean;
-  setCollection?: boolean;
-  model: string;
-  can_preview?: boolean;
+  setCollection?: (collection: Collection) => void;
+  setCollectionPreview?: (isEnabled: boolean) => void;
 };
 
 export function nonPersonalOrArchivedCollection(
