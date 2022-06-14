@@ -1,12 +1,12 @@
 ---
-title: Creating Custom Segments and Metrics
+title: Creating custom segments and metrics
 ---
 
-# Creating Custom Segments and Metrics
+# Creating custom segments and metrics
 
 Metabase allows you to create your own segments and metrics so you can quickly and easily reference them in the query builder. Just head over to the **Admin Panel** and select **Data Model** from the top menu.
 
-## Creating a Segment
+## Creating a segment
 
 A segment is just a special named filter or set of filters. You can create these to make sure that there is an official definition of a subset of customers, users, or products that everyone on your team can refer to consistently. For example, you might create a segment called “Active Users” that contains all the filters that are needed to correctly select active users.
 
@@ -23,7 +23,7 @@ Once you’re done, click **Save changes**. Now your new segment will appear in 
 If you exit the Admin Panel and try asking a new question, then click on the button to add a filter, you’ll see your segment at the top of the list.
 ![Segment in dropdown](images/Segment.png)
 
-## Creating a Metric
+## Creating a metric
 
 A custom metric is an easy way to refer to a computed number that you reference often. This could be something like **revenue**, which you could arrive at by viewing the Sum of your Order’s Subtotal column, and applying any required filters — but it’s a pain to have to do this every time you want to do something with revenue.
 
@@ -35,7 +35,7 @@ Here you're presented with a slightly different version of the query builder, wh
 Your new metric will now be available from the View dropdown in the query builder, under **Common Metrics**.
 ![Metric in dropdown](images/Metric.png)
 
-## Editing and Retiring Segments and Metrics
+## Editing and retiring segments and metrics
 You can edit and retire segments and metrics from the Data Model screen in the Admin Panel. Select the table with the segment or metric you’re looking for, and click the ellipsis (…) icon to the right of that segment or metric.
 ![Segment Actions](images/SegmentActions.png)
 

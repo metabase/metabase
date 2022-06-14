@@ -1,5 +1,5 @@
 ---
-title: My dashboard filters don't work
+title: "My dashboard filters don't work"
 ---
 
 # My dashboard filters don't work

@@ -1,8 +1,8 @@
 ---
-title: User Guide
+title: User guide
 ---
 
-# User Guide
+# User guide
 
 ## Some basics
 

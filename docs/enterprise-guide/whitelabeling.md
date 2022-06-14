@@ -2,19 +2,19 @@
 title: White labeling Metabase
 ---
 
-## White labeling Metabase
+# White labeling Metabase
 
 {% include plans-blockquote.html feature="White labeling" %}
 
 White labeling lets you customize the way Metabase looks so that it matches your company’s branding. Go to the Admin Panel and click on the White Labeling section to start customizing things. Here’s what you can do:
 
-### Change the name of the application
+## Change the name of the application
 You can change every place in the app that says “Metabase” to something like “Acme Analytics,” or whatever you want to call your Metabase app.
 
-### Logo
+## Logo
 You can replace Metabase’s familiar, tasteful, inspired-yet-not-threateningly-avant-garde dotted M logo with your very own. For things to work best, the logo you upload should be an SVG file that looks good when it’s around 60px tall. (In other words, ask the nearest designer for help.)
 
-### Change the color palette
+## Change the color palette
 You can customize the colors that Metabase uses throughout the app:
 
 * **Primary color:** by default, this is the lovely blue that is used for the nav bar, links, buttons, and more.
