@@ -1,3 +1,7 @@
+---
+title: Audit logs
+---
+
 # Audit logs
 
 {% include plans-blockquote.html feature="Audit logs" %}

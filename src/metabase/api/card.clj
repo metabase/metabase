@@ -16,12 +16,14 @@
             [metabase.email.messages :as messages]
             [metabase.events :as events]
             [metabase.mbql.normalize :as mbql.normalize]
+            [metabase.mbql.util :as mbql.u]
             [metabase.models.bookmark :as bookmark :refer [CardBookmark]]
             [metabase.models.card :as card :refer [Card]]
             [metabase.models.collection :as collection :refer [Collection]]
             [metabase.models.database :refer [Database]]
             [metabase.models.interface :as mi]
             [metabase.models.moderation-review :as moderation-review]
+            [metabase.models.params.chain-filter :as chain-filter]
             [metabase.models.persisted-info :as persisted-info :refer [PersistedInfo]]
             [metabase.models.pulse :as pulse :refer [Pulse]]
             [metabase.models.query :as query]
@@ -32,6 +34,7 @@
             [metabase.models.view-log :refer [ViewLog]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.card :as qp.card]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.pivot :as qp.pivot]
             [metabase.query-processor.util :as qp.util]
             [metabase.related :as related]
@@ -520,6 +523,7 @@
                    :average_query_time
                    :last_query_start
                    :collection [:moderation_reviews :moderator_details])
+          (cond-> (:dataset card) (hydrate :persisted))
           (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*))))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
@@ -703,6 +707,118 @@
                  :js-int-to-string?      false}))
 
 
+;;; ------------------------------------------------ Parameters -------------------------------------------------
+(def ^:const result-limit
+  "How many results to return when getting values for a parameter."
+  1000)
+
+(defn- field-clause->field-id
+  "Find the field id in a field clause if it exists.
+
+    (field-clause->field-id [:field 3 nil])
+    ;; -> 3"
+  [field-clause]
+  (mbql.u/match-one field-clause [:field (id :guard integer?) _] id))
+
+(defn- template-tag-target->field-id
+  "Given a template tag target, find the field id that it's connected to.
+  Note that a target has a field id connect to it iff it's a field filter."
+  [card {:keys [id]}]
+  (if-let [template-tags (get-in card [:dataset_query :native :template-tags])]
+    (first (for [[_ template-tag] template-tags
+                  :when (and (= (:id template-tag) id)
+                             (= (:type template-tag) :dimension))
+                  :let  [field-id (field-clause->field-id (:dimension template-tag))]
+                  :when field-id]
+             field-id))
+    (throw (ex-info (tru "Card with ID {0} does not have template tags." (:id card))
+                    {:card-id         (:id card)
+                     :template-tag-id id}))))
+
+(defn- target->field-id
+  "Find the field id that the target is connected to.
+  Target could be a `dimension`, in which target have the shape
+
+    [:dimension [:field 3 nil]]
+
+  Or it could be a `template-tag`, then it should have the shape
+
+    [:template-tag {:id \"6006ad7d-036e-83ec-4d6f-30f82b98ac21\"}]"
+  [card [target-type target-args]]
+  (case target-type
+    :dimension    (field-clause->field-id target-args)
+    :template-tag (template-tag-target->field-id card target-args)
+    nil))
+
+(defn- param-id->field-ids
+ "Get Field ID(s) associated with a parameter in a Card.
+
+    (param-id->field-ids (Card 62) \"ee876336\")
+    ;; -> #{276}"
+  [{:keys [parameter_mappings] :as card} param-id]
+  (into #{} (for [{:keys [target parameter_id]} parameter_mappings
+                  :when (= parameter_id param-id)
+                  :let [field-id (target->field-id card target)]
+                  :when field-id]
+              field-id)))
+
+(s/defn param-values
+  "Given a `param-id`, returns a of possible values that it could choose from.
+
+    ;; show me categories
+    (param-values (Card 62) \"ee876336\")
+    ;; -> (\"African\" \"American\" \"Artisan\" ...)
+
+    ;; show me categories that contains \"Ameri\"
+    (param-values (Card 62) \"ee876336\"  \"Ameri\")
+    ;; -> (\"American\")
+  "
+  ([card param-id]
+   (param-values card param-id nil))
+
+  ([card param-id query]
+   (when-not (seq (filter #(= (:id %) param-id) (:parameters card)))
+     (throw (ex-info (tru "Card does not have a parameter with the ID {0}" (pr-str param-id))
+                     {:status-code 400})))
+   (let [field-ids (param-id->field-ids card param-id)]
+     (when (empty? field-ids)
+       (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-id))
+                       {:param-id    param-id
+                        :status-code 400})))
+     (try
+         (let [results (distinct (mapcat (if (seq query)
+                                           #(chain-filter/chain-filter-search % {} query :limit result-limit)
+                                           #(chain-filter/chain-filter % {} :limit result-limit))
+                                         field-ids))]
+           ;; results can come back as [v ...] *or* as [[orig remapped] ...]. Sort by remapped value if that's the case
+           (if (sequential? (first results))
+             (sort-by second results)
+             (sort results)))
+         (catch clojure.lang.ExceptionInfo e
+           (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+             (api/throw-403 e)
+             (throw e)))))))
+
+(api/defendpoint GET "/:id/params/:param-key/values"
+  "Fetch possible values of the parameter whose ID is `:param-id`.
+
+    ;; fetch values for Card 1 parameter 'abc' that are possible
+    GET /api/card/1/params/abc/values"
+  [id param-key]
+  (let [card (api/read-check Card id)]
+    (param-values card param-key)))
+
+(api/defendpoint GET "/:id/params/:param-key/search/:query"
+  "Fetch possible values of the parameter whose ID is `:param-id` that contain `:query`.
+
+    ;; fetch values for Card 1 parameter 'abc' that contain 'Cam'
+     GET /api/card/1/params/abc/search/Cam
+
+  Currently limited to first 1000 results."
+  [id param-key query]
+  (let [card (api/read-check Card id)]
+    (param-values card param-key query)))
+
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
 (api/defendpoint POST "/:card-id/public_link"
@@ -764,6 +880,8 @@
                             :parameters parameters,
                             :qp-runner qp.pivot/run-pivot-query
                             :ignore_cache ignore_cache))
+
+;;; ----------------------------------------------- Persistence ------------------------------------------------
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this

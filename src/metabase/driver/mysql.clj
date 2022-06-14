@@ -134,7 +134,7 @@
     #"Must specify port after ':' in connection string"
     :invalid-hostname
 
-    #".*"                               ; default
+    ;; else
     message))
 
 (defmethod sql-jdbc.sync/db-default-timezone :mysql

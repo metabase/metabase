@@ -1,3 +1,7 @@
+---
+title: White labeling Metabase
+---
+
 ## White labeling Metabase
 
 {% include plans-blockquote.html feature="White labeling" %}

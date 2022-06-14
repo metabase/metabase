@@ -103,8 +103,10 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       cy.findByText("Q2, 2018")
-        .siblings(".Icon-close")
-        .click();
+        .closest("fieldset")
+        .within(() => {
+          cy.icon("close").click();
+        });
 
       // Order ID is 926 - there should be only one result after this
       filterWidget()

@@ -56,7 +56,7 @@ describe("issue 12581", () => {
     cy.reload();
 
     cy.findByTestId("revision-history-button").click();
-    cy.findByText(/Revert/i).click(); // Revert to the first revision
+    cy.findByTestId("question-revert-button").click(); // Revert to the first revision
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");

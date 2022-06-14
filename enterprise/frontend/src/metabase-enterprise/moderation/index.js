@@ -3,6 +3,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import QuestionModerationSection from "./components/QuestionModerationSection/QuestionModerationSection";
 import QuestionModerationButton from "./components/QuestionModerationButton/QuestionModerationButton";
+import ModerationReviewBanner from "./components/ModerationReviewBanner/ModerationReviewBanner";
 import ModerationStatusIcon from "./components/ModerationStatusIcon/ModerationStatusIcon";
 
 import {
@@ -16,6 +17,7 @@ if (hasPremiumFeature("content_management")) {
     isEnabled: () => true,
     QuestionModerationSection,
     QuestionModerationButton,
+    ModerationReviewBanner,
     ModerationStatusIcon,
     getStatusIconForQuestion,
     getStatusIcon,

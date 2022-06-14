@@ -1,3 +1,7 @@
+---
+title: User Guide
+---
+
 # User Guide
 
 ## Some basics

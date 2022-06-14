@@ -7,7 +7,10 @@ import { dateParameterValueToMBQL } from "metabase/parameters/utils/mbql";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker/DatePicker";
 import { filterToUrlEncoded } from "metabase/parameters/utils/date-formatting";
 
-import { Container, UpdateButton } from "./DateWidget.styled";
+import {
+  WidgetRoot,
+  UpdateButton,
+} from "metabase/parameters/components/widgets/Widget.styled";
 
 // Use a placeholder value as field references are not used in dashboard filters
 const noopRef = null;
@@ -39,7 +42,7 @@ const DateAllOptionsWidget = ({
     return filterValues.every((value: any) => value != null);
   };
   return (
-    <Container>
+    <WidgetRoot>
       <DatePicker
         filter={filter as any}
         onFilterChange={setFilter}
@@ -57,7 +60,7 @@ const DateAllOptionsWidget = ({
           {t`Update filter`}
         </UpdateButton>
       </DatePicker>
-    </Container>
+    </WidgetRoot>
   );
 };
 

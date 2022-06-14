@@ -79,3 +79,9 @@
       (is (= true (-> (.newInstance model)
                       toucan.models/properties
                       :entity_id))))))
+
+(deftest comprehensive-identity-hash-test
+  (doseq [model (->> (extenders IModel)
+                     (remove entities-not-exported))]
+    (testing (format "Model %s should implement IdentityHashable" (.getSimpleName model))
+      (is (extends? metabase.models.serialization.hash/IdentityHashable model)))))

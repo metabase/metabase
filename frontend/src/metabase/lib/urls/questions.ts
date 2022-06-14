@@ -111,9 +111,18 @@ export function dataset(...args: Parameters<typeof question>) {
   return question(...args);
 }
 
-export function publicQuestion(uuid: string, type: string | null = null) {
+export function publicQuestion(
+  uuid: string,
+  type: string | null = null,
+  query?: string,
+) {
   const siteUrl = MetabaseSettings.get("site-url");
-  return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
+  const searchQuery = query ? `?${query}` : "";
+  return (
+    `${siteUrl}/public/question/${uuid}` +
+    (type ? `.${type}` : "") +
+    searchQuery
+  );
 }
 
 export function embedCard(token: string, type: string | null = null) {

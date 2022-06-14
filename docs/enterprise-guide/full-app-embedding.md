@@ -1,3 +1,7 @@
+---
+title: Embedding all of Metabase in your web app
+---
+
 ## Embedding all of Metabase in your web app
 
 {% include plans-blockquote.html feature="Full-app embedding" %}

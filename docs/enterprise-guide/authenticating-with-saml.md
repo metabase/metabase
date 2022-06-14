@@ -1,3 +1,7 @@
+---
+title: Authenticating with SAML
+---
+
 ## Authenticating with SAML
 
 {% include plans-blockquote.html feature="SAML authentication" %}

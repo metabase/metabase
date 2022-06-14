@@ -191,13 +191,13 @@
             (is (saml-test/successful-login? response))
             (testing "new user with no first or last name"
               (is (= [{:email        "newuser@metabase.com"
-                       :first_name   "Unknown"
+                       :first_name   nil
                        :is_qbnewb    true
                        :is_superuser false
                        :id           true
-                       :last_name    "Unknown"
+                       :last_name    nil
                        :date_joined  true
-                       :common_name  "Unknown Unknown"}]
+                       :common_name  "newuser@metabase.com"}]
                      (->> (mt/boolean-ids-and-timestamps (db/select User :email "newuser@metabase.com"))
                           (map #(dissoc % :last_login)))))))
           (let [response (saml-test/client-full-response :get 302 "/auth/sso"

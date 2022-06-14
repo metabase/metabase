@@ -1,3 +1,7 @@
+---
+title: End-to-end Tests with Cypress
+---
+
 # End-to-end Tests with Cypress
 
 Metabase uses Cypress for “end-to-end testing”, that is, tests that are executed against the application as a whole, including the frontend, backend, and application database. These tests are essentially scripts written in JavaScript that run in the web browser: visit different URLs, click various UI elements, type text, and assert that things happen as expected (for example, an element appearing on screen, or a network request occuring).
