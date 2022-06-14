@@ -1,16 +1,17 @@
 import { t } from "ttag";
 
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { ActionsApi, EmittersApi } from "metabase/services";
 import Table from "metabase-lib/lib/metadata/Table";
 
 import { addUndo } from "metabase/redux/undo";
 
-import { fetchCardData, fetchDashboard } from "metabase/dashboard/actions";
+import { fetchCardData } from "metabase/dashboard/actions";
 import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import { setUIControls } from "metabase/query_builder/actions/ui";
 import { closeObjectDetail } from "metabase/query_builder/actions/object-detail";
 
-import { DashCard } from "metabase-types/types/Dashboard";
+import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 
 export type InsertRowPayload = {
   table: Table;
@@ -193,13 +194,13 @@ export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
 };
 
 export type ExecuteRowActionPayload = {
-  dashboardId: number;
+  dashboard: DashboardWithCards;
   emitterId: number;
   parameters: Record<string, unknown>;
 };
 
 export const executeRowAction = ({
-  dashboardId,
+  dashboard,
   emitterId,
   parameters,
 }: ExecuteRowActionPayload) => {
@@ -210,7 +211,16 @@ export const executeRowAction = ({
         parameters,
       });
       if (result["rows-affected"] > 0) {
-        dispatch(fetchDashboard(dashboardId));
+        dashboard.ordered_cards
+          .filter(dashCard => !isVirtualDashCard(dashCard))
+          .forEach(dashCard =>
+            dispatch(
+              fetchCardData(dashCard.card, dashCard, {
+                reload: true,
+                ignoreCache: true,
+              }),
+            ),
+          );
         dispatch(
           addUndo({
             toastColor: "success",

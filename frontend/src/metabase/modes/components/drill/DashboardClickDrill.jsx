@@ -52,7 +52,7 @@ export default ({ question, clicked }) => {
     behavior = {
       action: () =>
         executeRowAction({
-          dashboardId: extraData.dashboard.id,
+          dashboard: extraData.dashboard,
           emitterId: clickBehavior.emitter_id,
           parameters,
         }),
@@ -167,11 +167,13 @@ function getParametersForNativeAction(
   Object.values(parameterMapping).forEach(({ id, source, target }) => {
     const targetTemplateTag = templateTags.find(tag => tag.id === id);
 
-    const [value] = formatSourceForTarget(source, target, {
+    const result = formatSourceForTarget(source, target, {
       data,
       extraData,
       clickBehavior,
     });
+    // For some reason it's sometimes [1] and sometimes just 1
+    const value = Array.isArray(result) ? result[0] : result;
 
     parameters[id] = {
       value,
