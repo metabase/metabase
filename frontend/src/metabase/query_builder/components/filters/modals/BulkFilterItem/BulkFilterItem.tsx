@@ -31,15 +31,18 @@ export const BulkFilterItem = ({
   onRemoveFilter,
 }: BulkFilterItemProps): JSX.Element => {
   const fieldType = useMemo(() => {
-    const semanticType = dimension.field().semantic_type ?? "";
-    const baseType = dimension.field().base_type ?? "";
+    const field = dimension.field();
 
-    if (BASE_FIELD_FILTERS.includes(baseType)) {
-      return baseType;
+    if (field.has_field_values === "list") {
+      return "type/Category";
     }
 
-    if (SEMANTIC_FIELD_FILTERS.includes(semanticType)) {
-      return semanticType;
+    if (BASE_FIELD_FILTERS.includes(field.base_type ?? "")) {
+      return field.base_type;
+    }
+
+    if (SEMANTIC_FIELD_FILTERS.includes(field.semantic_type ?? "")) {
+      return field.semantic_type;
     }
   }, [dimension]);
 
