@@ -2,7 +2,6 @@ import React, { useMemo, useCallback } from "react";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
-
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { isBoolean } from "metabase/lib/schema_metadata";
 
@@ -51,7 +50,6 @@ export const BulkFilterItem = ({
 
   const handleChange = useCallback(
     (newFilter: Filter) => {
-      console.log("new", newFilter);
       filter ? onChangeFilter(filter, newFilter) : onAddFilter(newFilter);
     },
     [filter, onAddFilter, onChangeFilter],
