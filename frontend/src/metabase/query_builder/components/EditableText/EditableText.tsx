@@ -13,12 +13,16 @@ interface EditableTextProps {
   initialValue: TEXT;
   onChange?: (val: TEXT) => void;
   submitOnEnter?: boolean;
+  "data-testid"?: string;
+  placeholder?: string;
 }
 
 const EditableText = ({
   initialValue,
   onChange,
   submitOnEnter,
+  "data-testid": dataTestid,
+  placeholder,
 }: EditableTextProps) => {
   const [value, setValue] = useState<TEXT>(initialValue);
   const textArea = useRef<HTMLTextAreaElement>(null);
@@ -50,7 +54,7 @@ const EditableText = ({
   return (
     <EditableTextRoot value={value}>
       <EditableTextArea
-        placeholder="Description"
+        placeholder={placeholder}
         value={value || undefined}
         onChange={handleChange}
         onBlur={handleBlur}
@@ -58,6 +62,7 @@ const EditableText = ({
         rows={1}
         cols={1}
         ref={textArea}
+        data-testid={dataTestid}
       />
     </EditableTextRoot>
   );

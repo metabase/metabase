@@ -36,11 +36,10 @@ describe("managing question from the question's details sidebar", () => {
 
             it("should be able to edit question details (metabase#11719-1)", () => {
               // cy.skipOn(user === "nodata");
-              cy.findByTestId("saved-question-header-button").click();
-              cy.findByLabelText("Name")
+              cy.findByTestId("saved-question-header-title")
                 .click()
-                .type("1");
-              clickButton("Save");
+                .type("1")
+                .blur();
               assertOnRequest("updateQuestion");
               cy.findByText("Orders1");
             });
@@ -50,9 +49,10 @@ describe("managing question from the question's details sidebar", () => {
 
               questionInfoButton().click();
 
-              cy.findByPlaceholderText("Description").type("foo", { delay: 0 });
+              cy.findByPlaceholderText("Description")
+                .type("foo", { delay: 0 })
+                .blur();
 
-              cy.findByPlaceholderText("Description").blur();
               assertOnRequest("updateQuestion");
 
               cy.findByText("foo");
@@ -174,5 +174,4 @@ function assertOnRequest(xhr_alias) {
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );
-  cy.get(".Modal").should("not.exist");
 }

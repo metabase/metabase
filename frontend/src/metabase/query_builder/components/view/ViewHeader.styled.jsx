@@ -129,26 +129,24 @@ export const StyledQuestionDataSource = styled(QuestionDataSource)`
 
 export const SavedQuestionLeftSideRoot = styled.div`
   ${SavedQuestionHeaderButton.Root} {
-    transition: all 400ms ease 4s;
+    transition: all 400ms ease;
     position: relative;
     top: 10px;
   }
 
   ${ViewHeaderLeftSubHeading} {
     opacity: 0;
-    transition: all 400ms ease 4s;
+    transition: all 400ms ease;
   }
 
   &:hover,
   &:focus-within {
     ${SavedQuestionHeaderButton.Root} {
       top: 0px;
-      transition: all 400ms ease 0s;
     }
 
     ${ViewHeaderLeftSubHeading} {
       opacity: 1;
-      transition: all 400ms ease 0s;
     }
   }
 `;

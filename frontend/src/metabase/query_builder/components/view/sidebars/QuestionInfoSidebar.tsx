@@ -19,7 +19,7 @@ export const QuestionInfoSidebar = ({ question, onSave }: Props) => {
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
 
-  const handleSave = (description: string) => {
+  const handleSave = (description: string | null | undefined) => {
     if (question.description() !== description) {
       onSave({
         ...question.card(),
@@ -31,7 +31,11 @@ export const QuestionInfoSidebar = ({ question, onSave }: Props) => {
   return (
     <Root>
       <ContentSection>
-        <EditableText initialValue={description} onChange={handleSave} />
+        <EditableText
+          initialValue={description}
+          onChange={handleSave}
+          placeholder="Description"
+        />
         <PLUGIN_MODERATION.QuestionModerationSection question={question} />
       </ContentSection>
 

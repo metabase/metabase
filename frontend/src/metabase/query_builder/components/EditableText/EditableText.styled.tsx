@@ -24,7 +24,8 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
   max-width: 500px;
 
   &:after {
-    content: "${props => props.value} ";
+    content: "${props =>
+      props.value?.replace(/"/g, '\\"').replace(/\n/g, "\\00000a")} ";
     white-space: pre-wrap;
     visibility: hidden;
     ${SharedStyles}

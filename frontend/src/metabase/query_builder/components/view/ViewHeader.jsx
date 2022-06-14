@@ -193,7 +193,7 @@ function SavedQuestionLeftSide(props) {
   );
 
   return (
-    <SavedQuestionLeftSideRoot>
+    <SavedQuestionLeftSideRoot data-testid="qb-header-left-side">
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton

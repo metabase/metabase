@@ -28,7 +28,6 @@ import {
   selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
 } from "./helpers/e2e-models-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -376,22 +375,21 @@ describe("scenarios > models", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      openDetailsSidebar();
-      modal().within(() => {
-        cy.findByLabelText("Name")
-          .clear()
-          .type("M1");
-        cy.findByLabelText("Description")
-          .clear()
-          .type("foo");
-        cy.button("Save").click();
-      });
+      cy.findByTestId("saved-question-header-title")
+        .clear()
+        .type("M1")
+        .blur();
       cy.wait("@updateCard");
 
       questionInfoButton().click();
 
-      cy.findByText("M1");
-      cy.findByText("foo");
+      cy.findByPlaceholderText("Description")
+        .type("foo")
+        .blur();
+      cy.wait("@updateCard");
+
+      cy.findByDisplayValue("M1");
+      cy.findByDisplayValue("foo");
     });
   });
 
