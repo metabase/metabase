@@ -24,13 +24,13 @@ export const CardPreviewSkeleton = styled(ChartSkeleton)`
 `;
 
 export interface CardRootProps {
-  isPreviewEnabled?: boolean;
+  isPreview?: boolean;
 }
 
 export const CardRoot = styled(Link)<CardRootProps>`
   position: relative;
   display: block;
-  height: ${props => props.isPreviewEnabled && "15.625rem"};
+  height: ${props => props.isPreview && "15.625rem"};
   padding: 0.5rem 0;
   border: 1px solid ${color("border")};
   border-radius: 0.375rem;

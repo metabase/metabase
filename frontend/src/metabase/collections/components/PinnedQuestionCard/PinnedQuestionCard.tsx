@@ -1,6 +1,6 @@
 import React from "react";
 import { t } from "ttag";
-import { Item } from "metabase/collections/utils";
+import { isPreviewEnabled, Item } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { Bookmark, Collection } from "metabase-types/api";
@@ -17,7 +17,6 @@ export interface PinnedQuestionCardProps {
   collection: Collection;
   metadata: Metadata;
   bookmarks?: Bookmark[];
-  isPreviewEnabled?: boolean;
   onCopy: (items: Item[]) => void;
   onMove: (items: Item[]) => void;
   onCreateBookmark?: (id: string, model: string) => void;
@@ -29,14 +28,15 @@ const PinnedQuestionCard = ({
   collection,
   metadata,
   bookmarks,
-  isPreviewEnabled,
   onCopy,
   onMove,
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
+  const isPreview = isPreviewEnabled(item);
+
   return (
-    <CardRoot to={item.getUrl()} isPreviewEnabled={isPreviewEnabled}>
+    <CardRoot to={item.getUrl()} isPreview={isPreview}>
       <CardActionMenu
         item={item}
         collection={collection}
@@ -46,7 +46,7 @@ const PinnedQuestionCard = ({
         createBookmark={onCreateBookmark}
         deleteBookmark={onDeleteBookmark}
       />
-      {isPreviewEnabled ? (
+      {isPreview ? (
         <PinnedQuestionLoader id={item.id} metadata={metadata}>
           {({ question, rawSeries, loading, error, errorIcon }) =>
             loading ? (
