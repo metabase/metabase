@@ -1,7 +1,5 @@
 import { t } from "ttag";
-import _ from "underscore";
-
-import { Collection, CollectionId } from "metabase-types/api";
+import { Collection } from "metabase-types/api";
 
 export type Item = {
   id: number;
