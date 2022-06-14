@@ -194,12 +194,14 @@
   * `export-format` - `:api` (default format with metadata), `:json` (results only), `:csv`, or `:xslx`. Default: `:api`
   * `qp-runner`     - QP function to run the query with. Default [[qp/process-query-and-save-execution!]]
 
-  Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
+  Throws a 404 immediately if the Card isn't part of the Dashboard. Throws a 405 immediately if the Card has is_write
+  set to true, as those are meant to only be executed through the actions api. Returns a `StreamingResponse`."
   {:arglists '([& {:keys [dashboard-id card-id dashcard-id export-format parameters] :as options}])}
   [& {:keys [export-format parameters qp-runner]
       :or   {qp-runner     qp/process-query-and-save-execution!
              export-format :api}
       :as   options}]
+  (api/check-is-readonly {:is_write (db/select-one-field :is_write 'Card :id 1)})
   (let [options (merge
                  {:context     :public-dashboard
                   :constraints (qp.constraints/default-query-constraints)}
