@@ -197,4 +197,3 @@ jobs:
         mv version.properties resources/
     - name: Percy Test
       run: yarn run test-visual-run
-    
