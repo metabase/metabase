@@ -16,7 +16,7 @@ import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 
-function getTemplateTagType(tag: TemplateTag) {
+export function getTemplateTagType(tag: TemplateTag) {
   const { type } = tag;
   if (type === "date") {
     return "date/single";
