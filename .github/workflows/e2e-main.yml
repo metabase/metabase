@@ -145,7 +145,7 @@ jobs:
           --folder ${{ matrix.folder }}
       env:
         TERM: xterm
-        
+
     - name: Upload Cypress recording upon failure
       uses: actions/upload-artifact@v2
       if: failure()
