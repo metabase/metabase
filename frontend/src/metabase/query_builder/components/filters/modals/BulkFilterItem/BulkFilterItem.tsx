@@ -2,11 +2,9 @@ import React, { useMemo, useCallback } from "react";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Dimension from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import { isBoolean } from "metabase/lib/schema_metadata";
-import Fields from "metabase/entities/fields";
 
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";

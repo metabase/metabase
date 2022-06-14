@@ -4,6 +4,8 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { metadata } from "__support__/sample_database_fixture";
+import { getStore } from "__support__/entities-store";
+import { Provider } from "react-redux";
 
 import Field from "metabase-lib/lib/metadata/Field";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
@@ -16,7 +18,7 @@ const booleanField = new Field({
   semantic_type: "",
   table_id: 8,
   name: "bool",
-  has_field_values: "list",
+  has_field_values: "none",
   dimensions: {},
   dimension_options: [],
   effective_type: "type/Boolean",
@@ -30,7 +32,7 @@ const intField = new Field({
   semantic_type: "",
   table_id: 8,
   name: "int_num",
-  has_field_values: "list",
+  has_field_values: "none",
   dimensions: {},
   dimension_options: [],
   effective_type: "type/Integer",
@@ -44,7 +46,7 @@ const floatField = new Field({
   semantic_type: "",
   table_id: 8,
   name: "float_num",
-  has_field_values: "list",
+  has_field_values: "none",
   dimensions: {},
   dimension_options: [],
   effective_type: "type/Float",
@@ -53,9 +55,25 @@ const floatField = new Field({
   metadata,
 });
 
+const categoryField = new Field({
+  database_type: "test",
+  semantic_type: "",
+  table_id: 8,
+  name: "category_string",
+  has_field_values: "list",
+  values: ["Michaelangelo", "Donatello", "Raphael", "Leonardo"],
+  dimensions: {},
+  dimension_options: [],
+  effective_type: "type/Float",
+  id: 137,
+  base_type: "type/Float",
+  metadata,
+});
+
 metadata.fields[booleanField.id] = booleanField;
 metadata.fields[intField.id] = intField;
 metadata.fields[floatField.id] = floatField;
+metadata.fields[categoryField.id] = categoryField;
 
 const card = {
   dataset_query: {
@@ -74,6 +92,7 @@ const query = question.query();
 const booleanDimension = booleanField.dimension();
 const floatDimension = floatField.dimension();
 const intDimension = intField.dimension();
+const categoryDimension = categoryField.dimension();
 
 describe("BulkFilterItem", () => {
   it("renders a boolean picker for a boolean filter", () => {
@@ -148,5 +167,29 @@ describe("BulkFilterItem", () => {
       "aria-label",
       "float_num",
     );
+  });
+
+  it("renders a category picker for category type", () => {
+    const testFilter = new Filter(
+      ["=", ["field", categoryField.id, null], "Donatello"],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+    const store = getStore();
+
+    render(
+      <Provider store={store}>
+        <BulkFilterItem
+          query={query}
+          filter={testFilter}
+          dimension={categoryDimension}
+          onAddFilter={changeSpy}
+          onChangeFilter={changeSpy}
+          onRemoveFilter={changeSpy}
+        />
+      </Provider>,
+    );
+    screen.getByTestId("category-picker");
   });
 });

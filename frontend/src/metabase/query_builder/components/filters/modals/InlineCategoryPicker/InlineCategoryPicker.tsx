@@ -47,7 +47,7 @@ interface InlineCategoryPickerProps {
   handleClear: () => void;
 }
 
-function InlineCategoryPickerComponent({
+export function InlineCategoryPickerComponent({
   query,
   filter,
   newFilter,
@@ -134,15 +134,13 @@ export function SimpleCategoryFilterPicker({
         ? [...filterValues, option]
         : filterValues.filter(o => o !== option);
 
-      console.log("newArgs", newArgs);
-
       handleChange(filter.setArguments(newArgs));
     },
     [filterValues, handleChange, filter],
   );
 
   return (
-    <PickerContainer>
+    <PickerContainer data-testid="category-picker">
       <PickerGrid>
         {options.map((option: string | number) => (
           <Checkbox
