@@ -34,7 +34,7 @@
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]
-           [metabase.util.honeysql_extensions Identifier]))
+           [metabase.util.honeysql_extensions.Identifier]))
 
 (comment
   ddl.postgres/keep-me)
