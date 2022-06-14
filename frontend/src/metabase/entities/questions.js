@@ -89,6 +89,7 @@ const Questions = createEntity({
     "embedding_params",
     "collection_id",
     "collection_position",
+    "collection_preview",
     "result_metadata",
   ],
 

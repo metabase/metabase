@@ -11,6 +11,7 @@ export type Item = {
   copy?: boolean;
   collection_position?: number | null;
   collection_preview?: boolean;
+  has_required_parameters?: boolean;
   getIcon: () => { name: string };
   getUrl: () => string;
   setArchived: (isArchived: boolean) => void;
@@ -79,6 +80,10 @@ export function isRootCollection(collection: Collection): boolean {
 
 export function isItemPinned(item: Item) {
   return item.collection_position != null;
+}
+
+export function isPreviewEnabled(item: Item) {
+  return item.collection_preview ?? true;
 }
 
 // API requires items in "root" collection be persisted with a "null" collection ID
