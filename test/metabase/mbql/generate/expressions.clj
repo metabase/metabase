@@ -16,26 +16,31 @@
     [operator lhs rhs]))
 
 (defn n-ary-expression-generator
-  [operator arg-generator]
-  (gens/let [members (gen/vector arg-generator 1 10)]
-    (vec (flatten [operator members]))))
+  ([operator arg-generator]
+   (n-ary-expression-generator operator arg-generator 1))
+  ([operator arg-generator min-card]
+  (gens/let [members (gen/vector arg-generator min-card 5)]
+    (vec (flatten [operator members])))))
 
 (defn case-expression-generator
   [operator generator]
+  ;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;
+  ;;;;;;;;;;;;;;;
   [])
 
 (defn numeric-expression-generator [arg-generator]
-  ;; TODO -- use the proper shrinking recursion instead of the gen/delay
   (let [arg-generator (gens/one-of [arg-generator
                                     gens/int
                                     (gens/double* {:infinite? false, :NaN? false})
                                     ;; TODO -- BigInteger or BigDecimal?
+                                    ;; TODO -- Use the proper shrinking recursion gen instead of the gen/delay
                                     (gen/delay (numeric-expression-generator arg-generator))])]
     (gens/one-of [
-                  (n-ary-expression-generator :+ arg-generator)
-                  (n-ary-expression-generator :- arg-generator)
-                  (n-ary-expression-generator :/ arg-generator)
-                  (n-ary-expression-generator :* arg-generator)
+                  (n-ary-expression-generator :+ arg-generator 2)
+                  (n-ary-expression-generator :- arg-generator 2)
+                  (n-ary-expression-generator :/ arg-generator 2)
+                  (n-ary-expression-generator :* arg-generator 2)
                   (unary-expression-generator :floor arg-generator)
                   (unary-expression-generator :ceil arg-generator)
                   (unary-expression-generator :round arg-generator)
@@ -50,7 +55,8 @@
 
 (defn string-expression-generator [arg-generator]
   (let [arg-generator (gens/one-of [arg-generator
-                                    gens/string])]
+                                    gens/string
+                                    (gen/delay (numeric-expression-generator arg-generator))])]
     (gens/one-of [
                   (unary-expression-generator :trim arg-generator)
                   (unary-expression-generator :ltrim arg-generator)
