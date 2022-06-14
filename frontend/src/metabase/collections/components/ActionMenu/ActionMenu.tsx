@@ -3,9 +3,8 @@ import React, { useCallback } from "react";
 import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
-  isItemPinned,
-  isPreviewable,
   hasRequiredParameters,
+  isItemPinned,
   isPreviewEnabled,
   Item,
 } from "metabase/collections/utils";

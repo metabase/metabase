@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 import {
-  isPreviewable,
   hasRequiredParameters,
+  isPreviewable,
   Item,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
