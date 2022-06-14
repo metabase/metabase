@@ -4,8 +4,8 @@ import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isItemPinned,
-  isPreviewEnabled,
-  isPreviewShown,
+  isItemPreviewEnabled,
+  isItemPreviewShown,
   Item,
 } from "metabase/collections/utils";
 import EventSandbox from "metabase/components/EventSandbox";
@@ -75,7 +75,7 @@ function ActionMenu({
   }, [createBookmark, deleteBookmark, isBookmarked, item]);
 
   const handleTogglePreview = useCallback(() => {
-    item?.setCollectionPreview?.(!isPreviewShown(item));
+    item?.setCollectionPreview?.(!isItemPreviewShown(item));
   }, [item]);
 
   return (
@@ -86,8 +86,8 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isPreviewShown(item)}
-        isPreviewEnabled={isPreviewEnabled(item)}
+        isPreviewShown={isItemPreviewShown(item)}
+        isPreviewEnabled={isItemPreviewEnabled(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
