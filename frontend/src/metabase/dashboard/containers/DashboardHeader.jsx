@@ -5,6 +5,8 @@ import { push } from "react-router-redux";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
+import { getIsNavbarOpen } from "metabase/redux/app";
+
 import ActionButton from "metabase/components/ActionButton";
 import Button from "metabase/core/components/Button";
 import Header from "metabase/components/Header";
@@ -27,6 +29,7 @@ import { Link } from "react-router";
 const mapStateToProps = (state, props) => {
   return {
     isBookmarked: getIsBookmarked(state, props),
+    isNavBarOpen: getIsNavbarOpen(state),
   };
 };
 
@@ -56,6 +59,7 @@ export default class DashboardHeader extends Component {
     isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
       .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
+    isNavBarOpen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
 
     refreshPeriod: PropTypes.number,
@@ -383,6 +387,7 @@ export default class DashboardHeader extends Component {
         analyticsContext="Dashboard"
         item={dashboard}
         isEditing={this.props.isEditing}
+        isNavBarOpen={this.props.isNavBarOpen}
         hasBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
