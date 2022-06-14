@@ -127,9 +127,8 @@
           (is (= :list
                  (db/select-one-field :has_field_values Field
                                       :id (mt/id :blueberries_consumed :str)))))
-        (testing "it should still have FieldValues, but the stored list is just a sub-list of all distinct values and `has_more_values` = true"
-          (is (= {:values                (into []
-                                               (field-values/take-by-length field-values/total-max-length)
+        (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
+          (is (= {:values                (take metadata-queries/absolute-max-distinct-values-limit
                                                (one-off-dbs/range-str (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
                   :human_readable_values []
                   :has_more_values       true}
