@@ -1,58 +1,95 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { connect } from "react-redux";
+import { t } from "ttag";
 
 import Filter from "metabase-lib/lib/queries/structured/Filter";
+import Fields from "metabase/entities/fields";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
-import Field from "metabase-lib/lib/metadata/Field";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+
+import Warnings from "metabase/query_builder/components/Warnings";
 import Checkbox from "metabase/core/components/CheckBox";
-import { MetabaseApi } from "metabase/services";
 
 import { MAX_INLINE_CATEGORIES } from "./constants";
-import { PickerContainer, PickerGrid } from "./InlineCategoryPicker.styled";
+import {
+  PickerContainer,
+  PickerGrid,
+  Loading,
+} from "./InlineCategoryPicker.styled";
 import { BulkFilterSelect } from "../BulkFilterSelect";
-import { P } from "cljs/goog.dom.tagname";
+
+const mapStateToProps = (state: any, props: any) => {
+  const fieldId = props.dimension?.field?.()?.id;
+  const fieldValues =
+    fieldId != null
+      ? Fields.selectors.getFieldValues(state, {
+          entityId: fieldId,
+        })
+      : [];
+  return {
+    fieldValues: fieldValues || [],
+  };
+};
+
+const mapDispatchToProps = {
+  fetchFieldValues: Fields.actions.fetchFieldValues,
+};
 
 interface InlineCategoryPickerProps {
   query: StructuredQuery;
   filter?: Filter;
   newFilter: Filter;
   dimension: Dimension;
+  fieldValues: any[];
+  fetchFieldValues: ({ id }: { id: number }) => Promise<any>;
   handleChange: (newFilter: Filter) => void;
   handleClear: () => void;
 }
 
-export function InlineCategoryPicker({
+function InlineCategoryPickerComponent({
   query,
   filter,
   newFilter,
   handleChange,
+  fieldValues,
+  fetchFieldValues,
   dimension,
   handleClear,
 }: InlineCategoryPickerProps) {
-  const [fieldValues, setFieldValues] = useState<null | (string | number)[]>(
-    null,
-  );
+  const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
+
+  const shouldFetchFieldValues = !dimension?.field()?.hasFieldValues();
+  const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    const field = dimension.field();
-    if (field.hasFieldValues()) {
-      setFieldValues(field.fieldValues());
+    if (!shouldFetchFieldValues) {
+      setIsLoading(false);
       return;
     }
-    MetabaseApi.field_values({
-      fieldId: field.id,
-      limit: MAX_INLINE_CATEGORIES + 1,
-    })
-      .then(response => {
-        setFieldValues(response.values.flat());
+    const field = dimension.field();
+    safeFetchFieldValues({ id: field.id })
+      .then(() => {
+        setIsLoading(false);
       })
       .catch(() => {
-        throw new Error("Failed to load field values");
+        setHasError(true);
       });
-  }, [dimension]);
+  }, [dimension, safeFetchFieldValues, shouldFetchFieldValues]);
 
-  if (!fieldValues) {
-    return <div>loading</div>;
+  if (hasError) {
+    return (
+      <Warnings
+        warnings={[
+          t`There was an error loading the field values for this field`,
+        ]}
+      />
+    );
+  }
+
+  if (isLoading) {
+    return <Loading size={20} />;
   }
 
   if (fieldValues.length <= MAX_INLINE_CATEGORIES) {
@@ -60,10 +97,11 @@ export function InlineCategoryPicker({
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
         handleChange={handleChange}
-        options={fieldValues}
+        options={fieldValues.flat()}
       />
     );
   }
+
   return (
     <BulkFilterSelect
       query={query}
@@ -119,3 +157,8 @@ export function SimpleCategoryFilterPicker({
     </PickerContainer>
   );
 }
+
+export const InlineCategoryPicker = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(InlineCategoryPickerComponent);
