@@ -1,3 +1,7 @@
+---
+title: Activating your Metabase commercial license
+---
+
 ## Activating your Metabase commercial license
 
 The paid Pro and Enterprise editions of Metabase are distinct from the free Open Source edition, so to use your paid features you’ll need to first get a license. And if you want to self-host, you'll need a different JAR or Docker image that you can use to activate the advanced features with your license token.

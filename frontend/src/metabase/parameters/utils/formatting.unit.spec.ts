@@ -84,6 +84,18 @@ describe("metabase/parameters/utils/formatting", () => {
         expected: "foo",
         fields: [],
       },
+      {
+        type: "number/=",
+        value: [1, 2, 3, 4, 5],
+        expected: "5 selections",
+        fields: [numberField],
+      },
+      {
+        type: "number/=",
+        value: [1],
+        expected: "1",
+        fields: [numberField],
+      },
     ];
 
     test.each(cases)(

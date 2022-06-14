@@ -1,3 +1,7 @@
+---
+title: Synchronizing with the database
+---
+
 # Synchronizing with the database
 
 <div class='doc-toc' markdown=1>

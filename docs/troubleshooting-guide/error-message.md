@@ -1,3 +1,7 @@
+---
+title: Different types of error messages
+---
+
 # Different types of error messages
 
 - [API error messages][api-error-message]
@@ -26,4 +30,3 @@
 [discourse-search-metabase-error]: https://discourse.metabase.com/search?q=metabase%20error%20message
 [metabase-error-message]: #metabase-error-messages
 [sql-editor]: /glossary/native_query_editor.html
-

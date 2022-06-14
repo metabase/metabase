@@ -114,6 +114,7 @@ export const PLUGIN_MODERATION = {
   isEnabled: () => false,
   QuestionModerationSection: PluginPlaceholder,
   QuestionModerationButton: PluginPlaceholder,
+  ModerationReviewBanner: PluginPlaceholder,
   ModerationStatusIcon: PluginPlaceholder,
   getStatusIconForQuestion: object,
   getStatusIcon: object,

@@ -1298,13 +1298,10 @@ workflows:
               folder:
                 [
                   "admin",
-                  "collections",
                   "filters",
                   "native",
                   "native-filters",
                   "onboarding",
-                  "organization",
-                  "permissions",
                   "smoketest",
                   "visualizations",
                 ]

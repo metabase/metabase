@@ -1,3 +1,7 @@
+---
+title: Metabase documentation
+---
+
 ## Getting started
 
 - [Getting started](/learn/getting-started/getting-started)

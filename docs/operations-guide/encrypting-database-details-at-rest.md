@@ -1,3 +1,7 @@
+---
+title: Encrypting your database connection details at rest
+---
+
 # Encrypting your database connection details at rest
 
 Metabase stores connection information for the various databases you add in the Metabase application database. To prevent bad actors from being able to access these details if they were to gain access to

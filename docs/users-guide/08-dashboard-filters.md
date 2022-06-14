@@ -1,3 +1,7 @@
+---
+title: Dashboard Filters
+---
+
 ## Dashboard Filters
 
 ![Dashboard Filters](images/dashboard-filters/dashboard-filters.png)

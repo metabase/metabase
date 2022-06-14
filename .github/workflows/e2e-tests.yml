@@ -68,6 +68,7 @@ jobs:
           - "embedding"
           - "joins"
           - "models"
+          - "native"
           - "organization"
           - "permissions"
           - "question"

@@ -1,3 +1,7 @@
+---
+title: Redshift
+---
+
 # Redshift
 
 ## Connection information
@@ -32,4 +36,3 @@ Let's say you have three schemas: foo, bar, and baz.
 - If you have **All except...** set, and enter the string `b*`, you'll just sync foo.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
-

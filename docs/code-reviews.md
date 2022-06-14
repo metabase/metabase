@@ -1,4 +1,10 @@
-**The overall goal of a code review is to serve as a safety net for other people on our team and help them write better code, not to judge them or their code. When in doubt, assume that they have good intentions and BE NICE.**
+---
+title: Code reviews
+---
+
+# Code reviews
+
+The overall goal of a code review is to serve as a safety net for other people on our team and help them write better code, not to judge them or their code. When in doubt, assume that they have good intentions and BE NICE.
 
 ## Goals:
 

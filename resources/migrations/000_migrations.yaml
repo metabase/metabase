@@ -11846,6 +11846,25 @@ databaseChangeLog:
             tableName: report_card
 
   - changeSet:
+      id: v44.00-027
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.first_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: first_name
+            columnDataType: varchar(254)
+  - changeSet:
+      id: v44.00-028
+      author: adam-james
+      comment: Added 0.44.0. Drop NOT NULL constraint for core_user.last_name
+      changes:
+        - dropNotNullConstraint:
+            tableName: core_user
+            columnName: last_name
+            columnDataType: varchar(254)
+
+  - changeSet:
       id: v44.00-033
       author: qnkhuat
       comment: >-

@@ -34,9 +34,9 @@ export const IconWrapper = styled.div<IconWrapperProps>`
   }
 
   &:hover {
-    color: ${({ hover }) => hover?.color ?? color("brand")};
+    color: ${({ hover }) => hover?.color ?? c("brand")};
     background-color: ${({ hover }) =>
-      hover?.backgroundColor ?? color("bg-medium")};
+      hover?.backgroundColor ?? c("bg-medium")};
   }
 
   transition: all 300ms ease-in-out;

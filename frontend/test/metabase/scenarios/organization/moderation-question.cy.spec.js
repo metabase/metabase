@@ -4,6 +4,7 @@ import {
   visitQuestion,
   popover,
   openQuestionActions,
+  questionInfoButton,
 } from "__support__/e2e/cypress";
 
 describeEE("scenarios > saved question moderation", () => {
@@ -64,8 +65,8 @@ describeEE("scenarios > saved question moderation", () => {
         cy.findByTestId("moderation-verify-action").click();
       });
 
-      cy.findByTestId("saved-question-header-button").click();
-      cy.findByText("History").click();
+      questionInfoButton().click();
+      cy.findByText("History");
 
       cy.findAllByText("You verified this").should("be.visible");
 
@@ -98,7 +99,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.icon("verified").should("not.exist");
 
-      cy.findByTestId("saved-question-header-button").click();
+      questionInfoButton().click();
       cy.findByText("Bobby Tables verified this").should("not.exist");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
@@ -118,7 +119,7 @@ describeEE("scenarios > saved question moderation", () => {
 
       cy.icon("verified");
 
-      cy.findByTestId("saved-question-header-button").click();
+      questionInfoButton().click();
       cy.findAllByText("Bobby Tables verified this");
 
       cy.findByPlaceholderText("Search…").type("orders{enter}");
@@ -132,8 +133,8 @@ describeEE("scenarios > saved question moderation", () => {
     it("should be able to see the question verification in the question's timeline", () => {
       visitQuestion(2);
 
-      cy.findByTestId("saved-question-header-button").click();
-      cy.findByText("History").click();
+      questionInfoButton().click();
+      cy.findByText("History");
 
       cy.findAllByText("Bobby Tables verified this").should("be.visible");
     });

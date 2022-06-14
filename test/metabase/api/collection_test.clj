@@ -60,7 +60,7 @@
 (deftest list-collections-test
   (testing "GET /api/collection"
     (testing "check that we can get a basic list of collections"
-      ;; (for the purposes of test purposes remove the personal collections)
+      ;; (for test purposes remove the personal collections)
       (mt/with-temp Collection [collection]
         (is (= [{:parent_id           nil
                  :effective_location  nil
