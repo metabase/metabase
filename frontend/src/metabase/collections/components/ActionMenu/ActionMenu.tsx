@@ -4,6 +4,7 @@ import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   isItemPinned,
+  isItemPreviewable,
   isItemPreviewEnabled,
   isItemPreviewShown,
   Item,
@@ -86,7 +87,7 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isItemPreviewShown(item)}
+        isPreviewShown={isItemPreviewable(item)}
         isPreviewEnabled={isItemPreviewEnabled(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}

@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 import {
-  hasRequiredParameters,
   isItemPreviewable,
+  isItemPreviewEnabled,
   Item,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -83,7 +83,7 @@ const PinnedQuestionCard = ({
 };
 
 const getSkeletonTooltip = (item: Item) => {
-  if (!hasRequiredParameters(item)) {
+  if (!isItemPreviewEnabled(item)) {
     return t`Open this question and fill in its variables to see it.`;
   } else {
     return undefined;
