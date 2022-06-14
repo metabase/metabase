@@ -146,15 +146,7 @@ describe("scenarios > filters > bulk filtering", () => {
 
     modal().within(() => {
       cy.findByText("Product").click();
-      cy.findByLabelText("Category").click();
-    });
-
-    popover().within(() => {
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
-
-    modal().within(() => {
+      cy.findByLabelText("Gadget").click();
       cy.button("Apply").click();
       cy.wait("@dataset");
     });
