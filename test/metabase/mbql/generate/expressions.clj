@@ -52,8 +52,16 @@
   (let [arg-generator (gens/one-of [arg-generator
                                     gens/string])]
     (gens/one-of [
-                  some crap...
-                  ]))
+                  (unary-expression-generator :trim arg-generator)
+                  (unary-expression-generator :ltrim arg-generator)
+                  (unary-expression-generator :rtrim arg-generator)
+                  (unary-expression-generator :upper arg-generator)
+                  (unary-expression-generator :lower arg-generator)
+                  (n-ary-expression-generator :coalesce arg-generator)
+                  ;; TODO -- replace
+                  (n-ary-expression-generator :concat arg-generator)
+                  ;; TODO -- substring
+                  (unary-expression-generator :length arg-generator)])))
 
 (defn expressions-map-generator [field-generator]
   (let [numeric-field-generator      (gen.data/numeric-field-generator field-generator)
