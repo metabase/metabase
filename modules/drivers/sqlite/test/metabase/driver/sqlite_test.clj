@@ -145,7 +145,7 @@
                                    :database-type "TIMESTAMP"
                                    :base-type :type/DateTime
                                    :database-position 0
-                                   :database-required true}}}
+                                   :database-required false}}}
                        (driver/describe-table driver db (Table (mt/id :timestamp_table)))))))))))))
 
 (deftest select-query-datetime
