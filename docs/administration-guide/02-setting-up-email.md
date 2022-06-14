@@ -1,12 +1,12 @@
 ---
-title: Setting up Email
+title: Setting up email
 ---
 
-## Setting up Email
+# Setting up email
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users.  Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
 
-### Configuring your Email Account
+## Configuring your email account
 
 For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via *SMTP* (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
 
@@ -41,7 +41,7 @@ You should see this form:
 * Although Mandrill lists **port 587**, [any port supported by Mandrill](https://mandrill.zendesk.com/hc/en-us/articles/205582167-What-SMTP-ports-can-I-use-) will work for SMTP email.
 * Now you can go back to the Metabase Admin Panel form and enter the info there.
 
-**No matter which email provider you use,**
+**No matter which email provider you use**
 
 * SSL is strongly recommended because it’s more secure and gives your account extra protection from threats.
 * If your email service has a whitelist of email addresses that are allowed to send email, be sure to whitelist the email address that you put in the **From Address** field to ensure you and your teammates receive all emails from Metabase.
@@ -49,4 +49,5 @@ You should see this form:
 ---
 
 ## Next: setting up Slack
+
 If you want to use Slack to enhance the Metabase experience then lets do that now. Let’s learn [how to setup Slack](09-setting-up-slack.md).

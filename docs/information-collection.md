@@ -1,8 +1,8 @@
 ---
-title: About the Information we collect
+title: About the information we collect
 ---
 
-# About the Information we collect:
+# About the information we collect
 
 Metabase uses Google Analytics and Snowplow to collect anonymous usage information from the installed servers that enable this feature. Below is a representative list of the events we have instrumented, as well as the information we collect about the user performing the action and the instance being used.
 
@@ -18,7 +18,7 @@ If you're in the process of setting up your Metabase, an admin can also toggle o
 
 In the list below, we spell out exactly why we collect each bit of information.
 
-### Example questions we want to answer:
+## Example questions we want to answer
 
 - Is our query interface working?
   - Are users stopping halfway through a question?
@@ -34,7 +34,7 @@ In the list below, we spell out exactly why we collect each bit of information.
 - How often are questions saved?
 - How often are saved questions added to dashboards?
 
-### What we will do with the answers to these questions:
+## What we will do with the answers to these questions
 
 - Prioritize improvements in the query interface vs the SQL interface
 - Optimize the product for common usage patterns
@@ -43,7 +43,7 @@ In the list below, we spell out exactly why we collect each bit of information.
 
 While we will closely follow reported issues and feature requests, we aim to make as many of our users happy and provide them with improvements in features that matter to them. Allowing us to collect information about your instance gives your users a vote in future improvements in a direct way.
 
-# The data we collect:
+## The data we collect
 
 NOTE: We never capture any specific details in any of our tracking methodology such as user details, table names, field names, etc. Collected data is limited to the types of actions users are taking with the product.
 

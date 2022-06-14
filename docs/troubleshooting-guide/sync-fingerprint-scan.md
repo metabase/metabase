@@ -1,8 +1,8 @@
 ---
-title: Synchronizing with the database
+title: Troubleshooting syncs and scans
 ---
 
-# Synchronizing with the database
+# Troubleshooting syncs and scans
 
 <div class='doc-toc' markdown=1>
 - [Metabase can't sync, fingerprint, or scan](#cant-sync-fingerprint-scan)

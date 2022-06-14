@@ -2,7 +2,7 @@
 title: Embedding all of Metabase in your web app
 ---
 
-## Embedding all of Metabase in your web app
+# Embedding all of Metabase in your web app
 
 {% include plans-blockquote.html feature="Full-app embedding" %}
 
@@ -10,14 +10,14 @@ The open-source edition of Metabase allows you to [embed standalone charts or da
 
 You'll be putting the whole Metabase app into an iframe, and the SSO integration you've set up with Metabase will be used to make sure the embedded Metabase respects the collection and data permissions you've set up for your user groups. Clicking on charts and graphs in the embed will do just what they do in Metabase itself. You can even display a specific Metabase collection in an embed to allow your users to browse through all the dashboards and questions that you've made available to them. The only difference is that Metabase's top nav bar and global search will not be rendered in your iframe.
 
-### What you'll be doing
+## What you'll be doing
 
 To get this going, you're going to need:
 
 - A [paid plan of Metabase](https://www.metabase.com/pricing) that includes full-app embedding.
 - A separate web application that you want to embed your dashboards and charts in.
 
-### Enabling embedding in Metabase
+## Enabling embedding in Metabase
 
 First, let's enable embedding in your Metabase instance. Go to the Admin Panel, and under Settings, go to the “Embedding in other applications” tab. From there, click “Enable.”
 
@@ -32,7 +32,7 @@ Once you do, you'll see a set of options:
 
 **Note:** Some browsers, like Chrome, has `localStorage` is disabled in Incognito mode, so you won't be able to login via FullApp embedded iframe unless you explicitly allow cookies from Metabase. In Chrome go to chrome://settings/cookies and add the Metabase Site URL under "Sites that can always use cookies".
 
-### Setting things up in your web app
+## Setting things up in your web app
 
 To give you a picture of what you'll need to do in your app, we've created this [reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example). If you use React in your application, [this React component](https://github.com/metabase/sso-examples/blob/master/app-embed-example/src/MetabaseAppEmbed.js) may be helpful.
 
@@ -43,7 +43,7 @@ The main elements you'll need to embed Metabase in your app are:
 - Optional: when the embedding website is hosted under a domain _other_ than the one your Metabase instance is hosted under, you may need to set the environment variable `MB_SESSION_COOKIE_SAMESITE=None`. Setting the variable to `None` requires you to use HTTPS in Metabase, otherwise browsers will reject the request. Other options for the SameSite variable are `Lax` (default) or `Strict`. Visit MDN to learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
 - Optional: JavaScript using [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your application for enabling communication to and from the embedded Metabase. Here are the types of `postMessage` messages we currently support:
 
-#### Supported `postMessage` messages _from_ embedded Metabase:
+### Supported `postMessage` messages _from_ embedded Metabase:
 
 - `frame` message with `normal` mode: the current page in the embedded Metabase will fill whatever size `iframe` it is displayed in, e.x. the `/question` pages:
 
@@ -57,23 +57,23 @@ The main elements you'll need to embed Metabase in your app are:
 
   { "metabase": { "type": "location", "location": LOCATION_OBJECT }}
 
-#### Supported `postMessage` messages _to_ embedded Metabase:
+### Supported `postMessage` messages _to_ embedded Metabase:
 
 - `location` message: change the URL of the embedded Metabase:
 
   { "metabase": { "type": "location", "location": LOCATION_OBJECT_OR_URL }}
 
-### Choosing what to embed
+## Choosing what to embed
 
 The exact next steps will differ depending on your specific needs and goals, but the basic tool you have at hand now is that you can make any link in your web app render a particular page from your Metabase instance.
 
 So if you have for example a "Stats" or "Analytics" page in your web app, you could have that page display one of your Metabase dashboards. What's powerful about this type of embedding vs. standalone chart or dashboard embeds though is that your users will be able to click on the individual charts in that dashboard to see them in more detail, and further explore them using drill-through, or even Metabase's graphical query builder.
 
-### A note on drill-through and permissions
+## A note on drill-through and permissions
 
 One of the main differences between embedding the full Metabase app vs. standalone embeds is that charts and graphs will have drill-through enabled. This lets your users click on charts to zoom in, pivot, and generally explore more.
 
-#### What does drill-through let my users do exactly?
+### What does drill-through let my users do exactly?
 
 When clicking on any part of a chart — like a dot, bar, slice, or state — your users will see the drill-through action menu.
 
@@ -92,11 +92,11 @@ Depending on the collections permissions you set, your users can also save their
 
 Check out our article, [Create charts with explorable data](https://www.metabase.com/learn/basics/questions/drill-through.html).
 
-#### Using SSO to apply data or collection permissions to embeds
+### Using SSO to apply data or collection permissions to embeds
 
 If you're using SSO to authenticate users in your web app and you've also connected your SSO to Metabase, users who authenticate into your web application will automatically have their Metabase group permissions applied when viewing the dashboards, charts, or collections you embed. This means that once you've set up sandboxes and data and collection permissions in Metabase, you don't need to think about what your web app users can see when exploring.
 
-### Suggestions for Securing Embeds
+## Suggestions for Securing Embeds
 
 Currently we use HTTP cookies to authenticate embedded Metabase users. A limitation of this is that the embedded Metabase is not automatically logged out when the user closes or logs out of the embedding application. For this reason you may want to set Metabase's `MAX_SESSION_AGE` environment variable to a smaller number of minutes than the default of 20,160 (two weeks), or set `MB_SESSION_COOKIES=true` to cause the cookies to be removed when the browser is exited. Also, you can force Metabase to log out by loading "https://metabase.yourcompany.com/auth/logout" (for example, in a hidden iframe on the logout page of your application).
 
