@@ -1,14 +1,18 @@
 import React from "react";
 import { t } from "ttag";
-import { isPreviewEnabled, Item } from "metabase/collections/utils";
+import {
+  hasRequiredParameters,
+  isPreviewEnabled,
+  Item,
+} from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { Bookmark, Collection } from "metabase-types/api";
 import PinnedQuestionLoader from "./PinnedQuestionLoader";
 import {
   CardActionMenu,
-  CardRoot,
   CardPreviewSkeleton,
+  CardRoot,
   CardStaticSkeleton,
 } from "./PinnedQuestionCard.styled";
 
@@ -71,11 +75,19 @@ const PinnedQuestionCard = ({
           name={item.name}
           description={item.description ?? t`A question`}
           icon={item.getIcon()}
-          tooltip={t`Open this question and fill in its variables to see it.`}
+          tooltip={getSkeletonTooltip(item)}
         />
       )}
     </CardRoot>
   );
+};
+
+const getSkeletonTooltip = (item: Item) => {
+  if (!hasRequiredParameters(item)) {
+    return t`Open this question and fill in its variables to see it.`;
+  } else {
+    return undefined;
+  }
 };
 
 export default PinnedQuestionCard;
