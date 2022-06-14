@@ -20,12 +20,12 @@
 (deftest describe-table-test
   (is (= {:name "VENUES",
           :fields
-          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true}
-            {:name "NAME", :database-type "VARCHAR", :base-type :type/Text, :database-position 1}
-            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2}
-            {:name "LATITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 3}
-            {:name "LONGITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 4}
-            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5}}}
+          #{{:name "ID", :database-type "BIGINT", :base-type :type/BigInteger, :database-position 0, :pk? true :database-required false}
+            {:name "NAME", :database-type "VARCHAR", :base-type :type/Text, :database-position 1 :database-required false}
+            {:name "CATEGORY_ID", :database-type "INTEGER", :base-type :type/Integer, :database-position 2 :database-required false}
+            {:name "LATITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 3 :database-required false}
+            {:name "LONGITUDE", :database-type "DOUBLE", :base-type :type/Float, :database-position 4 :database-required false}
+            {:name "PRICE", :database-type "INTEGER", :base-type :type/Integer, :database-position 5 :database-required false}}}
          (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "VENUES"}))))
 
 (deftest describe-table-fks-test
@@ -80,7 +80,12 @@
     (let [arr-row   {:bob [:bob :cob :dob 123 "blob"]}
           obj-row   {:zlob {"blob" 1323}}]
       (is (= {} (#'sql-jdbc.describe-table/row->types arr-row)))
-      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row))))))
+      (is (= {[:zlob "blob"] java.lang.Long} (#'sql-jdbc.describe-table/row->types obj-row)))))
+  (testing "JSON row->types handles bigint OK (#21752)"
+    (let [int-row   {:zlob {"blob" 123N}}
+          float-row {:zlob {"blob" 1234.02M}}]
+      (is (= {[:zlob "blob"] clojure.lang.BigInt} (#'sql-jdbc.describe-table/row->types int-row)))
+      (is (= {[:zlob "blob"] java.math.BigDecimal} (#'sql-jdbc.describe-table/row->types float-row))))))
 
 (deftest dont-parse-long-json-xform-test
   (testing "obnoxiously long json should not even get parsed (#22636)"

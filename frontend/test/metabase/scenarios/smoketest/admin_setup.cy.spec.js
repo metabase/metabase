@@ -7,7 +7,6 @@ import {
   visualize,
   navigationSidebar,
   startNewQuestion,
-  openNavigationSidebar,
   visitQuestion,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
@@ -292,7 +291,6 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Settings");
 
       cy.findByTestId("saved-question-header-button").click();
-      cy.findByTestId("edit-details-button").click();
       cy.findByLabelText("Name")
         .clear()
         .type("Test Question");
@@ -540,7 +538,6 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Test Question").click();
       cy.findByTestId("saved-question-header-button").click();
-      cy.findByTestId("edit-details-button").click();
 
       cy.findByText("Edit question");
       modal().within(() => {
@@ -551,7 +548,6 @@ describe("smoketest > admin_setup", () => {
 
       // Check column names and visiblity
 
-      openNavigationSidebar();
       browse().click();
       cy.findByTextEnsureVisible("Sample Database").click();
       cy.findByTextEnsureVisible("Test Table").click();

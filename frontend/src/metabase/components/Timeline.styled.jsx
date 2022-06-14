@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
 import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 
 export const TimelineContainer = styled.ul`
   position: relative;
@@ -30,6 +31,13 @@ export const ItemBody = styled.div`
 
 export const ItemHeader = styled.div`
   font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+
+  ${Button} {
+    padding: 0;
+  }
 `;
 
 export const Timestamp = styled.time`

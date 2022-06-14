@@ -59,11 +59,16 @@
                             :args (s/+ any?))))
 
 (defn- form->string-for-translation
-  "Function that turns a form into the translation string. At the moment
-  it is just the second arg of the form. Afterwards it will need to
-  concat string literals in a `(str \"foo\" \"bar\")` situation. "
+  "Function that turns a form into the translation string. Handles string literals and calls to `str` on string
+  literals.
+
+  (form->string-for-translation (tru \"Foo {0}\")) -> \"Foo {0}\"
+  (form->string-for-translation (tru (str \"Foo {0} \" \"Bar\")) -> \"Foo {0} Bar\""
   [form]
-  (second form))
+  (let [i18n-spot (second form)]
+    (if (string? i18n-spot)
+      i18n-spot
+      (apply str (rest i18n-spot)))))
 
 (defn- analyze-translations
   [roots]

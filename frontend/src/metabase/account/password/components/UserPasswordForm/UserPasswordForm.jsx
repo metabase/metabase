@@ -13,7 +13,8 @@ const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
   const handleAsyncValidate = useCallback(
     async ({ password }) => {
       try {
-        validatePassword(password);
+        await validatePassword(password);
+
         return {};
       } catch (error) {
         return error.data.errors;

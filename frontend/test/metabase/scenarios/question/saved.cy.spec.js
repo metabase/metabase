@@ -9,6 +9,10 @@ import {
   visualize,
   openQuestionActions,
 } from "__support__/e2e/cypress";
+import {
+  questionInfoButton,
+  rightSidebar,
+} from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 describe("scenarios > question > saved", () => {
   beforeEach(() => {
@@ -121,22 +125,23 @@ describe("scenarios > question > saved", () => {
     cy.intercept("PUT", "/api/card/**").as("updateQuestion");
 
     visitQuestion(1);
-    cy.findByTestId("saved-question-header-button").click();
-    cy.findByText("History").click();
+    questionInfoButton().click();
 
-    cy.findByTestId("edit-details-button").click();
-    cy.findByLabelText("Description")
-      .click()
-      .type("This is a question");
+    rightSidebar().within(() => {
+      cy.findByText("History");
 
-    cy.button("Save").click();
-    cy.wait("@updateQuestion");
+      cy.findByPlaceholderText("Description")
+        .type("This is a question")
+        .blur();
 
-    cy.findByText(/added a description/i);
+      cy.wait("@updateQuestion");
 
-    cy.findByRole("button", { name: "Revert" }).click();
+      cy.findByText(/added a description/i);
 
-    cy.findByText(/Reverted to an earlier revision/i);
+      cy.findByTestId("question-revert-button").click();
+    });
+
+    cy.findByText(/reverted to an earlier revision/i);
     cy.findByText(/This is a question/i).should("not.exist");
   });
 

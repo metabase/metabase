@@ -30,7 +30,8 @@
 (doseq [[feature supported?] {:full-join               false
                               :regex                   false
                               :percentile-aggregations false
-                              :actions                 true}]
+                              :actions                 true
+                              :actions/custom          true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -119,7 +120,6 @@
     #"^Wrong user name or password .*$"
     :username-or-password-incorrect
 
-    #".*"                               ; default
     message))
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")

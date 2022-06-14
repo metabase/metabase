@@ -63,11 +63,7 @@ import { redirectToNewQuestionFlow, updateUrl } from "./navigation";
 import { setIsShowingTemplateTagsEditor } from "./native";
 import { zoomInRow } from "./object-detail";
 import { cancelQuery, clearQueryResult, runQuestionQuery } from "./querying";
-import {
-  onCloseSidebars,
-  onCloseQuestionDetails,
-  setQueryBuilderMode,
-} from "./ui";
+import { onCloseSidebars, setQueryBuilderMode } from "./ui";
 
 export const RESET_QB = "metabase/qb/RESET_QB";
 export const resetQB = createAction(RESET_QB);
@@ -588,7 +584,6 @@ export const updateQuestion = (
       // to start building a new ad-hoc question based on a dataset
       if (newQuestion.isDataset()) {
         newQuestion = newQuestion.setDataset(false);
-        dispatch(onCloseQuestionDetails());
       }
     }
 

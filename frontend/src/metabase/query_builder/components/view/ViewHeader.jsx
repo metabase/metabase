@@ -79,7 +79,6 @@ const viewTitleHeaderPropTypes = {
   onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
   onCloseQuestionDetails: PropTypes.func,
-  onOpenQuestionHistory: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
@@ -169,9 +168,8 @@ SavedQuestionLeftSide.propTypes = {
   isObjectDetail: PropTypes.bool,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionDetails: PropTypes.func.isRequired,
-  onCloseQuestionDetails: PropTypes.func.isRequired,
-  onOpenQuestionHistory: PropTypes.func.isRequired,
+  onOpenQuestionInfo: PropTypes.func.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
 };
 
 function SavedQuestionLeftSide(props) {
@@ -180,24 +178,15 @@ function SavedQuestionLeftSide(props) {
     isObjectDetail,
     isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-    onOpenQuestionHistory,
+    onOpenQuestionInfo,
+    onOpenModal,
   } = props;
 
   const hasLastEditInfo = question.lastEditInfo() != null;
 
   const onHeaderClick = useCallback(() => {
-    if (isShowingQuestionDetailsSidebar) {
-      onCloseQuestionDetails();
-    } else {
-      onOpenQuestionDetails({ closeOtherSidebars: true });
-    }
-  }, [
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  ]);
+    onOpenModal(MODAL_TYPES.EDIT);
+  }, [onOpenModal]);
 
   return (
     <div>
@@ -212,7 +201,7 @@ function SavedQuestionLeftSide(props) {
         {hasLastEditInfo && isAdditionalInfoVisible && (
           <StyledLastEditInfoLabel
             item={question.card()}
-            onClick={onOpenQuestionHistory}
+            onClick={onOpenQuestionInfo}
           />
         )}
       </ViewHeaderMainLeftContentContainer>
@@ -287,8 +276,7 @@ DatasetLeftSide.propTypes = {
   question: PropTypes.object.isRequired,
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenQuestionDetails: PropTypes.func.isRequired,
-  onCloseQuestionDetails: PropTypes.func.isRequired,
+  onOpenModal: PropTypes.func.isRequired,
 };
 
 function DatasetLeftSide(props) {
@@ -296,21 +284,12 @@ function DatasetLeftSide(props) {
     question,
     isAdditionalInfoVisible,
     isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
+    onOpenModal,
   } = props;
 
   const onHeaderClick = useCallback(() => {
-    if (isShowingQuestionDetailsSidebar) {
-      onCloseQuestionDetails();
-    } else {
-      onOpenQuestionDetails({ closeOtherSidebars: true });
-    }
-  }, [
-    isShowingQuestionDetailsSidebar,
-    onOpenQuestionDetails,
-    onCloseQuestionDetails,
-  ]);
+    onOpenModal(MODAL_TYPES.EDIT);
+  }, [onOpenModal]);
 
   return (
     <div>
@@ -386,6 +365,10 @@ ViewTitleHeaderRightSide.propTypes = {
   onCollapseFilters: PropTypes.func,
   isBookmarked: PropTypes.bool,
   toggleBookmark: PropTypes.func,
+  onOpenQuestionInfo: PropTypes.func,
+  onCloseQuestionInfo: PropTypes.func,
+  isShowingQuestionInfoSidebar: PropTypes.bool,
+  onModelPersistenceChange: PropTypes.bool,
 };
 
 function ViewTitleHeaderRightSide(props) {
@@ -420,6 +403,10 @@ function ViewTitleHeaderRightSide(props) {
     areFiltersExpanded,
     onExpandFilters,
     onCollapseFilters,
+    isShowingQuestionInfoSidebar,
+    onCloseQuestionInfo,
+    onOpenQuestionInfo,
+    onModelPersistenceChange,
   } = props;
   const isShowingNotebook = queryBuilderMode === "notebook";
   const query = question.query();
@@ -451,6 +438,14 @@ function ViewTitleHeaderRightSide(props) {
     isDatabaseWritebackEnabled(database) &&
     !isNative &&
     query.isRaw();
+
+  const handleInfoClick = useCallback(() => {
+    if (isShowingQuestionInfoSidebar) {
+      onCloseQuestionInfo();
+    } else {
+      onOpenQuestionInfo();
+    }
+  }, [isShowingQuestionInfoSidebar, onOpenQuestionInfo, onCloseQuestionInfo]);
 
   return (
     <div
@@ -555,12 +550,15 @@ function ViewTitleHeaderRightSide(props) {
       )}
       {isSaved && (
         <QuestionActions
+          isShowingQuestionInfoSidebar={isShowingQuestionInfoSidebar}
           isBookmarked={isBookmarked}
           handleBookmark={toggleBookmark}
           onOpenModal={onOpenModal}
           question={question}
           setQueryBuilderMode={setQueryBuilderMode}
           turnDatasetIntoQuestion={turnDatasetIntoQuestion}
+          onInfoClick={handleInfoClick}
+          onModelPersistenceChange={onModelPersistenceChange}
         />
       )}
     </div>

@@ -298,6 +298,10 @@
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
+    (testing "Give us a bigint cast when the field is bigint (#22732)"
+      (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{boop,foobar,1234}"]
                (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
@@ -643,15 +647,18 @@
                              :database-type     "varchar"
                              :base-type         :type/Text
                              :pk?               true
-                             :database-position 0}
+                             :database-position 0
+                             :database-required true}
                             {:name              "status"
                              :database-type     "bird_status"
                              :base-type         :type/PostgresEnum
-                             :database-position 1}
+                             :database-position 1
+                             :database-required true}
                             {:name              "type"
                              :database-type     "bird type"
                              :base-type         :type/PostgresEnum
-                             :database-position 2}}}
+                             :database-position 2
+                             :database-required true}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"

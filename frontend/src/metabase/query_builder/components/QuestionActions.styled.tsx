@@ -17,10 +17,11 @@ export const QuestionActionsContainer = styled.div`
 export const PopoverContainer = styled.div`
   padding: 1rem;
   min-width: 260px;
-`;
 
-export const PopoverButton = styled(Button)`
-  width: 100%;
+  ${Button} {
+    width: 100%;
+  }
+
   ${Button.Content} {
     justify-content: flex-start;
   }

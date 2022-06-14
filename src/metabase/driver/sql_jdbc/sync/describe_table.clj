@@ -92,12 +92,22 @@
                   (some->> table-name (driver/escape-entity-name-for-metadata driver))
                   nil)
     (fn [^ResultSet rs]
-      #(merge
-         {:name          (.getString rs "COLUMN_NAME")
-          :database-type (.getString rs "TYPE_NAME")}
-         (when-let [remarks (.getString rs "REMARKS")]
-           (when-not (str/blank? remarks)
-             {:field-comment remarks}))))))
+      ;; https://docs.oracle.com/javase/7/docs/api/java/sql/DatabaseMetaData.html#getColumns(java.lang.String,%20java.lang.String,%20java.lang.String,%20java.lang.String)
+      #(let [default (.getString rs "COLUMN_DEF")
+             no-default? (contains? #{nil "NULL" "null"} default)
+             nullable (.getInt rs "NULLABLE")
+             not-nullable? (= 0 nullable)
+             auto-increment (.getString rs "IS_AUTOINCREMENT")
+             no-auto-increment? (= "NO" auto-increment)
+             column-name (.getString rs "COLUMN_NAME")
+             required? (and no-default? not-nullable? no-auto-increment?)]
+         (merge
+           {:name              column-name
+            :database-type     (.getString rs "TYPE_NAME")
+            :database-required required?}
+           (when-let [remarks (.getString rs "REMARKS")]
+             (when-not (str/blank? remarks)
+               {:field-comment remarks})))))))
 
 (defn- fields-metadata
   "Returns reducible metadata for the Fields in a `table`."
@@ -141,7 +151,7 @@
    (map-indexed (fn [i {:keys [database-type], column-name :name, :as col}]
                   (let [semantic-type (calculated-semantic-type driver column-name database-type)]
                     (merge
-                      (u/select-non-nil-keys col [:name :database-type :field-comment])
+                      (u/select-non-nil-keys col [:name :database-type :field-comment :database-required])
                       {:base-type         (database-type->base-type-or-warn driver database-type)
                        :database-position i}
                       (when semantic-type
@@ -297,8 +307,10 @@
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
+   clojure.lang.BigInt             :type/BigInteger
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.math.BigDecimal            :type/Decimal
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
    java.time.LocalDateTime         :type/DateTime
@@ -312,8 +324,10 @@
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
    :type/Integer    "integer"
+   :type/BigInteger "bigint"
    :type/Float      "double precision"
    :type/Number     "double precision"
+   :type/Decimal    "decimal"
    :type/Boolean    "boolean"
    :type/DateTime   "timestamp"
    :type/Array      "text"

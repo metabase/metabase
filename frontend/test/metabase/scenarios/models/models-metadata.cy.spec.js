@@ -1,16 +1,14 @@
 import {
   restore,
-  sidebar,
+  rightSidebar,
   visualize,
   visitDashboard,
   popover,
   openQuestionActions,
+  questionInfoButton,
 } from "__support__/e2e/cypress";
 
-import {
-  openDetailsSidebar,
-  startQuestionFromModel,
-} from "./helpers/e2e-models-helpers";
+import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
 
 import {
   openColumnOptions,
@@ -19,6 +17,10 @@ import {
   mapColumnTo,
   setModelMetadata,
 } from "./helpers/e2e-models-metadata-helpers";
+
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
+const { PEOPLE, REVIEWS } = SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -160,11 +162,11 @@ describe("scenarios > models metadata", () => {
     cy.findByText("Tax ($)");
 
     cy.reload();
-    openDetailsSidebar();
+    questionInfoButton().click();
 
-    sidebar().within(() => {
-      cy.findByText("History").click();
-      cy.findAllByText("Revert")
+    rightSidebar().within(() => {
+      cy.findByText("History");
+      cy.findAllByTestId("question-revert-button")
         .first()
         .click();
     });
@@ -196,7 +198,7 @@ describe("scenarios > models metadata", () => {
               id: 11,
               display_name: "User ID",
               semantic_type: "type/FK",
-              fk_target_field_id: 30,
+              fk_target_field_id: PEOPLE.ID,
             };
           }
           if (field.display_name !== "QUANTITY") {
@@ -206,7 +208,7 @@ describe("scenarios > models metadata", () => {
             ...field,
             display_name: "Review ID",
             semantic_type: "type/FK",
-            fk_target_field_id: 36,
+            fk_target_field_id: REVIEWS.ID,
           };
         });
       });
