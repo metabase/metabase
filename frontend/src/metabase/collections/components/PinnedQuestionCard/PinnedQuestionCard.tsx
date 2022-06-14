@@ -2,7 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import {
   hasRequiredParameters,
-  isPreviewEnabled,
+  isPreviewable,
   Item,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -37,7 +37,7 @@ const PinnedQuestionCard = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
-  const isPreview = isPreviewEnabled(item);
+  const isPreview = isPreviewable(item);
 
   return (
     <CardRoot to={item.getUrl()} isPreview={isPreview}>

@@ -11,7 +11,7 @@ import PinnedItemSortDropTarget from "metabase/collections/components/PinnedItem
 import {
   Item,
   isRootCollection,
-  isPreviewEnabled,
+  isPreviewable,
 } from "metabase/collections/utils";
 import PinDropZone from "metabase/collections/components/PinDropZone";
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
@@ -50,7 +50,7 @@ function PinnedItemOverview({
     dashboard: dashboardItems = [],
     dataset: dataModelItems = [],
   } = _.groupBy(sortedItems, "model");
-  const cardGroups = _.partition(cardItems, isPreviewEnabled);
+  const cardGroups = _.partition(cardItems, isPreviewable);
 
   return items.length === 0 ? (
     <Container>
