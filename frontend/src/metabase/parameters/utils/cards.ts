@@ -113,11 +113,11 @@ export function getCardUiParameters(
       return {
         ...parameter,
         fields: [field],
-        hasOnlyFieldTargets: true,
+        hasVariableTemplateTagTarget: false,
       };
     }
 
-    return { ...parameter };
+    return { ...parameter, hasVariableTemplateTagTarget: true };
   });
 }
 

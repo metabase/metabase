@@ -1,5 +1,5 @@
 import Field from "metabase-lib/lib/metadata/Field";
-import { hasFieldValues, hasFields, isOnlyMappedToFields } from "./fields";
+import { hasFieldValues, hasFields } from "./fields";
 
 describe("parameters/utils/fields", () => {
   describe("hasFieldValues", () => {
@@ -36,40 +36,6 @@ describe("parameters/utils/fields", () => {
     it("should be true when a field on the parameter has values", () => {
       const mockField = new Field({ id: 1, name: "foo" });
       expect(hasFields({ fields: [mockField] })).toBe(true);
-    });
-  });
-
-  describe("isOnlyMappedToFields", () => {
-    it("should be false when the parameter has no fields", () => {
-      expect(
-        isOnlyMappedToFields({ fields: [], hasOnlyFieldTargets: false }),
-      ).toBe(false);
-    });
-
-    it("should be false in a broken scenario where it has no fields but claims to only target fields", () => {
-      expect(
-        isOnlyMappedToFields({ fields: [], hasOnlyFieldTargets: true }),
-      ).toBe(false);
-    });
-
-    it("should be false when the parameter has fields but is mapped to more than fields", () => {
-      const mockField = new Field({ id: 1, name: "foo" });
-      expect(
-        isOnlyMappedToFields({
-          fields: [mockField],
-          hasOnlyFieldTargets: false,
-        }),
-      ).toBe(false);
-    });
-
-    it("should be true when the parameter has fields and is mapped only to fields", () => {
-      const mockField = new Field({ id: 1, name: "foo" });
-      expect(
-        isOnlyMappedToFields({
-          fields: [mockField],
-          hasOnlyFieldTargets: true,
-        }),
-      ).toBe(true);
     });
   });
 });

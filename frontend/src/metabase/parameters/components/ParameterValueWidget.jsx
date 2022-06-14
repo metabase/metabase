@@ -6,12 +6,12 @@ import _ from "underscore";
 
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
-import { isOnlyMappedToFields } from "metabase/parameters/utils/fields";
 import {
   isDateParameter,
   isNumberParameter,
 } from "metabase/parameters/utils/parameter-type";
 import { getNumberParameterArity } from "metabase/parameters/utils/operators";
+
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
@@ -235,35 +235,43 @@ function Widget({
     );
   }
 
+  const normalizedValue = Array.isArray(value)
+    ? value
+    : [value].filter(v => v != null);
+
   if (isDateParameter(parameter)) {
     const DateWidget = DATE_WIDGETS[parameter.type];
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
-  } else if (isOnlyMappedToFields(parameter)) {
-    const normalizedValue = Array.isArray(value)
-      ? value
-      : [value].filter(v => v != null);
-
-    if (isNumberParameter(parameter)) {
-      const arity = getNumberParameterArity(parameter);
-      return (
-        <NumberInputWidget
-          value={normalizedValue}
-          setValue={value => {
-            setValue(value);
-            onPopoverClose();
-          }}
-          arity={arity}
-          infixText={
-            typeof arity === "number" && arity > 1 ? t`and` : undefined
-          }
-          autoFocus
-          placeholder={isEditing ? t`Enter a default value…` : undefined}
-        />
-      );
-    }
-
+  } else if (parameter.hasVariableTemplateTagTarget) {
+    return (
+      <TextWidget
+        value={value}
+        setValue={setValue}
+        className={className}
+        isEditing={isEditing}
+        commitImmediately={commitImmediately}
+        placeholder={placeholder}
+        focusChanged={onFocusChanged}
+      />
+    );
+  } else if (isNumberParameter(parameter)) {
+    const arity = getNumberParameterArity(parameter);
+    return (
+      <NumberInputWidget
+        value={normalizedValue}
+        setValue={value => {
+          setValue(value);
+          onPopoverClose();
+        }}
+        arity={arity}
+        infixText={typeof arity === "number" && arity > 1 ? t`and` : undefined}
+        autoFocus
+        placeholder={isEditing ? t`Enter a default value…` : undefined}
+      />
+    );
+  } else if (!_.isEmpty(parameter.fields)) {
     return (
       <ParameterFieldWidget
         target={target}
@@ -305,10 +313,11 @@ Widget.propTypes = {
 function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
-  } else if (isOnlyMappedToFields(parameter)) {
-    if (isNumberParameter(parameter)) {
-      return NumberInputWidget;
-    }
+  } else if (parameter.hasVariableTemplateTagTarget) {
+    return TextWidget;
+  } else if (isNumberParameter(parameter)) {
+    return NumberInputWidget;
+  } else if (!_.isEmpty(parameter.fields)) {
     return ParameterFieldWidget;
   } else {
     return TextWidget;

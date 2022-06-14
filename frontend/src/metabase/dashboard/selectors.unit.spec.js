@@ -95,7 +95,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           type: "string/=",
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
           fields: [],
         },
       ]);
@@ -118,7 +118,7 @@ describe("dashboard/selectors", () => {
         {
           id: 1,
           type: "string/=",
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
           fields: [expect.any(Field)],
         },
       ]);
@@ -147,7 +147,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           type: "string/=",
           fields: [expect.any(Field)],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
       ]);
     });
@@ -175,7 +175,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           type: "string/=",
           fields: [expect.any(Field)],
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
         },
       ]);
     });
@@ -203,7 +203,7 @@ describe("dashboard/selectors", () => {
           id: 1,
           type: "string/=",
           fields: [expect.any(Field), expect.any(Field)],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
       ]);
     });

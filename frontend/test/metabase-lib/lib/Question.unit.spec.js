@@ -1072,7 +1072,7 @@ describe("Question", () => {
               id: 1,
             },
           ],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
           id: "bbb",
           name: "Foo",
           slug: "foo",
@@ -1081,6 +1081,7 @@ describe("Question", () => {
         },
         {
           default: undefined,
+          hasVariableTemplateTagTarget: true,
           id: "aaa",
           name: "Bar",
           slug: "bar",
@@ -1118,12 +1119,13 @@ describe("Question", () => {
           target: ["dimension", ["field", 1, null]],
           value: "abc",
           fields: [{ id: 1 }],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
         {
           type: "category",
           name: "bar",
           id: "bar_id",
+          hasVariableTemplateTagTarget: true,
         },
       ]);
     });
