@@ -71,6 +71,7 @@ const PinnedQuestionCard = ({
           name={item.name}
           description={item.description ?? t`A question`}
           icon={item.getIcon()}
+          tooltip={t`Open this question and fill in its variables to see it.`}
         />
       )}
     </CardRoot>

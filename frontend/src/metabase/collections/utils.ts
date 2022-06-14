@@ -82,7 +82,7 @@ export function isItemPinned(item: Item) {
 }
 
 export function isPreviewEnabled(item: Item) {
-  return item.collection_preview ?? true;
+  return item.description != null;
 }
 
 // API requires items in "root" collection be persisted with a "null" collection ID
