@@ -68,6 +68,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import {
   isActionButtonDashCard,
   getActionButtonActionId,
+  getActionButtonEmitterId,
   getActionEmitterParameterMappings,
 } from "metabase/writeback/utils";
 
@@ -387,12 +388,21 @@ export const saveDashboardAndCards = createThunkAction(
       await Promise.all(
         dashboard.ordered_cards
           .filter(dc => dc.isRemoved && !dc.isAdded)
-          .map(dc =>
-            DashboardApi.removecard({
+          .map(dc => {
+            if (isActionButtonDashCard(dc) && !!getActionButtonEmitterId(dc)) {
+              const emitterId = getActionButtonEmitterId(dc);
+              return EmittersApi.delete({ id: emitterId }).then(() =>
+                DashboardApi.removecard({
+                  dashId: dashboard.id,
+                  dashcardId: dc.id,
+                }),
+              );
+            }
+            return DashboardApi.removecard({
               dashId: dashboard.id,
               dashcardId: dc.id,
-            }),
-          ),
+            });
+          }),
       );
 
       // add isAdded dashboards
