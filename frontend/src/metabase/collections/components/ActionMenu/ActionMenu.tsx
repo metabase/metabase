@@ -87,8 +87,8 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewShown={isPreviewable(item)}
-        isPreviewEnabled={hasRequiredParameters(item)}
+        isPreviewEnabled={isPreviewEnabled(item)}
+        isPreviewAvailable={hasRequiredParameters(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
         onCopy={item.copy ? handleCopy : null}
