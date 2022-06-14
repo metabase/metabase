@@ -31,12 +31,12 @@ export const BulkFilterItem = ({
   const fieldType = useMemo(() => {
     const field = dimension.field();
 
-    if (field.has_field_values === "list") {
-      return "type/Category";
-    }
-
     if (BASE_FIELD_FILTERS.includes(field.base_type ?? "")) {
       return field.base_type;
+    }
+
+    if (field.has_field_values === "list") {
+      return "type/Category";
     }
 
     if (SEMANTIC_FIELD_FILTERS.includes(field.semantic_type ?? "")) {
