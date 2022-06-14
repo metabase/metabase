@@ -13,13 +13,15 @@ const getNameFields = () => [
     title: t`First name`,
     placeholder: "Johnny",
     autoFocus: true,
-    validate: validate.required().maxLength(100),
+    validate: validate.maxLength(100),
+    normalize: firstName => firstName || null,
   },
   {
     name: "last_name",
     title: t`Last name`,
     placeholder: "Appleseed",
-    validate: validate.required().maxLength(100),
+    validate: validate.maxLength(100),
+    normalize: lastName => lastName || null,
   },
 ];
 
