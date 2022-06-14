@@ -5,8 +5,12 @@ import {
   openNativeEditor,
 } from "__support__/e2e/cypress";
 
+import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+
 const databaseName = "Sample Database";
 const databaseCopyName = `${databaseName} copy`;
+
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 describe("display the relevant error message in save question modal (metabase#21597)", () => {
   beforeEach(() => {
@@ -83,7 +87,7 @@ describe("display the relevant error message in save question modal (metabase#21
     });
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains(
-      "Failed to fetch Field 4: Field does not exist, or belongs to a different Database.",
+      `Failed to fetch Field ${PRODUCTS.CATEGORY}: Field does not exist, or belongs to a different Database.`,
     );
 
     // Try to save the native query
@@ -97,7 +101,7 @@ describe("display the relevant error message in save question modal (metabase#21
       cy.findByText("Save").click();
       cy.wait("@saveNativeQuestion");
       cy.findByText(
-        `Invalid Field Filter: Field 4 "PRODUCTS"."CATEGORY" belongs to Database 1 "${databaseName}", but the query is against Database 2 "${databaseCopyName}"`,
+        `Invalid Field Filter: Field ${PRODUCTS.CATEGORY} "PRODUCTS"."CATEGORY" belongs to Database 1 "${databaseName}", but the query is against Database 2 "${databaseCopyName}"`,
       );
     });
   });
