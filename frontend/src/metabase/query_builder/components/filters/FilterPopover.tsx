@@ -115,6 +115,8 @@ export default class FilterPopover extends Component<Props, State> {
     );
   };
 
+  // we should only commit the filter once to prevent
+  // inconsistent filters from being committed
   handleCommitFilter = _.once(
     (filter: Filter | null, query: StructuredQuery) => {
       if (filter && !(filter instanceof Filter)) {
