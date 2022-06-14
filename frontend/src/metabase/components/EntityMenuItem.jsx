@@ -5,11 +5,19 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import { Item, StyledExternalLink } from "./EntityMenuItem.styled";
 
-const LinkMenuItem = ({ children, link, onClose, event, externalLink }) =>
+const LinkMenuItem = ({
+  children,
+  link,
+  onClose,
+  event,
+  externalLink,
+  disabled,
+}) =>
   externalLink ? (
     <StyledExternalLink
       href={link}
       target="_blank"
+      disabled={disabled}
       onClick={onClose}
       data-metabase-event={event}
     >
@@ -18,6 +26,7 @@ const LinkMenuItem = ({ children, link, onClose, event, externalLink }) =>
   ) : (
     <Link
       to={link}
+      disabled={disabled}
       onClick={onClose}
       data-metabase-event={event}
       className="block"
@@ -26,8 +35,8 @@ const LinkMenuItem = ({ children, link, onClose, event, externalLink }) =>
     </Link>
   );
 
-const ActionMenuItem = ({ children, action, event }) => (
-  <div onClick={action} data-metabase-event={event}>
+const ActionMenuItem = ({ children, action, event, disabled }) => (
+  <div onClick={!disabled ? action : undefined} data-metabase-event={event}>
     {children}
   </div>
 );
@@ -40,6 +49,7 @@ const EntityMenuItem = ({
   onClose,
   event,
   externalLink,
+  disabled,
 }) => {
   if (link && action) {
     console.warn(
@@ -49,7 +59,7 @@ const EntityMenuItem = ({
   }
 
   const content = (
-    <Item>
+    <Item disabled={disabled}>
       {icon && <Icon name={icon} mr={1} />}
       <span className="text-bold">{title}</span>
     </Item>
@@ -60,6 +70,7 @@ const EntityMenuItem = ({
       <LinkMenuItem
         link={link}
         externalLink={externalLink}
+        disabled={disabled}
         onClose={onClose}
         event={event}
       >
@@ -69,7 +80,7 @@ const EntityMenuItem = ({
   }
   if (action) {
     return (
-      <ActionMenuItem action={action} event={event}>
+      <ActionMenuItem action={action} event={event} disabled={disabled}>
         {content}
       </ActionMenuItem>
     );

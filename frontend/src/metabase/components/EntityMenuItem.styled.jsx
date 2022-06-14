@@ -5,21 +5,21 @@ import { color } from "metabase/lib/colors";
 
 export const Item = styled.div`
   display: flex;
-align-items: center;
-  cursor: pointer;
-  color: ${color("text-medium")};
+  align-items: center;
+  cursor: ${props => !props.disabled && "pointer"};
+  color: ${props => color(props.disabled ? "text-light" : "text-medium")};
   padding: 0.85em 1.45em;
   text-decoration: none;
   transition: all 300ms linear;
   :hover {
-    color: ${color("brand")};
+    color: ${props => !props.disabled && color("brand")};
   }
   > .Icon {
     color: ${color("text-light")};
     margin-right: 0.65em;
   }
   :hover > .Icon {
-    color: ${color("brand")};
+    color: ${props => !props.disabled && color("brand")};
     transition: all 300ms linear;
   },
   /* icon specific tweaks

@@ -85,6 +85,7 @@ function EntityItemName({ name, variant }) {
 function EntityItemMenu({
   item,
   isBookmarked,
+  isPreviewShown,
   isPreviewEnabled,
   onPin,
   onMove,
@@ -108,12 +109,13 @@ function EntityItemMenu({
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
         onTogglePreview && {
-          title: isPreviewEnabled
+          title: isPreviewShown
             ? t`Don’t show visualization`
             : t`Show visualization`,
-          icon: isPreviewEnabled ? "eye_crossed_out" : "eye",
+          icon: isPreviewShown ? "eye_crossed_out" : "eye",
           action: onTogglePreview,
           event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
+          disabled: !isPreviewEnabled,
         },
         onMove && {
           title: t`Move`,
@@ -144,6 +146,7 @@ function EntityItemMenu({
       item.model,
       isPinned,
       isBookmarked,
+      isPreviewShown,
       isPreviewEnabled,
       showPinnedAction,
       onPin,

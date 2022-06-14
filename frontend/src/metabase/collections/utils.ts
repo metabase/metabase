@@ -83,11 +83,15 @@ export function isItemPinned(item: Item) {
 }
 
 export function isPreviewable(item: Item) {
-  return isPreviewEnabled(item) && hasRequiredParameters(item);
+  return isPreviewShown(item) && isPreviewEnabled(item);
+}
+
+export function isPreviewShown(item: Item) {
+  return item.collection_preview ?? true;
 }
 
 export function isPreviewEnabled(item: Item) {
-  return item.collection_preview ?? true;
+  return hasRequiredParameters(item);
 }
 
 export function hasRequiredParameters(item: Item) {
