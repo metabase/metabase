@@ -158,7 +158,7 @@ jobs:
     runs-on: ubuntu-20.04
     timeout-minutes: 30
     needs: build
-    name: Percy Test Sanity Check
+    name: percy-tests-sanity-check-${{ matrix.edition }}
     env:
       MB_EDITION: ${{ matrix.edition }}
       ENTERPRISE_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
