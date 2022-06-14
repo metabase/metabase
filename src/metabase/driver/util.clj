@@ -86,7 +86,15 @@
 
    :requires-ssl
    {:message (deferred-tru "Server appears to require SSL - please enable SSL below")
-    :errors  {:ssl (deferred-tru "please enable SSL")}}})
+    :errors  {:ssl (deferred-tru "please enable SSL")}}
+
+   :implicitly-relative-db-file-path
+   {:message (deferred-tru "Implicitly relative file paths are not allowed.")
+    :errors  {:db (deferred-tru "check your connection string")}}
+
+   :db-file-not-found
+   {:message (deferred-tru "Database cannot be found.")
+    :errors  {:db (deferred-tru "check your connection string")}}})
 
 (defn- tr-connection-error-messages [error-type-kw]
   (when-let [message (connection-error-messages error-type-kw)]

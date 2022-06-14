@@ -793,9 +793,8 @@
 
     (testing "invalid database connection details"
       (testing "calling test-connection-details directly"
-        (is (= {:errors {:host "check your host settings"
-                         :port "check your port settings"}
-                :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct"
+        (is (= {:errors {:db "check your connection string"}
+                :message "Implicitly relative file paths are not allowed."
                 :valid   false}
                (#'api.database/test-connection-details "h2" {:db "ABC"}))))
 
