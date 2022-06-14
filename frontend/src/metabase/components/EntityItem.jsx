@@ -98,6 +98,7 @@ function EntityItemMenu({
   const isPinned = isItemPinned(item);
   const showPinnedAction = onPin && isPinned;
   const showUnpinnedAction = onPin && !isPinned;
+  const showPreviewAction = onTogglePreview && isPinned;
 
   const actions = useMemo(
     () =>
@@ -108,7 +109,7 @@ function EntityItemMenu({
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
         },
-        onTogglePreview && {
+        showPreviewAction && {
           title: isPreviewEnabled
             ? t`Don’t show visualization`
             : t`Show visualization`,
@@ -143,10 +144,11 @@ function EntityItemMenu({
       ].filter(action => action),
     [
       item.model,
-      showPinnedAction,
       isPinned,
       isBookmarked,
       isPreviewEnabled,
+      showPinnedAction,
+      showPreviewAction,
       onPin,
       onMove,
       onCopy,
