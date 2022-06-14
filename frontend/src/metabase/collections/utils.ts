@@ -91,7 +91,7 @@ export function isPreviewEnabled(item: Item) {
 }
 
 export function hasRequiredParameters(item: Item) {
-  return item.has_required_parameters ?? false;
+  return item.has_required_parameters ?? true;
 }
 
 // API requires items in "root" collection be persisted with a "null" collection ID
