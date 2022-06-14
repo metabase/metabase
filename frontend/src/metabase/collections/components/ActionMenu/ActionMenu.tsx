@@ -3,6 +3,7 @@ import React, { useCallback } from "react";
 import { Collection } from "metabase-types/api";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
+  hasRequiredParameters,
   isItemPinned,
   isPreviewEnabled,
   Item,
@@ -49,7 +50,11 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const canTogglePreview = collection.can_write && item.setCollectionPreview;
+  const canTogglePreview =
+    isItemPinned(item) &&
+    hasRequiredParameters(item) &&
+    collection.can_write &&
+    item.setCollectionPreview;
 
   const handlePin = useCallback(() => {
     item.setPinned(!isItemPinned(item));
