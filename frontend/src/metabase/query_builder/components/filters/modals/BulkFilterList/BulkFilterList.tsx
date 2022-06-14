@@ -12,12 +12,7 @@ import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import { BulkFilterItem } from "../BulkFilterItem";
 import { SegmentFilterSelect } from "../BulkFilterSelect";
-import {
-  ListRoot,
-  ListRow,
-  ListRowContent,
-  ListRowLabel,
-} from "./BulkFilterList.styled";
+import { ListRoot, ListRow, ListRowLabel } from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
@@ -99,7 +94,7 @@ const BulkFilterListItem = ({
       <ListRowLabel data-testid="dimension-filter-label">
         {dimension.displayName()}
       </ListRowLabel>
-      <ListRowContent>
+      <>
         {options.map((filter, index) => (
           <BulkFilterItem
             key={index}
@@ -120,7 +115,7 @@ const BulkFilterListItem = ({
             onRemoveFilter={onRemoveFilter}
           />
         )}
-      </ListRowContent>
+      </>
     </ListRow>
   );
 };
@@ -143,7 +138,7 @@ const SegmentListItem = ({
   <>
     <ListRow>
       <ListRowLabel>{t`Segments`}</ListRowLabel>
-      <ListRowContent>
+      <>
         <SegmentFilterSelect
           query={query}
           segments={segments}
@@ -151,7 +146,7 @@ const SegmentListItem = ({
           onRemoveFilter={onRemoveFilter}
           onClearSegments={onClearSegments}
         />
-      </ListRowContent>
+      </>
     </ListRow>
     <ModalDivider marginY="0.5rem" />
   </>
