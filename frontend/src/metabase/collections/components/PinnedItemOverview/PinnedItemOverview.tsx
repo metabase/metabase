@@ -59,42 +59,44 @@ function PinnedItemOverview({
   ) : (
     <Container data-testid="pinned-items">
       <PinDropZone variant="pin" />
-      {cardItems.length > 0 &&
-        cardGroups.map((cardGroup, cardGroupIndex) => (
-          <Grid key={cardGroupIndex}>
-            {cardGroup.map(item => (
-              <div key={item.id} className="relative">
-                <PinnedItemSortDropTarget
-                  isFrontTarget
-                  itemModel="card"
-                  pinIndex={item.collection_position}
-                  enableDropTargetBackground={false}
-                />
-                <ItemDragSource item={item} collection={collection}>
-                  <div>
-                    <PinnedQuestionCard
-                      item={item}
-                      metadata={metadata}
-                      collection={collection}
-                      bookmarks={bookmarks}
-                      isPreviewEnabled={isPreviewEnabled(item)}
-                      onCopy={onCopy}
-                      onMove={onMove}
-                      onCreateBookmark={createBookmark}
-                      onDeleteBookmark={deleteBookmark}
-                    />
-                  </div>
-                </ItemDragSource>
-                <PinnedItemSortDropTarget
-                  isBackTarget
-                  itemModel="card"
-                  pinIndex={item.collection_position}
-                  enableDropTargetBackground={false}
-                />
-              </div>
-            ))}
-          </Grid>
-        ))}
+      {cardGroups.map(
+        (cardGroup, cardGroupIndex) =>
+          cardGroup.length > 0 && (
+            <Grid key={cardGroupIndex}>
+              {cardGroup.map(item => (
+                <div key={item.id} className="relative">
+                  <PinnedItemSortDropTarget
+                    isFrontTarget
+                    itemModel="card"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                  <ItemDragSource item={item} collection={collection}>
+                    <div>
+                      <PinnedQuestionCard
+                        item={item}
+                        metadata={metadata}
+                        collection={collection}
+                        bookmarks={bookmarks}
+                        isPreviewEnabled={isPreviewEnabled(item)}
+                        onCopy={onCopy}
+                        onMove={onMove}
+                        onCreateBookmark={createBookmark}
+                        onDeleteBookmark={deleteBookmark}
+                      />
+                    </div>
+                  </ItemDragSource>
+                  <PinnedItemSortDropTarget
+                    isBackTarget
+                    itemModel="card"
+                    pinIndex={item.collection_position}
+                    enableDropTargetBackground={false}
+                  />
+                </div>
+              ))}
+            </Grid>
+          ),
+      )}
 
       {dashboardItems.length > 0 && (
         <Grid>
