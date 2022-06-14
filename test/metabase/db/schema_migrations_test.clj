@@ -646,11 +646,11 @@
                               (migrate!)
                               (is (= ["All Users"] (get-perms)))))
 
-      (testing "Should run for existing OSS instances"
+      (testing "Should not run for existing OSS instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]
                               (create-raw-user! "ngoc@metabase.com")
                               (migrate!)
-                              (is (= ["All Users"] (get-perms)))))
+                              (is (= [] (get-perms)))))
 
       (testing "Should not run for existing EE instances"
         (impl/test-migrations ["v44.00-033" "v44.00-034"] [migrate!]

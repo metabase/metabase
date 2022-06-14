@@ -11852,28 +11852,11 @@ databaseChangeLog:
         Added 0.43.0. Grant the 'All Users' Permissions Group readwrite perms for the Root Snippets Collection.
       preConditions:
         - onFail: MARK_RAN
-        # HACK: to prevent this migration from running on existing EE instances (#21940)
+          # HACK: only run this on new instances (#21940)
         - sqlCheck:
             expectedResult: 0
             sql: >-
-              SELECT CASE
-                        /* Run for any new instances */
-                        WHEN user_count = 0 THEN 0
-                        /* don't run for ee instances */
-                        WHEN token_count > 0 THEN 1
-                        /* Run for existing OSS instances */
-                        WHEN token_count = 0 then 0
-                    ELSE 1
-                    END AS RESULT
-              FROM
-                /* user_count > 0 meaning we're running on an existing instance */
-                (SELECT count(*) AS user_count
-                 FROM core_user) t1,
-
-                /* token_count > 0 meaning we're running on an EE instance */
-                (SELECT count(*) AS token_count
-                 FROM setting
-                 WHERE setting.key = 'premium-embedding-token') t2
+              SELECT count(*) AS user_count FROM core_user
       changes:
         - sql:
             sql: >-
