@@ -15,6 +15,8 @@ import WritebackModalForm from "metabase/writeback/containers/WritebackModalForm
 // TODO This should better be extracted to metabase/lib/somewhere
 import { getObjectName } from "metabase/visualizations/components/ObjectDetail/utils";
 
+import { getMetadata } from "metabase/selectors/metadata";
+
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Question from "metabase-lib/lib/Question";
 
@@ -121,6 +123,7 @@ type ActionsVizProps = ActionVizOwnProps &
 function mapStateToProps(state: State) {
   return {
     dashCardData: getCardData(state),
+    metadata: getMetadata(state),
   };
 }
 
@@ -164,6 +167,7 @@ function ActionsViz({
     ? new Question(connectedDashCard?.card, metadata)
     : null;
 
+  console.log("### QUESTIOn", { question, metadata, connectedDashCard });
   const isObjectDetailView = question?.display() === "object";
   const table = question?.table();
   const connectedCardData =
