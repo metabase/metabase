@@ -1,12 +1,12 @@
 ---
-title: Setting up Email
+title: Setting up email
 ---
 
-## Setting up Email
+# Setting up email
 
 Once you connect your database to Metabase, you'll want to configure an email account to send system notifications to your organization's users.  Metabase uses email to reset passwords, onboard new users, and notify you when something happens.
 
-### Configuring your Email Account
+## Configuring your email Account
 
 For Metabase to send messages to your organization's users, you'll need to set up an email account to send emails via *SMTP* (simple mail transfer protocol), which is an email standard that secures emails with SSL security protection.
 

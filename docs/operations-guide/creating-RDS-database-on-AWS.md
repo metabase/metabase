@@ -1,8 +1,8 @@
 ---
-title: "Creating RDS database on AWS"
+title: "Creating an RDS database on AWS"
 ---
 
-# Creating RDS database on AWS
+# Creating an RDS database on AWS
 
 - [Configuring RDS for Metabase](#configuring-rds-for-metabase)
   - [Step 1](#step-1)
