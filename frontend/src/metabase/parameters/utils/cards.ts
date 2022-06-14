@@ -30,16 +30,19 @@ function getTemplateTagType(tag: TemplateTag) {
   }
 }
 
-export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
-  const target: ParameterTarget =
-    tag.type === "dimension"
-      ? ["dimension", ["template-tag", tag.name]]
-      : ["variable", ["template-tag", tag.name]];
+export function getTemplateTagParameterTarget(
+  tag: TemplateTag,
+): ParameterTarget {
+  return tag.type === "dimension"
+    ? ["dimension", ["template-tag", tag.name]]
+    : ["variable", ["template-tag", tag.name]];
+}
 
+export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
   return {
     id: tag.id,
     type: tag["widget-type"] || getTemplateTagType(tag),
-    target,
+    target: getTemplateTagParameterTarget(tag),
     name: tag["display-name"],
     slug: tag.name,
     default: tag.default,
