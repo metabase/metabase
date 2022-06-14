@@ -16,6 +16,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
+import { getTemplateTagType } from "metabase/parameters/utils/cards";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -34,7 +35,7 @@ export default ({ question, clicked }) => {
   }
   const { extraData } = clicked || {};
   const data = getDataFromClicked(clicked);
-  const { action, type, linkType, parameterMapping, targetId } = clickBehavior;
+  const { type, linkType, parameterMapping, targetId } = clickBehavior;
 
   let behavior;
 
@@ -43,7 +44,7 @@ export default ({ question, clicked }) => {
   }
 
   if (type === "action") {
-    const parameters = getParameterValuesBySlug(parameterMapping, {
+    const parameters = getParametersForNativeAction(parameterMapping, {
       data,
       extraData,
       clickBehavior,
@@ -51,7 +52,8 @@ export default ({ question, clicked }) => {
     behavior = {
       action: () =>
         executeRowAction({
-          action: extraData.actions[action],
+          dashboardId: extraData.dashboard.id,
+          emitterId: clickBehavior.emitter_id,
           parameters,
         }),
     };
@@ -150,6 +152,35 @@ export default ({ question, clicked }) => {
     },
   ];
 };
+
+function getParametersForNativeAction(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
+  const action = extraData.actions[clickBehavior.action];
+  const templateTags = Object.values(
+    JSON.parse(action.card.dataset_query).native["template-tags"],
+  );
+
+  const parameters = {};
+
+  Object.values(parameterMapping).forEach(({ id, source, target }) => {
+    const targetTemplateTag = templateTags.find(tag => tag.id === id);
+
+    const [value] = formatSourceForTarget(source, target, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+
+    parameters[id] = {
+      value,
+      type: getTemplateTagType(targetTemplateTag),
+    };
+  });
+
+  return parameters;
+}
 
 function getParameterIdValuePairs(
   parameterMapping,
