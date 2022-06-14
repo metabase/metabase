@@ -6,18 +6,18 @@ import {
 } from "../FunnelSkeleton/FunnelSkeleton.styled";
 
 export interface ProgressSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  displayName?: string | null;
+  name?: string | null;
   description?: string | null;
 }
 
 const ProgressSkeleton = ({
-  displayName,
+  name,
   description,
   ...props
 }: ProgressSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      <SkeletonCaption name={displayName} description={description} />
+      <SkeletonCaption name={name} description={description} />
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 404 57"

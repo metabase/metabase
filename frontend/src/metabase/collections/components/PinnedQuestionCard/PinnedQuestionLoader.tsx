@@ -8,13 +8,13 @@ import {
   ERROR_MESSAGE_PERMISSION,
 } from "metabase/visualizations/components/Visualization";
 
-export interface PinnedChartLoaderProps {
+export interface PinnedQuestionLoaderProps {
   id: number;
   metadata: Metadata;
-  children: (props: PinnedChartChildrenProps) => JSX.Element;
+  children: (props: PinnedQuestionChildrenProps) => JSX.Element;
 }
 
-export interface PinnedChartChildrenProps {
+export interface PinnedQuestionChildrenProps {
   loading: boolean;
   question?: Question;
   rawSeries?: any;
@@ -43,11 +43,11 @@ export interface QuestionResult {
   error?: QuestionError;
 }
 
-const PinnedChartLoader = ({
+const PinnedQuestionLoader = ({
   id,
   metadata,
   children,
-}: PinnedChartLoaderProps): JSX.Element => {
+}: PinnedQuestionLoaderProps): JSX.Element => {
   const questionRef = useRef<Question>();
 
   return (
@@ -108,4 +108,4 @@ const getErrorIcon = (error?: QuestionError, result?: QuestionResult) => {
   }
 };
 
-export default PinnedChartLoader;
+export default PinnedQuestionLoader;
