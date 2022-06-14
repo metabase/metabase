@@ -183,7 +183,7 @@
 (s/defn ^:private resolve-dashboard-parameters :- [api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
-  `metabase.api.dashboard/run-query-for-dashcard-async`."
+  [[metabase.api.dashboard/run-query-for-dashcard-async]]."
   [dashboard-id :- su/IntGreaterThanZero
    slug->value  :- {s/Any s/Any}]
   (let [parameters (db/select-one-field :parameters Dashboard :id dashboard-id)

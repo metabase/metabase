@@ -413,6 +413,13 @@
     (check (not (:archived object))
       [404 {:message (tru "The object has been archived."), :error_code "archived"}])))
 
+(defn check-is-readonly
+  "Check that the object has `:is_write` = false, or throw a `405`. Returns `object` as-is if check passes."
+  [object]
+  (u/prog1 object
+    (check (not (:is_write object))
+      [405 {:message (tru "Write queries are only executable via the Actions API."), :error_code "is_not_readonly"}])))
+
 (defn check-valid-page-params
   "Check on paginated stuff that, if the limit exists, the offset exists, and vice versa."
   [limit offset]
