@@ -10,6 +10,7 @@ import { normalize, schema } from "normalizr";
 
 import Question from "metabase-lib/lib/Question";
 
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
@@ -45,6 +46,7 @@ import {
 import {
   DashboardApi,
   CardApi,
+  EmittersApi,
   PublicApi,
   EmbedApi,
   AutoApi,
@@ -63,6 +65,11 @@ import {
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import {
+  isActionButtonDashCard,
+  getActionButtonActionId,
+  getActionEmitterParameterMappings,
+} from "metabase/writeback/utils";
 
 import {
   expandInlineDashboard,
@@ -393,7 +400,36 @@ export const saveDashboardAndCards = createThunkAction(
         dashboard.ordered_cards
           .filter(dc => !dc.isRemoved)
           .map(async dc => {
+            const existingEmitterIDs = Array.isArray(dashboard.emitters)
+              ? dashboard.emitters.map(emitter => emitter.id)
+              : [];
+
             if (dc.isAdded) {
+              if (isActionButtonDashCard(dc) && !!getActionButtonActionId(dc)) {
+                const actionId = getActionButtonActionId(dc);
+                const action = Actions.selectors.getObject(getState(), {
+                  entityId: actionId,
+                });
+                await EmittersApi.create({
+                  dashboard_id: dashboard.id,
+                  action_id: actionId,
+                  parameter_mappings: getActionEmitterParameterMappings(
+                    dc,
+                    action,
+                  ),
+                });
+                const newDash = await DashboardApi.get({
+                  dashId: dashboard.id,
+                });
+                const emitter = newDash.emitters.find(
+                  emitter =>
+                    !existingEmitterIDs.includes(emitter.id) &&
+                    emitter.action.card_id === action.card.id,
+                );
+                dc.visualization_settings.click_behavior.emitter_id =
+                  emitter.id;
+              }
+
               const result = await DashboardApi.addcard({
                 dashId: dashboard.id,
                 cardId: dc.card_id,
