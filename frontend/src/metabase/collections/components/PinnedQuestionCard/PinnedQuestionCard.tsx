@@ -1,8 +1,8 @@
 import React from "react";
 import { t } from "ttag";
 import {
-  isItemPreviewable,
-  isItemPreviewEnabled,
+  isPreviewable,
+  hasRequiredParameters,
   Item,
 } from "metabase/collections/utils";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -37,7 +37,7 @@ const PinnedQuestionCard = ({
   onCreateBookmark,
   onDeleteBookmark,
 }: PinnedQuestionCardProps): JSX.Element => {
-  const isPreview = isItemPreviewable(item);
+  const isPreview = isPreviewable(item);
 
   return (
     <CardRoot to={item.getUrl()} isPreview={isPreview}>
@@ -83,7 +83,7 @@ const PinnedQuestionCard = ({
 };
 
 const getSkeletonTooltip = (item: Item) => {
-  if (!isItemPreviewEnabled(item)) {
+  if (!hasRequiredParameters(item)) {
     return t`Open this question and fill in its variables to see it.`;
   } else {
     return undefined;

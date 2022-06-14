@@ -82,15 +82,15 @@ export function isItemPinned(item: Item) {
   return item.collection_position != null;
 }
 
-export function isItemPreviewable(item: Item) {
-  return isItemPreviewShown(item) && isItemPreviewEnabled(item);
+export function isPreviewable(item: Item) {
+  return isPreviewEnabled(item) && hasRequiredParameters(item);
 }
 
-export function isItemPreviewShown(item: Item) {
+export function isPreviewEnabled(item: Item) {
   return item.collection_preview ?? true;
 }
 
-export function isItemPreviewEnabled(item: Item) {
+export function hasRequiredParameters(item: Item) {
   return item.has_required_parameters ?? false;
 }
 
