@@ -1,8 +1,8 @@
 ---
-title: Different types of error messages
+title: Troubleshooting error messages
 ---
 
-# Different types of error messages
+# Troubleshooting error messages
 
 - [API error messages][api-error-message]
 - [SQL error messages][debugging-sql-syntax]

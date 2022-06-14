@@ -1,8 +1,8 @@
 ---
-title: Enterprise and Pro editions
+title: Enterprise and Pro plans
 ---
 
-# Enterprise and Pro editions
+# Enterprise and Pro plans
 
 The [Enterprise and Pro][pricing] editions of Metabase provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
 
