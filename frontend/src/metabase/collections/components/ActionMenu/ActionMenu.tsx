@@ -5,6 +5,7 @@ import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   hasRequiredParameters,
   isItemPinned,
+  isPreviewable,
   isPreviewEnabled,
   Item,
 } from "metabase/collections/utils";
@@ -86,7 +87,7 @@ function ActionMenu({
         className={className}
         item={item}
         isBookmarked={isBookmarked}
-        isPreviewEnabled={isPreviewEnabled(item)}
+        isPreviewEnabled={isPreviewable(item)}
         isPreviewAvailable={hasRequiredParameters(item)}
         onPin={collection.can_write ? handlePin : null}
         onMove={collection.can_write && item.setCollection ? handleMove : null}
