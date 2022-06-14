@@ -12100,6 +12100,58 @@ databaseChangeLog:
                   defaultValueBoolean: false
                   constraints:
                     nullable: false
+  - changeSet:
+      id: v44.00-031
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - createTable:
+            tableName: http_action
+            remarks: An http api call type of action
+            columns:
+              - column:
+                  name: action_id
+                  type: int
+                  remarks: The related action
+                  constraints:
+                    nullable: false
+                    referencedTableName: action
+                    referencedColumnNames: id
+                    foreignKeyName: fk_http_action_ref_action_id
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: The name of this action
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: ${text.type}
+                  remarks: An optional description for this action
+              - column:
+                  name: template
+                  type: ${text.type}
+                  remarks: A template that defines method,url,body,headers required to make an api call
+                  constraints:
+                    nullable: false
+              - column:
+                  name: response_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response and transform to an appropriate response for emitters
+              - column:
+                  name: error_handle
+                  type: ${text.type}
+                  remarks: A program to take an api response to determine if an error occurred
+  - changeSet:
+      id: v44.00-032
+      author: snoe
+      comment: Added 0.44.0 - writeback
+      changes:
+        - addPrimaryKey:
+            tableName: http_action
+            columnNames: action_id
+            constraintName: pk_http_action
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
