@@ -1,22 +1,16 @@
 import { t } from "ttag";
 
-import { ActionsApi } from "metabase/services";
+import { ActionsApi, EmittersApi } from "metabase/services";
 import Table from "metabase-lib/lib/metadata/Table";
 
-import { getMetadata } from "metabase/selectors/metadata";
 import { addUndo } from "metabase/redux/undo";
 
-import { fetchCardData } from "metabase/dashboard/actions";
+import { fetchCardData, fetchDashboard } from "metabase/dashboard/actions";
 import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import { setUIControls } from "metabase/query_builder/actions/ui";
 import { closeObjectDetail } from "metabase/query_builder/actions/object-detail";
 
-import Question from "metabase-lib/lib/Question";
-
 import { DashCard } from "metabase-types/types/Dashboard";
-import { State } from "metabase-types/store";
-
-import { WritebackAction } from "./types";
 
 export type InsertRowPayload = {
   table: Table;
@@ -199,27 +193,40 @@ export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
 };
 
 export type ExecuteRowActionPayload = {
-  action: WritebackAction;
+  dashboardId: number;
+  emitterId: number;
   parameters: Record<string, unknown>;
 };
 
 export const executeRowAction = ({
-  action,
+  dashboardId,
+  emitterId,
   parameters,
 }: ExecuteRowActionPayload) => {
-  return async function(dispatch: any, getState: () => State) {
-    const metadata = getMetadata(getState());
-    const actionCard = {
-      ...action.card,
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      dataset_query: JSON.parse(action.card.dataset_query as string),
-    };
-    const actionQuestion = new Question(actionCard, metadata);
-    alert(
-      `Call ${actionQuestion.displayName()}, parameters: ${JSON.stringify(
+  return async function(dispatch: any) {
+    try {
+      const result = await EmittersApi.execute({
+        id: emitterId,
         parameters,
-      )}`,
-    );
+      });
+      if (result["rows-affected"] > 0) {
+        dispatch(fetchDashboard(dashboardId));
+        dispatch(
+          addUndo({
+            toastColor: "success",
+            message: t`Successfully executed the action`,
+          }),
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong while executing the action`,
+        }),
+      );
+    }
   };
 };
