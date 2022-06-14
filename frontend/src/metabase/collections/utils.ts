@@ -10,8 +10,8 @@ export type Item = {
   description: string | null;
   copy?: boolean;
   collection_position?: number | null;
-  collection_preview?: boolean;
-  has_required_parameters?: boolean;
+  collection_preview?: boolean | null;
+  has_required_parameters?: boolean | null;
   getIcon: () => { name: string };
   getUrl: () => string;
   setArchived: (isArchived: boolean) => void;
