@@ -12085,7 +12085,21 @@ databaseChangeLog:
             columnName: parameter_mappings
             defaultNullValue: '[]'
             tableName: report_card
-
+  - changeSet:
+      id: v44.00-030
+      author: snoe
+      comment: Added 0.44.0 - Add database_required to metabase_field
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_required
+                  type: boolean
+                  remarks: Indicates this field is required by the database for new records. Usually not null and without a default.
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
 
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<

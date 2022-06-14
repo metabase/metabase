@@ -285,7 +285,8 @@
                                                              :effective_type    "type/BigInteger"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "none"
-                                                             :database_position 0})
+                                                             :database_position 0
+                                                             :database_required false})
                                                            (merge
                                                             (field-details (Field (mt/id :categories :name)))
                                                             {:table_id          (mt/id :categories)
@@ -297,7 +298,8 @@
                                                              :effective_type    "type/Text"
                                                              :visibility_type   "normal"
                                                              :has_field_values  "list"
-                                                             :database_position 1})]
+                                                             :database_position 1
+                                                             :database_required false})]
                                      :segments     []
                                      :metrics      []
                                      :id           (mt/id :categories)
