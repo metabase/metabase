@@ -3,7 +3,10 @@ import _ from "underscore";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+} from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
@@ -81,9 +84,23 @@ export default {
       ...PLUGIN_ADMIN_USER_FORM_FIELDS,
     ],
   },
-  user: {
-    fields: [...getNameFields(), getEmailField(), getLocaleField()],
-    disablePristineSubmit: true,
+  user: user => {
+    const isSsoUser = !PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f =>
+      f(user),
+    );
+
+    if (isSsoUser) {
+      return {
+        fields: [getLocaleField()],
+        disablePristineSubmit: true,
+      };
+    }
+
+    // password user
+    return {
+      fields: [...getNameFields(), getEmailField(), getLocaleField()],
+      disablePristineSubmit: true,
+    };
   },
   setup: () => ({
     fields: [
