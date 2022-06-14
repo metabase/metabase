@@ -15,18 +15,27 @@
              rhs rhs-generator]
     [operator lhs rhs]))
 
+(defn n-ary-expression-generator
+  [operator arg-generator]
+  (gens/let [members (gen/vector arg-generator 1 10)]
+    (vec (flatten [operator members]))))
+
+(defn case-expression-generator
+  [operator generator]
+  [])
+
 (defn numeric-expression-generator [arg-generator]
+  ;; TODO -- use the proper shrinking recursion instead of the gen/delay
   (let [arg-generator (gens/one-of [arg-generator
                                     gens/int
                                     (gens/double* {:infinite? false, :NaN? false})
                                     ;; TODO -- BigInteger or BigDecimal?
                                     (gen/delay (numeric-expression-generator arg-generator))])]
     (gens/one-of [
-                  ;; TODO -- these are all actually 2 or more args
-                  (binary-expression-generator :+ arg-generator arg-generator)
-                  (binary-expression-generator :- arg-generator arg-generator)
-                  (binary-expression-generator :/ arg-generator arg-generator)
-                  (binary-expression-generator :* arg-generator arg-generator)
+                  (n-ary-expression-generator :+ arg-generator)
+                  (n-ary-expression-generator :- arg-generator)
+                  (n-ary-expression-generator :/ arg-generator)
+                  (n-ary-expression-generator :* arg-generator)
                   (unary-expression-generator :floor arg-generator)
                   (unary-expression-generator :ceil arg-generator)
                   (unary-expression-generator :round arg-generator)
@@ -36,11 +45,15 @@
                   (unary-expression-generator :sqrt arg-generator)
                   (unary-expression-generator :exp arg-generator)
                   (unary-expression-generator :log arg-generator)
-                  ;; TODO
-                  #_coalesce
-                  #_case])))
+                  (n-ary-expression-generator :coalesce arg-generator)
+                  (case-expression-generator arg-generator)])))
 
-;; TODO -- string expressions.
+(defn string-expression-generator [arg-generator]
+  (let [arg-generator (gens/one-of [arg-generator
+                                    gens/string])]
+    (gens/one-of [
+                  some crap...
+                  ]))
 
 (defn expressions-map-generator [field-generator]
   (let [numeric-field-generator      (gen.data/numeric-field-generator field-generator)
