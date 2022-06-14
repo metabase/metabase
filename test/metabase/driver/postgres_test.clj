@@ -298,6 +298,10 @@
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
+               (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))
+    (testing "Give us a bigint cast when the field is bigint (#22732)"
+      (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{boop,foobar,1234}"]
                (hsql/format (#'postgres/json-query boop-identifier boolean-boop-field))))))))
 
 (deftest json-alias-test
