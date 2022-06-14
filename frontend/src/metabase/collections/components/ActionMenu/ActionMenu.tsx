@@ -51,7 +51,7 @@ function ActionMenu({
   deleteBookmark,
 }: ActionMenuProps) {
   const isBookmarked = bookmarks && getIsBookmarked(item, bookmarks);
-  const isPreviewVisible =
+  const isPreviewOptionShown =
     isItemPinned(item) && collection.can_write && item.setCollectionPreview;
 
   const handlePin = useCallback(() => {
@@ -96,7 +96,7 @@ function ActionMenu({
           collection.can_write && item.setArchived ? handleArchive : null
         }
         onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={isPreviewVisible ? handleTogglePreview : null}
+        onTogglePreview={isPreviewOptionShown ? handleTogglePreview : null}
         analyticsContext={ANALYTICS_CONTEXT}
       />
     </EventSandbox>
