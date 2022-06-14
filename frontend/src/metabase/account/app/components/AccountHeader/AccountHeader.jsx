@@ -8,6 +8,7 @@ import {
   HeaderAvatar,
   HeaderSection,
   HeaderTitle,
+  HeaderSubtitle,
 } from "./AccountHeader.styled";
 
 const propTypes = {
@@ -34,11 +35,14 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
     [hasPasswordChange],
   );
 
+  const userFullName = [user.first_name, user.last_name].join(" ").trim();
+
   return (
     <AccountHeaderRoot>
       <HeaderSection>
         <HeaderAvatar user={user} />
-        <HeaderTitle>{t`Account settings`}</HeaderTitle>
+        {userFullName && <HeaderTitle>{userFullName}</HeaderTitle>}
+        <HeaderSubtitle>{user.email}</HeaderSubtitle>
       </HeaderSection>
       <Radio
         value={path}
