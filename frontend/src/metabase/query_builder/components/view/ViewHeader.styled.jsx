@@ -55,11 +55,6 @@ export const SavedQuestionHeaderButtonContainer = styled.div`
   right: 0.38rem;
 `;
 
-export const DatasetHeaderButtonContainer = styled.div`
-  position: relative;
-  right: 0.3rem;
-`;
-
 export const HeaderButton = styled(Button)`
   font-size: 0.875rem;
   background-color: ${({ active, color = getDefaultColor() }) =>

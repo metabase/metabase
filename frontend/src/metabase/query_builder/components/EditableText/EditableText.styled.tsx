@@ -13,12 +13,18 @@ export const SharedStyles = css`
   color: ${color("text-dark")};
 `;
 
-export const EditableTextRoot = styled.div`
+export type TEXT = string | null | undefined;
+
+interface EditableTextRootProps {
+  value: TEXT;
+}
+
+export const EditableTextRoot = styled.div<EditableTextRootProps>`
   display: grid;
   max-width: 500px;
 
-  &::after {
-    content: attr(data-replicated-value) " ";
+  &:after {
+    content: "${props => props.value} ";
     white-space: pre-wrap;
     visibility: hidden;
     ${SharedStyles}

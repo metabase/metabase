@@ -4,7 +4,10 @@ import PropTypes from "prop-types";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import EditableText from "../EditableText/EditableText";
 
-import { Root, StyledIcon } from "./SavedQuestionHeaderButton.styled";
+import {
+  HeaderRoot,
+  HeaderReviewIcon,
+} from "./SavedQuestionHeaderButton.styled";
 
 import { color } from "metabase/lib/colors";
 
@@ -23,23 +26,24 @@ function SavedQuestionHeaderButton({ className, question, onSave }) {
   } = PLUGIN_MODERATION.getStatusIconForQuestion(question);
 
   return (
-    <Root>
+    <HeaderRoot>
       <EditableText
         initialValue={question.displayName()}
         onChange={onSave}
         submitOnEnter
+        data-testid="saved-question-header-title"
       />
       {reviewIconName && (
-        <StyledIcon
+        <HeaderReviewIcon
           name={reviewIconName}
           color={color(reviewIconColor)}
           size={ICON_SIZE}
         />
       )}
-    </Root>
+    </HeaderRoot>
   );
 }
 
 export default Object.assign(SavedQuestionHeaderButton, {
-  Root,
+  Root: HeaderRoot,
 });

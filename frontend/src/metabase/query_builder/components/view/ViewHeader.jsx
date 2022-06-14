@@ -36,7 +36,6 @@ import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
-  DatasetHeaderButtonContainer,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
@@ -175,7 +174,6 @@ function SavedQuestionLeftSide(props) {
     question,
     isObjectDetail,
     isAdditionalInfoVisible,
-    isShowingQuestionDetailsSidebar,
     onOpenQuestionInfo,
     onSave,
   } = props;
@@ -200,7 +198,6 @@ function SavedQuestionLeftSide(props) {
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton
             question={question}
-            isActive={isShowingQuestionDetailsSidebar}
             onSave={onHeaderChange}
           />
         </SavedQuestionHeaderButtonContainer>
@@ -274,37 +271,6 @@ function AhHocQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderLeftSubHeading>
-    </div>
-  );
-}
-
-DatasetLeftSide.propTypes = {
-  question: PropTypes.object.isRequired,
-  isAdditionalInfoVisible: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenModal: PropTypes.func.isRequired,
-};
-
-function DatasetLeftSide(props) {
-  const { question, isShowingQuestionDetailsSidebar, onOpenModal } = props;
-
-  const onHeaderClick = useCallback(() => {
-    onOpenModal(MODAL_TYPES.EDIT);
-  }, [onOpenModal]);
-
-  return (
-    <div>
-      <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading>
-          <DatasetHeaderButtonContainer key="dataset-header-button">
-            <SavedQuestionHeaderButton
-              question={question}
-              isActive={isShowingQuestionDetailsSidebar}
-              onClick={onHeaderClick}
-            />
-          </DatasetHeaderButtonContainer>
-        </AdHocViewHeading>
-      </ViewHeaderMainLeftContentContainer>
     </div>
   );
 }

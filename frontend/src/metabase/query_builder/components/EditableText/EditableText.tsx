@@ -4,11 +4,10 @@ import {
   EditableTextRoot,
   EditableTextArea,
   SharedStyles,
+  TEXT,
 } from "./EditableText.styled";
 
 import { KEY_ESCAPE, KEY_ENTER } from "metabase/lib/keyboard";
-
-type TEXT = string | null | undefined;
 
 interface EditableTextProps {
   initialValue: TEXT;
@@ -29,7 +28,11 @@ const EditableText = ({
   };
 
   const handleBlur = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (onChange) {
+    const {
+      target: { value },
+    } = e;
+
+    if (onChange && value !== initialValue) {
       onChange(e.target.value);
     }
   };
@@ -45,7 +48,7 @@ const EditableText = ({
   };
 
   return (
-    <EditableTextRoot data-replicated-value={value}>
+    <EditableTextRoot value={value}>
       <EditableTextArea
         placeholder="Description"
         value={value || undefined}
