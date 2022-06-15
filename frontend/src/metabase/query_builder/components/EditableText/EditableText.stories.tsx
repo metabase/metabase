@@ -10,7 +10,8 @@ export default {
 
 const Template: ComponentStory<typeof EditableText> = args => {
   const [{ initialValue }, updateArgs] = useArgs();
-  const handleChange = (value: string) => updateArgs({ initialValue: value });
+  const handleChange = (value: string | null | undefined) =>
+    updateArgs({ initialValue: value });
 
   console.log(initialValue);
 

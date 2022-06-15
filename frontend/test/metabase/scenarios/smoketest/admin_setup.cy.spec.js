@@ -2,7 +2,6 @@ import {
   browse,
   popover,
   restore,
-  modal,
   openPeopleTable,
   visualize,
   navigationSidebar,
@@ -10,6 +9,7 @@ import {
   visitQuestion,
 } from "__support__/e2e/cypress";
 import { USERS } from "__support__/e2e/cypress_data";
+import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 const { admin, normal, nocollection, nodata } = USERS;
 const new_user = {
@@ -277,6 +277,7 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should rename a question and description as admin", () => {
+      cy.intercept("PUT", "/api/card/3").as("updateCard");
       cy.visit("/");
 
       cy.findByText("Our analytics").click();
@@ -290,12 +291,18 @@ describe("smoketest > admin_setup", () => {
 
       cy.findByText("Settings");
 
-      cy.findByTestId("saved-question-header-button").click();
-      cy.findByLabelText("Name")
+      cy.findByTestId("saved-question-header-title")
         .clear()
-        .type("Test Question");
-      cy.findByLabelText("Description").type("Testing question description");
-      cy.findByText("Save").click();
+        .type("Test Question")
+        .blur();
+      cy.wait("@updateCard");
+
+      questionInfoButton().click();
+      cy.findByPlaceholderText("Description")
+        .clear()
+        .type("Testing question description")
+        .blur();
+      cy.wait("@updateCard");
     });
 
     it("should rename a table and add a description as admin", () => {
@@ -537,14 +544,11 @@ describe("smoketest > admin_setup", () => {
       );
 
       cy.findByText("Test Question").click();
-      cy.findByTestId("saved-question-header-button").click();
 
-      cy.findByText("Edit question");
-      modal().within(() => {
-        cy.findByText("Testing question description");
-      });
-
-      cy.findByText("Cancel").click();
+      questionInfoButton().click();
+      cy.findByDisplayValue("Test Question");
+      cy.findByDisplayValue("Testing question description");
+      questionInfoButton().click();
 
       // Check column names and visiblity
 
