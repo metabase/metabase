@@ -8,6 +8,8 @@ import { isBoolean } from "metabase/lib/schema_metadata";
 import { BooleanPickerCheckbox } from "metabase/query_builder/components/filters/pickers/BooleanPicker";
 import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineCategoryPicker } from "../InlineCategoryPicker";
+import { InlineKeyPicker } from "../InlineKeyPicker";
+
 import { SEMANTIC_FIELD_FILTERS, BASE_FIELD_FILTERS } from "./constants";
 
 export interface BulkFilterItemProps {
@@ -78,6 +80,15 @@ export const BulkFilterItem = ({
           dimension={dimension}
           onChange={handleChange}
           onClear={handleClear}
+        />
+      );
+    case "type/PK":
+    case "type/FK":
+      return (
+        <InlineKeyPicker
+          filter={filter ?? newFilter}
+          field={dimension.field()}
+          handleChange={handleChange}
         />
       );
     default:
