@@ -13,7 +13,7 @@ export const SkeletonImage = styled.svg`
   height: 2rem;
 `;
 
-export const SkeletonTitle = styled(SkeletonCaption)`
+export const SkeletonCenterCaption = styled(SkeletonCaption)`
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
 `;

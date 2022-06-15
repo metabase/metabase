@@ -2,7 +2,7 @@ import React, { HTMLAttributes } from "react";
 import {
   SkeletonImage,
   SkeletonRoot,
-  SkeletonTitle,
+  SkeletonCenterCaption,
 } from "./ScalarSkeleton.styled";
 
 export interface ScalarSkeletonProps extends HTMLAttributes<HTMLDivElement> {
@@ -20,7 +20,11 @@ const ScalarSkeleton = ({
       <SkeletonImage xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 32">
         <rect width="103" height="32" rx="16" fill="currentColor" />
       </SkeletonImage>
-      <SkeletonTitle name={name} description={description} size="large" />
+      <SkeletonCenterCaption
+        name={name}
+        description={description}
+        size="large"
+      />
     </SkeletonRoot>
   );
 };
