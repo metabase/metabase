@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { t } from "ttag";
-import { times } from "lodash";
+import { times, isEqual, isNumber, isUndefined } from "lodash";
 
 import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
@@ -10,11 +10,10 @@ import {
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
-type NumberInputWidgetProps = {
+export type NumberInputWidgetProps = {
   value: number[] | undefined;
-  setValue: (value: any) => void;
+  setValue: (value: number[] | undefined) => void;
   className?: string;
-  commitImmediately?: boolean;
   arity?: "n" | number;
   infixText?: string;
   autoFocus?: boolean;
@@ -32,15 +31,25 @@ function NumberInputWidget({
   autoFocus,
   placeholder = t`Enter a number`,
 }: NumberInputWidgetProps) {
-  const [unsavedValue, setUnsavedValue] = useState<(number | undefined)[]>(() =>
-    normalize(value),
-  );
+  const arrayValue = normalize(value);
+  const [unsavedArrayValue, setUnsavedArrayValue] = useState<
+    (number | undefined)[]
+  >(arrayValue);
+  const hasValueChanged = !isEqual(arrayValue, unsavedArrayValue);
+  const allValuesUnset = unsavedArrayValue.every(isUndefined);
+  const allValuesSet = unsavedArrayValue.every(isNumber);
   const isValid =
-    unsavedValue.every(value => typeof value === "number") &&
-    (arity === "n" || unsavedValue.length === arity);
+    (arity === "n" || unsavedArrayValue.length === arity) &&
+    (allValuesUnset || allValuesSet);
 
   const onClick = () => {
-    setValue(unsavedValue);
+    if (isValid) {
+      if (allValuesUnset || unsavedArrayValue.length === 0) {
+        setValue(undefined);
+      } else {
+        setValue(unsavedArrayValue);
+      }
+    }
   };
 
   return (
@@ -50,10 +59,10 @@ function NumberInputWidget({
           multi
           updateOnInputChange
           autoFocus={autoFocus}
-          value={unsavedValue}
+          value={unsavedArrayValue}
           parseFreeformValue={parseNumberValue}
           onChange={newValue => {
-            setUnsavedValue(newValue);
+            setUnsavedArrayValue(newValue);
           }}
           options={OPTIONS}
           placeholder={placeholder}
@@ -64,10 +73,10 @@ function NumberInputWidget({
             <NumericInput
               className="p1"
               autoFocus={autoFocus && i === 0}
-              value={unsavedValue[i]}
+              value={unsavedArrayValue[i]}
               onChange={newValue => {
-                setUnsavedValue(unsavedValue => {
-                  const newUnsavedValue = [...unsavedValue];
+                setUnsavedArrayValue(unsavedArrayValue => {
+                  const newUnsavedValue = [...unsavedArrayValue];
                   newUnsavedValue[i] = newValue;
                   return newUnsavedValue;
                 });
@@ -81,8 +90,8 @@ function NumberInputWidget({
         ))
       )}
       <Footer>
-        <UpdateButton disabled={!isValid} onClick={onClick}>
-          {value && value.length ? t`Update filter` : t`Add filter`}
+        <UpdateButton disabled={!isValid || !hasValueChanged} onClick={onClick}>
+          {arrayValue.length ? t`Update filter` : t`Add filter`}
         </UpdateButton>
       </Footer>
     </WidgetRoot>
