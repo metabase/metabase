@@ -7,6 +7,7 @@ import Question from "metabase-lib/lib/Question";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
+  openActionParametersModal,
 } from "metabase/dashboard/actions";
 import { executeRowAction } from "metabase/writeback/actions";
 import {
@@ -49,14 +50,41 @@ export default ({ question, clicked }) => {
       extraData,
       clickBehavior,
     });
-    behavior = {
-      action: () =>
-        executeRowAction({
-          dashboard: extraData.dashboard,
-          emitterId: clickBehavior.emitter_id,
-          parameters,
-        }),
-    };
+    const action = extraData.actions[clickBehavior.action];
+    const missingParameters = getNotProvidedParametersForNativeAction(
+      action,
+      parameters,
+    );
+
+    if (missingParameters.length > 0) {
+      behavior = {
+        action: () =>
+          openActionParametersModal({
+            emitterId: clickBehavior.emitter_id,
+            props: {
+              missingParameters,
+              onSubmit: filledMissingParameters =>
+                executeRowAction({
+                  dashboard: extraData.dashboard,
+                  emitterId: clickBehavior.emitter_id,
+                  parameters: {
+                    ...parameters,
+                    ...filledMissingParameters,
+                  },
+                }),
+            },
+          }),
+      };
+    } else {
+      behavior = {
+        action: () =>
+          executeRowAction({
+            dashboard: extraData.dashboard,
+            emitterId: clickBehavior.emitter_id,
+            parameters,
+          }),
+      };
+    }
   } else if (type === "crossfilter") {
     const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
       data,
@@ -182,6 +210,30 @@ function getParametersForNativeAction(
   });
 
   return parameters;
+}
+
+function getNotProvidedParametersForNativeAction(action, parameters) {
+  const mappedParameterIDs = Object.keys(parameters);
+
+  const emptyParameterIDs = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameters[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  const templateTags = Object.values(
+    action.card.dataset_query.native["template-tags"],
+  );
+  return templateTags.filter(tag => {
+    if (!tag.required) {
+      return false;
+    }
+    const isNotMapped = !mappedParameterIDs.includes(tag.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
+    return isNotMapped || isMappedButNoValue;
+  });
 }
 
 function getParameterIdValuePairs(
