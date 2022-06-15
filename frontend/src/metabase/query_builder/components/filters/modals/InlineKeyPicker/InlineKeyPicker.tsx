@@ -39,14 +39,14 @@ export function InlineKeyPicker({
   }, [field, filter]);
 
   return (
-    <div>
+    <div data-testid="key-picker" aria-label={field.displayName()}>
       <OperatorSelector
         operator={filter.operatorName() ?? "="}
         operators={filterOperators}
         onOperatorChange={changeOperator}
       />
       <ArgumentSelector
-        value={Array.from(filter.arguments())}
+        value={filter.arguments()}
         onChange={changeArguments}
         className="input"
         placeholder={t`Enter IDs`}
