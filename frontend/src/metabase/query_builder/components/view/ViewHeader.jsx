@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -14,6 +14,7 @@ import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
@@ -178,6 +179,15 @@ function SavedQuestionLeftSide(props) {
     onSave,
   } = props;
 
+  const [showSubHeader, setShowSubHeader] = useState(true);
+
+  useOnMount(() => {
+    const timerId = setTimeout(() => {
+      setShowSubHeader(false);
+    }, 4000);
+    return () => clearTimeout(timerId);
+  });
+
   const hasLastEditInfo = question.lastEditInfo() != null;
 
   const onHeaderChange = useCallback(
@@ -193,7 +203,10 @@ function SavedQuestionLeftSide(props) {
   );
 
   return (
-    <SavedQuestionLeftSideRoot data-testid="qb-header-left-side">
+    <SavedQuestionLeftSideRoot
+      data-testid="qb-header-left-side"
+      showSubHeader={showSubHeader}
+    >
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton

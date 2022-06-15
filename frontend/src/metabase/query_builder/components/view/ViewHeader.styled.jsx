@@ -131,11 +131,11 @@ export const SavedQuestionLeftSideRoot = styled.div`
   ${SavedQuestionHeaderButton.Root} {
     transition: all 400ms ease;
     position: relative;
-    top: 10px;
+    top: ${props => (props.showSubHeader ? "0" : "10px")};
   }
 
   ${ViewHeaderLeftSubHeading} {
-    opacity: 0;
+    opacity: ${props => (props.showSubHeader ? "1" : "0")};
     transition: all 400ms ease;
   }
 
