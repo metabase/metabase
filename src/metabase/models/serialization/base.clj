@@ -1,4 +1,4 @@
-(ns metabase.models.serialization.utils
+(ns metabase.models.serialization.base
   "Defines several helper functions and protocols for the serialization system.
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
   methods are defined here and implemented for all the exported models.
@@ -17,13 +17,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; Utilities for writing serialization functions.
-(defn remove-timestamps
-  "Removes any key that ends with _at."
-  [m]
-  (let [ats (filter #(.endsWith (str %) "_at") (keys m))]
-    (apply dissoc m ats)))
 
 ;;; The end result of serialization is a directory tree of YAML files. Some entities are written to individual files
 ;;; (most of them, eg. collections and fields) while others are consolidated into a single file for the entire set (eg.
@@ -46,12 +39,6 @@
 
 (p.types/defprotocol+ ISerializable
   ;;; Serialization side
-  ;(serdes-combined-file?
-  ;  [this]
-  ;  "Given a model, returns true if it should be dumped as a single file (eg. Settings) or false to dump as one file per
-  ;  entity (the majority).
-  ;  Default implementation returns false, to dump as one file per entity.")
-
   (serialize-all
     [this user-or-nil]
     "Serializes all relevant instances of this model.
@@ -124,7 +111,6 @@
     [(format "%s%s%s.yaml" (name entity) File/separatorChar (or (:entity_id entity) (serdes.hash/identity-hash entity)))
      (-> (into {} entity)
          (dissoc (models/primary-key entity))
-         ;(remove-timestamps)
          (assoc :serdes_type (name entity))
          f)]))
 
@@ -156,59 +142,6 @@
    :deserialize-upsert    default-upsert
    :deserialize-insert    default-insert})
 
-;;; Serialization machinery
-;;; TODO To be moved to the enterprise tree, since serialization is an enterprise feature.
-
-(def ^:private exported-models
-  ['Collection
-   'Setting])
-
-(defn serialize-metabase
-  "Serializes the complete database into a reducible stream of [file-path edn-map] pairs.
-  This is the last step before conversion to YAML and writing to disk, and a useful point for testing.
-  The file paths are relative to the root dump directory."
-  [user-or-nil]
-  (eduction cat (for [model exported-models]
-                   (serialize-all (db/resolve-model model) user-or-nil))))
-
-;; The deserialization source is a two-arity function: (src) returns a list of all file names, (src path) returns the
-;; contents of that file, converted to EDN.
-;; Therefore an in-memory source can just wrap a {path EDN-contents} map.
-(defn- deserialization-source-memory [files]
-  (let [mapped (into {} files)]
-    (fn
-      ([] (keys mapped))
-      ([path] (or (get mapped path)
-                  (throw (ex-info (format "Unknown serialized file %s" path) {:path path :tree mapped})))))))
-
-(defn- scan-ids [{:keys [entity_id] :as entity}]
-  (let [pk (get entity (models/primary-key entity))]
-    (cond-> {:by-identity-hash {(serdes.hash/identity-hash entity) pk}}
-      entity_id (assoc :by-entity-id {entity_id pk}))))
-
-(defn- deserialization-prescan-model [model]
-  (transduce (map scan-ids) (partial merge-with merge) {:by-entity-id {} :by-identity-hash {}}
-             (db/select-reducible model)))
-
-(defn- deserialization-prescan []
-  (into {} (for [model exported-models]
-             [(name model) (deserialization-prescan-model model)])))
-
-(defn- path-parts [path]
-  (->> (java.nio.file.Paths/get path (into-array String []))
-       (.iterator)
-       (iterator-seq)
-       (map #(.toString %))))
-
-(defn- id-from-path [path]
-  (let [file (last (path-parts path))
-        base (.substring file 0 (.lastIndexOf file "."))
-        ; Things with human-readable names use the form identity_hash+human_name.yaml
-        plus (.indexOf base "+")]
-    (if (< plus 0)
-      base
-      (.substring base 0 plus))))
-
 (defn entity-id?
   "Checks if the given string is a 21-character NanoID."
   [id-str]
@@ -230,52 +163,3 @@
   (if (entity-id? id-str)
     (db/select-one model :entity_id id-str)
     (find-by-identity-hash model id-str)))
-
-(declare deserialize-one)
-
-(defn- deserialize-deps [ctx deps]
-  (if (empty? deps)
-    ctx
-    (reduce deserialize-one ctx (map (:id->file ctx) deps))))
-
-(defn- deserialize-one [{:keys [expanding seen src] :as ctx} path]
-  (let [id    (id-from-path path)]
-    (cond
-      (expanding id) (throw (ex-info (format "Circular dependency on %s" path) {}))
-      (seen id)      ctx ; Already been done, just skip it.
-      :else (let [contents (src path)
-                  model    (db/resolve-model (symbol (:serdes_type contents)))
-                  deps     (serdes-dependencies contents)
-                  ctx'     (-> ctx
-                               (update :expanding conj id)
-                               (update :seen conj id)
-                               (deserialize-deps deps)
-                               (update :expanding disj id))]
-              (deserialize-file model
-                                (dissoc contents :serdes_type)
-                                (or (get-in ctx [:local (name model) :by-entity-id id])
-                                    (get-in ctx [:local (name model) :by-identity-hash id])))
-              ctx'))))
-
-(defn deserialize-metabase
-  "Deserializes a complete database export from a 'deserialization source', which can be created with
-  `deserialization-source-foo`. This doesn't read directly from files for ease of testing."
-  [src]
-  ;; We proceed in a random order, deserializing all the files. Their declared dependencies guide the import, and make
-  ;; sure all containers are imported before contents, etc.
-  (let [paths    (src)]
-    (reduce deserialize-one {:id->file  (into {} (for [p paths]
-                                                   [(id-from-path p) p]))
-                             :local     (deserialization-prescan)
-                             :expanding #{}
-                             :seen      #{}
-                             :src       src}
-            paths)))
-
-
-(comment
-  (scan-ids (db/select-one 'Collection :id 1))
-  (deserialization-prescan)
-  (-> (into [] (serialize-metabase 1))
-      (deserialization-source-memory)
-      (deserialize-metabase)))

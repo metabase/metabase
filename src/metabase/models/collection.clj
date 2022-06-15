@@ -14,8 +14,8 @@
             [metabase.models.collection.root :as collection.root]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms :refer [Permissions]]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.public-settings.premium-features :as premium-features]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
@@ -904,7 +904,7 @@
 
 (defn- deserialize-collection [{:keys [parent_id personal_owner_id] :as contents}]
   (let [location   (if parent_id
-                     (let [{:keys [id location]} (serdes.utils/lookup-by-id Collection parent_id)]
+                     (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
                        (str location id "/"))
                      "/")
         user-id    (when personal_owner_id
@@ -933,8 +933,8 @@
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])}
 
-  serdes.utils/ISerializable
-  (merge serdes.utils/ISerializableDefaults
+  serdes.base/ISerializable
+  (merge serdes.base/ISerializableDefaults
          {:serialize-query
           (fn [_ user-or-nil]
             (let [unowned (db/select-reducible Collection :personal_owner_id nil :archived false)]
@@ -944,10 +944,10 @@
                                                     :personal_owner_id user-or-nil :archived false)])
                 unowned)))
 
-          :serialize-one    (serdes.utils/serialize-one-plus serialize-collection)
-          :deserialize-file (serdes.utils/deserialize-file-plus deserialize-collection)}))
+          :serialize-one    (serdes.base/serialize-one-plus serialize-collection)
+          :deserialize-file (serdes.base/deserialize-file-plus deserialize-collection)}))
 
-(defmethod serdes.utils/serdes-dependencies "Collection"
+(defmethod serdes.base/serdes-dependencies "Collection"
   [{:keys [parent_id]}]
   (if parent_id
     [parent_id]

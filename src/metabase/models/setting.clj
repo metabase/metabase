@@ -81,8 +81,8 @@
             [environ.core :as env]
             [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.models.serialization.base :as serdes.base]
             [metabase.models.serialization.hash :as serdes.hash]
-            [metabase.models.serialization.utils :as serdes.utils]
             [metabase.models.setting.cache :as setting.cache]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
@@ -148,8 +148,8 @@
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:key])}
 
-  serdes.utils/ISerializable
-  (merge serdes.utils/ISerializableDefaults
+  serdes.base/ISerializable
+  (merge serdes.base/ISerializableDefaults
          {:serialize-all (fn [_ _]
                            [["settings.yaml"
                              {:serdes_type "Setting"
@@ -160,7 +160,6 @@
           :deserialize-file (fn [_ {:keys [settings]} _]
                               (doseq [[k v] settings
                                       :when v]
-                                (prn "setting" k)
                                 (set-value-of-type! :string k v)))}))
 
 (def ^:private Type
