@@ -38,7 +38,7 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
   const userFullName = [user.first_name, user.last_name].join(" ").trim();
 
   return (
-    <AccountHeaderRoot>
+    <AccountHeaderRoot data-testid="account-header">
       <HeaderSection>
         <HeaderAvatar user={user} />
         {userFullName && <HeaderTitle>{userFullName}</HeaderTitle>}
