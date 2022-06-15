@@ -3,18 +3,18 @@ import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonRoot } from "./EmptySkeleton.styled";
 
 export interface EmptySkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  displayName?: string | null;
+  name?: string | null;
   description?: string | null;
 }
 
 const EmptySkeleton = ({
-  displayName,
+  name,
   description,
   ...props
 }: EmptySkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      <SkeletonCaption name={displayName} description={description} />
+      <SkeletonCaption name={name} description={description} />
     </SkeletonRoot>
   );
 };

@@ -15,8 +15,8 @@
            java.util.UUID))
 
 (def ^:private UserAttributes
-  {:first_name       su/NonBlankString
-   :last_name        su/NonBlankString
+  {:first_name       (s/maybe su/NonBlankString)
+   :last_name        (s/maybe su/NonBlankString)
    :email            su/Email
    ;; TODO - we should avoid hardcoding this to make it easier to add new integrations. Maybe look at something like
    ;; the keys of `(methods sso/sso-get)`

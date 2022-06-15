@@ -1298,13 +1298,10 @@ workflows:
               folder:
                 [
                   "admin",
-                  "collections",
                   "filters",
                   "native",
                   "native-filters",
                   "onboarding",
-                  "organization",
-                  "permissions",
                   "smoketest",
                   "visualizations",
                 ]
@@ -1335,14 +1332,6 @@ workflows:
           before-steps:
             - run-snowplow-micro
             - wait-for-databases
-
-      - fe-tests-cypress:
-          name: percy-visual-tests-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "percy-visual-<< matrix.edition >>"
-          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
-          <<: *Matrix
 
       - snowplow-deps:
           requires:

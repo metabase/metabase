@@ -55,6 +55,9 @@ const Questions = createEntity({
         },
         opts,
       ),
+
+    setCollectionPreview: ({ id }, collection_preview, opts) =>
+      Questions.actions.update({ id }, { collection_preview }, opts),
   },
 
   objectSelectors: {
@@ -86,6 +89,7 @@ const Questions = createEntity({
     "embedding_params",
     "collection_id",
     "collection_position",
+    "collection_preview",
     "result_metadata",
     "is_write",
   ],

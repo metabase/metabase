@@ -647,15 +647,18 @@
                              :database-type     "varchar"
                              :base-type         :type/Text
                              :pk?               true
-                             :database-position 0}
+                             :database-position 0
+                             :database-required true}
                             {:name              "status"
                              :database-type     "bird_status"
                              :base-type         :type/PostgresEnum
-                             :database-position 1}
+                             :database-position 1
+                             :database-required true}
                             {:name              "type"
                              :database-type     "bird type"
                              :base-type         :type/PostgresEnum
-                             :database-position 2}}}
+                             :database-position 2
+                             :database-required true}}}
                  (driver/describe-table :postgres db {:name "birds"}))))
 
         (testing "check that when syncing the DB the enum types get recorded appropriately"

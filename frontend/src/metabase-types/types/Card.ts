@@ -11,6 +11,10 @@ export type UnsavedCard<Query = DatasetQuery> = {
   visualization_settings: VisualizationSettings;
   parameters?: Array<Parameter>;
 
+  // If coming from dashboard
+  dashboardId?: number;
+  dashcardId?: number;
+
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: CardId;
 };
@@ -22,6 +26,7 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   dataset?: boolean;
   can_write: boolean;
   public_uuid: string;
+  archived?: boolean;
 };
 
 export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;

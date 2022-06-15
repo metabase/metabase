@@ -1,4 +1,8 @@
-## Dashboard Filters
+---
+title: Dashboard filters
+---
+
+# Dashboard filters
 
 ![Dashboard Filters](images/dashboard-filters/dashboard-filters.png)
 
@@ -6,7 +10,7 @@ Have you ever found yourself in a situation where it seems like you need to crea
 
 Instead of creating duplicate dashboards, you can use dashboard filters to create simple toggles to change a variable for cards on a dashboard.
 
-### Adding a new filter
+## Adding a new filter
 
 To add a filter to a dashboard, first click the **pencil icon** to enter dashboard editing mode, then click the **Add a Filter** button that appears in the top-right.
 
@@ -21,7 +25,7 @@ You can choose from a number of filter types:
 
 The type of filter you choose will determine what the filter widget will look like, as well as which fields you’ll be able to filter your cards by:
 
-#### Time filters
+### Time filters
 
 When picking a Time filter, Metabase will prompt you to pick a specific type of filter widget:
 
@@ -34,7 +38,7 @@ When picking a Time filter, Metabase will prompt you to pick a specific type of 
 
 Single Date and Date Range will provide a calendar widget, while the other options all provide slightly different dropdown interfaces for picking values. To get a widget that's just like the time filter in the query builder, choose All options.
 
-#### Location filters
+### Location filters
 
 There are four types of Location filters to choose from:
 
@@ -43,17 +47,17 @@ There are four types of Location filters to choose from:
 - ZIP or Postal Code
 - Country
 
-#### ID filter
+### ID filter
 
 The ID filter provides a simple input box where you can type the ID of a user, order, etc.
 
-#### Other Categories
+### Other Categories
 
 The Other Categories filter is a flexible filter type that will let you create either a dropdown menu or an input box to filter on any category field in your cards.
 
 **Note:** If you're trying to filter Native/SQL questions, you'll need to [add a bit of additional markup to your query](13-sql-parameters.md) in order to use a dashboard filter with that question. For an in-depth article on this, check out [Adding filters to dashboards with SQL questions](https://www.metabase.com/learn/dashboards/filters.html).
 
-### Example filter
+## Example filter
 
 Let's add a filter widget to our dashboard. We'll select a **Time** filter, and then select the **Month and Year** option.
 
@@ -73,14 +77,14 @@ Before we **Save** our changes, we can use the right sidebar to customize the **
 
 When you're finished wiring up the filter, click **Done** at the bottom of the sidebar, then click on **Save** in the top right to save the dashboard with your new filter.
 
-### Editing a filter
+## Editing a filter
 
 - **To edit a filter**: click the **pencil** icon to enter dashboard editing mode, then click the **gears** icon button on the filter you want to change. You can wire up individual cards to the filter, and use the sidebar to update the label.
 - **To reorder your filters**: click on the grabber handle on the left side of a filter, then drag the filter to a different position.
 - **To set a default value**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, enter a value in the **Default value** input field.
 - **To remove a filter**: click on the filter's **gears** icon to open the filter sidebar. Under the **Settings** tab, click **Remove** in the sidebar. If you accidentally remove a filter, just click **Cancel** in the top-right to exit dashboard editing mode without saving your changes.
 
-### Using filters
+## Using filters
 
 Once you’ve added a filter to your dashboard, just click on the filter to select a value and activate the filter. To stop filtering, just click the blue X.
 
@@ -88,7 +92,7 @@ Once you’ve added a filter to your dashboard, just click on the filter to sele
 
 You can also set up a dashboard question to [update a filter on click](interactive-dashboards.md#use-a-chart-to-filter-a-dashboard).
 
-### Choosing between a dropdown or autocomplete for your filter
+## Choosing between a dropdown or autocomplete for your filter
 
 If the column you're using for a filter has more than 100 unique values, you'll now automatically see a search box with autocomplete suggestions:
 
@@ -106,7 +110,7 @@ If Metabase somehow picked the wrong behavior for your field, admins can go to t
 
 ![Search options](images/dashboard-filters/search-options.png)
 
-### Linking filters
+## Linking filters
 
 You can also **link filters** so that a child filter knows to limit its choices based on the activation of a parent filter.
 
@@ -120,7 +124,7 @@ Here you can limit the current filter's choices. If you toggle on one of these d
 
 To learn more, check out [Linking filters in dashboards](https://www.metabase.com/learn/building-analytics/dashboards/linking-filters.html).
 
-### Best practices
+## Best practices
 
 Here are a few tips to get the most out of dashboard filters:
 

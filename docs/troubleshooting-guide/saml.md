@@ -1,3 +1,7 @@
+---
+title: Troubleshooting SAML authentication setup
+---
+
 # Troubleshooting SAML authentication setup
 
 {% include plans-blockquote.html feature="SAML authentication" %}

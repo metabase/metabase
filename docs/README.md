@@ -1,3 +1,7 @@
+---
+title: Metabase documentation
+---
+
 ## Getting started
 
 - [Getting started](/learn/getting-started/getting-started)
@@ -130,7 +134,7 @@
 
 ## Paid plans
 
-The Enterprise and Pro editions of Metabase offer additional features.
+The Enterprise and Pro plans of Metabase offer additional features.
 
 - [Getting and activating the Enterprise edition](./enterprise-guide/activating-the-enterprise-edition.md)
 - [List of premium features](enterprise-guide/start.md)

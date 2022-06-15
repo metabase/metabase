@@ -1,3 +1,7 @@
+---
+title: Setting default formatting for your data
+---
+
 ## Setting default formatting for your data
 
 There are Metabase users around the world, each with different preferences for how dates, times, numbers, and currencies should be formatted and displayed. Metabase allows you to customize these formatting options at three different levels:

@@ -17,8 +17,8 @@ import TableSkeleton from "../TableSkeleton";
 import WaterfallSkeleton from "../WaterfallSkeleton";
 
 export interface ChartSkeletonProps extends HTMLAttributes<HTMLDivElement> {
+  name?: string | null;
   display?: string | null;
-  displayName?: string | null;
   description?: string | null;
 }
 

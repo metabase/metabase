@@ -9,6 +9,7 @@
             [metabase.models.database :as database]
             [metabase.models.permissions :as perms]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :as user]
             [metabase.server.middleware.session :as mw.session]
             [metabase.task :as task]
@@ -242,3 +243,11 @@
     (mt/with-temp Database [{db-id :id} {:engine (u/qualified-name ::test)}]
       (is (= ::test
              (db/select-one-field :engine Database :id db-id))))))
+
+(deftest identity-hash-test
+  (testing "Database hashes are composed of the name and engine"
+    (mt/with-temp Database [db {:engine :mysql :name "hashmysql"}]
+      (is (= (Integer/toHexString (hash ["hashmysql" :mysql]))
+             (serdes.hash/identity-hash db)))
+      (is (= "b6f1a9e8"
+             (serdes.hash/identity-hash db))))))
