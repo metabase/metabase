@@ -28,8 +28,10 @@ function ActionsLinkingControl({
   const connectedDashCardId =
     card.visualization_settings["actions.linked_card"];
 
-  const suitableDashCards = dashboard.ordered_cards.filter(dashCard =>
-    Q_DEPRECATED.isStructured(dashCard.card.dataset_query),
+  const suitableDashCards = dashboard.ordered_cards.filter(
+    dashCard =>
+      Q_DEPRECATED.isStructured(dashCard.card.dataset_query) &&
+      !dashCard.isAdded, // only show dash cards that have a stable ID already
   ) as StructuredQueryDashCard[];
 
   return (
