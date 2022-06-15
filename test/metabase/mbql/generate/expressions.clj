@@ -31,9 +31,11 @@
 
 (defn case-expression-generator
   [comparand-generator value-generator]
-  (gens/let [value      value-generator
-             comparison (comparison-generator comparand-generator)]
-  [:case comparison value]))
+  (let [case-pair-gen (gens/let [comparison (comparison-generator comparand-generator)
+                                 value value-generator]
+                        [comparison value])]
+    (gens/let [case-pairs (gens/vector case-pair-gen 2 10)]
+      [:case case-pairs])))
 
 (defn numeric-expression-generator [arg-generator]
   (let [arg-generator (gens/one-of [arg-generator
@@ -57,7 +59,7 @@
                   (unary-expression-generator :exp arg-generator)
                   (unary-expression-generator :log arg-generator)
                   (n-ary-expression-generator :coalesce arg-generator)
-                  (case-expression-generator arg-generator)])))
+                  (case-expression-generator arg-generator arg-generator)])))
 
 (defn string-expression-generator [arg-generator]
   (let [arg-generator (gens/one-of [arg-generator
