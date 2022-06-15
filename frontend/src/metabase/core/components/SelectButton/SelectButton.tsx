@@ -21,7 +21,7 @@ export interface SelectButtonProps
   disabled?: boolean;
   fullWidth?: boolean;
   highlighted?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   onClear?: () => void;
   dataTestId?: string;
 }
