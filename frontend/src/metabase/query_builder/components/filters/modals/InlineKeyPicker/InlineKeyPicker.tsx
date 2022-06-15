@@ -46,6 +46,8 @@ export function InlineKeyPicker({
         onOperatorChange={changeOperator}
       />
       <ArgumentSelector
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore: this component doesn't have types or propTypes
         value={filter.arguments()}
         onChange={changeArguments}
         className="input"
