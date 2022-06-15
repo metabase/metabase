@@ -315,6 +315,13 @@ spec:
                 name: {{ include "metabase.fullname" . }}-configs
                 key: MB_EMBEDDING_APP_ORIGIN
           {{- end }}
+          {{- if .Values.config.application.embeddingSameSiteCookie }}
+          - name: MB_SESSION_COOKIE_SAMESITE
+            valueFrom:
+              configMapKeyRef:
+                name: {{ include "metabase.fullname" . }}-configs
+                key: MB_SESSION_COOKIE_SAMESITE
+          {{- end }}
           {{- if .Values.secrets.config.embeddingToken }}
           - name: MB_PREMIUM_EMBEDDING_TOKEN
             valueFrom:

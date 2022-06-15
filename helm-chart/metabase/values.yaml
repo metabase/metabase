@@ -156,6 +156,7 @@ config:
     checkForUpdates: ""
     disableSessionThrottle: ""
     embeddingAppOrigin: ""
+    embeddingSameSiteCookie: ""
     enableEmbedding: ""
     enableNestedQueries: ""
     enablePasswordLogin: ""
