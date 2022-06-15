@@ -27,6 +27,8 @@ const nativeQuery = {
 
 describe("issue 12581", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     restore();
     cy.signInAsAdmin();
 
@@ -54,9 +56,16 @@ describe("issue 12581", () => {
     });
 
     cy.reload();
+    cy.wait("@cardQuery");
 
     cy.findByTestId("revision-history-button").click();
+    // Make sure sidebar opened and the history loaded
+    cy.findByText("You created this");
+
     cy.findByTestId("question-revert-button").click(); // Revert to the first revision
+    cy.wait("@dataset");
+
+    cy.findByText("You reverted to an earlier revision");
     cy.findByText(/Open Editor/i).click();
 
     cy.log("Reported failing on v0.35.3");
