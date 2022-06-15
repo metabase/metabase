@@ -22,7 +22,8 @@
             [metabase.util.honeysql-extensions :as hx]
             [metabase.util.i18n :refer [tru]]
             [pretty.core :refer [PrettyPrintable]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [metabase.test :as mt])
   (:import [com.google.cloud.bigquery Field$Mode FieldValue]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.driver.common.parameters.FieldFilter
@@ -604,9 +605,10 @@
 (doseq [filter-type [:between := :!= :> :>= :< :<=]]
   (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk filter-type]
     [driver clause]
-    ((get-method sql.qp/->honeysql [:sql filter-type])
-     driver
-     (reconcile-temporal-types clause))))
+    (reconcile-temporal-types
+     ((get-method sql.qp/->honeysql [:sql filter-type])
+      driver
+      (reconcile-temporal-types clause)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -629,35 +631,43 @@
 ;;
 ;; [:time-interval <datetime field> -1 :day]
 ;;
-;;
+(def ^:private temporal-type->arithmetic-function
+  {:timestamp :timestamp_add
+   :datetime  :datetime_add
+   :date      :date_add
+   :time      :time_add})
+
 (defrecord AddIntervalForm [hsql-form amount unit]
   hformat/ToSql
   (to-sql [_]
-    (loop [hsql-form hsql-form]
-      (let [t      (temporal-type hsql-form)
-            add-fn (case t
-                     :timestamp :timestamp_add
-                     :datetime  :datetime_add
-                     :date      :date_add
-                     :time      :time_add
-                     nil)]
-        (if-not add-fn
-          (recur (->temporal-type :datetime hsql-form))
-          (do
-            (assert-addable-unit t unit)
-            (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit)))))))))
+    (let [t      (temporal-type hsql-form)
+          add-fn (temporal-type->arithmetic-function t)]
+      (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit))))))
+
+(defn- add-interval-form [hsql-form amount unit]
+  (loop [hsql-form hsql-form]
+    (let [t      (temporal-type hsql-form)
+          add-fn (temporal-type->arithmetic-function t)]
+      (if (or (not add-fn)
+              (and (not (contains? (temporal-type->supported-units t) unit))
+                   (contains? (temporal-type->supported-units :datetime) unit)))
+        (recur (->temporal-type :datetime hsql-form))
+        (AddIntervalForm. hsql-form amount unit)))))
 
 (defmethod temporal-type AddIntervalForm
   [add-interval]
   (temporal-type (:hsql-form add-interval)))
 
 (defmethod ->temporal-type [:temporal-type AddIntervalForm]
-  [target-type add-interval-form]
-  (let [current-type (temporal-type (:hsql-form add-interval-form))]
+  [target-type form]
+  (let [current-type (temporal-type (:hsql-form form))]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-               {:type qp.error-type/invalid-query}))))
-  (map->AddIntervalForm (update add-interval-form :hsql-form (partial ->temporal-type target-type))))
+                      {:type qp.error-type/invalid-query}))))
+  (let [new-form (add-interval-form (->temporal-type target-type (:hsql-form form)) (:amount form) (:unit form))]
+    (if (= (temporal-type new-form) target-type)
+      new-form
+      (hx/cast target-type form))))
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
@@ -667,7 +677,22 @@
                     (and (= (temporal-type hsql-form) :timestamp)
                          (not (contains? (temporal-type->supported-units :timestamp) unit)))
                     (hx/cast :datetime))]
-    (AddIntervalForm. hsql-form amount unit)))
+    (add-interval-form hsql-form amount unit)))
+
+(defn x []
+  (mt/with-driver :bigquery-cloud-sdk
+    (mt/dataset office-checkins
+      (mt/with-temp-vals-in-db 'Field (mt/id :checkins :timestamp) {:database_type "TIMESTAMP"}
+        (mt/with-everything-store
+          (sql.qp/->honeysql :bigquery-cloud-sdk
+                             [:between [:+
+                                        [:field (mt/id :checkins :timestamp) nil]
+                                        [:interval 7 :day]]
+                              [:relative-datetime -2 :year]
+                              [:relative-datetime -1 :year]]))))))
+
+(defn y []
+  (honeysql.core/format {:where (x)}))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]
