@@ -1,6 +1,6 @@
 (ns metabase-enterprise.serialization.v2.serialize-test
   (:require [clojure.test :refer :all]
-            [metabase.models :refer [Collection User]]
+            [metabase.models :refer [Collection Setting User]]
             [metabase.models.serialization.base :as serdes.base]
             [metabase-enterprise.serialization.v2.serialize :as sut]
             [metabase-enterprise.serialization.v2.models :as serdes.models]
@@ -21,7 +21,9 @@
                                                   :email      "mark@direstrai.ts"}]
                        Collection [{pc-id  :id
                                     pc-eid :entity_id} {:name "Mark's Personal Collection"
-                                                        :personal_owner_id mark-id}]]
+                                                        :personal_owner_id mark-id}]
+                       ;Setting    [_ {:key "report-timezone" :value "UTC"}]
+                       ]
       (testing "a top-level collection is serialized correctly"
         (let [[file ser] (serdes.base/serialize-one (Collection coll-id))]
           (is (= (format "Collection/%s.yaml" coll-eid) file))
@@ -46,4 +48,27 @@
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))
           (is (nil? (:parent_id ser)))
-          (is (= "mark@direstrai.ts" (:personal_owner_id ser))))))))
+          (is (= "mark@direstrai.ts" (:personal_owner_id ser)))))
+
+      (testing "overall serialization returns the expected set"
+        (testing "no user specified"
+          (let [files (into {} (sut/serialize-metabase nil))]
+            (is (= #{(format "Collection/%s.yaml" coll-eid)
+                     (format "Collection/%s.yaml" child-eid)
+                     "settings.yaml"}
+                   (into #{} (keys files))))))
+
+        (testing "valid user specified"
+          (let [files (into {} (sut/serialize-metabase mark-id))]
+            (is (= #{(format "Collection/%s.yaml" coll-eid)
+                     (format "Collection/%s.yaml" child-eid)
+                     (format "Collection/%s.yaml" pc-eid)
+                     "settings.yaml"}
+                   (into #{} (keys files))))))
+
+        (testing "invalid user specified"
+          (let [files (into {} (sut/serialize-metabase 218921))]
+            (is (= #{(format "Collection/%s.yaml" coll-eid)
+                     (format "Collection/%s.yaml" child-eid)
+                     "settings.yaml"}
+                   (into #{} (keys files))))))))))
