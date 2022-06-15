@@ -1,22 +1,27 @@
-var content =
+const content = [
+  ["drill-through-img", "Click on your charts to dive deeper."],
+  ["metabot-img shadow", "Bring your charts and data into Slack."],
+  ["calendar-img", "Dashboard filters let you filter all your charts at once."],
+  ["charts-img shadow", "Easily create and share beautiful dashboards."],
   [
-    ['drill-through-img', 'Click on your charts to dive deeper.'],
-    ['metabot-img shadow', 'Bring your charts and data into Slack.'],
-    ['calendar-img', 'Dashboard filters let you filter all your charts at once.'],
-    ['charts-img shadow', 'Easily create and share beautiful dashboards.'],
-    ['column-heading-img', 'Click on column headings in your tables to explore them.']
-  ];
+    "column-heading-img",
+    "Click on column headings in your tables to explore them.",
+  ],
+];
 
-var featureImage = document.getElementById("feature-image");
-var heading = document.getElementById("heading");
+const featureImage = document.getElementById("feature-image");
+const heading = document.getElementById("heading");
 
-var counter = 0;
+let counter = 0;
 
 function switcher() {
   setInterval(function() {
     counter++;
-    if (counter == content.length) counter = 0;
-    featureImage.className = featureImage.className.replace(" opaque", "") + " transparent";
+    if (counter === content.length) {
+      counter = 0;
+    }
+    featureImage.className =
+      featureImage.className.replace(" opaque", "") + " transparent";
     heading.className = "transparent";
 
     // Need to somehow wait here for a sec before fading things back in
@@ -28,18 +33,18 @@ function switcher() {
   }, 4000);
 }
 
-var messages = [
+const messages = [
   "Polishing tables…",
   "Scaling scalars…",
   "Straightening columns…",
   "Embiggening data…",
-  "Reticulating splines…"
+  "Reticulating splines…",
 ];
-var progressElement = document.getElementById("progress");
-var statusElement = document.getElementById("status");
+const progressElement = document.getElementById("progress");
+const statusElement = document.getElementById("status");
 
 function poll() {
-  var req = new XMLHttpRequest();
+  const req = new XMLHttpRequest();
   req.open("GET", "api/health", true);
   req.onreadystatechange = function() {
     if (req.readyState === 4) {
@@ -47,19 +52,20 @@ function poll() {
         window.location.reload();
       } else {
         try {
-          var health = JSON.parse(req.responseText);
+          const health = JSON.parse(req.responseText);
           if (typeof health.progress === "number") {
-            var newValue = health.progress * 100;
+            const newValue = health.progress * 100;
             if (newValue !== progressElement.value) {
               progressElement.value = newValue;
-              statusElement.textContent = messages[Math.floor(Math.random() * messages.length)];
+              statusElement.textContent =
+                messages[Math.floor(Math.random() * messages.length)];
             }
           }
         } catch (e) {}
         setTimeout(poll, 500);
       }
     }
-  }
+  };
   req.send();
 }
 
