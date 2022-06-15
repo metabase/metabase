@@ -1,3 +1,7 @@
+---
+title: Plugin manifests
+---
+
 # Plugin manifests
 
 Metabase plugin JARs contain a _plugin manifest_ -- a top-level file named `metabase-plugin.yaml`. When Metabase launches, it iterates over every JAR in the plugins directory, and looks for the manifest in each. This manifest tells Metabase what the plugin provides and how to initialize it.

@@ -1,4 +1,8 @@
-# Administration Guide
+---
+title: Administration guide
+---
+
+# Administration guide
 
 Are you in charge of managing Metabase for your organization? Then you're in the right spot. You are the chosen one.
 

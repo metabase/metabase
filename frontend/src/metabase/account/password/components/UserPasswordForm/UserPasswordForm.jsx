@@ -14,8 +14,6 @@ const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
     async ({ password }) => {
       try {
         await validatePassword(password);
-
-        return {};
       } catch (error) {
         return error.data.errors;
       }
@@ -24,8 +22,8 @@ const UserPasswordForm = ({ user, validatePassword, updatePassword }) => {
   );
 
   const handleSubmit = useCallback(
-    ({ password, old_password }) => {
-      updatePassword(user.id, password, old_password);
+    async ({ password, old_password }) => {
+      await updatePassword(user.id, password, old_password);
     },
     [user, updatePassword],
   );

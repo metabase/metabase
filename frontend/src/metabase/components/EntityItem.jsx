@@ -83,20 +83,22 @@ function EntityItemName({ name, variant }) {
 }
 
 function EntityItemMenu({
-  isBookmarked,
   item,
+  isBookmarked,
+  isPreviewShown,
+  isPreviewAvailable,
   onPin,
   onMove,
   onCopy,
   onArchive,
   onToggleBookmark,
+  onTogglePreview,
   className,
   analyticsContext,
 }) {
   const isPinned = isItemPinned(item);
   const showPinnedAction = onPin && isPinned;
   const showUnpinnedAction = onPin && !isPinned;
-
   const actions = useMemo(
     () =>
       [
@@ -105,6 +107,15 @@ function EntityItemMenu({
           icon: "pin",
           action: onPin,
           event: `${analyticsContext};Entity Item;Pin Item;${item.model}`,
+        },
+        onTogglePreview && {
+          title: isPreviewShown
+            ? t`Don’t show visualization`
+            : t`Show visualization`,
+          icon: isPreviewShown ? "eye_crossed_out" : "eye",
+          action: onTogglePreview,
+          event: `${analyticsContext};Entity Item;Preview Item;${item.model}`,
+          disabled: !isPreviewAvailable,
         },
         onMove && {
           title: t`Move`,
@@ -132,16 +143,19 @@ function EntityItemMenu({
         },
       ].filter(action => action),
     [
-      isBookmarked,
-      onToggleBookmark,
-      showPinnedAction,
-      isPinned,
-      onPin,
-      analyticsContext,
       item.model,
+      isPinned,
+      isBookmarked,
+      isPreviewShown,
+      isPreviewAvailable,
+      showPinnedAction,
+      onPin,
       onMove,
       onCopy,
       onArchive,
+      onTogglePreview,
+      onToggleBookmark,
+      analyticsContext,
     ],
   );
   if (actions.length === 0) {

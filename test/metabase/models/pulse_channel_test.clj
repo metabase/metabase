@@ -1,9 +1,11 @@
 (ns metabase.models.pulse-channel-test
   (:require [clojure.test :refer :all]
             [medley.core :as m]
+            [metabase.models.collection :refer [Collection]]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-channel :as pulse-channel :refer [PulseChannel]]
             [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.user :refer [User]]
             [metabase.test :as mt]
             [metabase.util :as u]
@@ -439,3 +441,14 @@
            #"Wrong email address for User [\d,]+"
            (pulse-channel/validate-email-domains {:recipients [{:email "rasta@example.com"
                                                                 :id    (mt/user->id :rasta)}]}))))))
+
+(deftest identity-hash-test
+  (testing "Pulse channel hashes are composed of the pulse's hash, the channel type, and the details and the collection hash"
+    (mt/with-temp* [Collection   [coll  {:name "field-db" :location "/"}]
+                    Pulse        [pulse {:name "my pulse" :collection_id (:id coll)}]
+                    PulseChannel [chan  {:pulse_id     (:id pulse)
+                                         :channel_type :email
+                                         :details      {:emails ["cam@test.com"]}}]]
+      (is (= "ab5e6ff0"
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash pulse) :email {:emails ["cam@test.com"]}])
+             (serdes.hash/identity-hash chan))))))

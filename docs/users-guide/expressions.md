@@ -1,3 +1,7 @@
+---
+title: Custom expressions in the query builder
+---
+
 # Custom expressions in the query builder
 
 [Custom expressions][expression-list] are like formulas in spreadsheet software like Excel, Google Sheets, and LibreOffice Calc. They are the power tools in the notebook editor of the query builder that allow you to ask more complicated questions.

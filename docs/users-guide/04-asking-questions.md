@@ -1,3 +1,7 @@
+---
+title: Asking questions
+---
+
 # Asking questions
 
 Metabase's two core concepts are questions and their corresponding answers. Everything else is based around questions and answers. To ask a question in Metabase, click the **+ New** button in the upper right of the main navigation bar, and select either:

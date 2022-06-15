@@ -4,7 +4,7 @@ import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
 
-export const Container = styled.div`
+export const WidgetRoot = styled.div`
   min-width: 300px;
 `;
 

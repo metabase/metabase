@@ -28,77 +28,77 @@ export const Empty = Template.bind({
 export const Area = Template.bind({});
 Area.args = {
   display: "area",
-  displayName: "Area",
+  name: "Area",
 };
 
 export const Bar = Template.bind({});
 Bar.args = {
   display: "bar",
-  displayName: "Bar",
+  name: "Bar",
 };
 
 export const Funnel = Template.bind({});
 Funnel.args = {
   display: "funnel",
-  displayName: "Funnel",
+  name: "Funnel",
 };
 
 export const Line = Template.bind({});
 Line.args = {
   display: "line",
-  displayName: "Line",
+  name: "Line",
 };
 
 export const Map = Template.bind({});
 Map.args = {
   display: "map",
-  displayName: "Map",
+  name: "Map",
 };
 
 export const Pie = Template.bind({});
 Pie.args = {
   display: "pie",
-  displayName: "Pie",
+  name: "Pie",
 };
 
 export const Progress = Template.bind({});
 Progress.args = {
   display: "progress",
-  displayName: "Progress",
+  name: "Progress",
 };
 
 export const Row = Template.bind({});
 Row.args = {
   display: "row",
-  displayName: "Row",
+  name: "Row",
 };
 
 export const Scalar = Template.bind({});
 Scalar.args = {
   display: "scalar",
-  displayName: "Scalar",
+  name: "Scalar",
 };
 
 export const Scatter = Template.bind({});
 Scatter.args = {
   display: "scatter",
-  displayName: "Scatter",
+  name: "Scatter",
 };
 
 export const SmartScalar = Template.bind({});
 SmartScalar.args = {
   display: "smartscalar",
-  displayName: "SmartScalar",
+  name: "SmartScalar",
 };
 
 export const Table = Template.bind({});
 Table.args = {
   display: "table",
-  displayName: "Table",
+  name: "Table",
 };
 
 export const Waterfall = Template.bind({});
 Waterfall.args = {
   display: "waterfall",
-  displayName: "Waterfall",
+  name: "Waterfall",
 };

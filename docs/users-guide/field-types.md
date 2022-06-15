@@ -1,3 +1,7 @@
+---
+title: Field types in Metabase
+---
+
 # Field types in Metabase
 
 
@@ -94,4 +98,3 @@ While data types themselves can't be edited in Metabase, admins can manually [ca
 - [Exploring data with Metabase's data browser](/learn/getting-started/data-browser.html).
 - [The Data Model page: editing metadata](../administration-guide/03-metadata-editing.md).
 - [Field Filters: create smart filter widgets for SQL questions](/learn/sql-questions/field-filters.html).
-

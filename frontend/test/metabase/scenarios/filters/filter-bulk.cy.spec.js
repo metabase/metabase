@@ -347,6 +347,60 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 4 rows").should("be.visible");
     });
   });
+
+  describe("date filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+    });
+
+    it("can add a date shortcut filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").click();
+      });
+      cy.findByText("Today").click();
+
+      cy.findByLabelText("Created At").within(() => {
+        cy.findByText("Today").should("be.visible");
+      });
+      // make sure select popover is closed
+      cy.findByText("Yesterday").should("not.exist");
+    });
+
+    it("can add a date range filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").click();
+      });
+      cy.findByText("Specific dates...").click();
+      cy.findByText("Before").click();
+
+      popover().within(() => {
+        cy.get("input")
+          .eq(0)
+          .clear()
+          .type("01/01/2018");
+
+        cy.findByText("Add filter").click();
+      });
+
+      cy.findByLabelText("Created At").within(() => {
+        cy.findByText("is before January 1, 2018").should("be.visible");
+      });
+    });
+
+    it.skip("Bug repro: can cancel adding date filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").click();
+      });
+      // click outside the popover
+      cy.findByText("Discount").click();
+
+      cy.findByLabelText("Created At").within(() => {
+        // there should be no filter so the X should not populate
+        cy.get(".Icon-close").should("not.exist");
+      });
+    });
+  });
 });
 
 const modal = () => {

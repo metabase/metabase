@@ -1,3 +1,7 @@
+---
+title: Data permissions
+---
+
 # Data permissions
 
 This page covers permissions for databases and tables. If you haven't already, check out our [Permissions overview][permissions-overview].

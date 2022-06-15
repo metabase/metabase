@@ -32,6 +32,7 @@ const propTypes = {
   headerModalMessage: PropTypes.string,
   isEditing: PropTypes.bool,
   isEditingInfo: PropTypes.bool,
+  isNavBarOpen: PropTypes.bool.isRequired,
   item: PropTypes.object.isRequired,
   objectType: PropTypes.string.isRequired,
   isBadgeVisible: PropTypes.bool,
@@ -146,11 +147,11 @@ class Header extends Component {
     const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
-          section &&
-          section.length > 0 && (
+          section?.length > 0 && (
             <HeaderButtonSection
               key={sectionIndex}
               className="Header-buttonSection"
+              isNavBarOpen={this.props.isNavBarOpen}
             >
               {section}
             </HeaderButtonSection>
@@ -165,6 +166,7 @@ class Header extends Component {
         {this.renderEditWarning()}
         {this.renderHeaderModal()}
         <HeaderRoot
+          isNavBarOpen={this.props.isNavBarOpen}
           className={cx("QueryBuilder-section", this.props.headerClassName)}
           ref={this.header}
         >
@@ -191,7 +193,9 @@ class Header extends Component {
             </HeaderBadges>
           </HeaderContent>
 
-          <HeaderButtonsContainer>{headerButtons}</HeaderButtonsContainer>
+          <HeaderButtonsContainer isNavBarOpen={this.props.isNavBarOpen}>
+            {headerButtons}
+          </HeaderButtonsContainer>
         </HeaderRoot>
         {this.props.children}
       </div>

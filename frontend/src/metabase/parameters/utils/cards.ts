@@ -92,7 +92,7 @@ export function getParametersFromCard(
 export function getValueAndFieldIdPopulatedParametersFromCard(
   card: Card,
   metadata: Metadata,
-  parameterValues: { [key: string]: any },
+  parameterValues: { [key: string]: any } = {},
   parameters = getParametersFromCard(card),
 ) {
   if (!card) {

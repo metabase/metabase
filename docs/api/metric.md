@@ -1,3 +1,8 @@
+---
+title: "Metric"
+summary: "/api/metric endpoints."
+---
+
 # Metric
 
 /api/metric endpoints.

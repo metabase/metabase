@@ -1,3 +1,7 @@
+---
+title: Submitting a PR for a new driver
+---
+
 # Submitting a PR for a new driver
 
 If you want to submit a PR to add a driver plugin to the [Metabase repo](https://github.com/metabase/metabase) (as opposed to keeping it in a separate repo), you'll need to:
@@ -240,4 +244,3 @@ and the steps:
 ```
 
 For more on what it is you're doing here and how all this works, see [CircleCI 2.0 Workflows](https://circleci.com/docs/2.0/workflows/).
-

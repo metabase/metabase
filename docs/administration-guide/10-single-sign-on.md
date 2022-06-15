@@ -1,3 +1,7 @@
+---
+title: Authenticating with Google Sign-In or LDAP
+---
+
 # Authenticating with Google Sign-In or LDAP
 
 Enabling [Google Sign-In](#enabling-google-sign-in) or [LDAP](#enabling-ldap-authentication) for [single sign-on (SSO)][sso-docs] lets your team log in with a click instead of using email and password. It can also be used to let people sign up for Metabase accounts without an admin having to create them first. You can find these options in the **Settings** section of the **Admin Panel**, under **Authentication**.
