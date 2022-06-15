@@ -71,8 +71,8 @@ const PinnedQuestionLoader = ({
             }: QuestionResultLoaderProps) =>
               children({
                 question,
-                rawSeries,
                 loading: loading || results == null,
+                rawSeries: getRawSeries(rawSeries),
                 error: getError(error, result),
                 errorIcon: getErrorIcon(error, result),
               })
@@ -82,6 +82,21 @@ const PinnedQuestionLoader = ({
       }}
     </Questions.Loader>
   );
+};
+
+const getRawSeries = (rawSeries?: any[]) => {
+  return rawSeries?.map(series => ({
+    ...series,
+    card: {
+      ...series.card,
+      visualization_settings: {
+        ...series.card.visualization_settings,
+        "graph.show_values": false,
+        "graph.x_axis.labels_enabled": false,
+        "graph.y_axis.labels_enabled": false,
+      },
+    },
+  }));
 };
 
 const getError = (error?: QuestionError, result?: QuestionResult) => {
