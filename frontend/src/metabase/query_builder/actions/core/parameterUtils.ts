@@ -82,7 +82,6 @@ async function verifyMatchingDashcardAndParameters({
         dashcardId,
         cardId,
         parameters,
-        metadata,
       })
     ) {
       dispatch(setErrorPage({ status: 403 }));
