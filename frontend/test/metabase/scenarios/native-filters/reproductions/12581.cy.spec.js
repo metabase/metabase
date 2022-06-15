@@ -72,6 +72,9 @@ describe("issue 12581", () => {
     cy.get("@editor")
       .should("be.visible")
       .and("contain", ORIGINAL_QUERY);
+
+    cy.findByText("37.65");
+
     // Filter dropdown field
     filterWidget().contains("Filter");
   });
