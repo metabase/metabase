@@ -30,5 +30,6 @@ export * from "./helpers/e2e-bi-basics-helpers";
 export * from "./helpers/e2e-boolean-helpers";
 export * from "./helpers/e2e-embedding-helpers";
 export * from "./helpers/e2e-permissions-helpers";
+export * from "./helpers/e2e-visual-tests-helpers";
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
