@@ -439,6 +439,37 @@ describe("scenarios > filters > bulk filtering", () => {
       cy.findByText("Showing 20 rows").should("be.visible");
     });
   });
+
+  describe("key filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+    });
+
+    it("filters by primary keys", () => {
+      modal().within(() => {
+        cy.findByLabelText("ID").within(() => {
+          cy.findByPlaceholderText("Enter IDs").type("17, 18");
+        });
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+      cy.findByText("131.68").should("be.visible"); // total for order id 17
+      cy.findByText("123.99").should("be.visible"); // total for order id 18
+    });
+
+    it("filters by a foreign key", () => {
+      modal().within(() => {
+        cy.findByLabelText("Product ID").within(() => {
+          cy.findByPlaceholderText("Enter IDs").type("65");
+        });
+        cy.button("Apply").click();
+      });
+
+      cy.findByText("Showing 107 rows").should("be.visible");
+    });
+  });
 });
 
 const modal = () => {
