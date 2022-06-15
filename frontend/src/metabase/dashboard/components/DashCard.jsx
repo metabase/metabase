@@ -270,8 +270,7 @@ export default class DashCard extends Component {
           }
           replacementContent={
             (clickBehaviorSidebarDashcard != null || isEditingParameter) &&
-            isVirtualDashCard(dashcard) &&
-            isActionButton ? (
+            isVirtualDashCard(dashcard) ? (
               <div className="flex full-height align-center justify-center">
                 <h4 className="text-medium">
                   {dashcard.visualization_settings.virtual_card.display ===
