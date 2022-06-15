@@ -183,6 +183,7 @@ export default _.compose(
       titleIndex: 1,
     })),
     titleWithLoadingTime("loadingStartTime"),
-    MetabaseSettings.get("experimental-enable-actions") && Actions.loadList(),
+    MetabaseSettings.get("experimental-enable-actions") &&
+      Actions.loadList({ metadataPropName: "actionListMetadata" }),
   ].filter(Boolean),
 )(DashboardApp);
