@@ -1,6 +1,9 @@
 import React, { HTMLAttributes } from "react";
-import SkeletonCaption from "../SkeletonCaption";
-import { SkeletonImage, SkeletonRoot } from "./ScalarSkeleton.styled";
+import {
+  SkeletonImage,
+  SkeletonRoot,
+  SkeletonTitle,
+} from "./ScalarSkeleton.styled";
 
 export interface ScalarSkeletonProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
@@ -17,7 +20,7 @@ const ScalarSkeleton = ({
       <SkeletonImage xmlns="http://www.w3.org/2000/svg" viewBox="0 0 103 32">
         <rect width="103" height="32" rx="16" fill="currentColor" />
       </SkeletonImage>
-      <SkeletonCaption name={name} description={description} />
+      <SkeletonTitle name={name} description={description} size="large" />
     </SkeletonRoot>
   );
 };
