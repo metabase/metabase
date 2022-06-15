@@ -68,24 +68,15 @@
 
 (defn query-generator [database-or-id]
   (gens/let [source-table-id (gen.data/source-table-id-generator database-or-id)
-             inner-query     (inner-query-generator (gen.data/field-generator source-table-id))
-             maybe-join      (maybe nil
-                                    (gen.data/source-table-id-generator database-or-id))]
-    (let [temp-q {:database (u/the-id database-or-id)
-                  :type     :query
-                  :query    (merge {:source-table       source-table-id
-                                    :-source-table-name (db/select-one-field :name 'Table :id source-table-id)}
-                                   inner-query)}]
-      ;;;;;;;;
-      ;;;;;;;;
-      ;;;;;;;;
-      ;;;;;;;;
-      ;;;;;;;;
-      (if (some? maybe-join)
-        (assoc temp-q :join some shit)
-        temp-q))))
+             inner-query     (inner-query-generator (gen.data/field-generator source-table-id))]
+    {:database (u/the-id database-or-id)
+     :type     :query
+     :query    (merge {:source-table       source-table-id
+                       :-source-table-name (db/select-one-field :name 'Table :id source-table-id)}
+                   inner-query)}))
 
 ;; TODO `:source-query` with or without `:source-metadata`
+;; TODO `:joins`
 
 (defn random-query []
   (rand-nth (gens/sample (query-generator (mt/id)))))
