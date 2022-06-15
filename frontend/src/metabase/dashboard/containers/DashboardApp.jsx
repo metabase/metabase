@@ -45,6 +45,9 @@ import {
   getIsLoadingComplete,
   getIsHeaderVisible,
   getIsAdditionalInfoVisible,
+
+  // Writeback
+  getFocusedEmitterId,
 } from "../selectors";
 import { getDatabases, getMetadata } from "metabase/selectors/metadata";
 import {
@@ -57,6 +60,8 @@ import { parseHashOptions } from "metabase/lib/browser";
 import * as Urls from "metabase/lib/urls";
 
 import Dashboards from "metabase/entities/dashboards";
+
+import ActionParametersInputModal from "./ActionParametersInputModal";
 
 const mapStateToProps = (state, props) => {
   return {
@@ -89,6 +94,9 @@ const mapStateToProps = (state, props) => {
     isLoadingComplete: getIsLoadingComplete(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
+
+    // Writeback
+    focusedEmitterId: getFocusedEmitterId(state),
   };
 };
 
@@ -104,7 +112,7 @@ const mapDispatchToProps = {
 const DashboardApp = props => {
   const options = parseHashOptions(window.location.hash);
 
-  const { isRunning, isLoadingComplete, dashboard } = props;
+  const { isRunning, isLoadingComplete, dashboard, focusedEmitterId } = props;
 
   const [editingOnLoad] = useState(options.edit);
   const [addCardOnLoad] = useState(options.add && parseInt(options.add));
@@ -163,6 +171,12 @@ const DashboardApp = props => {
       />
       {/* For rendering modal urls */}
       {props.children}
+      {dashboard && focusedEmitterId && (
+        <ActionParametersInputModal
+          dashboard={dashboard}
+          focusedEmitterId={focusedEmitterId}
+        />
+      )}
       <Toaster
         message={t`Would you like to be notified when this dashboard is done loading?`}
         isShown={isShowingToaster}
