@@ -199,7 +199,6 @@ class ParameterValueWidget extends Component {
               onFocusChanged={this.onFocusChanged}
               onPopoverClose={this.onPopoverClose}
               disabled={isDashParamWithoutMapping}
-              placeholder={placeholderText}
             />
           </PopoverWithTrigger>
         </Tooltip>
@@ -260,7 +259,7 @@ function Widget({
             typeof arity === "number" && arity > 1 ? t`and` : undefined
           }
           autoFocus
-          placeholder={placeholder}
+          placeholder={isEditing ? t`Enter a default value…` : undefined}
         />
       );
     }
