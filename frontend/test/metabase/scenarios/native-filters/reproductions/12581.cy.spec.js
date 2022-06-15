@@ -62,7 +62,7 @@ describe("issue 12581", () => {
     // Make sure sidebar opened and the history loaded
     cy.findByText("You created this");
 
-    cy.findByTestId("question-revert-button").click(); // Revert to the first revision
+    cy.button("Revert").click(); // Revert to the first revision
     cy.wait("@dataset");
 
     cy.findByText("You reverted to an earlier revision");
