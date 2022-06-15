@@ -42,6 +42,7 @@
                 #_:sum-where
                 #_:case
                 (gen.expressions/numeric-expression-generator (gen.data/numeric-field-generator field-generator))
+                (gen.expressions/string-expression-generator)
                 ]))
 
 ;; TODO -- string aggregations

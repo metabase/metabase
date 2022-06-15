@@ -61,21 +61,17 @@
                   (n-ary-expression-generator :coalesce arg-generator)
                   (case-expression-generator arg-generator arg-generator)])))
 
-(defn string-expression-generator [arg-generator]
-  (let [arg-generator (gens/one-of [arg-generator
-                                    gens/string
-                                    (gen/delay (numeric-expression-generator arg-generator))])]
-    (gens/one-of [
-                  (unary-expression-generator :trim arg-generator)
-                  (unary-expression-generator :ltrim arg-generator)
-                  (unary-expression-generator :rtrim arg-generator)
-                  (unary-expression-generator :upper arg-generator)
-                  (unary-expression-generator :lower arg-generator)
-                  (n-ary-expression-generator :coalesce arg-generator)
-                  ;; TODO -- replace
-                  (n-ary-expression-generator :concat arg-generator)
-                  ;; TODO -- substring
-                  (unary-expression-generator :length arg-generator)])))
+(defn string-expression-generator []
+  (gens/one-of [(unary-expression-generator :trim gens/string)
+                (unary-expression-generator :ltrim gens/string)
+                (unary-expression-generator :rtrim gens/string)
+                (unary-expression-generator :upper gens/string)
+                (unary-expression-generator :lower gens/string)
+                (n-ary-expression-generator :coalesce gens/string)
+                ;; TODO -- replace
+                (n-ary-expression-generator :concat gens/string)
+                ;; TODO -- substring
+                (unary-expression-generator :length gens/string)]))
 
 (defn expressions-map-generator [field-generator]
   (let [numeric-field-generator      (gen.data/numeric-field-generator field-generator)
