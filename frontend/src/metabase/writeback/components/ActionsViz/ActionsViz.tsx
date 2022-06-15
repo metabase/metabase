@@ -167,7 +167,6 @@ function ActionsViz({
     ? new Question(connectedDashCard?.card, metadata)
     : null;
 
-  console.log("### QUESTIOn", { question, metadata, connectedDashCard });
   const isObjectDetailView = question?.display() === "object";
   const table = question?.table();
   const connectedCardData =
