@@ -1,7 +1,5 @@
 import { t } from "ttag";
-import _ from "underscore";
-
-import { Collection, CollectionId } from "metabase-types/api";
+import { Collection } from "metabase-types/api";
 
 export type Item = {
   id: number;
@@ -82,7 +80,7 @@ export function isItemPinned(item: Item) {
   return item.collection_position != null;
 }
 
-export function isPreviewable(item: Item) {
+export function isPreviewShown(item: Item) {
   return isPreviewEnabled(item) && hasRequiredParameters(item);
 }
 
