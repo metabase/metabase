@@ -76,6 +76,11 @@
                   :query    (merge {:source-table       source-table-id
                                     :-source-table-name (db/select-one-field :name 'Table :id source-table-id)}
                                    inner-query)}]
+      ;;;;;;;;
+      ;;;;;;;;
+      ;;;;;;;;
+      ;;;;;;;;
+      ;;;;;;;;
       (if (some? maybe-join)
         (assoc temp-q :join some shit)
         temp-q))))

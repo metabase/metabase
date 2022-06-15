@@ -8,3 +8,18 @@
                                      [k v])]))]
     (gens/let [result (apply gens/tuple generators)]
       (into {} result))))
+
+(defn comparison-generator
+  [member-generator]
+  ;;;;;;;;;
+  ;;;;;;;;;
+  ;;;;;;;;;
+  ;;;;;;;;;
+  (gens/let [some shit some shit shomsdkfjwelkfjweklfjwlf]))
+
+(defn case-generator
+  [some crap]
+  ;;;;;;;;;
+  ;;;;;;;;;
+  ;;;;;;;;;
+  ;;;;;;;;;)
