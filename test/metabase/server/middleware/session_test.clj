@@ -2,6 +2,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
             [environ.core :as env]
+            [java-time :as t]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
             [metabase.config :as config]
             [metabase.core.initialization-status :as init-status]
@@ -376,3 +377,32 @@
             (testing "w/ X-Metabase-Locale header"
               (is (= "en_GB"
                      (session-locale session-id :headers {"x-metabase-locale" "en-GB"}))))))))))
+
+
+;;; ----------------------------------------------------- Session timeout -----------------------------------------------------
+
+(deftest session-timeout-tests
+  (testing "session with nil `last_activity` does not time out"
+    (let [session-id (format "%s-timeout" test-uuid)]
+      (try
+        (mt/with-temp Session [session {:id            session-id
+                                        :user_id       (mt/user->id :lucky)
+                                        :last_activity nil}]
+          (is (false? (#'mw.session/timed-out? (:id session) (t/offset-date-time "2011-04-18T00:00:00Z"))))
+
+          (is (= :unaltered
+                 ((mw.session/check-session-timeout (constantly :unaltered)) nil nil identity))))
+        (finally
+          (db/delete! Session :id session-id)))))
+
+  (testing "session with zero delta t does not time out"
+    (let [session-id (format "%s-timeout" test-uuid)]
+      (try
+        (mt/with-temp Session [session {:id            session-id
+                                        :user_id       (mt/user->id :lucky)
+                                        :last_activity (t/offset-date-time "2011-04-18T00:00:00Z")}]
+          (is (false? (#'mw.session/timed-out? (:id session) (t/offset-date-time "2011-04-18T00:00:00Z"))))
+          (is (= :unaltered
+                 ((mw.session/check-session-timeout (constantly :unaltered)) nil nil identity))))
+        (finally
+          (db/delete! Session :id session-id))))))

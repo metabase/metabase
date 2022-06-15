@@ -164,7 +164,7 @@
 
 (defn wrap-session-id
   "Middleware that sets the `:metabase-session-id` keyword on the request if a session id can be found.
-   We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
+  We first check the request :cookies for `metabase.SESSION`, then if no cookie is found we look in the http headers
   for `X-METABASE-SESSION`. If neither is found then then no keyword is bound to the request."
   [handler]
   (fn [request respond raise]
@@ -305,3 +305,22 @@
   `(do-with-current-user
     (with-current-user-fetch-user-for-id ~current-user-id)
     (fn [] ~@body)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              check-session-timeout                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- timed-out?
+  [session-id time-now]
+  (let [last-activity (db/select-one-field :last_activity Session, :id session-id)]
+    ;; TODO Implement this
+    false))
+
+(defn check-session-timeout
+  "Middleware that logs out the current user if their session has seen no activity in the last `:max-session-age`
+  (config) seconds."
+  [handler]
+  (fn [request respond raise]
+    ;; TODO Implement this
+    (handler request respond raise)))
