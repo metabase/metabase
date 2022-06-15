@@ -6,7 +6,7 @@ import { color } from "metabase/lib/colors";
 export const Item = styled.div`
   display: flex;
   align-items: center;
-  cursor: ${props => !props.disabled && "pointer"};
+  cursor: ${props => (props.disabled ? "not-allowed" : "pointer")};
   color: ${props => color(props.disabled ? "text-light" : "text-medium")};
   padding: 0.85em 1.45em;
   text-decoration: none;
