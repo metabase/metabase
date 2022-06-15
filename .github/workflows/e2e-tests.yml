@@ -69,6 +69,7 @@ jobs:
           - "joins"
           - "models"
           - "native"
+          - "native-filters"
           - "organization"
           - "permissions"
           - "question"
