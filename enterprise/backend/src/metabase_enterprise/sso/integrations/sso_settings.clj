@@ -4,7 +4,6 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
             [metabase.util.schema :as su]
             [saml20-clj.core :as saml]
