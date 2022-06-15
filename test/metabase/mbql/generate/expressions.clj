@@ -22,12 +22,18 @@
   (gens/let [members (gen/vector arg-generator min-card 5)]
     (vec (flatten [operator members])))))
 
+(defn comparison-generator
+  [comparand-generator]
+  (gens/let [comparison       (gen/elements [:< :> :<= :>= :=])
+             first-comparand  comparand-generator
+             second-comparand comparand-generator]
+    [comparison first-comparand second-comparand]))
+
 (defn case-expression-generator
-  [operator generator]
-  ;;;;;;;;;;;;;;;
-  ;;;;;;;;;;;;;;;
-  ;;;;;;;;;;;;;;;
-  [])
+  [comparand-generator value-generator]
+  (gens/let [value      value-generator
+             comparison (comparison-generator comparand-generator)]
+  [:case comparison value]))
 
 (defn numeric-expression-generator [arg-generator]
   (let [arg-generator (gens/one-of [arg-generator
