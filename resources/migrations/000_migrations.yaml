@@ -11906,6 +11906,18 @@ databaseChangeLog:
                       ON all_users_group.id = p.group_id
                     AND p.object = '/collection/namespace/snippets/root/'
               WHERE p.object IS NULL;
+              
+  - changeSet:
+      id: v44.00-034
+      author: calherries
+      comment: Added 0.44.0. Add last_activity to session
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              name: last_activity
+              type: DATETIME
+              remarks: 'The last time that the session was used.'
 
   - changeSet:
       id: v44.00-038
