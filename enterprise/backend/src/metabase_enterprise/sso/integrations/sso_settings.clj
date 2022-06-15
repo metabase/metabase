@@ -107,9 +107,9 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   (deferred-tru "URL of JWT based login page"))
 
 (defsetting jwt-shared-secret
-  (str (deferred-tru "String used to seed the private key used to validate JWT messages.")
-       " "
-       (deferred-tru "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
+  (deferred-tru (str "String used to seed the private key used to validate JWT messages."
+                     " "
+                     "A hexadecimal-encoded 256-bit key (i.e., a 64-character string) is strongly recommended."))
   :type :string)
 
 (defsetting jwt-attribute-email
