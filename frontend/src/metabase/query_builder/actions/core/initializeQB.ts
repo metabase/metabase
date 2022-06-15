@@ -1,14 +1,13 @@
 import _ from "underscore";
 import querystring from "querystring";
-import { normalize } from "cljs/metabase.mbql.js";
+import { LocationDescriptorObject } from "history";
 
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { deserializeCardFromUrl, loadCard } from "metabase/lib/card";
+import { normalize } from "metabase/lib/query/normalize";
 import * as Urls from "metabase/lib/urls";
 
 import { cardIsEquivalent } from "metabase/meta/Card";
-
-import { DashboardApi } from "metabase/services";
 
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -17,17 +16,41 @@ import { getUser } from "metabase/selectors/user";
 import Snippets from "metabase/entities/snippets";
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
-import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
-
 import Question from "metabase-lib/lib/Question";
-import { getQueryBuilderModeFromLocation } from "../../utils";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import {
+  Dispatch,
+  GetState,
+  QueryBuilderUIControls,
+} from "metabase-types/store";
+
+import { Card, SavedCard } from "metabase-types/types/Card";
+
+import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { redirectToNewQuestionFlow, updateUrl } from "../navigation";
 import { cancelQuery, runQuestionQuery } from "../querying";
 
 import { loadMetadataForCard, resetQB } from "./core";
+import {
+  handleDashboardParameters,
+  getParameterValuesForQuestion,
+} from "./parameterUtils";
+
+type BlankQueryOptions = {
+  db?: string;
+  table?: string;
+  segment?: string;
+  metric?: string;
+};
+
+type QueryParams = BlankQueryOptions & {
+  slug?: string;
+  objectId?: string;
+};
+
+type UIControls = Partial<QueryBuilderUIControls>;
 
 const ARCHIVED_ERROR = {
   data: {
@@ -43,97 +66,12 @@ const NOT_FOUND_ERROR = {
   context: "query-builder",
 };
 
-function checkShouldPropagateDashboardParameters({
-  cardId,
-  deserializedCard,
-  originalCard,
-}) {
-  if (!deserializedCard) {
-    return false;
-  }
-  if (cardId && deserializedCard.parameters) {
-    return true;
-  }
-  if (!originalCard) {
-    return false;
-  }
-  const equalCards = cardIsEquivalent(deserializedCard, originalCard, {
-    checkParameters: false,
-  });
-  const differentParameters = !cardIsEquivalent(
-    deserializedCard,
-    originalCard,
-    { checkParameters: true },
-  );
-  return equalCards && differentParameters;
-}
-
-async function verifyMatchingDashcardAndParameters({
-  dispatch,
-  dashboardId,
-  dashcardId,
-  cardId,
-  parameters,
-  metadata,
-}) {
-  try {
-    const dashboard = await DashboardApi.get({ dashId: dashboardId });
-    if (
-      !hasMatchingParameters({
-        dashboard,
-        dashcardId,
-        cardId,
-        parameters,
-        metadata,
-      })
-    ) {
-      dispatch(setErrorPage({ status: 403 }));
-    }
-  } catch (error) {
-    dispatch(setErrorPage(error));
-  }
-}
-
-function getParameterValuesForQuestion({ card, queryParams, metadata }) {
-  const parameters = getValueAndFieldIdPopulatedParametersFromCard(
-    card,
-    metadata,
-  );
-  return getParameterValuesByIdFromQueryParams(
-    parameters,
-    queryParams,
-    metadata,
-  );
-}
-
-async function handleDashboardParameters(
-  card,
-  { cardId, deserializedCard, originalCard, dispatch, getState },
-) {
-  const shouldPropagateParameters = checkShouldPropagateDashboardParameters({
-    cardId,
-    deserializedCard,
-    originalCard,
-  });
-  if (shouldPropagateParameters) {
-    const { dashboardId, dashcardId, parameters } = deserializedCard;
-    const metadata = getMetadata(getState());
-    await verifyMatchingDashcardAndParameters({
-      dispatch,
-      dashboardId,
-      dashcardId,
-      cardId: card.id,
-      parameters,
-      metadata,
-    });
-
-    card.parameters = parameters;
-    card.dashboardId = dashboardId;
-    card.dashcardId = dashcardId;
-  }
-}
-
-function getCardForBlankQuestion({ db, table, segment, metric }) {
+function getCardForBlankQuestion({
+  db,
+  table,
+  segment,
+  metric,
+}: BlankQueryOptions) {
   const databaseId = db ? parseInt(db) : undefined;
   const tableId = table ? parseInt(table) : undefined;
 
@@ -141,14 +79,12 @@ function getCardForBlankQuestion({ db, table, segment, metric }) {
 
   if (databaseId && tableId) {
     if (segment) {
-      question = question
-        .query()
+      question = (question.query() as StructuredQuery)
         .filter(["segment", parseInt(segment)])
         .question();
     }
     if (metric) {
-      question = question
-        .query()
+      question = (question.query() as StructuredQuery)
         .aggregate(["metric", parseInt(metric)])
         .question();
     }
@@ -157,7 +93,7 @@ function getCardForBlankQuestion({ db, table, segment, metric }) {
   return question.card();
 }
 
-function deserializeCard(serializedCard) {
+function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
@@ -166,7 +102,7 @@ function deserializeCard(serializedCard) {
   return card;
 }
 
-async function fetchAndPrepareSavedQuestionCards(cardId) {
+async function fetchAndPrepareSavedQuestionCards(cardId: number) {
   const card = await loadCard(cardId);
   const originalCard = { ...card };
 
@@ -177,7 +113,7 @@ async function fetchAndPrepareSavedQuestionCards(cardId) {
   return { card, originalCard };
 }
 
-async function fetchAndPrepareAdHocQuestionCards(deserializedCard) {
+async function fetchAndPrepareAdHocQuestionCards(deserializedCard: Card) {
   if (!deserializedCard.original_card_id) {
     return {
       card: deserializedCard,
@@ -200,7 +136,20 @@ async function fetchAndPrepareAdHocQuestionCards(deserializedCard) {
   };
 }
 
-function resolveCards({ cardId, deserializedCard, options }) {
+type ResolveCardsResult = {
+  card: Card;
+  originalCard?: Card;
+};
+
+async function resolveCards({
+  cardId,
+  deserializedCard,
+  options,
+}: {
+  cardId?: number;
+  deserializedCard?: Card;
+  options: BlankQueryOptions;
+}): Promise<ResolveCardsResult> {
   if (!cardId && !deserializedCard) {
     return {
       card: getCardForBlankQuestion(options),
@@ -208,17 +157,11 @@ function resolveCards({ cardId, deserializedCard, options }) {
   }
   return cardId
     ? fetchAndPrepareSavedQuestionCards(cardId)
-    : fetchAndPrepareAdHocQuestionCards(deserializedCard);
+    : fetchAndPrepareAdHocQuestionCards(deserializedCard as Card);
 }
 
-function getInitialUIControls(location) {
-  const { mode, ...uiControls } = getQueryBuilderModeFromLocation(location);
-  uiControls.queryBuilderMode = mode;
-  return uiControls;
-}
-
-function parseHash(hash) {
-  let options = {};
+function parseHash(hash?: string) {
+  let options: BlankQueryOptions = {};
   let serializedCard;
 
   // hash can contain either query params starting with ? or a base64 serialized card
@@ -234,14 +177,26 @@ function parseHash(hash) {
   return { options, serializedCard };
 }
 
+function isSavedCard(card: Card): card is SavedCard {
+  return !!(card as SavedCard).id;
+}
+
 export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
-async function handleQBInit(dispatch, getState, { location, params }) {
+async function handleQBInit(
+  dispatch: Dispatch,
+  getState: GetState,
+  {
+    location,
+    params,
+  }: { location: LocationDescriptorObject; params: QueryParams },
+) {
   dispatch(resetQB());
   dispatch(cancelQuery());
 
+  const queryParams = location.query;
   const cardId = Urls.extractEntityId(params.slug);
-  const uiControls = getInitialUIControls(location);
+  const uiControls: UIControls = getQueryBuilderModeFromLocation(location);
   const { options, serializedCard } = parseHash(location.hash);
   const hasCard = cardId || serializedCard;
 
@@ -266,19 +221,22 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     options,
   });
 
-  if (card.archived) {
+  if (isSavedCard(card) && card.archived) {
     dispatch(setErrorPage(ARCHIVED_ERROR));
     return;
   }
 
-  if (!card?.dataset && location.pathname.startsWith("/model")) {
+  if (
+    isSavedCard(card) &&
+    !card?.dataset &&
+    location.pathname?.startsWith("/model")
+  ) {
     dispatch(setErrorPage(NOT_FOUND_ERROR));
     return;
   }
 
   if (hasCard) {
     await handleDashboardParameters(card, {
-      cardId,
       deserializedCard,
       originalCard,
       dispatch,
@@ -296,16 +254,15 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     card.dataset_query.type,
   );
 
-  if (card && card.id != null) {
+  if (isSavedCard(card)) {
     dispatch(fetchAlertsForQuestion(card.id));
   }
 
-  if (card) {
-    await dispatch(loadMetadataForCard(card));
-  }
+  await dispatch(loadMetadataForCard(card));
+  const metadata = getMetadata(getState());
 
-  let question = card && new Question(card, getMetadata(getState()));
-  if (question && question.isSaved()) {
+  let question = new Question(card, metadata);
+  if (question.isSaved()) {
     // Don't set viz automatically for saved questions
     question = question.lockDisplay();
 
@@ -316,25 +273,21 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     }
   }
 
-  if (
-    question &&
-    question.isNative() &&
-    question.query().hasSnippets() &&
-    !question.query().readOnly()
-  ) {
-    await dispatch(Snippets.actions.fetchList());
-    const snippets = Snippets.selectors.getList(getState());
-    question = question.setQuery(
-      question.query().updateQueryTextWithNewSnippetNames(snippets),
-    );
+  if (question && question.isNative()) {
+    const query = question.query() as NativeQuery;
+    if (query.hasSnippets() && !query.readOnly()) {
+      await dispatch(Snippets.actions.fetchList());
+      const snippets = Snippets.selectors.getList(getState());
+      question = question.setQuery(
+        query.updateQueryTextWithNewSnippetNames(snippets),
+      );
+    }
   }
 
-  const queryParams = location.query;
-  const freshCard = question && question.card();
+  const finalCard = question.card();
 
-  const metadata = getMetadata(getState());
   const parameterValues = getParameterValuesForQuestion({
-    card,
+    card: finalCard,
     queryParams,
     metadata,
   });
@@ -344,7 +297,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
   dispatch({
     type: INITIALIZE_QB,
     payload: {
-      card: freshCard,
+      card: finalCard,
       originalCard,
       uiControls,
       parameterValues,
@@ -352,7 +305,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
     },
   });
 
-  if (question && uiControls.queryBuilderMode !== "notebook") {
+  if (uiControls.queryBuilderMode !== "notebook") {
     if (question.canRun()) {
       // Timeout to allow Parameters widget to set parameterValues
       setTimeout(
@@ -361,7 +314,7 @@ async function handleQBInit(dispatch, getState, { location, params }) {
       );
     }
     dispatch(
-      updateUrl(freshCard, {
+      updateUrl(finalCard, {
         replaceState: true,
         preserveParameters: hasCard,
         objectId,
@@ -370,10 +323,10 @@ async function handleQBInit(dispatch, getState, { location, params }) {
   }
 }
 
-export const initializeQB = (location, params) => async (
-  dispatch,
-  getState,
-) => {
+export const initializeQB = (
+  location: LocationDescriptorObject,
+  params: QueryParams,
+) => async (dispatch: Dispatch, getState: GetState) => {
   try {
     await handleQBInit(dispatch, getState, { location, params });
   } catch (error) {
