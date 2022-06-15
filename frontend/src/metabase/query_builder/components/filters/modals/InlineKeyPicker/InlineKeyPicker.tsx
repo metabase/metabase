@@ -33,8 +33,11 @@ export function InlineKeyPicker({
 
   const filterOperators = useMemo(() => {
     const operators = field.filterOperators(filter.operatorName());
-    return operators.filter((operator: any) =>
-      ALLOWED_OPERATORS.includes(operator.name),
+    const currentOperator = filter.operatorName();
+    return operators.filter(
+      (operator: any) =>
+        ALLOWED_OPERATORS.includes(operator.name) ||
+        operator.name === currentOperator,
     );
   }, [field, filter]);
 
