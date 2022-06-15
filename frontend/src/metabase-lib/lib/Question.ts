@@ -283,6 +283,13 @@ class QuestionInner {
   }
 
   /**
+   * The cache_ttl of a question if it exists
+   */
+  cache_ttl(): number | null {
+    return this._card?.cache_ttl;
+  }
+
+  /**
    * returns whether this question is a model
    * @returns boolean
    */

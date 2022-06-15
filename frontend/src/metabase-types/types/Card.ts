@@ -27,6 +27,7 @@ export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   can_write: boolean;
   public_uuid: string;
   archived?: boolean;
+  cache_ttl?: number;
 };
 
 export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;

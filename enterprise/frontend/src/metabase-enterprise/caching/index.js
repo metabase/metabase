@@ -6,6 +6,8 @@ import Link from "metabase/core/components/Link";
 import { CacheTTLField } from "./components/CacheTTLField";
 import { DatabaseCacheTTLField } from "./components/DatabaseCacheTTLField";
 import { QuestionCacheTTLField } from "./components/QuestionCacheTTLField";
+import { QuestionCacheSection } from "./components/QuestionCacheSection";
+
 import {
   getQuestionsImplicitCacheTTL,
   validateCacheTTL,
@@ -49,4 +51,6 @@ if (hasPremiumFeature("advanced_config")) {
   PLUGIN_FORM_WIDGETS.questionCacheTTL = QuestionCacheTTLField;
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
+  PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
+  PLUGIN_CACHING.showQuestionCacheSection = true;
 }
