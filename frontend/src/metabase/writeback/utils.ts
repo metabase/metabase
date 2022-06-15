@@ -2,7 +2,6 @@ import { getTemplateTagParameterTarget } from "metabase/parameters/utils/cards";
 
 import Database from "metabase-lib/lib/metadata/Database";
 
-import { NativeDatasetQuery } from "metabase-types/types/Card";
 import { Database as IDatabase } from "metabase-types/types/Database";
 import { DashCard } from "metabase-types/types/Dashboard";
 import { ParameterTarget } from "metabase-types/types/Parameter";
@@ -33,10 +32,9 @@ export const getActionEmitterParameterMappings = (
 ) => {
   const { click_behavior } = dashCard.visualization_settings;
 
-  const query = JSON.parse(
-    (action.card.dataset_query as unknown) as string,
-  ) as NativeDatasetQuery;
-  const templateTags = Object.values(query.native["template-tags"]);
+  const templateTags = Object.values(
+    action.card.dataset_query.native["template-tags"],
+  );
 
   const parameterMappings: Record<string, ParameterTarget> = {};
 

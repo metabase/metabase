@@ -616,12 +616,7 @@ function ActionOptions({ dashcard, clickBehavior, updateSettings }) {
               ))}
               {selectedAction && (
                 <ClickMappings
-                  object={{
-                    ...selectedAction.card,
-                    dataset_query: JSON.parse(
-                      selectedAction.card.dataset_query,
-                    ),
-                  }}
+                  object={selectedAction.card}
                   dashcard={dashcard}
                   clickBehavior={clickBehavior}
                   updateSettings={updateSettings}

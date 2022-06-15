@@ -159,7 +159,7 @@ function getParametersForNativeAction(
 ) {
   const action = extraData.actions[clickBehavior.action];
   const templateTags = Object.values(
-    JSON.parse(action.card.dataset_query).native["template-tags"],
+    action.card.dataset_query.native["template-tags"],
   );
 
   const parameters = {};
