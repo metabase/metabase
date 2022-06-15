@@ -48,7 +48,7 @@ describe("issue 12581", () => {
       .type("{selectall}{backspace}", { delay: 50 });
     cy.get("@editor")
       .click()
-      .type("{selectall}{backspace}SELECT * FROM ORDERS");
+      .type("{selectall}{backspace}SELECT 1");
 
     cy.findByText("Save").click();
     modal().within(() => {
