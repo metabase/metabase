@@ -423,10 +423,7 @@ export const saveDashboardAndCards = createThunkAction(
                 await EmittersApi.create({
                   dashboard_id: dashboard.id,
                   action_id: actionId,
-                  parameter_mappings: getActionEmitterParameterMappings(
-                    dc,
-                    action,
-                  ),
+                  parameter_mappings: getActionEmitterParameterMappings(action),
                 });
                 const newDash = await DashboardApi.get({
                   dashId: dashboard.id,
