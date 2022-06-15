@@ -26,7 +26,7 @@ const getNameFields = () => [
 const getEmailField = () => ({
   name: "email",
   title: t`Email`,
-  placeholder: "youlooknicetoday@email.com",
+  placeholder: "nicetoseeyou@email.com",
   validate: validate.required().email(),
 });
 
@@ -102,7 +102,7 @@ export default {
       {
         name: "email",
         title: t`Email`,
-        placeholder: "youlooknicetoday@email.com",
+        placeholder: "nicetoseeyou@email.com",
         validate: email => {
           if (!email) {
             return t`required`;
@@ -125,7 +125,7 @@ export default {
           name: "username",
           type: ldap ? "input" : "email",
           title: ldap ? t`Username or email address` : t`Email address`,
-          placeholder: t`youlooknicetoday@email.com`,
+          placeholder: t`nicetoseeyou@email.com`,
           validate: ldap ? validate.required() : validate.required().email(),
           autoFocus: true,
         },
@@ -177,7 +177,7 @@ export default {
     fields: [
       {
         name: "email",
-        placeholder: "youlooknicetoday@email.com",
+        placeholder: "nicetoseeyou@email.com",
         autoFocus: true,
         validate: validate.required().email(),
       },

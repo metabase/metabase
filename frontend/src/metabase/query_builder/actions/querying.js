@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { createAction } from "redux-actions";
 
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isAdHocModelQuestion } from "metabase/lib/data-modeling/utils";
 import { startTimer } from "metabase/lib/performance";
@@ -160,8 +161,9 @@ export const runQuestionQuery = ({
 const loadStartUIControls = createThunkAction(
   LOAD_START_UI_CONTROLS,
   () => (dispatch, getState) => {
+    const loadingMessage = PLUGIN_SELECTORS.getLoadingMessage(getState());
     const title = {
-      onceQueryIsRun: t`Doing Science...`,
+      onceQueryIsRun: loadingMessage,
       ifQueryTakesLong: t`Still Here...`,
     };
 
