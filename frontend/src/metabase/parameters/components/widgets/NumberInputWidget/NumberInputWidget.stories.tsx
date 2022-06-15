@@ -11,7 +11,7 @@ export default {
 const Template: ComponentStory<typeof NumberInputWidget> = args => {
   const [{ value }, updateArgs] = useArgs();
 
-  const handleSetValue = (v: string) => {
+  const handleSetValue = (v: number[] | undefined) => {
     updateArgs({ value: v });
   };
 
