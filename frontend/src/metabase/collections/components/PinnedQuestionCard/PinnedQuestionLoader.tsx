@@ -17,7 +17,7 @@ export interface PinnedQuestionLoaderProps {
 export interface PinnedQuestionChildrenProps {
   loading: boolean;
   question?: Question;
-  rawSeries?: any;
+  rawSeries?: any[];
   error?: string;
   errorIcon?: string;
 }
@@ -29,18 +29,10 @@ export interface QuestionLoaderProps {
 
 export interface QuestionResultLoaderProps {
   loading: boolean;
-  error?: QuestionError;
-  result?: QuestionResult;
+  error?: any;
+  result?: any;
   results?: any;
-  rawSeries?: any;
-}
-
-export interface QuestionError {
-  status?: number;
-}
-
-export interface QuestionResult {
-  error?: QuestionError;
+  rawSeries?: any[];
 }
 
 const PinnedQuestionLoader = ({
@@ -99,7 +91,7 @@ const getRawSeries = (rawSeries?: any[]) => {
   }));
 };
 
-const getError = (error?: QuestionError, result?: QuestionResult) => {
+const getError = (error?: any, result?: any) => {
   const errorResponse = error ?? result?.error;
 
   if (!errorResponse) {
@@ -111,7 +103,7 @@ const getError = (error?: QuestionError, result?: QuestionResult) => {
   }
 };
 
-const getErrorIcon = (error?: QuestionError, result?: QuestionResult) => {
+const getErrorIcon = (error?: any, result?: any) => {
   const errorResponse = error ?? result?.error;
 
   if (!errorResponse) {
