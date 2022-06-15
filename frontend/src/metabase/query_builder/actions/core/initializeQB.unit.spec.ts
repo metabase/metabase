@@ -577,41 +577,24 @@ describe("QB Actions > initializeQB", () => {
         snippet,
         ...opts
       }: SnippetsSetupOpts) {
-        const mockDatabase = {
-          native_permissions: hasDatabaseWritePermission ? "write" : "none",
-        };
+        const clone = question.clone();
 
-        Databases.selectors.getObject = jest
-          .fn()
-          .mockReturnValue(hasLoadedDatabase ? mockDatabase : null);
-        Databases.actions.fetchList = jest.fn();
+        jest
+          .spyOn(NativeQuery.prototype, "readOnly")
+          .mockReturnValue(!hasDatabaseWritePermission);
+        jest
+          .spyOn(NativeQuery.prototype, "isEditable")
+          .mockReturnValue(hasDatabaseWritePermission);
 
         Snippets.actions.fetchList = jest.fn();
         Snippets.selectors.getList = jest
           .fn()
           .mockReturnValue(snippet ? [snippet] : []);
 
-        return setup({ question, ...opts });
+        return setup({ question: clone, ...opts });
       }
 
       describe(questionType, () => {
-        it("loads databases if has not yet loaded question DB", async () => {
-          await setupSnippets({ hasLoadedDatabase: false });
-          expect(Databases.actions.fetchList).toHaveBeenCalledTimes(1);
-        });
-
-        it("does not load databases if has already loaded question DB", async () => {
-          const { state } = await setupSnippets({
-            hasLoadedDatabase: true,
-            snippet: SNIPPET,
-          });
-
-          expect(Databases.actions.fetchList).toHaveBeenCalledTimes(0);
-          expect(Databases.selectors.getObject).toHaveBeenCalledWith(state, {
-            entityId: question.databaseId(),
-          });
-        });
-
         it("loads snippets if have DB write permissions", async () => {
           await setupSnippets({ hasDatabaseWritePermission: true });
           expect(Snippets.actions.fetchList).toHaveBeenCalledTimes(1);
@@ -716,10 +699,9 @@ describe("QB Actions > initializeQB", () => {
     });
 
     it("constructs a card based on provided 'db' param", async () => {
-      const card = Question.create({
+      const expectedCard = Question.create({
         databaseId: SAMPLE_DATABASE?.id,
       }).card();
-      const expectedCard = { ...card, name: null, collection_id: undefined };
 
       const { result } = await setupBlank({ db: SAMPLE_DATABASE?.id });
       const question = new Question(result.card, metadata);
@@ -731,11 +713,7 @@ describe("QB Actions > initializeQB", () => {
     });
 
     it("constructs a card based on provided 'db' and 'table' params", async () => {
-      const expectedCard = {
-        ...ORDERS.question().card(),
-        name: null,
-        collection_id: undefined,
-      };
+      const expectedCard = ORDERS.question().card();
 
       const { result } = await setupOrdersTable();
 
@@ -765,6 +743,12 @@ describe("QB Actions > initializeQB", () => {
       const [aggregation] = query.aggregations();
 
       expect(aggregation.raw()).toEqual(["metric", METRIC_ID]);
+    });
+
+    it("opens summarization sidebar if metric is applied", async () => {
+      const METRIC_ID = 777;
+      const { result } = await setupOrdersTable({ metric: METRIC_ID });
+      expect(result.uiControls.isShowingSummarySidebar).toBe(true);
     });
 
     it("applies both 'metric' and 'segment' params", async () => {
