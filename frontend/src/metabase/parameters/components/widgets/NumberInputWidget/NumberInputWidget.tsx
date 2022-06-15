@@ -10,8 +10,8 @@ import {
   UpdateButton,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
-type NumberWidgetProps = {
-  value: number | number[] | undefined;
+type NumberInputWidgetProps = {
+  value: number[] | undefined;
   setValue: (value: any) => void;
   className?: string;
   commitImmediately?: boolean;
@@ -23,7 +23,7 @@ type NumberWidgetProps = {
 
 const OPTIONS: any[] = [];
 
-function NumberWidget({
+function NumberInputWidget({
   value,
   setValue,
   className,
@@ -31,7 +31,7 @@ function NumberWidget({
   infixText,
   autoFocus,
   placeholder = t`Enter a number`,
-}: NumberWidgetProps) {
+}: NumberInputWidgetProps) {
   const [unsavedValue, setUnsavedValue] = useState<(number | undefined)[]>(() =>
     normalize(value),
   );
@@ -81,22 +81,19 @@ function NumberWidget({
         ))
       )}
       <Footer>
-        <UpdateButton
-          disabled={!isValid}
-          onClick={onClick}
-        >{t`Update filter`}</UpdateButton>
+        <UpdateButton disabled={!isValid} onClick={onClick}>
+          {value && value.length ? t`Update filter` : t`Add filter`}
+        </UpdateButton>
       </Footer>
     </WidgetRoot>
   );
 }
 
-export default NumberWidget;
+export default NumberInputWidget;
 
-function normalize(value: number[] | number | undefined): number[] {
+function normalize(value: number[] | undefined): number[] {
   if (Array.isArray(value)) {
     return value;
-  } else if (typeof value === "number") {
-    return [value];
   } else {
     return [];
   }

@@ -242,11 +242,15 @@ function Widget({
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
   } else if (isOnlyMappedToFields(parameter)) {
+    const normalizedValue = Array.isArray(value)
+      ? value
+      : [value].filter(v => v != null);
+
     if (isNumberParameter(parameter)) {
       const arity = getNumberParameterArity(parameter);
       return (
         <NumberInputWidget
-          value={value}
+          value={normalizedValue}
           setValue={value => {
             setValue(value);
             onPopoverClose();
@@ -268,7 +272,7 @@ function Widget({
         parameters={parameters}
         dashboard={dashboard}
         placeholder={placeholder}
-        value={value}
+        value={normalizedValue}
         fields={parameter.fields}
         setValue={value => {
           setValue(value);
