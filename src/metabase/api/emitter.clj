@@ -35,16 +35,26 @@
 
 (api/defendpoint POST "/"
   "Endpoint to create an emitter."
-  [:as {:keys [body]}]
-  (let [{emitter-id :emitter_id} (cond
-                                   (:dashboard_id body)
-                                   (db/insert! DashboardEmitter body)
+  [:as {{:keys [action_id card_id dashboard_id options parameter_mappings], :as body} :body}]
+  {action_id          su/IntGreaterThanZero
+   card_id            (s/maybe su/IntGreaterThanOrEqualToZero)
+   dashboard_id       (s/maybe su/IntGreaterThanOrEqualToZero)
+   options            (s/maybe su/Map)
+   parameter_mappings (s/maybe su/Map)}
+  ;; Create stuff the hard way by hand because H2 doesn't return the Emitter ID if you have Toucan `pre-insert` create
+  ;; them for you because of some issue with INSERT RETURNING ROWS or something like that. See
+  ;; [[metabase.models.emitter/pre-insert]] for more discussion.
+  (let [emitter-id (u/the-id (db/insert! Emitter {:options options, :parameter_mappings parameter_mappings}))]
+    (db/insert! EmitterAction {:emitter_id emitter-id, :action_id action_id})
+    (cond
+      dashboard_id
+      (db/insert! DashboardEmitter {:emitter_id emitter-id, :dashboard_id dashboard_id})
 
-                                   (:card_id body)
-                                   (db/insert! CardEmitter body)
+      card_id
+      (db/insert! CardEmitter {:emitter_id emitter-id, :card_id card_id})
 
-                                   :else
-                                   (throw (ex-info (tru "Unknown emitter type") body)))]
+      :else
+      (throw (ex-info (tru "Unknown emitter type") body)))
     (emitter emitter-id)))
 
 (api/defendpoint PUT "/:emitter-id"

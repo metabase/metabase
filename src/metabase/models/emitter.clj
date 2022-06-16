@@ -41,12 +41,24 @@
          {:primary-key (constantly :emitter_id)}))
 
 (defn- pre-insert
-  [{action-id :action_id, :as emitter}]
-  {:pre [(integer? action-id)]}
-  (let [base-emitter (db/insert! Emitter (select-keys emitter [:parameter_mappings :options]))]
-    (db/insert! EmitterAction (-> emitter
-                                  (select-keys [:action_id])
-                                  (assoc :emitter_id (:id base-emitter))))
+  "We currently support two ways of creating a CardEmitter or DashboardEmitter:
+
+   1. Automatically create the base `Emitter` and `EmitterAction` at the same time. Pass in `:action_id` but not
+      `:emitter_id`. This was the original way we coded this but it actually causes a few issues since H2 doesn't seem
+      to return the newly created object when you do things this way
+
+   2. Create the base `Emitter` and `EmitterAction` by hand. Pass in `:emitter_id` but not `:action_id`. This is
+      probably preferable going forward because H2 does the right thing when you do it this way."
+  [{action-id :action_id, emitter-id :emitter_id, :as emitter}]
+  ;; if `emitter_id` was passed then assume the Base `Emitter` was created manually. Otherwise, create one
+  ;; automatically.
+  (let [base-emitter (if emitter-id
+                       (db/select-one Emitter :id emitter-id)
+                       (db/insert! Emitter (select-keys emitter [:parameter_mappings :options])))]
+    ;; if `action_id` was passed then automatically create an `EmitterAction`. Otherwise assume it was created manually.
+    (when action-id
+      (db/insert! EmitterAction {:action_id action-id, :emitter_id (u/the-id base-emitter)}))
+    ;; ok now Toucan should be able to create the `CardEmitter`/`DashboardEmitter` for us.
     (-> emitter
         (select-keys [:dashboard_id :card_id])
         (assoc :emitter_id (u/the-id base-emitter)))))
@@ -70,9 +82,9 @@
   "[[models/IModel]] impl for `DashboardEmitter` and `CardEmitter`"
   (merge models/IModelDefaults
          {:primary-key (constantly :emitter_id) ; This is ok as long as we're 1:1
-          :pre-delete pre-delete
-          :pre-update pre-update
-          :pre-insert pre-insert}))
+          :pre-delete  pre-delete
+          :pre-update  pre-update
+          :pre-insert  pre-insert}))
 
 (u/strict-extend (class DashboardEmitter)
   models/IModel
