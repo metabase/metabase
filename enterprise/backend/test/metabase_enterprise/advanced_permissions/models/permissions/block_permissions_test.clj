@@ -57,7 +57,7 @@
                                 {:native :write}))
                        (perms group-id)))))))))))
 
-(defntest native-sql-unblocking-test
+(deftest native-sql-unblocking-test
   (testing "blocking then unblocking via unrestricted data perm access allows native queries to run, although not be edited (#21695)"
     (comment "blah blah blah here")))
 
