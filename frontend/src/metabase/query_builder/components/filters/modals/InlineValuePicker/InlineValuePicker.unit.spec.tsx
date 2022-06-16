@@ -12,7 +12,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Question from "metabase-lib/lib/Question";
 
-import { InlineKeyPicker } from "./InlineKeyPicker";
+import { InlineKeyPicker } from "./InlineValuePicker";
 
 const pkField = new Field({
   database_type: "test",

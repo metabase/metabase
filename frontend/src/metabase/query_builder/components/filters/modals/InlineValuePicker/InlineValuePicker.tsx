@@ -4,19 +4,19 @@ import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Field from "metabase-lib/lib/metadata/Field";
 
 import { ALLOWED_OPERATORS } from "./constants";
-import { OperatorSelector, ArgumentSelector } from "./InlineKeyPicker.styled";
+import { OperatorSelector, ArgumentSelector } from "./InlineValuePicker.styled";
 
-interface InlineKeyPickerProps {
+interface InlineValuePickerProps {
   filter: Filter;
   field: Field;
   handleChange: (newFilter: Filter) => void;
 }
 
-export function InlineKeyPicker({
+export function InlineValuePicker({
   filter,
   field,
   handleChange,
-}: InlineKeyPickerProps) {
+}: InlineValuePickerProps) {
   const changeOperator = useCallback(
     (newOperator: any) => {
       handleChange(filter.setOperator(newOperator));
@@ -32,13 +32,7 @@ export function InlineKeyPicker({
   );
 
   const filterOperators = useMemo(() => {
-    const operators = field.filterOperators(filter.operatorName());
-    const currentOperator = filter.operatorName();
-    return operators.filter(
-      (operator: any) =>
-        ALLOWED_OPERATORS.includes(operator.name) ||
-        operator.name === currentOperator,
-    );
+    return field.filterOperators(filter.operatorName());
   }, [field, filter]);
 
   return (
@@ -54,8 +48,8 @@ export function InlineKeyPicker({
         value={filter.arguments()}
         onChange={changeArguments}
         className="input"
-        placeholder={t`Enter IDs`}
         fields={[field]}
+        disableSearch
         multi
       />
     </div>

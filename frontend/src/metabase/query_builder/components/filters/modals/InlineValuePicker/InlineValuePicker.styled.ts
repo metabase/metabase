@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 import OperatorSelectorComponent from "metabase/query_builder/components/filters/OperatorSelector";
