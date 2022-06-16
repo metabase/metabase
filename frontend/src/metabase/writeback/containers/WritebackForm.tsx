@@ -8,6 +8,7 @@ import { TYPE } from "metabase/lib/types";
 import Field from "metabase-lib/lib/metadata/Field";
 import Table from "metabase-lib/lib/metadata/Table";
 
+import { isEditableField } from "../utils";
 import CategoryFieldPicker from "./CategoryFieldPicker";
 
 export interface WritebackFormProps {
@@ -56,10 +57,9 @@ function getFieldTypeProps(field: Field) {
 }
 
 function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
-  const editableFields = useMemo(
-    () => table.fields.filter(field => field.id && !field.isPK()),
-    [table],
-  );
+  const editableFields = useMemo(() => table.fields.filter(isEditableField), [
+    table,
+  ]);
 
   const form = useMemo(() => {
     return {
