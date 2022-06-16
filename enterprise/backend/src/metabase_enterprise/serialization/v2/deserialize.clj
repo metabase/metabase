@@ -77,10 +77,3 @@
                              :seen      #{}
                              :src       src}
             paths)))
-
-(comment
-  (scan-ids (db/select-one 'Collection :id 1))
-  (deserialization-prescan)
-  (-> (into [] (metabase-enterprise.serialization.v2.serialize/serialize-metabase 1))
-      (deserialization-source-memory)
-      (deserialize-metabase)))
