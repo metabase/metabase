@@ -474,12 +474,10 @@
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
-  (str
-    (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.")
-    " "
-    (deferred-tru "It won''t affect most SQL queries,")
-    " "
-    (deferred-tru " although it is used to set the WEEK_START session variable in Snowflake."))
+  (deferred-tru
+    (str "This will affect things like grouping by week or filtering in GUI queries. "
+         "It won''t affect most SQL queries, "
+         "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
   :default    :sunday)

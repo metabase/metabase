@@ -130,7 +130,7 @@
    {:field (let [field-id (field-filter->field-id field-filter)]
              (qp.store/fetch-and-store-fields! #{field-id})
              (or (qp.store/field field-id)
-                 (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
+                 (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
                                  {:field-id field-id, :type qp.error-type/invalid-parameter}))))
     :value (field-filter-value tag params)}))
 
