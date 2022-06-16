@@ -1,5 +1,6 @@
 import React from "react";
 import { t } from "ttag";
+import { useUniqueId } from "metabase/hooks/use-unique-id";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import {
   MetabotSettingWidgetRoot,
@@ -10,7 +11,7 @@ import {
 import Toggle from "metabase/core/components/Toggle";
 
 const MetabotSettingWidget = ({ setting, onChange }: any) => {
-  const toggleId = "show-metabot-switch";
+  const toggleId = useUniqueId("show-metabot-switch");
   return (
     <MetabotSettingWidgetRoot>
       <MetabotContainer>
