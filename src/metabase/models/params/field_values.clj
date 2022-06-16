@@ -68,7 +68,7 @@
   (if-let [field-values (get-or-create-field-values-for-current-user!* field)]
     (-> field-values
         (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values :created_at :updated_at :id))
+        (select-keys [:values :field_id]))
     {:values [], :field_id (u/the-id field)}))
 
 (defn field-id->field-values-for-current-user

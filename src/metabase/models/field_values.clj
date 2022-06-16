@@ -28,6 +28,12 @@
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (int (* auto-list-cardinality-threshold entry-max-length)))
 
+(def ^:private field-values-types
+  #{:field         ;; default type for fieldvalues where it contains values for a field without constraints
+
+    ;; below are types of cached fieldvalues - a class of fieldvalues that has additional constraints/filters
+    :locked-filter ;; are fieldvalues but has constraints from other locked parameters on a dashboard/embedding
+    :sandbox})     ;; are fieldvalues but are filtered by sandbox permissions
 
 ;; ## Entity + DB Multimethods
 
@@ -39,13 +45,30 @@
                     {:human-readable-values human-readable-values
                      :status-code           400}))))
 
+(defn- assert-valid-field-values-type
+  [{:keys [type hash-key] :as _field-values}]
+  (when type
+    (when-not (contains? field-values-types type)
+      (throw (ex-info (tru "Invalid field-values type.")
+                      {:type        type
+                       :stauts-code 400})))
+
+    (when (and (= type :field)
+               hash-key)
+      (throw (ex-info (tru "Only cached field values could have hash-key.")
+                      {:type        type
+                       :status-code 400})))))
+
 (defn- pre-insert [field-values]
-  (u/prog1 field-values
-    (assert-valid-human-readable-values field-values)))
+  (u/prog1 (merge {:type :field}
+                  field-values)
+    (assert-valid-human-readable-values field-values)
+    (assert-valid-field-values-type field-values)))
 
 (defn- pre-update [field-values]
   (u/prog1 field-values
-    (assert-valid-human-readable-values field-values)))
+    (assert-valid-human-readable-values field-values)
+    (assert-valid-field-values-type field-values)))
 
 (defn- post-select [field-values]
   (cond-> field-values
@@ -73,7 +96,9 @@
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:human_readable_values :json-no-keywordization, :values :json})
+          :types       (constantly {:human_readable_values :json-no-keywordization
+                                    :values                :json
+                                    :type                  :keyword})
           :pre-insert  pre-insert
           :pre-update  pre-update
           :post-select post-select})
