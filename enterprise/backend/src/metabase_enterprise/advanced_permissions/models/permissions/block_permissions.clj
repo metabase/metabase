@@ -11,10 +11,9 @@
 
 (defn- current-user-has-native-query-data-perm-despite-having-block-perm-for-database?
   [database-or-id]
-  ;;;;;
-  ;;;;;
-  ;;;;;
-  some shit)
+  (and
+    (current-user-has-block-permissions-for-database? database-or-id)
+    (contains? @api/*current-user-permissions-set* (perms/data-perms-path database-or-id))))
 
 (defn check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
