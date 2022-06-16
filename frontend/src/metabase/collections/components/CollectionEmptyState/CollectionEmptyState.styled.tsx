@@ -10,6 +10,7 @@ export const EmptyStateRoot = styled.div`
 export const EmptyStateTitle = styled.div`
   color: ${color("text-dark")};
   font-size: 1.5rem;
+  font-weight: bold;
   line-height: 2rem;
   margin-top: 2.5rem;
   margin-bottom: 0.75rem;
