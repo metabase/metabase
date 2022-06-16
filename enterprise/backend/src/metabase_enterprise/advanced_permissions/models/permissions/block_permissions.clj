@@ -7,13 +7,14 @@
 
 (defn- current-user-has-block-permissions-for-database?
   [database-or-id]
-  (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path database-or-id))
-  ;;;; carveout for native queries data access? (#21695)
-  ;;;;;;
-  ;;;;;;
-  ;;;;;;
-  ;;;;;;
-  )
+  (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path database-or-id)))
+
+(defn- current-user-has-native-query-data-perm-despite-having-block-perm-for-database?
+  [database-or-id]
+  ;;;;;
+  ;;;;;
+  ;;;;;
+  some shit)
 
 (defn check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
@@ -32,6 +33,11 @@
 
     (not (current-user-has-block-permissions-for-database? database-id))
     ::no-block-permissions-for-db
+
+    ;; (#21695) - We still want the ability to look at the native queries
+    ;; if we have the affirmative perm in addition to the block perm. But not editing.
+    (current-user-has-native-query-data-perm-despite-having-block-perm-for-database? database-id)
+    ::block-permission-for-db-overriden-by-native-query-data-perm
 
     :else
     ;; TODO -- come up with a better error message.
