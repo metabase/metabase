@@ -185,7 +185,7 @@
             [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
             [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.util.i18n :refer [trs tru]]
             [metabase.util.regex :as u.regex]
             [metabase.util.schema :as su]
             [schema.core :as s]
