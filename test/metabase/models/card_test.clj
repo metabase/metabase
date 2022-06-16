@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.models :refer [Card Collection Dashboard DashboardCard]]
             [metabase.models.card :as card]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
@@ -292,7 +293,6 @@
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
 
-
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
 
 (deftest validate-parameters-test
@@ -360,3 +360,11 @@
                :card_id      1,
                :target       [:dimension [:field 1 nil]]}]
              (db/select-one-field :parameter_mappings Card :id card-id))))))
+
+(deftest identity-hash-test
+  (testing "Card hashes are composed of the name and the collection's hash"
+    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
+                    Card        [card  {:name "the card" :collection_id (:id coll)}]]
+      (is (= "ead6cc05"
+             (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash card))))))

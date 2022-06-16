@@ -1,9 +1,18 @@
+---
+title: "Bookmark"
+summary: "Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
+  model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
+  necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
+  underlying tables the id on the actual bookmark itself is not unique among 'bookmarks' and is not a good
+  identifier for using in the API."
+---
+
 # Bookmark
 
 Handle creating bookmarks for the user. Bookmarks are in three tables and should be thought of as a tuple of (model,
   model-id) rather than a row in a table with an id. The DELETE takes the model and id because DELETE's do not
   necessarily support request bodies. The POST is therefore shaped in this same manner. Since there are three
-  underlying tables the id on the actual bookmark itself is not unique among "bookmarks" and is not a good
+  underlying tables the id on the actual bookmark itself is not unique among 'bookmarks' and is not a good
   identifier for using in the API.
 
   - [DELETE /api/bookmark/:model/:id](#delete-apibookmarkmodelid)

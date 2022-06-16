@@ -1,3 +1,7 @@
+---
+title: Account settings
+---
+
 # Account settings
 
 You can view your account settings by clicking on the **gears** icon in the upper right of the main navigation bar, then selecting **Account settings**. Here you'll find three tabs:

@@ -23,7 +23,6 @@ function SavedQuestionHeaderButton({ className, question, onClick, isActive }) {
     <HeaderButton
       className={className}
       onClick={onClick}
-      iconRight="chevrondown"
       icon={reviewIconName}
       leftIconColor={reviewIconColor}
       isActive={isActive}

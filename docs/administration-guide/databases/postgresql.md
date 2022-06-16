@@ -1,3 +1,7 @@
+---
+title: Connecting to a PostgreSQL database
+---
+
 # Connecting to a PostgreSQL database
 
 In addition to specifying the host, port, database name and user credentials for the database connection, you have the option of securing that connection.
@@ -106,4 +110,3 @@ The problem is that if the keys in the JSON vary record to record, the first ten
 [gcp-cloud-sql]: https://cloud.google.com/sql
 [gcp-adc]: https://developers.google.com/identity/protocols/application-default-credentials
 [gcp-cloud-sql-connector]: https://github.com/GoogleCloudPlatform/cloud-sql-jdbc-socket-factory/blob/main/docs/jdbc-postgres.md#creating-the-jdbc-url
-

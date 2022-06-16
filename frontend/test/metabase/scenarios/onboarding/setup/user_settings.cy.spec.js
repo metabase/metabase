@@ -36,6 +36,19 @@ describe("user > settings", () => {
     cy.signInAsNormalUser();
   });
 
+  it("should be able to remove first name and last name (metabase#22754)", () => {
+    cy.visit("/account/profile");
+    cy.findByText("Account settings");
+    cy.findByLabelText("First name").clear();
+    cy.findByLabelText("Last name").clear();
+    cy.button("Update").click();
+
+    cy.reload();
+
+    cy.findByLabelText("First name").should("be.empty");
+    cy.findByLabelText("Last name").should("be.empty");
+  });
+
   it("should show user details with disabled submit button", () => {
     cy.visit("/account/profile");
     cy.findByText("Account settings");
@@ -91,6 +104,31 @@ describe("user > settings", () => {
     cy.findByLabelText("gear icon").click();
     cy.findByText("Sign out").click();
     cy.findByText("Sign in to Metabase");
+  });
+
+  it("should validate form values (metabase#23259)", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/account/password");
+
+    // Validate common passwords
+    cy.findByLabelText("Create a password")
+      .as("passwordInput")
+      .type("qwerty123")
+      .blur();
+
+    cy.contains("password is too common");
+    cy.get("@passwordInput").clear();
+
+    // Validate invalid current password
+    cy.findByLabelText("Current password")
+      .as("currentPassword")
+      .type("invalid");
+
+    cy.get("@passwordInput").type("new_password1");
+    cy.findByLabelText("Confirm your password").type("new_password1");
+
+    cy.button("Save").click();
+    cy.contains("Invalid password");
   });
 
   it("should be able to change a language (metabase#22192)", () => {

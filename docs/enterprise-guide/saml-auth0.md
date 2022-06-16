@@ -1,3 +1,7 @@
+---
+title: Setting up SAML with Auth0
+---
+
 # Setting up SAML with Auth0
 
 {% include plans-blockquote.html feature="SAML authentication" %}

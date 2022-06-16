@@ -1,3 +1,7 @@
+---
+title: List of expressions
+---
+
 # List of expressions
 
 For an introduction to expressions, check out [Writing expressions in the notebook editor][expressions].

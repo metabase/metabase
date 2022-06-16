@@ -1,3 +1,7 @@
+---
+title: How to request new features
+---
+
 # How to request new features
 
 1. Check out the [issues in the github repo][github-issues] to make sure someone hasn't already requested the feature.

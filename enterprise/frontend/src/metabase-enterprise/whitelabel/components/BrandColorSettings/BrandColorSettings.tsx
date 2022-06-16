@@ -18,7 +18,7 @@ import {
 export interface BrandColorSettingsProps {
   colors: Record<string, string>;
   colorPalette: Record<string, string>;
-  onChange?: (colors: Record<string, string>) => void;
+  onChange: (colors: Record<string, string>) => void;
 }
 
 const BrandColorSettings = ({
@@ -32,9 +32,9 @@ const BrandColorSettings = ({
   const handleChange = useCallback(
     (colorName: string, color?: string) => {
       if (color) {
-        onChange?.(set({ ...colorsRef.current }, colorName, color));
+        onChange(set({ ...colorsRef.current }, colorName, color));
       } else {
-        onChange?.(omit({ ...colorsRef.current }, colorName));
+        onChange(omit({ ...colorsRef.current }, colorName));
       }
     },
     [colorsRef, onChange],

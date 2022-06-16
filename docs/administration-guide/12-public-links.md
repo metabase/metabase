@@ -1,3 +1,7 @@
+---
+title: Sharing and embedding dashboards or questions
+---
+
 ## Sharing and embedding dashboards or questions
 
 Sometimes you'll want to share a dashboard or question you've saved with someone that isn't a part of your organization or company, or someone who doesn't need access to your full Metabase instance. Metabase lets administrators create public links and simple embeds to let you do just that.

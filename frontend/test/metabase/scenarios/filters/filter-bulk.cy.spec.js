@@ -3,6 +3,7 @@ import {
   restore,
   visitQuestionAdhoc,
   filter,
+  setupBooleanQuery,
 } from "__support__/e2e/cypress";
 import { SAMPLE_DB_ID } from "__support__/e2e/cypress_data";
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
@@ -103,6 +104,7 @@ describe("scenarios > filters > bulk filtering", () => {
     openFilterModal();
 
     modal().within(() => {
+      cy.findByText("Summaries").click();
       cy.findByLabelText("Count").click();
     });
 
@@ -285,6 +287,117 @@ describe("scenarios > filters > bulk filtering", () => {
             cy.findByText(SEGMENT_1_NAME);
             cy.findByText(SEGMENT_2_NAME).should("not.exist");
           });
+      });
+    });
+  });
+
+  describe("boolean filters", () => {
+    beforeEach(() => {
+      setupBooleanQuery();
+      openFilterModal();
+    });
+
+    it("should apply a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+    });
+
+    it("should change a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("false").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 1 row").should("be.visible");
+    });
+
+    it("should remove a boolean filter", () => {
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 2 rows").should("be.visible");
+
+      openFilterModal();
+
+      modal().within(() => {
+        cy.findByText("true").click();
+        cy.button("Apply").click();
+        cy.wait("@dataset");
+      });
+
+      cy.findByText("Showing 4 rows").should("be.visible");
+    });
+  });
+
+  describe("date filters", () => {
+    beforeEach(() => {
+      visitQuestionAdhoc(rawQuestionDetails);
+      openFilterModal();
+    });
+
+    it("can add a date shortcut filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").click();
+      });
+      cy.findByText("Today").click();
+
+      cy.findByLabelText("Created At").within(() => {
+        cy.findByText("Today").should("be.visible");
+      });
+      // make sure select popover is closed
+      cy.findByText("Yesterday").should("not.exist");
+    });
+
+    it("can add a date range filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").click();
+      });
+      cy.findByText("Specific dates...").click();
+      cy.findByText("Before").click();
+
+      popover().within(() => {
+        cy.get("input")
+          .eq(0)
+          .clear()
+          .type("01/01/2018");
+
+        cy.findByText("Add filter").click();
+      });
+
+      cy.findByLabelText("Created At").within(() => {
+        cy.findByText("is before January 1, 2018").should("be.visible");
+      });
+    });
+
+    it.skip("Bug repro: can cancel adding date filter", () => {
+      modal().within(() => {
+        cy.findByLabelText("Created At").click();
+      });
+      // click outside the popover
+      cy.findByText("Discount").click();
+
+      cy.findByLabelText("Created At").within(() => {
+        // there should be no filter so the X should not populate
+        cy.get(".Icon-close").should("not.exist");
       });
     });
   });

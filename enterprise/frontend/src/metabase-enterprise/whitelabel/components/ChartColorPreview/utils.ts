@@ -1,7 +1,12 @@
 import { color } from "metabase/lib/colors";
 import { times } from "lodash";
 
-export const getAccentColors = (palette: Record<string, string>) =>
-  times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`])
-    .flat()
-    .map(name => color(name, palette));
+export const getAccentColorGroups = (palette: Record<string, string>) => {
+  const groups = [
+    times(8, i => [`accent${i}`]),
+    times(8, i => [`accent${i}`, `accent${i}-dark`]),
+    times(8, i => [`accent${i}`, `accent${i}-light`, `accent${i}-dark`]),
+  ];
+
+  return groups.map(group => group.flat().map(name => color(name, palette)));
+};

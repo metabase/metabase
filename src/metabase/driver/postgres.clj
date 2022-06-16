@@ -5,6 +5,7 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [clojure.walk :as walk]
             [honeysql.core :as hsql]
             [honeysql.format :as hformat]
             [java-time :as t]
@@ -32,14 +33,19 @@
             [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
-           [java.util Date UUID]))
+           [java.util Date UUID]
+           metabase.util.honeysql_extensions.Identifier))
 
 (comment
   ddl.postgres/keep-me)
 
 (driver/register! :postgres, :parent :sql-jdbc)
 
-(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database] (get-in database [:details :json-unfolding]))
+(defmethod driver/database-supports? [:postgres :nested-field-columns] [_ _ database]
+  (let [json-setting (get-in database [:details :json-unfolding])
+        ;; If not set at all, default to true, actually
+        setting-nil? (nil? json-setting)]
+    (or json-setting setting-nil?)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -89,7 +95,6 @@
     (let [[_ message] (re-matches #"^FATAL: (.*$)" message)]
       (str (str/capitalize message) \.))
 
-    #".*" ; default
     message))
 
 (defmethod driver.common/current-db-time-date-formatters :postgres
@@ -302,11 +307,10 @@
       (format "%s::%s" (pr-str expr) (name psql-type)))))
 
 (defmethod sql.qp/json-query :postgres
-  [_ identifier nfc-field]
+  [_ unwrapped-identifier nfc-field]
   (letfn [(handle-name [x] (if (number? x) (str x) (name x)))]
     (let [field-type           (:database_type nfc-field)
           nfc-path             (:nfc_path nfc-field)
-          unwrapped-identifier (:form identifier)
           parent-identifier    (field/nfc-field->parent-identifier unwrapped-identifier nfc-field)
           names                (format "{%s}" (str/join "," (map handle-name (rest nfc-path))))]
       (reify
@@ -317,11 +321,10 @@
 
 (defmethod sql.qp/->honeysql [:postgres :field]
   [driver [_ id-or-name opts :as clause]]
-  (let [stored-field (when (integer? id-or-name)
-                       (qp.store/field id-or-name))
+  (let [stored-field  (when (integer? id-or-name)
+                        (qp.store/field id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)
-        _nfc-path     (:nfc_path stored-field)]
+        identifier    (parent-method driver clause)]
     (cond
       (= (:database_type stored-field) "money")
       (pg-conversion identifier :numeric)
@@ -329,7 +332,10 @@
       (field/json-field? stored-field)
       (if (::sql.qp/forced-alias opts)
         (keyword (::add/source-alias opts))
-        (sql.qp/json-query :postgres identifier stored-field))
+        (walk/postwalk #(if (instance? Identifier %)
+                          (sql.qp/json-query :postgres % stored-field)
+                          %)
+                       identifier))
 
       :else
       identifier)))

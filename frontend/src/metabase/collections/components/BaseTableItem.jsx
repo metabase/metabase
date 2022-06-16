@@ -31,7 +31,6 @@ BaseTableItem.propTypes = {
   isSelected: PropTypes.bool,
   isPinned: PropTypes.bool,
   linkProps: PropTypes.object,
-  hasBottomBorder: PropTypes.bool,
   onCopy: PropTypes.func,
   onMove: PropTypes.func,
   onDrop: PropTypes.func,
@@ -49,12 +48,10 @@ export function BaseTableItem({
   isSelected,
   isPinned,
   linkProps = {},
-  hasBottomBorder = true,
   onCopy,
   onMove,
   onDrop,
   onToggleSelected,
-  ...props
 }) {
   const [isHoveringOverRow, setIsHoveringOverRow] = useState(false);
 
@@ -70,9 +67,7 @@ export function BaseTableItem({
 
     // We don't keep last edit info for pulses
     // TODO Remove ternary when Pulses are gone (metabase#16519-1)
-    const lastEditedBy = lastEditInfo
-      ? `${lastEditInfo.first_name} ${lastEditInfo.last_name}`
-      : "";
+    const lastEditedBy = getLastEditedBy(lastEditInfo);
     const lastEditedAt = lastEditInfo
       ? moment(lastEditInfo.timestamp).format("MMMM DD, YYYY")
       : "";
@@ -178,6 +173,17 @@ export function BaseTableItem({
       {renderRow()}
     </ItemDragSource>
   );
+}
+
+function getLastEditedBy(lastEditInfo) {
+  if (!lastEditInfo) {
+    return "";
+  }
+
+  const name = [lastEditInfo.first_name, lastEditInfo.last_name]
+    .join(" ")
+    .trim();
+  return name || lastEditInfo.email;
 }
 
 export default BaseTableItem;
