@@ -944,7 +944,7 @@
                                                     :personal_owner_id user-or-nil :archived false)])
                 unowned)))
 
-          :serialize-one    (serdes.base/serialize-one-plus serialize-collection)
+          :serialize-one    (serdes.base/serialize-one-plus serialize-collection :slug)
           :deserialize-file (serdes.base/deserialize-file-plus deserialize-collection)}))
 
 (defmethod serdes.base/serdes-dependencies "Collection"

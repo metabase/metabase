@@ -106,13 +106,19 @@
 (defn serialize-one-plus
   "Helper for applying the usual serialization steps to a single entity, followed by a user-supplied function with any
   specific logic the entity needs."
-  [f]
+  [transform named]
   (fn [entity]
-    [(format "%s%s%s.yaml" (name entity) File/separatorChar (or (:entity_id entity) (serdes.hash/identity-hash entity)))
+    [(format "%s%s%s%s.yaml"
+             (name entity)
+             File/separatorChar
+             (or (:entity_id entity)
+                 (serdes.hash/identity-hash entity))
+             (when named
+               (str "+" (named entity))))
      (-> (into {} entity)
          (dissoc (models/primary-key entity))
          (assoc :serdes_type (name entity))
-         f)]))
+         transform)]))
 
 (defn- default-upsert [old-entity new-map]
   #_(db/update! old-entity (get old-entity (models/primary-key old-entity)) new-map)
@@ -137,7 +143,7 @@
   "Default implementations for [[ISerializable]], so models need only override those that need special handling."
   {:serialize-all         default-serialize-all
    :serialize-query       default-query
-   :serialize-one         (serialize-one-plus identity)
+   :serialize-one         (serialize-one-plus identity nil)
    :deserialize-file      (deserialize-file-plus identity)
    :deserialize-upsert    default-upsert
    :deserialize-insert    default-insert})
