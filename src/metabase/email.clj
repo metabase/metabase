@@ -19,6 +19,9 @@
   (deferred-tru "Email address you want to use as the sender of Metabase.")
   :default "notifications@metabase.com")
 
+(defsetting email-reply-to-address-list
+  (deferred-tru "List of email address that will be used in the reply-to header of emails."))
+
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
 
@@ -77,6 +80,7 @@
   (s/constrained
    {:subject      s/Str
     :recipients   [(s/pred u/email?)]
+    :reply-to     (s/pred u/email?)
     :message-type (s/enum :text :html :attachments)
     :message      (s/cond-pre s/Str [su/Map])} ; TODO - what should this be a sequence of?
    (fn [{:keys [message-type message]}]
@@ -95,14 +99,17 @@
     (throw (ex-info (tru "SMTP host is not set.") {:cause :smtp-host-not-set})))
   ;; Now send the email
   (send-email! (smtp-settings)
-    {:from    (email-from-address)
-     :to      recipients
-     :subject subject
-     :body    (case message-type
-                :attachments message
-                :text        message
-                :html        [{:type    "text/html; charset=utf-8"
-                               :content message}])}))
+               (merge
+                {:from    (email-from-address)
+                 :to      recipients
+                 :subject subject
+                 :body    (case message-type
+                            :attachments message
+                            :text        message
+                            :html        [{:type    "text/html; charset=utf-8"
+                                           :content message}])}
+                (when-let [reply-to (email-reply-to-address-list)]
+                  {:reply-to reply-to}))))
 
 (def ^:private SMTPStatus
   "Schema for the response returned by various functions in [[metabase.email]]. Response will be a map with the key
