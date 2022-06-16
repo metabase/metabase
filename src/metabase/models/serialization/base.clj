@@ -12,7 +12,7 @@
             [potemkin.types :as p.types]
             [toucan.db :as db]
             [toucan.models :as models])
-  (:import [java.io File]))
+  (:import java.io.File))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |

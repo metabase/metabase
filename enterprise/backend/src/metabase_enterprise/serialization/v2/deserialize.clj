@@ -25,13 +25,13 @@
   (->> (java.nio.file.Paths/get path (into-array String []))
        (.iterator)
        (iterator-seq)
-       (map #(.toString %))))
+       (map str)))
 
 (defn- id-from-path [path]
-  (let [file (last (path-parts path))
-        base (.substring file 0 (.lastIndexOf file "."))
+  (let [^String file (last (path-parts path))
+        base         (.substring file 0 (.lastIndexOf file "."))
         ; Things with human-readable names use the form identity_hash+human_name.yaml
-        plus (.indexOf base "+")]
+        plus         (.indexOf base "+")]
     (if (< plus 0)
       base
       (.substring base 0 plus))))
