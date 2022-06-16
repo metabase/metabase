@@ -169,9 +169,15 @@
 
      (user-full-name :u) ;; -> 'Cam Saul'"
   [user-table]
-  (hx/concat (hsql/qualify user-table :first_name)
-             (hx/literal " ")
-             (hsql/qualify user-table :last_name)))
+  (hsql/call :case
+    [:and
+     [:= nil (hsql/qualify user-table :first_name)]
+     [:= nil (hsql/qualify user-table :last_name)]]
+    (hsql/qualify user-table :email)
+    :else
+    (hx/concat (hsql/qualify user-table :first_name)
+               (hx/literal " ")
+               (hsql/qualify user-table :last_name))))
 
 (def datetime-unit-str->base-type
   "Map of datetime unit strings (possible params for queries that accept a datetime `unit` param) to the `:base_type` we
