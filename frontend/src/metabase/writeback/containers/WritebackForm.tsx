@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import Form from "metabase/containers/Form";
 
+import validate from "metabase/lib/validate";
 import { TYPE } from "metabase/lib/types";
 
 import Field from "metabase-lib/lib/metadata/Field";
@@ -56,6 +57,18 @@ function getFieldTypeProps(field: Field) {
   return { type: "input" };
 }
 
+function getFieldValidationProp(field: Field) {
+  let validator = validate as any;
+
+  if (field.database_required) {
+    validator = validator.required();
+  }
+
+  return {
+    validate: validator,
+  };
+}
+
 function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
   const editableFields = useMemo(() => table.fields.filter(isEditableField), [
     table,
@@ -78,6 +91,7 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
           description: field.description,
           initial: initialValue,
           ...getFieldTypeProps(field),
+          ...getFieldValidationProp(field),
         };
       }),
     };
