@@ -121,12 +121,12 @@
          transform)]))
 
 (defn- default-upsert [old-entity new-map]
-  #_(db/update! old-entity (get old-entity (models/primary-key old-entity)) new-map)
-  (prn "upsert" old-entity new-map))
+  (db/update! (symbol (name old-entity)) (get old-entity (models/primary-key old-entity)) new-map)
+  #_(prn "upsert" old-entity new-map))
 
-(defn- default-insert [_model new-map]
-  #_(db/simple-insert! model new-map)
-  (prn "insert" new-map))
+(defn- default-insert [model new-map]
+  (db/simple-insert! model new-map)
+  #_(prn "insert" new-map))
 
 (defn deserialize-file-plus
   "Given a function, this returns a function suitable for use as [[deserialize-file]]. The provided function is applied

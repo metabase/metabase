@@ -8,13 +8,6 @@
 ;; The deserialization source is a two-arity function: (src) returns a list of all file names, (src path) returns the
 ;; contents of that file, converted to EDN.
 ;; Therefore an in-memory source can just wrap a {path EDN-contents} map.
-(defn- deserialization-source-memory [files]
-  (let [mapped (into {} files)]
-    (fn
-      ([] (keys mapped))
-      ([path] (or (get mapped path)
-                  (throw (ex-info (format "Unknown serialized file %s" path) {:path path :tree mapped})))))))
-
 (defn- scan-ids [{:keys [entity_id] :as entity}]
   (let [pk (get entity (models/primary-key entity))]
     (cond-> {:by-identity-hash {(serdes.hash/identity-hash entity) pk}}
