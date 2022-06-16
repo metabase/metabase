@@ -6,6 +6,7 @@
             [clojure.walk :as walk]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
+            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.mbql.schema :as mbql.s]
             [metabase.mbql.util :as mbql.u]
@@ -286,11 +287,10 @@
         :year            (bucket :year)))))
 
 (defmethod ->rvalue :relative-datetime
-  [[_ amount unit & [offset-amount offset-unit]]]
+  [[_ amount unit]]
   (let [t (-> (t/zoned-date-time)
               (t/with-zone-same-instant (t/zone-id (or (qp.timezone/report-timezone-id-if-supported :mongo)
-                                                       "UTC")))
-              (cond-> offset-amount (u.date/add offset-unit offset-amount)))]
+                                                       "UTC"))))]
     ($date-from-string
      (t/offset-date-time
       (if (= unit :default)
@@ -298,6 +298,22 @@
         (-> t
             (u.date/add unit amount)
             (u.date/bucket unit)))))))
+
+(defn- interval? [expr]
+  (and (vector? expr) (= (first expr) :interval)))
+
+(defn- get-major-version [version]
+  (some-> version (str/split #"\.") first parse-long))
+
+(defn- date-op [op date-expr [_ amount unit]]
+  (let [mongo-version (:version (driver/describe-database :mongo (qp.store/database)))
+        major-version (get-major-version mongo-version)]
+    (when (and major-version (< major-version 5))
+      (throw (ex-info "Date arithmetic not supported in versions before 5"
+                      {:actual-version mongo-version}))))
+  {op {:startDate (->rvalue date-expr)
+       :unit unit
+       :amount amount}})
 
 ;;; ---------------------------------------------------- functions ---------------------------------------------------
 
@@ -364,8 +380,17 @@
 (defmethod ->rvalue :concat    [[_ & args]] {"$concat" (mapv ->rvalue args)})
 (defmethod ->rvalue :substring [[_ & args]] {"$substrCP" (mapv ->rvalue args)})
 
-(defmethod ->rvalue :+ [[_ & args]] {"$add" (mapv ->rvalue args)})
-(defmethod ->rvalue :- [[_ & args]] {"$subtract" (mapv ->rvalue args)})
+(defmethod ->rvalue :+ [[_ & [lhs rhs :as args]]]
+  (cond
+    (interval? lhs) (date-op "$dateAdd" rhs lhs)
+    (interval? rhs) (date-op "$dateAdd" lhs rhs)
+    :else {"$add" (mapv ->rvalue args)}))
+
+(defmethod ->rvalue :- [[_ & [lhs rhs :as args]]]
+  (if (interval? rhs)
+    (date-op "$dateSubtract" lhs rhs)
+    {"$subtract" (mapv ->rvalue args)}))
+
 (defmethod ->rvalue :* [[_ & args]] {"$multiply" (mapv ->rvalue args)})
 (defmethod ->rvalue :/ [[_ & args]] {"$divide" (mapv ->rvalue args)})
 
@@ -387,16 +412,10 @@
   mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod compile-filter :between
-  [[_ field min-val max-val :as expr]]
-  (if (= :+ (first field))
-    ;; filter with offset
-    (let [[_ field [_ amount unit]] field]
-      (compile-filter [:and
-                       [:>= field (conj min-val (- amount) unit)]
-                       [:<= field (conj max-val (- amount) unit)]]))
-    (compile-filter [:and
-                     [:>= field min-val]
-                     [:<= field max-val]])))
+  [[_ field min-val max-val]]
+  (compile-filter [:and
+                   [:>= field min-val]
+                   [:<= field max-val]]))
 
 (defn- str-match-pattern [options prefix value suffix]
   (if (mbql.u/is-clause? ::not value)

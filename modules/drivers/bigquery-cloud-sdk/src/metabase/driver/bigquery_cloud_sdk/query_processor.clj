@@ -607,7 +607,7 @@
     (reconcile-temporal-types
      ((get-method sql.qp/->honeysql [:sql filter-type])
       driver
-      clause))))
+      (reconcile-temporal-types clause)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -616,14 +616,6 @@
 
 (defn- interval [amount unit]
   (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))
-
-(defn- assert-addable-unit [t-type unit]
-  (when-not (contains? (temporal-type->supported-units t-type) unit)
-    ;; trying to add an `hour` to a `date` or a `year` to a `time` is something we shouldn't be allowing in the UI in
-    ;; the first place
-    (throw (ex-info (tru "Invalid query: you cannot add a {0} to a {1} column."
-                         (name unit) (name t-type))
-             {:type qp.error-type/invalid-query}))))
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
 ;; Thus for something like filtering against a relative datetime
