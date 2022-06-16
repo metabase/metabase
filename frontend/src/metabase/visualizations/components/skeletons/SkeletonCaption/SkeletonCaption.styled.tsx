@@ -3,13 +3,20 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import { animationStyles } from "../Skeleton";
+import { SkeletonCaptionSize } from "./types";
 
 export const SkeletonRoot = styled.div`
   display: flex;
 `;
 
-export const SkeletonTitle = styled(Ellipsified)`
+export interface SkeletonTitleProps {
+  size: SkeletonCaptionSize;
+}
+
+export const SkeletonTitle = styled(Ellipsified)<SkeletonTitleProps>`
   color: ${color("text-dark")};
+  font-size: ${props => (props.size === "large" ? "1rem" : "")};
+  line-height: ${props => (props.size === "large" ? "1.375rem" : "")};
   font-weight: bold;
   overflow: hidden;
 `;

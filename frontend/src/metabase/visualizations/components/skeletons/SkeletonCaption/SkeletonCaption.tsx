@@ -1,4 +1,4 @@
-import React from "react";
+import React, { HTMLAttributes } from "react";
 import Tooltip from "metabase/components/Tooltip";
 import {
   SkeletonRoot,
@@ -6,19 +6,27 @@ import {
   SkeletonDescription,
   SkeletonPlaceholder,
 } from "./SkeletonCaption.styled";
+import { SkeletonCaptionSize } from "./types";
 
-export interface SkeletonCaptionProps {
+export interface SkeletonCaptionProps extends HTMLAttributes<HTMLDivElement> {
   name?: string | null;
   description?: string | null;
+  size?: SkeletonCaptionSize;
 }
 
 const SkeletonCaption = ({
   name,
   description,
+  size = "medium",
+  ...props
 }: SkeletonCaptionProps): JSX.Element => {
   return (
-    <SkeletonRoot>
-      {name ? <SkeletonTitle>{name}</SkeletonTitle> : <SkeletonPlaceholder />}
+    <SkeletonRoot {...props}>
+      {name ? (
+        <SkeletonTitle size={size}>{name}</SkeletonTitle>
+      ) : (
+        <SkeletonPlaceholder />
+      )}
       {description && (
         <Tooltip tooltip={description} maxWidth="22em">
           <SkeletonDescription name="info" />
