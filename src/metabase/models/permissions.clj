@@ -614,9 +614,7 @@
                                        (:object permissions))))))
 
 (defn- pre-update [_]
-  (throw (Exception. (deferred-tru
-                       (str "You cannot update a permissions entry! "
-                            "Delete it and create a new one.")))))
+  (throw (Exception. (tru "You cannot update a permissions entry! Delete it and create a new one."))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/colorize 'red (trs "Revoking permissions for group {0}: {1}"
@@ -1165,7 +1163,7 @@
   made in the interim. Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (deferred-tru
+    (throw (ex-info (tru
                       (str "Looks like someone else edited the permissions and your data is out of date. "
                            "Please fetch new data and try again."))
                     {:status-code 409}))))

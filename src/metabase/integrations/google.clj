@@ -53,7 +53,7 @@
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
-           (throw (ex-info (deferred-tru
+           (throw (ex-info (tru
                              (str "Google Sign-In token appears to be incorrect. "
                                   "Double check that it matches in Google and Metabase."))
                            {:status-code 400}))))
