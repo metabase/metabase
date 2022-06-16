@@ -8,6 +8,7 @@ import {
   setOrUnsetParameterValues,
   setParameterValue,
 } from "metabase/dashboard/actions";
+import { executeRowAction } from "metabase/writeback/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -15,6 +16,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
+import { getTemplateTagType } from "metabase/parameters/utils/cards";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -41,7 +43,21 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  if (type === "crossfilter") {
+  if (type === "action") {
+    const parameters = getParametersForNativeAction(parameterMapping, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    behavior = {
+      action: () =>
+        executeRowAction({
+          dashboard: extraData.dashboard,
+          emitterId: clickBehavior.emitter_id,
+          parameters,
+        }),
+    };
+  } else if (type === "crossfilter") {
     const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
       data,
       extraData,
@@ -136,6 +152,37 @@ export default ({ question, clicked }) => {
     },
   ];
 };
+
+function getParametersForNativeAction(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
+  const action = extraData.actions[clickBehavior.action];
+  const templateTags = Object.values(
+    action.card.dataset_query.native["template-tags"],
+  );
+
+  const parameters = {};
+
+  Object.values(parameterMapping).forEach(({ id, source, target }) => {
+    const targetTemplateTag = templateTags.find(tag => tag.id === id);
+
+    const result = formatSourceForTarget(source, target, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    // For some reason it's sometimes [1] and sometimes just 1
+    const value = Array.isArray(result) ? result[0] : result;
+
+    parameters[id] = {
+      value,
+      type: getTemplateTagType(targetTemplateTag),
+    };
+  });
+
+  return parameters;
+}
 
 function getParameterIdValuePairs(
   parameterMapping,

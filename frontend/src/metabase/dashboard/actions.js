@@ -10,6 +10,7 @@ import { normalize, schema } from "normalizr";
 
 import Question from "metabase-lib/lib/Question";
 
+import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 
@@ -45,6 +46,7 @@ import {
 import {
   DashboardApi,
   CardApi,
+  EmittersApi,
   PublicApi,
   EmbedApi,
   AutoApi,
@@ -63,6 +65,12 @@ import {
 } from "./selectors";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import {
+  isActionButtonDashCard,
+  getActionButtonActionId,
+  getActionButtonEmitterId,
+  getActionEmitterParameterMappings,
+} from "metabase/writeback/utils";
 
 import {
   expandInlineDashboard,
@@ -311,7 +319,27 @@ export const addActionsDashCardToDashboard = ({ dashId }) => {
   };
   const dashcardOverrides = {
     card: virtualActionsCard,
-    sizeX: 4,
+    sizeX: 5,
+    sizeY: 1,
+    visualization_settings: {
+      virtual_card: virtualActionsCard,
+    },
+  };
+  return addDashCardToDashboard({
+    dashId: dashId,
+    dashcardOverrides: dashcardOverrides,
+  });
+};
+
+export const addActionButtonDashCardToDashboard = ({ dashId }) => {
+  const virtualActionsCard = {
+    ...createCard(),
+    display: "action-button",
+    archived: false,
+  };
+  const dashcardOverrides = {
+    card: virtualActionsCard,
+    sizeX: 2,
     sizeY: 1,
     visualization_settings: {
       virtual_card: virtualActionsCard,
@@ -360,12 +388,21 @@ export const saveDashboardAndCards = createThunkAction(
       await Promise.all(
         dashboard.ordered_cards
           .filter(dc => dc.isRemoved && !dc.isAdded)
-          .map(dc =>
-            DashboardApi.removecard({
+          .map(dc => {
+            if (isActionButtonDashCard(dc) && !!getActionButtonEmitterId(dc)) {
+              const emitterId = getActionButtonEmitterId(dc);
+              return EmittersApi.delete({ id: emitterId }).then(() =>
+                DashboardApi.removecard({
+                  dashId: dashboard.id,
+                  dashcardId: dc.id,
+                }),
+              );
+            }
+            return DashboardApi.removecard({
               dashId: dashboard.id,
               dashcardId: dc.id,
-            }),
-          ),
+            });
+          }),
       );
 
       // add isAdded dashboards
@@ -373,7 +410,36 @@ export const saveDashboardAndCards = createThunkAction(
         dashboard.ordered_cards
           .filter(dc => !dc.isRemoved)
           .map(async dc => {
+            const existingEmitterIDs = Array.isArray(dashboard.emitters)
+              ? dashboard.emitters.map(emitter => emitter.id)
+              : [];
+
             if (dc.isAdded) {
+              if (isActionButtonDashCard(dc) && !!getActionButtonActionId(dc)) {
+                const actionId = getActionButtonActionId(dc);
+                const action = Actions.selectors.getObject(getState(), {
+                  entityId: actionId,
+                });
+                await EmittersApi.create({
+                  dashboard_id: dashboard.id,
+                  action_id: actionId,
+                  parameter_mappings: getActionEmitterParameterMappings(
+                    dc,
+                    action,
+                  ),
+                });
+                const newDash = await DashboardApi.get({
+                  dashId: dashboard.id,
+                });
+                const emitter = newDash.emitters.find(
+                  emitter =>
+                    !existingEmitterIDs.includes(emitter.id) &&
+                    emitter.action.card_id === action.card.id,
+                );
+                dc.visualization_settings.click_behavior.emitter_id =
+                  emitter.id;
+              }
+
               const result = await DashboardApi.addcard({
                 dashId: dashboard.id,
                 cardId: dc.card_id,

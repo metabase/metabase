@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
-import { ActionsApi } from "metabase/services";
+import { isVirtualDashCard } from "metabase/dashboard/utils";
+import { ActionsApi, EmittersApi } from "metabase/services";
 import Table from "metabase-lib/lib/metadata/Table";
 
 import { addUndo } from "metabase/redux/undo";
@@ -10,7 +11,7 @@ import { runQuestionQuery } from "metabase/query_builder/actions/querying";
 import { setUIControls } from "metabase/query_builder/actions/ui";
 import { closeObjectDetail } from "metabase/query_builder/actions/object-detail";
 
-import { DashCard } from "metabase-types/types/Dashboard";
+import { DashboardWithCards, DashCard } from "metabase-types/types/Dashboard";
 
 export type InsertRowPayload = {
   table: Table;
@@ -186,6 +187,54 @@ export const deleteRowFromDataApp = (payload: DeleteRowFromDataAppPayload) => {
           icon: "warning",
           toastColor: "error",
           message: t`Something went wrong while deleting the row`,
+        }),
+      );
+    }
+  };
+};
+
+export type ExecuteRowActionPayload = {
+  dashboard: DashboardWithCards;
+  emitterId: number;
+  parameters: Record<string, unknown>;
+};
+
+export const executeRowAction = ({
+  dashboard,
+  emitterId,
+  parameters,
+}: ExecuteRowActionPayload) => {
+  return async function(dispatch: any) {
+    try {
+      const result = await EmittersApi.execute({
+        id: emitterId,
+        parameters,
+      });
+      if (result["rows-affected"] > 0) {
+        dashboard.ordered_cards
+          .filter(dashCard => !isVirtualDashCard(dashCard))
+          .forEach(dashCard =>
+            dispatch(
+              fetchCardData(dashCard.card, dashCard, {
+                reload: true,
+                ignoreCache: true,
+              }),
+            ),
+          );
+        dispatch(
+          addUndo({
+            toastColor: "success",
+            message: t`Successfully executed the action`,
+          }),
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      dispatch(
+        addUndo({
+          icon: "warning",
+          toastColor: "error",
+          message: t`Something went wrong while executing the action`,
         }),
       );
     }

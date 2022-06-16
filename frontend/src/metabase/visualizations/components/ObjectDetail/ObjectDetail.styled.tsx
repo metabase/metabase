@@ -7,6 +7,13 @@ interface ObjectDetailModalProps {
   wide: boolean;
 }
 
+export const CenteredLayout = styled.div`
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
 export const ObjectDetailModal = styled.div<ObjectDetailModalProps>`
   overflow-y: scroll;
   height: 100%;

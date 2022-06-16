@@ -51,4 +51,8 @@ export type DashCard<CardType = Card> = {
   row: number;
   sizeY: number;
   sizeX: number;
+
+  isAdded?: boolean;
+  isDirty?: boolean;
+  justAdded?: boolean;
 };
