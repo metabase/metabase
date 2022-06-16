@@ -311,7 +311,7 @@ describe("QB Actions > updateQuestion", () => {
 
       describe(questionType, () => {
         it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionDetails");
+          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
           await setup({ question, isShowingTemplateTagsEditor: true });
           expect(closeSidebarSpy).not.toHaveBeenCalled();
         });
@@ -338,7 +338,7 @@ describe("QB Actions > updateQuestion", () => {
         });
 
         it("triggers question details sidebar closing when turning model into ad-hoc question", async () => {
-          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionDetails");
+          const closeSidebarSpy = jest.spyOn(ui, "onCloseQuestionInfo");
           await setup({ question, isShowingTemplateTagsEditor: true });
           expect(closeSidebarSpy).toHaveBeenCalledTimes(1);
         });

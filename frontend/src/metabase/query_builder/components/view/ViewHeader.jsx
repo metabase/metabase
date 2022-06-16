@@ -81,7 +81,6 @@ const viewTitleHeaderPropTypes = {
   onAddFilter: PropTypes.func,
   onCloseFilter: PropTypes.func,
   onOpenQuestionDetails: PropTypes.func,
-  onCloseQuestionDetails: PropTypes.func,
 
   isPreviewable: PropTypes.bool,
   isPreviewing: PropTypes.bool,
