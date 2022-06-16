@@ -18,6 +18,7 @@
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.store :as qp.store]
             [metabase.sync :as sync]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
