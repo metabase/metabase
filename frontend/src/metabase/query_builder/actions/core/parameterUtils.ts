@@ -7,7 +7,7 @@ import { DashboardApi } from "metabase/services";
 import { setErrorPage } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 
@@ -100,10 +100,7 @@ export function getParameterValuesForQuestion({
   queryParams?: QueryParams;
   metadata: Metadata;
 }) {
-  const parameters = getValueAndFieldIdPopulatedParametersFromCard(
-    card,
-    metadata,
-  );
+  const parameters = getCardUiParameters(card, metadata);
   return getParameterValuesByIdFromQueryParams(
     parameters,
     queryParams,
