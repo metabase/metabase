@@ -319,4 +319,42 @@ describe("BulkFilterItem", () => {
     screen.getByLabelText(textField.name);
     screen.getByText("foo");
   });
+
+  it("defaults key filters to 'is' operator", () => {
+    const changeSpy = jest.fn();
+    const store = getStore();
+
+    render(
+      <Provider store={store}>
+        <BulkFilterItem
+          query={query}
+          filter={undefined}
+          dimension={fkDimension}
+          onAddFilter={changeSpy}
+          onChangeFilter={changeSpy}
+          onRemoveFilter={changeSpy}
+        />
+      </Provider>,
+    );
+    screen.getByText("Is");
+  });
+
+  it("defaults text filters to 'contains' operator", () => {
+    const changeSpy = jest.fn();
+    const store = getStore();
+
+    render(
+      <Provider store={store}>
+        <BulkFilterItem
+          query={query}
+          filter={undefined}
+          dimension={textDimension}
+          onAddFilter={changeSpy}
+          onChangeFilter={changeSpy}
+          onRemoveFilter={changeSpy}
+        />
+      </Provider>,
+    );
+    screen.getByText("Contains");
+  });
 });
