@@ -7,7 +7,13 @@
 
 (defn- current-user-has-block-permissions-for-database?
   [database-or-id]
-  (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path database-or-id)))
+  (contains? @api/*current-user-permissions-set* (perms/database-block-perms-path database-or-id))
+  ;;;; carveout for native queries data access? (#21695)
+  ;;;;;;
+  ;;;;;;
+  ;;;;;;
+  ;;;;;;
+  )
 
 (defn check-block-permissions
   "Assert that block permissions are not in effect for Database for a query that's only allowed to run because of
