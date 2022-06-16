@@ -217,20 +217,6 @@
   [x]
   (:bigquery-cloud-sdk/temporal-type (meta x)))
 
-(def ^:private temporal-type->supported-units
-  {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
-   :datetime  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year}
-   :date      #{:day :week :month :quarter :year}
-   :time      #{:microsecond :millisecond :second :minute :hour}})
-
-(defmethod temporal-type :+
-  [[_ f [_interval _amount unit]]]
-  (when-let [field-type (temporal-type f)]
-    (if (and (= :timestamp field-type)
-             (not (contains? (temporal-type->supported-units :timestamp) unit)))
-      :datetime
-      field-type)))
-
 (defn- with-temporal-type {:style/indent 0} [x new-type]
   (if (= (temporal-type x) new-type)
     x
@@ -311,6 +297,12 @@
 (defmethod ->temporal-type [:temporal-type :absolute-datetime]
   [target-type [_ t unit]]
   [:absolute-datetime (->temporal-type target-type t) unit])
+
+(def ^:private temporal-type->supported-units
+  {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
+   :datetime  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year}
+   :date      #{:day :week :month :quarter :year}
+   :time      #{:microsecond :millisecond :second :minute :hour}})
 
 (defmethod ->temporal-type [:temporal-type :relative-datetime]
   [target-type [_ _ unit :as clause]]
@@ -612,9 +604,10 @@
 (doseq [filter-type [:between := :!= :> :>= :< :<=]]
   (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk filter-type]
     [driver clause]
-    ((get-method sql.qp/->honeysql [:sql filter-type])
-     driver
-     (reconcile-temporal-types clause))))
+    (reconcile-temporal-types
+     ((get-method sql.qp/->honeysql [:sql filter-type])
+      driver
+      clause))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -638,34 +631,43 @@
 ;; [:time-interval <datetime field> -1 :day]
 ;;
 ;;
+(def ^:private temporal-type->arithmetic-function
+  {:timestamp :timestamp_add
+   :datetime  :datetime_add
+   :date      :date_add
+   :time      :time_add})
+
 (defrecord AddIntervalForm [hsql-form amount unit]
   hformat/ToSql
   (to-sql [_]
-    (loop [hsql-form hsql-form]
-      (let [t      (temporal-type hsql-form)
-            add-fn (case t
-                     :timestamp :timestamp_add
-                     :datetime  :datetime_add
-                     :date      :date_add
-                     :time      :time_add
-                     nil)]
-        (if-not add-fn
-          (recur (->temporal-type :datetime hsql-form))
-          (do
-            (assert-addable-unit t unit)
-            (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit)))))))))
+    (let [t      (temporal-type hsql-form)
+          add-fn (temporal-type->arithmetic-function t)]
+      (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit))))))
+
+(defn- add-interval-form [hsql-form amount unit]
+  (let [t         (temporal-type hsql-form)
+        add-fn    (temporal-type->arithmetic-function t)
+        hsql-form (if (or (not add-fn)
+                          (and (not (contains? (temporal-type->supported-units t) unit))
+                               (contains? (temporal-type->supported-units :datetime) unit)))
+                    (->temporal-type :datetime hsql-form)
+                    hsql-form)]
+    (AddIntervalForm. hsql-form amount unit)))
 
 (defmethod temporal-type AddIntervalForm
   [add-interval]
   (temporal-type (:hsql-form add-interval)))
 
 (defmethod ->temporal-type [:temporal-type AddIntervalForm]
-  [target-type add-interval-form]
-  (let [current-type (temporal-type (:hsql-form add-interval-form))]
+  [target-type form]
+  (let [current-type (temporal-type (:hsql-form form))]
     (when (#{[:date :time] [:time :date]} [current-type target-type])
       (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
-               {:type qp.error-type/invalid-query}))))
-  (map->AddIntervalForm (update add-interval-form :hsql-form (partial ->temporal-type target-type))))
+                      {:type qp.error-type/invalid-query}))))
+  (let [new-form (add-interval-form (->temporal-type target-type (:hsql-form form)) (:amount form) (:unit form))]
+    (if (= (temporal-type new-form) target-type)
+      new-form
+      (hx/cast target-type form))))
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
@@ -675,7 +677,7 @@
                     (and (= (temporal-type hsql-form) :timestamp)
                          (not (contains? (temporal-type->supported-units :timestamp) unit)))
                     (hx/cast :datetime))]
-    (AddIntervalForm. hsql-form amount unit)))
+    (add-interval-form hsql-form amount unit)))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]
