@@ -66,9 +66,15 @@ function WritebackForm({ table, row, onSubmit, ...props }: WritebackFormProps) {
       fields: editableFields.map(field => {
         const fieldIndex = table.fields.findIndex(f => f.id === field.id);
         const initialValue = row ? row[fieldIndex] : undefined;
+
+        let title = field.displayName();
+        if (field.database_required) {
+          title += " (" + t`required` + ")";
+        }
+
         return {
           name: field.name,
-          title: field.displayName(),
+          title,
           description: field.description,
           initial: initialValue,
           ...getFieldTypeProps(field),
