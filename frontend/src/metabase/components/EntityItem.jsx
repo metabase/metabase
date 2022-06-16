@@ -131,7 +131,7 @@ function EntityItemMenu({
         },
         onArchive && {
           title: t`Archive`,
-          icon: "archive",
+          icon: "view_archive",
           action: onArchive,
           event: `${analyticsContext};Entity Item;Archive Item;${item.model}`,
         },
