@@ -6,7 +6,7 @@
             [clojure.tools.namespace.find :as ns.find]
             [clojure.tools.reader :as tools.reader]
             [metabase-enterprise.audit-app.interface :as audit.i]
-            [metabase.models :refer [Card Dashboard DashboardCard Database Table]]
+            [metabase.models :refer [Card Dashboard DashboardCard Database Table User]]
             [metabase.models.permissions :as perms]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings.premium-features-test :as premium-features-test]
@@ -188,3 +188,16 @@
         (doseq [query-type (all-query-methods)]
           (testing query-type
             (do-tests-for-query-type query-type objects)))))))
+
+(deftest user-full-name-test
+  (testing "User name fallback to email works in audit queries."
+    (mt/with-temp* [User [a {:first_name "a" :last_name nil :email "a@metabase.com"}]
+                    User [b {:first_name nil :last_name "b" :email "b@metabase.com"}]
+                    User [c {:first_name nil :last_name nil :email "c@metabase.com"}]]
+      (is (= ["b" "a" "c@metabase.com"]
+             (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                {:type :internal
+                                                 :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                          [:data :rows])
+                  (filter #((set (map u/the-id [a b c])) (first %)))
+                  (map second)))))))
