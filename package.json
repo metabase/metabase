@@ -320,6 +320,7 @@
       "prettier --write"
     ],
     "+(enterprise|frontend)/**/*.{js,jsx,ts,tsx}": [
+      "eslint --rulesdir frontend/lint/eslint-rules --max-warnings 0",
       "prettier --write"
     ]
   },
