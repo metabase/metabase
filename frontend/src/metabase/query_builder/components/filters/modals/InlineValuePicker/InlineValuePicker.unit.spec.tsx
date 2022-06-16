@@ -12,7 +12,7 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Question from "metabase-lib/lib/Question";
 
-import { InlineKeyPicker } from "./InlineValuePicker";
+import { InlineValuePicker } from "./InlineValuePicker";
 
 const pkField = new Field({
   database_type: "test",
@@ -25,7 +25,7 @@ const pkField = new Field({
   dimension_options: [],
   effective_type: "type/Integer",
   id: 138,
-  effective_type: "type/Integer",
+  base_type: "type/Integer",
   metadata,
 });
 
@@ -40,12 +40,28 @@ const fkField = new Field({
   dimension_options: [],
   effective_type: "type/Integer",
   id: 139,
-  effective_type: "type/Integer",
+  base_type: "type/Integer",
+  metadata,
+});
+
+const textField = new Field({
+  database_type: "test",
+  semantic_type: "",
+  table_id: 8,
+  name: "text_field",
+  has_field_values: "none",
+  values: [],
+  dimensions: {},
+  dimension_options: [],
+  effective_type: "type/Text",
+  id: 140,
+  base_type: "type/Text",
   metadata,
 });
 
 metadata.fields[pkField.id] = pkField;
 metadata.fields[fkField.id] = fkField;
+metadata.fields[textField.id] = textField;
 
 const card = {
   dataset_query: {
@@ -61,13 +77,10 @@ const card = {
 
 const question = new Question(card, metadata);
 const query = question.query();
-const pkDimension = pkField.dimension();
-const fkDimenion = fkField.dimension();
-
 const store = getStore();
 
-describe("InlineKeyPicker", () => {
-  it("renders an inline key picker with operator and values fields", () => {
+describe("InlineValuePicker", () => {
+  it("renders an inline value picker with operator and values fields", () => {
     const testFilter = new Filter(
       ["=", ["field", pkField.id, null], undefined],
       null,
@@ -77,7 +90,7 @@ describe("InlineKeyPicker", () => {
 
     render(
       <Provider store={store}>
-        <InlineKeyPicker
+        <InlineValuePicker
           filter={testFilter}
           field={pkField}
           handleChange={changeSpy}
@@ -85,12 +98,12 @@ describe("InlineKeyPicker", () => {
       </Provider>,
     );
 
-    screen.getByTestId("key-picker");
+    screen.getByTestId("value-picker");
     screen.getByTestId("select-button");
-    screen.getByPlaceholderText("Enter IDs");
+    screen.getByPlaceholderText("Enter an ID");
   });
 
-  it("loads an existing set of filter values", () => {
+  it("loads an existing set of key filter values", () => {
     const testFilter = new Filter(
       ["=", ["field", pkField.id, null], 777, 888],
       null,
@@ -100,15 +113,38 @@ describe("InlineKeyPicker", () => {
 
     render(
       <Provider store={store}>
-        <InlineKeyPicker
+        <InlineValuePicker
           filter={testFilter}
           field={pkField}
           handleChange={changeSpy}
         />
       </Provider>,
     );
+    screen.getByText("Is");
     screen.getByText("777");
     screen.getByText("888");
+  });
+
+  it("loads an existing set of text filter values", async () => {
+    const testFilter = new Filter(
+      ["contains", ["field", textField.id, null], "fooBarBaz", "BazBarFoo"],
+      null,
+      query,
+    );
+    const changeSpy = jest.fn();
+
+    render(
+      <Provider store={store}>
+        <InlineValuePicker
+          filter={testFilter}
+          field={textField}
+          handleChange={changeSpy}
+        />
+      </Provider>,
+    );
+    screen.getByText("Contains");
+    screen.getByText("fooBarBaz");
+    screen.getByText("BazBarFoo");
   });
 
   it("changes the filter operator", () => {
@@ -121,7 +157,7 @@ describe("InlineKeyPicker", () => {
 
     render(
       <Provider store={store}>
-        <InlineKeyPicker
+        <InlineValuePicker
           filter={testFilter}
           field={pkField}
           handleChange={changeSpy}
@@ -145,7 +181,7 @@ describe("InlineKeyPicker", () => {
 
     render(
       <Provider store={store}>
-        <InlineKeyPicker
+        <InlineValuePicker
           filter={testFilter}
           field={pkField}
           handleChange={changeSpy}
@@ -153,7 +189,7 @@ describe("InlineKeyPicker", () => {
       </Provider>,
     );
 
-    const textInput = screen.getByPlaceholderText("Enter IDs");
+    const textInput = screen.getByPlaceholderText("Enter an ID");
     userEvent.type(textInput, "456");
 
     expect(changeSpy).toHaveBeenCalledTimes(3);
@@ -173,7 +209,7 @@ describe("InlineKeyPicker", () => {
 
     render(
       <Provider store={store}>
-        <InlineKeyPicker
+        <InlineValuePicker
           filter={testFilter}
           field={pkField}
           handleChange={changeSpy}

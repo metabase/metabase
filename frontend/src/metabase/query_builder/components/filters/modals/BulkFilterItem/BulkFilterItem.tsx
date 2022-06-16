@@ -33,15 +33,13 @@ export const BulkFilterItem = ({
     const field = dimension.field();
 
     const relevantFieldType = FIELD_TYPE_PRIORITY.find(t =>
-      [field.semantic_type, field.base_type].includes(t),
+      [field.semantic_type, field.base_type, field.has_field_values].includes(
+        t,
+      ),
     );
 
     if (relevantFieldType) {
       return relevantFieldType;
-    }
-
-    if (field.has_field_values === "list") {
-      return "type/Category";
     }
   }, [dimension]);
 
@@ -72,6 +70,7 @@ export const BulkFilterItem = ({
         />
       );
     case "type/Category":
+    case "list":
       return (
         <InlineCategoryPicker
           query={query}
@@ -109,7 +108,7 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   let filter = new Filter([], null, dimension.query() ?? query);
   const field = dimension.field();
   const isBooleanField = isBoolean(field);
-  const isTextField = isString(field);
+  const isTextField = isString(field) && field.has_field_values !== "list";
 
   filter = filter.setDimension(dimension.mbql(), {
     useDefaultOperator: !isBooleanField,

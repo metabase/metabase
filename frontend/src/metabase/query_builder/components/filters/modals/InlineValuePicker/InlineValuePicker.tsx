@@ -36,7 +36,7 @@ export function InlineValuePicker({
   }, [field, filter]);
 
   return (
-    <div data-testid="key-picker" aria-label={field.displayName()}>
+    <div data-testid="value-picker" aria-label={field.displayName()}>
       <OperatorSelector
         operator={filter.operatorName() ?? "="}
         operators={filterOperators}
