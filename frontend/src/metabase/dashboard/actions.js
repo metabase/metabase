@@ -423,10 +423,7 @@ export const saveDashboardAndCards = createThunkAction(
                 await EmittersApi.create({
                   dashboard_id: dashboard.id,
                   action_id: actionId,
-                  parameter_mappings: getActionEmitterParameterMappings(
-                    dc,
-                    action,
-                  ),
+                  parameter_mappings: getActionEmitterParameterMappings(action),
                 });
                 const newDash = await DashboardApi.get({
                   dashId: dashboard.id,
@@ -1236,3 +1233,16 @@ export const fetchDashboardParameterValues = args => async (
   );
   return dashboardParameterValuesCache.get(args) || [];
 };
+
+// Writeback
+export const OPEN_ACTION_PARAMETERS_MODAL =
+  "metabase/data-app/OPEN_ACTION_PARAMETERS_MODAL";
+export const openActionParametersModal = createAction(
+  OPEN_ACTION_PARAMETERS_MODAL,
+);
+
+export const CLOSE_ACTION_PARAMETERS_MODAL =
+  "metabase/data-app/CLOSE_ACTION_PARAMETERS_MODAL";
+export const closeActionParametersModal = createAction(
+  CLOSE_ACTION_PARAMETERS_MODAL,
+);

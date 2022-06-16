@@ -4,7 +4,7 @@ import Database from "metabase-lib/lib/metadata/Database";
 
 import { Database as IDatabase } from "metabase-types/types/Database";
 import { DashCard } from "metabase-types/types/Dashboard";
-import { ParameterTarget } from "metabase-types/types/Parameter";
+import { ParameterId, ParameterTarget } from "metabase-types/types/Parameter";
 
 import { WritebackAction } from "./types";
 
@@ -26,25 +26,15 @@ export const getActionButtonEmitterId = (dashCard: DashCard) =>
 export const getActionButtonActionId = (dashCard: DashCard) =>
   dashCard.visualization_settings?.click_behavior?.action;
 
-export const getActionEmitterParameterMappings = (
-  dashCard: DashCard,
-  action: WritebackAction,
-) => {
-  const { click_behavior } = dashCard.visualization_settings;
-
+export const getActionEmitterParameterMappings = (action: WritebackAction) => {
   const templateTags = Object.values(
     action.card.dataset_query.native["template-tags"],
   );
 
-  const parameterMappings: Record<string, ParameterTarget> = {};
+  const parameterMappings: Record<ParameterId, ParameterTarget> = {};
 
-  Object.keys(click_behavior.parameterMapping).forEach(targetVariableId => {
-    const templateTag = templateTags.find(tag => tag.id === targetVariableId);
-    if (templateTag) {
-      parameterMappings[targetVariableId] = getTemplateTagParameterTarget(
-        templateTag,
-      );
-    }
+  templateTags.forEach(tag => {
+    parameterMappings[tag.id] = getTemplateTagParameterTarget(tag);
   });
 
   return parameterMappings;
