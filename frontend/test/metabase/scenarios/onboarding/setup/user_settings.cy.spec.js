@@ -36,6 +36,19 @@ describe("user > settings", () => {
     cy.signInAsNormalUser();
   });
 
+  it("should be able to remove first name and last name (metabase#22754)", () => {
+    cy.visit("/account/profile");
+    cy.findByText("Account settings");
+    cy.findByLabelText("First name").clear();
+    cy.findByLabelText("Last name").clear();
+    cy.button("Update").click();
+
+    cy.reload();
+
+    cy.findByLabelText("First name").should("be.empty");
+    cy.findByLabelText("Last name").should("be.empty");
+  });
+
   it("should show user details with disabled submit button", () => {
     cy.visit("/account/profile");
     cy.findByText("Account settings");
