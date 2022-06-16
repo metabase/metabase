@@ -312,7 +312,10 @@
                         Field    [val-field {:table_id      (u/the-id table)
                                              :nfc_path      [:jsons "values" "qty"]
                                              :database_type "integer"}]]
-        (mt/with-everything-store
+        (qp.store/with-store
+          (qp.store/fetch-and-store-database! (u/the-id database))
+          (qp.store/fetch-and-store-tables! [(u/the-id table)])
+          (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
           (let [field-clause [:field (u/the-id val-field) {:binning
                                                            {:strategy :num-bins,
                                                             :num-bins 100,
