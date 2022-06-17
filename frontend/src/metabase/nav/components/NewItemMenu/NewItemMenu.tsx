@@ -1,6 +1,5 @@
 import React, { ReactElement, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
-import { LocationDescriptor } from "history";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -11,11 +10,11 @@ import { Collection } from "metabase-types/api";
 type ModalType = "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
-  trigger: ReactElement;
+  trigger?: ReactElement;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
-  hasDbWithJsonEngine: boolean;
-  onChangeLocation: (location: LocationDescriptor) => void;
+  hasDatabaseWithJsonEngine: boolean;
+  onChangeLocation: (location: string) => void;
   onCloseNavbar: () => void;
 }
 
@@ -23,7 +22,7 @@ const NewItemMenu = ({
   trigger,
   hasDataAccess,
   hasNativeWrite,
-  hasDbWithJsonEngine,
+  hasDatabaseWithJsonEngine,
   onChangeLocation,
   onCloseNavbar,
 }: NewItemMenuProps) => {
@@ -59,7 +58,7 @@ const NewItemMenu = ({
 
     if (hasNativeWrite) {
       items.push({
-        title: hasDbWithJsonEngine ? t`Native query` : t`SQL query`,
+        title: hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`,
         icon: "sql",
         link: Urls.newQuestion({
           type: "native",
@@ -86,7 +85,7 @@ const NewItemMenu = ({
     );
 
     return items;
-  }, [hasDataAccess, hasNativeWrite, hasDbWithJsonEngine, onCloseNavbar]);
+  }, [hasDataAccess, hasNativeWrite, hasDatabaseWithJsonEngine, onCloseNavbar]);
 
   return (
     <>
