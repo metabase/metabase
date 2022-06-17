@@ -79,8 +79,6 @@ describe("scenarios > question > relative-datetime", () => {
 
       cy.findByTextEnsureVisible("Created At").click();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
-
       popover().within(() => {
         cy.findByText("Filter by this column").click();
         cy.icon("chevronleft").should("not.exist");
@@ -150,7 +148,6 @@ describe("scenarios > question > relative-datetime", () => {
     it("current filters should work (metabase#21977)", () => {
       openOrdersTable();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTextEnsureVisible("Created At").click();
       popover().within(() => {
         cy.findByText("Filter by this column").click();
@@ -249,8 +246,6 @@ describe("scenarios > question > relative-datetime", () => {
 
     it("starting from option should set correct sign (metabase#22228)", () => {
       openOrdersTable();
-
-      cy.intercept("POST", "/api/dataset").as("dataset");
 
       openCreatedAt("Next");
       addStartingFrom();
