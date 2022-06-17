@@ -273,7 +273,7 @@
 (defmethod sql.qp/date [:mysql :minute-of-hour]  [_ _ expr] (hx/minute expr))
 (defmethod sql.qp/date [:mysql :hour]            [_ _ expr] (trunc-with-format "%Y-%m-%d %H" expr))
 (defmethod sql.qp/date [:mysql :hour-of-day]     [_ _ expr] (hx/hour expr))
-(defmethod sql.qp/date [:mysql :day]             [_ _ expr] (->date expr))
+(defmethod sql.qp/date [:mysql :day]             [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :day-of-month]    [_ _ expr] (hsql/call :dayofmonth expr))
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
