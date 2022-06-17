@@ -215,7 +215,6 @@ describe("scenarios > question > relative-datetime", () => {
     it("should allow changing values with starting from (metabase#22227)", () => {
       openOrdersTable();
 
-      // cy.intercept("POST", "/api/dataset").as("dataset");
       openCreatedAt("Past");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
@@ -225,7 +224,6 @@ describe("scenarios > question > relative-datetime", () => {
       });
       cy.wait("@dataset");
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
       cy.findByTextEnsureVisible(
         "Created At Previous Month, starting 7 months ago",
       ).click();
