@@ -16,9 +16,7 @@ const CollectionEmptyState = (): JSX.Element => {
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
       <EmptyStateDescription>{t`Use collections to organize and group dashboards and questions for your team or yourself`}</EmptyStateDescription>
-      <NewItemMenu>
-        <Button icon="add">{t`Create a new…`}</Button>
-      </NewItemMenu>
+      <NewItemMenu trigger={<Button icon="add">{t`Create a new…`}</Button>} />
     </EmptyStateRoot>
   );
 };
