@@ -176,9 +176,9 @@
       [:and [:= nil first-name] [:= nil last-name]]
       email
       [:or [:= nil first-name] [:= nil last-name]]
-      (hx/concat first-name last-name)
+      (hx/concat (hsql/call :coalesce first-name "") (hsql/call :coalesce last-name ""))
       :else
-      (hx/concat first-name (hx/literal " ") last-name))))
+      (hx/concat (hsql/call :coalesce first-name "") (hx/literal " ") (hsql/call :coalesce last-name "")))))
 
 (def datetime-unit-str->base-type
   "Map of datetime unit strings (possible params for queries that accept a datetime `unit` param) to the `:base_type` we
