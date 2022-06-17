@@ -215,7 +215,7 @@ describe("scenarios > question > relative-datetime", () => {
     it("should allow changing values with starting from (metabase#22227)", () => {
       openOrdersTable();
 
-      cy.intercept("POST", "/api/dataset").as("dataset");
+      // cy.intercept("POST", "/api/dataset").as("dataset");
       openCreatedAt("Past");
       addStartingFrom();
       setRelativeDatetimeUnit("months");
@@ -318,9 +318,9 @@ const setRelativeDatetimeUnit = unit => {
 };
 
 const setRelativeDatetimeValue = value => {
-  cy.findAllByTestId("relative-datetime-value")
+  cy.findByTestId("relative-datetime-value")
+    .click()
     .clear()
-    .clear() // Included twice because it's buggy sometimes
     .type(value)
     .blur();
 };
@@ -333,9 +333,9 @@ const setStartingFromUnit = unit => {
 };
 
 const setStartingFromValue = value => {
-  cy.findAllByTestId("starting-from-value")
+  cy.findByTestId("starting-from-value")
+    .click()
     .clear()
-    .clear() // Included twice because it's buggy sometimes
     .type(value)
     .blur();
 };
