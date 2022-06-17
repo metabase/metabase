@@ -4,12 +4,14 @@ title: Encrypting your database connection details at rest
 
 # Encrypting your database connection details at rest
 
-Metabase stores connection information for the various databases you add in the Metabase application database. To prevent bad actors from being able to access these details if they were to gain access to the application DB, Metabase can automatically encrypt them with AES256 + SHA512 when they are saved, and decrypt them on-the-fly whenever they are needed.
+Metabase stores connection information for the various databases you add in the [Metabase application database](/glossary/application_database). To prevent bad actors from being able to access these details if they were to gain access to the application DB, Metabase can automatically encrypt them with AES256 + SHA512 when they are saved, and decrypt them on-the-fly whenever they are needed.
 
 - [Creating an encryption key](#creating-an-encryption-key)
 - [Encrypting an existing connection](#adding-an-encryption-key-to-an-existing-connection)
+  - [Example command for rotating an encryption key](#example-command-for-rotating-an-encryption-key)
 - [Rotating an encryption key](#rotating-an-encyption-key)
 - [Disabling an encryption key](#disabling-an-encryption-key)
+  - [Example command for disabling an encryption key](#example-command-for-disabling-an-encryption-key)
 
 ## Creating an encryption key
 
@@ -29,12 +31,10 @@ Metabase stores connection information for the various databases you add in the 
    ```
 
 Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will securely encrypt and store the connection details for each new database that you add.
-  
+
 **Note**
 
-Some versions of Linux interpret single-quotes (`'`) and double-quotes (`"`) differently for environment variable values. If you upgrade to a newer version of Linux, and the key originally used single-quotes, you might need to wrap the key in double-quotes, so that the single-quotes are interpreted literally.
-
-For example, `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would become `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
+> Some versions of Linux interpret single-quotes (`'`) and double-quotes (`"`) differently for environment variable values. If you upgrade to a newer version of Linux, and the key originally used single-quotes, you might need to wrap the key in double-quotes, so that the single-quotes are interpreted literally. For example, `MB_ENCRYPTION_SECRET_KEY='IYq...sM='` would become `MB_ENCRYPTION_SECRET_KEY="'IYq...sM='"`
 
 ## Encrypting an existing connection
 
@@ -48,7 +48,7 @@ If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you 
    - Set the current encryption key as `MB_ENCRYPTION_SECRET_KEY`.
    - Set the new encryption key as a parameter.
 
-**Example**
+### Example command for rotating an encryption key
 
 ```
 MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encryption-key new-key
@@ -58,7 +58,7 @@ MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encrypti
 
 To disable an encryption key, follow the steps to [rotate an encryption key](#rotating-an-encyption-key), but use an empty string (`""`) as the new key.
 
-**Example**
+### Example command for disabling an encryption key
 
 ```
 MB_ENCRYPTION_SECRET_KEY="your-current-key" java -jar metabase.jar rotate-encryption-key ""
