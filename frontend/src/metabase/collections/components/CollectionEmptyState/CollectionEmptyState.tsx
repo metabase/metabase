@@ -2,6 +2,7 @@ import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
 import NewItemMenu from "metabase/nav/containers/NewItemMenu";
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   EmptyStateDescription,
   EmptyStateIconBackground,
@@ -16,7 +17,10 @@ const CollectionEmptyState = (): JSX.Element => {
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
       <EmptyStateDescription>{t`Use collections to organize and group dashboards and questions for your team or yourself`}</EmptyStateDescription>
-      <NewItemMenu trigger={<Button icon="add">{t`Create a new…`}</Button>} />
+      <NewItemMenu
+        trigger={<Button icon="add">{t`Create a new…`}</Button>}
+        analyticsContext={ANALYTICS_CONTEXT}
+      />
     </EmptyStateRoot>
   );
 };
