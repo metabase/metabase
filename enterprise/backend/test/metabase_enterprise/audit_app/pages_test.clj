@@ -18,7 +18,7 @@
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
-(use-fixtures :once (fixtures/initialize :db))
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (deftest preconditions-test
   (classloader/require 'metabase-enterprise.audit-app.pages.dashboards)
@@ -190,14 +190,17 @@
             (do-tests-for-query-type query-type objects)))))))
 
 (deftest user-full-name-test
-  (testing "User name fallback to email works in audit queries."
-    (mt/with-temp* [User [a {:first_name "a" :last_name nil :email "a@metabase.com"}]
-                    User [b {:first_name nil :last_name "b" :email "b@metabase.com"}]
-                    User [c {:first_name nil :last_name nil :email "c@metabase.com"}]]
-      (is (= ["b" "a" "c@metabase.com"]
-             (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
-                                                {:type :internal
-                                                 :fn   "metabase-enterprise.audit-app.pages.users/table"})
-                          [:data :rows])
-                  (filter #((set (map u/the-id [a b c])) (first %)))
-                  (map second)))))))
+  (testing "User name fallback to email, implemented in `metabase-enterprise.audit-app.pages.common/user-full-name` works in audit queries."
+    (mt/with-test-user :crowberto
+      (premium-features-test/with-premium-features #{:audit-app}
+        (mt/with-temp* [User [a {:first_name "a" :last_name nil :email "a@metabase.com"}]
+                        User [b {:first_name nil :last_name "b" :email "b@metabase.com"}]
+                        User [c {:first_name nil :last_name nil :email "c@metabase.com"}]]
+          (is (= #{"a" "b" "c@metabase.com"}
+                 (->> (get-in (mt/user-http-request :crowberto :post 202 "dataset"
+                                                    {:type :internal
+                                                     :fn   "metabase-enterprise.audit-app.pages.users/table"})
+                              [:data :rows])
+                      (filter #((set (map u/the-id [a b c])) (first %)))
+                      (map second)
+                      set))))))))
