@@ -5,7 +5,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 import {
   PLUGIN_ADMIN_USER_FORM_FIELDS,
-  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+  PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
@@ -85,8 +85,8 @@ export default {
     ],
   },
   user: user => {
-    const isSsoUser = !PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f =>
-      f(user),
+    const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
+      predicate(user),
     );
 
     if (isSsoUser) {

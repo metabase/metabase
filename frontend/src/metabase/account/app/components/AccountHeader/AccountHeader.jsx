@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
-import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
+import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import {
   AccountHeaderRoot,
   HeaderAvatar,
@@ -19,7 +19,7 @@ const propTypes = {
 
 const AccountHeader = ({ user, path, onChangeLocation }) => {
   const hasPasswordChange = useMemo(
-    () => PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f => f(user)),
+    () => PLUGIN_IS_PASSWORD_USER.every(predicate => predicate(user)),
     [user],
   );
 
