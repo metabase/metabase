@@ -253,7 +253,6 @@
   {:pre [(or (string? route) (vector? route))]}
   `(def ~(vary-meta fn-name
                     assoc
-
                     :doc          docstr
                     :is-endpoint? true)
      (~(symbol "compojure.core" (name method)) ~route ~args

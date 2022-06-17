@@ -33,7 +33,7 @@ import {
 } from "metabase/lib/dataset";
 import { isTransientId } from "metabase/meta/Card";
 import {
-  getValueAndFieldIdPopulatedParametersFromCard,
+  getCardUiParameters,
   remapParameterValuesToTemplateTags,
 } from "metabase/parameters/utils/cards";
 import { fieldFilterParameterToMBQLFilter } from "metabase/parameters/utils/mbql";
@@ -1161,7 +1161,7 @@ class QuestionInner {
 
   // TODO: Fix incorrect Flow signature
   parameters(): ParameterObject[] {
-    return getValueAndFieldIdPopulatedParametersFromCard(
+    return getCardUiParameters(
       this.card(),
       this.metadata(),
       this._parameterValues,
