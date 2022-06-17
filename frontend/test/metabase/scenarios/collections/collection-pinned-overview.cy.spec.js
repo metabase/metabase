@@ -1,4 +1,4 @@
-import { restore, popover } from "__support__/e2e/cypress";
+import { popover, restore } from "__support__/e2e/cypress";
 
 const DASHBOARD_ITEM_NAME = "Orders in a dashboard";
 const CARD_ITEM_NAME = "Orders, Count";
@@ -24,11 +24,7 @@ describe("scenarios > collection pinned items overview", () => {
     cy.wait("@pinnedItemsGET");
 
     // pin a dashboard
-    cy.findByText(DASHBOARD_ITEM_NAME)
-      .closest("tr")
-      .within(() => {
-        cy.icon("pin").click();
-      });
+    pinItem(DASHBOARD_ITEM_NAME);
     cy.wait("@pinnedItemsGET");
 
     // ensure the dashboard card is showing in the pinned section
@@ -44,11 +40,7 @@ describe("scenarios > collection pinned items overview", () => {
     cy.wait("@pinnedItemsGET");
 
     // pin a card
-    cy.findByText(CARD_ITEM_NAME)
-      .closest("tr")
-      .within(() => {
-        cy.icon("pin").click();
-      });
+    pinItem(CARD_ITEM_NAME);
     cy.wait(["@pinnedItemsGET", "@cardQuery"]);
 
     // ensure the card visualization is showing in the pinned section
@@ -62,11 +54,7 @@ describe("scenarios > collection pinned items overview", () => {
     cy.wait(["@pinnedItemsGET", "@cardQuery"]);
 
     // pin a model
-    cy.findByText(MODE_ITEM_NAME)
-      .closest("tr")
-      .within(() => {
-        cy.icon("pin").click();
-      });
+    pinItem(MODE_ITEM_NAME);
     cy.wait("@pinnedItemsGET");
     // ensure the model card is showing in the pinned section
     cy.findByTestId("pinned-items").within(() => {
@@ -135,3 +123,11 @@ describe("scenarios > collection pinned items overview", () => {
     });
   });
 });
+
+const pinItem = name => {
+  cy.findByText(name)
+    .closest("tr")
+    .within(() => cy.icon("ellipsis").click());
+
+  popover().within(() => cy.icon("pin").click());
+};
