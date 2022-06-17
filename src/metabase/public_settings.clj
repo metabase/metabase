@@ -281,6 +281,17 @@
   :type       :string
   :default    "Metabase")
 
+(defsetting loading-message
+  (deferred-tru "Message to show while a query is running.")
+  :visibility :public
+  :type       :keyword)
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :default    true)
+
 (defsetting application-colors
   (deferred-tru
    (str "These are the primary colors used in charts and throughout Metabase. "
