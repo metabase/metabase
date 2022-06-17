@@ -32,7 +32,7 @@ function EntityIconCheckBox({
   onToggleSelected,
   ...props
 }) {
-  const iconSize = variant === "small" ? 12 : 18;
+  const iconSize = variant === "small" ? 12 : 16;
   const handleClick = e => {
     e.preventDefault();
     onToggleSelected();

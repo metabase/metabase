@@ -81,7 +81,7 @@ export function BaseTableItem({
 
     const icon = { name: item.getIcon().name };
     if (item.model === "card") {
-      icon.color = color("bg-dark");
+      icon.color = color("text-light");
     }
 
     // Table row can be wrapped with ItemDragSource,
