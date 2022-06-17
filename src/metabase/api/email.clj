@@ -13,7 +13,7 @@
             [metabase.util.i18n :refer [tru]]
             [metabase.util.schema :as su]))
 
-(def ^:private mb-to-smtp-settings ; WIP: what's an smtp-setting?
+(def ^:private mb-to-smtp-settings
   {:email-smtp-host     :host
    :email-smtp-username :user
    :email-smtp-password :pass
