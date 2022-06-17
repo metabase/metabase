@@ -1299,7 +1299,6 @@ workflows:
                 [
                   "admin",
                   "filters",
-                  "native",
                   "native-filters",
                   "onboarding",
                   "smoketest",
