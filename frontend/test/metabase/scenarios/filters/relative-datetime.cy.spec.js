@@ -220,7 +220,7 @@ describe("scenarios > question > relative-datetime", () => {
       setRelativeDatetimeUnit("months");
       setRelativeDatetimeValue(1);
       popover().within(() => {
-        cy.findByText("Add filter").click();
+        cy.button("Add filter").click();
       });
       cy.wait("@dataset");
 
@@ -229,7 +229,7 @@ describe("scenarios > question > relative-datetime", () => {
       ).click();
       setRelativeDatetimeValue(3);
       popover().within(() => {
-        cy.findByText("Update filter").click();
+        cy.button("Update filter").click();
       });
       cy.wait("@dataset");
 
@@ -238,9 +238,10 @@ describe("scenarios > question > relative-datetime", () => {
       ).click();
       setStartingFromValue(30);
       popover().within(() => {
-        cy.findByText("Update filter").click();
+        cy.button("Update filter").click();
       });
       cy.wait("@dataset");
+
       cy.findByTextEnsureVisible(
         "Created At Previous 3 Months, starting 30 months ago",
       );
