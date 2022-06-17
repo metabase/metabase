@@ -23,6 +23,9 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
+    cy.findByLabelText("Reply To Address")
+      .type("reply-to@metabase.test")
+      .blur();
     cy.findByText("Save changes").click();
 
     cy.findByText("Changes saved!", { timeout: 10000 });
@@ -32,6 +35,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByDisplayValue("25");
     cy.findAllByDisplayValue("admin");
     cy.findByDisplayValue("mailer@metabase.test");
+    cy.findByDisplayValue("reply-to@metabase.test");
   });
 
   it("should show an error if test email fails", () => {

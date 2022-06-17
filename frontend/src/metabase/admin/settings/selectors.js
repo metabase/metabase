@@ -194,6 +194,14 @@ const SECTIONS = updateSectionsWithPlugins({
         required: true,
         validations: [["email", t`That's not a valid email address`]],
       },
+      {
+        key: "email-reply-to",
+        display_name: t`Reply To Address`,
+        placeholder: "metabase-replies@yourcompany.com",
+        type: "string",
+        required: false,
+        validations: [["email", t`That's not a valid email address`]],
+      },
     ],
   },
   slack: {
