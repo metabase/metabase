@@ -10,10 +10,11 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
-import NewCollectionItemMenu from "metabase/collections/components/NewCollectionItemMenu";
+import NewItemMenu from "metabase/nav/containers/NewItemMenu";
 import { color } from "metabase/lib/colors";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
+import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 
 import {
   BookmarkIcon,
@@ -140,7 +141,14 @@ function Menu(props) {
 
   return (
     <MenuContainer data-testid="collection-menu">
-      {hasWritePermission && <NewCollectionItemMenu {...props} />}
+      {hasWritePermission && (
+        <NewItemMenu
+          {...props}
+          triggerIcon="add"
+          triggerTooltip={t`New…`}
+          analyticsContext={ANALYTICS_CONTEXT}
+        />
+      )}
       <EditMenu {...props} />
       <PermissionsLink {...props} />
       <TimelinesLink {...props} />

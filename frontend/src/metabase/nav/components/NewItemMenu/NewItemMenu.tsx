@@ -14,6 +14,7 @@ export interface NewItemMenuProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
+  analyticsContext?: string;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
@@ -26,6 +27,7 @@ const NewItemMenu = ({
   trigger,
   triggerIcon,
   triggerTooltip,
+  analyticsContext,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
@@ -57,7 +59,7 @@ const NewItemMenu = ({
           mode: "notebook",
           creationType: "custom_question",
         }),
-        event: "NavBar;New Question Click;",
+        event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -70,7 +72,7 @@ const NewItemMenu = ({
           type: "native",
           creationType: "native_question",
         }),
-        event: "NavBar;New SQL Query Click;",
+        event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
       });
     }
@@ -80,18 +82,24 @@ const NewItemMenu = ({
         title: t`Dashboard`,
         icon: "dashboard",
         action: () => setModal("new-dashboard"),
-        event: "NavBar;New Dashboard Click;",
+        event: `${analyticsContext};New Dashboard Click;`,
       },
       {
         title: t`Collection`,
         icon: "folder",
         action: () => setModal("new-collection"),
-        event: "NavBar;New Collection Click;",
+        event: `${analyticsContext};New Collection Click;`,
       },
     );
 
     return items;
-  }, [hasDataAccess, hasNativeWrite, hasDatabaseWithJsonEngine, onCloseNavbar]);
+  }, [
+    hasDataAccess,
+    hasNativeWrite,
+    hasDatabaseWithJsonEngine,
+    analyticsContext,
+    onCloseNavbar,
+  ]);
 
   return (
     <>

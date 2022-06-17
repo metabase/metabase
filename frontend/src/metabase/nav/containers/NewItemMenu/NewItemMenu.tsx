@@ -15,6 +15,7 @@ interface MenuOwnProps {
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
+  analyticsContext?: string;
 }
 
 interface MenuStateProps {

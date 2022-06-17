@@ -15,6 +15,7 @@ const NewItemButton = () => {
           <NewButtonText>{t`New`}</NewButtonText>
         </NewButton>
       }
+      analyticsContext={"NavBar"}
     />
   );
 };
