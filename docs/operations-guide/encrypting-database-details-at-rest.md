@@ -7,11 +7,12 @@ title: Encrypting your database connection details at rest
 Metabase stores connection information for the various databases you add in the [Metabase application database](/glossary/application_database). To prevent bad actors from being able to access these details if they were to gain access to the application DB, Metabase can automatically encrypt them with AES256 + SHA512 when they are saved, and decrypt them on-the-fly whenever they are needed.
 
 - [Creating an encryption key](#creating-an-encryption-key)
-- [Encrypting an existing connection](#adding-an-encryption-key-to-an-existing-connection)
-  - [Example command for rotating an encryption key](#example-command-for-rotating-an-encryption-key)
-- [Rotating an encryption key](#rotating-an-encyption-key)
+  - [Example commands for creating and adding a key](#example-commands-for-creating-and-adding-a-key)
+- [Encrypting an existing connection](#encrypting-an-existing-connection)
+- [Rotating an encryption key](#rotating-an-encryption-key)
+  - [Example command for rotating a key](#example-command-for-rotating-a-key)
 - [Disabling an encryption key](#disabling-an-encryption-key)
-  - [Example command for disabling an encryption key](#example-command-for-disabling-an-encryption-key)
+  - [Example command for disabling a key](#example-command-for-disabling-a-key)
 
 ## Creating an encryption key
 
@@ -19,13 +20,17 @@ Metabase stores connection information for the various databases you add in the 
    > Take care not to lose this key because you can't decrypt connection details without it. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with it in the Admin Panel.
 2. Set your secret key as the environment variable `MB_ENCRYPTION_SECRET_KEY`.
 
-**Example**
+### Example commands for creating and adding a key
 
-1. Run `openssl rand -base64 32` to generate a cryptographically-secure, randomly-generated 32-character key. The key will look something like this:
+1. You can use `openssl` to generate a cryptographically-secure, randomly-generated 32-character key. 
+   ```
+   openssl rand -base64 32
+   ```
+2. Copy the key to your clipboard. It should look something like this:
    ```
    IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=
    ```
-2. Set the key as an environment variable and start Metabase as usual.
+3. Set the key as an environment variable and start Metabase as usual.
    ```
    MB_ENCRYPTION_SECRET_KEY="IYqrSi5QDthvFWe4/WdAxhnra5DZC3RKx3ZSrOJDKsM=" java -jar metabase.jar
    ```
@@ -40,7 +45,7 @@ Once you set the `MB_ENCRYPTION_SECRET_KEY` value, Metabase will securely encryp
 
 If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you can encrypt the connection details by going to each one of those databases in **Admin settings** > **Databases** and clicking on the **Save** button. Existing databases with unencrypted details will continue to work normally.
 
-## Rotating an encyption key
+## Rotating an encryption key
 
 1. We recommend that you [backup](./backing-up-metabase-application-data.md) your data before doing a key rotation.
 2. Stop running your Metabase app.
@@ -48,7 +53,7 @@ If you added databases before setting the `MB_ENCRYPTION_SECRET_KEY` value, you 
    - Set the current encryption key as `MB_ENCRYPTION_SECRET_KEY`.
    - Set the new encryption key as a parameter.
 
-### Example command for rotating an encryption key
+### Example command for rotating a key
 
 ```
 MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encryption-key new-key
@@ -56,9 +61,9 @@ MB_ENCRYPTION_SECRET_KEY=your-current-key java -jar metabase.jar rotate-encrypti
 
 ## Disabling an encryption key
 
-To disable an encryption key, follow the steps to [rotate an encryption key](#rotating-an-encyption-key), but use an empty string (`""`) as the new key.
+To disable an encryption key, follow the steps to [rotate an encryption key](#rotating-an-encryption-key), but use an empty string (`""`) as the new key.
 
-### Example command for disabling an encryption key
+### Example command for disabling a key
 
 ```
 MB_ENCRYPTION_SECRET_KEY="your-current-key" java -jar metabase.jar rotate-encryption-key ""
