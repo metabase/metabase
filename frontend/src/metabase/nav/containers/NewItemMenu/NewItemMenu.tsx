@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { closeNavbar } from "metabase/redux/app";
@@ -9,7 +10,25 @@ import {
   getHasNativeWrite,
 } from "../../selectors";
 
-const mapStateToProps = (state: State) => ({
+interface MenuOwnProps {
+  className?: string;
+  trigger?: ReactNode;
+  triggerIcon?: string;
+  triggerTooltip?: string;
+}
+
+interface MenuStateProps {
+  hasDataAccess: boolean;
+  hasNativeWrite: boolean;
+  hasDatabaseWithJsonEngine: boolean;
+}
+
+interface MenuDispatchProps {
+  onChangeLocation: (location: string) => void;
+  onCloseNavbar: () => void;
+}
+
+const mapStateToProps = (state: State): MenuStateProps => ({
   hasDataAccess: getHasDataAccess(state),
   hasNativeWrite: getHasNativeWrite(state),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(state),
@@ -20,4 +39,7 @@ const mapDispatchToProps = {
   onCloseNavbar: closeNavbar,
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(NewItemMenu);
+export default connect<MenuStateProps, MenuDispatchProps, MenuOwnProps, State>(
+  mapStateToProps,
+  mapDispatchToProps,
+)(NewItemMenu);

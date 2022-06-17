@@ -1,4 +1,4 @@
-import React, { ReactElement, useCallback, useMemo, useState } from "react";
+import React, { ReactNode, useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
@@ -11,20 +11,24 @@ type ModalType = "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
   className?: string;
+  trigger?: ReactNode;
+  triggerIcon?: string;
+  triggerTooltip?: string;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
-  children?: ReactElement;
   onChangeLocation: (location: string) => void;
   onCloseNavbar: () => void;
 }
 
 const NewItemMenu = ({
   className,
+  trigger,
+  triggerIcon,
+  triggerTooltip,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
-  children,
   onChangeLocation,
   onCloseNavbar,
 }: NewItemMenuProps) => {
@@ -91,7 +95,13 @@ const NewItemMenu = ({
 
   return (
     <>
-      <EntityMenu className={className} trigger={children} items={menuItems} />
+      <EntityMenu
+        className={className}
+        items={menuItems}
+        trigger={trigger}
+        triggerIcon={triggerIcon}
+        tooltip={triggerTooltip}
+      />
       {modal && (
         <Modal onClose={handleModalClose}>
           {modal === "new-collection" && (
