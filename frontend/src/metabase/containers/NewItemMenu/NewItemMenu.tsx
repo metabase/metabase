@@ -2,13 +2,13 @@ import { ReactNode } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { closeNavbar } from "metabase/redux/app";
+import NewItemMenu from "metabase/components/NewItemMenu";
 import { State } from "metabase-types/store";
-import NewItemMenu from "../../components/NewItemMenu";
 import {
   getHasDataAccess,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
-} from "../../selectors";
+} from "../../nav/selectors";
 
 interface MenuOwnProps {
   className?: string;

@@ -1,7 +1,7 @@
 import React from "react";
 import { t } from "ttag";
 import Button from "metabase/core/components/Button";
-import NewItemMenu from "metabase/nav/containers/NewItemMenu";
+import NewItemMenu from "metabase/containers/NewItemMenu";
 import { ANALYTICS_CONTEXT } from "metabase/collections/constants";
 import {
   EmptyStateDescription,

@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 import Button from "metabase/core/components/Button/Button";
+import NewItemMenu from "metabase/containers/NewItemMenu";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
-import NewItemMenu from "../../containers/NewItemMenu";
 
 export const NewMenu = styled(NewItemMenu)`
   margin-right: 0.5rem;

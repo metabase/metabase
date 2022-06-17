@@ -10,7 +10,7 @@ import PageHeading from "metabase/components/type/PageHeading";
 import Tooltip from "metabase/components/Tooltip";
 
 import CollectionEditMenu from "metabase/collections/components/CollectionEditMenu";
-import NewItemMenu from "metabase/nav/containers/NewItemMenu";
+import NewItemMenu from "metabase/containers/NewItemMenu";
 import { color } from "metabase/lib/colors";
 
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
