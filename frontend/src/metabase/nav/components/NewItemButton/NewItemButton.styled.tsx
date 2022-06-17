@@ -1,24 +1,13 @@
 import styled from "@emotion/styled";
-
-import EntityMenu from "metabase/components/EntityMenu";
-import Button from "metabase/core/components/Button";
-
+import Button from "metabase/core/components/Button/Button";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
-export const Menu = styled(EntityMenu)`
-  margin-right: 0.5rem;
-
-  ${breakpointMaxSmall} {
-    display: none;
-  }
-`;
-
-export const StyledButton = styled(Button)`
+export const ButtonRoot = styled(Button)`
   display: flex;
   align-items: center;
+  height: 2.25rem;
   margin-right: 0.5rem;
   padding: 0.5rem;
-  height: 36px;
 
   ${Button.TextContainer} {
     margin-left: 0;
@@ -29,10 +18,8 @@ export const StyledButton = styled(Button)`
   }
 `;
 
-export const Title = styled.h4`
+export const ButtonText = styled.h4`
   display: inline;
-
   margin-left: 0.5rem;
-
   white-space: nowrap;
 `;

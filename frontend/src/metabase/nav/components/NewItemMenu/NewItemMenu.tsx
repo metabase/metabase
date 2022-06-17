@@ -10,19 +10,21 @@ import { Collection } from "metabase-types/api";
 type ModalType = "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
-  trigger?: ReactElement;
+  className?: string;
   hasDataAccess: boolean;
   hasNativeWrite: boolean;
   hasDatabaseWithJsonEngine: boolean;
+  children?: ReactElement;
   onChangeLocation: (location: string) => void;
   onCloseNavbar: () => void;
 }
 
 const NewItemMenu = ({
-  trigger,
+  className,
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
+  children,
   onChangeLocation,
   onCloseNavbar,
 }: NewItemMenuProps) => {
@@ -89,7 +91,7 @@ const NewItemMenu = ({
 
   return (
     <>
-      <EntityMenu trigger={trigger} items={menuItems} />
+      <EntityMenu className={className} trigger={children} items={menuItems} />
       {modal && (
         <Modal onClose={handleModalClose}>
           {modal === "new-collection" && (
