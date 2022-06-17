@@ -12,57 +12,55 @@
             [metabase.util.i18n :refer [trs]])
   (:import java.sql.SQLNonTransientConnectionException))
 
-(defn- exec-wrap [db conn-chan sql+params]
+(defn- exec-wrap [conn-chan database sql+params]
   (a/go
-    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
+    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
       (try
         (let [pid (:pid (first (ddl.sql/jdbc-query conn ["select connection_id() pid"])))]
           (a/>! conn-chan pid)
           (ddl.sql/jdbc-query conn sql+params))
         (catch SQLNonTransientConnectionException _e
+          ;; Our connection may be killed due to timeout, `kill` will throw an appropriate exception
           nil)
         (catch Exception e
           (log/warn e)
           (throw e))))))
 
 (defn- kill [conn pid]
-  (try
-    (let [results (ddl.sql/jdbc-query conn ["show processlist"])
-          result? (some (fn [r]
-                          (and (= (:id r) pid)
-                               (str/starts-with? (or (:info r) "") "-- Metabase")))
-                        results)]
-      (when result?
-        ;; Can't use a prepared parameter with these statements
-        (ddl.sql/execute! conn [(str "kill " pid)])
-        (throw (Exception. (trs "Killed mysql process id {0} due to timeout." pid)))))
-    (catch Exception e
-      (log/warn e)
-      (throw e))))
+  (let [results (ddl.sql/jdbc-query conn ["show processlist"])
+        result? (some (fn [r]
+                        (and (= (:id r) pid)
+                          (str/starts-with? (or (:info r) "") "-- Metabase")))
+                      results)]
+    (when result?
+      ;; Can't use a prepared parameter with these statements
+      (ddl.sql/execute! conn [(str "kill " pid)])
+      (throw (Exception. (trs "Killed mysql process id {0} due to timeout." pid))))))
 
-(defn- execute-with-timeout! [db sql+params]
-  (jdbc/with-db-connection
-      [conn (sql-jdbc.conn/db->pooled-connection-spec db)]
-      (let [conn-chan (a/chan)
-            exec-chan (exec-wrap db conn-chan sql+params)
-            pid (a/<!! conn-chan)
-            ten-minutes (.toMillis (t/minutes 10))
-            t-chan (a/timeout ten-minutes)
-            [v port] (a/alts!! [t-chan exec-chan])]
-        (cond
-          (= port t-chan) (kill conn pid)
+(defn- execute-with-timeout!
+  "Spins up another channel to execute the statement.
+   If 10 minutes passes, send a kill statement to stop execution and throw exception
+   Otherwise return results returned by channel."
+  [conn database sql+params]
+  (let [conn-chan (a/chan)
+        exec-chan (exec-wrap conn-chan database sql+params)
+        pid (a/<!! conn-chan)
+        ten-minutes (.toMillis (t/minutes 10))
+        timeout-chan (a/timeout ten-minutes)
+        [v port] (a/alts!! [timeout-chan exec-chan])]
+    (cond
+      (= port timeout-chan) (kill conn pid)
 
-          (= port exec-chan) v))))
+      (= port exec-chan) v)))
 
 (defmethod ddl.i/refresh! :mysql [_driver database definition dataset-query]
-  (try
-    (let [{:keys [query params]} (qp/compile dataset-query)]
-      (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
-        (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database (:table-name definition))])
-        (execute-with-timeout! conn (into [(ddl.sql/create-table-sql database definition query)] params))))
-    (catch Exception e
-      ;; If drop table fails we can leave it, it will resolve itself on the next refresh
-      {:state :error :error (ex-message e)})))
+  (let [{:keys [query params]} (qp/compile dataset-query)]
+    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database (:table-name definition))])
+      ;; It is possible that this fails and rollback would not restore the table.
+      ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
+      (execute-with-timeout! conn database (into [(ddl.sql/create-table-sql database definition query)] params))
+      {:state :success})))
 
 (defmethod ddl.i/unpersist! :mysql
   [_driver database persisted-info]
@@ -89,12 +87,12 @@
                   (ddl.sql/execute! conn [(ddl.sql/drop-schema-sql database)]))]
                [:persist.check/create-table
                 (fn create-table [conn]
-                  (execute-with-timeout! conn [(ddl.sql/create-table-sql
-                                                 database
-                                                 {:table-name table-name
-                                                  :field-definitions [{:field-name "field"
-                                                                       :base-type :type/Text}]}
-                                                 "values (1)")]))
+                  (execute-with-timeout! conn database [(ddl.sql/create-table-sql
+                                                          database
+                                                          {:table-name table-name
+                                                           :field-definitions [{:field-name "field"
+                                                                                :base-type :type/Text}]}
+                                                          "values (1)")]))
                 (fn undo-create-table [conn]
                   (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database table-name)]))]
                [:persist.check/read-table

@@ -37,6 +37,12 @@
 
 (defmethod driver/database-supports? [:mysql :nested-field-columns] [_ _ _] true)
 
+(defmethod driver/database-supports? [:mysql :persist-models] [_driver _feat _db] true)
+
+(defmethod driver/database-supports? [:mysql :persist-models-enabled]
+  [_driver _feat db]
+  (-> db :options :persist-models-enabled))
+
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
 (defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
 

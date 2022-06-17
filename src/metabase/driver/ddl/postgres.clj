@@ -32,16 +32,13 @@
     (ddl.sql/execute! tx [(format "SET LOCAL statement_timeout TO '%s'" (str new-timeout))])))
 
 (defmethod ddl.i/refresh! :postgres [_driver database definition dataset-query]
-  (try
-    (let [{:keys [query params]} (qp/compile dataset-query)]
-      (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
-        (jdbc/with-db-transaction [tx conn]
-          (set-statement-timeout! tx)
-          (ddl.sql/execute! tx [(ddl.sql/drop-table-sql database (:table-name definition))])
-          (ddl.sql/execute! tx (into [(ddl.sql/create-table-sql database definition query)] params)))
-        {:state :success}))
-    (catch Exception e
-      {:state :error :error (ex-message e)})))
+  (let [{:keys [query params]} (qp/compile dataset-query)]
+    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+      (jdbc/with-db-transaction [tx conn]
+        (set-statement-timeout! tx)
+        (ddl.sql/execute! tx [(ddl.sql/drop-table-sql database (:table-name definition))])
+        (ddl.sql/execute! tx (into [(ddl.sql/create-table-sql database definition query)] params)))
+      {:state :success})))
 
 (defmethod ddl.i/unpersist! :postgres
   [_driver database persisted-info]
