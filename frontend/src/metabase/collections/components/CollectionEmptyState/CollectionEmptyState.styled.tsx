@@ -21,6 +21,7 @@ export const EmptyStateDescription = styled.div`
   font-size: 1rem;
   line-height: 1.5rem;
   margin-bottom: 1.5rem;
+  text-align: center;
 `;
 
 export const EmptyStateIconForeground = styled.path`
