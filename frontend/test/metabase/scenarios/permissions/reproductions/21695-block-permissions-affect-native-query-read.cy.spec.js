@@ -10,10 +10,6 @@ const questionDetails = {
 
 describeEE("issue 21695", () => {
   beforeEach(() => {
-    // TODO:
-    // Remove this line to unskip repro once the issue gets fixed.
-    cy.skipOn(true);
-
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
     restore();
