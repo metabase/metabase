@@ -57,10 +57,6 @@
                                 {:native :write}))
                        (perms group-id)))))))))))
 
-(deftest native-sql-unblocking-test
-  (testing "blocking then unblocking via unrestricted data perm access allows native queries to run, although not be edited (#21695)"
-    (comment "blah blah blah here")))
-
 (defn- grant-block-perms! [group-id]
   (perms/update-data-perms-graph! [group-id (mt/id) :data] {:schemas :block}))
 
