@@ -316,8 +316,8 @@
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"
       (is (= [[29 "20th Century Cafe"]
-              [ 8 "25°"              ]
-              [93 "33 Taps"          ]]
+              [ 8 "25°"]
+              [93 "33 Taps"]]
              (take 3 (chain-filter/chain-filter (mt/id :venues :id) nil)))))
     (testing "Show me expensive venue IDs (names)"
       (is (= [[55 "Dal Rae Restaurant"]
@@ -384,20 +384,26 @@
 
 (deftest use-cached-field-values-test
   (testing "chain-filter should use cached FieldValues if applicable (#13832)"
-    (mt/with-temp-vals-in-db FieldValues (db/select-one-id FieldValues :field_id (mt/id :categories :name)) {:values ["Good" "Bad"]}
-      (testing "values"
-        (is (= ["Good" "Bad"]
-               (chain-filter categories.name nil)))
-        (testing "shouldn't use cached FieldValues for queries with constraints"
-          (is (= ["Japanese" "Steakhouse"]
-                 (chain-filter categories.name {venues.price 4})))))
+    (let [field-values-id (db/select-one-id FieldValues :field_id (mt/id :categories :name))]
+     (mt/with-temp-vals-in-db FieldValues field-values-id {:values         ["Good" "Bad"]
+                                                           :has_more_values false}
+       (testing "values"
+         (is (= ["Good" "Bad"]
+                (chain-filter categories.name nil)))
+         (testing "shouldn't use cached FieldValues for queries with constraints"
+           (is (= ["Japanese" "Steakhouse"]
+                  (chain-filter categories.name {venues.price 4})))))
 
-      (testing "search"
-        (is (= ["Good"]
-               (mt/$ids (chain-filter/chain-filter-search %categories.name nil "ood"))))
-        (testing "shouldn't use cached FieldValues for queries with constraints"
-          (is (= ["Steakhouse"]
-                 (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "o")))))))))
+       (testing "search"
+         (is (= ["Good"]
+                (mt/$ids (chain-filter/chain-filter-search %categories.name nil "ood"))))
+         (testing "shouldn't use cached FieldValues for queries with constraints"
+           (is (= ["Steakhouse"]
+                  (mt/$ids (chain-filter/chain-filter-search %categories.name {%venues.price 4} "o")))))
+         (testing "Shouldn't use cached FieldValues if has_more_values=true"
+           (db/update! FieldValues field-values-id :has_more_values true)
+           (is (= "Coffee Shop"
+                  (first (mt/$ids (chain-filter/chain-filter-search %categories.name nil "o")))))))))))
 
 (deftest time-interval-test
   (testing "chain-filter should accept time interval strings like `past32weeks` for temporal Fields"
@@ -435,5 +441,5 @@
               (mt/with-temp-vals-in-db Field %myfield {:has_field_values "auto-list"}
                 (testing "Sanity check: make sure we will actually use the cached FieldValues"
                   (is (field-values/field-should-have-field-values? %myfield))
-                  (is (#'chain-filter/use-cached-field-values? %myfield {})))
+                  (is (#'chain-filter/use-cached-field-values? %myfield {} false)))
                 (thunk)))))))))
