@@ -6,11 +6,11 @@ import { t } from "ttag";
 
 import CheckBox from "metabase/core/components/CheckBox";
 import Icon from "metabase/components/Icon";
-import Swapper from "metabase/components/Swapper";
+import Swapper from "metabase/core/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
 
 import { color as c } from "metabase/lib/colors";
-import { IconContainer } from "./ArchiveItem.styled";
+import { ItemIcon, ItemIconContainer } from "./ArchivedItem.styled";
 
 const ArchivedItem = ({
   name,
@@ -25,15 +25,19 @@ const ArchivedItem = ({
   showSelect,
 }) => (
   <div className="flex align-center p2 hover-parent hover--visibility border-bottom bg-light-hover">
-    <IconContainer>
-      <Swapper
-        startSwapped={showSelect}
-        defaultElement={<Icon name={icon} color={color} />}
-        swappedElement={
+    <Swapper
+      defaultElement={
+        <ItemIconContainer>
+          <ItemIcon name={icon} color={color} />
+        </ItemIconContainer>
+      }
+      swappedElement={
+        <ItemIconContainer>
           <CheckBox checked={selected} onChange={onToggleSelected} />
-        }
-      />
-    </IconContainer>
+        </ItemIconContainer>
+      }
+      isSwapped={showSelect}
+    />
     {name}
     {isAdmin && (onUnarchive || onDelete) && (
       <span className="ml-auto mr2">
