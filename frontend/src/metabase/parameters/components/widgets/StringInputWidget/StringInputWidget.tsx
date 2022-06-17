@@ -5,8 +5,10 @@ import { isEqual, isString, isEmpty } from "lodash";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import {
   WidgetRoot,
+  WidgetTitle,
   Footer,
   UpdateButton,
+  TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
 type StringInputWidgetProps = {
@@ -16,6 +18,7 @@ type StringInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   arity?: 1 | "n";
+  title?: string;
 };
 
 const OPTIONS: any[] = [];
@@ -27,6 +30,7 @@ function StringInputWidget({
   autoFocus,
   arity = 1,
   placeholder = t`Enter some text`,
+  title,
 }: StringInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] = useState<string[]>(
@@ -46,16 +50,19 @@ function StringInputWidget({
 
   return (
     <WidgetRoot className={className}>
-      <TokenField
-        value={unsavedArrayValue}
-        onChange={setUnsavedArrayValue}
-        placeholder={placeholder}
-        options={OPTIONS}
-        autoFocus={autoFocus}
-        multi={multi}
-        parseFreeformValue={parseStringValue}
-        updateOnInputChange
-      />
+      {title && <WidgetTitle>{title}</WidgetTitle>}
+      <TokenFieldWrapper>
+        <TokenField
+          value={unsavedArrayValue}
+          onChange={setUnsavedArrayValue}
+          placeholder={placeholder}
+          options={OPTIONS}
+          autoFocus={autoFocus}
+          multi={multi}
+          parseFreeformValue={parseStringValue}
+          updateOnInputChange
+        />
+      </TokenFieldWrapper>
       <Footer>
         <UpdateButton disabled={!isValid || !hasValueChanged} onClick={onClick}>
           {arrayValue.length ? t`Update filter` : t`Add filter`}
