@@ -1,6 +1,7 @@
+import { NativePermissions } from "./permissions";
+
 export type DatabaseId = number;
 
-export type NativePermissions = "write" | "read";
 export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
 
 export interface Database {
