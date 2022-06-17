@@ -40,7 +40,7 @@ describe("user > settings", () => {
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
     cy.visit("/account/profile");
-    cy.findByText("Account settings");
+    cy.findByText(fullName);
     cy.findByLabelText("First name").clear();
     cy.findByLabelText("Last name").clear();
     cy.button("Update").click();
