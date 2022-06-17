@@ -112,15 +112,14 @@ const NewItemMenu = ({
       />
       {modal && (
         <Modal onClose={handleModalClose}>
-          {modal === "new-collection" && (
+          {modal === "new-collection" ? (
             <CollectionCreate
               onClose={handleModalClose}
               onSaved={handleCollectionSave}
             />
-          )}
-          {modal === "new-dashboard" && (
+          ) : modal === "new-dashboard" ? (
             <CreateDashboardModal onClose={handleModalClose} />
-          )}
+          ) : null}
         </Modal>
       )}
     </>
