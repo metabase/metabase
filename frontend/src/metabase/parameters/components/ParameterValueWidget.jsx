@@ -4,7 +4,10 @@ import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
-import { getParameterIconName } from "metabase/parameters/utils/ui";
+import {
+  getParameterIconName,
+  getParameterWidgetTitle,
+} from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import {
   isDateParameter,
@@ -270,6 +273,7 @@ function Widget({
         infixText={typeof arity === "number" && arity > 1 ? t`and` : undefined}
         autoFocus
         placeholder={isEditing ? t`Enter a default value…` : undefined}
+        title={getParameterWidgetTitle(parameter)}
       />
     );
   } else if (!_.isEmpty(parameter.fields)) {

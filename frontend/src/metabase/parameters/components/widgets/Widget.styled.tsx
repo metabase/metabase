@@ -8,6 +8,12 @@ export const WidgetRoot = styled.div`
   min-width: 300px;
 `;
 
+export const WidgetTitle = styled.div`
+  font-weight: bold;
+  margin: ${space(1)};
+  margin-bottom: 0;
+`;
+
 export const Footer = styled.div`
   border-top: 1px solid ${color("border")};
   padding: ${space(1)};
@@ -24,3 +30,8 @@ export const UpdateButton = styled(Button)`
 UpdateButton.defaultProps = {
   purple: true,
 };
+
+export const TokenFieldWrapper = styled.div`
+  margin: ${space(1)};
+  border: 1px solid ${color("border")};
+`;
