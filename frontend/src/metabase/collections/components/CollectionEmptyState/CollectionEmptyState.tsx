@@ -13,7 +13,7 @@ import {
 
 const CollectionEmptyState = (): JSX.Element => {
   return (
-    <EmptyStateRoot>
+    <EmptyStateRoot data-testid="collection-empty-state">
       <CollectionEmptyIcon />
       <EmptyStateTitle>{t`This collection is empty`}</EmptyStateTitle>
       <EmptyStateDescription>{t`Use collections to organize and group dashboards and questions for your team or yourself`}</EmptyStateDescription>
