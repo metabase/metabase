@@ -196,7 +196,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "email-reply-to",
-        display_name: t`Reply To Address`,
+        display_name: t`Reply-To Address`,
         placeholder: "metabase-replies@yourcompany.com",
         type: "string",
         required: false,

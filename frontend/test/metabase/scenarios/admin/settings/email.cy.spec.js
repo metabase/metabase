@@ -23,7 +23,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
-    cy.findByLabelText("Reply To Address")
+    cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
       .blur();
     cy.findByText("Save changes").click();

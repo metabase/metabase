@@ -20,7 +20,7 @@
   :default "notifications@metabase.com")
 
 (defsetting email-reply-to
-  (deferred-tru "List of email address that will be used in the reply-to header of emails."))
+  (deferred-tru "Email address you use when you want the reply to go to an email that is different from the \"from:\" address."))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
