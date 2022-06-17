@@ -15,21 +15,17 @@ import {
 export interface SwapperProps extends HTMLAttributes<HTMLDivElement> {
   defaultElement?: ReactNode;
   swappedElement?: ReactNode;
-  isInitiallySwapped?: boolean;
+  isSwapped?: boolean;
 }
 
 const Swapper = forwardRef(function Swapper(
-  {
-    defaultElement,
-    swappedElement,
-    isInitiallySwapped = false,
-    ...props
-  }: SwapperProps,
+  { defaultElement, swappedElement, isSwapped = false, ...props }: SwapperProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [isSwapped, setIsSwapped] = useState(isInitiallySwapped);
-  const handleMouseEnter = useCallback(() => setIsSwapped(true), []);
-  const handleMouseLeave = useCallback(() => setIsSwapped(false), []);
+  const [isHovered, setIsHovered] = useState(false);
+  const isSelected = isHovered || isSwapped;
+  const handleMouseEnter = useCallback(() => setIsHovered(true), []);
+  const handleMouseLeave = useCallback(() => setIsHovered(false), []);
 
   return (
     <SwapperRoot
@@ -38,10 +34,10 @@ const Swapper = forwardRef(function Swapper(
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <SwapperDefaultElement isVisible={!isSwapped}>
+      <SwapperDefaultElement isVisible={!isSelected}>
         {defaultElement}
       </SwapperDefaultElement>
-      <SwapperLayeredElement isVisible={isSwapped}>
+      <SwapperLayeredElement isVisible={isSelected}>
         {swappedElement}
       </SwapperLayeredElement>
     </SwapperRoot>
