@@ -15,18 +15,40 @@
              rhs rhs-generator]
     [operator lhs rhs]))
 
+(defn n-ary-expression-generator
+  ([operator arg-generator]
+   (n-ary-expression-generator operator arg-generator 1))
+  ([operator arg-generator min-card]
+  (gens/let [members (gen/vector arg-generator min-card 5)]
+    (vec (flatten [operator members])))))
+
+(defn comparison-generator
+  [comparand-generator]
+  (gens/let [comparison       (gen/elements [:< :> :<= :>= :=])
+             first-comparand  comparand-generator
+             second-comparand comparand-generator]
+    [comparison first-comparand second-comparand]))
+
+(defn case-expression-generator
+  [comparand-generator value-generator]
+  (let [case-pair-gen (gens/let [comparison (comparison-generator comparand-generator)
+                                 value value-generator]
+                        [comparison value])]
+    (gens/let [case-pairs (gens/vector case-pair-gen 2 10)]
+      [:case case-pairs])))
+
 (defn numeric-expression-generator [arg-generator]
   (let [arg-generator (gens/one-of [arg-generator
                                     gens/int
                                     (gens/double* {:infinite? false, :NaN? false})
                                     ;; TODO -- BigInteger or BigDecimal?
+                                    ;; TODO -- Use the proper shrinking recursion gen instead of the gen/delay
                                     (gen/delay (numeric-expression-generator arg-generator))])]
     (gens/one-of [
-                  ;; TODO -- these are all actually 2 or more args
-                  (binary-expression-generator :+ arg-generator arg-generator)
-                  (binary-expression-generator :- arg-generator arg-generator)
-                  (binary-expression-generator :/ arg-generator arg-generator)
-                  (binary-expression-generator :* arg-generator arg-generator)
+                  (n-ary-expression-generator :+ arg-generator 2)
+                  (n-ary-expression-generator :- arg-generator 2)
+                  (n-ary-expression-generator :/ arg-generator 2)
+                  (n-ary-expression-generator :* arg-generator 2)
                   (unary-expression-generator :floor arg-generator)
                   (unary-expression-generator :ceil arg-generator)
                   (unary-expression-generator :round arg-generator)
@@ -36,11 +58,20 @@
                   (unary-expression-generator :sqrt arg-generator)
                   (unary-expression-generator :exp arg-generator)
                   (unary-expression-generator :log arg-generator)
-                  ;; TODO
-                  #_coalesce
-                  #_case])))
+                  (n-ary-expression-generator :coalesce arg-generator)
+                  (case-expression-generator arg-generator arg-generator)])))
 
-;; TODO -- string expressions.
+(defn string-expression-generator []
+  (gens/one-of [(unary-expression-generator :trim gens/string)
+                (unary-expression-generator :ltrim gens/string)
+                (unary-expression-generator :rtrim gens/string)
+                (unary-expression-generator :upper gens/string)
+                (unary-expression-generator :lower gens/string)
+                (n-ary-expression-generator :coalesce gens/string)
+                ;; TODO -- replace
+                (n-ary-expression-generator :concat gens/string)
+                ;; TODO -- substring
+                (unary-expression-generator :length gens/string)]))
 
 (defn expressions-map-generator [field-generator]
   (let [numeric-field-generator      (gen.data/numeric-field-generator field-generator)
