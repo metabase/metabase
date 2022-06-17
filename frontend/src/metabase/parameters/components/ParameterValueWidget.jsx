@@ -157,6 +157,7 @@ class ParameterValueWidget extends Component {
         >
           <PopoverWithTrigger
             ref={this.valuePopover}
+            disabled={isDashParamWithoutMapping}
             triggerElement={
               <div
                 ref={this.trigger}
