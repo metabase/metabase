@@ -1,10 +1,12 @@
 (ns metabase.query-processor-test.filter-test
   "Tests for the `:filter` clause."
-  (:require [clojure.string :as str]
+  (:require [clojure.set :as set]
+            [clojure.string :as str]
             [clojure.test :refer :all]
             [metabase.driver :as driver]
             [metabase.query-processor :as qp]
             [metabase.query-processor-test :as qp.test]
+            [metabase.query-processor-test.timezones-test :as timezones-test]
             [metabase.test :as mt]))
 
 (deftest and-test
@@ -115,12 +117,17 @@
     (-> (driver/describe-database :mongo db)
         :version (str/split #"\.") first parse-long)))
 
+(defn- timezone-arithmetic-drivers []
+  (set/intersection
+   ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
+   ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
+   ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME)
+   (conj (mt/normal-drivers-with-feature :expressions) :mongo)
+   (timezones-test/timezone-aware-column-drivers)))
+
 (deftest temporal-arithmetic-test
   (testing "Should be able to use temporal arithmetic expressions in filters (#22531)"
-    ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
-    ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
-    ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME)
-    (mt/test-drivers (conj (mt/normal-drivers-with-feature :expressions) :mongo)
+    (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
         (when-not (some-> (mongo-major-version (mt/db))
                           (< 5))
@@ -155,7 +162,7 @@
     ;; we also want to test this against MongoDB but [[mt/normal-drivers-with-feature]] would normally not include that
     ;; since MongoDB only supports expressions if version is 4.0 or above and [[mt/normal-drivers-with-feature]]
     ;; currently uses [[driver/supports?]] rather than [[driver/database-supports?]] (TODO FIXME)
-    (mt/test-drivers (conj (mt/normal-drivers-with-feature :expressions) :mongo)
+    (mt/test-drivers (timezone-arithmetic-drivers)
       (mt/dataset attempted-murders
         (when-not (some-> (mongo-major-version (mt/db))
                           (< 5))
