@@ -364,6 +364,10 @@ const TITLE_LOCALES_BN = {
 	'en' : 'Current Status of every distributed book',
 	'bn' : 'প্রতিটি বইয়ের বিতরণের বর্তমান অবস্থা'
   },
+  'school.ict.equipment.damage.reason.projected.cost': {
+    'en' : 'Projected cost for repairing of ICT Equipments',
+    'bn' : 'আইসিটি পণ্যের মেরামতের সম্ভাব্য খরচ'
+  },
   'admin.dashboard.school.status': {
     'en' : 'School Status',
     'bn' : 'বিদ্যালয়ের স্ট্যাটাস'
