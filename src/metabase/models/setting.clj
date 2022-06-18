@@ -839,21 +839,11 @@
 (defn- valid-trs-or-tru? [desc]
   (is-form? allowed-deferred-i18n-forms desc))
 
-(defn- valid-str-of-trs-or-tru? [maybe-str-expr]
-  (when (is-form? #{`str} maybe-str-expr)
-    ;; When there are several i18n'd sentences, there will probably be a surrounding `str` invocation and a space in
-    ;; between the sentences, remove those to validate the i18n clauses
-    (let [exprs-without-strs (remove (every-pred string? str/blank?) (rest maybe-str-expr))]
-      ;; We should have at lease 1 i18n clause, so ensure `exprs-without-strs` is not empty
-      (and (seq exprs-without-strs)
-           (every? valid-trs-or-tru? exprs-without-strs)))))
-
 (defn- validate-description-form
-  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]), or a [[str]] form consisting
-  of one or more deferred i18n forms. Returns `description-form` as-is."
+  "Check that `description-form` is a i18n form (e.g. [[metabase.util.i18n/deferred-tru]]). Returns `description-form`
+  as-is."
   [description-form]
-  (when-not (or (valid-trs-or-tru? description-form)
-                (valid-str-of-trs-or-tru? description-form))
+  (when-not (valid-trs-or-tru? description-form)
     ;; this doesn't need to be i18n'ed because it's a compile-time error.
     (throw (ex-info (str "defsetting docstrings must be an *deferred* i18n form unless the Setting has"
                          " `:visibilty` `:internal` or `:setter` `:none`."

@@ -53,8 +53,9 @@
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
-           (throw (ex-info (str (deferred-tru "Google Sign-In token appears to be incorrect. ")
-                                (deferred-tru "Double check that it matches in Google and Metabase."))
+           (throw (ex-info (tru
+                             (str "Google Sign-In token appears to be incorrect. "
+                                  "Double check that it matches in Google and Metabase."))
                            {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))

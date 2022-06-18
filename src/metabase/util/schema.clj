@@ -115,9 +115,10 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
-                                                        (when-let [message (api-error-message (first schema))]
-                                                          (str " " (deferred-tru "Each {0}" message))))))))
+        (str (deferred-tru "value must be an array.")
+             (when (= (count schema) 1)
+               (when-let [message (api-error-message (first schema))]
+                 (str " " (deferred-tru "Each {0}" message))))))))
 
 
 (defn non-empty
