@@ -23,6 +23,9 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByLabelText("From Address")
       .type("mailer@metabase.test")
       .blur();
+    cy.findByLabelText("From Name")
+      .type("Sender Name")
+      .blur();
     cy.findByLabelText("Reply-To Address")
       .type("reply-to@metabase.test")
       .blur();
@@ -35,6 +38,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByDisplayValue("25");
     cy.findAllByDisplayValue("admin");
     cy.findByDisplayValue("mailer@metabase.test");
+    cy.findByDisplayValue("Sender Name");
     cy.findByDisplayValue("reply-to@metabase.test");
   });
 
@@ -42,6 +46,7 @@ describe("scenarios > admin > settings > email settings", () => {
     // Reuse Email setup without relying on the previous test
     cy.request("PUT", "/api/setting", {
       "email-from-address": "admin@metabase.test",
+      "email-from-name": "Metabase",
       "email-smtp-host": "localhost",
       "email-smtp-password": null,
       "email-smtp-port": "1234",

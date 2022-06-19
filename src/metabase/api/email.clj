@@ -19,6 +19,7 @@
    :email-smtp-password :pass
    :email-smtp-port     :port
    :email-smtp-security :security
+   :email-from-name     :sender-name
    :email-from-address  :sender
    :email-reply-to      :reply-to})
 

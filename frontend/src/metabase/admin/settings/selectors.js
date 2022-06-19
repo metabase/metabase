@@ -195,6 +195,13 @@ const SECTIONS = updateSectionsWithPlugins({
         validations: [["email", t`That's not a valid email address`]],
       },
       {
+        key: "email-from-name",
+        display_name: t`From Name`,
+        placeholder: "Metabase",
+        type: "string",
+        required: false,
+      },
+      {
         key: "email-reply-to",
         display_name: t`Reply-To Address`,
         placeholder: "metabase-replies@yourcompany.com",

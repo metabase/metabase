@@ -16,11 +16,14 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (deferred-tru "Email address you want to use as the sender of Metabase.")
+  (deferred-tru "Email address you want to use for the sender of emails.")
   :default "notifications@metabase.com")
 
+(defsetting email-from-name
+  (deferred-tru "The name you want to use for the sender of emails."))
+
 (defsetting email-reply-to
-  (deferred-tru "Email address you use when you want the reply to go to an email that is different from the \"from:\" address."))
+  (deferred-tru "Email address you want the replies to go to, if it is different from the \"from:\" address."))
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))
@@ -99,7 +102,9 @@
   ;; Now send the email
   (send-email! (smtp-settings)
                (merge
-                {:from    (email-from-address)
+                {:from    (if-let [from-name (email-from-name)]
+                            (str from-name " <" (email-from-address) ">")
+                            (email-from-address))
                  :to      recipients
                  :subject subject
                  :body    (case message-type
@@ -136,14 +141,14 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  {:host                      su/NonBlankString
-   :port                      su/IntGreaterThanZero
-   ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-   (s/optional-key :user)     (s/maybe s/Str)
-   (s/optional-key :security) (s/maybe (s/enum :tls :ssl :none :starttls))
-   (s/optional-key :pass)     (s/maybe s/Str)
-   (s/optional-key :sender)   (s/maybe s/Str)
-   (s/optional-key :reply-to) (s/maybe s/Str)})
+  (su/open-schema
+   {:host                         su/NonBlankString
+    :port                         su/IntGreaterThanZero
+     ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
+    (s/optional-key :user)        (s/maybe s/Str)
+    (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
+    (s/optional-key :pass)        (s/maybe s/Str)
+    (s/optional-key :sender)      (s/maybe s/Str)}))
 
 (s/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
