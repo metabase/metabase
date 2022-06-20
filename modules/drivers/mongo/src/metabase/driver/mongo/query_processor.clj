@@ -372,11 +372,14 @@
 ;;; Because of this, whenever we translate date arithmetic with intervals, we check the major
 ;;; version of the database and throw a nice exception if it's less than 5.
 
+(defn- get-mongo-version []
+  (:version (driver/describe-database :mongo (qp.store/database))))
+
 (defn- get-major-version [version]
   (some-> version (str/split #"\.") first parse-long))
 
 (defn- check-date-operations-supported []
-  (let [mongo-version (:version (driver/describe-database :mongo (qp.store/database)))
+  (let [mongo-version (get-mongo-version)
         major-version (get-major-version mongo-version)]
     (when (and major-version (< major-version 5))
       (throw (ex-info "Date arithmetic not supported in versions before 5"
@@ -403,6 +406,8 @@
 (defmethod ->rvalue :+ [[_ & args]]
   ;; Addition is commutative and any but not all elements of `args` can be intervals.
   ;; We pick the first arg that is not an interval and add the rest of args to it.
+  ;; (It's the callers responsibility to make sure that the first non-interval argument
+  ;; represents a date and not offset like an integer would.)
   ;; If none of the args is an interval, we shortcut with a simple addition.
   (if (some interval? args)
     (if-let [[arg others] (u/pick-first (complement interval?) args)]
