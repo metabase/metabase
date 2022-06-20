@@ -5,9 +5,7 @@
 
    Functions for generating URLs not related to Metabase *objects* generally do not belong here, unless they are used in many places in the
    codebase; one-off URL-generation functions should go in the same namespaces or modules where they are used."
-  (:require [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings :as public-settings]
-            [metabase.util :as u]))
+  (:require [metabase.public-settings :as public-settings]))
 
 (defn- site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
