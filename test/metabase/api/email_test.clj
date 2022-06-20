@@ -34,13 +34,13 @@
    :email-smtp-password "gobble gobble"
    :email-from-address  "eating@hungry.com"
    :email-from-name     "Eating"
-   :email-reply-to      "reply-to@hungry.com"})
+   :email-reply-to      ["reply-to@hungry.com"]})
 
 (deftest test-email-settings-test
   (testing "POST /api/email/test -- send a test email"
     (mt/with-temporary-setting-values [email-from-address "notifications@metabase.com"
                                        email-from-name    "Sender Name"
-                                       email-reply-to     "reply-to@metabase.com"]
+                                       email-reply-to     ["reply-to@metabase.com"]]
       (mt/with-fake-inbox
         (testing "Non-admin -- request should fail"
           (is (= "You don't have permissions to do that."
@@ -52,7 +52,7 @@
         (is (= {"crowberto@metabase.com"
                 [{:from     "Sender Name <notifications@metabase.com>",
                   :to       ["crowberto@metabase.com"],
-                  :reply-to "reply-to@metabase.com"
+                  :reply-to ["reply-to@metabase.com"]
                   :subject  "Metabase Test Email",
                   :body     "Your Metabase emails are working — hooray!"}]}
                @mt/inbox))))))
@@ -104,7 +104,7 @@
         (let [new-email-settings (email-settings)]
           (is (nil? (mt/user-http-request :crowberto :delete 204 "email")))
           (is (= default-email-settings
-                 new-email-settings))
+                new-email-settings))
           (is (= {:email-smtp-host     nil
                   :email-smtp-port     nil
                   :email-smtp-security :none

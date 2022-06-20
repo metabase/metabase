@@ -19,6 +19,9 @@ const VALIDATIONS = {
     validate: value => MetabaseUtils.isEmail(value),
     message: t`That's not a valid email address`,
   },
+  email_list: {
+    validate: value => value.every(MetabaseUtils.isEmail),
+  },
   integer: {
     validate: value => !isNaN(parseInt(value)),
     message: t`That's not a valid integer`,
@@ -66,6 +69,7 @@ class SettingsBatchForm extends Component {
     const formData = {};
     for (const element of this.props.elements) {
       formData[element.key] = element.value;
+      console.log(element.key, ", ", element.value);
     }
     this.setState({ formData, pristine: true });
   }

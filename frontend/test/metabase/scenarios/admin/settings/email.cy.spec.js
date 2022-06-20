@@ -27,7 +27,7 @@ describe("scenarios > admin > settings > email settings", () => {
       .type("Sender Name")
       .blur();
     cy.findByLabelText("Reply-To Address")
-      .type("reply-to@metabase.test")
+      .type("reply-to@metabase.test, reply-to-too@metabase.test")
       .blur();
     cy.findByText("Save changes").click();
 
@@ -39,7 +39,7 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findAllByDisplayValue("admin");
     cy.findByDisplayValue("mailer@metabase.test");
     cy.findByDisplayValue("Sender Name");
-    cy.findByDisplayValue("reply-to@metabase.test");
+    cy.findByDisplayValue("reply-to@metabase.test, reply-to-too@metabase.test");
   });
 
   it("should show an error if test email fails", () => {

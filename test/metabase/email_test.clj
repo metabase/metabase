@@ -214,7 +214,7 @@
                                      email-smtp-username "lucky"
                                      email-smtp-password "d1nner3scapee!"
                                      email-smtp-port     1025
-                                     email-reply-to      "some_other_admin@metabase.com"
+                                     email-reply-to      ["reply-to-me@metabase.com" "reply-to-me-too@metabase.com"]
                                      email-smtp-security :none]
     (testing "basic sending"
       (is (=

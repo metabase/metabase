@@ -1,5 +1,6 @@
 (ns metabase.email
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru trs tru]]
@@ -23,7 +24,8 @@
   (deferred-tru "The name you want to use for the sender of emails."))
 
 (defsetting email-reply-to
-  (deferred-tru "Email address you want the replies to go to, if it is different from the \"from:\" address."))
+  (deferred-tru "Email addresses you want the replies to go to, if different from the from address. Separate multiple email addresses with commas.")
+  :type :json)
 
 (defsetting email-smtp-host
   (deferred-tru "The address of the SMTP server that handles your emails."))

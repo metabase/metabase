@@ -4,6 +4,7 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import { t, jt } from "ttag";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import SettingCommaDelimitedInput from "./components/widgets/SettingCommaDelimitedInput";
 import MetabaseSettings from "metabase/lib/settings";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import SettingsLicense from "./components/SettingsLicense";
@@ -205,9 +206,12 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "email-reply-to",
         display_name: t`Reply-To Address`,
         placeholder: "metabase-replies@yourcompany.com",
+        widget: SettingCommaDelimitedInput,
         type: "string",
         required: false,
-        validations: [["email", t`That's not a valid email address`]],
+        validations: [
+          ["email_list", t`That's not a valid list of email addresses`],
+        ],
       },
     ],
   },
