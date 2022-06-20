@@ -7,7 +7,11 @@ import _ from "underscore";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { isDashboardParameterWithoutMapping } from "metabase/parameters/utils/dashboards";
 import { isOnlyMappedToFields } from "metabase/parameters/utils/fields";
-import { isDateParameter } from "metabase/parameters/utils/parameter-type";
+import {
+  isDateParameter,
+  isNumberParameter,
+} from "metabase/parameters/utils/parameter-type";
+import { getNumberParameterArity } from "metabase/parameters/utils/operators";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
 import DateSingleWidget from "metabase/components/DateSingleWidget";
@@ -20,6 +24,7 @@ import Tooltip from "metabase/components/Tooltip";
 import TextWidget from "metabase/components/TextWidget";
 import WidgetStatusIcon from "metabase/parameters/components/WidgetStatusIcon";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
+import NumberInputWidget from "metabase/parameters/components/widgets/NumberInputWidget";
 
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 import S from "./ParameterWidget.css";
@@ -230,12 +235,35 @@ function Widget({
     );
   }
 
-  const DateWidget = DATE_WIDGETS[parameter.type];
-  if (DateWidget) {
+  if (isDateParameter(parameter)) {
+    const DateWidget = DATE_WIDGETS[parameter.type];
     return (
       <DateWidget value={value} setValue={setValue} onClose={onPopoverClose} />
     );
   } else if (isOnlyMappedToFields(parameter)) {
+    const normalizedValue = Array.isArray(value)
+      ? value
+      : [value].filter(v => v != null);
+
+    if (isNumberParameter(parameter)) {
+      const arity = getNumberParameterArity(parameter);
+      return (
+        <NumberInputWidget
+          value={normalizedValue}
+          setValue={value => {
+            setValue(value);
+            onPopoverClose();
+          }}
+          arity={arity}
+          infixText={
+            typeof arity === "number" && arity > 1 ? t`and` : undefined
+          }
+          autoFocus
+          placeholder={isEditing ? t`Enter a default value…` : undefined}
+        />
+      );
+    }
+
     return (
       <ParameterFieldWidget
         target={target}
@@ -243,7 +271,7 @@ function Widget({
         parameters={parameters}
         dashboard={dashboard}
         placeholder={placeholder}
-        value={value}
+        value={normalizedValue}
         fields={parameter.fields}
         setValue={value => {
           setValue(value);
@@ -278,6 +306,9 @@ function getWidgetDefinition(parameter) {
   if (DATE_WIDGETS[parameter.type]) {
     return DATE_WIDGETS[parameter.type];
   } else if (isOnlyMappedToFields(parameter)) {
+    if (isNumberParameter(parameter)) {
+      return NumberInputWidget;
+    }
     return ParameterFieldWidget;
   } else {
     return TextWidget;

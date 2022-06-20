@@ -15,20 +15,20 @@
             [schema.core :as s]))
 
 (defsetting slack-token
-  (str (deferred-tru "Deprecated Slack API token for connecting the Metabase Slack bot.")
-       " "
-       (deferred-tru "Please use a new Slack app integration instead."))
+  (deferred-tru
+    (str "Deprecated Slack API token for connecting the Metabase Slack bot. "
+         "Please use a new Slack app integration instead."))
   :deprecated "0.42.0")
 
 (defsetting slack-app-token
-  (str (deferred-tru "Bot user OAuth token for connecting the Metabase Slack app.")
-       " "
-       (deferred-tru "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
+  (deferred-tru
+    (str "Bot user OAuth token for connecting the Metabase Slack app. "
+         "This should be used for all new Slack integrations starting in Metabase v0.42.0.")))
 
 (defsetting slack-token-valid?
-  (str (deferred-tru "Whether the current Slack app token, if set, is valid.")
-       " "
-       (deferred-tru "Set to 'false' if a Slack API request returns an auth error."))
+  (deferred-tru
+    (str "Whether the current Slack app token, if set, is valid. "
+         "Set to 'false' if a Slack API request returns an auth error."))
   :type :boolean)
 
 (defn process-files-channel-name
