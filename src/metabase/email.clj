@@ -16,14 +16,14 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (deferred-tru "Email address you want to use for the sender of emails.")
+  (deferred-tru "The email address you want to use for the sender of emails.")
   :default "notifications@metabase.com")
 
 (defsetting email-from-name
   (deferred-tru "The name you want to use for the sender of emails."))
 
 (defsetting email-reply-to
-  (deferred-tru "Email addresses you want the replies to go to, if different from the from address. Separate multiple email addresses with commas.")
+  (deferred-tru "The email address you want the replies to go to, if different from the from address. You can have multiple reply-to email addresses, just separate them with a comma.")
   :type :json)
 
 (defsetting email-smtp-host
