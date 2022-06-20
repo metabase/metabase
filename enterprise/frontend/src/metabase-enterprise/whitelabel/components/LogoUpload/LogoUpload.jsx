@@ -1,11 +1,12 @@
 /* eslint-disable react/prop-types */
 import React from "react";
 
-import Icon from "metabase/components/Icon";
+import Button from "metabase/core/components/Button";
 import LogoIcon from "metabase/components/LogoIcon";
-import SettingInput from "metabase/admin/settings/components/widgets/SettingInput.jsx";
-
+import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import { color } from "metabase/lib/colors";
+
+import { LogoFileInput } from "./LogoUpload.styled";
 
 const LogoUpload = ({ setting, onChange, ...props }) => (
   <div>
@@ -19,8 +20,7 @@ const LogoUpload = ({ setting, onChange, ...props }) => (
       </span>
     </div>
     {window.File && window.FileReader ? (
-      <input
-        type="file"
+      <LogoFileInput
         onChange={e => {
           if (e.target.files.length > 0) {
             const reader = new FileReader();
@@ -32,7 +32,7 @@ const LogoUpload = ({ setting, onChange, ...props }) => (
     ) : (
       <SettingInput setting={setting} onChange={onChange} {...props} />
     )}
-    <Icon name="close" onClick={() => onChange(undefined)} />
+    <Button onlyIcon icon="close" onClick={() => onChange(undefined)} />
   </div>
 );
 

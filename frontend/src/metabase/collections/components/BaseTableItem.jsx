@@ -6,6 +6,7 @@ import { PLUGIN_MODERATION } from "metabase/plugins";
 
 import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
+import Ellipsified from "metabase/core/components/Ellipsified";
 import EntityItem from "metabase/components/EntityItem";
 import DateTime from "metabase/components/DateTime";
 import Tooltip from "metabase/components/Tooltip";
@@ -120,7 +121,7 @@ export function BaseTableItem({
           </ItemLink>
         </ItemCell>
         <ItemCell data-testid={`${testId}-last-edited-by`}>
-          <TableItemSecondaryField>{lastEditedBy}</TableItemSecondaryField>
+          <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
         <ItemCell data-testid={`${testId}-last-edited-at`}>
           {lastEditInfo && (
