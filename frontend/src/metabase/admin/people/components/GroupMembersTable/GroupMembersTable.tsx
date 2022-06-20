@@ -75,7 +75,7 @@ function GroupMembersTable({
   };
 
   const columnTitles = [
-    t`Name`,
+    t`Member`,
     canEditMembership(group) ? t`Type` : null,
     t`Email`,
   ].filter(Boolean);
@@ -198,7 +198,7 @@ const UserRow = ({
 };
 
 function getName(user: IUser): string {
-  const name = [user.first_name, user.last_name].join(" ").trim();
+  const name = user.common_name;
 
   if (!name) {
     return "-";
