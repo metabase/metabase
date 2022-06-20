@@ -133,7 +133,7 @@ const PeopleListRow = ({
  * @returns {string}
  */
 function getName(user) {
-  const name = [user.first_name, user.last_name].join(" ").trim();
+  const name = user.common_name;
 
   if (!name) {
     return "-";

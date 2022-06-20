@@ -180,7 +180,7 @@ const PeopleList = ({
       <table className="ContentTable border-bottom">
         <thead>
           <tr>
-            <th>{t`Name`}</th>
+            <th>{t`Member`}</th>
             <th />
             <th>{t`Email`}</th>
             {showDeactivated ? (
