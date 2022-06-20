@@ -142,14 +142,15 @@
       {::error e})))
 
 (def ^:private SMTPSettings
-  (su/open-schema
-   {:host                         su/NonBlankString
-    :port                         su/IntGreaterThanZero
+  {:host                         su/NonBlankString
+   :port                         su/IntGreaterThanZero
      ;; TODO -- not sure which of these other ones are actually required or not, and which are optional.
-    (s/optional-key :user)        (s/maybe s/Str)
-    (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
-    (s/optional-key :pass)        (s/maybe s/Str)
-    (s/optional-key :sender)      (s/maybe s/Str)}))
+   (s/optional-key :user)        (s/maybe s/Str)
+   (s/optional-key :security)    (s/maybe (s/enum :tls :ssl :none :starttls))
+   (s/optional-key :pass)        (s/maybe s/Str)
+   (s/optional-key :sender)      (s/maybe s/Str)
+   (s/optional-key :sender-name) (s/maybe s/Str)
+   (s/optional-key :reply-to)    (s/maybe s/Str)})
 
 (s/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
