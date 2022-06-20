@@ -98,7 +98,8 @@
   [entrypoint-name embeddable? request respond _raise]
   (respond
     (-> (response/response (if (init-status/complete?)
-                             (load-entrypoint-template entrypoint-name embeddable? request)
+                             ; (load-entrypoint template entrypoint-name embeddable? request)
+                             (load-init-template)
                              (load-init-template)))
         (response/content-type "text/html; charset=utf-8"))))
 

@@ -8,8 +8,10 @@
 
   <body>
     <header>
-      <img src="./inline_js/metabase-logo.svg" />
-      Metabase Store
+      <a href="https://store.metabase.com" id="store-link">
+        <img src="./inline_js/metabase-logo.svg" />
+        Metabase Store
+      </a>
 
       <nav>
         <a href="#">Docs</a>
@@ -19,32 +21,24 @@
     </header>
 
     <div id="left-side">
-      <h1>We’re setting up your Metabase!</h1>
-      <h2>
-        It usually takes around 5 minutes. If you already use Metabase, you’ll be able to migrate your instance to Cloud.
-      </h2>
+      <div id="left-container">
+        <h1>We’re setting up your Metabase!</h1>
+        <h2>
+          It usually takes around 5 minutes. If you already use Metabase, you’ll be able to migrate your instance to Cloud.
+        </h2>
 
-      <div id="status">
-        5 minutes remaining…
+        <div id="status">
+          5 minutes remaining…
+        </div>
+        <progress id="progress" max="100" value="0"/>
       </div>
-      <progress id="progress" max="100" value="0"></progress>
     </div>
 
     <div id="right-side">
-      <div id="logo">
-      </div>
-
-      <div id="feature-image" class="drill-through-img">&nbsp;</div>
+      <img src="inline_js/ill2-white-bg.gif" width="600" />
       <p id="heading">Click on your charts to dive deeper.</p>
-
-      <div id="footer">
-        <progress id="progress" max="100" value="0"></progress>
-        <div id="status">
-          Starting Metabase...
-        </div>
-      </div>
     </div>
 
-    <script type="text/javascript">{{{initJS}}}</script>
+    <script type="text/javascript" src="./inline_js/init.js"></script>
   </body>
 </html>

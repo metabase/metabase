@@ -69,5 +69,5 @@ function poll() {
   req.send();
 }
 
-switcher();
-poll();
+// switcher();
+// poll();
