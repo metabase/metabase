@@ -8,7 +8,6 @@ import Swapper from "metabase/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 import { isItemPinned } from "metabase/collections/utils";
 
 import {
@@ -17,7 +16,6 @@ import {
   EntityItemSpinner,
   EntityItemWrapper,
   EntityMenuContainer,
-  PinButton,
 } from "./EntityItem.styled";
 
 function EntityIconCheckBox({
@@ -97,12 +95,11 @@ function EntityItemMenu({
   analyticsContext,
 }) {
   const isPinned = isItemPinned(item);
-  const showPinnedAction = onPin && isPinned;
-  const showUnpinnedAction = onPin && !isPinned;
+
   const actions = useMemo(
     () =>
       [
-        showPinnedAction && {
+        onPin && {
           title: isPinned ? t`Unpin` : t`Pin this`,
           icon: "pin",
           action: onPin,
@@ -148,7 +145,6 @@ function EntityItemMenu({
       isBookmarked,
       isPreviewShown,
       isPreviewAvailable,
-      showPinnedAction,
       onPin,
       onMove,
       onCopy,
@@ -163,11 +159,6 @@ function EntityItemMenu({
   }
   return (
     <EntityMenuContainer align="center">
-      {showUnpinnedAction && (
-        <Tooltip tooltip={t`Pin this`}>
-          <PinButton icon="pin" onClick={onPin} />
-        </Tooltip>
-      )}
       <EntityMenu
         className={cx(className, "hover-child")}
         triggerIcon="ellipsis"
