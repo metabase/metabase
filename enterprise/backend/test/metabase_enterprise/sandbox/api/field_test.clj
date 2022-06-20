@@ -2,8 +2,8 @@
   "Tests for special behavior of `/api/metabase/field` endpoints in the Metabase Enterprise Edition."
   (:require [clojure.test :refer :all]
             [metabase-enterprise.sandbox.test-util :as mt.tu]
-            [metabase.models :refer [Field User]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.models :refer [Field FieldValues User]]
+            [metabase.models.field-values :as field-values]
             [metabase.test :as mt]
             [toucan.db :as db]))
 
@@ -48,7 +48,7 @@
                    (fetch-values :rasta :price))))
 
           (testing "Reset field values; if another User fetches them first, do I still see sandboxed values? (metabase/metaboat#128)"
-            (field-values/clear-field-values! (mt/id :venues :name))
+            (field-values/clear-field-values-for-field! (mt/id :venues :name))
             ;; fetch Field values with an admin
             (testing "Admin should see all Field values"
               (is (= {:field_id (mt/id :venues :name)
@@ -79,6 +79,22 @@
                                           (format "field/%d/values" (mt/id :venues :name)))
                                (update :values (partial take 3)))))))))))))))
 
+(deftest human-readable-values-test
+  (testing "GET /api/field/:id/values should returns correct human readable mapping if exists"
+    (mt/with-temp-copy-of-db
+      (let [field-id   (mt/id :venues :price)
+            full-fv-id (db/select-one-id FieldValues :field_id field-id :type :full)]
+          (db/update! FieldValues full-fv-id
+                      :human_readable_values ["$" "$$" "$$$" "$$$$"])
+          ;; sanity test without gtap
+          (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
+                 (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" field-id)))))
+          (mt/with-gtaps {:gtaps      {:venues
+                                       {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}}}
+                          :attributes {:cat 4}}
+            (is (= [[1 "$"] [3 "$$$"]]
+                   (:values (mt/user-http-request :rasta :get 200 (format "field/%d/values" (mt/id :venues :price)))))))))))
+
 (deftest search-test
   (testing "GET /api/field/:id/search/:search-id"
     (mt/with-gtaps {:gtaps      {:venues
@@ -108,26 +124,52 @@
       ;; Make sure FieldValues are populated
       (field-values/get-or-create-field-values! field)
       ;; Warm up the cache
-      (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name) "/values"))
+      (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
       (testing "Do we use cached values when available?"
         (with-redefs [field-values/distinct-values (fn [_] (assert false "Should not be called"))]
-          (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name) "/values")))))))
-      (testing "Do we invalidate the cache when FieldValues change"
+          (is (some? (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))
+          (is (= 1 (db/count FieldValues
+                             :field_id (:id field)
+                             :type :sandbox)))))
+
+      (testing "Do different users has different sandbox FieldValues"
+        (let [password (mt/random-name)]
+          (mt/with-temp User [another-user {:password password}]
+            (mt/with-gtaps-for-user another-user {:gtaps      {:venues
+                                                               {:remappings {:cat [:variable [:field-id (mt/id :venues :category_id)]]}
+                                                                :query      (mt.tu/restricted-column-query (mt/id))}}
+                                                  :attributes {:cat 5}}
+              (mt/user-http-request another-user :get 200 (str "field/" (:id field) "/values"))
+              ;; create another one for the new user
+              (is (= 2 (db/count FieldValues
+                                 :field_id (:id field)
+                                 :type :sandbox)))))))
+
+      (testing "Do we invalidate the cache when full FieldValues change"
         (try
-          (let [ ;; Updating FieldValues which should invalidate the cache
-                fv-id          (db/select-one-id FieldValues :field_id (mt/id :venues :name))
-                old-updated-at (db/select-one-field :updated_at FieldValues :field_id (mt/id :venues :name))
-                new-values     ["foo" "bar"]]
+          (let [;; Updating FieldValues which should invalidate the cache
+                fv-id      (db/select-one-id FieldValues :field_id (:id field) :type :full)
+                new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
             (db/update! FieldValues fv-id
-              {:values new-values})
-            (testing "Sanity check: make sure updated_at has been updated"
-              (is (not= (db/select-one-field :updated_at FieldValues :field_id (mt/id :venues :name))
-                        old-updated-at)))
+                        {:values new-values})
             (with-redefs [field-values/distinct-values (constantly new-values)]
               (is (= (map vector new-values)
-                     (:values (mt/user-http-request :rasta :get 200 (str "field/" (mt/id :venues :name) "/values")))))))
+                     (:values (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values")))))))
           (finally
             ;; Put everything back as it was
-            (field-values/get-or-create-field-values! field)))))))
+            (field-values/get-or-create-field-values! field))))
+
+      (testing "When a sandbox fieldvalues expired, do we delete it then create a new one?"
+        (#'field-values/clear-advanced-field-values-for-field! field)
+        ;; make sure we have a cache
+        (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
+        (let [old-sandbox-fv-id (db/select-one-id FieldValues :field_id (:id field) :type :sandbox)]
+          (with-redefs [field-values/advanced-fieldvalues-expired? (fn [fv]
+                                                                     (= (:id fv) old-sandbox-fv-id))]
+            (mt/user-http-request :rasta :get 200 (str "field/" (:id field) "/values"))
+            ;; did the old one get deleted?
+            (is (not (db/exists? FieldValues :id old-sandbox-fv-id)))
+            ;; make sure we created a new one
+            (is (= 1 (db/count FieldValues :field_id (:id field) :type :sandbox)))))))))

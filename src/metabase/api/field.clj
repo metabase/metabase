@@ -292,9 +292,8 @@
   "Discard the FieldValues belonging to this Field. Only applies to fields that have FieldValues. If this Field's
    Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [id]
-  (field-values/clear-field-values! (api/write-check (Field id)))
+  (field-values/clear-field-values-for-field! (api/write-check (Field id)))
   {:status :success})
-
 
 ;;; --------------------------------------------------- Searching ----------------------------------------------------
 

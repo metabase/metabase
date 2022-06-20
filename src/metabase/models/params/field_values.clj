@@ -35,16 +35,6 @@
             (filter #(contains? readable-field-ids (:field_id %)))
             (u/key-by :field_id))))))
 
-(defenterprise field-id->field-values-for-current-user*
-  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
-
-    {field-id FieldValues-instance}
-
-  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
-  metabase-enterprise.sandbox.models.params.field-values
-  [field-ids]
-  (default-field-id->field-values-for-current-user field-ids))
-
 (defn current-user-can-fetch-field-values?
   "Whether the current User has permissions to fetch FieldValues for a `field`."
   [field]
@@ -52,7 +42,7 @@
   (mi/can-read? field))
 
 (defn get-or-create-field-values-for-current-user!
-  "Fetch cached FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
+  "Fetch FieldValues for a `field`, creating them if needed if the Field should have FieldValues. These are
   filtered as appropriate for the current User, depending on MB version (e.g. EE sandboxing will filter these values).
   If the Field has a human-readable values remapping (see documentation at the top of
   `metabase.models.params.chain-filter` for an explanation of what this means), values are returned in the format
@@ -68,15 +58,5 @@
   (if-let [field-values (get-or-create-field-values-for-current-user!* field)]
     (-> field-values
         (assoc :values (field-values/field-values->pairs field-values))
-        (dissoc :human_readable_values :created_at :updated_at :id))
+        (select-keys [:values :field_id]))
     {:values [], :field_id (u/the-id field)}))
-
-(defn field-id->field-values-for-current-user
-  "Fetch *existing* FieldValues for a sequence of `field-ids` for the current User. Values are returned as a map of
-
-    {field-id FieldValues-instance}
-
-  Returns `nil` if `field-ids` is empty of no matching FieldValues exist."
-  [field-ids]
-  (when (seq field-ids)
-    (not-empty (field-id->field-values-for-current-user* (set field-ids)))))

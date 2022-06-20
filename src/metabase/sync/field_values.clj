@@ -1,5 +1,5 @@
 (ns metabase.sync.field-values
-  "Logic for updating cached FieldValues for fields in a database."
+  "Logic for updating FieldValues for fields in a database."
   (:require [clojure.tools.logging :as log]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
@@ -15,7 +15,7 @@
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
                        (sync-util/name-for-logging field))
                "Deleting FieldValues...")
-    (db/delete! FieldValues :field_id (u/the-id field))
+    (field-values/clear-field-values-for-field! field)
     ::field-values/fv-deleted))
 
 (s/defn ^:private update-field-values-for-field! [field :- i/FieldInstance]

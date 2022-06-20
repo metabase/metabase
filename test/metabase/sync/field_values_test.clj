@@ -12,7 +12,7 @@
             [toucan.db :as db]))
 
 (defn- venues-price-field-values []
-  (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price)))
+  (db/select-one-field :values FieldValues, :field_id (mt/id :venues :price), :type :full))
 
 (defn- sync-database!' [step database]
   (let [{:keys [step-info task-history]} (sync.util-test/sync-database! step database)]
@@ -42,7 +42,7 @@
       (is (= [1 2 3 4]
              (venues-price-field-values))))
     (testing "Update the FieldValues, remove one of the values that should be there"
-      (db/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price)) :values [1 2 3])
+      (db/update! FieldValues (db/select-one-id FieldValues :field_id (mt/id :venues :price) :type :full) :values [1 2 3])
       (is (= [1 2 3]
              (venues-price-field-values))))
     (testing "Now re-sync the table and validate the field values updated"
@@ -68,6 +68,11 @@
              (into {} (db/select-one [FieldValues :values :human_readable_values]
                         :field_id (mt/id :blueberries_consumed :num))))))
 
+    ;; Manually add an advanced field values to test whether or not it got deleted later
+    (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :num)
+                             :type :sandbox
+                             :hash_key "random-key"})
+
     (testing (str "if the number grows past the threshold & we sync again it should get unmarked as auto-list and set "
                   "back to `nil` (#3215)\n")
       ;; now insert enough bloobs to put us over the limit and re-sync.
@@ -76,9 +81,9 @@
         (is (= nil
                (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :num)))))
 
-      (testing "its FieldValues should also get deleted."
+      (testing "All of its FieldValues should also get deleted."
         (is (= nil
-               (db/select-one [FieldValues :values :human_readable_values]
+               (db/select-one FieldValues
                  :field_id (mt/id :blueberries_consumed :num))))))))
 
 (deftest list-test
@@ -89,14 +94,22 @@
       (one-off-dbs/insert-rows-and-sync! (range 50))
       ;; change has_field_values to list
       (db/update! Field (mt/id :blueberries_consumed :num) :has_field_values "list")
-      ;; insert more bloobs & re-sync
-      (one-off-dbs/insert-rows-and-sync! (range 50 (+ 100 field-values/auto-list-cardinality-threshold)))
-      (testing "has_field_values shouldn't change"
-        (is (= :list
-               (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :num)))))
-      (testing (str "it should still have FieldValues, and have new ones for the new Values. It should have 200 values "
-                    "even though this is past the normal limit of 100 values!")
-        (is (= {:values                (range 200)
-                :human_readable_values []}
-               (into {} (db/select-one [FieldValues :values :human_readable_values]
-                          :field_id (mt/id :blueberries_consumed :num)))))))))
+      ;; Manually add an advanced field values to test whether or not it got deleted later
+      (db/insert! FieldValues {:field_id (mt/id :blueberries_consumed :num)
+                               :type :sandbox
+                               :hash_key "random-key"})
+       ;; insert more bloobs & re-sync
+     (one-off-dbs/insert-rows-and-sync! (range 50 (+ 100 field-values/auto-list-cardinality-threshold)))
+     (testing "has_field_values shouldn't change"
+       (is (= :list
+              (db/select-one-field :has_field_values Field :id (mt/id :blueberries_consumed :num)))))
+     (testing (str "it should still have FieldValues, and have new ones for the new Values. It should have 200 values "
+                   "even though this is past the normal limit of 100 values!")
+       (is (= {:values                (range 200)
+               :human_readable_values []}
+              (into {} (db/select-one [FieldValues :values :human_readable_values]
+                         :field_id (mt/id :blueberries_consumed :num)
+                         :type :full)))))
+     (testing "The advanced field values of this field should be deleted"
+       (is (= 0 (db/count FieldValues :field_id (mt/id :blueberries_consumed :num)
+                          :type [:not= :full])))))))

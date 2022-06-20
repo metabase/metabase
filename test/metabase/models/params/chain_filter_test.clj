@@ -316,8 +316,8 @@
   (testing "Field-to-field remapping: venues.category_id -> categories.name\n"
     (testing "Show me venue IDs (names)"
       (is (= [[29 "20th Century Cafe"]
-              [ 8 "25°"              ]
-              [93 "33 Taps"          ]]
+              [8 "25°"]
+              [93 "33 Taps"]]
              (take 3 (chain-filter/chain-filter (mt/id :venues :id) nil)))))
     (testing "Show me expensive venue IDs (names)"
       (is (= [[55 "Dal Rae Restaurant"]
