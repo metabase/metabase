@@ -5,12 +5,13 @@ import Modal from "metabase/components/Modal";
 import EntityMenu from "metabase/components/EntityMenu";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import CollectionCreate from "metabase/collections/containers/CollectionCreate";
-import { Collection } from "metabase-types/api";
+import { Collection, CollectionId } from "metabase-types/api";
 
 type ModalType = "new-dashboard" | "new-collection";
 
 export interface NewItemMenuProps {
   className?: string;
+  collectionId?: CollectionId;
   trigger?: ReactNode;
   triggerIcon?: string;
   triggerTooltip?: string;
@@ -24,6 +25,7 @@ export interface NewItemMenuProps {
 
 const NewItemMenu = ({
   className,
+  collectionId,
   trigger,
   triggerIcon,
   triggerTooltip,
@@ -58,6 +60,7 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           mode: "notebook",
           creationType: "custom_question",
+          collectionId,
         }),
         event: `${analyticsContext};New Question Click;`,
         onClose: onCloseNavbar,
@@ -71,6 +74,7 @@ const NewItemMenu = ({
         link: Urls.newQuestion({
           type: "native",
           creationType: "native_question",
+          collectionId,
         }),
         event: `${analyticsContext};New SQL Query Click;`,
         onClose: onCloseNavbar,
@@ -94,6 +98,7 @@ const NewItemMenu = ({
 
     return items;
   }, [
+    collectionId,
     hasDataAccess,
     hasNativeWrite,
     hasDatabaseWithJsonEngine,
@@ -114,11 +119,15 @@ const NewItemMenu = ({
         <Modal onClose={handleModalClose}>
           {modal === "new-collection" ? (
             <CollectionCreate
+              collectionId={collectionId}
               onClose={handleModalClose}
               onSaved={handleCollectionSave}
             />
           ) : modal === "new-dashboard" ? (
-            <CreateDashboardModal onClose={handleModalClose} />
+            <CreateDashboardModal
+              collectionId={collectionId}
+              onClose={handleModalClose}
+            />
           ) : null}
         </Modal>
       )}

@@ -144,6 +144,7 @@ function Menu(props) {
       {hasWritePermission && (
         <NewItemMenu
           {...props}
+          collectionId={collectionId}
           triggerIcon="add"
           triggerTooltip={t`New…`}
           analyticsContext={ANALYTICS_CONTEXT}
