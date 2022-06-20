@@ -9,7 +9,8 @@ on:
     paths-ignore:
       - "docs/**"
       - "**.md"
-      - "**/frontend/test/**"
+      - "frontend/test/**"
+      - "enterprise/frontend/test/**"
 
 jobs:
 
