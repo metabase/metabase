@@ -29,9 +29,6 @@ export default function FilterPopoverFooter({
   className,
   primaryColor,
 }: Props) {
-  const dimension = filter.dimension();
-  const field = dimension?.field();
-
   const containerClassName = cx(className, "flex align-center", {
     PopoverFooter: !isSidebar,
   });
