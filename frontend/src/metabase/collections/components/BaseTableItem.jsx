@@ -19,6 +19,7 @@ import {
   EntityIconCheckBox,
   ItemLink,
   TableItemSecondaryField,
+  DescriptionIcon,
 } from "./BaseItemsTable.styled";
 
 BaseTableItem.propTypes = {
@@ -116,8 +117,16 @@ export function BaseTableItem({
           <ItemLink {...linkProps} to={item.getUrl()}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
+              size={16}
               status={item.moderated_status}
             />
+            {item.description && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={item.description}
+              />
+            )}
           </ItemLink>
         </ItemCell>
         <ItemCell data-testid={`${testId}-last-edited-by`}>
