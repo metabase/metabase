@@ -6,11 +6,6 @@ on:
       - 'master'
       - 'release-**'
   pull_request:
-    paths-ignore:
-      - "docs/**"
-      - "**.md"
-      - "frontend/test/**"
-      - "enterprise/frontend/test/**"
 
 jobs:
 
