@@ -530,7 +530,7 @@
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata parameters
-                   cache_ttl dataset]
+                   cache_ttl dataset collection_preview]
             :as   card-updates} :body}]
   {name                   (s/maybe su/NonBlankString)
    parameters             (s/maybe [su/Parameter])
@@ -545,7 +545,8 @@
    collection_id          (s/maybe su/IntGreaterThanZero)
    collection_position    (s/maybe su/IntGreaterThanZero)
    result_metadata        (s/maybe qr/ResultsMetadata)
-   cache_ttl              (s/maybe su/IntGreaterThanZero)}
+   cache_ttl              (s/maybe su/IntGreaterThanZero)
+   collection_preview     (s/maybe s/Bool)}
   (let [card-before-update (hydrate (api/write-check Card id)
                                     [:moderation_reviews :moderator_details])]
     ;; Do various permissions checks

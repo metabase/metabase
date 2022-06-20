@@ -48,6 +48,7 @@
   {:archived            false
    :collection_id       nil
    :collection_position nil
+   :collection_preview  true
    :dataset_query       {}
    :dataset             false
    :description         nil
