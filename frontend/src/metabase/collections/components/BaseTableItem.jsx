@@ -13,6 +13,7 @@ import Tooltip from "metabase/components/Tooltip";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 
 import { color } from "metabase/lib/colors";
+import { getFullName } from "metabase/lib/user";
 
 import {
   ItemCell,
@@ -181,9 +182,7 @@ function getLastEditedBy(lastEditInfo) {
     return "";
   }
 
-  const name = [lastEditInfo.first_name, lastEditInfo.last_name]
-    .join(" ")
-    .trim();
+  const name = getFullName(lastEditInfo);
   return name || lastEditInfo.email;
 }
 

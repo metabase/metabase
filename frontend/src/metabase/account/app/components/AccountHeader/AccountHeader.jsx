@@ -2,6 +2,7 @@ import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import Radio from "metabase/core/components/Radio";
+import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
 import {
   AccountHeaderRoot,
@@ -35,7 +36,7 @@ const AccountHeader = ({ user, path, onChangeLocation }) => {
     [hasPasswordChange],
   );
 
-  const userFullName = [user.first_name, user.last_name].join(" ").trim();
+  const userFullName = getFullName(user);
 
   return (
     <AccountHeaderRoot data-testid="account-header">
