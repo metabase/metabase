@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "__support__/ui";
 import Header from "./CollectionHeader";
 
 const collection = {
@@ -8,7 +8,7 @@ const collection = {
 };
 
 it("should display collection name", () => {
-  render(<Header collection={collection} />);
+  renderWithProviders(<Header collection={collection} />);
 
   screen.getByText(collection.name);
 });
@@ -16,7 +16,9 @@ it("should display collection name", () => {
 describe("description tooltip", () => {
   describe("should not be displayed", () => {
     it("if description is not received", () => {
-      const { container } = render(<Header collection={collection} />);
+      const { container } = renderWithProviders(
+        <Header collection={collection} />,
+      );
       expect(container.textContent).toEqual("Name");
     });
   });
@@ -25,7 +27,9 @@ describe("description tooltip", () => {
     it("if description is received", () => {
       const description = "description";
 
-      render(<Header collection={{ ...collection, description }} />);
+      renderWithProviders(
+        <Header collection={{ ...collection, description }} />,
+      );
 
       screen.getByText(description);
     });
@@ -37,13 +41,13 @@ describe("permissions link", () => {
 
   describe("should not be displayed", () => {
     it("if user is not admin", () => {
-      render(<Header collection={collection} />);
+      renderWithProviders(<Header collection={collection} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
 
     it("for personal collections", () => {
-      render(
+      renderWithProviders(
         <Header
           isAdmin={true}
           collection={{ ...collection, personal_owner_id: 1 }}
@@ -54,7 +58,7 @@ describe("permissions link", () => {
     });
 
     it("if a collection is a personal collection child", () => {
-      render(
+      renderWithProviders(
         <Header
           isAdmin={true}
           collection={collection}
@@ -68,7 +72,7 @@ describe("permissions link", () => {
 
   describe("should be displayed", () => {
     it("if user is admin", () => {
-      render(<Header collection={collection} isAdmin={true} />);
+      renderWithProviders(<Header collection={collection} isAdmin={true} />);
 
       screen.getByLabelText(ariaLabel);
     });
@@ -80,13 +84,15 @@ describe("link to add new collection items", () => {
 
   describe("should not be displayed", () => {
     it("when no detail is passed in the collection to determine if user can change collection", () => {
-      render(<Header collection={collection} />);
+      renderWithProviders(<Header collection={collection} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
 
     it("if user is not allowed to change collection", () => {
-      render(<Header collection={{ ...collection, can_write: false }} />);
+      renderWithProviders(
+        <Header collection={{ ...collection, can_write: false }} />,
+      );
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
@@ -94,7 +100,9 @@ describe("link to add new collection items", () => {
 
   describe("should be displayed", () => {
     it("if user is allowed to change collection", () => {
-      render(<Header collection={{ ...collection, can_write: true }} />);
+      renderWithProviders(
+        <Header collection={{ ...collection, can_write: true }} />,
+      );
 
       screen.getByLabelText(ariaLabel);
     });
@@ -106,7 +114,7 @@ describe("link to add new collection items", () => {
 
   describe("should not be displayed", () => {
     it("if user is not allowed to change collection", () => {
-      render(<Header collection={collection} />);
+      renderWithProviders(<Header collection={collection} />);
 
       expect(screen.queryByLabelText(ariaLabel)).not.toBeInTheDocument();
     });
@@ -114,7 +122,9 @@ describe("link to add new collection items", () => {
 
   describe("should be displayed", () => {
     it("if user is allowed to change collection", () => {
-      render(<Header collection={{ ...collection, can_write: true }} />);
+      renderWithProviders(
+        <Header collection={{ ...collection, can_write: true }} />,
+      );
 
       screen.getByLabelText(ariaLabel);
     });

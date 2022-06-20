@@ -74,12 +74,14 @@ import {
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/lib/Alert";
 import { utf8_to_b64url } from "metabase/lib/encoding";
+import { CollectionId } from "metabase-types/api";
 
 type QuestionUpdateFn = (q: Question) => Promise<void> | null | undefined;
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
   tableId?: TableId;
+  collectionId?: CollectionId;
   metadata?: Metadata;
   parameterValues?: ParameterValues;
   type?: "query" | "native";
