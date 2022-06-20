@@ -3,12 +3,12 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import { closeNavbar } from "metabase/redux/app";
 import NewItemMenu from "metabase/components/NewItemMenu";
-import { State } from "metabase-types/store";
 import {
   getHasDataAccess,
   getHasDatabaseWithJsonEngine,
   getHasNativeWrite,
-} from "../../nav/selectors";
+} from "metabase/nav/selectors";
+import { State } from "metabase-types/store";
 
 interface MenuOwnProps {
   className?: string;
