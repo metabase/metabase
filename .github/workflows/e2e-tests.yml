@@ -66,6 +66,7 @@ jobs:
           - "dashboard-filters"
           - "downloads"
           - "embedding"
+          - "filters"
           - "joins"
           - "models"
           - "native"
