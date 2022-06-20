@@ -2,12 +2,16 @@
 import React from "react";
 import { t } from "ttag";
 
+import { parseTime } from "metabase/lib/time";
 import DatePicker, {
   getDateTimeFieldTarget,
-} from "./LegacyDatePicker/DatePicker";
-import HoursMinutesInput from "./LegacyDatePicker/HoursMinutesInput";
-
-import { parseTime } from "metabase/lib/time";
+} from "../LegacyDatePicker/DatePicker";
+import HoursMinutesInput from "../LegacyDatePicker/HoursMinutesInput";
+import {
+  TimePickerRoot,
+  BetweenConnector,
+  MultiTimePickerRoot,
+} from "./TimePicker.styled";
 
 const TimeInput = ({ value, onChange }) => {
   const time = parseTime(value);
@@ -24,35 +28,30 @@ const TimeInput = ({ value, onChange }) => {
 };
 
 const SingleTimePicker = ({ filter, onFilterChange }) => (
-  <div className="mx2 mb2">
-    <TimeInput
-      value={getTime(filter[2])}
-      onChange={time => onFilterChange([filter[0], filter[1], time])}
-    />
-  </div>
+  <TimeInput
+    value={getTime(filter[2])}
+    onChange={time => onFilterChange([filter[0], filter[1], time])}
+  />
 );
 
 SingleTimePicker.horizontalLayout = true;
 
-const MultiTimePicker = ({ filter, onFilterChange }) => (
-  <div
-    className="flex align-center justify-between mx2 mb1"
-    style={{ minWidth: 480 }}
-  >
+const MultiTimePicker = ({ filter, onFilterChange, isSidebar }) => (
+  <MultiTimePickerRoot direction={isSidebar ? "column" : "row"}>
     <TimeInput
       value={getTime(filter[2])}
       onChange={time =>
         onFilterChange([filter[0], filter[1], ...sortTimes(time, filter[3])])
       }
     />
-    <span className="h3">and</span>
+    <BetweenConnector>{t`and`}</BetweenConnector>
     <TimeInput
       value={getTime(filter[3])}
       onChange={time =>
         onFilterChange([filter[0], filter[1], ...sortTimes(filter[2], time)])
       }
     />
-  </div>
+  </MultiTimePickerRoot>
 );
 
 const sortTimes = (a, b) => {
@@ -108,7 +107,9 @@ export const TIME_OPERATORS = [
 ];
 
 const TimePicker = props => (
-  <DatePicker {...props} operators={TIME_OPERATORS} />
+  <TimePickerRoot>
+    <DatePicker {...props} operators={TIME_OPERATORS} />
+  </TimePickerRoot>
 );
 
 export default TimePicker;
