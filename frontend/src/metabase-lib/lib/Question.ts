@@ -282,10 +282,7 @@ class QuestionInner {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  /**
-   * The cache_ttl of a question if it exists
-   */
-  cache_ttl(): number | null {
+  cacheTTL(): number | null {
     return this._card?.cache_ttl;
   }
 

@@ -26,7 +26,7 @@ export const QuestionCacheSection = ({
   question,
   onSave,
 }: QuestionCacheSectionProps) => {
-  const [cacheTTL, setCacheTTL] = useState<number | null>(question.cache_ttl());
+  const [cacheTTL, setCacheTTL] = useState<number | null>(question.cacheTTL());
 
   const handleChange = useCallback(
     number => {

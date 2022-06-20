@@ -6,11 +6,14 @@ import {
   PLUGIN_CACHING,
 } from "metabase/plugins";
 
-import EditableText from "../../EditableText";
+import MetabaseSettings from "metabase/lib/settings";
+
 import QuestionActivityTimeline from "metabase/query_builder/components/QuestionActivityTimeline";
+
 import Question from "metabase-lib/lib/Question";
 import { Card } from "metabase-types/types/Card";
 
+import EditableText from "../../EditableText";
 import { Root, ContentSection } from "./QuestionInfoSidebar.styled";
 
 interface QuestionInfoSidebarProps {
@@ -26,6 +29,9 @@ export const QuestionInfoSidebar = ({
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
 
+  const showCaching =
+    PLUGIN_CACHING.isEnabled() && MetabaseSettings.get("enable-query-caching");
+
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {
       onSave(question.setDescription(description).card());
@@ -33,7 +39,7 @@ export const QuestionInfoSidebar = ({
   };
 
   const handleUpdateCacheTTL = (cache_ttl: number | undefined) => {
-    if (question.cache_ttl() !== cache_ttl) {
+    if (question.cacheTTL() !== cache_ttl) {
       return onSave(question.setCacheTTL(cache_ttl).card());
     }
   };
@@ -57,7 +63,7 @@ export const QuestionInfoSidebar = ({
         </ContentSection>
       )}
 
-      {PLUGIN_CACHING.showQuestionCacheSection && (
+      {showCaching && (
         <ContentSection extraPadding>
           <PLUGIN_CACHING.QuestionCacheSection
             question={question}

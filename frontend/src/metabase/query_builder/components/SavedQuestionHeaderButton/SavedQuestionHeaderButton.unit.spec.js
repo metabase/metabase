@@ -59,7 +59,7 @@ describe("SavedQuestionHeaderButton", () => {
     });
 
     it("should have an additional icon to signify the question's moderation status", () => {
-      expect(componentContainer.querySelector(".Icon")).toBeDefined();
+      expect(componentContainer.querySelector(".Icon")).toBeInTheDocument();
     });
   });
 });

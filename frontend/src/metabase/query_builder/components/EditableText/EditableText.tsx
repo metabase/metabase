@@ -1,17 +1,15 @@
 import React, { useState, useRef } from "react";
+import { KEY_ESCAPE, KEY_ENTER } from "metabase/lib/keyboard";
 
 import {
   EditableTextRoot,
   EditableTextArea,
   SharedStyles,
-  TEXT,
 } from "./EditableText.styled";
 
-import { KEY_ESCAPE, KEY_ENTER } from "metabase/lib/keyboard";
-
 interface EditableTextProps {
-  initialValue: TEXT;
-  onChange?: (val: TEXT) => void;
+  initialValue: string | null;
+  onChange?: (val: string | null) => void;
   submitOnEnter?: boolean;
   "data-testid"?: string;
   placeholder?: string;
@@ -24,7 +22,7 @@ const EditableText = ({
   "data-testid": dataTestid,
   placeholder,
 }: EditableTextProps) => {
-  const [value, setValue] = useState<TEXT>(initialValue);
+  const [value, setValue] = useState<string | null>(initialValue);
   const textArea = useRef<HTMLTextAreaElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -37,7 +35,7 @@ const EditableText = ({
     } = e;
 
     if (onChange && value !== initialValue) {
-      onChange(e.target.value);
+      onChange(value);
     }
   };
 

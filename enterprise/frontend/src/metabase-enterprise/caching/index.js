@@ -52,5 +52,5 @@ if (hasPremiumFeature("advanced_config")) {
 
   PLUGIN_CACHING.getQuestionsImplicitCacheTTL = getQuestionsImplicitCacheTTL;
   PLUGIN_CACHING.QuestionCacheSection = QuestionCacheSection;
-  PLUGIN_CACHING.showQuestionCacheSection = true;
+  PLUGIN_CACHING.isEnabled = () => true;
 }

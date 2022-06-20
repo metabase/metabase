@@ -13,10 +13,8 @@ export const SharedStyles = css`
   color: ${color("text-dark")};
 `;
 
-export type TEXT = string | null;
-
 interface EditableTextRootProps {
-  value: TEXT;
+  value: string | null;
 }
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
