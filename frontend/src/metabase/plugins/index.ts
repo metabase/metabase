@@ -73,10 +73,11 @@ export const PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS = [];
 
 // selectors that customize behavior between app versions
 export const PLUGIN_SELECTORS = {
-  getHasCustomLogo: (state: State) => false,
   getHasCustomColors: (state: State) => false,
   getHasCustomBranding: (state: State) => false,
   canWhitelabel: (state: State) => false,
+  getHideMetabot: (state: State) => false,
+  getLoadingMessage: (state: State) => t`Doing science...`,
 };
 
 export const PLUGIN_FORM_WIDGETS = {};
