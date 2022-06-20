@@ -4,7 +4,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import EntityMenu from "metabase/components/EntityMenu";
-import Swapper from "metabase/components/Swapper";
+import Swapper from "metabase/core/components/Swapper";
 import CheckBox from "metabase/core/components/CheckBox";
 import Ellipsified from "metabase/core/components/Ellipsified";
 import Icon from "metabase/components/Icon";
@@ -30,7 +30,7 @@ function EntityIconCheckBox({
   onToggleSelected,
   ...props
 }) {
-  const iconSize = variant === "small" ? 12 : 18;
+  const iconSize = variant === "small" ? 12 : 16;
   const handleClick = e => {
     e.preventDefault();
     onToggleSelected();
@@ -47,7 +47,6 @@ function EntityIconCheckBox({
     >
       {selectable ? (
         <Swapper
-          startSwapped={selected || showCheckbox}
           defaultElement={
             <Icon
               name={icon.name}
@@ -56,6 +55,7 @@ function EntityIconCheckBox({
             />
           }
           swappedElement={<CheckBox checked={selected} size={iconSize} />}
+          isSwapped={selected || showCheckbox}
         />
       ) : (
         <Icon
