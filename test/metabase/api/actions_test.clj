@@ -3,7 +3,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
-   [metabase.api.actions :as api.actions]
+   [metabase.api.action :as api.action]
    [metabase.driver :as driver]
    [metabase.models.database :refer [Database]]
    [metabase.models.table :refer [Table]]
@@ -11,7 +11,7 @@
    [metabase.test :as mt]
    [metabase.util :as u]))
 
-(comment api.actions/keep-me)
+(comment api.action/keep-me)
 
 (defn- mock-requests []
   [{:action       "actions/row/create"

@@ -1,4 +1,4 @@
-(ns metabase.api.actions
+(ns metabase.api.action
   ;; TODO -- should probably rename this to `/api/action` for consistency since other API endpoints aren't plural
   "`/api/actions/` endpoints."
   (:require [cheshire.core :as json]
