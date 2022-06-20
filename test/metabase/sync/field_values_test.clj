@@ -1,9 +1,9 @@
 (ns metabase.sync.field-values-test
   "Tests around the way Metabase syncs FieldValues, and sets the values of `field.has_field_values`."
   (:require [clojure.test :refer :all]
-            [metabase.models.field :refer [Field]]
-            [metabase.models.field-values :as field-values :refer [FieldValues]]
-            [metabase.models.table :refer [Table]]
+            [java-time :as t]
+            [metabase.models :refer [Field FieldValues Table]]
+            [metabase.models.field-values :as field-values]
             [metabase.sync :as sync]
             [metabase.sync.util-test :as sync.util-test]
             [metabase.test :as mt]
@@ -51,6 +51,59 @@
     (testing "Make sure the value is back"
       (is (= [1 2 3 4]
              (venues-price-field-values))))))
+
+(deftest sync-should-delete-expired-advanced-field-values-test
+  (testing "Test that the expired Advanced FieldValues should be removed"
+    (let [field-id           (mt/id :venues :price)
+          expired-created-at (t/minus (t/offset-date-time) (t/days (inc field-values/advanced-field-values-max-age)))
+          now                (t/offset-date-time)
+          [expired-sandbox-id
+           expired-linked-filter-id
+           valid-sandbox-id
+           valid-linked-filter-id
+           old-full-id
+           new-full-id]
+          (db/simple-insert-many!
+           FieldValues
+           [;; expired sandbox fieldvalues
+            {:field_id   field-id
+             :type       "sandbox"
+             :hash_key   "random-hash"
+             :created_at expired-created-at
+             :updated_at expired-created-at}
+            ;; expired linked-filter fieldvalues
+            {:field_id   field-id
+             :type       "linked-filter"
+             :hash_key   "random-hash"
+             :created_at expired-created-at
+             :updated_at expired-created-at}
+            ;; valid sandbox fieldvalues
+            {:field_id   field-id
+             :type       "sandbox"
+             :hash_key   "random-hash"
+             :created_at now
+             :updated_at now}
+            ;; valid linked-filter fieldvalues
+            {:field_id   field-id
+             :type       "linked-filter"
+             :hash_key   "random-hash"
+             :created_at now
+             :updated_at now}
+            ;; old full fieldvalues
+            {:field_id   field-id
+             :type       "full"
+             :hash_key   "random-hash"
+             :created_at expired-created-at
+             :updated_at expired-created-at}
+            ;; new full fieldvalues
+            {:field_id   field-id
+             :type       "full"
+             :created_at now
+             :updated_at now}])]
+      (is (= (repeat 2 {:deleted 2})
+             (sync-database!' "delete-expired-advanced-field-values" (data/db))))
+      (is (not (db/exists? FieldValues :id [:in [expired-sandbox-id expired-linked-filter-id]])))
+      (is (db/exists? FieldValues :id [:in [valid-sandbox-id valid-linked-filter-id new-full-id old-full-id]])))))
 
 (deftest auto-list-test
   ;; A Field with 50 values should get marked as `auto-list` on initial sync, because it should be 'list', but was
