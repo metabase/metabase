@@ -7,6 +7,7 @@
             [metabase.config :as config]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver :as driver]
+            [metabase.driver.ddl.mysql :as ddl.mysql]
             [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -475,3 +476,13 @@
                           "ORDER BY JSON_EXTRACT(`json`.`json_bit`, ?) ASC")
                      (:query compile-res)))
               (is (= '("$.\"1234\"" "$.\"1234\"" "$.\"1234\"") (:params compile-res))))))))))
+
+(deftest ddl.execute-with-timeout-test
+  (mt/test-driver :mysql
+    (mt/dataset json
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (is (thrown-with-msg?
+              Exception
+              #"Killed mysql process id \d+ due to timeout."
+              (#'ddl.mysql/execute-with-timeout! db-spec db-spec 10 ["select sleep(5)"])))
+        (is (= [{:val 0}] (#'ddl.mysql/execute-with-timeout! db-spec db-spec 5000 ["select sleep(0.1) as val"])))))))

@@ -12,9 +12,9 @@
             [metabase.util.i18n :refer [trs]])
   (:import java.sql.SQLNonTransientConnectionException))
 
-(defn- exec-wrap [conn-chan database sql+params]
+(defn- exec-async [conn-chan db-spec sql+params]
   (a/go
-    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/with-db-connection [conn db-spec]
       (try
         (let [pid (:pid (first (ddl.sql/jdbc-query conn ["select connection_id() pid"])))]
           (a/>! conn-chan pid)
@@ -39,14 +39,13 @@
 
 (defn- execute-with-timeout!
   "Spins up another channel to execute the statement.
-   If 10 minutes passes, send a kill statement to stop execution and throw exception
+   If `timeout-ms` passes, send a kill statement to stop execution and throw exception
    Otherwise return results returned by channel."
-  [conn database sql+params]
+  [conn db-spec timeout-ms sql+params]
   (let [conn-chan (a/chan)
-        exec-chan (exec-wrap conn-chan database sql+params)
+        exec-chan (exec-async conn-chan db-spec sql+params)
         pid (a/<!! conn-chan)
-        ten-minutes (.toMillis (t/minutes 10))
-        timeout-chan (a/timeout ten-minutes)
+        timeout-chan (a/timeout timeout-ms)
         [v port] (a/alts!! [timeout-chan exec-chan])]
     (cond
       (= port timeout-chan) (kill conn pid)
@@ -54,12 +53,16 @@
       (= port exec-chan) v)))
 
 (defmethod ddl.i/refresh! :mysql [_driver database definition dataset-query]
-  (let [{:keys [query params]} (qp/compile dataset-query)]
-    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+  (let [{:keys [query params]} (qp/compile dataset-query)
+        db-spec (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/with-db-connection [conn db-spec]
       (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database (:table-name definition))])
       ;; It is possible that this fails and rollback would not restore the table.
       ;; That is ok, the persisted-info will be marked inactive and the next refresh will try again.
-      (execute-with-timeout! conn database (into [(ddl.sql/create-table-sql database definition query)] params))
+      (execute-with-timeout! conn
+                             db-spec
+                             (.toMillis (t/minutes 10))
+                             (into [(ddl.sql/create-table-sql database definition query)] params))
       {:state :success})))
 
 (defmethod ddl.i/unpersist! :mysql
@@ -75,6 +78,7 @@
   [database]
   (let [schema-name (ddl.i/schema-name database (public-settings/site-uuid))
         table-name (format "persistence_check_%s" (rand-int 10000))
+        db-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         steps [[:persist.check/create-schema
                 (fn check-schema [conn]
                   (let [existing-schemas (->> ["select schema_name from information_schema.schemata"]
@@ -87,12 +91,15 @@
                   (ddl.sql/execute! conn [(ddl.sql/drop-schema-sql database)]))]
                [:persist.check/create-table
                 (fn create-table [conn]
-                  (execute-with-timeout! conn database [(ddl.sql/create-table-sql
-                                                          database
-                                                          {:table-name table-name
-                                                           :field-definitions [{:field-name "field"
-                                                                                :base-type :type/Text}]}
-                                                          "values (1)")]))
+                  (execute-with-timeout! conn
+                                         db-spec
+                                         (.toMillis (t/minutes 10))
+                                         [(ddl.sql/create-table-sql
+                                            database
+                                            {:table-name table-name
+                                             :field-definitions [{:field-name "field"
+                                                                  :base-type :type/Text}]}
+                                            "values (1)")]))
                 (fn undo-create-table [conn]
                   (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database table-name)]))]
                [:persist.check/read-table
@@ -103,10 +110,11 @@
                [:persist.check/delete-table
                 (fn delete-table [conn]
                   (ddl.sql/execute! conn [(ddl.sql/drop-table-sql database table-name)]))
+                ;; This will never be called, if the last step fails it does not need to be undone
                 (constantly nil)]]]
     ;; Unlike postgres, mysql ddl clauses will not rollback in a transaction.
     ;; So we keep track of undo-steps to manually rollback previous, completed steps.
-    (jdbc/with-db-connection [conn (sql-jdbc.conn/db->pooled-connection-spec database)]
+    (jdbc/with-db-connection [conn db-spec]
                              (loop [[[step stepfn undofn] & remaining] steps
                                     undo-steps []]
                                (let [result (try (stepfn conn)
