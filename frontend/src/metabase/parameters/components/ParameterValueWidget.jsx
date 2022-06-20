@@ -273,7 +273,7 @@ function Widget({
         infixText={typeof arity === "number" && arity > 1 ? t`and` : undefined}
         autoFocus
         placeholder={isEditing ? t`Enter a default value…` : undefined}
-        title={getParameterWidgetTitle(parameter)}
+        label={getParameterWidgetTitle(parameter)}
       />
     );
   } else if (!_.isEmpty(parameter.fields)) {

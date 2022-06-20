@@ -8,7 +8,8 @@ export const WidgetRoot = styled.div`
   min-width: 300px;
 `;
 
-export const WidgetTitle = styled.div`
+export const WidgetLabel = styled.label`
+  display: block;
   font-weight: bold;
   margin: ${space(1)};
   margin-bottom: 0;

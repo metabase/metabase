@@ -6,7 +6,7 @@ import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
 import {
   WidgetRoot,
-  WidgetTitle,
+  WidgetLabel,
   Footer,
   UpdateButton,
   TokenFieldWrapper,
@@ -20,7 +20,7 @@ export type NumberInputWidgetProps = {
   infixText?: string;
   autoFocus?: boolean;
   placeholder?: string;
-  title?: string;
+  label?: string;
 };
 
 const OPTIONS: any[] = [];
@@ -33,7 +33,7 @@ function NumberInputWidget({
   infixText,
   autoFocus,
   placeholder = t`Enter a number`,
-  title,
+  label,
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] = useState<
@@ -58,7 +58,7 @@ function NumberInputWidget({
 
   return (
     <WidgetRoot className={className}>
-      {title && <WidgetTitle>{title}</WidgetTitle>}
+      {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
         <TokenFieldWrapper>
           <TokenField
