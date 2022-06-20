@@ -305,7 +305,7 @@ function Widget({
         autoFocus
         placeholder={isEditing ? t`Enter a default value…` : undefined}
         arity={getStringParameterArity(parameter)}
-        title={getParameterWidgetTitle(parameter)}
+        label={getParameterWidgetTitle(parameter)}
       />
     );
   }

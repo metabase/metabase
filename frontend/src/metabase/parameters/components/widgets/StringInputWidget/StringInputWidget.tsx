@@ -5,7 +5,7 @@ import { isEqual, isString, isEmpty } from "lodash";
 import TokenField, { parseStringValue } from "metabase/components/TokenField";
 import {
   WidgetRoot,
-  WidgetTitle,
+  WidgetLabel,
   Footer,
   UpdateButton,
   TokenFieldWrapper,
@@ -18,7 +18,7 @@ type StringInputWidgetProps = {
   autoFocus?: boolean;
   placeholder?: string;
   arity?: 1 | "n";
-  title?: string;
+  label?: string;
 };
 
 const OPTIONS: any[] = [];
@@ -30,7 +30,7 @@ function StringInputWidget({
   autoFocus,
   arity = 1,
   placeholder = t`Enter some text`,
-  title,
+  label,
 }: StringInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] = useState<string[]>(
@@ -50,7 +50,7 @@ function StringInputWidget({
 
   return (
     <WidgetRoot className={className}>
-      {title && <WidgetTitle>{title}</WidgetTitle>}
+      {label && <WidgetLabel>{label}</WidgetLabel>}
       <TokenFieldWrapper>
         <TokenField
           value={unsavedArrayValue}
