@@ -10,7 +10,7 @@ export const MetabotSettingWidgetRoot = styled.div`
 `;
 
 export const MetabotContainer = styled.div`
-  padding: 2rem;
+  padding: 0.5rem 1rem 0.75rem 1.25rem;
   border-right: 1px solid ${color("border")};
 `;
 
