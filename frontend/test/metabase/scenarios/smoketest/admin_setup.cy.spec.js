@@ -22,27 +22,6 @@ describe("smoketest > admin_setup", () => {
       cy.signInAsAdmin();
     });
 
-    it("should check table and question names as user", () => {
-      // Log out as admin and sign in as user
-      cy.signOut();
-      cy.signInAsNormalUser();
-      cy.visit("/");
-
-      // Check names
-      cy.wait(3000).contains("People");
-      cy.contains("Orders");
-      cy.contains("Test Table").should("not.exist");
-
-      cy.findByText("Our analytics").click();
-
-      cy.get("h1").contains("Our analytics");
-      cy.findByText("A look at your").should("not.exist");
-
-      cy.findByText("Orders, Count");
-      cy.findByText("Orders, Count, Grouped by Created At (year)");
-      cy.findByText("Test Q Name Change").should("not.exist");
-    });
-
     it("should rename a question and description as admin", () => {
       cy.intercept("PUT", "/api/card/3").as("updateCard");
       cy.visit("/");
