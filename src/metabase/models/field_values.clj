@@ -54,8 +54,8 @@
 
 (def ^:private advanced-field-values-types
   "A class of fieldvalues that has additional constraints/filters."
-  #{:sandbox         ;; are fieldvalues but has constraints from other locked parameters on dashboard/embedding
-    :locked-filter}) ;; are fieldvalues but filtered by sandbox permissions
+  #{:sandbox         ;; are fieldvalues but filtered by sandbox permissions
+    :linked-filter}) ;; are fieldvalues but has constraints from other linked parameters on dashboard/embedding
 
 (def ^:private field-values-types
   "All FieldValues type."
