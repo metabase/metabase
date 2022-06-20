@@ -2,7 +2,10 @@ import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
-import { getParameterTargetField } from "metabase/parameters/utils/targets";
+import {
+  getParameterTargetField,
+  isVariableTarget,
+} from "metabase/parameters/utils/targets";
 import { isFieldFilterParameter } from "metabase/parameters/utils/parameter-type";
 import { slugify } from "metabase/lib/formatting";
 import {
@@ -151,8 +154,9 @@ function buildFieldFilterUiParameter(
     return getTargetField(target, card, metadata);
   });
   const fields = mappedFields.filter((field): field is Field => field != null);
-  const hasOnlyFieldTargets =
-    mappedFields.length !== 0 && mappedFields.length === fields.length;
+  const hasVariableTemplateTagTarget = mappingsForParameter.some(mapping => {
+    return isVariableTarget(mapping.target);
+  });
   const uniqueFieldsWithFKResolved = _.uniq(
     fields.map(field => field.target ?? field),
     field => field.id,
@@ -161,7 +165,7 @@ function buildFieldFilterUiParameter(
   return {
     ...parameter,
     fields: uniqueFieldsWithFKResolved,
-    hasOnlyFieldTargets,
+    hasVariableTemplateTagTarget,
   };
 }
 
