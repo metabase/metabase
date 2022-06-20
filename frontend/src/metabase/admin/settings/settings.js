@@ -64,7 +64,6 @@ export const updateSettings = createThunkAction(UPDATE_SETTINGS, function(
 ) {
   return async function(dispatch, getState) {
     try {
-      console.log("updating Settings");
       await SettingsApi.putAll(settings);
     } catch (error) {
       console.log("error updating settings", settings, error);

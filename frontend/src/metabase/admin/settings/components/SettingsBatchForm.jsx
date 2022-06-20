@@ -69,7 +69,6 @@ class SettingsBatchForm extends Component {
     const formData = {};
     for (const element of this.props.elements) {
       formData[element.key] = element.value;
-      console.log(element.key, ", ", element.value);
     }
     this.setState({ formData, pristine: true });
   }
