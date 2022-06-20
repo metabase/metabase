@@ -370,10 +370,13 @@ describe("smoketest > admin_setup", () => {
     });
 
     it("should modify user permissions for data access and SQL queries, both on a database/schema level as well as at a table level as admin", () => {
-      // *** Need multible databases to test their permissions.
-
       cy.signOut();
       cy.signInAsAdmin();
+
+      cy.request("POST", "/api/permissions/group", {
+        name: "Marketing",
+      });
+
       cy.visit("/");
 
       cy.icon("gear").click();
