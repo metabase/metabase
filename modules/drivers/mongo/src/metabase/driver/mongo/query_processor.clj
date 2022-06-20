@@ -407,7 +407,7 @@
   ;; Addition is commutative and any but not all elements of `args` can be intervals.
   ;; We pick the first arg that is not an interval and add the rest of args to it.
   ;; (It's the callers responsibility to make sure that the first non-interval argument
-  ;; represents a date and not offset like an integer would.)
+  ;; represents a date and not an offset like an integer would.)
   ;; If none of the args is an interval, we shortcut with a simple addition.
   (if (some interval? args)
     (if-let [[arg others] (u/pick-first (complement interval?) args)]
