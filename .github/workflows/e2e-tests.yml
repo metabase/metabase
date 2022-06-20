@@ -70,6 +70,7 @@ jobs:
           - "models"
           - "native"
           - "native-filters"
+          - "onboarding"
           - "organization"
           - "permissions"
           - "question"
