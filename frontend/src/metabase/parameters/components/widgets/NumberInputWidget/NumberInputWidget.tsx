@@ -6,8 +6,10 @@ import TokenField, { parseNumberValue } from "metabase/components/TokenField";
 import NumericInput from "metabase/core/components/NumericInput";
 import {
   WidgetRoot,
+  WidgetLabel,
   Footer,
   UpdateButton,
+  TokenFieldWrapper,
 } from "metabase/parameters/components/widgets/Widget.styled";
 
 export type NumberInputWidgetProps = {
@@ -18,6 +20,7 @@ export type NumberInputWidgetProps = {
   infixText?: string;
   autoFocus?: boolean;
   placeholder?: string;
+  label?: string;
 };
 
 const OPTIONS: any[] = [];
@@ -30,6 +33,7 @@ function NumberInputWidget({
   infixText,
   autoFocus,
   placeholder = t`Enter a number`,
+  label,
 }: NumberInputWidgetProps) {
   const arrayValue = normalize(value);
   const [unsavedArrayValue, setUnsavedArrayValue] = useState<
@@ -54,19 +58,22 @@ function NumberInputWidget({
 
   return (
     <WidgetRoot className={className}>
+      {label && <WidgetLabel>{label}</WidgetLabel>}
       {arity === "n" ? (
-        <TokenField
-          multi
-          updateOnInputChange
-          autoFocus={autoFocus}
-          value={unsavedArrayValue}
-          parseFreeformValue={parseNumberValue}
-          onChange={newValue => {
-            setUnsavedArrayValue(newValue);
-          }}
-          options={OPTIONS}
-          placeholder={placeholder}
-        />
+        <TokenFieldWrapper>
+          <TokenField
+            multi
+            updateOnInputChange
+            autoFocus={autoFocus}
+            value={unsavedArrayValue}
+            parseFreeformValue={parseNumberValue}
+            onChange={newValue => {
+              setUnsavedArrayValue(newValue);
+            }}
+            options={OPTIONS}
+            placeholder={placeholder}
+          />
+        </TokenFieldWrapper>
       ) : (
         times(arity, i => (
           <div className="inline-block" key={i}>
