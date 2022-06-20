@@ -123,7 +123,7 @@
       (testing "As an API request"
         (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a template tag with the ID \"_FAKE_\" or name \"fake\""
                       :invalid-parameter  (s/eq {:id "_FAKE_", :name "fake", :type "date/single", :value "2016-01-01"})
-                      :allowed-parameters (s/eq ["_DATE_", "date"])
+                      :allowed-parameters (s/eq ["_DATE_" "date"])
                       s/Keyword           s/Any}
                      (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
                                            {:parameters [{:id    "_FAKE_"
