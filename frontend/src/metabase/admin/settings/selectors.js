@@ -156,6 +156,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
         required: true,
         autoFocus: true,
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-port",
@@ -164,6 +165,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "number",
         required: true,
         validations: [["integer", t`That's not a valid port number`]],
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-security",
@@ -172,6 +174,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "radio",
         options: { none: "None", ssl: "SSL", tls: "TLS", starttls: "STARTTLS" },
         defaultValue: "none",
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-username",
@@ -179,6 +182,7 @@ const SECTIONS = updateSectionsWithPlugins({
         description: null,
         placeholder: "youlooknicetoday",
         type: "string",
+        getHidden: () => MetabaseSettings.isHosted(),
       },
       {
         key: "email-smtp-password",
@@ -186,6 +190,14 @@ const SECTIONS = updateSectionsWithPlugins({
         description: null,
         placeholder: "Shhh...",
         type: "password",
+        getHidden: () => MetabaseSettings.isHosted(),
+      },
+      {
+        key: "email-from-name",
+        display_name: t`From Name`,
+        placeholder: "Metabase",
+        type: "string",
+        required: false,
       },
       {
         key: "email-from-address",
@@ -195,13 +207,7 @@ const SECTIONS = updateSectionsWithPlugins({
         required: true,
         validations: [["email", t`That's not a valid email address`]],
       },
-      {
-        key: "email-from-name",
-        display_name: t`From Name`,
-        placeholder: "Metabase",
-        type: "string",
-        required: false,
-      },
+
       {
         key: "email-reply-to",
         display_name: t`Reply-To Address`,
