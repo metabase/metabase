@@ -16,9 +16,7 @@ const UserProfileForm = ({ user }) => {
     [user],
   );
 
-  return (
-    <User.Form user={user} form={User.forms.user(user)} onSaved={handleSaved} />
-  );
+  return <User.Form user={user} form={User.forms.user} onSaved={handleSaved} />;
 };
 
 UserProfileForm.propTypes = propTypes;
