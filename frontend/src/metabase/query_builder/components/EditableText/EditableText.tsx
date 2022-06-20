@@ -55,7 +55,7 @@ const EditableText = ({
     <EditableTextRoot value={value}>
       <EditableTextArea
         placeholder={placeholder}
-        value={value || undefined}
+        value={value || ""}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}

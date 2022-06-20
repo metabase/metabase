@@ -26,21 +26,15 @@ export const QuestionInfoSidebar = ({
   const isDataset = question.isDataset();
   const isPersisted = isDataset && question.isPersisted();
 
-  const handleSave = (description: string | null | undefined) => {
+  const handleSave = (description: string | null) => {
     if (question.description() !== description) {
-      onSave({
-        ...question.card(),
-        description,
-      });
+      onSave(question.setDescription(description).card());
     }
   };
 
   const handleUpdateCacheTTL = (cache_ttl: number | undefined) => {
     if (question.cache_ttl() !== cache_ttl) {
-      return onSave({
-        ...question.card(),
-        cache_ttl,
-      });
+      return onSave(question.setCacheTTL(cache_ttl).card());
     }
   };
 

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import Button from "metabase/core/components/Button";
 import ActionButton from "metabase/components/ActionButton";
-import Input from "metabase/core/components/Input";
+import NumericInput from "metabase/core/components/NumericInput";
 
 import Question from "metabase-lib/lib/Question";
 import { color } from "metabase/lib/colors";
@@ -29,11 +29,8 @@ export const QuestionCacheSection = ({
   const [cacheTTL, setCacheTTL] = useState<number | null>(question.cache_ttl());
 
   const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const {
-        target: { value },
-      } = e;
-      setCacheTTL(normalizeCacheTTL(parseInt(value)));
+    number => {
+      setCacheTTL(normalizeCacheTTL(number));
     },
     [setCacheTTL],
   );
@@ -60,13 +57,13 @@ export const QuestionCacheSection = ({
         popoverContent={
           <CachePopover>
             <Text>
-              {t`Cache results for `}{" "}
-              <Input
+              {t`Cache results for`}
+              <NumericInput
                 placeholder="24"
                 value={cacheTTL || ""}
                 onChange={handleChange}
-              />{" "}
-              {t` hours`}
+              />
+              {t`hours`}
             </Text>
             <ActionButton
               primary

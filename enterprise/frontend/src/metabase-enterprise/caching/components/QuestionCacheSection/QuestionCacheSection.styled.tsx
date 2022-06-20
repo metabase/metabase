@@ -1,8 +1,8 @@
-import styled from '@emotion/styled';
-import Button from 'metabase/core/components/Button'
-import Input from 'metabase/core/components/Input';
+import styled from "@emotion/styled";
+import Button from "metabase/core/components/Button";
+import Input from "metabase/core/components/Input";
 
-import { color } from 'metabase/lib/colors';
+import { color } from "metabase/lib/colors";
 
 export const QuestionCacheSectionRoot = styled.div`
   display: flex;
@@ -15,14 +15,14 @@ export const QuestionCacheSectionRoot = styled.div`
   ${Button.Content} {
     justify-content: start;
   }
-`
+`;
 
 export const Text = styled.span`
   font-weight: 700;
   font-size: 0.875rem;
   line-height: 1rem;
   margin: 0.5rem 0rem;
-`
+`;
 
 export const CachePopover = styled.div`
   padding: 1.5rem;
@@ -43,10 +43,10 @@ export const CachePopover = styled.div`
     padding: 0.625rem;
     margin: 0 0.5rem;
 
-    border: 1px solid ${color('border')}
+    border: 1px solid ${color("border")};
   }
 
   ${Button.Root} {
     width: 120px;
   }
-`
+`;
