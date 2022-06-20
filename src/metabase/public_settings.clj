@@ -271,6 +271,12 @@
   :type    :integer
   :default 10)
 
+(defsetting notification-link-base-url
+  (deferred-tru "By default \"Site Url\" is used in notification links, but can be overridden.")
+  :visibility :internal
+  :type       :string
+  :enabled?   premium-features/hide-embed-branding?)
+
 (defsetting deprecation-notice-version
   (deferred-tru "Metabase version for which a notice about usage of deprecated features has been shown.")
   :visibility :admin)

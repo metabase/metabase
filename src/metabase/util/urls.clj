@@ -9,17 +9,10 @@
             [metabase.public-settings :as public-settings]
             [metabase.util :as u]))
 
-;; we want to load this at the top level so the Setting the namespace defines gets loaded
-(def ^:private site-url*
-  (or (u/ignore-exceptions
-        (classloader/require 'metabase-enterprise.embedding.utils)
-        (resolve 'metabase-enterprise.embedding.utils/notification-link-base-url))
-      (constantly nil)))
-
 (defn- site-url
   "Return the Notification Link Base URL if set by enterprise env var, or Site URL."
   []
-  (or (site-url*) (public-settings/site-url)))
+  (or (public-settings/notification-link-base-url) (public-settings/site-url)))
 
 (defn pulse-url
   "Return an appropriate URL for a `Pulse` with ID.
