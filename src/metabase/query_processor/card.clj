@@ -83,7 +83,7 @@
 (defn- card-parameters
   "Parameters on provided Card, returned as a map with the format
 
-    {\"paramter_id\" :parameter-type ...}
+    {\"parameter_id\" :parameter-type ...}
 
   This allows the expected type of a request parameter targeting a field on an MBQL query to be quickly looked up by ID.
   Excludes parameters that do not have IDs."
