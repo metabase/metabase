@@ -146,21 +146,17 @@
           :primary-key (constantly :key)})
 
   serdes.hash/IdentityHashable
-  {:identity-hash-fields (constantly [:key])}
+  {:identity-hash-fields (constantly [:key])})
 
-  serdes.base/ISerializable
-  (merge serdes.base/ISerializableDefaults
-         {:serialize-all (fn [_ _]
-                           [["settings.yaml"
-                             {:serdes_type "Setting"
-                              :settings
-                              (into {} (for [{:keys [key value]} (admin-writable-site-wide-settings
-                                                                   :getter (partial get-value-of-type :string))]
-                                         [key value]))}]])
-          :deserialize-file (fn [_ {:keys [settings]} _]
-                              (doseq [[k v] settings
-                                      :when v]
-                                (set-value-of-type! :string k v)))}))
+(defmethod serdes.base/extract-all "Setting" [_model _opts]
+  (for [{:keys [key value]} (admin-writable-site-wide-settings
+                              :getter (partial get-value-of-type :string))]
+    {:serdes/meta {:type "Setting" :id (name key)}
+     :key key
+     :value value}))
+
+(defmethod serdes.base/merge-one! "Setting" [{:keys [key value]} _]
+  (set-value-of-type! :string key value))
 
 (def ^:private Type
   (s/pred (fn [a-type]

@@ -1,5 +1,5 @@
 (ns metabase.models.serialization.base
-  "Defines several helper functions and protocols for the serialization system.
+  "Defines several helper functions and multimethods for the serialization system.
   Serialization is an enterprise feature, but in the interest of keeping all the code for an entity in one place, these
   methods are defined here and implemented for all the exported models.
 
@@ -7,153 +7,305 @@
   - Generally, the high-profile user facing things (databases, questions, dashboards, snippets, etc.) are exported.
   - Internal or automatic things (users, activity logs, permissions) are not.
 
-  If the model is not exported, add it to the exclusion lists in the tests."
-  (:require [metabase.models.serialization.hash :as serdes.hash]
-            [potemkin.types :as p.types]
+  If the model is not exported, add it to the exclusion lists in the tests. Every model should be explicitly listed as
+  exported or not, and a test enforces this so serialization isn't forgotten for new models."
+  (:require [clojure.tools.logging :as log]
+            [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]
-            [toucan.models :as models])
-  (:import java.io.File))
+            [toucan.models :as models]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          Serialization Process                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;;; The end result of serialization is a directory tree of YAML files. Some entities are written to individual files
-;;; (most of them, eg. collections and fields) while others are consolidated into a single file for the entire set (eg.
-;;; settings).
+;;; Serialization happens in two stages: extraction and storage. These are independent and deliberately decoupled.
+;;; The result of extraction is a reducible stream of Clojure maps with `:serdes/meta` keys on them (see below).
+;;; In particular, extraction does not care about file formats or other such things.
 ;;;
-;;; Some entities cannot be loaded until others are also loaded, these are its *dependencies*. For example, a Field
-;;; can't be loaded until its Table is defined, and the Table can't be loaded without the Database. These dependencies
-;;; are derived from the serialized form, and then loaded recursively in postorder.
+;;; Storage takes the stream from extraction and actually stores it or sends it. Traditionally we have serialized to a
+;;; directory tree full of YAML files, and that's the only storage approach implemented here. But since the process is
+;;; decoupled, we or a user could write their own storage layer, using JSON or protocol buffers or any other format.
+;;;
+;;; Both extraction and storage are written as a set of multimethods, with defaults for the common path.
+;;; Note that extraction is controlled by a map of options and settings, detailed below.
+;;;
+;;; Extraction:
+;;; - Top-level serialization code [[metabase-enterprise.serialization.v2.extract/extract-metabase]] has a list of
+;;;   models to be exported.
+;;;     - A test enforces that all models are either exported, or explicitly excluded, so new ones can't be forgotten.
+;;; - It calls `(extract-all "ModelName" opts)` for each model.
+;;;     - The default for this calls `(extract-query "ModelName" opts)`, getting back a reducible stream of entities.
+;;;     - For each entity in that stream, it calls `(extract-one entity)`, which converts the Toucan entity
+;;;       to a vanilla Clojure map with `:serdes/meta` on it.
+;;; - The default [[extract-all]] should work for most models (overrride [[extract-query]] and [[extract-one]] instead),
+;;;   but it can be overridden if needed.
+;;;
+;;; The end result of extraction is a reducible stream of Clojure maps; this is passed to storage directly, along with
+;;; the map of options.
+;;;
+;;; Options currently supported by extraction:
+;;; - `:user 6` giving the primary key for a user whose personal collections should be extracted.
+;;;
+;;; Storage:
+;;; The storage system might transform that stream in some arbitrary way. Storage is a dead end - it should perform side
+;;; effects like writing to the disk or network, and return nothing.
+
+(defmulti extract-all
+  "Entry point for extracting all entities of a particular model:
+  `(extract-all \"ModelName\" {opts...})`
+  Keyed on the model name.
+
+  Returns a reducible stream of extracted maps (ie. vanilla Clojure maps with `:serdes/meta` keys).
+
+  You probably don't want to implement this directly. The default implementation delegates to [[extract-query]] and
+  [[extract-one]], which are usually more convenient to override."
+  (fn [model _] model))
+
+(defmulti extract-query
+  "Performs the select query, possibly filtered, for all the entities of this type that should be serialized. Called
+  from [[extract-all]]'s default implementation.
+
+  Returns the result of `db/select-reducible`, or a similar reducible stream of Toucan entities.
+
+  Defaults to a straight `(db/select-reducible model)` for the entire table.
+  You may want to override this to eg. skip archived entities, or otherwise filter what gets serialized."
+  (fn [model _] model))
+
+(defmulti extract-one
+  "Extracts a single Toucan entity into a vanilla Clojure map with `:serdes/meta` attached.
+
+  The default implementation uses the model name as the `:type` and either `:entity_id` or [[serdes.hash/identity-hash]]
+  as the `:id`. It also strips off the database's numeric `:id`.
+
+  That suffices for a few simple entities, but most entities will need to override this.
+  They should follow the pattern of:
+  - Convert to a vanilla Clojure map, not a [[models/IModel]] instance.
+  - Drop the numeric database primary key
+  - Replace any foreign keys with portable values (eg. entity IDs or `identity-hash`es, owning user's ID with their
+    email, etc.)
+  - Consider attaching a human-friendly `:label` under `:serdes/meta`. (Eg. a Collection's `:slug`)
+
+  When overriding this, [[extract-one-basics]] is probably a useful starting point.
+
+  Keyed by the model name of the entity."
+  name)
+
+(defmethod extract-all :default [model opts]
+  (eduction (map extract-one) (extract-query model opts)))
+
+(defmethod extract-query :default [model _]
+  (db/select-reducible model))
+
+(defn extract-one-basics
+  "A helper for writing [[extract-one]] implementations. It takes care of the basics:
+  - Convert to a vanilla Clojure map.
+  - Add `:serdes/meta`.
+  - Drop the primary key.
+
+  Returns the Clojure map."
+  [entity]
+  (-> (into {} entity)
+      (assoc :serdes/meta {:type (name entity)
+                           :id   (or (:entity_id entity) (serdes.hash/identity-hash entity))})
+      (dissoc (models/primary-key entity))))
+
+(defmethod extract-one :default [entity]
+  (extract-one-basics entity))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Deserialization Process                                                |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; Deserialization is split into two stages, mirroring serialization. They are called ingestion and merging.
+;;; Ingestion turns whatever serialized form (eg. a tree of YAML files) was produced by storage into Clojure maps with
+;;; `:serdes/meta` maps. Merging imports those entities into the appdb, updating and inserting rows as needed.
+;;;
+;;; Ingestion:
+;;; Ingestion is intended to be a black box, like storage above. [[Ingestable]] is a protocol to allow easy [[reify]]
+;;; usage for testing in-memory deserialization.
+;;;
+;;; Factory functions consume some details (like a file path) and return an [[Ingestable]], with its two methods:
+;;; - `(ingest-list ingestable)` returns a reducible stream of `:serdes/meta` maps in any order.
+;;; - `(ingest-one ingestable meta-map)` ingests a single entity into memory, returning it as a map.
+;;;
+;;; This two-stage design avoids needing all the data in memory at once, where that's practical with the underlying
+;;; some storage media (eg. files).
+;;;
+;;; Merging:
+;;; Merging tries to find corresponding entities in the destination appdb by `entity_id` or `identity-hash`, and update
+;;; those rows rather than duplicating.
+;;; The entry point is [[metabase-enterprise.serialization.v2.merge/merge-metabase]]. The top-level process works like
+;;; this:
+;;; - `(merge-prescan-all "ModelName")` is called, which selects the entire collection as a reducible stream and calls
+;;;   [[merge-prescan-one]] on each entry.
+;;;     - The default for that usually is the right thing.
+;;; - `(merge-prescan-one entity)` turns a particular entity into an `[entity_id identity-hash primary-key]` triple.
+;;;     - The default will work for models with a literal `entity_id` field; those with alternative IDs (database,
+;;;       table, field, setting, etc.) should override this method.
+;;; - Prescanning complete, `(ingest-list ingestable)` gets the metadata for every exported entity in arbitrary order.
+;;;     - `(ingest-one meta-map opts)` is called on each first to ingest the value into memory, then
+;;;     - `(serdes-dependencies ingested)` to get a list of other IDs (entity IDs or identity hashes).
+;;;         - The default is an empty list.
+;;;     - The idea of dependencies is eg. a database must be loaded before its tables, a table before its fields, a
+;;;       collection's ancestors before the collection itself.
+;;;     - Dependencies are loaded recursively in postorder; circular dependencies cause the process to throw.
+;;; - Having found an entity it can really load, the core code will check its table of IDs found by prescanning.
+;;;     - Then it calls `(merge-one! ingested maybe-local-entity)`, passing the `ingested` value and either `nil` or the
+;;;       Toucan entity corresponding to the incoming map.
+;;;     - `merge-one!` is a side-effecting black box to the rest of the deserialization process.
+;;;       It returns the primary key of the new or existing entity, which is necessary to resolve foreign keys between
+;;;       imported entities.
+;;;     - The table of "local" entities found by the prescan is updated to include newly merged ones.
+;;;
+;;;
+;;; `merge-one!` has a default implementation that works for most models:
+;;; - Call `(merge-xform ingested)` to massage the map as needed.
+;;;     - This is the spot to override, for example to convert a foreign key from portable entity ID into a database ID.
+;;; - Then, call either:
+;;;     - `(merge-upsert! ingested local-entity)` if the local entity exists, or
+;;;     - `(merge-insert! ingested)` if the entity is new.
+;;;   Both of these have the obvious defaults of [[toucan.db/update!]] or [[toucan.db/simple-insert!]].
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            :serdes/meta maps                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; The Clojure maps from extraction and ingestion always include a special key `:serdes/meta` giving some information
+;;; about the serialized entity. The value is always a map like:
+;;; `{:type "ModelName" :id "entity ID or identity hash string" :label "Human-readable name"}`
+;;; `:type` and `:id` are required; `:label` is optional.
+;;;
+;;; Many of the multimethods are keyed on the `:type` field.
+
+(defmulti merge-prescan-all
+  "Returns a reducible stream of `[entity_id identity-hash primary-key]` triples for the entire table.
+
+  Defaults to running [[merge-prescan-one]] over each entity returned by [[db/select-reducible]] for this model.
+  Override this method if filtering is needed.
+
+  Keyed on the model name."
+  identity)
+
+(defmulti merge-prescan-one
+  "Converts a Toucan entity into a `[entity_id identity-hash primary-key]` triple for the deserialization machinery.
+
+  Defaults to using a literal `:entity_id` column. For models with a different entity ID (eg. a Table's name, a
+  Setting's key), override this method.
+
+  Keyed on the model name."
+  name)
+
+(defmethod merge-prescan-all :default [model]
+  (eduction (map merge-prescan-one) (db/select-reducible (symbol model))))
+
+(defmethod merge-prescan-one :default [entity]
+  [(:entity_id entity)
+   (serdes.hash/identity-hash entity)
+   (get entity (models/primary-key entity))])
+
+(defn- ingested-type
+  "The dispatch function for several of the merge multimethods: dispatching on the type of the incoming entity."
+  [ingested]
+  (-> ingested :serdes/meta :type))
+
 (defmulti serdes-dependencies
-  "Given an entity map AS DECODED FROM YAML, returns a (possibly empty) list of its dependencies, where each dependency
-  is represented by `(or entity_id identity-hash)` of the target entity.
+  "Given an entity map as ingested (not a Toucan entity) returns a (possibly empty) list of its dependencies, where each
+  dependency is represented by either the entity ID or identity hash of the target entity.
 
-  This is mostly part of the deserialization process, so it's based on the serialized map and not on an IModel instance.
-
+  Keyed on the model name.
   Default implementation returns an empty vector, so only models that have dependencies need to implement this."
-  :serdes_type)
+  ingested-type)
 
 (defmethod serdes-dependencies :default [_]
   [])
 
-(p.types/defprotocol+ ISerializable
-  ;;; Serialization side
-  (serialize-all
-    [this user-or-nil]
-    "Serializes all relevant instances of this model.
-    The return value is a reducible sequence of [file-path entity-map] pairs, possibly empty.
-    There can be a single file for all the entities (eg. settings) or one file per entity.
+(defmulti merge-xform
+  "Given the incoming vanilla map as ingested, transform it so it's suitable for sending to the database (in eg.
+  [[db/simple-insert!]]).
+  For example, this should convert any foreign keys back from a portable entity ID or identity hash into a numeric
+  database ID. This is the mirror of [[extract-one]], in spirit. (They're not strictly inverses - [[extract-one]] drops
+  the primary key but this need not put one back, for example.)
 
-    The default implementation assumes there will be many files:
-    - It calls (serialize-query this user-or-nil) to get the (lazy, reducible) set of entities to serialize.
-    - For each entity, it calls `(serialize-one e)` and expects a `[file-path {...}]` pair.
-    - These pairs are returned as a reducible stream.
+  By default, this just calls [[merge-xform-basics]].
+  If you override this, call [[merge-xform-basics]] as well."
+  ingested-type)
 
-    To serialize as a single file, override this to do something else. (Then `serialize-query` and `serialize-one` are
-    never called and can be stubs.)")
+(defn merge-xform-basics
+  "Performs the usual steps for an incoming entity:
+  - Drop :serdes/meta
 
-  (serialize-query
-    [this user-or-nil]
-    "Performs the select query, possibly filtered, for all the entities of this type that should be serialized.
-    Returns the result of the db/select-reducible.
-    Defaults to a naive `db/select-reducible` for the entire model, ignoring the optional user argument.
+  You should call this as a first step from any implementation of [[merge-xform]].
 
-    Only called by `serialize-all`, either the default implementation or (optionally) by a custom one.
-    This exists to be an easy override point, when the default `serialize-all` is good but you need to filter
-    the returned set, eg. by dropping archived entities.")
+  This is a mirror (but not precise inverse) of [[extract-one-basics]]."
+  [ingested]
+  (dissoc ingested :serdes/meta))
 
-  (serialize-one
-    [this]
-    "Serializes a single entity into a YAML-friendly map, with its filename.
-    Returns a [file-name {entity map...}] pair.
+(defmethod merge-xform :default [ingested]
+  (merge-xform-basics ingested))
 
-    Default implementation:
-    - Uses `\"$ENTITY_ID.yaml\"` or `\"$IDENTITY_HASH.yaml\"` as the filename.
-    - Returns the entity as a vanilla map with `:id` and any `:foo_at` fields removed.
-    - Adds the field `:type \"Collection\"` (etc.) to specify the model.
+(defmulti merge-upsert!
+  "Called by the default [[merge-one!]] if there is a corresponding entity already in the appdb.
+  The first argument is the model name, the second the incoming map we're deserializing, and the third is the Toucan
+  entity found in the appdb.
 
-    That suffices for a few simple entities, but most entities will need to override this.
-    They should follow the pattern of dropping timestamps and numeric database IDs, and including the `:type`.")
+  Defaults to a straightforward [[db/update!]], and you may not need to update it.
 
-  ;;; Deserialization side.
-  (deserialize-file
-    [this new-map local]
-    "Given the model, the file contents as an EDN map, and any corresponding entity already existing in the database,
-    this performs whatever steps are necessary to update or insert the incoming entity.
-    Called for each **file**, which usually means for each entity. For single-file output like for settings, this is
-    called once for the whole file.
-    Defaults to [[deserialize-file-plus]] with [[identity]] as the inner transformation.")
+  Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-  (deserialize-upsert
-    [old-entity new-map]
-    "Given the original entity and the new deserialized map (not an IModel yet), upsert appdb to merge in the updated
-    entity.
-    Defaults to a naive update by primary key, using just the new map's values.")
+  Returns the primary key of the updated entity."
+  (fn [model _ _] model))
 
-  (deserialize-insert
-    [this new-map]
-    "Given the model (eg. Collection) and the new deserialized map (not an IModel), insert this new record into
-    the appdb.
-    Defaults to a straight db/insert! of this new map."))
+(defmethod merge-upsert! :default [model ingested local]
+  (let [pk (get local (models/primary-key local))]
+    (log/tracef "Upserting %s %d: old %s new %s" model pk (pr-str local) (pr-str ingested))
+    (db/update! (symbol model) pk ingested)
+    pk))
 
-(defn- default-serialize-all [model user-or-nil]
-  (eduction (map serialize-one) (serialize-query model user-or-nil)))
+(defmulti merge-insert!
+  "Called by the default [[merge-one!]] if there is no corresponding entity already in the appdb.
 
-(defn- default-query [model _]
-  (db/select-reducible model))
+  Defaults to a straightforward [[db/simple-insert!]], and you probably don't need to implement this.
+  Note that [[db/insert!]] should be avoided - we don't want to populate the `:entity_id` field if it wasn't already
+  set!
 
-(defn serialize-one-plus
-  "Helper for applying the usual serialization steps to a single entity, followed by a user-supplied function with any
-  specific logic the entity needs."
-  [transform named]
-  (fn [entity]
-    [(format "%s%s%s%s.yaml"
-             (name entity)
-             File/separatorChar
-             (or (:entity_id entity)
-                 (serdes.hash/identity-hash entity))
-             (when named
-               (str "+" (named entity))))
-     (-> (into {} entity)
-         (dissoc (models/primary-key entity))
-         (assoc :serdes_type (name entity))
-         transform)]))
+  Keyed on the model name (the first argument), because the second argument doesn't have its `:serdes/meta` anymore.
 
-(defn- default-upsert [old-entity new-map]
-  (db/update! (symbol (name old-entity)) (get old-entity (models/primary-key old-entity)) new-map)
-  #_(prn "upsert" old-entity new-map))
+  Returns the primary key of the newly inserted entity."
+  (fn [model _] model))
 
-(defn- default-insert [model new-map]
-  (db/simple-insert! model new-map)
-  #_(prn "insert" new-map))
+(defmethod merge-insert! :default [model ingested]
+  (log/tracef "Inserting %s: %s" model (pr-str ingested))
+  (db/simple-insert! (symbol model) ingested))
 
-(defn deserialize-file-plus
-  "Given a function, this returns a function suitable for use as [[deserialize-file]]. The provided function is applied
-  to the EDN map read from the YAML file, and then either [[deserialize-upsert]] or [[deserialize-insert]] is called
-  depending on whether a corresponding entity was found in the database."
-  [f]
-  (fn [model contents local]
-    (let [hydrated (f contents)]
-      (if local
-        (deserialize-upsert (db/select-one model :id local) hydrated)
-        (deserialize-insert model hydrated)))))
+(defmulti merge-one!
+  "Black box for integrating a deserialized entity into this appdb.
+  `(merge-one! ingested maybe-local)`
 
-(def ISerializableDefaults
-  "Default implementations for [[ISerializable]], so models need only override those that need special handling."
-  {:serialize-all         default-serialize-all
-   :serialize-query       default-query
-   :serialize-one         (serialize-one-plus identity nil)
-   :deserialize-file      (deserialize-file-plus identity)
-   :deserialize-upsert    default-upsert
-   :deserialize-insert    default-insert})
+  `ingested` is the vanilla map from ingestion, with the `:serdes/meta` key on it.
+  `maybe-local` is either `nil`, or the corresponding Toucan entity from the appdb.
+
+  Defaults to calling [[merge-xform]] to massage the incoming map, then either [[merge-upsert!]] if `maybe-local`
+  exists, or [[merge-insert!]] if it's `nil`.
+
+  Prefer overriding [[merge-xform]], and if necessary [[merge-upsert!]] and [[merge-insert!]], rather than this.
+
+  Keyed on the model name.
+
+  Returns the primary key of the updated or inserted entity."
+  (fn [ingested _]
+    (ingested-type ingested)))
+
+(defmethod merge-one! :default [ingested maybe-local-id]
+  (let [model    (ingested-type ingested)
+        pkey     (models/primary-key (db/resolve-model (symbol model)))
+        adjusted (merge-xform ingested)]
+    (if (nil? maybe-local-id)
+      (merge-insert! model adjusted)
+      (merge-upsert! model adjusted (db/select-one (symbol model) pkey maybe-local-id)))))
 
 (defn entity-id?
-  "Checks if the given string is a 21-character NanoID."
+  "Checks if the given string is a 21-character NanoID. Useful for telling entity IDs apart from identity hashes."
   [id-str]
   (boolean (re-matches #"^[A-Za-z0-9_-]{21}$" id-str)))
 
-(defn find-by-identity-hash
+(defn- find-by-identity-hash
   "Given a model and a target identity hash, this scans the appdb for any instance of the model corresponding to the
   hash. Does a complete scan, so this should be called sparingly!"
   ;; TODO This should be able to use a cache of identity-hash values from the start of the deserialization process.
@@ -164,7 +316,8 @@
        first))
 
 (defn lookup-by-id
-  "Given an ID string, this endeavours to find the matching entity, whether it's an entity_id or identity hash."
+  "Given an ID string, this endeavours to find the matching entity, whether it's an entity ID or identity hash.
+  This is useful when writing [[merge-xform]] to turn a foreign key from a portable form to an appdb ID."
   [model id-str]
   (if (entity-id? id-str)
     (db/select-one model :entity_id id-str)
