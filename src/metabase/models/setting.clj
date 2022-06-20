@@ -226,7 +226,10 @@
    ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
    ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
    ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
-   :on-change   (s/maybe clojure.lang.IFn)})
+   :on-change   (s/maybe clojure.lang.IFn)
+
+   ;; optional fn called whether to allow the getter to return a value. Useful for ensuring premium settings are not available to
+   :enabled?    (s/maybe clojure.lang.IFn)})
 
 (defonce ^:private registered-settings
   (atom {}))
@@ -524,12 +527,14 @@
   looks for first for a corresponding env var, then checks the cache, then returns the default value of the Setting,
   if any."
   [setting-definition-or-name]
-  (let [{:keys [cache? getter]} (resolve-setting setting-definition-or-name)
-        disable-cache?          (not cache?)]
-    (if (= *disable-cache* disable-cache?)
-      (getter)
-      (binding [*disable-cache* disable-cache?]
-        (getter)))))
+  (let [{:keys [cache? getter enabled? default]} (resolve-setting setting-definition-or-name)
+        disable-cache?                           (not cache?)]
+    (if (or (nil? enabled?) (enabled?))
+      (if (= *disable-cache* disable-cache?)
+        (getter)
+        (binding [*disable-cache* disable-cache?]
+          (getter)))
+      default)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -744,7 +749,8 @@
                  :cache?         true
                  :database-local :never
                  :user-local     :never
-                 :deprecated     nil}
+                 :deprecated     nil
+                 :enabled?       nil}
                 (dissoc setting :name :type :default)))
       (s/validate SettingDefinition <>)
       (validate-default-value-for-type <>)

@@ -53,15 +53,30 @@
   "Test setting - this only shows up in dev (7)"
   :visibility :internal)
 
-(setting/defsetting toucan-name
+(defsetting toucan-name
   "Name for the Metabase Toucan mascot."
   :visibility :internal)
 
-(setting/defsetting test-setting-calculated-getter
+(defsetting test-setting-calculated-getter
   "Test setting - this only shows up in dev (8)"
   :type       :boolean
   :setter     :none
   :getter     (constantly true))
+
+(def ^:private ^:dynamic *enabled?* false)
+
+(defsetting test-enabled-setting-no-default
+  "Setting to test the `:enabled?` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :enabled?   (fn [] *enabled?*))
+
+(defsetting test-enabled-setting-default
+  "Setting to test the `:enabled?` property of settings. This only shows up in dev."
+  :visibility :internal
+  :type       :string
+  :default    "setting-default"
+  :enabled?   (fn [] *enabled?*))
 
 ;; ## HELPER FUNCTIONS
 
@@ -915,3 +930,22 @@
       (is (= "5f7f150c"
              (serdes.hash/raw-hash ["test-setting-1"])
              (serdes.hash/identity-hash (db/select-one Setting :key "test-setting-1")))))))
+
+(deftest enabled?-test
+  (testing "Settings can be disabled"
+    (testing "With no default returns nil"
+      (is (nil? (test-enabled-setting-no-default)))
+      (testing "Updating the value succeeds but still get nil because no default"
+        (test-enabled-setting-default! "a value")
+        (is (nil? (test-enabled-setting-no-default)))))
+    (testing "Returns default value"
+      (is (= "setting-default" (test-enabled-setting-default)))
+      (testing "Updating the value succeeds but still get default"
+        (test-enabled-setting-default! "non-default-value")
+        (is (= "setting-default" (test-enabled-setting-default))))))
+  (testing "When enabled get the value"
+    (test-enabled-setting-default! "custom")
+    (test-enabled-setting-no-default! "custom")
+    (binding [*enabled?* true]
+      (is (= "custom" (test-enabled-setting-default)))
+      (is (= "custom" (test-enabled-setting-no-default))))))
