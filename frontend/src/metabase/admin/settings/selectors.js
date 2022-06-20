@@ -207,17 +207,14 @@ const SECTIONS = updateSectionsWithPlugins({
         required: true,
         validations: [["email", t`That's not a valid email address`]],
       },
-
       {
         key: "email-reply-to",
         display_name: t`Reply-To Address`,
         placeholder: "metabase-replies@yourcompany.com",
-        widget: SettingCommaDelimitedInput,
         type: "string",
         required: false,
-        validations: [
-          ["email_list", t`That's not a valid list of email addresses`],
-        ],
+        widget: SettingCommaDelimitedInput,
+        validations: [["email_list", t`That's not a valid email addresses`]],
       },
     ],
   },

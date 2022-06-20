@@ -21,14 +21,12 @@ const SettingCommaDelimitedInput = ({
       })}
       id={id}
       type={type}
-      value={setting.value ? setting.value.join(",") : ""}
+      // TOOD: change this to support multiple email addresses
+      // https://github.com/metabase/metabase/issues/22540
+      value={setting.value ? setting.value[0] : ""}
       placeholder={setting.placeholder}
-      onChange={
-        fireOnChange
-          ? e => onChange(e.target.value.split(",").map(s => s.trim()))
-          : null
-      }
-      onBlurChange={!fireOnChange ? e => onChange(e.target.value) : null}
+      onChange={fireOnChange ? e => onChange([e.target.value]) : null}
+      onBlurChange={!fireOnChange ? e => onChange([e.target.value]) : null}
       autoFocus={autoFocus}
     />
   );
