@@ -1067,13 +1067,12 @@ describe("Question", () => {
       expect(question.parameters()).toEqual([
         {
           default: undefined,
-          field_id: 1,
           fields: [
             {
               id: 1,
             },
           ],
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
           id: "bbb",
           name: "Foo",
           slug: "foo",
@@ -1082,9 +1081,7 @@ describe("Question", () => {
         },
         {
           default: undefined,
-          field_id: undefined,
-          fields: [],
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
           id: "aaa",
           name: "Bar",
           slug: "bar",
@@ -1122,16 +1119,13 @@ describe("Question", () => {
           target: ["dimension", ["field", 1, null]],
           value: "abc",
           fields: [{ id: 1 }],
-          field_id: 1,
-          hasOnlyFieldTargets: true,
+          hasVariableTemplateTagTarget: false,
         },
         {
           type: "category",
           name: "bar",
           id: "bar_id",
-          fields: [],
-          field_id: undefined,
-          hasOnlyFieldTargets: false,
+          hasVariableTemplateTagTarget: true,
         },
       ]);
     });

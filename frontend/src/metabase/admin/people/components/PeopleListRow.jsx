@@ -5,6 +5,7 @@ import moment from "moment";
 import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
+import { getFullName } from "metabase/lib/user";
 import * as Urls from "metabase/lib/urls";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -133,7 +134,7 @@ const PeopleListRow = ({
  * @returns {string}
  */
 function getName(user) {
-  const name = [user.first_name, user.last_name].join(" ").trim();
+  const name = getFullName(user);
 
   if (!name) {
     return "-";

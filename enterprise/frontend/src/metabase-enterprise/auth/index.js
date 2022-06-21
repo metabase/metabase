@@ -7,7 +7,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_AUTH_PROVIDERS,
-  PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS,
+  PLUGIN_IS_PASSWORD_USER,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
 } from "metabase/plugins";
 import { UtilApi } from "metabase/services";
@@ -256,7 +256,7 @@ PLUGIN_AUTH_PROVIDERS.push(providers => {
   return providers;
 });
 
-PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.push(
+PLUGIN_IS_PASSWORD_USER.push(
   user =>
     !user.google_auth &&
     !user.ldap_auth &&

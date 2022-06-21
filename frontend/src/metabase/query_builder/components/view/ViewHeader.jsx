@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 import cx from "classnames";
@@ -14,6 +14,7 @@ import ViewButton from "metabase/query_builder/components/view/ViewButton";
 
 import { usePrevious } from "metabase/hooks/use-previous";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useOnMount } from "metabase/hooks/use-on-mount";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import SavedQuestionHeaderButton from "metabase/query_builder/components/SavedQuestionHeaderButton/SavedQuestionHeaderButton";
@@ -36,7 +37,6 @@ import QuestionActions from "../QuestionActions";
 import NativeQueryButton from "./NativeQueryButton";
 import {
   AdHocViewHeading,
-  DatasetHeaderButtonContainer,
   SaveButton,
   SavedQuestionHeaderButtonContainer,
   ViewHeaderMainLeftContentContainer,
@@ -45,6 +45,7 @@ import {
   ViewSubHeaderRoot,
   StyledLastEditInfoLabel,
   StyledQuestionDataSource,
+  SavedQuestionLeftSideRoot,
 } from "./ViewHeader.styled";
 
 const viewTitleHeaderPropTypes = {
@@ -129,9 +130,7 @@ export function ViewTitleHeader(props) {
         style={style}
         data-testid="qb-header"
       >
-        {isDataset ? (
-          <DatasetLeftSide {...props} />
-        ) : isSaved ? (
+        {isSaved ? (
           <SavedQuestionLeftSide {...props} />
         ) : (
           <AhHocQuestionLeftSide
@@ -168,7 +167,7 @@ SavedQuestionLeftSide.propTypes = {
   isAdditionalInfoVisible: PropTypes.bool,
   isShowingQuestionDetailsSidebar: PropTypes.bool,
   onOpenQuestionInfo: PropTypes.func.isRequired,
-  onOpenModal: PropTypes.func.isRequired,
+  onSave: PropTypes.func,
 };
 
 function SavedQuestionLeftSide(props) {
@@ -176,33 +175,45 @@ function SavedQuestionLeftSide(props) {
     question,
     isObjectDetail,
     isAdditionalInfoVisible,
-    isShowingQuestionDetailsSidebar,
     onOpenQuestionInfo,
-    onOpenModal,
+    onSave,
   } = props;
+
+  const [showSubHeader, setShowSubHeader] = useState(true);
+
+  useOnMount(() => {
+    const timerId = setTimeout(() => {
+      setShowSubHeader(false);
+    }, 4000);
+    return () => clearTimeout(timerId);
+  });
 
   const hasLastEditInfo = question.lastEditInfo() != null;
 
-  const onHeaderClick = useCallback(() => {
-    onOpenModal(MODAL_TYPES.EDIT);
-  }, [onOpenModal]);
+  const onHeaderChange = useCallback(
+    name => {
+      if (name !== question.displayName()) {
+        onSave({
+          ...question.card(),
+          name,
+        });
+      }
+    },
+    [question, onSave],
+  );
 
   return (
-    <div>
+    <SavedQuestionLeftSideRoot
+      data-testid="qb-header-left-side"
+      showSubHeader={showSubHeader}
+    >
       <ViewHeaderMainLeftContentContainer>
         <SavedQuestionHeaderButtonContainer>
           <SavedQuestionHeaderButton
             question={question}
-            isActive={isShowingQuestionDetailsSidebar}
-            onClick={onHeaderClick}
+            onSave={onHeaderChange}
           />
         </SavedQuestionHeaderButtonContainer>
-        {hasLastEditInfo && isAdditionalInfoVisible && (
-          <StyledLastEditInfoLabel
-            item={question.card()}
-            onClick={onOpenQuestionInfo}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
       {isAdditionalInfoVisible && (
         <ViewHeaderLeftSubHeading>
@@ -213,9 +224,15 @@ function SavedQuestionLeftSide(props) {
               subHead
             />
           )}
+          {hasLastEditInfo && isAdditionalInfoVisible && (
+            <StyledLastEditInfoLabel
+              item={question.card()}
+              onClick={onOpenQuestionInfo}
+            />
+          )}
         </ViewHeaderLeftSubHeading>
       )}
-    </div>
+    </SavedQuestionLeftSideRoot>
   );
 }
 
@@ -267,55 +284,6 @@ function AhHocQuestionLeftSide(props) {
           />
         )}
       </ViewHeaderLeftSubHeading>
-    </div>
-  );
-}
-
-DatasetLeftSide.propTypes = {
-  question: PropTypes.object.isRequired,
-  isAdditionalInfoVisible: PropTypes.bool,
-  isShowingQuestionDetailsSidebar: PropTypes.bool,
-  onOpenModal: PropTypes.func.isRequired,
-};
-
-function DatasetLeftSide(props) {
-  const {
-    question,
-    isAdditionalInfoVisible,
-    isShowingQuestionDetailsSidebar,
-    onOpenModal,
-  } = props;
-
-  const onHeaderClick = useCallback(() => {
-    onOpenModal(MODAL_TYPES.EDIT);
-  }, [onOpenModal]);
-
-  return (
-    <div>
-      <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading>
-          <HeadBreadcrumbs
-            divider="/"
-            parts={[
-              ...(isAdditionalInfoVisible
-                ? [
-                    <DatasetCollectionBadge
-                      key="collection"
-                      dataset={question}
-                    />,
-                  ]
-                : []),
-              <DatasetHeaderButtonContainer key="dataset-header-button">
-                <SavedQuestionHeaderButton
-                  question={question}
-                  isActive={isShowingQuestionDetailsSidebar}
-                  onClick={onHeaderClick}
-                />
-              </DatasetHeaderButtonContainer>,
-            ]}
-          />
-        </AdHocViewHeading>
-      </ViewHeaderMainLeftContentContainer>
     </div>
   );
 }

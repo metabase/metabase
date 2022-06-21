@@ -180,7 +180,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "email-smtp-username",
         display_name: t`SMTP Username`,
         description: null,
-        placeholder: "youlooknicetoday",
+        placeholder: "nicetoseeyou",
         type: "string",
         getHidden: () => MetabaseSettings.isHosted(),
       },

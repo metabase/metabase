@@ -1,26 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { KEY_ESCAPE, KEY_ENTER } from "metabase/lib/keyboard";
 
-import { EditableTextRoot, EditableTextArea } from "./EditableText.styled";
-
-import { KEY_ESCAPE } from "metabase/lib/keyboard";
-
-type TEXT = string | null | undefined;
+import {
+  EditableTextRoot,
+  EditableTextArea,
+  SharedStyles,
+} from "./EditableText.styled";
 
 interface EditableTextProps {
-  initialValue: TEXT;
-  onChange?: (val: string) => void;
+  initialValue: string | null;
+  onChange?: (val: string | null) => void;
+  submitOnEnter?: boolean;
+  "data-testid"?: string;
+  placeholder?: string;
 }
 
-const EditableText = ({ initialValue, onChange }: EditableTextProps) => {
-  const [value, setValue] = useState<TEXT>(initialValue);
+const EditableText = ({
+  initialValue,
+  onChange,
+  submitOnEnter,
+  "data-testid": dataTestid,
+  placeholder,
+}: EditableTextProps) => {
+  const [value, setValue] = useState<string | null>(initialValue);
+  const textArea = useRef<HTMLTextAreaElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
   };
 
   const handleBlur = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (onChange) {
-      onChange(e.target.value);
+    const {
+      target: { value },
+    } = e;
+
+    if (onChange && value !== initialValue) {
+      onChange(value);
     }
   };
 
@@ -28,19 +43,31 @@ const EditableText = ({ initialValue, onChange }: EditableTextProps) => {
     if (e.key === KEY_ESCAPE) {
       setValue(initialValue);
     }
+    if (e.key === KEY_ENTER && submitOnEnter) {
+      textArea.current?.blur();
+      e.preventDefault();
+    }
   };
 
   return (
-    <EditableTextRoot data-replicated-value={value}>
+    <EditableTextRoot value={value}>
       <EditableTextArea
-        placeholder="Description"
-        value={value || undefined}
+        placeholder={placeholder}
+        value={value || ""}
         onChange={handleChange}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
+        rows={1}
+        cols={1}
+        ref={textArea}
+        data-testid={dataTestid}
       />
     </EditableTextRoot>
   );
 };
 
-export default EditableText;
+export default Object.assign(EditableText, {
+  SharedStyles,
+  Root: EditableTextRoot,
+  TextArea: EditableTextArea,
+});

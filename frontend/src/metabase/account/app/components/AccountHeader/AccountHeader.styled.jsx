@@ -34,7 +34,14 @@ export const HeaderSection = styled.div`
 `;
 
 export const HeaderTitle = styled.h2`
+  font-size: 1rem;
   text-align: center;
+  margin-bottom: ${space(0)};
+`;
+
+export const HeaderSubtitle = styled.h3`
+  text-align: center;
+  color: ${color("text-medium")};
 `;
 
 export const HeaderAvatar = styled(UserAvatar)`

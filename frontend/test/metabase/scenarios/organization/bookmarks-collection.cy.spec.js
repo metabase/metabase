@@ -171,11 +171,10 @@ function bookmarkThenArchive(name) {
 }
 
 function pin(name) {
-  cy.get("td")
-    .contains(name)
-    .closest("tr")
-    .find(".Icon-pin")
-    .click();
+  openEllipsisMenuFor(name);
+  popover().within(() => {
+    cy.findByText("Pin this").click();
+  });
 }
 
 function archive(name) {
