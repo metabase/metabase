@@ -22,5 +22,6 @@ module.exports = {
         "focus-visible-pseudo-class": false,
       },
     },
+    tailwindcss: require("./tailwind.config"),
   },
 };
