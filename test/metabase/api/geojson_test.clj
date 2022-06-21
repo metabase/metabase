@@ -156,10 +156,6 @@
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
                (mt/user-http-request :rasta :get 200 "geojson/middle-earth"))))
-      (testing "response should not include the usual cache-busting headers"
-        (is (= (#'mw.security/cache-far-future-headers)
-               (select-keys (:headers (client/client-full-response :get 200 "geojson/middle-earth"))
-                            (keys (#'mw.security/cache-prevention-headers))))))
       (testing "should be able to fetch the GeoJSON even if you aren't logged in"
         (is (= {:type        "Point"
                 :coordinates [37.77986 -122.429]}
