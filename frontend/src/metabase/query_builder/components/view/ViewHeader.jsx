@@ -24,7 +24,6 @@ import RunButtonWithTooltip from "../RunButtonWithTooltip";
 import { HeadBreadcrumbs } from "./HeaderBreadcrumbs";
 import QuestionDataSource from "./QuestionDataSource";
 import QuestionDescription from "./QuestionDescription";
-import QuestionLineage from "./QuestionLineage";
 import QuestionPreviewToggle from "./QuestionPreviewToggle";
 import QuestionNotebookButton from "./QuestionNotebookButton";
 import QuestionFilters, {
@@ -242,6 +241,7 @@ AhHocQuestionLeftSide.propTypes = {
   isNative: PropTypes.bool,
   isObjectDetail: PropTypes.bool,
   isSummarized: PropTypes.bool,
+  onOpenModal: PropTypes.func,
 };
 
 function AhHocQuestionLeftSide(props) {
@@ -251,11 +251,14 @@ function AhHocQuestionLeftSide(props) {
     isNative,
     isObjectDetail,
     isSummarized,
+    onOpenModal,
   } = props;
+
+  const handleTitleClick = () => onOpenModal(MODAL_TYPES.SAVE);
   return (
     <div>
       <ViewHeaderMainLeftContentContainer>
-        <AdHocViewHeading>
+        <AdHocViewHeading color="medium">
           {isNative ? (
             t`New question`
           ) : (
@@ -263,15 +266,10 @@ function AhHocQuestionLeftSide(props) {
               question={question}
               originalQuestion={originalQuestion}
               isObjectDetail={isObjectDetail}
+              onClick={handleTitleClick}
             />
           )}
         </AdHocViewHeading>
-        {QuestionLineage.shouldRender(props) && (
-          <QuestionLineage
-            question={question}
-            originalQuestion={originalQuestion}
-          />
-        )}
       </ViewHeaderMainLeftContentContainer>
       <ViewHeaderLeftSubHeading>
         {isSummarized && (
@@ -414,24 +412,6 @@ function ViewTitleHeaderRightSide(props) {
       className="ml-auto flex align-center"
       data-testid="qb-header-action-panel"
     >
-      {hasSaveButton && (
-        <SaveButton
-          disabled={!question.canRun() || !canEditQuery}
-          tooltip={{
-            tooltip: t`You don't have permission to save this question.`,
-            isEnabled: !canEditQuery,
-            placement: "left",
-          }}
-          data-metabase-event={
-            isShowingNotebook
-              ? `Notebook Mode; Click Save`
-              : `View Mode; Click Save`
-          }
-          onClick={() => onOpenModal("save")}
-        >
-          {t`Save`}
-        </SaveButton>
-      )}
       {QuestionFilters.shouldRender(props) && (
         <FilterHeaderToggle
           className="ml2 mr1"
@@ -522,6 +502,24 @@ function ViewTitleHeaderRightSide(props) {
           onInfoClick={handleInfoClick}
           onModelPersistenceChange={onModelPersistenceChange}
         />
+      )}
+      {hasSaveButton && (
+        <SaveButton
+          disabled={!question.canRun() || !canEditQuery}
+          tooltip={{
+            tooltip: t`You don't have permission to save this question.`,
+            isEnabled: !canEditQuery,
+            placement: "left",
+          }}
+          data-metabase-event={
+            isShowingNotebook
+              ? `Notebook Mode; Click Save`
+              : `View Mode; Click Save`
+          }
+          onClick={() => onOpenModal("save")}
+        >
+          {t`Save`}
+        </SaveButton>
       )}
     </div>
   );

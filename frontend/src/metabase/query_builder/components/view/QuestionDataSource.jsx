@@ -161,7 +161,7 @@ function getDataSourceParts({ question, subHead, isObjectDetail }) {
   const database = query.database();
   if (database) {
     parts.push({
-      icon: "database",
+      icon: !subHead ? "database" : undefined,
       name: database.displayName(),
       href: database.id >= 0 && Urls.browseDatabase(database),
     });

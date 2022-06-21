@@ -7,10 +7,13 @@ import QuestionDataSource from "./QuestionDataSource";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+import { StyledSpan } from "./QuestionDescription.styled";
+
 const QuestionDescription = ({
   question,
   originalQuestion,
   isObjectDetail,
+  onClick,
 }) => {
   const query = question.query();
   if (query instanceof StructuredQuery) {
@@ -39,14 +42,15 @@ const QuestionDescription = ({
             breakouts.length,
           )
         : breakouts.map(breakout => breakout.displayName()).join(t` and `);
-    if (aggregationDescription && breakoutDescription) {
+    if (aggregationDescription || breakoutDescription) {
       return (
-        <span>{t`${aggregationDescription} by ${breakoutDescription}`}</span>
+        <StyledSpan onClick={onClick}>{t`${[
+          aggregationDescription,
+          breakoutDescription,
+        ]
+          .filter(x => !!x)
+          .join(t` by `)}`}</StyledSpan>
       );
-    } else if (aggregationDescription) {
-      return <span>{aggregationDescription}</span>;
-    } else if (breakoutDescription) {
-      return <span>{breakoutDescription}</span>;
     }
   }
   if (question.database()) {

@@ -26,10 +26,6 @@ export const ViewHeaderLeftSubHeading = styled(ViewSubHeading)`
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-
-  &:not(:empty) {
-    margin-top: ${space(0)};
-  }
 `;
 
 export const AdHocViewHeading = styled(ViewHeading)`
@@ -44,6 +40,9 @@ export const SaveButton = styled(Link)`
   padding: 0.5rem 1rem;
   border-radius: 8px;
   background-color: ${color("bg-white")};
+
+  margin-left: 0.5rem;
+  border-left: 1px solid ${color("border")};
 
   :hover {
     background-color: ${color("bg-light")};
@@ -150,3 +149,5 @@ export const SavedQuestionLeftSideRoot = styled.div`
     }
   }
 `;
+
+export const AdHocQuestionLeftSideRoot = styled.div``;
