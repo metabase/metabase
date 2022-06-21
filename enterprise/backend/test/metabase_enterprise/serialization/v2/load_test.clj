@@ -1,9 +1,9 @@
-(ns metabase-enterprise.serialization.v2.merge-test
+(ns metabase-enterprise.serialization.v2.load-test
   (:require [clojure.test :refer :all]
             [metabase-enterprise.serialization.test-util :as ts]
             [metabase-enterprise.serialization.v2.extract :as serdes.extract]
             [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-            [metabase-enterprise.serialization.v2.merge :as serdes.merge]
+            [metabase-enterprise.serialization.v2.load :as serdes.load]
             [metabase.models :refer [Collection]]
             [metabase.models.serialization.hash :as serdes.hash]
             [toucan.db :as db]))
@@ -24,7 +24,7 @@
 ;;; confound your tests with data from your dev appdb, remember to eagerly
 ;;; `(into [] (extract/extract-metabase ...))` in these tests.
 
-(deftest merge-basics-test
+(deftest load-basics-test
   (testing "a simple, fresh collection is imported"
     (let [serialized (atom nil)
           eid1       "123456789abcdef_0123"]
@@ -37,17 +37,17 @@
                         (and (= type "Collection") (= id eid1)))
                       @serialized))))
 
-        (testing "merging into an empty database succeeds"
+        (testing "loading into an empty database succeeds"
           (ts/with-dest-db
-            (serdes.merge/merge-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
             (let [colls (db/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
               (is (= eid1               (:entity_id (first colls)))))))
 
-        (testing "merging again into the same database does not duplicate"
+        (testing "loading again into the same database does not duplicate"
           (ts/with-dest-db
-            (serdes.merge/merge-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
             (let [colls (db/select Collection)]
               (is (= 1 (count colls)))
               (is (= "Basic Collection" (:name (first colls))))
@@ -75,7 +75,7 @@
           (ts/with-dest-db
             (ts/create! Collection :name "Unrelated Collection")
             (ts/create! Collection :name "Parent Collection" :location "/" :entity_id (:entity_id @parent))
-            (serdes.merge/merge-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
             (let [parent-dest     (db/select-one Collection :entity_id (:entity_id @parent))
                   child-dest      (db/select-one Collection :entity_id (:entity_id @child))
                   grandchild-dest (db/select-one Collection :entity_id (:entity_id @grandchild))]
@@ -125,7 +125,7 @@
             (reset! c2a (db/select-one Collection :id (:id @c2a)))
             (is (nil? (:entity_id @c2b)))
 
-            (serdes.merge/merge-metabase (ingestion-in-memory @serialized))
+            (serdes.load/load-metabase (ingestion-in-memory @serialized))
             (is (= 3 (db/count Collection)) "Collection 2 versions get duplicated, since the identity-hash changed")
             (is (= #{"Renamed Collection 1"
                      "Collection 2 version 1"

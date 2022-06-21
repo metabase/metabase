@@ -155,7 +155,7 @@
      :key key
      :value value}))
 
-(defmethod serdes.base/merge-one! "Setting" [{:keys [key value]} _]
+(defmethod serdes.base/load-one! "Setting" [{:keys [key value]} _]
   (set-value-of-type! :string key value))
 
 (def ^:private Type

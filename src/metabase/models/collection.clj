@@ -906,19 +906,29 @@
   serdes.hash/IdentityHashable
   {:identity-hash-fields (constantly [:name :namespace parent-identity-hash])})
 
+(defn- collection-query [maybe-user]
+  (serdes.base/raw-reducible-query
+    "Collection"
+    {:where [:and
+             [:= :archived false]
+             (if (nil? maybe-user)
+               [:is :personal_owner_id nil]
+               [:= :personal_owner_id maybe-user])]}))
+
 (defmethod serdes.base/extract-query "Collection" [_ {:keys [user]}]
-  (let [unowned (db/select-reducible Collection :personal_owner_id nil :archived false)]
+  (let [unowned (collection-query nil)]
     (if user
-      (eduction cat [unowned
-                     (db/select-reducible Collection :personal_owner_id user :archived false)])
+      (eduction cat [unowned (collection-query user)])
       unowned)))
 
 (defmethod serdes.base/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
   ;; Also transform :personal_owner_id from a database ID to the email string, if it's defined.
   ;; Use the :slug as the human-readable label.
-  [coll]
+  [_ coll]
   (let [parent       (some-> coll
+                             :id
+                             Collection
                              (hydrate :parent_id)
                              :parent_id
                              Collection)
@@ -926,13 +936,12 @@
                        (or (:entity_id parent) (serdes.hash/identity-hash parent)))
         owner-email  (when (:personal_owner_id coll)
                        (db/select-one-field :email 'User :id (:personal_owner_id coll)))]
-    (-> coll
-        serdes.base/extract-one-basics
+    (-> (serdes.base/extract-one-basics "Collection" coll)
         (dissoc :location)
         (assoc :parent_id parent-id :personal_owner_id owner-email)
         (assoc-in [:serdes/meta :label] (:slug coll)))))
 
-(defmethod serdes.base/merge-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
+(defmethod serdes.base/load-xform "Collection" [{:keys [parent_id personal_owner_id] :as contents}]
   (let [loc        (if parent_id
                      (let [{:keys [id location]} (serdes.base/lookup-by-id Collection parent_id)]
                        (str location id "/"))
@@ -940,7 +949,7 @@
         user-id    (when personal_owner_id
                      (db/select-one-field :id 'User :email personal_owner_id))]
     (-> contents
-        serdes.base/merge-xform-basics
+        serdes.base/load-xform-basics
         (dissoc :parent_id)
         (assoc :location loc :personal_owner_id user-id))))
 
