@@ -4,7 +4,6 @@
             [metabase.api.geojson :as api.geojson]
             [metabase.http-client :as client]
             [metabase.models.setting :as setting]
-            [metabase.server.middleware.security :as mw.security]
             [metabase.test :as mt]
             [metabase.util :as u]
             [metabase.util.schema :as su]
