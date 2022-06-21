@@ -449,10 +449,8 @@
 (defmethod driver/describe-table-fks :ocient
   [_ db-or-id-or-spec-or-conn table & _]
   ;; Return an empty sequence for the FKs tables themselves
-  ;; (when (not (str/ends-with? db-name-or-nil fks-table-name-suffix))
-  (when true
     (if (instance? Connection db-or-id-or-spec-or-conn)
       (describe-table-fks* db-or-id-or-spec-or-conn table)
       (let [spec (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec-or-conn)]
         (with-open [conn (jdbc/get-connection spec)]
-          (describe-table-fks* conn table))))))
+          (describe-table-fks* conn table)))))
