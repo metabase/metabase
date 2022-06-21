@@ -150,7 +150,7 @@
    (s/optional-key :pass)        (s/maybe s/Str)
    (s/optional-key :sender)      (s/maybe s/Str)
    (s/optional-key :sender-name) (s/maybe s/Str)
-   (s/optional-key :reply-to)    (s/maybe s/Str)})
+   (s/optional-key :reply-to)    (s/maybe [s/Str])})
 
 (s/defn ^:private test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
