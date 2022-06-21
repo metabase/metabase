@@ -224,9 +224,7 @@
 (defmethod sql.qp/date [:ocient :year]            [_ _ expr] (date-trunc :year expr))
 (defmethod sql.qp/date [:ocient :day-of-week]     [_ _ expr]
   (sql.qp/adjust-day-of-week :ocient
-                             ;; Subtract 1 day because start of the week is Monday for week() 
-                             ;; and Sunday for day_of_week()...
-                             (hx/- (hsql/call :day_of_week expr) 1)))
+                              (hsql/call :isodow expr)))
 
 
 ;; Passthrough by default
