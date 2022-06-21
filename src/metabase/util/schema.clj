@@ -332,8 +332,9 @@
   "Schema for a valid Parameter."
   (with-api-error-message {:id                       NonBlankString
                            :type                     NonBlankString
-                           (s/optional-key :name)    NonBlankString
-                           (s/optional-key :slug)    NonBlankString
+                           ;; Allow blank name and slug #15279
+                           (s/optional-key :name)    s/Str
+                           (s/optional-key :slug)    s/Str
                            (s/optional-key :default) s/Any
                            s/Keyword                 s/Any}
     (deferred-tru "parameter must be a map with :id and :type keys")))
