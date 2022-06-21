@@ -9,10 +9,11 @@
             [metabase.driver :as driver]
             [metabase.mbql.normalize :as mbql.normalize]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models :refer [Action Card HTTPAction QueryAction]]
             [metabase.models.database :refer [Database]]
             [metabase.models.setting :as setting]
             [metabase.util :as u]
-            [metabase.util.i18n :as i18n]
+            [metabase.util.i18n :as i18n :refer [trs]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -41,40 +42,6 @@
       (when f
         (f driver)))))
 
-
-(api/defendpoint GET "/"
-  "Returns cards that can be used for QueryActions"
-  [database]
-  {database (s/maybe s/Int)}
-  (when database
-    (do-check-actions-enabled database nil))
-  (let [cards+actions (db/query {:select    [:card.*
-                                             [:db.settings :db_settings]
-                                             [:a.id :a_id]
-                                             [:a.type :a_type]
-                                             [:a.created_at :a_created_at]
-                                             [:a.updated_at :a_updated_at]]
-                                 :from      [[:report_card :card]]
-                                 :left-join [[:metabase_database :db] [:= :card.database_id :db.id]
-                                             [:query_action :qa] [:= :card.id :qa.card_id]
-                                             [:action :a] [:= :qa.action_id :a.id]]
-                                 :where     [:and
-                                             [:= :card.is_write true]
-                                             [:= :card.archived false]
-                                             (when database
-                                               [:= :card.database_id database])]
-                                 :order-by  [[:updated_at :desc]]})]
-    (keep (fn [{:keys [a_id a_type a_created_at a_updated_at db_settings] :as card+action}]
-            ;; n.b. must check db settings in memory, since db.settings can be encrypted
-            (when (-> db_settings (json/decode true) :database-enable-actions boolean)
-              {:id a_id
-               :type a_type
-               :created-at a_created_at
-               :updated-at a_updated_at
-               :card (-> card+action
-                         (dissoc :a_id :a_type :a_created_at :a_updated_at :db_settings)
-                         (m/update-existing :dataset_query json/parse-string))}))
-          cards+actions)))
 
 (api/defendpoint POST "/table/:action"
   "Generic API endpoint for doing an action against a specific Table."
@@ -105,5 +72,83 @@
      database
      (fn [driver]
        (actions/row-action! (keyword action) driver query)))))
+
+(defn- normalize-query-actions [database actions]
+  (when (seq actions)
+    (let [cards (->> (db/query {:select [:card.*
+                                         [:db.settings :db_settings]
+                                         :query_action.action_id]
+                                :from [[Card :card]]
+                                :join [QueryAction [:= :query_action.card_id :card.id]
+                                       [Database :db] [:= :card.database_id :db.id]]
+                                :where [:and
+                                        [:= :card.is_write true]
+                                        [:= :card.archived false]
+                                        (when database
+                                          [:= :card.database_id database])]})
+                     (filter #(-> % (:db_settings) (json/decode true) :database-enable-actions boolean))
+                     (map #(dissoc % :db_settings))
+                     (db/do-post-select Card))
+          cards-by-action-id (m/index-by :action_id cards)]
+      (keep (fn [action]
+              (when-let [{card-name :name :keys [description] :as card} (get cards-by-action-id (:id action))]
+                (-> action
+                    (merge
+                      {:name card-name
+                       :description description
+                       :card card}
+                      (select-keys card [:parameters :parameter_mappings])))))
+            actions))))
+
+(defn- normalize-http-actions [actions]
+  (when (seq actions)
+    (let [http-actions (db/select HTTPAction :action_id [:in (map :id actions)])
+          http-actions-by-action-id (m/index-by :action_id http-actions)]
+      (map (fn [action]
+             (let [http-action (get http-actions-by-action-id (:id action))]
+               (-> action
+                   (merge
+                     (select-keys http-action [:name :description :template])
+                     (select-keys (:template http-action) [:parameters :parameter_mappings])))))
+           actions))))
+
+(defn- select-actions
+  "Select actions and fill in sub type information.
+   `options` is passed to `db/select` `& options` arg"
+  [database & options]
+  (let [{:keys [query http]} (group-by :type (apply db/select Action options))
+        query-actions (normalize-query-actions database query)
+        http-actions (normalize-http-actions http)]
+    (sort-by :updated_at (concat query-actions http-actions))))
+
+(api/defendpoint GET "/"
+  "Returns cards that can be used for QueryActions"
+  [database]
+  {database (s/maybe s/Int)}
+  (when database
+    (do-check-actions-enabled database nil))
+  (select-actions database))
+
+(api/defendpoint GET "/:action-id"
+  [action-id database]
+  (when database
+    (do-check-actions-enabled database nil))
+  (first (select-actions nil :id action-id)))
+
+(api/defendpoint DELETE "/:action-id"
+  [action-id database]
+  (when database
+    (do-check-actions-enabled database nil))
+  (db/delete! HTTPAction :action_id action-id)
+  api/generic-204-no-content)
+
+(api/defendpoint POST "/"
+  [action database]
+  (when database
+    (do-check-actions-enabled database nil))
+  (when (not= :http (:type action))
+    (throw (ex-info (trs "Action type is not supported") action)))
+  (let [http-action (db/insert! HTTPAction action)]
+    (first (select-actions nil :id (:action_id http-action)))))
 
 (api/define-routes actions/+check-actions-enabled api/+check-superuser)

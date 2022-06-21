@@ -212,14 +212,12 @@
 
 (defn- create-actions-when-is-writable! [{is-write? :is_write card-id :id}]
   (when is-write?
-    (let [{action-id :id} (db/insert! action/Action {:type "row"})]
-      (db/insert! action/QueryAction {:card_id card-id
-                                      :action_id action-id}))))
+    (db/insert! action/QueryAction {:card_id card-id
+                                    :type :query})))
 
 (defn- delete-actions-when-not-writable! [{is-write? :is_write card-id :id}]
   (when (not is-write?)
-    (when-let [action-ids (seq (db/select-field :action_id action/QueryAction :card_id card-id))]
-      (db/delete! action/Action :id [:in action-ids]))))
+    (db/delete! action/QueryAction :card_id card-id)))
 
 ;; TODO -- consider whether we should validate the Card query when you save/update it??
 (defn- pre-insert [card]
