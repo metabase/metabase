@@ -601,12 +601,10 @@
                                                                 :type         :dimension
                                                                 :widget-type  :date/all-options
                                                                 :dimension    [:field (mt/id :checkins :date) nil]}}}
-                   :parameters [{:id     "parameter-1"
-                                 :type   :date/range
+                   :parameters [{:type   :date/range
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "2015-01-01~2016-09-01"}
-                                {:id     "parameter-2"
-                                 :type   :date/single
+                                {:type   :date/single
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "2015-07-01"}]))))))))
 
