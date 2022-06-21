@@ -69,7 +69,9 @@ describe("smoketest > admin_setup", () => {
       cy.findByText("Settings").click();
       cy.findByText("Email").click();
 
-      cy.findByText("Email address you want to use as the sender of Metabase.");
+      cy.findByText(
+        "The email address you want to use for the sender of emails.",
+      );
       cy.findByText("Sample Database").should("not.exist");
 
       // Email info
@@ -80,6 +82,8 @@ describe("smoketest > admin_setup", () => {
       cy.findByLabelText("SMTP Password").type("admin");
 
       cy.findByLabelText("From Address").type("mailer@metabase.test");
+      cy.findByLabelText("From Name").type("Mailer Name");
+      cy.findByLabelText("Reply-To Address").type("reply-to@metabase.test");
 
       cy.button("Save changes").click();
       cy.findByText("Changes saved!");
