@@ -104,8 +104,9 @@ const UserForm = ({ user, onSubmit, onPasswordChange }: UserFormProps) => {
 };
 
 const getStepTitle = (user: UserInfo | undefined, isStepCompleted: boolean) => {
+  const namePart = user?.first_name ? `, ${user.first_name}` : "";
   return isStepCompleted
-    ? t`Hi, ${user?.first_name}. Nice to meet you!`
+    ? t`Hi${namePart}. Nice to meet you!`
     : t`What should we call you?`;
 };
 

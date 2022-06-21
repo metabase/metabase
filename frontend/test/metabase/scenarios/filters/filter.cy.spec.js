@@ -932,8 +932,9 @@ describe("scenarios > question > filter", () => {
       beforeEach(setupBooleanQuery);
 
       it("from the column popover (metabase#16386-1)", () => {
-        cy.get(".cellData")
+        cy.findAllByTestId("header-cell")
           .contains("boolean")
+          .should("be.visible")
           .click();
 
         popover()

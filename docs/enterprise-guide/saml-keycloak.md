@@ -1,3 +1,7 @@
+---
+title: Setting up SAML with Keycloak
+---
+
 # Setting up SAML with Keycloak
 
 Keycloak is an open source platform that can be used as a user directory to save user data while acting as the IdP for single sign-on.

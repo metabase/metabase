@@ -1,3 +1,7 @@
+---
+title: What is Metabase?
+---
+
 ## What is Metabase?
 
 Metabase is an open source business intelligence tool. It lets you ask questions about your data, and displays answers in formats that make sense, whether that's a bar chart or a detailed table.

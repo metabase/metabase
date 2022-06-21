@@ -1,3 +1,7 @@
+---
+title: Upgrading Metabase
+---
+
 # Upgrading Metabase
 
 ## Step 1: Back up your application database

@@ -7,24 +7,27 @@ import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/Tipp
 
 import DatasetMetadataStrengthIndicator from "./view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator/DatasetMetadataStrengthIndicator";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { PLUGIN_MODERATION, PLUGIN_MODEL_PERSISTENCE } from "metabase/plugins";
 
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 
 import { color } from "metabase/lib/colors";
-import { checkCanBeModel } from "metabase/lib/data-modeling/utils";
+import {
+  checkCanBeModel,
+  checkDatabaseCanPersistDatasets,
+} from "metabase/lib/data-modeling/utils";
 
 import Question from "metabase-lib/lib/Question";
 
 import {
   QuestionActionsContainer,
   PopoverContainer,
-  PopoverButton,
   BookmarkButton,
   AnimationStates,
 } from "./QuestionActions.styled";
 
-const ICON_SIZE = 18;
+const MENU_ICON_SIZE = 14;
+const HEADER_ICON_SIZE = 16;
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -35,6 +38,7 @@ const ARCHIVE_TESTID = "archive-button";
 
 interface Props {
   isBookmarked: boolean;
+  isShowingQuestionInfoSidebar: boolean;
   handleBookmark: () => void;
   onOpenModal: (modalType: string) => void;
   question: Question;
@@ -43,21 +47,26 @@ interface Props {
     opt: { datasetEditorTab: string },
   ) => void;
   turnDatasetIntoQuestion: () => void;
+  onInfoClick: () => void;
+  onModelPersistenceChange: () => void;
 }
 
 const buttonProps = {
-  iconSize: ICON_SIZE,
+  iconSize: MENU_ICON_SIZE,
   borderless: true,
   color: color("text-dark"),
 };
 
 const QuestionActions = ({
   isBookmarked,
+  isShowingQuestionInfoSidebar,
   handleBookmark,
   onOpenModal,
   question,
   setQueryBuilderMode,
   turnDatasetIntoQuestion,
+  onInfoClick,
+  onModelPersistenceChange,
 }: Props) => {
   const [animation, setAnimation] = useState<AnimationStates>(null);
 
@@ -65,11 +74,23 @@ const QuestionActions = ({
     handleBookmark();
     setAnimation(isBookmarked ? "shrink" : "expand");
   };
-  const bookmarkButtonColor = isBookmarked ? color("brand") : "";
+  const bookmarkButtonColor = isBookmarked ? color("brand") : undefined;
   const bookmarkTooltip = isBookmarked ? t`Remove from bookmarks` : t`Bookmark`;
+
+  const infoButtonColor = isShowingQuestionInfoSidebar
+    ? color("brand")
+    : undefined;
 
   const isDataset = question.isDataset();
   const canWrite = question.canWrite();
+  const isSaved = question.isSaved();
+
+  const canPersistDataset =
+    PLUGIN_MODEL_PERSISTENCE.isModelLevelPersistenceEnabled() &&
+    canWrite &&
+    isSaved &&
+    isDataset &&
+    checkDatabaseCanPersistDatasets(question.query().database());
 
   const handleEditQuery = useCallback(() => {
     setQueryBuilderMode("dataset", {
@@ -98,21 +119,31 @@ const QuestionActions = ({
           isBookmarked={isBookmarked}
           onlyIcon
           icon="bookmark"
-          iconSize={ICON_SIZE}
+          iconSize={HEADER_ICON_SIZE}
           onClick={handleClickBookmark}
           color={bookmarkButtonColor}
+        />
+      </Tooltip>
+      <Tooltip tooltip={t`More info`}>
+        <Button
+          onlyIcon
+          icon="info"
+          iconSize={HEADER_ICON_SIZE}
+          onClick={onInfoClick}
+          color={infoButtonColor}
         />
       </Tooltip>
 
       <TippyPopoverWithTrigger
         key="extra-actions-menu"
         placement="bottom-end"
-        renderTrigger={({ onClick }) => (
+        renderTrigger={({ onClick, visible }) => (
           <Button
             onClick={onClick}
             onlyIcon
             icon="ellipsis"
-            iconSize={ICON_SIZE}
+            iconSize={HEADER_ICON_SIZE}
+            color={visible ? color("brand") : undefined}
           />
         )}
         popoverContent={
@@ -120,25 +151,25 @@ const QuestionActions = ({
             <div>
               <PLUGIN_MODERATION.QuestionModerationButton
                 question={question}
-                VerifyButton={PopoverButton}
+                VerifyButton={Button}
                 verifyButtonProps={buttonProps}
               />
             </div>
             {isDataset && (
               <div>
-                <PopoverButton
+                <Button
                   icon="notebook"
                   onClick={handleEditQuery}
                   data-testid={ADD_TO_DASH_TESTID}
                   {...buttonProps}
                 >
                   {t`Edit query definition`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {isDataset && (
               <div>
-                <PopoverButton
+                <Button
                   icon="label"
                   onClick={handleEditMetadata}
                   data-testid={ADD_TO_DASH_TESTID}
@@ -146,79 +177,87 @@ const QuestionActions = ({
                 >
                   {t`Edit metadata`}
                   <DatasetMetadataStrengthIndicator dataset={question} />
-                </PopoverButton>
+                </Button>
               </div>
+            )}
+            {canPersistDataset && (
+              <PLUGIN_MODEL_PERSISTENCE.ModelCacheControl
+                model={question}
+                onChange={onModelPersistenceChange}
+                data-testid={TOGGLE_MODEL_PERSISTENCE_TESTID}
+                {...buttonProps}
+              />
             )}
             {!isDataset && (
               <div>
-                <PopoverButton
+                <Button
                   icon="dashboard"
                   onClick={() => onOpenModal(MODAL_TYPES.ADD_TO_DASHBOARD)}
                   data-testid={ADD_TO_DASH_TESTID}
                   {...buttonProps}
                 >
                   {t`Add to dashboard`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="move"
                   onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
                   data-testid={MOVE_TESTID}
                   {...buttonProps}
                 >
                   {t`Move`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {!isDataset && canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="model"
                   onClick={handleTurnToModel}
                   data-testid={TURN_INTO_DATASET_TESTID}
                   {...buttonProps}
                 >
                   {t`Turn into a model`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {isDataset && canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="model_framed"
                   onClick={turnDatasetIntoQuestion}
                   data-testid=""
                   {...buttonProps}
                 >
                   {t`Turn back to saved question`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="segment"
                   onClick={() => onOpenModal(MODAL_TYPES.CLONE)}
                   data-testid={CLONE_TESTID}
                   {...buttonProps}
                 >
                   {t`Duplicate`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
             {canWrite && (
               <div>
-                <PopoverButton
+                <Button
                   icon="archive"
                   onClick={() => onOpenModal(MODAL_TYPES.ARCHIVE)}
                   data-testid={ARCHIVE_TESTID}
                   {...buttonProps}
                 >
                   {t`Archive`}
-                </PopoverButton>
+                </Button>
               </div>
             )}
           </PopoverContainer>

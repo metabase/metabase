@@ -130,13 +130,41 @@ executors:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
-       - image: circleci/mongo:4.0
+       - image: metabase/qa-databases:mongo-sample-4.0
+
+  mongo-4-0-ssl:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
+         environment:
+           MB_TEST_MONGO_REQUIRES_SSL: true
+       - image: metabase/qa-databases:mongo-sample-4.0
+         command: mongod --dbpath /data/db2/ --sslMode requireSSL --sslPEMKeyFile /etc/mongo/metamongo.pem --sslCAFile /etc/mongo/metaca.crt
+
+  mongo-5-0:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
+       - image: metabase/qa-databases:mongo-sample-5.0
+
+  mongo-5-0-ssl:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
+         environment:
+           MB_TEST_MONGO_REQUIRES_SSL: true
+       - image: metabase/qa-databases:mongo-sample-5.0
+         command: mongod --dbpath /data/db2/ --tlsMode requireTLS --tlsCertificateKeyFile /etc/mongo/metamongo.pem --tlsCAFile /etc/mongo/metaca.crt
 
   mongo-latest:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: metabase/ci:java-11-clj-1.11.0.1100.04-2022-build
        - image: circleci/mongo:latest
+         environment:
+           MONGO_INITDB_ROOT_USERNAME: metabase
+           MONGO_INITDB_ROOT_PASSWORD: metasample123
+
 
   presto-186:
     working_directory: /home/circleci/metabase/metabase/
@@ -598,6 +626,15 @@ jobs:
       - run-yarn-command:
           command-name: Create static visualization js bundle
           command: build-static-viz
+      - run:
+          name: Make SSL certificates for Mongo available
+          command: >-
+            curl https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.crt
+            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metabase.crt
+            https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metabase.key
+            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metabase.key
+            https://raw.githubusercontent.com/metabase/metabase-qa/master/dbs/mongo/certificates/metaca.crt
+            -o /home/circleci/metabase/metabase/test_resources/ssl/mongo/metaca.crt
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -1059,7 +1096,7 @@ workflows:
       - test-driver:
           matrix:
             parameters:
-              version: ["mongo-4-0", "mongo-latest"]
+              version: ["mongo-4-0", "mongo-5-0", "mongo-latest", "mongo-4-0-ssl", "mongo-5-0-ssl"]
           name: be-tests-<< matrix.version >>-ee
           description: "(<< matrix.version >>)"
           requires:
@@ -1227,7 +1264,9 @@ workflows:
             - be-deps
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+                - release-**
           <<: *Matrix
 
       - build-uberjar-frontend:
@@ -1248,7 +1287,9 @@ workflows:
             - checkout
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+                - release-**
 
       - fe-tests-cypress:
           matrix:
@@ -1257,14 +1298,8 @@ workflows:
               folder:
                 [
                   "admin",
-                  "collections",
                   "filters",
-                  "native",
-                  "native-filters",
                   "onboarding",
-                  "organization",
-                  "permissions",
-                  "smoketest",
                   "visualizations",
                 ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
@@ -1295,17 +1330,11 @@ workflows:
             - run-snowplow-micro
             - wait-for-databases
 
-      - fe-tests-cypress:
-          name: percy-visual-tests-<< matrix.edition >>
-          requires:
-            - build-uberjar-<< matrix.edition >>
-          cypress-group: "percy-visual-<< matrix.edition >>"
-          test-files: "./frontend/test/metabase-visual/**/*.cy.spec.js"
-          <<: *Matrix
-
       - snowplow-deps:
           requires:
             - checkout
           filters:
             branches:
-              ignore: master
+              ignore:
+                - master
+                - release-**

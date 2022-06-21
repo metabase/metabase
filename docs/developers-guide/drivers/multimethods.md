@@ -1,3 +1,7 @@
+---
+title: Implementing multimethods for your driver
+---
+
 # Implementing multimethods for your driver
 
 Implementing multimethods lets you take advantage of Metabase's existing driver code by extending those methods to work for your particular database.

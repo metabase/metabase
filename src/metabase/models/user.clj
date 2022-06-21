@@ -7,6 +7,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.permissions-group-membership :as perms-group-membership :refer [PermissionsGroupMembership]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.session :refer [Session]]
             [metabase.plugins.classloader :as classloader]
             [metabase.public-settings :as public-settings]
@@ -102,10 +103,13 @@
     email       (update :email u/lower-case-en)))
 
 (defn add-common-name
-  "Add a `:common_name` key to `user` by combining their first and last names."
-  [{:keys [first_name last_name], :as user}]
-  (cond-> user
-    (or first_name last_name) (assoc :common_name (str first_name " " last_name))))
+  "Add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`."
+  [{:keys [first_name last_name email], :as user}]
+  (let [common-name (if (or first_name last_name)
+                      (str/trim (str first_name " " last_name))
+                      email)]
+    (cond-> user
+      common-name (assoc :common_name common-name))))
 
 (defn- post-select [user]
   (add-common-name user))
@@ -140,7 +144,9 @@
           :pre-update     pre-update
           :post-select    post-select
           :types          (constantly {:login_attributes :json-no-keywordization
-                                       :settings         :encrypted-json})}))
+                                       :settings         :encrypted-json})})
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:email])})
 
 (defn group-ids
   "Fetch set of IDs of PermissionsGroup a User belongs to."
@@ -251,8 +257,8 @@
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
-  {:first_name                        su/NonBlankString
-   :last_name                         su/NonBlankString
+  {(s/optional-key :first_name)       su/NonBlankString
+   (s/optional-key :last_name)        su/NonBlankString
    :email                             su/Email
    (s/optional-key :password)         (s/maybe su/NonBlankString)
    (s/optional-key :login_attributes) (s/maybe LoginAttributes)
@@ -260,9 +266,9 @@
    (s/optional-key :ldap_auth)        s/Bool})
 
 (def ^:private Invitor
-  "Map with info about the admin admin creating the user, used in the new user notification code"
+  "Map with info about the admin creating the user, used in the new user notification code"
   {:email      su/Email
-   :first_name su/NonBlankString
+   :first_name (s/maybe su/NonBlankString)
    s/Any       s/Any})
 
 (s/defn ^:private insert-new-user!

@@ -18,6 +18,7 @@ import {
 } from "__support__/e2e/cypress";
 
 import { SAMPLE_DATABASE } from "__support__/e2e/cypress_sample_database";
+import { questionInfoButton } from "../../../__support__/e2e/helpers/e2e-ui-elements-helpers";
 
 import {
   turnIntoModel,
@@ -27,8 +28,6 @@ import {
   selectDimensionOptionFromSidebar,
   saveQuestionBasedOnModel,
   assertIsQuestion,
-  openDetailsSidebar,
-  getDetailsSidebarActions,
 } from "./helpers/e2e-models-helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -163,7 +162,6 @@ describe("scenarios > models", () => {
     cy.intercept("PUT", "/api/card/1").as("cardUpdate");
     cy.visit("/model/1");
 
-    openDetailsSidebar();
     openQuestionActions();
     popover().within(() => {
       cy.findByText("Turn back to saved question").click();
@@ -377,23 +375,21 @@ describe("scenarios > models", () => {
       cy.visit("/model/1");
       cy.wait("@dataset");
 
-      openDetailsSidebar();
-      getDetailsSidebarActions().within(() => {
-        cy.icon("pencil").click();
-      });
-      modal().within(() => {
-        cy.findByLabelText("Name")
-          .clear()
-          .type("M1");
-        cy.findByLabelText("Description")
-          .clear()
-          .type("foo");
-        cy.button("Save").click();
-      });
+      cy.findByTestId("saved-question-header-title")
+        .clear()
+        .type("M1")
+        .blur();
       cy.wait("@updateCard");
 
-      cy.findByText("M1");
-      cy.findByText("foo");
+      questionInfoButton().click();
+
+      cy.findByPlaceholderText("Description")
+        .type("foo")
+        .blur();
+      cy.wait("@updateCard");
+
+      cy.findByDisplayValue("M1");
+      cy.findByDisplayValue("foo");
     });
   });
 
@@ -495,7 +491,6 @@ describe("scenarios > models", () => {
       { visitQuestion: true },
     );
 
-    openDetailsSidebar();
     openQuestionActions();
     popover().within(() => {
       cy.icon("model").click();

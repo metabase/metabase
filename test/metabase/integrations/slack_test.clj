@@ -137,8 +137,8 @@
     (testing "should be able to fetch list of users and page"
       (http-fake/with-fake-routes {users-endpoint (comp mock-200-response mock-users-response-body)}
         (let [expected-result (map
-                              (comp #(str \@ %) :name)
-                              (concat (mock-users) (mock-users)))]
+                               (comp #(str \@ %) :name)
+                               (concat (mock-users) (mock-users)))]
           (tu/with-temporary-setting-values [slack-token     nil
                                              slack-app-token "test-token"]
             (is (= expected-result

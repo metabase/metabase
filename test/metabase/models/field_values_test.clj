@@ -9,6 +9,7 @@
             [metabase.models.dimension :refer [Dimension]]
             [metabase.models.field :refer [Field]]
             [metabase.models.field-values :as field-values :refer [FieldValues]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.sync :as sync]
             [metabase.test :as mt]
@@ -227,3 +228,13 @@
                              :values                [1 2 3 4]
                              :human_readable_values []}
                             (field-values))))))))))
+
+(deftest identity-hash-test
+  (testing "Field hashes are composed of the name and the table's identity-hash"
+    (mt/with-temp* [Database    [db    {:name "field-db" :engine :h2}]
+                    Table       [table {:schema "PUBLIC" :name "widget" :db_id (:id db)}]
+                    Field       [field {:name "sku" :table_id (:id table)}]
+                    FieldValues [fv    {:field_id (:id field)}]]
+      (is (= "6f5bb4ba"
+             (serdes.hash/raw-hash [(serdes.hash/identity-hash field)])
+             (serdes.hash/identity-hash fv))))))

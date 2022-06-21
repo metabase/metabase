@@ -10,6 +10,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -208,7 +209,10 @@
   (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :engine])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

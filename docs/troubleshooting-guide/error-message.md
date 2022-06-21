@@ -1,4 +1,8 @@
-# Different types of error messages
+---
+title: Troubleshooting error messages
+---
+
+# Troubleshooting error messages
 
 - [API error messages][api-error-message]
 - [SQL error messages][debugging-sql-syntax]
@@ -26,4 +30,3 @@
 [discourse-search-metabase-error]: https://discourse.metabase.com/search?q=metabase%20error%20message
 [metabase-error-message]: #metabase-error-messages
 [sql-editor]: /glossary/native_query_editor.html
-

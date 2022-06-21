@@ -161,6 +161,22 @@
       (assoc :value value
              :source source))))
 
+(defn get-secret-string
+  "Get the value of a secret property from the database details as a string."
+  [details secret-property]
+  (let [value-key (keyword (str secret-property "-value"))
+        options-key (keyword (str secret-property "-options"))
+        path-key (keyword (str secret-property "-path"))
+        id-key (keyword (str secret-property "-id"))
+        id (id-key details)
+        value (if id
+                (String. ^bytes (:value (Secret id)) "UTF-8")
+                (value-key details))]
+    (case (options-key details)
+      "uploaded" (String. ^bytes (driver.u/decode-uploaded value) "UTF-8")
+      "local" (slurp (if id value (path-key details)))
+      value)))
+
 (def
   ^{:doc "The attributes of a secret which, if changed, will result in a version bump" :private true}
   bump-version-keys

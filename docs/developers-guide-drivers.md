@@ -1,3 +1,7 @@
+---
+title: Partner and community drivers
+---
+
 # Partner and community drivers
 
 In addition to our [Officially supported drivers](./administration-guide/01-managing-databases.md#officially-supported-databases), many people build and maintain drivers for database integrations.
@@ -37,6 +41,7 @@ To qualify as a partner driver, the driver must:
 Current partner drivers:
 
 - [Firebolt](https://github.com/firebolt-db/metabase-firebolt-driver)
+- [Starburst (compatible with Trino)](https://github.com/starburstdata/metabase-driver)
 
 Partner drivers are available to Cloud customers out-of-the-box.
 

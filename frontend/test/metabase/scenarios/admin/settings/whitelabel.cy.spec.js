@@ -122,6 +122,36 @@ describeEE("formatting > whitelabel", () => {
     });
   });
 
+  describe("loading message", () => {
+    it("should update loading message", () => {
+      cy.visit("/question/1");
+      cy.findByText("Doing science...");
+
+      const runningQueryMessage = "Running query...";
+      changeLoadingMessage(runningQueryMessage);
+      cy.visit("/question/1");
+      cy.findByText(runningQueryMessage);
+
+      const loadingResultsMessage = "Loading results...";
+      changeLoadingMessage(loadingResultsMessage);
+      cy.visit("/question/1");
+      cy.findByText(loadingResultsMessage);
+    });
+  });
+
+  describe("metabot", () => {
+    it("should toggle metabot visibility", () => {
+      cy.visit("/");
+      cy.findByAltText("Metabot");
+
+      cy.visit("/admin/settings/whitelabel");
+      cy.findByText("Display our little friend on the homepage").click();
+
+      cy.visit("/");
+      cy.findByAltText("Metabot").should("not.exist");
+    });
+  });
+
   describe("font", () => {
     const font = "Open Sans";
     beforeEach(() => {
@@ -137,6 +167,12 @@ describeEE("formatting > whitelabel", () => {
     });
   });
 });
+
+function changeLoadingMessage(message) {
+  cy.visit("/admin/settings/whitelabel");
+  cy.findByTestId("loading-message-select-button").click();
+  cy.findByText(message).click();
+}
 
 function setApplicationFontTo(font) {
   cy.request("PUT", "/api/setting/application-font", {

@@ -1,3 +1,7 @@
+---
+title: Setting up Single Sign-on (SSO)
+---
+
 ## Setting up Single Sign-on (SSO)
 
 We recommend that you set up [Single Sign-on][sso-def] for your Metabase installation.

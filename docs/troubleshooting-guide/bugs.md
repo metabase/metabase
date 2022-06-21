@@ -1,3 +1,7 @@
+---
+title: Reporting a bug
+---
+
 # Reporting a bug
 
 If you come across something that looks like a bug, please start by searching our [Github issues][metabase-issues] to see if it has already been reported. If it has, please let us know you're experiencing the same issue by reacting with a thumbs up emoji or adding a comment providing additional information.

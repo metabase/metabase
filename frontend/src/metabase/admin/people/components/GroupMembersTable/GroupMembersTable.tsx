@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
+import { getFullName } from "metabase/lib/user";
 import Icon from "metabase/components/Icon";
 import AdminEmptyText from "metabase/components/AdminEmptyText";
 import AdminContentTable from "metabase/components/AdminContentTable";
@@ -176,7 +177,7 @@ const UserRow = ({
 
   return (
     <tr>
-      <td className="text-bold">{user.first_name + " " + user.last_name}</td>
+      <td className="text-bold">{getName(user)}</td>
       {canEditMembership(group) && PLUGIN_GROUP_MANAGERS.UserTypeCell && (
         <PLUGIN_GROUP_MANAGERS.UserTypeCell
           isManager={groupMembership.is_group_manager}
@@ -196,3 +197,13 @@ const UserRow = ({
     </tr>
   );
 };
+
+function getName(user: IUser): string {
+  const name = getFullName(user);
+
+  if (!name) {
+    return "-";
+  }
+
+  return name;
+}

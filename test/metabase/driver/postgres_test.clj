@@ -18,6 +18,7 @@
             [metabase.models.secret :as secret]
             [metabase.models.table :refer [Table]]
             [metabase.query-processor :as qp]
+            [metabase.query-processor.store :as qp.store]
             [metabase.sync :as sync]
             [metabase.sync.sync-metadata :as sync-metadata]
             [metabase.test :as mt]
@@ -286,7 +287,7 @@
       (is (= false (driver/database-supports? :postgres :nested-field-columns no-json-unfold-db))))))
 
 (deftest ^:parallel json-query-test
-  (let [boop-identifier (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {})]
+  (let [boop-identifier (:form (hx/with-type-info (hx/identifier :field "boop" "bleh -> meh") {}))]
     (testing "Transforming MBQL query with JSON in it to postgres query works"
       (let [boop-field {:nfc_path [:bleh :meh] :database_type "integer"}]
         (is (= ["(boop.bleh#>> ?::text[])::integer " "{meh}"]
@@ -298,7 +299,35 @@
     (testing "Give us a boolean cast when the field is boolean"
       (let [boolean-boop-field {:database_type "boolean" :nfc_path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> ?::text[])::boolean " "{boop,foobar,1234}"]
+               (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
+    (testing "Give us a bigint cast when the field is bigint (#22732)"
+      (let [boolean-boop-field {:database_type "bigint" :nfc_path [:bleh "boop" :foobar 1234]}]
+        (is (= ["(boop.bleh#>> ?::text[])::bigint " "{boop,foobar,1234}"]
                (hsql/format (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
+
+(deftest json-field-test
+  (mt/test-driver :postgres
+    (testing "Deal with complicated identifier (#22967)"
+      (let [details   (mt/dbdef->connection-details :postgres :db {:database-name "complicated_identifiers"
+                                                                   :json-unfolding true})]
+        (mt/with-temp* [Database [database  {:engine :postgres, :details details}]
+                        Table    [table     {:db_id (u/the-id database)
+                                             :name "complicated_identifiers"}]
+                        Field    [val-field {:table_id      (u/the-id table)
+                                             :nfc_path      [:jsons "values" "qty"]
+                                             :database_type "integer"}]]
+        (qp.store/with-store
+          (qp.store/fetch-and-store-database! (u/the-id database))
+          (qp.store/fetch-and-store-tables! [(u/the-id table)])
+          (qp.store/fetch-and-store-fields! [(u/the-id val-field)])
+          (let [field-clause [:field (u/the-id val-field) {:binning
+                                                           {:strategy :num-bins,
+                                                            :num-bins 100,
+                                                            :min-value 0.75,
+                                                            :max-value 54.0,
+                                                            :bin-width 0.75}}]]
+            (is (= ["((floor((((complicated_identifiers.jsons#>> ?::text[])::integer  - 0.75) / 0.75)) * 0.75) + 0.75)" "{values,qty}"]
+                   (hsql/format (sql.qp/->honeysql :postgres field-clause)))))))))))
 
 (deftest json-alias-test
   (mt/test-driver :postgres
