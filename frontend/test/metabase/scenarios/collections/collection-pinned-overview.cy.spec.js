@@ -26,7 +26,7 @@ const PIVOT_QUESTION_DETAILS = {
   },
 };
 
-const QUESTION_DETAILS = {
+const SQL_QUESTION_DETAILS = {
   name: "SQL with parameters",
   display: "scalar",
   native: {
@@ -187,13 +187,13 @@ describe("scenarios > collection pinned items overview", () => {
   });
 
   it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
-    cy.createNativeQuestion(QUESTION_DETAILS).then(({ body: { id } }) => {
+    cy.createNativeQuestion(SQL_QUESTION_DETAILS).then(({ body: { id } }) => {
       cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
     });
 
     openRootCollection();
     getPinnedSection().within(() => {
-      cy.findByText(QUESTION_DETAILS.name).should("be.visible");
+      cy.findByText(SQL_QUESTION_DETAILS.name).should("be.visible");
       cy.findByText("A question").should("be.visible");
     });
   });
