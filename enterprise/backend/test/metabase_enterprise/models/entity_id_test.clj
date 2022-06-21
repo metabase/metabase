@@ -36,6 +36,7 @@
   so they don't need a generated entity_id."
   #{metabase.db.data_migrations.DataMigrationsInstance
     metabase.models.action.ActionInstance
+    metabase.models.action.HTTPActionInstance
     metabase.models.action.QueryActionInstance
     metabase.models.activity.ActivityInstance
     metabase.models.application_permissions_revision.ApplicationPermissionsRevisionInstance
