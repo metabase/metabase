@@ -7,7 +7,9 @@ import Question from "metabase-lib/lib/Question";
 import {
   setOrUnsetParameterValues,
   setParameterValue,
+  openActionParametersModal,
 } from "metabase/dashboard/actions";
+import { executeRowAction } from "metabase/writeback/actions";
 import {
   getDataFromClicked,
   getTargetForQueryParams,
@@ -15,6 +17,7 @@ import {
 } from "metabase/lib/click-behavior";
 import { renderLinkURLForClick } from "metabase/lib/formatting/link";
 import * as Urls from "metabase/lib/urls";
+import { getTemplateTagType } from "metabase/parameters/utils/cards";
 
 export default ({ question, clicked }) => {
   const settings = (clicked && clicked.settings) || {};
@@ -41,7 +44,48 @@ export default ({ question, clicked }) => {
     return [];
   }
 
-  if (type === "crossfilter") {
+  if (type === "action") {
+    const parameters = getParametersForNativeAction(parameterMapping, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    const action = extraData.actions[clickBehavior.action];
+    const missingParameters = getNotProvidedParametersForNativeAction(
+      action,
+      parameters,
+    );
+
+    if (missingParameters.length > 0) {
+      behavior = {
+        action: () =>
+          openActionParametersModal({
+            emitterId: clickBehavior.emitter_id,
+            props: {
+              missingParameters,
+              onSubmit: filledMissingParameters =>
+                executeRowAction({
+                  dashboard: extraData.dashboard,
+                  emitterId: clickBehavior.emitter_id,
+                  parameters: {
+                    ...parameters,
+                    ...filledMissingParameters,
+                  },
+                }),
+            },
+          }),
+      };
+    } else {
+      behavior = {
+        action: () =>
+          executeRowAction({
+            dashboard: extraData.dashboard,
+            emitterId: clickBehavior.emitter_id,
+            parameters,
+          }),
+      };
+    }
+  } else if (type === "crossfilter") {
     const parameterIdValuePairs = getParameterIdValuePairs(parameterMapping, {
       data,
       extraData,
@@ -136,6 +180,61 @@ export default ({ question, clicked }) => {
     },
   ];
 };
+
+function getParametersForNativeAction(
+  parameterMapping,
+  { data, extraData, clickBehavior },
+) {
+  const action = extraData.actions[clickBehavior.action];
+  const templateTags = Object.values(
+    action.card.dataset_query.native["template-tags"],
+  );
+
+  const parameters = {};
+
+  Object.values(parameterMapping).forEach(({ id, source, target }) => {
+    const targetTemplateTag = templateTags.find(tag => tag.id === id);
+
+    const result = formatSourceForTarget(source, target, {
+      data,
+      extraData,
+      clickBehavior,
+    });
+    // For some reason it's sometimes [1] and sometimes just 1
+    const value = Array.isArray(result) ? result[0] : result;
+
+    parameters[id] = {
+      value,
+      type: getTemplateTagType(targetTemplateTag),
+    };
+  });
+
+  return parameters;
+}
+
+function getNotProvidedParametersForNativeAction(action, parameters) {
+  const mappedParameterIDs = Object.keys(parameters);
+
+  const emptyParameterIDs = [];
+  mappedParameterIDs.forEach(parameterId => {
+    const { value } = parameters[parameterId];
+    if (value === undefined) {
+      emptyParameterIDs.push(parameterId);
+    }
+  });
+
+  const templateTags = Object.values(
+    action.card.dataset_query.native["template-tags"],
+  );
+  return templateTags.filter(tag => {
+    if (!tag.required) {
+      return false;
+    }
+    const isNotMapped = !mappedParameterIDs.includes(tag.id);
+    const isMappedButNoValue = emptyParameterIDs.includes(tag.id);
+    return isNotMapped || isMappedButNoValue;
+  });
+}
 
 function getParameterIdValuePairs(
   parameterMapping,

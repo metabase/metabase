@@ -140,7 +140,7 @@ const ClickMappings = _.compose(
         getIn(clickBehavior, ["parameterMapping", id, "source"]) != null,
     );
     const sourceOptions = {
-      column: dashcard.card.result_metadata.filter(isMappableColumn),
+      column: dashcard.card.result_metadata?.filter(isMappableColumn) || [],
       parameter: parameters,
     };
     return { setTargets, unsetTargets, sourceOptions };

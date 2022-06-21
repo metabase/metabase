@@ -11,7 +11,7 @@ import EmbedModalContent from "metabase/public/components/widgets/EmbedModalCont
 import * as Urls from "metabase/lib/urls";
 import MetabaseSettings from "metabase/lib/settings";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { getValueAndFieldIdPopulatedParametersFromCard } from "metabase/parameters/utils/cards";
+import { getCardUiParameters } from "metabase/parameters/utils/cards";
 import { getMetadata } from "metabase/selectors/metadata";
 
 import {
@@ -64,10 +64,7 @@ class QuestionEmbedWidget extends Component {
         className={className}
         resource={card}
         resourceType="question"
-        resourceParameters={getValueAndFieldIdPopulatedParametersFromCard(
-          card,
-          metadata,
-        )}
+        resourceParameters={getCardUiParameters(card, metadata)}
         onCreatePublicLink={() => createPublicLink(card)}
         onDisablePublicLink={() => deletePublicLink(card)}
         onUpdateEnableEmbedding={enableEmbedding =>

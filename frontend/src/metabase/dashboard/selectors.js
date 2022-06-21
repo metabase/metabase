@@ -5,8 +5,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 
 import {
-  getMappingsByParameter as _getMappingsByParameter,
-  getDashboardParametersWithFieldMetadata,
+  getDashboardUiParameters,
   getFilteringParameterValuesMap,
   getParameterValuesSearchKey,
 } from "metabase/parameters/utils/dashboards";
@@ -135,15 +134,14 @@ export const getParameterTarget = createSelector(
   },
 );
 
-export const getMappingsByParameter = createSelector(
-  [getMetadata, getDashboardComplete],
-  _getMappingsByParameter,
-);
-
-/** Returns the dashboard's parameters objects, with field_id added, if appropriate */
 export const getParameters = createSelector(
-  [getMetadata, getDashboard, getMappingsByParameter],
-  getDashboardParametersWithFieldMetadata,
+  [getDashboardComplete, getMetadata],
+  (dashboard, metadata) => {
+    if (!dashboard || !metadata) {
+      return [];
+    }
+    return getDashboardUiParameters(dashboard, metadata);
+  },
 );
 
 export const makeGetParameterMappingOptions = () => {
@@ -205,3 +203,9 @@ export const getIsAdditionalInfoVisible = createSelector(
   [getIsEmbedded, getEmbedOptions],
   (isEmbedded, embedOptions) => !isEmbedded || embedOptions.additional_info,
 );
+
+// Writeback
+export const getFocusedEmitterId = state =>
+  state.dashboard.missingEmitterParameters?.emitterId;
+export const getEmitterParametersFormProps = state =>
+  state.dashboard.missingEmitterParameters?.props || {};

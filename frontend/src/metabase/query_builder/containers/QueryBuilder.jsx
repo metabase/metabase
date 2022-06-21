@@ -13,6 +13,7 @@ import _ from "underscore";
 
 import { getWritebackEnabled } from "metabase/writeback/selectors";
 
+import { PLUGIN_SELECTORS } from "metabase/plugins";
 import Bookmark from "metabase/entities/bookmarks";
 import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
@@ -203,6 +204,7 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
+    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
   };
 };
 

@@ -3,8 +3,17 @@
    [clojure.test :refer :all]
    [metabase.actions.test-util :as actions.test-util]
    [metabase.models
-    :refer [Action Card CardEmitter Database Emitter EmitterAction QueryAction]]
+    :refer [Action
+            Card
+            CardEmitter
+            Dashboard
+            Database
+            Emitter
+            EmitterAction
+            QueryAction]]
    [metabase.test :as mt]
+   [metabase.util.schema :as su]
+   [schema.core :as s]
    [toucan.db :as db]))
 
 (defn- do-with-query-action [f]
@@ -50,6 +59,32 @@
     (mt/with-temporary-setting-values [experimental-enable-actions true]
       (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions true}}
         (thunk)))))
+
+(deftest create-emitter-test
+  (testing "POST /api/emitter"
+    (testing "Creating an emitter with the POST endpoint should return the newly created Emitter"
+      (do-with-actions-setup
+       (fn []
+         (do-with-query-action
+          (fn [{:keys [action-id query-action-card-id]}]
+            (let [expected-response {:id                 su/IntGreaterThanZero
+                                     :parameter_mappings (s/eq nil)
+                                     :action_id          (s/eq action-id)
+                                     :action             {:type     (s/eq "row")
+                                                          :card     {:id       (s/eq query-action-card-id)
+                                                                     s/Keyword s/Any}
+                                                          s/Keyword s/Any}
+                                     s/Keyword           s/Any}]
+              (testing "CardEmitter"
+                (mt/with-temp Card [{card-id :id}]
+                  (is (schema= expected-response
+                               (mt/user-http-request :crowberto :post 200 "emitter" {:card_id   card-id
+                                                                                     :action_id action-id})))))
+              (testing "DashboardEmitter"
+                (mt/with-temp Dashboard [{dashboard-id :id}]
+                  (is (schema= expected-response
+                               (mt/user-http-request :crowberto :post 200 "emitter" {:dashboard_id dashboard-id
+                                                                                     :action_id    action-id})))))))))))))
 
 (deftest execute-custom-action-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

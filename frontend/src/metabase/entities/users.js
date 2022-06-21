@@ -29,6 +29,10 @@ const Users = createEntity({
 
   path: "/api/user",
 
+  objectSelectors: {
+    getName: user => user.common_name,
+  },
+
   actionTypes: {
     DEACTIVATE,
     REACTIVATE,

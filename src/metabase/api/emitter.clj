@@ -14,31 +14,6 @@
    [toucan.db :as db]
    [toucan.hydrate :refer [hydrate]]))
 
-(api/defendpoint POST "/"
-  "Endpoint to create an emitter."
-  [:as {emitter :body}]
-  (cond
-    (:dashboard_id emitter)
-    (db/insert! DashboardEmitter emitter)
-
-    (:card_id emitter)
-    (db/insert! CardEmitter emitter)
-
-    :else
-    (throw (ex-info (tru "Unknown emitter type") emitter))))
-
-(api/defendpoint PUT "/:emitter-id"
-  "Endpoint to update an emitter."
-  [emitter-id :as {emitter :body}]
-  (db/update! Emitter emitter-id emitter)
-  api/generic-204-no-content)
-
-(api/defendpoint DELETE "/:emitter-id"
-  "Endpoint to delete an emitter."
-  [emitter-id]
-  (db/delete! Emitter :id emitter-id)
-  api/generic-204-no-content)
-
 (defn- emitter
   "Fetch the Emitter with `emitter-id` and extra info from FK-related tables for custom Emitter execution purposes."
   [emitter-id]
@@ -53,10 +28,46 @@
                                                  [:= :card_emitter.emitter_id :emitter.id]
                                                  [DashboardEmitter :dashboard_emitter]
                                                  [:= :dashboard_emitter.emitter_id :emitter.id]]
-                                     :where     [:= :id emitter-id]})
+                                     :where     [:= :emitter.id emitter-id]})
                           (db/do-post-select Emitter)
                           first)]
     (hydrate emitter [:action :card])))
+
+(api/defendpoint POST "/"
+  "Endpoint to create an emitter."
+  [:as {{:keys [action_id card_id dashboard_id options parameter_mappings], :as body} :body}]
+  {action_id          su/IntGreaterThanZero
+   card_id            (s/maybe su/IntGreaterThanOrEqualToZero)
+   dashboard_id       (s/maybe su/IntGreaterThanOrEqualToZero)
+   options            (s/maybe su/Map)
+   parameter_mappings (s/maybe su/Map)}
+  ;; Create stuff the hard way by hand because H2 doesn't return the Emitter ID if you have Toucan `pre-insert` create
+  ;; them for you because of some issue with INSERT RETURNING ROWS or something like that. See
+  ;; [[metabase.models.emitter/pre-insert]] for more discussion.
+  (let [emitter-id (u/the-id (db/insert! Emitter {:options options, :parameter_mappings parameter_mappings}))]
+    (db/insert! EmitterAction {:emitter_id emitter-id, :action_id action_id})
+    (cond
+      dashboard_id
+      (db/insert! DashboardEmitter {:emitter_id emitter-id, :dashboard_id dashboard_id})
+
+      card_id
+      (db/insert! CardEmitter {:emitter_id emitter-id, :card_id card_id})
+
+      :else
+      (throw (ex-info (tru "Unknown emitter type") body)))
+    (emitter emitter-id)))
+
+(api/defendpoint PUT "/:emitter-id"
+  "Endpoint to update an emitter."
+  [emitter-id :as {emitter :body}]
+  (db/update! Emitter emitter-id emitter)
+  api/generic-204-no-content)
+
+(api/defendpoint DELETE "/:emitter-id"
+  "Endpoint to delete an emitter."
+  [emitter-id]
+  (db/delete! Emitter :id emitter-id)
+  api/generic-204-no-content)
 
 (def ^:private CustomActionParametersMap
   (-> {s/Keyword {:type     (apply s/enum (map u/qualified-name (keys mbql.s/parameter-types))) ; type will come in as a string.

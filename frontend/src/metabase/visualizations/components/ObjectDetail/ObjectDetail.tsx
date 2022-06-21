@@ -49,6 +49,7 @@ import {
 import { DetailsTable } from "./ObjectDetailsTable";
 import { Relationships } from "./ObjectRelationships";
 import {
+  CenteredLayout,
   RootModal,
   ObjectDetailModal,
   ObjectDetailBodyWrapper,
@@ -352,13 +353,23 @@ export function ObjectDetailFn({
 function ObjectDetailWrapper({
   question,
   isDataApp,
+  data,
   closeObjectDetail,
   ...props
 }: ObjectDetailProps & { isDataApp?: boolean }) {
   if (isDataApp || question.display() === "object") {
+    if (data.rows.length > 1) {
+      return (
+        <CenteredLayout>
+          <h3>{t`Too many rows for a detail view`}</h3>
+        </CenteredLayout>
+      );
+    }
+
     return (
       <ObjectDetailFn
         {...props}
+        data={data}
         question={question}
         showActions={false}
         showRelations={false}
@@ -375,6 +386,7 @@ function ObjectDetailWrapper({
     >
       <ObjectDetailFn
         {...props}
+        data={data}
         question={question}
         closeObjectDetail={closeObjectDetail}
       />
@@ -531,7 +543,7 @@ export const ObjectDetailProperties = {
     // @ts-ignore
     ...columnSettings({ hidden: true }),
   },
-  isSensible: (data: DatasetData) => data.rows.length === 1,
+  isSensible: () => true,
 };
 
 const ObjectDetail = Object.assign(

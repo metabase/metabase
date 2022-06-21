@@ -242,6 +242,7 @@ const EntityListLoader = _.compose(
       allFetched,
       allError,
       selectorName = "getList",
+      metadataPropName = "metadata",
     } = props;
     if (typeof entityQuery === "function") {
       entityQuery = entityQuery(state, props);
@@ -272,7 +273,7 @@ const EntityListLoader = _.compose(
       list,
       entityQuery,
       reloadInterval,
-      metadata,
+      [metadataPropName]: metadata,
       loading,
       loaded,
       fetched,
