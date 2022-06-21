@@ -330,15 +330,21 @@
 
 (def Parameter
   "Schema for a valid Parameter."
-  (with-api-error-message {:id       NonBlankString
-                           s/Keyword s/Any}
-    (deferred-tru "parameter must be a map with String :id key")))
+  (with-api-error-message {:id                       NonBlankString
+                           :type                     NonBlankString
+                           (s/optional-key :name)    NonBlankString
+                           (s/optional-key :slug)    NonBlankString
+                           (s/optional-key :default) s/Any
+                           s/Keyword                 s/Any}
+    (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
   "Schema for a valid Parameter Mapping"
-  (with-api-error-message {:parameter_id       NonBlankString
-                           s/Keyword s/Any}
-    (deferred-tru "parameter mapping must be a String :parameter_id key")))
+  (with-api-error-message {:parameter_id             NonBlankString
+                           :target                   s/Any
+                           (s/optional-key :card_id) IntGreaterThanZero
+                           s/Keyword                 s/Any}
+    (deferred-tru "parameter_mapping must be a map with :parameter_id and :target keys")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."

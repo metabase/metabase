@@ -1430,14 +1430,7 @@
 
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
-  [Parameter]
-  #_(->
-     ;; TODO -- disabled for now since it breaks tests. Also, I'm not sure whether these should be distinct by
-     ;; `:name` or `:id`... at any rate, neither is currently required.
-     ;;
-     (s/constrained (fn [parameters]
-                      (apply distinct? (map :id parameters)))
-                    "Cannot specify parameter more than once; IDs must be distinct")))
+  [Parameter])
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 

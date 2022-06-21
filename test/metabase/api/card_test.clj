@@ -313,7 +313,7 @@
                                                         (mbql-count-query (mt/id) (mt/id :venues)))
                               :collection_id      (u/the-id collection)
                               :parameters         [{:id "abc123", :name "test", :type "date"}]
-                              :parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                              :parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                                     :target [:dimension [:template-tags "category"]]}])]
               (is (= (merge
                       card-defaults
@@ -322,7 +322,7 @@
                        :collection             true
                        :creator_id             (mt/user->id :rasta)
                        :parameters             [{:id "abc123", :name "test", :type "date"}]
-                       :parameter_mappings     [{:parameter_id "abc123", :card_id "10",
+                       :parameter_mappings     [{:parameter_id "abc123", :card_id 10,
                                                  :target ["dimension" ["template-tags" "category"]]}]
                        :dataset_query          true
                        :query_type             "query"
@@ -363,7 +363,7 @@
           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings "ABC"})))
 
    (is (= {:errors {:parameters (str "value may be nil, or if non-nil, value must be an array. "
-                                     "Each parameter must be a map with String :id key")}}
+                                     "Each parameter must be a map with :id and :type keys")}}
           (mt/user-http-request :crowberto :post 400 "card" {:visualization_settings {:global {:title nil}}
                                                              :parameters             "abc"})))))
 
@@ -803,16 +803,16 @@
   (testing "PUT /api/card/:id"
     (mt/with-temp Card [card]
       (testing "successfully update with valid parameter_mappings"
-        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                              :target ["dimension" ["template-tags" "category"]]}]}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
-                                            {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+                                            {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                                                    :target ["dimension" ["template-tags" "category"]]}]})))))
 
-    (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+    (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                                     :target ["dimension" ["template-tags" "category"]]}]}]
       (testing "nil parameters will no-op"
-        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id "10",
+        (is (partial= {:parameter_mappings [{:parameter_id "abc123", :card_id 10,
                                              :target ["dimension" ["template-tags" "category"]]}]}
                       (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
                                             {:parameters nil}))))
