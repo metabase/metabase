@@ -282,9 +282,21 @@
   [_ collection options]
   (card-query false collection options))
 
+(defn- bit->boolean
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    v))
+
+(defn- post-process-card-row [row]
+  (-> row
+      (dissoc :authority_level :icon :personal_owner_id)
+      (update :collection_preview bit->boolean)))
+
 (defmethod post-process-collection-children :card
   [_ rows]
-  (map #(dissoc % :authority_level :icon :personal_owner_id) rows))
+  (map post-process-card-row rows))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
