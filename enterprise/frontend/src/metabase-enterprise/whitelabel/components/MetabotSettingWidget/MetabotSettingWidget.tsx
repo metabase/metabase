@@ -11,8 +11,8 @@ import {
 import Toggle from "metabase/core/components/Toggle";
 
 const MetabotSettingWidget = ({ setting, onChange }: any) => {
-  const value = setting.value ?? setting.defaultValue;
-  const metabotImage = value ? "metabot-happy" : "metabot-sad";
+  const isEnabled = setting.value ?? setting.defaultValue;
+  const metabotImage = isEnabled ? "metabot-happy" : "metabot-sad";
 
   const toggleId = useUniqueId("show-metabot-switch");
   return (
@@ -32,7 +32,7 @@ const MetabotSettingWidget = ({ setting, onChange }: any) => {
           id={toggleId}
           aria-checked={setting.value}
           role="switch"
-          value={value}
+          value={isEnabled}
           onChange={onChange}
         />
       </ToggleContainer>
