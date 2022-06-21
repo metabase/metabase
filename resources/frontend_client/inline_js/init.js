@@ -1,22 +1,13 @@
 const content = [
-  ["drill-through-img", "Click on your charts to dive deeper."],
-  ["metabot-img shadow", "Bring your charts and data into Slack."],
-  ["calendar-img", "Dashboard filters let you filter all your charts at once."],
-  ["charts-img shadow", "Easily create and share beautiful dashboards."],
-];
-
-const messages = [
-  "Polishing tables…",
-  "Scaling scalars…",
-  "Straightening columns…",
-  "Embiggening data…",
-  "Reticulating splines…",
+  "Make decisions with data — no SQL required",
+  "Bring your charts and data into Slack",
+  "Click on your charts to dive deeper",
+  "Click on column headings in your tables to explore them",
 ];
 
 const animation = document.getElementById("animation");
 const heading = document.getElementById("heading");
 const progressElement = document.getElementById("progress");
-const statusElement = document.getElementById("status");
 
 let counter = 0;
 
@@ -29,13 +20,12 @@ function switcher() {
 
 function switchAnimation(counter) {
   animation.className = "transparent";
-  // heading.className = "transparent";
+  heading.className = "transparent";
 
   // Wait for fade out of current animation
   setTimeout(function() {
     fadeInNewAnimation(counter);
-    // heading.innerHTML = content[counter][1];
-    // heading.className = "opaque";
+    updateHeading(counter);
   }, 300);
 }
 
@@ -44,6 +34,11 @@ function fadeInNewAnimation(counter) {
 
   animation.className = "";
   animation.src = `inline_js/${srcPrefix}.gif`;
+}
+
+function updateHeading(counter) {
+  heading.className = "";
+  heading.innerHTML = content[counter % content.length];
 }
 
 function poll() {
@@ -60,8 +55,6 @@ function poll() {
             const newValue = health.progress * 100;
             if (newValue !== progressElement.value) {
               progressElement.value = newValue;
-              statusElement.textContent =
-                messages[Math.floor(Math.random() * messages.length)];
             }
           }
         } catch (e) {}
@@ -73,4 +66,4 @@ function poll() {
 }
 
 switcher();
-// poll();
+poll();
