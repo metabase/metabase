@@ -39,13 +39,11 @@
   This call is a no-op if the mentioned key values are equal."
   [{:keys [email] :as user-from-sso}]
   (when-let [{:keys [id] :as user} (db/select-one User :%lower.email (u/lower-case-en email))]
-    (let [user-keys (keys user-from-sso)
-          ;; remove keys with `nil` values
-          user-data (into {} (filter second user-from-sso))]
-      (if (= (select-keys user user-keys) user-data)
+    (let [user-keys (keys user-from-sso)]
+      (if (= (select-keys user user-keys) user-from-sso)
         user
         (do
-          (db/update! User id user-data)
+          (db/update! User id user-from-sso)
           (User id))))))
 
 (defn check-sso-redirect
