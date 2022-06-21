@@ -7,10 +7,6 @@ import {
   restore,
 } from "__support__/e2e/cypress";
 
-import { USERS } from "__support__/e2e/cypress_data";
-
-const { admin } = USERS;
-
 // we're testing for one known (en) and one unknown (xx) locale
 const locales = ["en", "xx"];
 
@@ -165,58 +161,6 @@ describe("scenarios > setup", () => {
       cy.findByText("Take me to Metabase").click();
       cy.location("pathname").should("eq", "/");
     });
-  });
-
-  it("should set up Metabase without first name and last name (metabase#22754)", () => {
-    // This is a simplified version of the "scenarios > setup" test
-    cy.visit("/");
-    cy.findByText("Welcome to Metabase");
-    cy.location("pathname").should("eq", "/setup");
-    cy.findByTextEnsureVisible("Let's get started").click();
-
-    // Language
-    cy.findByText("What's your preferred language?");
-    cy.findByText("English").click();
-    cy.button("Next").click();
-
-    // User
-    cy.findByText("What should we call you?");
-
-    cy.findByLabelText("Email").type(admin.email);
-    cy.findByLabelText("Company or team name").type("Epic Team");
-
-    cy.findByLabelText("Create a password").type(admin.password);
-    cy.findByLabelText("Confirm your password").type(admin.password);
-    cy.button("Next").click();
-
-    cy.findByText("Hi. Nice to meet you!");
-
-    // Database
-    cy.findByText("Add your data");
-    cy.findByText("I'll add my data later");
-
-    cy.findByText("Show more options").click();
-    cy.findByText("H2").click();
-    cy.findByLabelText("Display name").type("Metabase H2");
-
-    const dbFilename = "frontend/test/__runner__/empty.db";
-    const dbPath = Cypress.config("fileServerFolder") + "/" + dbFilename;
-    cy.findByLabelText("Connection String").type(`file:${dbPath}`);
-    cy.button("Connect database").click();
-
-    // Turns off anonymous data collection
-    cy.findByLabelText(
-      "Allow Metabase to anonymously collect usage events",
-    ).click();
-    cy.findByText("All collection is completely anonymous.").should(
-      "not.exist",
-    );
-    cy.button("Finish").click();
-
-    // Finish & Subscribe
-
-    cy.findByText("Take me to Metabase").click();
-    cy.location("pathname").should("eq", "/");
   });
 
   it("should allow pre-filling user details", () => {
