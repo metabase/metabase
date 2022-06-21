@@ -509,7 +509,7 @@
         (u/select-keys-when card-updates
           :present #{:collection_id :collection_position :description :cache_ttl :dataset}
           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                     :parameters :parameter_mappings :embedding_params :result_metadata})))
+                     :parameters :parameter_mappings :embedding_params :result_metadata :collection_preview})))
     ;; Fetch the updated Card from the DB
     (let [card (Card id)]
       (delete-alerts-if-needed! card-before-update card)

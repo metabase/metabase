@@ -851,6 +851,14 @@
       (is (= 1
              (db/select-one-field :collection_position Card :id (u/the-id card)))))))
 
+(deftest can-we-change-the-collection-preview-flag-of-a-card-
+  (mt/with-temp Card [card]
+    (with-cards-in-writeable-collection card
+      (mt/user-http-request :rasta :put 202 (str "card/" (u/the-id card))
+                            {:collection_preview false})
+      (is (= false
+             (db/select-one-field :collection_preview Card :id (u/the-id card)))))))
+
 (deftest ---and-unset--unpin--it-as-well-
   (mt/with-temp Card [card {:collection_position 1}]
     (with-cards-in-writeable-collection card
