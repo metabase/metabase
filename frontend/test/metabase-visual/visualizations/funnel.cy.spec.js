@@ -27,6 +27,7 @@ describe("visual tests > visualizations > funnel", () => {
       },
     });
 
+    cy.findByTestId("funnel-chart");
     cy.percySnapshot();
   });
 
@@ -52,6 +53,7 @@ describe("visual tests > visualizations > funnel", () => {
       },
     });
 
+    cy.findByTestId("funnel-chart");
     cy.percySnapshot();
   });
 });
