@@ -5,6 +5,8 @@ import {
   ORDERS,
   metadata,
 } from "__support__/sample_database_fixture";
+import { setupEnterpriseTest } from "__support__/enterprise";
+import MetabaseSettings from "metabase/lib/settings";
 import Question from "metabase-lib/lib/Question";
 import { QuestionInfoSidebar } from "./QuestionInfoSidebar";
 
@@ -24,7 +26,41 @@ const BASE_QUESTION = {
       "source-table": ORDERS.id,
     },
   },
+  moderation_reviews: [
+    {
+      status: "verified",
+      moderator_id: 1,
+      created_at: Date.now(),
+      most_recent: true,
+    },
+  ],
 };
+
+function mockCachingSettings({ enabled = true } = {}) {
+  const original = MetabaseSettings.get.bind(MetabaseSettings);
+  const spy = jest.spyOn(MetabaseSettings, "get");
+  spy.mockImplementation(key => {
+    if (key === "enable-query-caching") {
+      return enabled;
+    }
+    if (key === "query-caching-min-ttl") {
+      return 10000;
+    }
+    if (key === "application-name") {
+      return "Metabase Test";
+    }
+    if (key === "version") {
+      return { tag: "" };
+    }
+    if (key === "is-hosted?") {
+      return false;
+    }
+    if (key === "enable-enhancements?") {
+      return false;
+    }
+    return original(key);
+  });
+}
 
 function getQuestion(card) {
   return new Question(
@@ -47,7 +83,11 @@ function getDataset(card) {
   );
 }
 
-function setup({ question } = {}) {
+function setup({ question, cachingEnabled = true } = {}) {
+  mockCachingSettings({
+    enabled: cachingEnabled,
+  });
+
   const onSave = jest.fn();
 
   return renderWithProviders(
@@ -72,6 +112,51 @@ describe("QuestionDetailsSidebarPanel", () => {
           expect(screen.queryByText("Foo bar")).toBeInTheDocument();
         });
       });
+    });
+  });
+
+  describe("cache ttl field", () => {
+    describe("oss", () => {
+      it("is not shown", () => {
+        setup({ question: getQuestion() });
+        expect(
+          screen.queryByText("Cache Configuration"),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    describe("ee", () => {
+      beforeEach(() => {
+        setupEnterpriseTest();
+      });
+
+      it("is shown if caching is enabled", () => {
+        setup({ question: getQuestion({ cache_ttl: 2 }) });
+        expect(screen.queryByText("Cache Configuration")).toBeInTheDocument();
+      });
+
+      it("is hidden if caching is disabled", () => {
+        setup({ question: getQuestion(), cachingEnabled: false });
+        expect(
+          screen.queryByText("Cache Configuration"),
+        ).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("moderation field", () => {
+    beforeEach(() => {
+      setupEnterpriseTest();
+    });
+
+    it("should not show verification badge if unverified", () => {
+      setup({ question: getQuestion({ moderation_reviews: [] }) });
+      expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
+    });
+
+    it("should show verification badge if verified", () => {
+      setup({ question: getQuestion() });
+      expect(screen.queryByText(/verified this/)).toBeInTheDocument();
     });
   });
 });
