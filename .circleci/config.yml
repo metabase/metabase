@@ -1268,7 +1268,6 @@ workflows:
                   "admin",
                   "filters",
                   "onboarding",
-                  "smoketest",
                   "visualizations",
                 ]
           name: e2e-tests-<< matrix.folder >>-<< matrix.edition >>
