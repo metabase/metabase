@@ -203,7 +203,9 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status :icon :personal_owner_id)))
+    (dissoc row
+            :description :display :authority_level :moderated_status :icon :personal_owner_id
+            :collection_preview)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
@@ -225,14 +227,16 @@
 (defmethod post-process-collection-children :timeline
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :collection_position :authority_level :moderated_status)))
+    (dissoc row
+            :description :display :collection_position :authority_level :moderated_status
+            :collection_preview)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
     (dissoc row
             :description :collection_position :display :authority_level
-            :moderated_status :icon :personal_owner_id)))
+            :moderated_status :icon :personal_owner_id :collection_preview)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
   (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
@@ -323,7 +327,8 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (map #(dissoc % :display :authority_level :moderated_status :icon :personal_owner_id) rows))
+  (map #(dissoc % :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview)
+       rows))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -354,7 +359,8 @@
       ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
-      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id))))
+      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
+                                       :collection_preview))))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
