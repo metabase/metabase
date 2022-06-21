@@ -46,7 +46,8 @@ describe("scenarios > admin > settings > email settings", () => {
     // Reuse Email setup without relying on the previous test
     cy.request("PUT", "/api/setting", {
       "email-from-address": "admin@metabase.test",
-      "email-from-name": "Metabase",
+      "email-from-name": "Metabase Admin",
+      "email-reply-to": "reply-to@metabase.test",
       "email-smtp-host": "localhost",
       "email-smtp-password": null,
       "email-smtp-port": "1234",
@@ -75,7 +76,9 @@ describe("scenarios > admin > settings > email settings", () => {
     cy.findByText("Clear").click();
     cy.findByLabelText("SMTP Host").should("have.value", "");
     cy.findByLabelText("SMTP Port").should("have.value", "");
+    cy.findByLabelText("From Name").should("have.value", "");
     cy.findByLabelText("From Address").should("have.value", "");
+    cy.findByLabelText("Reply-To Address").should("have.value", "");
   });
 
   it("should not offer to save email changes when there aren't any (metabase#14749)", () => {
