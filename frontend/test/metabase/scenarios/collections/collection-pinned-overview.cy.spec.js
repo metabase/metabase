@@ -10,114 +10,128 @@ describe("scenarios > collection pinned items overview", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
-    cy.intercept(
-      "GET",
-      "/api/collection/root/items?pinned_state=is_pinned*",
-    ).as("getPinnedItems");
+    cy.intercept("GET", "/api/collection/*/items?pinned_state=is_pinned*").as(
+      "getPinnedItems",
+    );
   });
 
-  describe("pinning items", () => {
-    it("should pin a dashboard", () => {
-      cy.visit("/collection/root");
-      cy.wait("@getPinnedItems");
+  it("should be able to pin a dashboard", () => {
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
 
-      pinItem(DASHBOARD_ITEM_NAME);
-      cy.wait("@getPinnedItems");
+    openUnpinnedItemMenu(DASHBOARD_ITEM_NAME);
+    popover().within(() => cy.findByText("Pin this").click());
+    cy.wait("@getPinnedItems");
 
-      // ensure the dashboard card is showing in the pinned section
-      cy.findByTestId("pinned-items").within(() => {
-        cy.icon("dashboard").should("be.visible");
-        cy.findByText("A dashboard").should("be.visible");
-        cy.findByText(DASHBOARD_ITEM_NAME).click();
-        cy.url().should("include", "/dashboard/1");
-      });
-    });
-
-    it("should pin a question", () => {
-      cy.visit("/collection/root");
-      cy.wait("@getPinnedItems");
-
-      pinItem(CARD_ITEM_NAME);
-      cy.wait(["@getPinnedItems", "@getCardQuery"]);
-
-      cy.findByTestId("pinned-items").within(() => {
-        cy.findByText("18,760").should("be.visible");
-        cy.findByText(CARD_ITEM_NAME).click();
-        cy.url().should("include", "/question/2");
-      });
-    });
-
-    it("should pin a model", () => {
-      cy.request("PUT", "/api/card/1", { dataset: true });
-      cy.visit("/collection/root");
-      cy.wait("@getPinnedItems");
-
-      pinItem(MODE_ITEM_NAME);
-      cy.wait("@getPinnedItems");
-
-      cy.findByTestId("pinned-items").within(() => {
-        cy.icon("model").should("be.visible");
-        cy.findByText(MODE_ITEM_NAME).should("be.visible");
-        cy.findByText("A model").click();
-        cy.url().should("include", "/model/1");
-      });
+    // ensure the dashboard card is showing in the pinned section
+    getPinnedSection().within(() => {
+      cy.icon("dashboard").should("be.visible");
+      cy.findByText("A dashboard").should("be.visible");
+      cy.findByText(DASHBOARD_ITEM_NAME).click();
+      cy.url().should("include", "/dashboard/1");
     });
   });
 
-  describe("pinned item actions", () => {
-    beforeEach(() => {
-      cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+  it("should be able to pin a question", () => {
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
 
-      cy.visit("/collection/root");
-      cy.wait("@getPinnedItems");
+    openUnpinnedItemMenu(CARD_ITEM_NAME);
+    popover().within(() => cy.findByText("Pin this").click());
+    cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
-      cy.findByTestId("pinned-items").within(() => {
-        cy.icon("dashboard");
-        cy.icon("ellipsis").click({ force: true });
-      });
+    getPinnedSection().within(() => {
+      cy.findByText("18,760").should("be.visible");
+      cy.findByText(CARD_ITEM_NAME).click();
+      cy.url().should("include", "/question/2");
     });
+  });
 
-    it("should be able to unpin a pinned item", () => {
-      popover().within(() => {
-        cy.findByText("Unpin").click();
-        cy.wait("@getPinnedItems");
-      });
+  it("should be able to pin a model", () => {
+    cy.request("PUT", "/api/card/1", { dataset: true });
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
 
-      cy.findByTestId("pinned-items").should("not.exist");
+    openUnpinnedItemMenu(MODE_ITEM_NAME);
+    popover().within(() => cy.findByText("Pin this").click());
+    cy.wait("@getPinnedItems");
+
+    getPinnedSection().within(() => {
+      cy.icon("model").should("be.visible");
+      cy.findByText(MODE_ITEM_NAME).should("be.visible");
+      cy.findByText("A model").click();
+      cy.url().should("include", "/model/1");
     });
+  });
 
-    it("should be able to move a pinned item", () => {
-      popover().within(() => {
-        cy.findByText("Move").click();
-      });
+  it("should be able to unpin a pinned dashboard", () => {
+    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
 
-      cy.findByText(`Move "${DASHBOARD_ITEM_NAME}"?`);
-    });
+    openPinnedItemMenu(DASHBOARD_ITEM_NAME);
+    popover().within(() => cy.findByText("Unpin").click());
+    cy.wait("@getPinnedItems");
 
-    it("should be able to duplicate a pinned item", () => {
-      popover().within(() => {
-        cy.findByText("Duplicate").click();
-      });
+    getPinnedSection().should("not.exist");
+  });
 
-      cy.findByText(`Duplicate "${DASHBOARD_ITEM_NAME}"`);
-    });
+  it("should be able to move a pinned dashboard", () => {
+    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
 
-    it("should be able to archive a pinned item", () => {
-      popover().within(() => {
-        cy.findByText("Archive").click();
-        cy.wait("@getPinnedItems");
-      });
+    openPinnedItemMenu(DASHBOARD_ITEM_NAME);
+    popover().within(() => cy.findByText("Move").click());
 
-      cy.findByTestId("pinned-items").should("not.exist");
-      cy.findByText(DASHBOARD_ITEM_NAME).should("not.exist");
-    });
+    cy.findByText(`Move "${DASHBOARD_ITEM_NAME}"?`).should("be.visible");
+  });
+
+  it("should be able to duplicate a pinned dashboard", () => {
+    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
+
+    openPinnedItemMenu(DASHBOARD_ITEM_NAME);
+    popover().within(() => cy.findByText("Duplicate").click());
+
+    cy.findByText(`Duplicate "${DASHBOARD_ITEM_NAME}"`).should("be.visible");
+  });
+
+  it("should be able to archive a pinned dashboard", () => {
+    cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
+    cy.visit("/collection/root");
+    cy.wait("@getPinnedItems");
+
+    openPinnedItemMenu(DASHBOARD_ITEM_NAME);
+    popover().within(() => cy.findByText("Archive").click());
+    cy.wait("@getPinnedItems");
+
+    getPinnedSection().should("not.exist");
+    cy.findByText(DASHBOARD_ITEM_NAME).should("not.exist");
   });
 });
 
-const pinItem = name => {
-  cy.findByText(name)
-    .closest("tr")
-    .within(() => cy.icon("ellipsis").click());
+const getPinnedSection = () => {
+  return cy.findByTestId("pinned-items");
+};
 
-  popover().within(() => cy.icon("pin").click());
+const getUnpinnedSection = () => {
+  return cy.findByRole("table");
+};
+
+const openPinnedItemMenu = name => {
+  getPinnedSection().within(() => {
+    cy.findByText(name)
+      .closest("a")
+      .within(() => cy.icon("ellipsis").click({ force: true }));
+  });
+};
+
+const openUnpinnedItemMenu = name => {
+  getUnpinnedSection().within(() => {
+    cy.findByText(name)
+      .closest("tr")
+      .within(() => cy.icon("ellipsis").click());
+  });
 };
