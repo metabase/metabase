@@ -100,6 +100,38 @@ describe("scenarios > collection pinned items overview", () => {
     getPinnedSection().should("not.exist");
     cy.findByText(DASHBOARD_NAME).should("not.exist");
   });
+
+  it("should be able to hide the visualization for a pinned question", () => {
+    cy.request("PUT", "/api/card/2", { collection_position: 1 });
+
+    openRootCollection();
+    openPinnedItemMenu(QUESTION_NAME);
+    popover().within(() => cy.findByText("Don’t show visualization").click());
+    cy.wait("@getPinnedItems");
+
+    getPinnedSection().within(() => {
+      cy.findByText("18,760").should("not.exist");
+      cy.findByText(QUESTION_NAME).click();
+      cy.url().should("include", "/question/2");
+    });
+  });
+
+  it("should be able to show the visualization for a pinned question", () => {
+    cy.request("PUT", "/api/card/2", {
+      collection_position: 1,
+      collection_preview: false,
+    });
+
+    openRootCollection();
+    openPinnedItemMenu(QUESTION_NAME);
+    popover().within(() => cy.findByText("Show visualization").click());
+    cy.wait(["@getPinnedItems", "@getCardQuery"]);
+
+    getPinnedSection().within(() => {
+      cy.findByText(QUESTION_NAME).should("be.visible");
+      cy.findByText("18,760").should("be.visible");
+    });
+  });
 });
 
 const getPinnedSection = () => {
