@@ -149,5 +149,3 @@ export const SavedQuestionLeftSideRoot = styled.div`
     }
   }
 `;
-
-export const AdHocQuestionLeftSideRoot = styled.div``;
