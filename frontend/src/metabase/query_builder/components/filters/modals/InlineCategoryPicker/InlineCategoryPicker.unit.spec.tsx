@@ -1,5 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
+/* eslint-disable @typescript-eslint/ban-ts-comment */
+
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -9,6 +9,7 @@ import { metadata } from "__support__/sample_database_fixture";
 import Field from "metabase-lib/lib/metadata/Field";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Question from "metabase-lib/lib/Question";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 import { InlineCategoryPickerComponent } from "./InlineCategoryPicker";
 import { MAX_INLINE_CATEGORIES } from "./constants";
@@ -16,15 +17,15 @@ import { MAX_INLINE_CATEGORIES } from "./constants";
 const smallCategoryField = new Field({
   database_type: "test",
   semantic_type: "type/Category",
+  effective_type: "type/Text",
+  base_type: "type/Text",
   table_id: 8,
   name: "small_category_field",
   has_field_values: "list",
-  values: ["Michaelangelo", "Donatello", "Raphael", "Leonardo"],
+  values: [["Michaelangelo"], ["Donatello"], ["Raphael"], ["Leonardo"]],
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Text",
   id: 137,
-  effective_type: "type/Text",
   metadata,
 });
 
@@ -34,41 +35,44 @@ const turtleFactory = () => {
   const name = ["Michaelangelo", "Donatello", "Raphael", "Leonardo"][
     Math.floor(Math.random() * 4)
   ];
-  return `${name}_${Math.round(Math.random() * 100000)}`;
+  return [`${name}_${Math.round(Math.random() * 100000)}`];
 };
 
 const largeCategoryField = new Field({
   database_type: "test",
   semantic_type: "type/Category",
+  effective_type: "type/Text",
+  base_type: "type/Text",
   table_id: 8,
   name: "large_category_field",
   has_field_values: "list",
   values: new Array(MAX_INLINE_CATEGORIES + 1).fill(null).map(turtleFactory),
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Text",
   id: 138,
-  effective_type: "type/Text",
   metadata,
 });
 
 const emptyCategoryField = new Field({
   database_type: "test",
   semantic_type: "type/Category",
+  effective_type: "type/Text",
+  base_type: "type/Text",
   table_id: 8,
   name: "empty_category_field",
   has_field_values: "list",
   values: [],
   dimensions: {},
   dimension_options: [],
-  effective_type: "type/Text",
   id: 139,
-  effective_type: "type/Text",
   metadata,
 });
 
+// @ts-ignore
 metadata.fields[smallCategoryField.id] = smallCategoryField;
+// @ts-ignore
 metadata.fields[largeCategoryField.id] = largeCategoryField;
+// @ts-ignore
 metadata.fields[emptyCategoryField.id] = emptyCategoryField;
 
 const card = {
@@ -84,7 +88,7 @@ const card = {
 };
 
 const question = new Question(card, metadata);
-const query = question.query();
+const query = question.query() as StructuredQuery;
 const smallDimension = smallCategoryField.dimension();
 const largeDimension = largeCategoryField.dimension();
 const emptyDimension = emptyCategoryField.dimension();
@@ -103,17 +107,17 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={smallDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
 
     screen.getByTestId("category-picker");
-    smallCategoryField.values.forEach(value => {
+    smallCategoryField.values.forEach(([value]) => {
       screen.getByText(value);
     });
   });
@@ -131,12 +135,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={emptyCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={emptyDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
     screen.getByTestId("loading-spinner");
@@ -156,12 +160,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={emptyCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={emptyDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
@@ -181,17 +185,17 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={smallDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
 
     screen.getByTestId("category-picker");
-    smallCategoryField.values.forEach(value => {
+    smallCategoryField.values.forEach(([value]) => {
       screen.getByText(value);
     });
   });
@@ -209,12 +213,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={largeDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
 
@@ -236,12 +240,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={smallDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
 
@@ -265,12 +269,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={smallCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={smallDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
 
@@ -297,12 +301,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={emptyCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={emptyDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
@@ -323,12 +327,12 @@ describe("InlineCategoryPicker", () => {
       <InlineCategoryPickerComponent
         query={query}
         filter={testFilter}
-        newfilter={testFilter}
-        handleChange={changeSpy}
+        newFilter={testFilter}
+        onChange={changeSpy}
         fieldValues={largeCategoryField.values}
         fetchFieldValues={fetchSpy}
         dimension={largeDimension}
-        handleClear={changeSpy}
+        onClear={changeSpy}
       />,
     );
 

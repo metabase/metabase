@@ -51,6 +51,7 @@ class FieldInner extends Base {
   table?: Table;
   target?: Field;
   has_field_values?: "list" | "search" | "none";
+  values: any[];
 
   getId() {
     if (Array.isArray(this.id)) {

@@ -76,8 +76,8 @@ export const BulkFilterItem = ({
           filter={filter}
           newFilter={newFilter}
           dimension={dimension}
-          handleChange={handleChange}
-          handleClear={handleClear}
+          onChange={handleChange}
+          onClear={handleClear}
         />
       );
     default:

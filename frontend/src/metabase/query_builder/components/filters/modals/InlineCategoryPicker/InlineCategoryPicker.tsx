@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
@@ -27,9 +27,7 @@ const mapStateToProps = (state: any, props: any) => {
           entityId: fieldId,
         })
       : [];
-  return {
-    fieldValues: fieldValues || [],
-  };
+  return { fieldValues };
 };
 
 const mapDispatchToProps = {
@@ -43,22 +41,21 @@ interface InlineCategoryPickerProps {
   dimension: Dimension;
   fieldValues: any[];
   fetchFieldValues: ({ id }: { id: number }) => Promise<any>;
-  handleChange: (newFilter: Filter) => void;
-  handleClear: () => void;
+  onChange: (newFilter: Filter) => void;
+  onClear: () => void;
 }
 
 export function InlineCategoryPickerComponent({
   query,
   filter,
   newFilter,
-  handleChange,
+  dimension,
   fieldValues,
   fetchFieldValues,
-  dimension,
-  handleClear,
+  onChange,
+  onClear,
 }: InlineCategoryPickerProps) {
   const safeFetchFieldValues = useSafeAsyncFunction(fetchFieldValues);
-
   const shouldFetchFieldValues = !dimension?.field()?.hasFieldValues();
   const [isLoading, setIsLoading] = useState(shouldFetchFieldValues);
   const [hasError, setHasError] = useState(false);
@@ -96,7 +93,7 @@ export function InlineCategoryPickerComponent({
     return (
       <SimpleCategoryFilterPicker
         filter={filter ?? newFilter}
-        handleChange={handleChange}
+        onChange={onChange}
         options={fieldValues.flat()}
       />
     );
@@ -107,8 +104,8 @@ export function InlineCategoryPickerComponent({
       query={query}
       filter={filter}
       dimension={dimension}
-      handleChange={handleChange}
-      handleClear={handleClear}
+      handleChange={onChange}
+      handleClear={onClear}
     />
   );
 }
@@ -116,28 +113,23 @@ export function InlineCategoryPickerComponent({
 interface SimpleCategoryFilterPickerProps {
   filter: Filter;
   options: (string | number)[];
-  handleChange: (newFilter: Filter) => void;
+  onChange: (newFilter: Filter) => void;
 }
 
 export function SimpleCategoryFilterPicker({
   filter,
   options,
-  handleChange,
+  onChange,
 }: SimpleCategoryFilterPickerProps) {
-  const filterValues = useMemo(() => filter.arguments().filter(Boolean), [
-    filter,
-  ]);
+  const filterValues = filter.arguments().filter(Boolean);
 
-  const onChange = useCallback(
-    (option, checked) => {
-      const newArgs = checked
-        ? [...filterValues, option]
-        : filterValues.filter(o => o !== option);
+  const handleChange = (option: string | number, checked: boolean) => {
+    const newArgs = checked
+      ? [...filterValues, option]
+      : filterValues.filter(filterValue => filterValue !== option);
 
-      handleChange(filter.setArguments(newArgs));
-    },
-    [filterValues, handleChange, filter],
-  );
+    onChange(filter.setArguments(newArgs));
+  };
 
   return (
     <PickerContainer data-testid="category-picker">
@@ -146,7 +138,7 @@ export function SimpleCategoryFilterPicker({
           <Checkbox
             key={option.toString()}
             checked={filterValues.includes(option)}
-            onChange={e => onChange(option, e.target.checked)}
+            onChange={e => handleChange(option, e.target.checked)}
             checkedColor="accent2"
             label={option.toString()}
           />
