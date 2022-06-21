@@ -102,7 +102,9 @@ describe("scenarios > admin > people", () => {
       cy.findByText("Show").click();
       cy.findByText("Done").click();
 
-      cy.findByText(email);
+      // user created with 'null' first/last name so common_name is used
+      // and the fallback is user's email, so the email shows up in 'Member' and 'email' columns
+      cy.findAllByText(email).should("have.length", 2);
     });
 
     it("should disallow admin to create new users with case mutation of existing user", () => {
