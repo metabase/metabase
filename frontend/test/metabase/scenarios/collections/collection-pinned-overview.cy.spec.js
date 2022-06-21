@@ -9,76 +9,70 @@ describe("scenarios > collection pinned items overview", () => {
     restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", `/api/card/*/query`).as("cardQuery");
+    cy.intercept("POST", `/api/card/*/query`).as("getCardQuery");
     cy.intercept(
       "GET",
       "/api/collection/root/items?pinned_state=is_pinned*",
-    ).as("pinnedItemsGET");
+    ).as("getPinnedItems");
   });
 
-  it("should let the user pin items", () => {
-    // Turn question 1 into a model
-    cy.request("PUT", "/api/card/1", { dataset: true });
+  describe("pinning items", () => {
+    it("should pin a dashboard", () => {
+      cy.visit("/collection/root");
+      cy.wait("@getPinnedItems");
 
-    cy.visit("/collection/root");
-    cy.wait("@pinnedItemsGET");
+      pinItem(DASHBOARD_ITEM_NAME);
+      cy.wait("@getPinnedItems");
 
-    // pin a dashboard
-    pinItem(DASHBOARD_ITEM_NAME);
-    cy.wait("@pinnedItemsGET");
-
-    // ensure the dashboard card is showing in the pinned section
-    cy.findByTestId("pinned-items").within(() => {
-      cy.icon("dashboard");
-      cy.findByText("A dashboard");
-      // click on the card to navigate to the dashboard
-      cy.findByText(DASHBOARD_ITEM_NAME).click();
-      cy.url().should("include", "/dashboard/1");
+      // ensure the dashboard card is showing in the pinned section
+      cy.findByTestId("pinned-items").within(() => {
+        cy.icon("dashboard").should("be.visible");
+        cy.findByText("A dashboard").should("be.visible");
+        cy.findByText(DASHBOARD_ITEM_NAME).click();
+        cy.url().should("include", "/dashboard/1");
+      });
     });
 
-    cy.visit("/collection/root");
-    cy.wait("@pinnedItemsGET");
+    it("should pin a question", () => {
+      cy.visit("/collection/root");
+      cy.wait("@getPinnedItems");
 
-    // pin a card
-    pinItem(CARD_ITEM_NAME);
-    cy.wait(["@pinnedItemsGET", "@cardQuery"]);
+      pinItem(CARD_ITEM_NAME);
+      cy.wait(["@getPinnedItems", "@getCardQuery"]);
 
-    // ensure the card visualization is showing in the pinned section
-    cy.findByTestId("pinned-items").within(() => {
-      cy.findByText("18,760");
-      cy.findByText(CARD_ITEM_NAME).click();
-      cy.url().should("include", "/question/2");
+      cy.findByTestId("pinned-items").within(() => {
+        cy.findByText("18,760").should("be.visible");
+        cy.findByText(CARD_ITEM_NAME).click();
+        cy.url().should("include", "/question/2");
+      });
     });
 
-    cy.visit("/collection/root");
-    cy.wait(["@pinnedItemsGET", "@cardQuery"]);
+    it("should pin a model", () => {
+      cy.request("PUT", "/api/card/1", { dataset: true });
+      cy.visit("/collection/root");
+      cy.wait("@getPinnedItems");
 
-    // pin a model
-    pinItem(MODE_ITEM_NAME);
-    cy.wait("@pinnedItemsGET");
-    // ensure the model card is showing in the pinned section
-    cy.findByTestId("pinned-items").within(() => {
-      cy.findByText(MODE_ITEM_NAME);
-      cy.icon("model");
-      cy.findByText("A model").click();
-      cy.url().should("include", "/model/1");
+      pinItem(MODE_ITEM_NAME);
+      cy.wait("@getPinnedItems");
+
+      cy.findByTestId("pinned-items").within(() => {
+        cy.icon("model").should("be.visible");
+        cy.findByText(MODE_ITEM_NAME).should("be.visible");
+        cy.findByText("A model").click();
+        cy.url().should("include", "/model/1");
+      });
     });
   });
 
   describe("pinned item actions", () => {
     beforeEach(() => {
-      // pin a dashboard using the API
-      cy.request("PUT", "/api/dashboard/1", {
-        collection_position: 1,
-      });
+      cy.request("PUT", "/api/dashboard/1", { collection_position: 1 });
 
       cy.visit("/collection/root");
-      cy.wait("@pinnedItemsGET");
+      cy.wait("@getPinnedItems");
 
-      // open the action menu
       cy.findByTestId("pinned-items").within(() => {
         cy.icon("dashboard");
-        // the menu icon is hidden until the user hovers their mouse over the card
         cy.icon("ellipsis").click({ force: true });
       });
     });
@@ -86,10 +80,9 @@ describe("scenarios > collection pinned items overview", () => {
     it("should be able to unpin a pinned item", () => {
       popover().within(() => {
         cy.findByText("Unpin").click();
+        cy.wait("@getPinnedItems");
       });
 
-      // verify that the item is no longer in the pinned section
-      cy.wait("@pinnedItemsGET");
       cy.findByTestId("pinned-items").should("not.exist");
     });
 
@@ -98,7 +91,6 @@ describe("scenarios > collection pinned items overview", () => {
         cy.findByText("Move").click();
       });
 
-      // verify that the move modal is showing
       cy.findByText(`Move "${DASHBOARD_ITEM_NAME}"?`);
     });
 
@@ -107,17 +99,15 @@ describe("scenarios > collection pinned items overview", () => {
         cy.findByText("Duplicate").click();
       });
 
-      // verify that the duplicate modal is showing
       cy.findByText(`Duplicate "${DASHBOARD_ITEM_NAME}"`);
     });
 
     it("should be able to archive a pinned item", () => {
       popover().within(() => {
         cy.findByText("Archive").click();
+        cy.wait("@getPinnedItems");
       });
 
-      // verify that the item is no longer on the page
-      cy.wait("@pinnedItemsGET");
       cy.findByTestId("pinned-items").should("not.exist");
       cy.findByText(DASHBOARD_ITEM_NAME).should("not.exist");
     });
