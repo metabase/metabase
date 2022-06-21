@@ -31,6 +31,8 @@ const CURRENT_USER = {
 const requestsCount = alias =>
   cy.state("requests").filter(a => a.alias === alias);
 describe("user > settings", () => {
+  const fullName = `${first_name} ${last_name}`;
+
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -38,7 +40,7 @@ describe("user > settings", () => {
 
   it("should be able to remove first name and last name (metabase#22754)", () => {
     cy.visit("/account/profile");
-    cy.findByText("Account settings");
+    cy.findByText(fullName);
     cy.findByLabelText("First name").clear();
     cy.findByLabelText("Last name").clear();
     cy.button("Update").click();
@@ -51,7 +53,10 @@ describe("user > settings", () => {
 
   it("should show user details with disabled submit button", () => {
     cy.visit("/account/profile");
-    cy.findByText("Account settings");
+    cy.findByTestId("account-header").within(() => {
+      cy.findByText(fullName);
+      cy.findByText(email);
+    });
     cy.findByDisplayValue(first_name);
     cy.findByDisplayValue(last_name);
     cy.findByDisplayValue(email);
@@ -201,6 +206,12 @@ describe("user > settings", () => {
 
     it("should hide change password tab", () => {
       cy.findByText("Password").should("not.exist");
+    });
+
+    it("should hide first name, last name, and email input (metabase#23298)", () => {
+      cy.findByLabelText("First name").should("not.exist");
+      cy.findByLabelText("Last name").should("not.exist");
+      cy.findByLabelText("Email").should("not.exist");
     });
   });
 });

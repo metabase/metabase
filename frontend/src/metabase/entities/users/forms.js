@@ -3,7 +3,10 @@ import _ from "underscore";
 import { t } from "ttag";
 import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
-import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+import {
+  PLUGIN_ADMIN_USER_FORM_FIELDS,
+  PLUGIN_IS_PASSWORD_USER,
+} from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
@@ -82,7 +85,18 @@ export default {
     ],
   },
   user: {
-    fields: [...getNameFields(), getEmailField(), getLocaleField()],
+    fields: user => {
+      const isSsoUser = !PLUGIN_IS_PASSWORD_USER.every(predicate =>
+        predicate(user),
+      );
+
+      if (isSsoUser) {
+        return [getLocaleField()];
+      }
+
+      // password user
+      return [...getNameFields(), getEmailField(), getLocaleField()];
+    },
     disablePristineSubmit: true,
   },
   setup: () => ({
