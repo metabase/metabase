@@ -5,3 +5,8 @@
 @import "z-index/z-index.css";
 
 @import "tippy.js/dist/tippy.css";
+
+/* tailwind css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

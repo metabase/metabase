@@ -5,10 +5,6 @@
   display: inherit;
 }
 
-.hidden {
-  visibility: hidden;
-}
-
 .sm-show,
 .md-show,
 .lg-show,

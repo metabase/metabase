@@ -185,7 +185,9 @@ export default class NotebookStep extends React.Component {
                 <ActionButton
                   ml={[1, 2]}
                   className={
-                    !showPreviewButton ? "hidden disabled" : "text-brand-hover"
+                    !showPreviewButton
+                      ? "invisible disabled"
+                      : "text-brand-hover"
                   }
                   icon="play"
                   title={t`Preview`}
