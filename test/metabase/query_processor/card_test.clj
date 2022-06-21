@@ -175,7 +175,7 @@
                                                    :name "Date"
                                                    :slug "DATE"}]}]
     (testing "API request should fail if request parameter does not contain ID"
-      (is (schema= {:message            #"Invalid parameter: Card [\d,]+ does not have a parameter with the ID nil."
+      (is (schema= {:message            #"Invalid parameter: missing id"
                     :invalid-parameter  (s/eq {:name "date", :type "date/single", :value "2016-01-01"})
                     :allowed-parameters (s/eq ["_DATE_"])
                     s/Keyword           s/Any}

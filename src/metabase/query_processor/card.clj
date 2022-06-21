@@ -184,9 +184,11 @@
                 ;; If (non-template tag) parameters are defined on the card, request parameters should target them by
                 ;; ID, rather than targeting template tags directly (even if they also exist)
                 (or (get types-on-parameters parameter-id)
-                    (throw (ex-info (tru "Invalid parameter: Card {0} does not have a parameter with the ID {1}."
-                                         card-id
-                                         (pr-str parameter-id))
+                    (throw (ex-info (if parameter-id
+                                     (tru "Invalid parameter: Card {0} does not have a parameter with the ID {1}."
+                                          card-id
+                                          (pr-str parameter-id))
+                                     (tru "Invalid parameter: missing id"))
                                     {:type               qp.error-type/invalid-parameter
                                      :invalid-parameter  request-parameter
                                      :allowed-parameters (keys types-on-parameters)})))
