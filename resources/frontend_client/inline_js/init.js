@@ -3,35 +3,7 @@ const content = [
   ["metabot-img shadow", "Bring your charts and data into Slack."],
   ["calendar-img", "Dashboard filters let you filter all your charts at once."],
   ["charts-img shadow", "Easily create and share beautiful dashboards."],
-  [
-    "column-heading-img",
-    "Click on column headings in your tables to explore them.",
-  ],
 ];
-
-const featureImage = document.getElementById("feature-image");
-const heading = document.getElementById("heading");
-
-let counter = 0;
-
-function switcher() {
-  setInterval(function() {
-    counter++;
-    if (counter === content.length) {
-      counter = 0;
-    }
-    featureImage.className =
-      featureImage.className.replace(" opaque", "") + " transparent";
-    heading.className = "transparent";
-
-    // Need to somehow wait here for a sec before fading things back in
-    setTimeout(function() {
-      featureImage.className = content[counter][0] + " opaque";
-      heading.innerHTML = content[counter][1];
-      heading.className = "opaque";
-    }, 200);
-  }, 4000);
-}
 
 const messages = [
   "Polishing tables…",
@@ -40,8 +12,39 @@ const messages = [
   "Embiggening data…",
   "Reticulating splines…",
 ];
+
+const animation = document.getElementById("animation");
+const heading = document.getElementById("heading");
 const progressElement = document.getElementById("progress");
 const statusElement = document.getElementById("status");
+
+let counter = 0;
+
+function switcher() {
+  setInterval(function() {
+    counter++;
+    switchAnimation(counter);
+  }, 10000);
+}
+
+function switchAnimation(counter) {
+  animation.className = "transparent";
+  // heading.className = "transparent";
+
+  // Wait for fade out of current animation
+  setTimeout(function() {
+    fadeInNewAnimation(counter);
+    // heading.innerHTML = content[counter][1];
+    // heading.className = "opaque";
+  }, 300);
+}
+
+function fadeInNewAnimation(counter) {
+  const srcPrefix = (counter % content.length) + 1;
+
+  animation.className = "";
+  animation.src = `inline_js/${srcPrefix}.gif`;
+}
 
 function poll() {
   const req = new XMLHttpRequest();
@@ -69,5 +72,5 @@ function poll() {
   req.send();
 }
 
-// switcher();
+switcher();
 // poll();

@@ -113,6 +113,15 @@ progress[value]::-webkit-progress-value {
   color: #949AAB;
 }
 
+#animation {
+  transition: opacity 300ms cubic-bezier(.165,.84,.44,1);
+  width: 600px;
+}
+
+.transparent {
+  opacity: 0;
+}
+
 #footer {
   margin-top: auto;
   text-align: center;
