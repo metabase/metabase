@@ -1,10 +1,12 @@
 import React, { useCallback, useMemo } from "react";
-import { t } from "ttag";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 import Field from "metabase-lib/lib/metadata/Field";
 
-import { ALLOWED_OPERATORS } from "./constants";
-import { OperatorSelector, ArgumentSelector } from "./InlineValuePicker.styled";
+import {
+  OperatorSelector,
+  ArgumentSelector,
+  ValuesPickerContainer,
+} from "./InlineValuePicker.styled";
 
 interface InlineValuePickerProps {
   filter: Filter;
@@ -31,12 +33,13 @@ export function InlineValuePicker({
     [filter, handleChange],
   );
 
-  const filterOperators = useMemo(() => {
-    return field.filterOperators(filter.operatorName());
-  }, [field, filter]);
+  const filterOperators = field.filterOperators(filter.operatorName());
 
   return (
-    <div data-testid="value-picker" aria-label={field.displayName()}>
+    <ValuesPickerContainer
+      data-testid="value-picker"
+      aria-label={field.displayName()}
+    >
       <OperatorSelector
         operator={filter.operatorName() ?? "="}
         operators={filterOperators}
@@ -52,6 +55,6 @@ export function InlineValuePicker({
         disableSearch
         multi
       />
-    </div>
+    </ValuesPickerContainer>
   );
 }

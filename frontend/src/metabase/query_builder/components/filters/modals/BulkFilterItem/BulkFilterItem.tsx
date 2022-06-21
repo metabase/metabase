@@ -10,7 +10,7 @@ import { BulkFilterSelect } from "../BulkFilterSelect";
 import { InlineCategoryPicker } from "../InlineCategoryPicker";
 import { InlineValuePicker } from "../InlineValuePicker";
 
-import { FIELD_TYPE_PRIORITY } from "./constants";
+import { FIELD_PRIORITY } from "./constants";
 
 export interface BulkFilterItemProps {
   query: StructuredQuery;
@@ -32,9 +32,9 @@ export const BulkFilterItem = ({
   const fieldType = useMemo(() => {
     const field = dimension.field();
 
-    const relevantFieldType = FIELD_TYPE_PRIORITY.find(t =>
+    const relevantFieldType = FIELD_PRIORITY.find(fieldProperty =>
       [field.semantic_type, field.base_type, field.has_field_values].includes(
-        t,
+        fieldProperty,
       ),
     );
 
@@ -108,12 +108,12 @@ const getNewFilter = (query: StructuredQuery, dimension: Dimension): Filter => {
   let filter = new Filter([], null, dimension.query() ?? query);
   const field = dimension.field();
   const isBooleanField = isBoolean(field);
-  const isTextField = isString(field) && field.has_field_values !== "list";
 
   filter = filter.setDimension(dimension.mbql(), {
     useDefaultOperator: !isBooleanField,
   });
 
+  const isTextField = isString(field) && field.has_field_values !== "list";
   if (isTextField) {
     filter = filter.setOperator("contains");
   }

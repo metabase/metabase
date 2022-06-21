@@ -1,4 +1,4 @@
-export const FIELD_TYPE_PRIORITY = [
+export const FIELD_PRIORITY = [
   "type/Boolean",
   "list",
   "type/Category",
