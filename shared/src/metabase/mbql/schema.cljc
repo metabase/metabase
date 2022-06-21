@@ -1430,7 +1430,10 @@
 
 (def ParameterList
   "Schema for a list of `:parameters` as passed in to a query."
-  [Parameter])
+  (s/constrained [Parameter]
+                 (fn [parameters]
+                   (apply distinct? (map :id parameters)))
+                 "Cannot specify parameter more than once; IDs must be distinct"))
 
 ;;; ---------------------------------------------------- Options -----------------------------------------------------
 
