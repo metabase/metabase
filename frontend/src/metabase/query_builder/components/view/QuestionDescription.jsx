@@ -44,12 +44,11 @@ const QuestionDescription = ({
         : breakouts.map(breakout => breakout.displayName()).join(t` and `);
     if (aggregationDescription || breakoutDescription) {
       return (
-        <StyledSpan onClick={onClick}>{t`${[
-          aggregationDescription,
-          breakoutDescription,
-        ]
-          .filter(x => !!x)
-          .join(t` by `)}`}</StyledSpan>
+        <StyledSpan onClick={onClick}>
+          {[aggregationDescription, breakoutDescription]
+            .filter(x => !!x)
+            .join(t` by `)}
+        </StyledSpan>
       );
     }
   }
