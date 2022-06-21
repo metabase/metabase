@@ -128,7 +128,9 @@ export const PLUGIN_CACHING = {
   dashboardCacheTTLFormField: null,
   databaseCacheTTLFormField: null,
   questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: () => null,
+  getQuestionsImplicitCacheTTL: (question?: any) => null,
+  QuestionCacheSection: PluginPlaceholder,
+  isEnabled: () => false,
 };
 
 export const PLUGIN_REDUCERS: { applicationPermissionsPlugin: any } = {
