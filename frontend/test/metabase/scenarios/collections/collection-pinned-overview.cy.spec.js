@@ -4,6 +4,23 @@ const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 const MODEL_NAME = "Orders";
 
+const QUESTION_DETAILS = {
+  name: "SQL with parameters",
+  display: "scalar",
+  native: {
+    "template-tags": {
+      filter: {
+        id: "ce8f111c-24c4-6823-b34f-f704404572f1",
+        name: "filter",
+        "display-name": "Filter",
+        type: "text",
+        required: true,
+      },
+    },
+    query: "select {{filter}}",
+  },
+};
+
 describe("scenarios > collection pinned items overview", () => {
   beforeEach(() => {
     restore();
@@ -111,6 +128,7 @@ describe("scenarios > collection pinned items overview", () => {
 
     getPinnedSection().within(() => {
       cy.findByText("18,760").should("not.exist");
+      cy.findByText("A question").should("be.visible");
       cy.findByText(QUESTION_NAME).click();
       cy.url().should("include", "/question/2");
     });
@@ -130,6 +148,18 @@ describe("scenarios > collection pinned items overview", () => {
     getPinnedSection().within(() => {
       cy.findByText(QUESTION_NAME).should("be.visible");
       cy.findByText("18,760").should("be.visible");
+    });
+  });
+
+  it("should automatically hide the visualization for pinned native questions with missing required parameters", () => {
+    cy.createNativeQuestion(QUESTION_DETAILS).then(({ body: { id } }) => {
+      cy.request("PUT", `/api/card/${id}`, { collection_position: 1 });
+    });
+
+    openRootCollection();
+    getPinnedSection().within(() => {
+      cy.findByText(QUESTION_DETAILS.name).should("be.visible");
+      cy.findByText("A question").should("be.visible");
     });
   });
 });
