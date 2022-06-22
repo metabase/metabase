@@ -12,7 +12,7 @@
                             :subprotocol "ocient"
                             :sslmode     "disable"
                             :pooling     "OFF"
-                            :force       true
+                            :force       "true"
                             :subname     "//sales-sql0:4050/metabase;loglevel=DEBUG;logfile=jdbc_trace.out"}
                            (sql-jdbc.conn/connection-details->spec :ocient {:host               "sales-sql0"
                                                                             :port               4050
