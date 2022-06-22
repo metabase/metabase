@@ -14,3 +14,37 @@
     (public-settings/enable-password-login! false)
     (is (= false
            (public-settings/enable-password-login)))))
+
+(deftest application-colors-adds-correct-keys
+  (testing "application-colors getter"
+    (tu/with-temporary-setting-values [application-colors {:brand   "#f00"
+                                                           :accent1 "#0f0"
+                                                           :accent7 "#00f"}]
+      (testing "sets `accent0` to value `brand`, `summarize` to value `accent1`, and `filter` to `accent7`"
+        (is (= {:brand     "#f00"
+                :accent0   "#f00"
+                :accent1   "#0f0"
+                :summarize "#0f0"
+                :accent7   "#00f"
+                :filter    "#00f"}
+               (public-settings/application-colors))))
+      (testing "does not set `brand`, `accent1`, or `accent7` if they are not already part"
+        (public-settings/application-colors! {:accent0   "#f00"
+                                              :summarize "#0f0"
+                                              :filter    "#00f"})
+        (is (= #{:accent0 :summarize :filter}
+               (set (keys (public-settings/application-colors))))))
+      (testing "respects given values if `accent0`, `summarize`, and `filter` keys are part of the input"
+        (public-settings/application-colors! {:brand     "#f00"
+                                              :accent0   "#fa0a0a"
+                                              :accent1   "#0f0"
+                                              :summarize "#0afa0a"
+                                              :accent7   "#00f"
+                                              :filter    "#0a0afa"})
+        (is (= {:brand     "#f00"
+                :accent0   "#fa0a0a"
+                :accent1   "#0f0"
+                :summarize "#0afa0a"
+                :accent7   "#00f"
+                :filter    "#0a0afa"}
+               (public-settings/application-colors)))))))

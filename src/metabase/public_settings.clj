@@ -298,7 +298,16 @@
         "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
-  :default    {})
+  :default    {}
+  :getter (fn []
+            (let [{:keys [accent0 brand summarize accent1 filter accent7] :as current-colors} (setting/get-value-of-type :json :application-colors)
+                  new-colors (cond-> current-colors
+                         (and brand (not accent0))     (assoc :accent0 brand)
+                         (and accent1 (not summarize)) (assoc :summarize accent1)
+                         (and accent7 (not filter))    (assoc :filter accent7))]
+              (when-not (= current-colors new-colors)
+                (setting/set-value-of-type! :json :application-colors new-colors))
+              new-colors)))
 
 (defsetting application-font
   (deferred-tru
