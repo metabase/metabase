@@ -63,7 +63,6 @@ function CollectionContent({
   createBookmark,
   deleteBookmark,
   isAdmin,
-  isRoot,
   metadata,
   isNavbarOpen,
   openNavbar,
@@ -156,9 +155,12 @@ function CollectionContent({
     setSelectedAction("copy");
   };
 
-  const handleClickBookmark = () => {
-    const toggleBookmark = isBookmarked ? deleteBookmark : createBookmark;
-    toggleBookmark(collectionId, "collection");
+  const handleCreateBookmark = () => {
+    createBookmark(collectionId, "collection");
+  };
+
+  const handleDeleteBookmark = () => {
+    deleteBookmark(collectionId, "collection");
   };
 
   const unpinnedQuery = {
@@ -191,16 +193,15 @@ function CollectionContent({
           <CollectionRoot>
             <CollectionMain>
               <Header
-                onClickBookmark={handleClickBookmark}
-                isBookmarked={isBookmarked}
-                isRoot={isRoot}
-                isAdmin={isAdmin}
-                collectionId={collectionId}
                 collection={collection}
+                isAdmin={isAdmin}
+                isBookmarked={isBookmarked}
                 isPersonalCollectionChild={isPersonalCollectionChild(
                   collection,
                   collectionList,
                 )}
+                onCreateBookmark={handleCreateBookmark}
+                onDeleteBookmark={handleDeleteBookmark}
               />
               <PinnedItemOverview
                 bookmarks={bookmarks}
