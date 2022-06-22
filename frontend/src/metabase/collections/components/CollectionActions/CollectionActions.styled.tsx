@@ -3,13 +3,13 @@ import { keyframes } from "@emotion/react";
 import { color } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 
-const expand = keyframes`
+const expandKeyframes = keyframes`
   50% {
     transform: scale(1.3);
   }
 `;
 
-const shrink = keyframes`
+const shrinkKeyframes = keyframes`
   50% {
     transform: scale(0.8);
   }
@@ -25,7 +25,8 @@ export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
   height: 1.25rem;
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
-    props.isChanged ? (props.isBookmarked ? expand : shrink) : ""};
+    props.isBookmarked ? expandKeyframes : shrinkKeyframes};
+  animation-play-state: ${props => (props.isChanged ? "running" : "initial")};
   animation-duration: 0.3s;
   animation-timing-function: linear;
 `;
