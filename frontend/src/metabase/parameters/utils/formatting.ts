@@ -40,7 +40,7 @@ export function formatParameterValue(value: unknown, parameter: UiParameter) {
 
   if (isFieldFilterParameter(parameter)) {
     // skip formatting field filter parameters mapped to native query variables
-    if (parameter.hasOnlyFieldTargets === false) {
+    if (parameter.hasVariableTemplateTagTarget) {
       return value;
     }
 

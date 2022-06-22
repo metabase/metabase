@@ -1,5 +1,6 @@
 import React from "react";
 import xhrMock from "xhr-mock";
+import userEvent from "@testing-library/user-event";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import {
   SAMPLE_DATABASE,
@@ -107,6 +108,7 @@ function setup({
     onCloseFilter: jest.fn(),
     onEditSummary: jest.fn(),
     onCloseSummary: jest.fn(),
+    onSave: jest.fn(),
   };
 
   renderWithProviders(
@@ -356,9 +358,11 @@ describe("ViewHeader", () => {
         });
 
         it("opens details sidebar on question name click", () => {
-          const { onOpenModal } = setup({ question });
-          fireEvent.click(screen.getByText(question.displayName()));
-          expect(onOpenModal).toHaveBeenCalled();
+          const { onSave } = setup({ question });
+          const title = screen.getByTestId("saved-question-header-title");
+          userEvent.type(title, "New Title");
+          fireEvent.blur(title);
+          expect(onSave).toHaveBeenCalled();
         });
 
         it("shows bookmark and action buttons", () => {

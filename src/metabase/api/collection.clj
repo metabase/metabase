@@ -203,7 +203,9 @@
 (defmethod post-process-collection-children :pulse
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :authority_level :moderated_status :icon :personal_owner_id)))
+    (dissoc row
+            :description :display :authority_level :moderated_status :icon :personal_owner_id
+            :collection_preview)))
 
 (defmethod collection-children-query :snippet
   [_ collection {:keys [archived?]}]
@@ -225,17 +227,19 @@
 (defmethod post-process-collection-children :timeline
   [_ rows]
   (for [row rows]
-    (dissoc row :description :display :collection_position :authority_level :moderated_status)))
+    (dissoc row
+            :description :display :collection_position :authority_level :moderated_status
+            :collection_preview)))
 
 (defmethod post-process-collection-children :snippet
   [_ rows]
   (for [row rows]
     (dissoc row
             :description :collection_position :display :authority_level
-            :moderated_status :icon :personal_owner_id)))
+            :moderated_status :icon :personal_owner_id :collection_preview)))
 
 (defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
-  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
+  (-> {:select    [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                    [(hx/literal (if dataset? "dataset" "card")) :model]
                    [:u.id :last_edit_user] [:u.email :last_edit_email]
                    [:u.first_name :last_edit_first_name] [:u.last_name :last_edit_last_name]
@@ -282,9 +286,21 @@
   [_ collection options]
   (card-query false collection options))
 
+(defn- bit->boolean
+  "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
+  [v]
+  (if (number? v)
+    (not (zero? v))
+    v))
+
+(defn- post-process-card-row [row]
+  (-> row
+      (dissoc :authority_level :icon :personal_owner_id)
+      (update :collection_preview bit->boolean)))
+
 (defmethod post-process-collection-children :card
   [_ rows]
-  (map #(dissoc % :authority_level :icon :personal_owner_id) rows))
+  (map post-process-card-row rows))
 
 (defmethod collection-children-query :dashboard
   [_ collection {:keys [archived? pinned-state]}]
@@ -311,7 +327,8 @@
 
 (defmethod post-process-collection-children :dashboard
   [_ rows]
-  (map #(dissoc % :display :authority_level :moderated_status :icon :personal_owner_id) rows))
+  (map #(dissoc % :display :authority_level :moderated_status :icon :personal_owner_id :collection_preview)
+       rows))
 
 (defmethod collection-children-query :collection
   [_ collection {:keys [archived? collection-namespace pinned-state]}]
@@ -342,7 +359,8 @@
       ;; when fetching root collection, we might have personal collection
       (:personal_owner_id row) (assoc :name (collection/user->personal-collection-name (:personal_owner_id row) :user))
       true                     (assoc :can_write (mi/can-write? Collection (:id row)))
-      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id))))
+      true                     (dissoc :collection_position :display :moderated_status :icon :personal_owner_id
+                                       :collection_preview))))
 
 (s/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
@@ -400,7 +418,8 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :entity_id :display :model :collection_position :authority_level [:personal_owner_id :integer]
+  [:id :name :description :entity_id :display [:collection_preview :boolean]
+   :model :collection_position :authority_level [:personal_owner_id :integer]
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp]])
 

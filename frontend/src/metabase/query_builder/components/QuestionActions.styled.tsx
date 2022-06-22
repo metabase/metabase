@@ -11,7 +11,11 @@ import {
 export const QuestionActionsContainer = styled.div`
   border-left: 1px solid ${color("border")};
   margin-left: 1rem;
-  padding-left: 1rem;
+  padding-left: 0.5rem;
+
+  ${Button.Root} {
+    margin-left: 0.5rem;
+  }
 `;
 
 export const PopoverContainer = styled.div`
@@ -20,6 +24,8 @@ export const PopoverContainer = styled.div`
 
   ${Button} {
     width: 100%;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
   }
 
   ${Button.Content} {

@@ -337,8 +337,9 @@
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/the-id collection-or-id-or-nil))]
       (mt/with-temp* [Card       [{card-id :id}
-                                  {:name          "Birthday Card"
-                                   :collection_id collection-id-or-nil}]
+                                  {:name               "Birthday Card"
+                                   :collection_preview false
+                                   :collection_id      collection-id-or-nil}]
                       Dashboard  [{dashboard-id :id}
                                   {:name          "Dine & Dashboard"
                                    :collection_id collection-id-or-nil}]
@@ -420,6 +421,7 @@
                 [{:id                  card-id
                   :name                (:name card)
                   :collection_position nil
+                  :collection_preview  true
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
@@ -465,7 +467,8 @@
         (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
         (with-some-children-of-collection collection
           (is (= (map default-item [{:name "Acme Products", :model "pulse", :entity_id true}
-                                    {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id true}
+                                    {:name "Birthday Card", :description nil, :model "card",
+                                     :collection_preview false, :display "table", :entity_id true}
                                     {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true}
                                     {:name "Electro-Magnetic Pulse", :model "pulse", :entity_id true}])
                  (mt/boolean-ids-and-timestamps
@@ -481,7 +484,8 @@
             (is (= [(default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard"))))))
-            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table", :entity_id true})
+            (is (= [(default-item {:name "Birthday Card", :description nil, :model "card",
+                                   :collection_preview false, :display "table", :entity_id true})
                     (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard", :entity_id true})]
                    (mt/boolean-ids-and-timestamps
                     (:data (mt/user-http-request :rasta :get 200 (str "collection/" (u/the-id collection) "/items?models=dashboard&models=card"))))))))))
@@ -930,7 +934,8 @@
 (deftest fetch-root-items-collection-test
   (testing "GET /api/collection/root/items"
     (testing "Make sure you can see everything for Users that can see everything"
-      (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
+      (is (= [(default-item {:name "Birthday Card", :description nil, :model "card",
+                             :collection_preview false, :display "table"})
               (collection-item "Crowberto Corv's Personal Collection")
               (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
               (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})]
@@ -973,7 +978,8 @@
             (mt/with-temp* [PermissionsGroup           [group]
                             PermissionsGroupMembership [_ {:user_id (mt/user->id :rasta), :group_id (u/the-id group)}]]
               (perms/grant-permissions! group (perms/collection-read-path {:metabase.models.collection.root/is-root? true}))
-              (is (= [(default-item {:name "Birthday Card", :description nil, :model "card", :display "table"})
+              (is (= [(default-item {:name "Birthday Card", :description nil, :model "card",
+                                     :collection_preview false, :display "table"})
                       (default-item {:name "Dine & Dashboard", :description nil, :model "dashboard"})
                       (default-item {:name "Electro-Magnetic Pulse", :model "pulse"})
                       (collection-item "Rasta Toucan's Personal Collection")]
@@ -1037,6 +1043,7 @@
           (is (= [{:name                "Business Card"
                    :description         nil
                    :collection_position nil
+                   :collection_preview  true
                    :display             "table"
                    :moderated_status    nil
                    :entity_id           (:entity_id card)

@@ -11893,6 +11893,22 @@ databaseChangeLog:
                     AND p.object = '/collection/namespace/snippets/root/'
               WHERE p.object IS NULL;
 
+  - changeSet:
+      id: v44.00-038
+      author: metamben
+      comment: Added 0.44.0 - Add collection_preview to report_card
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: collection_preview
+                  type: boolean
+                  remarks: Indicating whether the card should be visualized in the collection preview
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

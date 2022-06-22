@@ -431,12 +431,10 @@ describe("collection permissions", () => {
 });
 
 function openEllipsisMenuFor(item, index = 0) {
-  return cy
-    .findAllByText(item)
+  cy.findAllByText(item)
     .eq(index)
     .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
+    .within(() => cy.icon("ellipsis").click());
 }
 
 function clickButton(name) {
@@ -446,11 +444,8 @@ function clickButton(name) {
 }
 
 function pinItem(item) {
-  cy.findAllByText(item)
-    .closest("tr")
-    .within(() => {
-      cy.icon("pin").click();
-    });
+  openEllipsisMenuFor(item);
+  popover().within(() => cy.icon("pin").click());
 }
 
 function exposeChildrenFor(collectionName) {

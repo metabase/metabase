@@ -3,18 +3,18 @@ import SkeletonCaption from "../SkeletonCaption";
 import { SkeletonRoot, SkeletonImage } from "./WaterfallSkeleton.styled";
 
 export interface WaterfallSkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  displayName?: string | null;
+  name?: string | null;
   description?: string | null;
 }
 
 const WaterfallSkeleton = ({
-  displayName,
+  name,
   description,
   ...props
 }: WaterfallSkeletonProps): JSX.Element => {
   return (
     <SkeletonRoot {...props}>
-      <SkeletonCaption name={displayName} description={description} />
+      <SkeletonCaption name={name} description={description} />
       <SkeletonImage
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 372 107"

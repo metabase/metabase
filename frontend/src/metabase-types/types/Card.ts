@@ -5,26 +5,32 @@ import { VisualizationSettings } from "metabase-types/api/card";
 
 export type CardId = number;
 
-export type UnsavedCard = {
-  dataset_query: DatasetQuery;
+export type UnsavedCard<Query = DatasetQuery> = {
+  dataset_query: Query;
   display: string;
   visualization_settings: VisualizationSettings;
   parameters?: Array<Parameter>;
+
+  // If coming from dashboard
+  dashboardId?: number;
+  dashcardId?: number;
 
   // Not part of the card API contract, a field used by query builder for showing lineage
   original_card_id?: CardId;
 };
 
-export type SavedCard = UnsavedCard & {
+export type SavedCard<Query = DatasetQuery> = UnsavedCard<Query> & {
   id: CardId;
   name?: string;
-  description?: string;
+  description?: string | null;
   dataset?: boolean;
   can_write: boolean;
   public_uuid: string;
+  archived?: boolean;
+  cache_ttl?: number | null;
 };
 
-export type Card = SavedCard | UnsavedCard;
+export type Card<Query = DatasetQuery> = SavedCard<Query> | UnsavedCard<Query>;
 
 export type StructuredDatasetQuery = {
   type: "query";
