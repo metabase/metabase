@@ -7,7 +7,7 @@ import QuestionDataSource from "./QuestionDataSource";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
-import { StyledSpan } from "./QuestionDescription.styled";
+import { AggregationAndBreakoutDescription } from "./QuestionDescription.styled";
 
 const QuestionDescription = ({
   question,
@@ -44,11 +44,11 @@ const QuestionDescription = ({
         : breakouts.map(breakout => breakout.displayName()).join(t` and `);
     if (aggregationDescription || breakoutDescription) {
       return (
-        <StyledSpan onClick={onClick}>
+        <AggregationAndBreakoutDescription onClick={onClick}>
           {[aggregationDescription, breakoutDescription]
-            .filter(x => !!x)
+            .filter(Boolean)
             .join(t` by `)}
-        </StyledSpan>
+        </AggregationAndBreakoutDescription>
       );
     }
   }

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
 
-export const StyledSpan = styled.span`
+export const AggregationAndBreakoutDescription = styled.span`
   cursor: pointer;
 `;
