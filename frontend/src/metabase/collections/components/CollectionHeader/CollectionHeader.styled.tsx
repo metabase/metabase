@@ -1,22 +1,22 @@
 import styled from "@emotion/styled";
-import { breakpointMinSmall, space } from "metabase/styled-components/theme";
+import { breakpointMinSmall } from "metabase/styled-components/theme";
 
 export const HeaderRoot = styled.div`
   display: flex;
   justify-content: space-between;
   flex-direction: column;
-  margin-bottom: ${space(3)};
-  padding-top: ${space(0)};
+  margin-bottom: 2rem;
+  padding-top: 0.25rem;
 
   ${breakpointMinSmall} {
     align-items: center;
     flex-direction: row;
-    padding-top: ${space(1)};
+    padding-top: 0.5rem;
   }
 `;
 
 export const HeaderActions = styled.div`
   display: flex;
-  margin-top: ${space(1)};
+  margin-top: 0.5rem;
   align-self: start;
 `;
