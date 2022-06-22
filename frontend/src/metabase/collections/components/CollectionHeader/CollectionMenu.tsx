@@ -24,8 +24,9 @@ const CollectionMenu = ({
   const url = Urls.collection(collection);
   const isRoot = isRootCollection(collection);
   const isPersonal = isPersonalCollection(collection);
+  const canWrite = collection.can_write;
 
-  if (!isRoot) {
+  if (!isRoot && !isPersonal && canWrite) {
     items.push({
       title: t`Move`,
       icon: "move",

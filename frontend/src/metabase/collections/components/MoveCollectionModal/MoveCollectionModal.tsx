@@ -16,8 +16,9 @@ const MoveCollectionModal = ({
   const handleMove = useCallback(
     async (destination: Collection) => {
       await onMove(collection, destination);
+      onClose();
     },
-    [collection, onMove],
+    [collection, onMove, onClose],
   );
 
   return (
