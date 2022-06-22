@@ -184,6 +184,13 @@
     (with-advanced-permissions user)
     user))
 
+(defn- maybe-add-sso-source
+  "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
+  [{:keys [id] :as user}]
+  (if (premium-features/enable-sso?)
+    (assoc user :sso_source (db/select-one-field :sso_source User :id id))
+    user))
+
 (defn- add-has-question-and-dashboard
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard."
   [user]
@@ -204,15 +211,6 @@
                                        {:order-by [[:timestamp :asc]]}))
             (t/offset-date-time))]
     (assoc user :first_login ts)))
-
-(defn- maybe-add-sso-source
-  "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
-  [{:keys [id] :as user}]
-  (if (premium-features/enable-advanced-permissions?)
-    (let [{:keys [sso_source]}
-          (db/select-one [User :sso_source] :id id)]
-      (assoc user :sso_source sso_source))
-    user))
 
 (api/defendpoint GET "/current"
   "Fetch the current `User`."
