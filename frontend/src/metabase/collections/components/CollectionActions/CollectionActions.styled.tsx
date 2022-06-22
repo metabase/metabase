@@ -21,8 +21,6 @@ export interface BookmarkIconProps {
 }
 
 export const BookmarkIcon = styled(Icon)<BookmarkIconProps>`
-  width: 1.25rem;
-  height: 1.25rem;
   color: ${props => (props.isBookmarked ? color("brand") : "")};
   animation-name: ${props =>
     props.isBookmarked ? expandKeyframes : shrinkKeyframes};
