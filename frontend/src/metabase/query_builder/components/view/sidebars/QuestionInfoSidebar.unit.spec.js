@@ -40,25 +40,15 @@ function mockCachingSettings({ enabled = true } = {}) {
   const original = MetabaseSettings.get.bind(MetabaseSettings);
   const spy = jest.spyOn(MetabaseSettings, "get");
   spy.mockImplementation(key => {
-    if (key === "enable-query-caching") {
-      return enabled;
-    }
-    if (key === "query-caching-min-ttl") {
-      return 10000;
-    }
-    if (key === "application-name") {
-      return "Metabase Test";
-    }
-    if (key === "version") {
-      return { tag: "" };
-    }
-    if (key === "is-hosted?") {
-      return false;
-    }
-    if (key === "enable-enhancements?") {
-      return false;
-    }
-    return original(key);
+    const settings = {
+      "enable-query-caching": enabled,
+      "query-caching-min-ttl": 10000,
+      "application-name": "Metabase Test",
+      version: { tag: "" },
+      "is-hosted?": false,
+      "enable-enhancements?": false,
+    };
+    return settings[key] ?? original(key);
   });
 }
 
