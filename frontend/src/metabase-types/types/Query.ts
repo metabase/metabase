@@ -64,6 +64,10 @@ export type TemplateTag = {
   "widget-type"?: ParameterType;
   required?: boolean;
   default?: string;
+
+  // Snippet specific
+  "snippet-id"?: number;
+  "snippet-name"?: string;
 };
 
 export type TemplateTags = { [key: TemplateTagName]: TemplateTag };

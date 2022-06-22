@@ -17,6 +17,7 @@
             [metabase.models.pulse-card :as pulse-card :refer [PulseCard]]
             [metabase.models.revision :as revision]
             [metabase.models.revision.diff :refer [build-sentence]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.moderation :as moderation]
             [metabase.public-settings :as public-settings]
             [metabase.query-processor.async :as qp.async]
@@ -64,11 +65,6 @@
 (models/defmodel Dashboard :report_dashboard)
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
 
-(defn- assert-valid-parameters [{:keys [parameters]}]
-  (when (s/check (s/maybe [{:id su/NonBlankString, s/Keyword s/Any}]) parameters)
-    (throw (ex-info (tru ":parameters must be a sequence of maps with String :id keys")
-                    {:parameters parameters}))))
-
 (defn- pre-delete [dashboard]
   (db/delete! 'Revision :model "Dashboard" :model_id (u/the-id dashboard)))
 
@@ -76,12 +72,12 @@
   (let [defaults  {:parameters []}
         dashboard (merge defaults dashboard)]
     (u/prog1 dashboard
-      (assert-valid-parameters dashboard)
+      (params/assert-valid-parameters dashboard)
       (collection/check-collection-namespace Dashboard (:collection_id dashboard)))))
 
 (defn- pre-update [dashboard]
   (u/prog1 dashboard
-    (assert-valid-parameters dashboard)
+    (params/assert-valid-parameters dashboard)
     (collection/check-collection-namespace Dashboard (:collection_id dashboard))))
 
 (defn- update-dashboard-subscription-pulses!
@@ -145,7 +141,10 @@
 
   ;; You can read/write a Dashboard if you can read/write its parent Collection
   mi/IObjectPermissions
-  perms/IObjectPermissionsForParentCollection)
+  perms/IObjectPermissionsForParentCollection
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name (serdes.hash/hydrated-hash :collection)])})
 
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------

@@ -1,3 +1,7 @@
+---
+title: Admin tools
+---
+
 # Admin tools
 
 {% include plans-blockquote.html features="Admin tools" %}

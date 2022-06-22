@@ -1,3 +1,7 @@
+---
+title: Adding and managing databases
+---
+
 # Adding and managing databases
 
 - [Adding a database connection](#adding-a-database-connection)

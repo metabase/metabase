@@ -291,7 +291,7 @@ describe("parameters/utils/parameter-values", () => {
 
     it("should not normalize date parameters", () => {
       parameter1.type = "date/foo";
-      parameter1.hasOnlyFieldTargets = true;
+      parameter1.hasVariableTemplateTagTarget = false;
 
       expect(
         getParameterValueFromQueryParams(
@@ -306,7 +306,7 @@ describe("parameters/utils/parameter-values", () => {
 
     it("should not normalize parameters mapped to non-field targets", () => {
       parameter1.type = "category";
-      parameter1.hasOnlyFieldTargets = false;
+      parameter1.hasVariableTemplateTagTarget = true;
 
       expect(
         getParameterValueFromQueryParams(
@@ -321,7 +321,7 @@ describe("parameters/utils/parameter-values", () => {
 
     it("should not normalize empty string parameter values", () => {
       parameter1.type = "category";
-      parameter1.hasOnlyFieldTargets = true;
+      parameter1.hasVariableTemplateTagTarget = false;
 
       expect(
         getParameterValueFromQueryParams(
@@ -336,7 +336,7 @@ describe("parameters/utils/parameter-values", () => {
 
     it("should normalize non-date parameters mapped only to field targets", () => {
       parameter1.type = "category";
-      parameter1.hasOnlyFieldTargets = true;
+      parameter1.hasVariableTemplateTagTarget = false;
 
       expect(
         getParameterValueFromQueryParams(

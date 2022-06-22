@@ -24,7 +24,7 @@ class UserSuccessModal extends React.Component {
     const { onClose, user, temporaryPassword } = this.props;
     return (
       <ModalContent
-        title={t`${user.getName()} has been added`}
+        title={t`${user.common_name} has been added`}
         footer={<Button primary onClick={() => onClose()}>{t`Done`}</Button>}
         onClose={onClose}
       >
@@ -41,7 +41,6 @@ class UserSuccessModal extends React.Component {
 export default _.compose(
   User.load({
     id: (state, props) => props.params.userId,
-    wrapped: true,
   }),
   connect(
     (state, props) => ({

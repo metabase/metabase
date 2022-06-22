@@ -73,8 +73,9 @@
                                                                     :email-smtp-security :tls
                                                                     :email-smtp-username "munchkin"
                                                                     :email-smtp-password "gobble gobble"
-                                                                    :email-from-address  "eating@hungry.com"}))))
-
+                                                                    :email-from-address  "eating@hungry.com"
+                                                                    :email-from-name     "Eating"
+                                                                    :email-reply-to      ["reply-to@hungry.com"]}))))
               (delete-email-setting [user status]
                 (testing (format "delete email setting with %s user" (mt/user-descriptor user))
                   (mt/user-http-request user :delete status "email")))

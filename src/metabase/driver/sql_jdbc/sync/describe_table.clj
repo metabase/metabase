@@ -297,8 +297,10 @@
   {java.lang.String                :type/Text
    ;; JSON itself has the single number type, but Java serde of JSON is stricter
    java.lang.Long                  :type/Integer
+   clojure.lang.BigInt             :type/BigInteger
    java.lang.Integer               :type/Integer
    java.lang.Double                :type/Float
+   java.math.BigDecimal            :type/Decimal
    java.lang.Number                :type/Number
    java.lang.Boolean               :type/Boolean
    java.time.LocalDateTime         :type/DateTime
@@ -312,8 +314,10 @@
   although as of writing this is just geared towards Postgres types"
   {:type/Text       "text"
    :type/Integer    "integer"
+   :type/BigInteger "bigint"
    :type/Float      "double precision"
    :type/Number     "double precision"
+   :type/Decimal    "decimal"
    :type/Boolean    "boolean"
    :type/DateTime   "timestamp"
    :type/Array      "text"
@@ -347,11 +351,12 @@
       (if (nil? (seq json-fields))
         #{}
         (let [json-field-names (mapv #(apply hx/identifier :field (into table-identifier-info [(:name %)])) json-fields)
-              table-identifier (apply hx/identifier :field table-identifier-info)
+              table-identifier (apply hx/identifier :table table-identifier-info)
+              quote-type       (case driver :postgres :ansi :mysql :mysql)
               sql-args         (hsql/format {:select json-field-names
                                              :from   [table-identifier]
-                                             :limit  nested-field-sample-limit} {:quoting :ansi})
-              query            (jdbc/reducible-query spec sql-args)
+                                             :limit  nested-field-sample-limit} :quoting quote-type)
+              query            (jdbc/reducible-query spec sql-args {:identifiers identity})
               field-types      (transduce describe-json-xform describe-json-rf query)
               fields           (field-types->fields field-types)]
           (if (> (count fields) max-nested-field-columns)

@@ -34,8 +34,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   color: ${getColor};
 
   &:focus {
-    border-color: ${color("brand")};
-    outline: 2px solid ${color("focus")};
+    border-color: ${() => color("brand")};
+    outline: 2px solid ${() => color("focus")};
   }
 
   &:not(:focus-visible) {

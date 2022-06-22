@@ -27,7 +27,7 @@ export default createEntity({
       }
       const schemaNames = await listDatabaseSchemas({ dbId });
       return schemaNames.map(schemaName => ({
-        // NOTE: needs unqiue IDs for entities to work correctly
+        // NOTE: needs unique IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
         database: { id: dbId },

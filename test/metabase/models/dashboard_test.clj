@@ -12,6 +12,7 @@
             [metabase.models.permissions :as perms]
             [metabase.models.pulse :refer [Pulse]]
             [metabase.models.pulse-card :refer [PulseCard]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.models.table :refer [Table]]
             [metabase.models.user :as user]
             [metabase.test :as mt]
@@ -282,13 +283,13 @@
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #":parameters must be a sequence of maps with String :id keys"
+           #":parameters must be a sequence of maps with String :id key"
            (mt/with-temp Dashboard [_ {:parameters {:a :b}}]))))
     (testing "updating"
       (mt/with-temp Dashboard [{:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #":parameters must be a sequence of maps with String :id keys"
+             #":parameters must be a sequence of maps with String :id key"
              (db/update! Dashboard id :parameters [{:id 100}])))))))
 
 (deftest normalize-parameters-test
@@ -307,3 +308,11 @@
                    :type   :category
                    :target expected}]
                  (db/select-one-field :parameters Dashboard :id dashboard-id))))))))
+
+(deftest identity-hash-test
+  (testing "Dashboard hashes are composed of the name and parent collection's hash"
+    (mt/with-temp* [Collection [c1   {:name "top level" :location "/"}]
+                    Dashboard  [dash {:name "my dashboard" :collection_id (:id c1)}]]
+      (is (= "38c0adf9"
+             (serdes.hash/raw-hash ["my dashboard" (serdes.hash/identity-hash c1)])
+             (serdes.hash/identity-hash dash))))))

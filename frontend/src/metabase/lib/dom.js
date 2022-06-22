@@ -246,6 +246,11 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
+function getWithSiteUrl(url) {
+  const siteUrl = MetabaseSettings.get("site-url");
+  return url.startsWith("/") ? siteUrl + url : url;
+}
+
 // Used for tackling Safari rendering issues
 // http://stackoverflow.com/a/3485654
 export function forceRedraw(domNode) {
@@ -290,9 +295,12 @@ export function open(
     openInSameWindow = url => clickLink(url, false),
     // custom function for opening in new window
     openInBlankWindow = url => clickLink(url, true),
+    ignoreSiteUrl = false,
     ...options
   } = {},
 ) {
+  url = ignoreSiteUrl ? url : getWithSiteUrl(url);
+
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else {
@@ -301,8 +309,7 @@ export function open(
 }
 
 export function openInBlankWindow(url) {
-  const siteUrl = MetabaseSettings.get("site-url");
-  clickLink(url.startsWith("/") ? siteUrl + url : url, true);
+  clickLink(getWithSiteUrl(url), true);
 }
 
 function clickLink(url, blank = false) {

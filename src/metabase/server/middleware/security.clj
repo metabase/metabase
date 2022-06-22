@@ -52,8 +52,6 @@
                                    "'unsafe-eval'" ; TODO - we keep working towards removing this entirely
                                    "https://maps.google.com"
                                    "https://accounts.google.com"
-                                   "https://*.googleapis.com"
-                                   "*.gstatic.com"
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
@@ -105,9 +103,11 @@
           #(format "%s frame-ancestors %s;" % (if allow-iframes? "*" (or (embedding-app-origin) "'none'")))))
 
 (defsetting ssl-certificate-public-key
-  (str (deferred-tru "Base-64 encoded public key for this site's SSL certificate.")
-       (deferred-tru "Specify this to enable HTTP Public Key Pinning.")
-       (deferred-tru "See {0} for more information." "http://mzl.la/1EnfqBf")))
+  (deferred-tru
+    (str "Base-64 encoded public key for this site''s SSL certificate. "
+         "Specify this to enable HTTP Public Key Pinning. "
+         "See {0} for more information.")
+    "http://mzl.la/1EnfqBf"))
 ;; TODO - it would be nice if we could make this a proper link in the UI; consider enabling markdown parsing
 
 (defn- first-embedding-app-origin

@@ -20,6 +20,7 @@
   {:archived               false
    :collection_id          nil
    :collection_position    nil
+   :collection_preview     true
    :creator_id             (:creator_id card)
    :database_id            (mt/id)
    :dataset_query          (:dataset_query card)
@@ -32,6 +33,8 @@
    :id                     (u/the-id card)
    :made_public_by_id      nil
    :name                   (:name card)
+   :parameters             []
+   :parameter_mappings     []
    :public_uuid            nil
    :cache_ttl              nil
    :query_type             :query

@@ -1,3 +1,7 @@
+---
+title: Getting alerts about questions
+---
+
 # Getting alerts about questions
 
 Whether you're keeping track of revenue, users, or negative reviews, there are often times when you want to be alerted about something. Metabase has a few different kinds of alerts you can set up, and you can choose to be notified via email or Slack.
@@ -72,4 +76,3 @@ There are a few ways alerts can be stopped:
 - Admins can edit any alert and delete it entirely. This can't be undone, so be careful!
 - If a saved question that has an alert on it gets edited in such a way that the alert doesn't make sense anymore, the alert will get deleted. For example, if a saved question with a goal line alert on it gets edited, and the goal line is removed entirely, that alert will get deleted.
 - If a question gets archived, any alerts on it will be deleted.
-

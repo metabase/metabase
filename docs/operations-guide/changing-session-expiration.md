@@ -1,3 +1,7 @@
+---
+title: Changing session expiration
+---
+
 # Changing session expiration
 
 By default, Metabase sessions are valid for two weeks after a user last authenticated (e.g. by entering their email

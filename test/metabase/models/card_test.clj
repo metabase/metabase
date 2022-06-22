@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [metabase.models :refer [Card Collection Dashboard DashboardCard]]
             [metabase.models.card :as card]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.query-processor :as qp]
             [metabase.test :as mt]
             [metabase.test.util :as tu]
@@ -291,3 +292,79 @@
                clojure.lang.ExceptionInfo
                #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"sample-dataset\""
                (db/update! Card card-id bad-card-data))))))))
+
+;;; ------------------------------------------ Parameters tests ------------------------------------------
+
+(deftest validate-parameters-test
+  (testing "Should validate Card :parameters when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameters must be a sequence of maps with String :id key"
+           (mt/with-temp Card [_ {:parameters {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameters [{:id "valid-id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameters []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameters must be a sequence of maps with String :id key"
+             (db/update! Card id :parameters [{:id 100}])))
+        (is (some? (db/update! Card id :parameters [{:id "new-valid-id"}])))))))
+
+(deftest normalize-parameters-test
+  (testing ":parameters should get normalized when coming out of the DB"
+    (doseq [[target expected] {[:dimension [:field-id 1000]] [:dimension [:field 1000 nil]]
+                               [:field-id 1000]              [:field 1000 nil]}]
+      (testing (format "target = %s" (pr-str target))
+        (mt/with-temp Card [{card-id :id} {:parameters [{:name   "Category Name"
+                                                         :slug   "category_name"
+                                                         :id     "_CATEGORY_NAME_"
+                                                         :type   "category"
+                                                         :target target}]}]
+          (is (= [{:name   "Category Name"
+                   :slug   "category_name"
+                   :id     "_CATEGORY_NAME_"
+                   :type   :category
+                   :target expected}]
+                 (db/select-one-field :parameters Card :id card-id))))))))
+
+(deftest validate-parameter-mappings-test
+  (testing "Should validate Card :parameter_mappings when"
+    (testing "creating"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #":parameter_mappings must be a sequence of maps with String :parameter_id key"
+           (mt/with-temp Card [_ {:parameter_mappings {:a :b}}])))
+
+     (mt/with-temp Card [card {:parameter_mappings [{:parameter_id "valid-id"}]}]
+       (is (some? card))))
+
+    (testing "updating"
+      (mt/with-temp Card [{:keys [id]} {:parameter_mappings []}]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #":parameter_mappings must be a sequence of maps with String :parameter_id key"
+             (db/update! Card id :parameter_mappings [{:parameter_id 100}])))
+
+        (is (some? (db/update! Card id :parameter_mappings [{:parameter_id "new-valid-id"}])))))))
+
+(deftest normalize-parameter-mappings-test
+  (testing ":parameter_mappings should get normalized when coming out of the DB"
+    (mt/with-temp Card [{card-id :id} {:parameter_mappings [{:parameter_id "22486e00"
+                                                             :card_id      1
+                                                             :target       [:dimension [:field-id 1]]}]}]
+      (is (= [{:parameter_id "22486e00",
+               :card_id      1,
+               :target       [:dimension [:field 1 nil]]}]
+             (db/select-one-field :parameter_mappings Card :id card-id))))))
+
+(deftest identity-hash-test
+  (testing "Card hashes are composed of the name and the collection's hash"
+    (mt/with-temp* [Collection  [coll  {:name "field-db" :location "/"}]
+                    Card        [card  {:name "the card" :collection_id (:id coll)}]]
+      (is (= "ead6cc05"
+             (serdes.hash/raw-hash ["the card" (serdes.hash/identity-hash coll)])
+             (serdes.hash/identity-hash card))))))

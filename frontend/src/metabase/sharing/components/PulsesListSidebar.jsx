@@ -136,7 +136,7 @@ function buildRecipientText(pulse) {
   }
 
   const [firstRecipient, ...otherRecipients] = recipients;
-  const firstRecipientText = firstRecipient.common_name || firstRecipient.email;
+  const firstRecipientText = firstRecipient.common_name;
   return _.isEmpty(otherRecipients)
     ? firstRecipientText
     : `${firstRecipientText} ${ngettext(

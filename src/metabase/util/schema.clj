@@ -115,9 +115,10 @@
 
       ;; do the same for sequences of a schema
       (when (vector? schema)
-        (str (deferred-tru "value must be an array.") (when (= (count schema) 1)
-                                                        (when-let [message (api-error-message (first schema))]
-                                                          (str " " (deferred-tru "Each {0}" message))))))))
+        (str (deferred-tru "value must be an array.")
+             (when (= (count schema) 1)
+               (when-let [message (api-error-message (first schema))]
+                 (str " " (deferred-tru "Each {0}" message))))))))
 
 
 (defn non-empty
@@ -326,6 +327,18 @@
                                                   (catch Throwable _
                                                     false)))
     (deferred-tru "value must be a valid JSON string.")))
+
+(def Parameter
+  "Schema for a valid Parameter."
+  (with-api-error-message {:id       NonBlankString
+                           s/Keyword s/Any}
+    (deferred-tru "parameter must be a map with String :id key")))
+
+(def ParameterMapping
+  "Schema for a valid Parameter Mapping"
+  (with-api-error-message {:parameter_id       NonBlankString
+                           s/Keyword s/Any}
+    (deferred-tru "parameter mapping must be a String :parameter_id key")))
 
 (def EmbeddingParams
   "Schema for a valid map of embedding params."

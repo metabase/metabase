@@ -118,9 +118,9 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's no protocol when it comes in
 (defsetting site-url
-  (str (deferred-tru "This URL is used for things like creating links in emails, auth redirects,")
-       " "
-       (deferred-tru "and in some embedding scenarios, so changing it could break functionality or get you locked out of this instance."))
+  (deferred-tru
+   (str "This URL is used for things like creating links in emails, auth redirects, and in some embedding scenarios, "
+        "so changing it could break functionality or get you locked out of this instance."))
   :visibility :public
   :getter (fn []
             (try
@@ -136,9 +136,9 @@
               (setting/set-value-of-type! :string :site-url new-value))))
 
 (defsetting site-locale
-  (str (deferred-tru "The default language for all users across the Metabase UI, system emails, pulses, and alerts.")
-       " "
-       (deferred-tru "Users can individually override this default language from their own account settings."))
+  (deferred-tru
+    (str "The default language for all users across the Metabase UI, system emails, pulses, and alerts. "
+         "Users can individually override this default language from their own account settings."))
   :default    "en"
   :visibility :public
   :setter     (fn [new-value]
@@ -264,9 +264,10 @@
   :default 60.0)
 
 (defsetting query-caching-ttl-ratio
-  (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
-       " "
-       (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
+  (deferred-tru
+   (str "To determine how long each saved question''s cached result should stick around, we take the query''s average "
+        "execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, "
+        "and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
 
@@ -280,22 +281,37 @@
   :type       :string
   :default    "Metabase")
 
+(defsetting loading-message
+  (deferred-tru "Message to show while a query is running.")
+  :visibility :public
+  :type       :keyword)
+
+(defsetting show-metabot
+  (deferred-tru "Enables Metabot character on the home page")
+  :visibility :public
+  :type       :boolean
+  :default    true)
+
 (defsetting application-colors
-  (deferred-tru "These are the primary colors used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru
+   (str "These are the primary colors used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :json
   :default    {})
 
 (defsetting application-font
-  (deferred-tru "This is the primary font used in charts and throughout Metabase. You might need to refresh your browser to see your changes take effect.")
+  (deferred-tru
+   (str "This is the primary font used in charts and throughout Metabase. "
+        "You might need to refresh your browser to see your changes take effect."))
   :visibility :public
   :type       :string
   :default    "Lato"
   :setter (fn [new-value]
-                (when new-value
-                  (when-not (u.fonts/available-font? new-value)
-                    (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
-                (setting/set-value-of-type! :string :application-font new-value)))
+              (when new-value
+                (when-not (u.fonts/available-font? new-value)
+                  (throw (ex-info (tru "Invalid font {0}" (pr-str new-value)) {:status-code 400}))))
+              (setting/set-value-of-type! :string :application-font new-value)))
 
 (defn application-color
   "The primary color, a.k.a. brand color"
@@ -334,12 +350,16 @@
                     true))))
 
 (defsetting breakout-bins-num
-  (deferred-tru "When using the default binning strategy and a number of bins is not provided, this number will be used as the default.")
+  (deferred-tru
+    (str "When using the default binning strategy and a number of bins is not provided, "
+         "this number will be used as the default."))
   :type :integer
   :default 8)
 
 (defsetting breakout-bin-width
-  (deferred-tru "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), this number will be used as the default bin width (in degrees).")
+  (deferred-tru
+   (str "When using the default binning strategy for a field of type Coordinate (such as Latitude and Longitude), "
+        "this number will be used as the default bin width (in degrees)."))
   :type :double
   :default 10.0)
 
@@ -356,19 +376,25 @@
   :visibility :authenticated)
 
 (defsetting show-homepage-data
-  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display data on the homepage. "
+        "Admins might turn this off in order to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-xrays
-  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+    (str "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are "
+         "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
 
 (defsetting show-homepage-pin-message
-  (deferred-tru "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  (deferred-tru
+   (str "Whether or not to display a message about pinning dashboards. It will also be hidden if any dashboards are "
+        "pinned. Admins might hide this to direct users to better content than raw data"))
   :type       :boolean
   :default    true
   :visibility :authenticated)
@@ -459,12 +485,10 @@
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting start-of-week
-  (str
-    (deferred-tru "This will affect things like grouping by week or filtering in GUI queries.")
-    " "
-    (deferred-tru "It won''t affect most SQL queries,")
-    " "
-    (deferred-tru " although it is used to set the WEEK_START session variable in Snowflake."))
+  (deferred-tru
+    (str "This will affect things like grouping by week or filtering in GUI queries. "
+         "It won''t affect most SQL queries, "
+         "although it is used to set the WEEK_START session variable in Snowflake."))
   :visibility :public
   :type       :keyword
   :default    :sunday)
@@ -503,9 +527,9 @@
                   (fetch-cloud-gateway-ips-fn))))
 
 (defsetting show-database-syncing-modal
-  (str (deferred-tru "Whether an introductory modal should be shown after the next database connection is added.")
-       " "
-       (deferred-tru "Defaults to false if any non-default database has already finished syncing for this instance."))
+  (deferred-tru
+    (str "Whether an introductory modal should be shown after the next database connection is added. "
+         "Defaults to false if any non-default database has already finished syncing for this instance."))
   :visibility :admin
   :type       :boolean
   :getter     (fn []

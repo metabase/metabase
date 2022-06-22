@@ -38,7 +38,7 @@ Question.args = {
     setArchived: action("setArchived"),
     setPinned: action("setPinned"),
     copy: true,
-    setCollection: true,
+    setCollection: action("setCollection"),
   },
   onCopy,
   onMove,

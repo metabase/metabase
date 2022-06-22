@@ -4,11 +4,13 @@
             [medley.core :as m]
             [metabase.db.util :as mdb.u]
             [metabase.driver :as driver]
+            [metabase.driver.impl :as driver.impl]
             [metabase.driver.util :as driver.u]
             [metabase.models.interface :as mi]
             [metabase.models.permissions :as perms]
             [metabase.models.permissions-group :as perms-group]
             [metabase.models.secret :as secret :refer [Secret]]
+            [metabase.models.serialization.hash :as serdes.hash]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
@@ -52,13 +54,12 @@
 
 (defn- post-select [{driver :engine, :as database}]
   (cond-> database
-    (driver/initialized? driver)
     ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
-    (as-> db* ; database from outer cond->
-        (assoc db* :features (driver.u/features driver database))
-        (if (:details db*)
-          (driver/normalize-db-details driver db*)
-          db*))))
+    (driver.impl/registered? driver)
+    (assoc :features (driver.u/features driver database))
+
+    (and (driver.impl/registered? driver) (:details database))
+    (->> (driver/normalize-db-details driver))))
 
 (defn- delete-orphaned-secrets!
   "Delete Secret instances from the app DB, that will become orphaned when `database` is deleted. For now, this will
@@ -208,7 +209,10 @@
   (merge mi/IObjectPermissionsDefaults
          {:perms-objects-set perms-objects-set
           :can-read?         (partial mi/current-user-has-partial-permissions? :read)
-          :can-write?        (partial mi/current-user-has-full-permissions? :write)}))
+          :can-write?        (partial mi/current-user-has-full-permissions? :write)})
+
+  serdes.hash/IdentityHashable
+  {:identity-hash-fields (constantly [:name :engine])})
 
 
 ;;; ---------------------------------------------- Hydration / Util Fns ----------------------------------------------

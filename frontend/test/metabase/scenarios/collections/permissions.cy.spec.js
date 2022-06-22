@@ -73,8 +73,11 @@ describe("collection permissions", () => {
                   // Assert that we're starting from a scenario with no pins
                   cy.findByTestId("pinned-items").should("not.exist");
 
-                  pinItem("Orders in a dashboard"); // dashboard
-                  pinItem("Orders, Count"); // question
+                  pinItem("Orders in a dashboard");
+                  unpinnedItemsLeft(3);
+
+                  pinItem("Orders, Count");
+                  unpinnedItemsLeft(2);
 
                   // Should see "pinned items" and items should be in that section
                   cy.findByTestId("pinned-items").within(() => {
@@ -82,6 +85,13 @@ describe("collection permissions", () => {
                     cy.findByText("Orders, Count");
                   });
                 });
+
+                function unpinnedItemsLeft(count) {
+                  cy.findAllByTestId("collection-entry").should(
+                    "have.length",
+                    count,
+                  );
+                }
               });
 
               describe("move", () => {
@@ -421,12 +431,10 @@ describe("collection permissions", () => {
 });
 
 function openEllipsisMenuFor(item, index = 0) {
-  return cy
-    .findAllByText(item)
+  cy.findAllByText(item)
     .eq(index)
     .closest("tr")
-    .find(".Icon-ellipsis")
-    .click({ force: true });
+    .within(() => cy.icon("ellipsis").click());
 }
 
 function clickButton(name) {
@@ -436,11 +444,8 @@ function clickButton(name) {
 }
 
 function pinItem(item) {
-  cy.findAllByText(item)
-    .closest("tr")
-    .within(() => {
-      cy.icon("pin").click();
-    });
+  openEllipsisMenuFor(item);
+  popover().within(() => cy.icon("pin").click());
 }
 
 function exposeChildrenFor(collectionName) {

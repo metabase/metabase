@@ -10,13 +10,9 @@ import StructuredQuery, {
 import Dimension from "metabase-lib/lib/Dimension";
 import { ModalDivider } from "../BulkFilterModal/BulkFilterModal.styled";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
-import { BulkFilterSelect, SegmentFilterSelect } from "../BulkFilterSelect";
-import {
-  ListRoot,
-  ListRow,
-  ListRowContent,
-  ListRowLabel,
-} from "./BulkFilterList.styled";
+import { BulkFilterItem } from "../BulkFilterItem";
+import { SegmentFilterSelect } from "../BulkFilterSelect";
+import { ListRoot, ListRow, ListRowLabel } from "./BulkFilterList.styled";
 import { sortDimensions } from "./utils";
 
 export interface BulkFilterListProps {
@@ -90,7 +86,12 @@ const BulkFilterListItem = ({
   onRemoveFilter,
 }: BulkFilterListItemProps): JSX.Element => {
   const options = useMemo(() => {
-    return filters.filter(f => f.dimension()?.isSameBaseDimension(dimension));
+    const filtersForThisDimension = filters.filter(f =>
+      f.dimension()?.isSameBaseDimension(dimension),
+    );
+    return filtersForThisDimension.length
+      ? filtersForThisDimension
+      : [undefined];
   }, [filters, dimension]);
 
   return (
@@ -98,28 +99,17 @@ const BulkFilterListItem = ({
       <ListRowLabel data-testid="dimension-filter-label">
         {dimension.displayName()}
       </ListRowLabel>
-      <ListRowContent>
-        {options.map((filter, index) => (
-          <BulkFilterSelect
-            key={index}
-            query={query}
-            filter={filter}
-            dimension={dimension}
-            onAddFilter={onAddFilter}
-            onChangeFilter={onChangeFilter}
-            onRemoveFilter={onRemoveFilter}
-          />
-        ))}
-        {!options.length && (
-          <BulkFilterSelect
-            query={query}
-            dimension={dimension}
-            onAddFilter={onAddFilter}
-            onChangeFilter={onChangeFilter}
-            onRemoveFilter={onRemoveFilter}
-          />
-        )}
-      </ListRowContent>
+      {options.map((filter, index) => (
+        <BulkFilterItem
+          key={index}
+          query={query}
+          filter={filter}
+          dimension={dimension}
+          onAddFilter={onAddFilter}
+          onChangeFilter={onChangeFilter}
+          onRemoveFilter={onRemoveFilter}
+        />
+      ))}
     </ListRow>
   );
 };
@@ -142,7 +132,7 @@ const SegmentListItem = ({
   <>
     <ListRow>
       <ListRowLabel>{t`Segments`}</ListRowLabel>
-      <ListRowContent>
+      <>
         <SegmentFilterSelect
           query={query}
           segments={segments}
@@ -150,7 +140,7 @@ const SegmentListItem = ({
           onRemoveFilter={onRemoveFilter}
           onClearSegments={onClearSegments}
         />
-      </ListRowContent>
+      </>
     </ListRow>
     <ModalDivider marginY="0.5rem" />
   </>

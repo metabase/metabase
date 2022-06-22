@@ -10,7 +10,7 @@ import {
   getValuePopulatedParameters,
   hasParameterValue,
 } from "metabase/parameters/utils/parameter-values";
-import { ParameterWithTarget } from "metabase/parameters/types";
+import { ParameterWithTarget, UiParameter } from "metabase/parameters/types";
 import { Parameter, ParameterTarget } from "metabase-types/types/Parameter";
 import { Card } from "metabase-types/types/Card";
 import { TemplateTag } from "metabase-types/types/Query";
@@ -30,7 +30,24 @@ function getTemplateTagType(tag: TemplateTag) {
   }
 }
 
+export function getTemplateTagParameter(tag: TemplateTag): ParameterWithTarget {
+  const target: ParameterTarget =
+    tag.type === "dimension"
+      ? ["dimension", ["template-tag", tag.name]]
+      : ["variable", ["template-tag", tag.name]];
+
+  return {
+    id: tag.id,
+    type: tag["widget-type"] || getTemplateTagType(tag),
+    target,
+    name: tag["display-name"],
+    slug: tag.name,
+    default: tag.default,
+  };
+}
+
 // NOTE: this should mirror `template-tag-parameters` in src/metabase/api/embed.clj
+
 export function getTemplateTagParameters(
   tags: TemplateTag[],
 ): ParameterWithTarget[] {
@@ -39,21 +56,7 @@ export function getTemplateTagParameters(
       tag =>
         tag.type != null && (tag["widget-type"] || tag.type !== "dimension"),
     )
-    .map(tag => {
-      const target: ParameterTarget =
-        tag.type === "dimension"
-          ? ["dimension", ["template-tag", tag.name]]
-          : ["variable", ["template-tag", tag.name]];
-
-      return {
-        id: tag.id,
-        type: tag["widget-type"] || getTemplateTagType(tag),
-        target,
-        name: tag["display-name"],
-        slug: tag.name,
-        default: tag.default,
-      };
-    });
+    .map(getTemplateTagParameter);
 }
 
 export function getTemplateTagsForParameters(card: Card) {
@@ -74,7 +77,11 @@ export function getTemplateTagsForParameters(card: Card) {
 export function getParametersFromCard(
   card: Card,
 ): Parameter[] | ParameterWithTarget[] {
-  if (card && card.parameters) {
+  if (!card) {
+    return [];
+  }
+
+  if (card.parameters && !_.isEmpty(card.parameters)) {
     return card.parameters;
   }
 
@@ -82,16 +89,16 @@ export function getParametersFromCard(
   return getTemplateTagParameters(tags);
 }
 
-export function getValueAndFieldIdPopulatedParametersFromCard(
+export function getCardUiParameters(
   card: Card,
   metadata: Metadata,
-  parameterValues: { [key: string]: any },
-) {
+  parameterValues: { [key: string]: any } = {},
+  parameters = getParametersFromCard(card),
+): UiParameter[] {
   if (!card) {
     return [];
   }
 
-  const parameters = getParametersFromCard(card);
   const valuePopulatedParameters: (Parameter[] | ParameterWithTarget[]) & {
     value?: any;
   } = getValuePopulatedParameters(parameters, parameterValues);
@@ -102,12 +109,15 @@ export function getValueAndFieldIdPopulatedParametersFromCard(
       | ParameterTarget
       | undefined = (parameter as ParameterWithTarget).target;
     const field = getParameterTargetField(target, metadata, question);
-    return {
-      ...parameter,
-      fields: field == null ? [] : [field],
-      field_id: field?.id,
-      hasOnlyFieldTargets: field != null,
-    };
+    if (field) {
+      return {
+        ...parameter,
+        fields: [field],
+        hasVariableTemplateTagTarget: false,
+      };
+    }
+
+    return { ...parameter, hasVariableTemplateTagTarget: true };
   });
 }
 
